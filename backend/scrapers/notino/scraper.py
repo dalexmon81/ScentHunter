@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 
 
-# ============================================================
-# NOTINO
-# ============================================================
-
 BASE_URL = "https://www.notino.fr"
-
-# Jina Reader is used only as a transport/proxy layer.
-# The extracted products must still belong to notino.fr.
 READER_BASE = "https://r.jina.ai/"
 
 USER_AGENT = (
@@ -27,36 +20,26 @@ USER_AGENT = (
 
 HEADERS = {
     "User-Agent": USER_AGENT,
-    "Accept": "text/plain,text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept": "text/plain,text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     "Cache-Control": "no-cache",
 }
 
 SEARCH_TIMEOUT = (3.0, 18.0)
-PRODUCT_TIMEOUT = (3.0, 18.0)
-
-MAX_CANDIDATES = 8
-MAX_PRODUCT_REQUESTS = 6
+MAX_CANDIDATES = 10
 
 
-# ============================================================
-# NORMALISATION
-# ============================================================
+def _debug(message: str) -> None:
+    # Render captures stdout from the worker, so diagnostic information
+    # is visible in the Render logs without changing the API contract.
+    print(f"[NOTINO DIAG] {message}", flush=True)
+
 
 def norm(value: object) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
-    text = "".join(
-        char for char in text
-        if not unicodedata.combining(char)
-    )
+    text = "".join(c for c in text if not unicodedata.combining(c))
     text = text.lower()
-
-    text = re.sub(
-        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
-        " ",
-        text,
-    )
-
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -65,36 +48,22 @@ def parse_price(value: object) -> float | None:
     if value in (None, ""):
         return None
 
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    text = str(value)
-    text = text.replace("\xa0", " ")
-    text = text.replace("€", "")
-    text = text.strip()
-
-    # Keep only numbers/separators.
+    text = str(value).replace("\xa0", " ").replace("€", "").strip()
     text = re.sub(r"[^\d,.\-]", "", text)
 
     if not text:
         return None
 
     if "," in text and "." in text:
-        # French format: 1.234,56
         if text.rfind(",") > text.rfind("."):
-            text = text.replace(".", "")
-            text = text.replace(",", ".")
+            text = text.replace(".", "").replace(",", ".")
         else:
-            # English format: 1,234.56
             text = text.replace(",", "")
-
     elif "," in text:
-        # 51,00
         if len(text.rsplit(",", 1)[-1]) <= 2:
             text = text.replace(",", ".")
         else:
             text = text.replace(",", "")
-
     elif text.count(".") > 1:
         text = text.replace(".", "")
 
@@ -106,134 +75,54 @@ def parse_price(value: object) -> float | None:
 
 def money(value: object) -> str:
     price = parse_price(value)
-
     if price is None:
         return ""
-
     return f"{price:.2f}".replace(".", ",") + " €"
 
 
 def extract_size_ml(text: object) -> float | None:
-    value = str(text or "")
-
     matches = re.findall(
         r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
-        value,
+        str(text or ""),
         flags=re.I,
     )
 
-    if not matches:
-        return None
-
-    sizes: list[float] = []
+    values = []
 
     for number, unit in matches:
         try:
-            size = float(number.replace(",", "."))
-
+            value = float(number.replace(",", "."))
             if unit.lower() == "cl":
-                size *= 10
-
-            sizes.append(size)
-
+                value *= 10
+            values.append(value)
         except ValueError:
-            continue
+            pass
 
-    if not sizes:
-        return None
+    return min(values) if values else None
 
-    return min(sizes)
-
-
-# ============================================================
-# QUERY MATCHING
-# ============================================================
 
 IGNORED_QUERY_WORDS = {
-    "eau",
-    "de",
-    "parfum",
-    "perfume",
-    "edp",
-    "edt",
-    "extrait",
-    "spray",
-    "for",
-    "the",
-    "by",
-    "ml",
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "extrait", "spray", "for", "the", "by", "ml",
 }
 
 
 NON_PERFUME_MARKERS = {
-    "gift set",
-    "coffret",
-    "set cadeau",
-    "set",
-    "shampoo",
-    "shampoing",
-    "conditioner",
-    "apres rasage",
-    "aftershave",
-    "deodorant",
-    "déodorant",
-    "body lotion",
-    "lotion corps",
-    "body cream",
-    "cream",
-    "creme",
-    "crème",
-    "serum",
-    "sérum",
-    "makeup",
-    "maquillage",
-    "concealer",
-    "masque",
-    "mask",
-    "gel douche",
-    "shower gel",
-    "savon",
-    "soap",
-    "blush",
-    "fond de teint",
-    "rouge a levres",
-    "rouge à lèvres",
-    "lipstick",
-    "bronzer",
-    "skincare",
-    "skin care",
-    "cheveux",
-    "hair",
-    "nail",
-    "ongles",
+    "gift set", "coffret", "set cadeau", "shampoo", "shampoing",
+    "conditioner", "apres rasage", "aftershave", "deodorant",
+    "déodorant", "body lotion", "lotion corps", "body cream",
+    "cream", "creme", "crème", "serum", "sérum", "makeup",
+    "maquillage", "concealer", "masque", "mask", "gel douche",
+    "shower gel", "savon", "soap", "blush", "fond de teint",
+    "rouge a levres", "rouge à lèvres", "lipstick", "bronzer",
+    "skincare", "skin care", "cheveux", "hair", "nail", "ongles",
     "accessoire",
 }
 
 
 def contains_non_perfume_marker(name: object) -> bool:
     text = norm(name)
-
-    if not text:
-        return True
-
-    for marker in NON_PERFUME_MARKERS:
-        marker_norm = norm(marker)
-
-        if not marker_norm:
-            continue
-
-        if marker_norm in text:
-            return True
-
-    return False
-
-
-def query_tokens(query: str) -> list[str]:
-    return [
-        token
-        for token in norm(query).split()
-        if token not in IGNORED_QUERY_WORDS
-    ]
+    return any(norm(marker) in text for marker in NON_PERFUME_MARKERS)
 
 
 def query_matches(name: str, query: str) -> bool:
@@ -243,7 +132,10 @@ def query_matches(name: str, query: str) -> bool:
     if contains_non_perfume_marker(name):
         return False
 
-    wanted = query_tokens(query)
+    wanted = [
+        token for token in norm(query).split()
+        if token not in IGNORED_QUERY_WORDS
+    ]
 
     if not wanted:
         return True
@@ -251,19 +143,15 @@ def query_matches(name: str, query: str) -> bool:
     name_norm = norm(name)
     name_tokens = set(name_norm.split())
 
-    # Exact token matching first.
     if all(token in name_tokens for token in wanted):
         return True
 
-    # Also accept contiguous phrase.
-    phrase = " ".join(wanted)
-
-    return phrase in name_norm
+    return " ".join(wanted) in name_norm
 
 
-# ============================================================
-# HTTP
-# ============================================================
+def search_url(query: str) -> str:
+    return f"{BASE_URL}/search.asp?exps={quote_plus(query)}"
+
 
 def reader_url(target_url: str) -> str:
     return READER_BASE + target_url
@@ -272,57 +160,90 @@ def reader_url(target_url: str) -> str:
 def get_reader(
     session: requests.Session,
     target_url: str,
-    timeout: tuple[float, float],
-) -> str:
+) -> tuple[str, dict]:
     url = reader_url(target_url)
+
+    diagnostic = {
+        "target_url": target_url,
+        "reader_url": url,
+        "http_status": None,
+        "content_type": "",
+        "content_length": 0,
+        "final_url": "",
+        "error": None,
+        "preview": "",
+    }
+
+    _debug(f"TARGET {target_url}")
+    _debug(f"READER {url}")
 
     try:
         response = session.get(
             url,
             headers=HEADERS,
-            timeout=timeout,
+            timeout=SEARCH_TIMEOUT,
             allow_redirects=True,
         )
 
-        if not response.ok:
-            return ""
+        diagnostic["http_status"] = response.status_code
+        diagnostic["content_type"] = response.headers.get(
+            "content-type", ""
+        )
+        diagnostic["final_url"] = str(response.url)
 
         text = response.text or ""
 
-        if not text:
-            return ""
+        diagnostic["content_length"] = len(text)
+        diagnostic["preview"] = re.sub(
+            r"\s+",
+            " ",
+            text[:500],
+        )
 
-        return text
+        _debug(
+            f"HTTP {response.status_code} "
+            f"TYPE={diagnostic['content_type']} "
+            f"LEN={len(text)}"
+        )
 
-    except requests.RequestException:
-        return ""
+        _debug(f"FINAL {response.url}")
+        _debug(f"PREVIEW {diagnostic['preview']!r}")
 
+        if not response.ok:
+            diagnostic["error"] = (
+                f"HTTP {response.status_code}"
+            )
+            return "", diagnostic
 
-# ============================================================
-# NOTINO PRODUCT URL EXTRACTION
-# ============================================================
+        return text, diagnostic
+
+    except requests.RequestException as exc:
+        diagnostic["error"] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
+        _debug(
+            f"REQUEST ERROR {diagnostic['error']}"
+        )
+
+        return "", diagnostic
+
 
 PRODUCT_URL_RE = re.compile(
     r"https?://(?:www\.)?notino\.fr/"
-    r"[^)\s\"<>]+?"
-    r"/p-\d+/"
+    r"[^)\s\"<>]+?/p-\d+/"
     r"(?:[?#][^)\s\"<>]*)?",
     flags=re.I,
 )
 
-
 RELATIVE_PRODUCT_URL_RE = re.compile(
-    r"(?:^|\()"
-    r"(/[^)\s\"<>]+?/p-\d+/"
-    r"(?:[?#][^)\s\"<>]*)?)",
+    r"/[^)\s\"<>]+?/p-\d+/",
     flags=re.I,
 )
 
 
 def clean_product_url(url: str) -> str:
     url = html.unescape(str(url or "")).strip()
-
-    # Markdown punctuation.
     url = url.rstrip(").,;\"'")
 
     if url.startswith("/"):
@@ -339,194 +260,236 @@ def clean_product_url(url: str) -> str:
     if not re.search(r"/p-\d+/?$", parsed.path):
         return ""
 
-    return (
-        f"{BASE_URL}"
-        f"{parsed.path.rstrip('/')}/"
-    )
+    return f"{BASE_URL}{parsed.path.rstrip('/')}/"
 
 
 def extract_product_urls(markdown: str) -> list[str]:
-    if not markdown:
-        return []
+    urls = []
+    seen = set()
 
-    urls: list[str] = []
-    seen: set[str] = set()
+    for match in PRODUCT_URL_RE.findall(markdown or ""):
+        url = clean_product_url(match)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
 
-    # Absolute URLs.
-    for match in PRODUCT_URL_RE.findall(markdown):
-        clean = clean_product_url(match)
-
-        if clean and clean not in seen:
-            seen.add(clean)
-            urls.append(clean)
-
-    # Relative URLs from markdown links.
-    for match in RELATIVE_PRODUCT_URL_RE.findall(markdown):
-        clean = clean_product_url(match)
-
-        if clean and clean not in seen:
-            seen.add(clean)
-            urls.append(clean)
+    for match in RELATIVE_PRODUCT_URL_RE.findall(markdown or ""):
+        url = clean_product_url(match)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
 
     return urls
 
 
-# ============================================================
-# MARKDOWN LINK / PRODUCT TEXT
-# ============================================================
-
-def markdown_links(markdown: str) -> list[tuple[str, str]]:
-    """
-    Return [(anchor_text, url), ...] from Markdown links.
-    """
-    if not markdown:
-        return []
-
+def extract_markdown_links(
+    markdown: str,
+) -> list[tuple[str, str]]:
     pattern = re.compile(
         r"\[([^\]]+)\]\((https?://[^)\s]+|/[^)\s]+)\)",
         flags=re.I,
     )
 
-    output: list[tuple[str, str]] = []
+    output = []
 
-    for match in pattern.finditer(markdown):
+    for match in pattern.finditer(markdown or ""):
         anchor = html.unescape(match.group(1)).strip()
-        url = html.unescape(match.group(2)).strip()
+        url = clean_product_url(
+            html.unescape(match.group(2)).strip()
+        )
 
-        clean = clean_product_url(url)
-
-        if clean:
-            output.append((anchor, clean))
+        if url:
+            output.append((anchor, url))
 
     return output
 
 
-def product_context(markdown: str, product_url: str) -> str:
-    """
-    Extract a small amount of text around a product URL.
-
-    This is intentionally conservative. We never create a product from
-    a generic search-engine result. The source URL must be Notino.
-    """
-    if not markdown or not product_url:
-        return ""
-
-    pos = markdown.find(product_url)
-
-    if pos < 0:
-        # The URL may have been rendered without the exact final slash.
-        stripped = product_url.rstrip("/")
-        pos = markdown.find(stripped)
-
-    if pos < 0:
-        return ""
-
-    start = max(0, pos - 900)
-    end = min(len(markdown), pos + 1400)
-
-    return markdown[start:end]
-
-
-def find_anchor_for_product(
-    markdown: str,
-    product_url: str,
-) -> str:
-    for anchor, url in markdown_links(markdown):
-        if url.rstrip("/") == product_url.rstrip("/"):
-            return anchor
-
-    context = product_context(markdown, product_url)
-
-    if not context:
-        return ""
-
-    # Remove markdown formatting.
-    context = re.sub(r"\[[^\]]+\]\([^)]+\)", " ", context)
-    context = re.sub(r"https?://\S+", " ", context)
-    context = re.sub(r"\s+", " ", context)
-
-    return context.strip()
-
-
-# ============================================================
-# SEARCH PAGE DISCOVERY
-# ============================================================
-
-def search_url(query: str) -> str:
-    return (
-        f"{BASE_URL}/search.asp"
-        f"?exps={quote_plus(query)}"
+def candidate_score(
+    candidate: dict,
+    query: str,
+) -> int:
+    text = norm(
+        f"{candidate.get('search_text', '')} "
+        f"{candidate.get('url', '')}"
     )
 
+    wanted = [
+        token for token in norm(query).split()
+        if token not in IGNORED_QUERY_WORDS
+    ]
 
-def search_notino(
-    session: requests.Session,
+    score = 0
+
+    for token in wanted:
+        if token in text:
+            score += 10
+
+    if extract_size_ml(text) is not None:
+        score += 3
+
+    if "liquid brun" in text:
+        score += 5
+
+    return score
+
+
+def discover_candidates(
+    markdown: str,
     query: str,
 ) -> list[dict]:
-    """
-    One Notino search-page request through Jina Reader.
+    links = extract_markdown_links(markdown)
 
-    We intentionally do NOT use Google/Bing/Jina Search as the product
-    source. Jina Reader receives the actual Notino URL and returns the
-    Notino page content.
-    """
-    target = search_url(query)
+    candidates = []
+    seen = set()
 
-    markdown = get_reader(
-        session,
-        target,
-        SEARCH_TIMEOUT,
-    )
-
-    if not markdown:
-        return []
-
-    urls = extract_product_urls(markdown)
-
-    candidates: list[dict] = []
-    seen: set[str] = set()
-
-    for url in urls:
+    for anchor, url in links:
         if url in seen:
             continue
 
         seen.add(url)
 
-        anchor = find_anchor_for_product(
-            markdown,
-            url,
-        )
+        text = anchor.strip()
 
-        if anchor:
-            anchor_clean = re.sub(
-                r"\s+",
-                " ",
-                anchor,
-            ).strip()
-        else:
-            anchor_clean = ""
+        # Some Reader outputs put the product information immediately
+        # before/after the markdown link. Keep the anchor plus a nearby
+        # context window for matching.
+        pos = markdown.find(url)
 
-        # Search-page discovery can include unrelated products.
-        # Filter obvious non-fragrance results here.
-        if anchor_clean and contains_non_perfume_marker(anchor_clean):
-            continue
+        context = ""
+        if pos >= 0:
+            context = markdown[
+                max(0, pos - 600):
+                min(len(markdown), pos + 900)
+            ]
+
+        combined = f"{text} {context}"
 
         candidates.append(
             {
                 "url": url,
-                "search_text": anchor_clean,
+                "search_text": text,
+                "context": combined,
             }
         )
 
-        if len(candidates) >= MAX_CANDIDATES:
-            break
+    # If Markdown links were not preserved, fall back to raw product URLs.
+    if not candidates:
+        for url in extract_product_urls(markdown):
+            if url in seen:
+                continue
+
+            seen.add(url)
+
+            candidates.append(
+                {
+                    "url": url,
+                    "search_text": "",
+                    "context": "",
+                }
+            )
+
+    candidates.sort(
+        key=lambda item: candidate_score(
+            item,
+            query,
+        ),
+        reverse=True,
+    )
+
+    candidates = candidates[:MAX_CANDIDATES]
+
+    _debug(
+        f"PRODUCT URLS FOUND={len(extract_product_urls(markdown))}"
+    )
+    _debug(
+        f"CANDIDATES SELECTED={len(candidates)}"
+    )
+
+    for index, candidate in enumerate(candidates, 1):
+        _debug(
+            f"CANDIDATE {index}: "
+            f"{candidate['url']} "
+            f"TEXT={candidate['search_text']!r}"
+        )
 
     return candidates
 
 
-# ============================================================
-# PRODUCT PAGE PARSER
-# ============================================================
+def strip_markdown(text: str) -> str:
+    text = re.sub(
+        r"!\[[^\]]*\]\([^)]+\)",
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"\[([^\]]+)\]\([^)]+\)",
+        r"\1",
+        text,
+    )
+
+    text = re.sub(
+        r"https?://\S+",
+        " ",
+        text,
+    )
+
+    text = html.unescape(text)
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
+
+def extract_heading(markdown: str) -> str:
+    matches = re.findall(
+        r"(?m)^#\s+(.+?)\s*$",
+        markdown or "",
+    )
+
+    for match in matches:
+        title = strip_markdown(match)
+
+        if not title:
+            continue
+
+        if norm(title) in {
+            "notino",
+            "accueil",
+            "home",
+        }:
+            continue
+
+        return title
+
+    return ""
+
+
+def extract_title_from_text(
+    markdown: str,
+    fallback: str,
+) -> str:
+    heading = extract_heading(markdown)
+
+    if heading:
+        return heading
+
+    fallback = strip_markdown(fallback)
+
+    if fallback:
+        # Try to find a line that looks like a product title.
+        for line in fallback.splitlines():
+            line = line.strip()
+
+            if (
+                len(line) >= 3
+                and extract_size_ml(line) is not None
+            ):
+                return line
+
+        return fallback
+
+    return ""
+
 
 PRICE_RE = re.compile(
     r"(?<![\d.,])"
@@ -536,61 +499,63 @@ PRICE_RE = re.compile(
 )
 
 
-def clean_text(value: object) -> str:
-    text = html.unescape(str(value or ""))
-
-    text = text.replace("\xa0", " ")
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
-
-
 def extract_prices(markdown: str) -> list[float]:
-    values: list[float] = []
+    values = []
 
     for match in PRICE_RE.findall(markdown or ""):
-        price = parse_price(match)
+        value = parse_price(match)
 
-        if price is None:
+        if value is None:
             continue
 
-        # Ignore obvious per-100ml / delivery / nonsense values.
-        if price <= 0 or price > 5000:
-            continue
-
-        values.append(price)
+        if 0 < value <= 5000:
+            values.append(value)
 
     return values
 
 
-def choose_product_price(markdown: str) -> float | None:
+def extract_current_price(
+    markdown: str,
+) -> float | None:
     if not markdown:
         return None
 
-    # Prefer the first price appearing close to the main product section.
+    # First look around common stock/current-price text.
+    lines = [
+        strip_markdown(line)
+        for line in markdown.splitlines()
+    ]
+
+    for index, line in enumerate(lines):
+        lower = norm(line)
+
+        if (
+            "en stock" in lower
+            or "ajouter au panier" in lower
+            or "prix actuel" in lower
+        ):
+            local = " ".join(
+                lines[max(0, index - 1):index + 3]
+            )
+
+            matches = PRICE_RE.findall(local)
+
+            if matches:
+                value = parse_price(matches[0])
+                if value is not None:
+                    return value
+
     prices = extract_prices(markdown)
 
-    if not prices:
-        return None
-
-    # Notino pages normally expose current price before shipping prices.
-    return prices[0]
+    return prices[0] if prices else None
 
 
-def extract_availability(markdown: str) -> bool | None:
+def extract_availability(
+    markdown: str,
+) -> bool | None:
     text = norm(markdown)
 
-    in_stock_markers = (
-        "en stock",
-        "in stock",
-        "disponible",
-        "disponibilité",
-        "disponibilite",
-        "ajouter au panier",
-        "add to cart",
-    )
-
-    out_stock_markers = (
+    out_markers = (
         "en rupture de stock",
         "rupture de stock",
         "out of stock",
@@ -598,186 +563,131 @@ def extract_availability(markdown: str) -> bool | None:
         "non disponible",
     )
 
-    for marker in out_stock_markers:
+    for marker in out_markers:
         if norm(marker) in text:
             return False
 
-    for marker in in_stock_markers:
+    in_markers = (
+        "en stock",
+        "in stock",
+        "disponible",
+        "ajouter au panier",
+        "add to cart",
+    )
+
+    for marker in in_markers:
         if norm(marker) in text:
             return True
 
     return None
 
 
-def extract_heading(markdown: str) -> str:
-    if not markdown:
-        return ""
-
-    # Prefer Markdown H1.
-    matches = re.findall(
-        r"(?m)^#\s+(.+?)\s*$",
-        markdown,
-    )
-
-    for match in matches:
-        title = clean_text(match)
-
-        if not title:
-            continue
-
-        if title.lower() not in {
-            "notino",
-            "accueil",
-            "home",
-        }:
-            return title
-
-    return ""
-
-
-def extract_brand_and_name(
-    markdown: str,
-    fallback_text: str,
-) -> tuple[str, str]:
-    """
-    Notino usually renders the brand/name in the heading and immediately
-    around the product information.
-
-    We keep the parser conservative and avoid fabricating a brand.
-    """
-    heading = extract_heading(markdown)
-
-    if heading:
-        name = heading
-    else:
-        name = clean_text(fallback_text)
-
-    brand = ""
-
-    # Common first word / known brand line before the product title.
-    lines = [
-        clean_text(line)
-        for line in (markdown or "").splitlines()
-    ]
-
-    lines = [
-        line
-        for line in lines
-        if line and len(line) < 160
-    ]
-
-    # Look for a line that appears immediately before the main heading.
-    if heading:
-        try:
-            index = next(
-                i
-                for i, line in enumerate(lines)
-                if norm(line) == norm(heading)
-            )
-
-            if index > 0:
-                previous = lines[index - 1]
-
-                if (
-                    previous
-                    and not previous.startswith("[")
-                    and not re.search(r"\d+\s*ml", previous, re.I)
-                    and len(previous.split()) <= 8
-                ):
-                    brand = previous
-
-        except StopIteration:
-            pass
-
-    # For French Avenue products this naturally produces:
-    # brand = French Avenue
-    # name  = French Avenue Liquid Brun
-    if not brand:
-        tokens = name.split()
-
-        if len(tokens) >= 2:
-            # Do not blindly assume first word is brand.
-            # Search page anchor is a better fallback.
-            fallback_tokens = clean_text(
-                fallback_text
-            ).split()
-
-            if len(fallback_tokens) >= 2:
-                brand = fallback_tokens[0]
-
-    return brand, name
-
-
 def extract_image(markdown: str) -> str:
     if not markdown:
         return ""
 
-    # Markdown images.
-    matches = re.findall(
+    image_matches = re.findall(
         r"!\[[^\]]*\]\((https?://[^)\s]+)\)",
         markdown,
         flags=re.I,
     )
 
-    for url in matches:
-        lower = url.lower()
-
-        if (
-            "notino" in lower
-            and not lower.endswith(".svg")
-        ):
+    for url in image_matches:
+        if "notino" in url.lower():
             return url
 
-    # Plain image URLs.
-    matches = re.findall(
-        r"https?://[^\s)\"]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s)\"]*)?",
+    plain_matches = re.findall(
+        r"https?://[^\s)\"]+\.(?:jpg|jpeg|png|webp)"
+        r"(?:\?[^\s)\"]*)?",
         markdown,
         flags=re.I,
     )
 
-    for url in matches:
+    for url in plain_matches:
         if "notino" in url.lower():
             return url
 
     return ""
 
 
-def parse_product_page(
+def extract_brand(
+    title: str,
+    fallback: str,
+) -> str:
+    title = strip_markdown(title)
+    fallback = strip_markdown(fallback)
+
+    # Notino often places the brand at the beginning of the title.
+    # We only use it when there is enough information to avoid inventing
+    # a brand from a one-word perfume name.
+    fallback_words = fallback.split()
+
+    if len(fallback_words) >= 2:
+        first = fallback_words[0]
+
+        if first.lower() not in {
+            "eau", "de", "parfum", "extrait"
+        }:
+            return first
+
+    words = title.split()
+
+    if len(words) >= 2:
+        first = words[0]
+
+        if first.lower() not in {
+            "eau", "de", "parfum", "extrait"
+        }:
+            return first
+
+    return ""
+
+
+def parse_product(
     markdown: str,
-    product_url: str,
-    fallback_text: str,
+    candidate: dict,
     query: str,
 ) -> dict | None:
     if not markdown:
         return None
 
-    brand, name = extract_brand_and_name(
-        markdown,
-        fallback_text,
+    fallback = (
+        candidate.get("search_text")
+        or candidate.get("context")
+        or ""
     )
 
-    if not name:
+    title = extract_title_from_text(
+        markdown,
+        fallback,
+    )
+
+    if not title:
         return None
 
-    # Make sure this is actually a matching perfume/product.
-    if not query_matches(name, query):
-        combined = f"{brand} {name}".strip()
+    if (
+        not query_matches(title, query)
+        and not query_matches(
+            f"{title} {fallback}",
+            query,
+        )
+    ):
+        _debug(
+            f"REJECT QUERY MISMATCH URL={candidate['url']} "
+            f"TITLE={title!r}"
+        )
+        return None
 
-        if not query_matches(combined, query):
-            # Search text can be more reliable than a shortened heading.
-            if not query_matches(fallback_text, query):
-                return None
-
-            if fallback_text:
-                name = clean_text(fallback_text)
-
+    price_num = extract_current_price(markdown)
+    available = extract_availability(markdown)
     size_ml = extract_size_ml(
-        f"{name} {fallback_text} {markdown[:5000]}"
+        f"{title} {fallback} {markdown[:8000]}"
     )
 
-    price_num = choose_product_price(markdown)
-
-    available = extract_availability(markdown)
+    brand = extract_brand(
+        title,
+        fallback,
+    )
 
     image = extract_image(markdown)
 
@@ -785,11 +695,11 @@ def parse_product_page(
         "store": "notino",
         "shop": "Notino",
         "brand": brand,
-        "name": name,
+        "name": title,
         "price": money(price_num),
         "price_num": price_num,
         "size_ml": size_ml,
-        "url": product_url,
+        "url": candidate["url"],
         "available": available,
         "availability": (
             "in_stock"
@@ -803,121 +713,143 @@ def parse_product_page(
     if image:
         result["image"] = image
 
+    _debug(
+        "PARSED "
+        f"name={result['name']!r} "
+        f"size={result['size_ml']} "
+        f"price={result['price_num']} "
+        f"available={result['available']}"
+    )
+
     return result
 
 
-# ============================================================
-# PRODUCT WORKER
-# ============================================================
-
-def product_worker(
+def fetch_product(
     candidate: dict,
     query: str,
 ) -> dict | None:
     session = requests.Session()
 
     try:
-        markdown = get_reader(
+        _debug(
+            f"PRODUCT REQUEST {candidate['url']}"
+        )
+
+        markdown, diagnostic = get_reader(
             session,
             candidate["url"],
-            PRODUCT_TIMEOUT,
         )
 
         if not markdown:
+            _debug(
+                f"PRODUCT EMPTY URL={candidate['url']} "
+                f"STATUS={diagnostic.get('http_status')} "
+                f"ERROR={diagnostic.get('error')}"
+            )
             return None
 
-        return parse_product_page(
+        return parse_product(
             markdown,
-            candidate["url"],
-            candidate.get("search_text", ""),
+            candidate,
             query,
         )
-
-    except Exception:
-        return None
 
     finally:
         session.close()
 
 
-# ============================================================
-# SEARCH
-# ============================================================
-
 def search(query: str) -> list[dict]:
-    query = clean_text(query)
+    query = str(query or "").strip()
 
     if not query:
+        _debug("EMPTY QUERY")
         return []
 
-    # --------------------------------------------------------
-    # PHASE 1
-    # One direct Notino search page through Reader.
-    # --------------------------------------------------------
+    _debug("=" * 60)
+    _debug(f"SEARCH START query={query!r}")
+    _debug("=" * 60)
 
     session = requests.Session()
 
     try:
-        candidates = search_notino(
+        target = search_url(query)
+
+        markdown, diagnostic = get_reader(
             session,
-            query,
+            target,
         )
+
     finally:
         session.close()
 
-    if not candidates:
+    if not markdown:
+        _debug(
+            "SEARCH FAILED "
+            f"status={diagnostic.get('http_status')} "
+            f"error={diagnostic.get('error')} "
+            f"len={diagnostic.get('content_length')}"
+        )
         return []
 
-    # --------------------------------------------------------
-    # PHASE 2
-    # Product pages are independent.
-    # --------------------------------------------------------
+    _debug(
+        f"SEARCH PAGE RECEIVED len={len(markdown)}"
+    )
 
-    candidates = candidates[:MAX_PRODUCT_REQUESTS]
+    candidates = discover_candidates(
+        markdown,
+        query,
+    )
 
-    results: list[dict] = []
+    if not candidates:
+        _debug(
+            "SEARCH PAGE RECEIVED BUT "
+            "NO NOTINO PRODUCT URL WAS FOUND"
+        )
+        return []
 
-    with ThreadPoolExecutor(
+    results = []
+
+    # Product pages are fetched concurrently so one slow page does not
+    # serialize the entire Notino scraper.
+    with __import__("concurrent.futures").futures.ThreadPoolExecutor(
         max_workers=min(5, len(candidates))
     ) as executor:
 
         future_map = {
             executor.submit(
-                product_worker,
+                fetch_product,
                 candidate,
                 query,
             ): candidate
             for candidate in candidates
         }
 
-        for future in as_completed(future_map):
+        for future in __import__("concurrent.futures").futures.as_completed(
+            future_map
+        ):
+            candidate = future_map[future]
+
             try:
                 result = future.result()
 
                 if isinstance(result, dict):
                     results.append(result)
 
-            except Exception:
-                continue
+            except Exception as exc:
+                _debug(
+                    f"PRODUCT EXCEPTION "
+                    f"url={candidate['url']} "
+                    f"error={type(exc).__name__}: {exc}"
+                )
 
-    # --------------------------------------------------------
-    # DEDUPLICATION
-    # --------------------------------------------------------
-
-    seen: set[tuple] = set()
-    final: list[dict] = []
+    # Deduplicate.
+    final = []
+    seen = set()
 
     for result in results:
-        url = str(
-            result.get("url")
-            or ""
-        ).rstrip("/")
-
-        size = result.get("size_ml")
-
         key = (
-            url,
-            str(size or ""),
+            str(result.get("url") or "").rstrip("/"),
+            str(result.get("size_ml") or ""),
         )
 
         if key in seen:
@@ -926,55 +858,41 @@ def search(query: str) -> list[dict]:
         seen.add(key)
         final.append(result)
 
-    # --------------------------------------------------------
-    # SORT
-    # --------------------------------------------------------
-
-    def sort_key(item: dict):
-        available = item.get("available")
-        price = item.get("price_num")
-
-        availability_rank = (
-            0 if available is True
-            else 1 if available is None
-            else 2
+    final.sort(
+        key=lambda item: (
+            item.get("available") is not True,
+            item.get("price_num") is None,
+            item.get("price_num")
+            if item.get("price_num") is not None
+            else 999999.0,
         )
+    )
 
-        price_rank = (
-            float(price)
-            if isinstance(price, (int, float))
-            else 999999.0
-        )
-
-        return (
-            availability_rank,
-            price_rank,
-        )
-
-    final.sort(key=sort_key)
+    _debug(
+        f"SEARCH END query={query!r} "
+        f"results={len(final)}"
+    )
 
     return final
 
 
-# ============================================================
-# LOCAL TEST
-# ============================================================
-
 if __name__ == "__main__":
-    tests = [
+    for test in (
         "Liquid Brun",
         "Dior Sauvage",
-    ]
-
-    for test_query in tests:
+    ):
         print()
         print("=" * 70)
-        print("QUERY:", test_query)
+        print(f"TEST: {test}")
         print("=" * 70)
 
-        rows = search(test_query)
+        rows = search(test)
 
-        print("RESULTS:", len(rows))
-
-        for row in rows:
-            print(row)
+        print(
+            json.dumps(
+                rows,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+        )
