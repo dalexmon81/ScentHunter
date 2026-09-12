@@ -31,12 +31,6 @@ from urllib.parse import (
 import requests
 from bs4 import BeautifulSoup
 
-try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-except Exception:
-    sync_playwright = None
-    PlaywrightTimeoutError = Exception
-
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
@@ -46,11 +40,9 @@ READ_TIMEOUT = 5.0
 TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
 
 MAX_CANDIDATES = 8
-PRODUCT_WORKERS = 6
-MAX_EXTERNAL_RESULTS = 0
+PRODUCT_WORKERS = 8
+MAX_EXTERNAL_RESULTS = 12
 MAX_VARIANT_ROWS = 80
-BROWSER_TIMEOUT_MS = 9000
-BROWSER_WAIT_MS = 1000
 
 HEADERS = {
     "User-Agent": (
@@ -1131,16 +1123,11 @@ def _extract_price_and_currency(
             candidates.append(
                 (
                     score,
-                    len(candidates),
                     price,
                 )
             )
 
     if candidates:
-        # Keep DOM order for equal-confidence price nodes. Sorting by the
-        # numeric price was wrong on Sabina because related-product cards can
-        # contain cheaper prices and were therefore selected over the main
-        # product price.
         candidates.sort(
             key=lambda row: (
                 -row[0],
@@ -1149,7 +1136,7 @@ def _extract_price_and_currency(
         )
 
         return (
-            candidates[0][2],
+            candidates[0][1],
             "EUR",
             "semantic_html",
         )
@@ -2070,24 +2057,32 @@ def _discover_from_first_party(
     session,
     query,
 ):
-    """First-party Sabina discovery only; no external search engines."""
+    """
+    Fast first-party discovery.
+
+    Sabina's normal search response is the authoritative discovery source.
+    We try the known first-party routes in order and stop as soon as a route
+    returns query-relevant product URLs. Historical/AJAX routes are fallback
+    only; they are not needlessly executed after a successful discovery.
+    """
     urls = []
     seen = set()
     q = quote_plus(query)
 
-    # The legacy route was the one that historically rendered Sabina's
-    # product cards correctly. Keep it first; only try two current aliases
-    # when it produces no query-relevant product URL.
     search_urls = [
-        BASE + "/es/buscar_old?s=" + q,
         BASE + "/es/buscar?s=" + q,
         BASE + "/es/buscar?controller=search&s=" + q,
+        BASE + "/es/buscar_old?s=" + q,
+        BASE + "/es/buscar?search_query=" + q,
+        BASE + "/es/buscar_old?search_query=" + q,
+        BASE + "/es/search?s=" + q,
     ]
 
     for url in search_urls:
         response = _get(session, url)
         if response is None:
             continue
+
         try:
             links = _extract_product_links_from_html(
                 response.text,
@@ -2095,6 +2090,9 @@ def _discover_from_first_party(
             )
         finally:
             response.close()
+
+        if not links:
+            continue
 
         for link in links:
             if link in seen:
@@ -2104,11 +2102,13 @@ def _discover_from_first_party(
             if len(urls) >= MAX_CANDIDATES:
                 return urls[:MAX_CANDIDATES]
 
+        # A successful first-party search is enough. Do not spend several
+        # additional network round-trips against equivalent legacy routes.
         if urls:
             return urls[:MAX_CANDIDATES]
 
-    # First-party AJAX fallback. These requests are only attempted after
-    # normal Sabina search routes produced no query-relevant product URL.
+    # AJAX discovery is fallback only when the normal first-party search
+    # returned no query-relevant product URL.
     ajax_endpoints = [
         BASE + "/es/module/ec_customization/ajax",
         BASE + "/es/modules/ec_customization/ajax",
@@ -2267,6 +2267,62 @@ def _extract_search_engine_urls(
     return found
 
 
+def _discover_from_external_search(
+    session,
+    query,
+):
+    q = quote_plus(
+        f"site:sabina.com {query}"
+    )
+
+    endpoints = [
+        (
+            "https://www.google.com/search"
+            f"?q={q}&num=20"
+        ),
+        (
+            "https://www.bing.com/search"
+            f"?q={q}&count=20"
+        ),
+        (
+            "https://html.duckduckgo.com/html/"
+            f"?q={q}"
+        ),
+    ]
+
+    for endpoint in endpoints:
+        try:
+            response = session.get(
+                endpoint,
+                headers={
+                    **HEADERS,
+                    "Referer":
+                        "https://www.google.com/",
+                },
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        try:
+            if not response.ok:
+                continue
+
+            urls = (
+                _extract_search_engine_urls(
+                    response.text,
+                    query,
+                )
+            )
+
+            if urls:
+                return urls
+        finally:
+            response.close()
+
+    return []
+
+
 def _dedupe_results(
     rows,
 ):
@@ -2308,170 +2364,54 @@ def _dedupe_results(
     return output
 
 
-def _is_product_url(url):
-    parsed = urlparse(url)
-    if parsed.netloc and parsed.netloc.lower() != "www.sabina.com":
-        return False
-    path = parsed.path.lower()
-    return bool(re.search(r"/\d{4,8}-[^/]+\.html$", path))
-
-
-def _query_tokens_in_text(query, text):
-    tokens = re.findall(r"[a-z0-9]+", _clean(query).lower())
-    haystack = _clean(text).lower()
-    return bool(tokens) and all(token in haystack for token in tokens if len(token) >= 3)
-
-
-def _discover_from_browser(query):
-    """Discover Sabina product URLs from rendered first-party search."""
-    if sync_playwright is None:
-        return []
-
-    q = quote_plus(query)
-    # The legacy route was the one that historically rendered Sabina's
-    # product cards correctly. Keep it first; only try two current aliases
-    # when it produces no query-relevant product URL.
-    search_urls = [
-        BASE + "/es/buscar_old?s=" + q,
-        BASE + "/es/buscar?s=" + q,
-        BASE + "/es/buscar?controller=search&s=" + q,
-    ]
-
-    found = []
-    seen = set()
-
-    try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent=HEADERS["User-Agent"],
-                locale="es-ES",
-                extra_http_headers={
-                    "Accept-Language": HEADERS["Accept-Language"],
-                },
-            )
-            page = context.new_page()
-
-            try:
-                for search_url in search_urls:
-                    try:
-                        page.goto(
-                            search_url,
-                            wait_until="domcontentloaded",
-                            timeout=BROWSER_TIMEOUT_MS,
-                        )
-                    except PlaywrightTimeoutError:
-                        # A route can still have a useful DOM after its load
-                        # timeout, so continue inspecting the current page.
-                        pass
-                    except Exception:
-                        continue
-
-                    try:
-                        page.wait_for_load_state(
-                            "networkidle",
-                            timeout=2000,
-                        )
-                    except PlaywrightTimeoutError:
-                        pass
-
-                    page.wait_for_timeout(BROWSER_WAIT_MS)
-
-                    current_url = page.url
-                    anchors = page.locator("a[href]").evaluate_all(
-                        """
-                        anchors => anchors.map(a => ({
-                            href: a.href || "",
-                            text: a.innerText || a.textContent || "",
-                            title: a.getAttribute("title") || "",
-                            aria: a.getAttribute("aria-label") || ""
-                        }))
-                        """
-                    )
-
-                    for item in anchors:
-                        raw = _clean(item.get("href"))
-                        if not raw:
-                            continue
-
-                        absolute = urljoin(
-                            current_url,
-                            raw,
-                        ).split("#", 1)[0]
-
-                        if not _is_product_url(absolute):
-                            continue
-
-                        text = _clean(
-                            " ".join(
-                                [
-                                    item.get("text") or "",
-                                    item.get("title") or "",
-                                    item.get("aria") or "",
-                                ]
-                            )
-                        )
-
-                        # Accept a product only when the query is visible in
-                        # the card metadata/text or in the product slug.
-                        if not (
-                            _query_tokens_in_text(query, text)
-                            or _query_tokens_in_text(query, absolute)
-                        ):
-                            continue
-
-                        if absolute in seen:
-                            continue
-
-                        seen.add(absolute)
-                        found.append(absolute)
-
-                        if len(found) >= MAX_CANDIDATES:
-                            break
-
-                    if len(found) >= MAX_CANDIDATES:
-                        break
-
-                    # A route that returned no relevant product is simply
-                    # not the active search implementation. Try the next
-                    # first-party route without failing the whole search.
-
-            finally:
-                context.close()
-                browser.close()
-
-    except Exception:
-        return []
-
-    return found[:MAX_CANDIDATES]
-
 def search(query):
-    query = _clean(query)
+    query = _clean(
+        query
+    )
 
     if not query:
         return []
 
-    # Sabina's current search is client-rendered. Use the rendered
-    # first-party search as the primary discovery path so the request does
-    # not waste most of the global search budget on legacy HTTP routes.
-    candidate_urls = _discover_from_browser(query)
+    session = requests.Session()
+    session.headers.update(
+        HEADERS
+    )
 
-    # Browser discovery is bounded and query-filtered. If Playwright is not
-    # available in the runtime, fall back to Sabina's own HTTP/AJAX routes.
-    if not candidate_urls:
-        session = requests.Session()
-        session.headers.update(HEADERS)
-        try:
-            response = _get(session, BASE + "/es/")
-            if response is not None:
-                response.close()
-            candidate_urls = _discover_from_first_party(session, query)
-        finally:
-            session.close()
+    try:
+        # Warm-up: establishes cookies/locale before discovery.
+        response = _get(
+            session,
+            BASE + "/es/",
+        )
 
-    candidate_urls = list(
-        dict.fromkeys(candidate_urls)
-    )[:MAX_CANDIDATES]
+        if response is not None:
+            response.close()
+
+        candidate_urls = (
+            _discover_from_first_party(
+                session,
+                query,
+            )
+        )
+
+        # Last resort only. This keeps the normal path entirely
+        # first-party and bounded.
+        if not candidate_urls:
+            candidate_urls = (
+                _discover_from_external_search(
+                    session,
+                    query,
+                )
+            )
+
+        candidate_urls = list(
+            dict.fromkeys(
+                candidate_urls
+            )
+        )[:MAX_CANDIDATES]
+
+    finally:
+        session.close()
 
     if not candidate_urls:
         return []
@@ -2495,7 +2435,9 @@ def search(query):
             for url in candidate_urls
         }
 
-        for future in as_completed(futures):
+        for future in as_completed(
+            futures
+        ):
             try:
                 results.extend(
                     future.result()
@@ -2503,41 +2445,77 @@ def search(query):
             except Exception:
                 continue
 
-    results = _dedupe_results(results)
+    results = _dedupe_results(
+        results
+    )
 
     def sort_key(item):
-        availability = item.get("availability")
+        availability = item.get(
+            "availability"
+        )
 
-        if availability == "out_of_stock":
+        if (
+            availability
+            == "out_of_stock"
+        ):
             state = 2
-        elif item.get("price_num") is not None:
+        elif item.get(
+            "price_num"
+        ) is not None:
             state = 0
         else:
             state = 1
 
-        price = item.get("price_num")
+        price = item.get(
+            "price_num"
+        )
 
         try:
-            numeric_price = float(price)
-        except (TypeError, ValueError):
-            numeric_price = float("inf")
+            numeric_price = float(
+                price
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numeric_price = float(
+                "inf"
+            )
 
-        size = item.get("size_ml")
+        size = item.get(
+            "size_ml"
+        )
 
         try:
-            numeric_size = float(size)
-        except (TypeError, ValueError):
-            numeric_size = float("inf")
+            numeric_size = float(
+                size
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numeric_size = float(
+                "inf"
+            )
 
         return (
             state,
             numeric_price,
             numeric_size,
-            str(item.get("name") or "").lower(),
+            str(
+                item.get(
+                    "name"
+                )
+                or ""
+            ).lower(),
         )
 
-    results.sort(key=sort_key)
+    results.sort(
+        key=sort_key
+    )
+
     return results[:80]
+
 
 def scrape(query):
     return search(query)
