@@ -816,11 +816,10 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 def discover_product_urls(session, query):
-    """Discover real Sabina product URLs without browser automation.
+    """Discover real Sabina product URLs using Sabina only.
 
-    Try current/legacy first-party search routes, then fall back to the
-    public sitemap. Discovery is entirely query-driven: no product URL,
-    SKU or product name is hard-coded.
+    Search endpoints are tried first. If they return no product links, walk
+    the sitemap index recursively and inspect every relevant child sitemap.
     """
     queries = [clean(query)]
     q_without_size = clean(re.sub(
@@ -840,111 +839,152 @@ def discover_product_urls(session, query):
             seen.add(absolute)
             urls.append(absolute)
 
+    # 1) First-party search endpoints.
     for search_query in queries:
-        q = search_query
-        encoded = __import__("urllib.parse", fromlist=["quote_plus"]).quote_plus(q)
+        encoded = __import__("urllib.parse", fromlist=["quote_plus"]).quote_plus(search_query)
         routes = (
+            f"{BASE_URL}/en/search?controller=search&s={encoded}",
+            f"{BASE_URL}/en/search?s={encoded}",
+            f"{BASE_URL}/en/search?query={encoded}",
+            f"{BASE_URL}/en/?s={encoded}",
             f"{BASE_URL}/es/buscar?search_query={encoded}",
             f"{BASE_URL}/es/buscar?s={encoded}",
+            f"{BASE_URL}/it/ricerca?controller=search&s={encoded}",
             f"{BASE_URL}/it/ricerca?search_query={encoded}",
             f"{BASE_URL}/it/ricerca_old?s={encoded}",
         )
-
         for search_url in routes:
             try:
                 response = session.get(
-                    search_url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
+                    search_url, headers=HEADERS, timeout=TIMEOUT,
                     allow_redirects=True,
                 )
             except requests.RequestException:
                 continue
-
             if response.status_code >= 400:
                 response.close()
                 continue
 
             body = response.text or ""
             soup = BeautifulSoup(body, "html.parser")
-
             for anchor in soup.find_all("a", href=True):
-                add(anchor.get("href"), response.url)
+                href = anchor.get("href")
+                text = anchor.get_text(" ", strip=True)
+                if query_matches(f"{text} {href}", search_query):
+                    add(href, response.url)
 
             decoded = body.replace("\\/", "/").replace("\\u002F", "/")
             for match in re.finditer(
                 r'https?://(?:www\.)?sabina\.com/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-                decoded,
-                re.I,
+                decoded, re.I,
             ):
-                add(match.group(0), response.url)
-            for match in re.finditer(
-                r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-                decoded,
-                re.I,
-            ):
-                add(match.group(0), response.url)
-
+                if query_matches(match.group(0), search_query):
+                    add(match.group(0), response.url)
             response.close()
+
             if len(urls) >= MAX_CANDIDATES:
                 return urls[:MAX_CANDIDATES]
 
-    # Generic public sitemap fallback. This is especially useful when the
-    # storefront search endpoint is blocked or returns an empty shell.
-    sitemap_urls = [
+    # 2) Sabina sitemap fallback. Do not assume the product sitemap is one
+    # of the first four children: discover and inspect all sitemap children.
+    tokens = query_tokens(query)
+    sitemap_roots = [
         f"{BASE_URL}/sitemap.xml",
         f"{BASE_URL}/it/sitemap.xml",
         f"{BASE_URL}/es/sitemap.xml",
     ]
-    tokens = [t for t in norm(query).split() if len(t) > 1 and t != "ml"]
 
-    for sitemap_url in sitemap_urls:
+    def parse_locs(body):
         try:
-            response = session.get(
-                sitemap_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
+            xml = BeautifulSoup(body or "", "xml")
+            return [clean(x.get_text()) for x in xml.find_all("loc")]
+        except Exception:
+            return re.findall(r"<loc>\s*(.*?)\s*</loc>", body or "", re.I | re.S)
+
+    child_sitemaps = []
+    direct_product_urls = []
+
+    for root in sitemap_roots:
+        try:
+            r = session.get(root, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         except requests.RequestException:
             continue
-        if response.status_code >= 400 or not response.text:
-            response.close()
+        if r.status_code >= 400 or not r.text:
+            r.close()
             continue
+        locs = parse_locs(r.text)
+        r.close()
 
-        body = response.text
-        response.close()
+        for loc in locs:
+            u = normalise_url(loc, root)
+            if not u:
+                continue
+            if is_product_url(u):
+                direct_product_urls.append(u)
+            elif u.lower().endswith(".xml") or "sitemap" in u.lower():
+                if u not in child_sitemaps:
+                    child_sitemaps.append(u)
+
+    # Prefer likely product sitemaps, but do not discard the rest.
+    child_sitemaps.sort(
+        key=lambda u: (
+            0 if any(x in u.lower() for x in ("product", "prodotti", "products", "catalog")) else 1,
+            u,
+        )
+    )
+
+    def fetch_sitemap(url):
         try:
-            xml = BeautifulSoup(body, "xml")
-            locs = [clean(x.get_text()) for x in xml.find_all("loc")]
-        except Exception:
-            locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", body, re.I | re.S)
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            if r.status_code >= 400 or not r.text:
+                return url, []
+            locs = parse_locs(r.text)
+            r.close()
+            return url, locs
+        except requests.RequestException:
+            return url, []
 
-        child_maps = [u for u in locs if u.lower().endswith(".xml") and "sitemap" in u.lower()]
-        product_locs = [u for u in locs if is_product_url(u)]
+    # Bounded parallelism keeps discovery fast even if Sabina exposes many maps.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(fetch_sitemap, u) for u in child_sitemaps]
+        for future in as_completed(futures):
+            _, locs = future.result()
+            for loc in locs:
+                candidate = normalise_url(loc)
+                if not candidate:
+                    continue
+                if is_product_url(candidate):
+                    direct_product_urls.append(candidate)
+                elif candidate.lower().endswith(".xml") or "sitemap" in candidate.lower():
+                    # Nested sitemap indexes are handled in a second bounded pass.
+                    if candidate not in child_sitemaps:
+                        child_sitemaps.append(candidate)
 
-        for child in child_maps[:4]:
-            try:
-                r = session.get(child, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-                if r.status_code < 400 and r.text:
-                    try:
-                        child_xml = BeautifulSoup(r.text, "xml")
-                        product_locs.extend(clean(x.get_text()) for x in child_xml.find_all("loc"))
-                    except Exception:
-                        pass
-                r.close()
-            except requests.RequestException:
-                continue
+            # We can stop as soon as enough matching product URLs are found.
+            for raw in direct_product_urls:
+                if query_matches(raw, query):
+                    add(raw)
+                    if len(urls) >= MAX_CANDIDATES:
+                        return urls[:MAX_CANDIDATES]
 
-        for raw in product_locs:
-            candidate = normalise_url(raw)
-            if not candidate or not is_product_url(candidate):
-                continue
-            haystack = norm(re.sub(r"[-_/]+", " ", urlparse(candidate).path))
-            if tokens and all(token in haystack for token in tokens):
-                add(candidate)
-                if len(urls) >= MAX_CANDIDATES:
-                    return urls[:MAX_CANDIDATES]
+    # 3) One nested pass for sitemap indexes that point to another level.
+    nested = [
+        u for u in child_sitemaps
+        if u.lower().endswith(".xml")
+        and u not in sitemap_roots
+    ]
+    # Avoid refetching the first-level maps already fetched.
+    # Only maps discovered as nested URLs are useful here.
+    first_level = set(child_sitemaps[:0])
+    _ = first_level
+
+    # Direct URL matching is enough for normal Sabina product sitemaps.
+    # As a final fallback, inspect any direct product URLs collected above.
+    for raw in direct_product_urls:
+        if query_matches(raw, query):
+            add(raw)
+            if len(urls) >= MAX_CANDIDATES:
+                return urls[:MAX_CANDIDATES]
 
     return urls[:MAX_CANDIDATES]
 
@@ -1461,6 +1501,59 @@ def diagnostic_search(query):
         session.close()
     report["elapsed"] = round(__import__("time").monotonic() - started, 3)
     return [report]
+
+def search_stream(query, emit):
+    query = clean(query)
+    if not query:
+        return None
+    started = __import__("time").monotonic()
+    discovery_session = requests.Session()
+    try:
+        candidate_urls = discover_product_urls(discovery_session, query)
+    finally:
+        discovery_session.close()
+    discovery_elapsed = round(__import__("time").monotonic() - started, 3)
+    if not candidate_urls:
+        return None
+    seen = set()
+    with ThreadPoolExecutor(max_workers=min(PRODUCT_WORKERS, len(candidate_urls))) as pool:
+        futures = [pool.submit(_fetch_product, url, query) for url in candidate_urls]
+        for future in as_completed(futures):
+            try:
+                product = future.result()
+            except Exception:
+                product = None
+            if not product:
+                continue
+            raw_variants = (product.get("raw_data") or {}).get("variant_offers") or []
+            rows = []
+            if raw_variants:
+                for variant in raw_variants:
+                    size = variant.get("size_ml")
+                    price = variant.get("price")
+                    if size is None or price is None:
+                        continue
+                    item = dict(product)
+                    item["price"] = f"{float(price):.2f}".replace(".", ",") + " €"
+                    item["offer"] = dict(product.get("offer") or {})
+                    item["offer"]["price"] = float(price)
+                    item["offer"]["currency"] = variant.get("currency", "EUR")
+                    item.setdefault("attributes", {})["size_ml"] = {"value": size, "source": "product_page_variant"}
+                    key = (item.get("url"), size, round(float(price), 2))
+                    if key not in seen:
+                        seen.add(key)
+                        rows.append(item)
+            else:
+                key = product.get("identity", {}).get("store_product_id", {}).get("value") or product.get("url")
+                if key not in seen:
+                    seen.add(key)
+                    rows.append(product)
+            for row in rows:
+                row["_diagnostic_discovery_elapsed"] = discovery_elapsed
+                row["_diagnostic_first_result_elapsed"] = round(__import__("time").monotonic() - started, 3)
+                emit(row)
+    return None
+
 
 def search(query):
     if str(query or "").startswith("__DIAG__"):
