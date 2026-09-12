@@ -1,6 +1,7 @@
 import json
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -10,8 +11,9 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 10
-MAX_CANDIDATES = 20
+TIMEOUT = 5
+MAX_CANDIDATES = 8
+PRODUCT_WORKERS = 4
 
 HEADERS = {
     "User-Agent": (
@@ -836,12 +838,8 @@ def discover_product_urls(session, query):
         routes = (
             f"{BASE_URL}/es/buscar?search_query={encoded}",
             f"{BASE_URL}/es/buscar?s={encoded}",
-            f"{BASE_URL}/es/buscar?controller=search&s={encoded}",
-            f"{BASE_URL}/es/buscar_old?s={encoded}",
-            f"{BASE_URL}/es/buscar_old?search_query={encoded}",
             f"{BASE_URL}/it/ricerca?search_query={encoded}",
             f"{BASE_URL}/it/ricerca_old?s={encoded}",
-            f"{BASE_URL}/it/ricerca_old?search_query={encoded}",
         )
 
         for search_url in routes:
@@ -917,7 +915,7 @@ def discover_product_urls(session, query):
         child_maps = [u for u in locs if u.lower().endswith(".xml") and "sitemap" in u.lower()]
         product_locs = [u for u in locs if is_product_url(u)]
 
-        for child in child_maps[:20]:
+        for child in child_maps[:4]:
             try:
                 r = session.get(child, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
                 if r.status_code < 400 and r.text:
@@ -1336,6 +1334,7 @@ def extract_product_page(session, url, query):
             "product_url": final_url,
             "status_code": response.status_code,
             "jsonld_product": product,
+            "variant_offers": extract_variant_offers_from_page(soup),
         },
 
         "name": title,
@@ -1356,54 +1355,65 @@ def extract_product_page(session, url, query):
         ),
     }
 
+def _fetch_product(url, query):
+    session = requests.Session()
+    try:
+        return extract_product_page(session, url, query)
+    except requests.RequestException:
+        return None
+    except Exception:
+        return None
+    finally:
+        session.close()
+
+
 def search(query):
     query = clean(query)
-
     if not query:
         return []
 
-    session = requests.Session()
-
+    discovery_session = requests.Session()
     try:
-        candidate_urls = discover_product_urls(
-            session,
-            query,
-        )
+        candidate_urls = discover_product_urls(discovery_session, query)
+    finally:
+        discovery_session.close()
 
-        results = []
-        seen = set()
+    if not candidate_urls:
+        return []
 
-        for url in candidate_urls:
-            product = extract_product_page(
-                session,
-                url,
-                query,
-            )
+    results = []
+    seen = set()
 
+    # Product pages are independent. Fetch them in parallel so one slow/bocked
+    # Sabina page cannot consume the whole Render job and starve other stores.
+    with ThreadPoolExecutor(max_workers=min(PRODUCT_WORKERS, len(candidate_urls))) as pool:
+        futures = {pool.submit(_fetch_product, url, query): url for url in candidate_urls}
+        for future in as_completed(futures):
+            product = future.result()
             if not product:
                 continue
 
-            # Re-read the product page once to expose all explicit Sabina
-            # bottle variants when the page contains a variant selector.
-            variant_products = []
-            try:
-                page_response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-                if page_response.ok:
-                    page_soup = BeautifulSoup(page_response.text, "html.parser")
-                    for variant_size, variant_price in extract_variant_offers_from_page(page_soup):
-                        variant = dict(product)
-                        variant["size_ml"] = variant_size
-                        variant["name"] = product.get("name") or ""
-                        variant["price"] = f"{variant_price:.2f}".replace(".", ",") + " €"
-                        variant["offer"] = dict(product.get("offer") or {})
-                        variant["offer"]["price"] = variant_price
-                        variant.setdefault("attributes", {})["size_ml"] = {"value": variant_size, "source": "product_page_variant"}
-                        variant_products.append(variant)
-            except requests.RequestException:
-                pass
-            if variant_products:
-                for variant in variant_products:
-                    results.append(variant)
+            raw_variants = (product.get("raw_data") or {}).get("variant_offers") or []
+            if raw_variants:
+                for variant in raw_variants:
+                    variant_size = variant.get("size_ml")
+                    variant_price = variant.get("price")
+                    if variant_size is None or variant_price is None:
+                        continue
+                    item = dict(product)
+                    item["name"] = product.get("name") or query
+                    item["price"] = f"{float(variant_price):.2f}".replace(".", ",") + " €"
+                    item["offer"] = dict(product.get("offer") or {})
+                    item["offer"]["price"] = float(variant_price)
+                    item["offer"]["currency"] = variant.get("currency", "EUR")
+                    item.setdefault("attributes", {})["size_ml"] = {
+                        "value": variant_size,
+                        "source": "product_page_variant",
+                    }
+                    key = (item.get("url"), variant_size, round(float(variant_price), 2))
+                    if key not in seen:
+                        seen.add(key)
+                        results.append(item)
                 continue
 
             product_id = (
@@ -1411,19 +1421,13 @@ def search(query):
                 .get("store_product_id", {})
                 .get("value")
             )
-
             key = product_id or product.get("url")
-
             if key in seen:
                 continue
-
             seen.add(key)
             results.append(product)
 
-        return results
-
-    finally:
-        session.close()
+    return results
 
 
 # Compatibility with the generic main.py interface.
