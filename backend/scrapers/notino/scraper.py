@@ -5,6 +5,8 @@ import logging
 import os
 import re
 import unicodedata
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -1367,13 +1369,35 @@ def _search_internal(
                 pass
 
 
+def _run_search_internal_safely(
+    query: str,
+    diagnostic: bool = False,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Run the synchronous scraper outside an active asyncio event loop.
+
+    FastAPI routes can call this module while asyncio is already running.
+    Playwright's Sync API cannot be started from that loop, so the complete
+    synchronous search (including browser discovery and product validation)
+    is executed in a dedicated worker thread. Keeping the whole operation in
+    one thread also preserves Playwright's thread affinity.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return _search_internal(query, diagnostic=diagnostic)
+
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="notino") as executor:
+        future = executor.submit(_search_internal, query, diagnostic)
+        return future.result()
+
+
 def search(query: str) -> List[Dict[str, Any]]:
     query = clean(query)
     if not query:
         return []
 
     try:
-        results, _ = _search_internal(query, diagnostic=False)
+        results, _ = _run_search_internal_safely(query, diagnostic=False)
         return results
     except Exception as exc:
         LOGGER.exception("Notino search failed: %s", exc)
@@ -1401,7 +1425,7 @@ def diagnose(query: str) -> Dict[str, Any]:
         }
 
     try:
-        results, report = _search_internal(query, diagnostic=True)
+        results, report = _run_search_internal_safely(query, diagnostic=True)
         report["final_results"] = results
         return report
     except Exception as exc:
