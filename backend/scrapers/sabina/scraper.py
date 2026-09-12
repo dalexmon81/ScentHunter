@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
+BASE = BASE_URL
 SEARCH_URL = BASE_URL + "/es/buscar"
 TIMEOUT = 5
 MAX_CANDIDATES = 8
