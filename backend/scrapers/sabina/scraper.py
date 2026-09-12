@@ -904,7 +904,75 @@ def _discover_ajax_prestashop(session, query):
             continue
     return urls
 
+
+def _discover_sitemap_products(session, query):
+    """Discover matching Sabina products from public sitemap indexes."""
+    import xml.etree.ElementTree as ET
+
+    query_words = [w for w in norm(query).split() if len(w) > 1 and w != "ml"]
+    if not query_words:
+        return []
+
+    sitemap_roots = (
+        f"{BASE_URL}/sitemap.xml",
+        f"{BASE_URL}/sitemap-products.xml",
+        f"{BASE_URL}/it/sitemap.xml",
+    )
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    product_urls = []
+
+    def fetch_xml(url):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=8)
+            if r.status_code != 200:
+                return None
+            return ET.fromstring(r.content)
+        except Exception:
+            return None
+
+    for root_url in sitemap_roots:
+        root = fetch_xml(root_url)
+        if root is None:
+            continue
+
+        locs = [loc.text.strip() for loc in root.findall(".//sm:loc", ns) if loc.text]
+        # A sitemap index contains child sitemap URLs; otherwise it may
+        # already contain product URLs.
+        child_maps = [u for u in locs if "sitemap" in u.lower()]
+        direct_locs = [u for u in locs if u not in child_maps]
+
+        maps = child_maps + direct_locs
+        for map_url in maps:
+            if map_url in child_maps:
+                child = fetch_xml(map_url)
+                if child is None:
+                    continue
+                candidates = [
+                    loc.text.strip() for loc in child.findall(".//sm:loc", ns)
+                    if loc.text
+                ]
+            else:
+                candidates = [map_url]
+
+            for candidate in candidates:
+                low = candidate.lower()
+                if ".html" not in low:
+                    continue
+                if not ("/perfume" in low or "/profumi" in low):
+                    continue
+                haystack = norm(re.sub(r"[-_/]+", " ", urlparse(candidate).path))
+                if all(word in haystack for word in query_words):
+                    if candidate not in product_urls:
+                        product_urls.append(candidate)
+                        if len(product_urls) >= MAX_CANDIDATES:
+                            return product_urls
+    return product_urls
+
 def discover_product_urls(session, query):
+    sitemap_urls = _discover_sitemap_products(session, query)
+    if sitemap_urls:
+        return sitemap_urls
+
     ajax_urls = _discover_ajax_prestashop(session, query)
     if ajax_urls:
         return ajax_urls
