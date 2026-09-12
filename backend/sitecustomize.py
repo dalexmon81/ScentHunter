@@ -36,7 +36,7 @@ def _install_bplatz():
         if not candidates:
             return None
 
-        with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
             futures = [pool.submit(s.product_worker, c, query) for c in candidates]
             for future in as_completed(futures):
                 try:
@@ -93,7 +93,7 @@ def _install_parfumcity():
             finally:
                 local.close()
 
-        with ThreadPoolExecutor(max_workers=min(6, len(urls))) as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
             futures = [pool.submit(enrich, url) for url in urls]
             for future in as_completed(futures):
                 try:
@@ -132,7 +132,7 @@ def _install_perfumemarket():
         if not candidates:
             return None
 
-        with ThreadPoolExecutor(max_workers=min(s.PRODUCT_WORKERS, len(candidates))) as pool:
+        with ThreadPoolExecutor(max_workers=min(max(8, s.PRODUCT_WORKERS), len(candidates))) as pool:
             futures = [
                 pool.submit(s.enrich_candidate, candidate, query)
                 for candidate in candidates
@@ -174,7 +174,7 @@ def _install_deloox():
         if not urls:
             return None
 
-        with ThreadPoolExecutor(max_workers=min(6, len(urls))) as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
             futures = [pool.submit(s.parse_product, url, query) for url in urls]
             for future in as_completed(futures):
                 try:
@@ -230,7 +230,7 @@ def _install_orioudh():
             finally:
                 local.close()
 
-        with ThreadPoolExecutor(max_workers=min(6, len(urls))) as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
             futures = [pool.submit(enrich, url) for url in urls]
             for future in as_completed(futures):
                 try:
