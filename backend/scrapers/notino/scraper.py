@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import time
+import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus, urljoin, urlparse
@@ -28,6 +29,35 @@ HEADERS = {
     "Upgrade-Insecure-Requests": "1",
     "DNT": "1",
 }
+
+def _build_session() -> requests.Session:
+    s = requests.Session()
+    s.headers.update(HEADERS)
+    s.cookies.update({"hl": "fr", "country": "FR"})
+    return s
+
+def _http_get(url: str, timeout=(3, 12)) -> requests.Response:
+    last_exc = None
+    session = _build_session()
+    try:
+        for i in range(3):
+            try:
+                r = session.get(
+                    url,
+                    timeout=timeout,
+                    allow_redirects=True,
+                    headers={**HEADERS, "Referer": "https://www.notino.fr/"},
+                )
+                if r.status_code in (403, 429):
+                    raise requests.HTTPError(f"{r.status_code} blocked: {url}", response=r)
+                r.raise_for_status()
+                return r
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(0.6 * (i + 1))
+    finally:
+        session.close()
+    raise last_exc if last_exc else RuntimeError("http_get_failed")
 
 PRODUCT_RE = re.compile(
     r"https?://(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+/?",
