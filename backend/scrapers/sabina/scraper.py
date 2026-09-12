@@ -864,12 +864,15 @@ def _discover_direct_prestashop(session, query):
     return urls
 
 def discover_product_urls(session, query):
-    """Discover real Sabina product URLs without browser automation.
+    """Discover real Sabina product URLs.
 
-    Try current/legacy first-party search routes, then fall back to the
-    public sitemap. Discovery is entirely query-driven: no product URL,
-    SKU or product name is hard-coded.
+    First try the native PrestaShop search with a browser-like session.
+    Fall back to the existing first-party discovery methods if needed.
     """
+    direct_urls = _discover_direct_prestashop(session, query)
+    if direct_urls:
+        return direct_urls
+
     queries = [clean(query)]
     q_without_size = clean(re.sub(
         r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I
