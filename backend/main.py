@@ -322,6 +322,14 @@ def diagnose_sabina(q:str='Liquid Brun'):
     started=time.monotonic()
     report={'ok':True,'architecture':APP_VERSION,'query':query,'elapsed':0.0,'module':{},'direct_search':{},'stream_search':{}}
     try:
+        if str(BASE_DIR) not in sys.path:
+            sys.path.insert(0, str(BASE_DIR))
+        try:
+            import sitecustomize as _sitecustomize
+            importlib.reload(_sitecustomize)
+            report['sitecustomize']={'loaded':True,'module':getattr(_sitecustomize,'__file__',None)}
+        except Exception as exc:
+            report['sitecustomize']={'loaded':False,'error':f'{type(exc).__name__}: {exc}'}
         module=load_scraper('sabina')
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
