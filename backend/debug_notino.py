@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from backend.scrapers.notino.scraper import search as notino_search
+from scrapers.notino.scraper import search as notino_search
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
