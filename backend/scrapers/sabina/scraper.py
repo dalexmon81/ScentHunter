@@ -1375,7 +1375,97 @@ def _fetch_product(url, query):
         session.close()
 
 
+
+def diagnostic_search(query):
+    """Verbose Sabina diagnostic used through /test-store.
+    Activate with query prefix __DIAG__ so normal searches are untouched.
+    """
+    real_query = clean(str(query or "").replace("__DIAG__", "", 1))
+    started = __import__("time").monotonic()
+    report = {
+        "diagnostic": "sabina",
+        "query": real_query,
+        "module": {
+            "BASE_URL": BASE_URL,
+            "BASE": globals().get("BASE"),
+            "_clean": callable(globals().get("_clean")),
+            "search": callable(globals().get("search")),
+            "search_stream": callable(globals().get("search_stream")),
+        },
+        "routes": [],
+        "candidate_urls": [],
+        "products": [],
+        "error": None,
+    }
+    session = requests.Session()
+    try:
+        encoded = __import__("urllib.parse", fromlist=["quote_plus"]).quote_plus(real_query)
+        routes = (
+            f"{BASE_URL}/es/buscar?search_query={encoded}",
+            f"{BASE_URL}/es/buscar?s={encoded}",
+            f"{BASE_URL}/it/ricerca?search_query={encoded}",
+            f"{BASE_URL}/it/ricerca_old?s={encoded}",
+        )
+        seen = set()
+        for route in routes:
+            item = {"url": route}
+            try:
+                r = session.get(route, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                item.update({"status_code": r.status_code, "final_url": r.url, "html_bytes": len(r.content or b"")})
+                if r.status_code < 400:
+                    soup = BeautifulSoup(r.text or "", "html.parser")
+                    found = []
+                    for a in soup.find_all("a", href=True):
+                        u = normalise_url(a.get("href"), r.url)
+                        if u and is_product_url(u) and u not in seen and query_matches(a.get_text(" ", strip=True) + " " + u, real_query):
+                            seen.add(u); found.append(u)
+                    item["product_links"] = len(found)
+                    item["sample_product_urls"] = found[:8]
+                    report["candidate_urls"].extend(found)
+                else:
+                    item["product_links"] = 0
+            except Exception as exc:
+                item["error"] = f"{type(exc).__name__}: {exc}"
+            report["routes"].append(item)
+            if len(report["candidate_urls"]) >= MAX_CANDIDATES:
+                break
+
+        report["candidate_urls"] = list(dict.fromkeys(report["candidate_urls"]))[:MAX_CANDIDATES]
+
+        for url in report["candidate_urls"][:4]:
+            product_report = {"url": url}
+            try:
+                r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                product_report["status_code"] = r.status_code
+                product_report["final_url"] = r.url
+                product_report["html_bytes"] = len(r.content or b"")
+                if r.status_code < 400:
+                    soup = BeautifulSoup(r.text or "", "html.parser")
+                    product = first_jsonld_product(soup)
+                    product_report["jsonld_product"] = bool(product)
+                    product_report["jsonld_name"] = (product or {}).get("name") if isinstance(product, dict) else None
+                    product_report["jsonld_offers"] = (product or {}).get("offers") if isinstance(product, dict) else None
+                    product_report["h1"] = clean((soup.find("h1").get_text(" ", strip=True) if soup.find("h1") else ""))
+                    product_report["parsed_query_match"] = query_matches(product_report["jsonld_name"] or product_report["h1"] or url, real_query)
+                    product_report["size_ml"] = extract_size_ml_from_product_page(soup, product_report["jsonld_name"] or product_report["h1"])
+                    product_report["html_price"] = extract_price_from_html(soup)[0]
+                    product_report["variants"] = extract_variant_offers_from_page(soup)[:10]
+                else:
+                    product_report["error"] = f"HTTP {r.status_code}"
+            except Exception as exc:
+                product_report["error"] = f"{type(exc).__name__}: {exc}"
+            report["products"].append(product_report)
+    except Exception as exc:
+        report["error"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        session.close()
+    report["elapsed"] = round(__import__("time").monotonic() - started, 3)
+    return [report]
+
 def search(query):
+    if str(query or "").startswith("__DIAG__"):
+        return diagnostic_search(query)
+
     query = clean(query)
     if not query:
         return []
