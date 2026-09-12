@@ -23,11 +23,11 @@ STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = f"{BASE_URL}/search.asp?exps={{query}}"
 
-TIMEOUT = int(os.getenv("NOTINO_TIMEOUT_S", "5"))
-BROWSER_TIMEOUT_MS = int(os.getenv("NOTINO_BROWSER_TIMEOUT_MS", "10000"))
-PRODUCT_TIMEOUT_MS = int(os.getenv("NOTINO_PRODUCT_TIMEOUT_MS", "8000"))
-MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "24"))
-MAX_PRODUCT_PAGES = int(os.getenv("NOTINO_MAX_PRODUCT_PAGES", "8"))
+TIMEOUT = int(os.getenv("NOTINO_TIMEOUT_S", "15"))
+BROWSER_TIMEOUT_MS = int(os.getenv("NOTINO_BROWSER_TIMEOUT_MS", "35000"))
+PRODUCT_TIMEOUT_MS = int(os.getenv("NOTINO_PRODUCT_TIMEOUT_MS", "18000"))
+MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "150"))
+MAX_PRODUCT_PAGES = int(os.getenv("NOTINO_MAX_PRODUCT_PAGES", "60"))
 BROWSER_ENABLED = os.getenv("NOTINO_BROWSER", "1").lower() not in {"0", "false", "no"}
 
 LOGGER = logging.getLogger(__name__)
@@ -1221,23 +1221,11 @@ def _search_internal(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     session = requests.Session()
 
-    # Browser first: direct HTTP requests to Notino are frequently delayed or
-    # challenged from cloud IPs. The browser is the authoritative live path.
+    http_candidates, http_report = _search_http_candidates(session, query)
+
     browser_candidates, browser_report, browser_resources = (
         _browser_discover_resources(query)
     )
-
-    # HTTP is only a bounded fallback when browser discovery produced nothing.
-    # This prevents the old 15s HTTP wait from consuming the entire request
-    # before Chromium even gets a chance to search.
-    if browser_candidates:
-        http_candidates = []
-        http_report = {
-            "skipped": True,
-            "reason": "browser_discovery_succeeded",
-        }
-    else:
-        http_candidates, http_report = _search_http_candidates(session, query)
 
     candidates = _merge_candidates(
         browser_candidates,
