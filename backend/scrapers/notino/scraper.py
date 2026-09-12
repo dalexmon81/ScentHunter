@@ -1191,114 +1191,62 @@ def _candidate_key(url: str) -> str:
     return (normalise_url(url) or url).lower()
 
 
-def _merge_candidates(
-    browser_candidates: List[Dict[str, Any]],
-    http_candidates: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """
-    Merge browser and HTTP discovery results.
+def _search_http_candidates(session: requests.Session, query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    report = {"enabled": True, "status": None, "final_url": None, "html_bytes": 0, "candidate_count": 0, "error": None}
+    candidates: List[Dict[str, Any]] = []; seen = set()
+    raw_query = clean(query)
+    if not raw_query: return candidates, report
+    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
+    variants = [raw_query]
+    if normalized_tokens:
+        normalized = " ".join(normalized_tokens)
+        if normalized not in variants: variants.append(normalized)
+    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(raw_query))
+    if compact and compact not in variants: variants.append(compact)
+    try: session.headers.update(HEADERS)
+    except Exception: pass
+    for variant in variants[:3]:
+        url = SEARCH_URL.format(query=quote_plus(variant))
+        try:
+            response = session.get(url, timeout=TIMEOUT, allow_redirects=True)
+            report["status"] = response.status_code; report["final_url"] = response.url; report["html_bytes"] += len(response.content or b"")
+            if response.status_code >= 400 or not response.text: continue
+            items = extract_candidates_from_html(response.text, response.url, query)
+            for item in items:
+                key = _candidate_key(item.get("url"))
+                if key and key not in seen: seen.add(key); candidates.append(item)
+        except requests.RequestException as exc:
+            report["error"] = str(exc)
+    candidates = candidates[:MAX_CANDIDATES]; report["candidate_count"] = len(candidates)
+    return candidates, report
 
-    Candidates are deduplicated by normalized URL. When the same product
-    is discovered by both methods, context and source information are merged.
-    """
+
+def _merge_candidates(browser_candidates: List[Dict[str, Any]], http_candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     merged: Dict[str, Dict[str, Any]] = {}
-
     for candidate in browser_candidates + http_candidates:
-        if not isinstance(candidate, dict):
-            continue
-
-        url = candidate.get("url")
-        if not url:
-            continue
-
-        key = _candidate_key(url)
-        if not key:
-            continue
-
+        if not isinstance(candidate, dict): continue
+        url = candidate.get("url"); key = _candidate_key(url) if url else ""
+        if not key: continue
         existing = merged.get(key)
-
         if existing is None:
-            sources = candidate.get("sources", set())
-            if isinstance(sources, (list, tuple, set)):
-                sources = set(sources)
-            else:
-                sources = set()
-
-            merged[key] = {
-                "url": url,
-                "context": clean(candidate.get("context", "")),
-                "sources": sources,
-            }
-            continue
-
-        old_context = clean(existing.get("context", ""))
-        new_context = clean(candidate.get("context", ""))
-
-        if new_context and new_context not in old_context:
-            existing["context"] = clean(
-                f"{old_context} {new_context}"
-            )
-
+            item = dict(candidate); sources = item.get("sources", set()); item["sources"] = set(sources) if isinstance(sources, (list, tuple, set)) else set(); merged[key] = item; continue
+        old_context = clean(existing.get("context", "")); new_context = clean(candidate.get("context", ""))
+        if new_context and new_context not in old_context: existing["context"] = clean(f"{old_context} {new_context}")
         sources = candidate.get("sources", set())
-        if isinstance(sources, (list, tuple, set)):
-            existing.setdefault("sources", set()).update(sources)
-
+        if isinstance(sources, (list, tuple, set)): existing.setdefault("sources", set()).update(sources)
     return list(merged.values())
 
 
-def _sort_candidates(
-    candidates: List[Dict[str, Any]],
-    query: str,
-) -> List[Dict[str, Any]]:
-    """
-    Rank candidates by discovery relevance.
-
-    Discovery remains permissive; the product page is the authoritative
-    validation step.
-    """
-    wanted = set(discovery_normalise(query).split())
-    ranked = []
-
+def _sort_candidates(candidates: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    wanted = set(discovery_normalise(query).split()); ranked = []
     for candidate in candidates:
-        if not isinstance(candidate, dict):
-            continue
-
-        url = clean(candidate.get("url"))
-        context = clean(candidate.get("context", ""))
-        context_tokens = set(discovery_normalise(context).split())
-
-        exact = bool(wanted and wanted.issubset(context_tokens))
-        partial = sum(
-            1 for token in wanted
-            if token in context_tokens
-        )
-
-        sources = candidate.get("sources", set())
-        source_count = (
-            len(sources)
-            if isinstance(sources, (list, tuple, set))
-            else 0
-        )
-
-        product_id_bonus = (
-            2 if re.search(r"/p-\d+$", url, re.I) else 0
-        )
-
-        candidate["score"] = (
-            (1000 if exact else 0)
-            + partial * 100
-            + source_count * 10
-            + product_id_bonus
-        )
-
-        ranked.append(candidate)
-
-    ranked.sort(
-        key=lambda item: item.get("score", 0),
-        reverse=True,
-    )
-
-    return ranked
+        if not isinstance(candidate, dict): continue
+        url = clean(candidate.get("url")); context = clean(candidate.get("context", "")); context_tokens = set(discovery_normalise(context).split())
+        exact = bool(wanted and wanted.issubset(context_tokens)); partial = sum(1 for token in wanted if token in context_tokens)
+        sources = candidate.get("sources", set()); source_count = len(sources) if isinstance(sources, (list, tuple, set)) else 0
+        product_id_bonus = 2 if re.search(r"/p-\d+$", url, re.I) else 0
+        candidate["score"] = (1000 if exact else 0) + partial * 100 + source_count * 10 + product_id_bonus; ranked.append(candidate)
+    ranked.sort(key=lambda item: item.get("score", 0), reverse=True); return ranked
 
 
 def _validate_candidate(
