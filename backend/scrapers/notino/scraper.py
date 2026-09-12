@@ -325,9 +325,13 @@ def search(query: str) -> List[Dict[str, Any]]:
     # The search page itself determines candidates; this final filter only
     # removes unrelated products that may have been embedded in page data.
     filtered = [
-        item for item in results
-        if _query_matches(item.get("name", ""), query)
-    ]
+    item for item in results
+    if _query_matches(item.get("name", ""), query)
+]
+
+# fallback: se il filtro testuale azzera, non buttare via Notino
+if not filtered:
+    filtered = results[:]
 
     filtered.sort(
         key=lambda item: (
