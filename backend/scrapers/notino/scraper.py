@@ -1214,6 +1214,47 @@ def _validate_candidate(
 
     return parse_product_html(url, html, query)
 
+def _search_http_candidates(
+    session: requests.Session,
+    query: str,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    q = clean(query)
+    urls = [
+        f"{BASE_URL}/search.asp?exps={quote_plus(q)}",
+        f"{BASE_URL}/search/?exps={quote_plus(q)}",
+        f"{BASE_URL}/search?exps={quote_plus(q)}",
+    ]
+
+    candidates: List[Dict[str, Any]] = []
+    errors: List[str] = []
+
+    for url in urls:
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            response.raise_for_status()
+            html = response.text or ""
+            found = extract_candidates_from_html(html, response.url or url, query)
+            if found:
+                candidates.extend(found)
+        except Exception as exc:
+            errors.append(f"search_url_failed {url} -> {type(exc).__name__}: {exc}")
+
+    report: Dict[str, Any] = {
+        "search_urls": urls,
+        "errors": errors,
+        "candidates_count": len(candidates),
+    }
+
+    if errors and all("403" in e for e in errors):
+        report["blocked"] = True
+        report["block_reason"] = "http_403_forbidden"
+
+    return candidates, report
 
 def _search_internal(
     query: str,
@@ -1319,44 +1360,6 @@ def _search_internal(
                 playwright.stop()
             except Exception:
                 pass
-                
-def _search_http_candidates(query: str):
-    q = (query or "").strip()
-    if not q:
-        return []
-
-    q_plus = q.replace(" ", "+")
-    urls = [
-        f"https://www.notino.fr/search.asp?exps={q_plus}",
-        f"https://www.notino.fr/search/?exps={q_plus}",
-        f"https://www.notino.fr/search?exps={q_plus}",
-    ]
-
-    candidates = []
-    last_error = None
-
-    for u in urls:
-        try:
-            r = _http_get(u)   # usa la tua funzione HTTP esistente
-            if not r:
-                continue
-            html = r.text or ""
-            # Mantieni qui il tuo parser attuale dei link prodotto:
-            # es: candidates.extend(_extract_product_links(html))
-        except Exception as exc:
-            last_error = exc
-
-    if not candidates and last_error:
-        raise last_error
-
-    # dedup
-    seen = set()
-    out = []
-    for x in candidates:
-        if x and x not in seen:
-            seen.add(x)
-            out.append(x)
-    return out
 
 def _merge_candidates(*groups):
     out = []
@@ -1378,7 +1381,21 @@ def _merge_candidates(*groups):
             seen.add(key)
             out.append(item)
     return out
-    
+
+def _sort_candidates(candidates: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    q_tokens = set(discovery_normalise(query).split())
+
+    def score(item: Dict[str, Any]):
+        context = clean(item.get("context", ""))
+        c_tokens = set(discovery_normalise(context).split())
+        overlap = len(q_tokens & c_tokens)
+        src_count = len(item.get("sources", [])) if isinstance(item.get("sources"), set) else 0
+        p_bonus = 1 if re.search(r"/p-\d+$", item.get("url", ""), re.I) else 0
+        return (-overlap, -src_count, -p_bonus, item.get("url", ""))
+
+    return sorted(candidates, key=score)
+
+
 def search(query: str) -> List[Dict[str, Any]]:
     query = clean(query)
     if not query:
