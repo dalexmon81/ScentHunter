@@ -778,315 +778,209 @@ def search_stream(query: str):
         yield result
 
 
-def _safe_json_value(value: Any) -> Any:
-    """Make diagnostic values JSON-safe without ever crashing the endpoint."""
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    if isinstance(value, dict):
-        return {str(k): _safe_json_value(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_safe_json_value(v) for v in value]
-    return str(value)
-
-
-def _diagnose_http_page(session: requests.Session, url: str, timeout: float = 12.0) -> Dict[str, Any]:
-    """Fetch one URL and return a compact, non-throwing diagnostic snapshot."""
-    report: Dict[str, Any] = {
-        "url": url,
-        "status": None,
-        "final_url": None,
-        "content_type": None,
-        "html_length": 0,
-        "title": "",
-        "h1": "",
-        "challenge": False,
-        "cloudflare": False,
-        "access_denied": False,
-        "product_url_count": 0,
-        "jsonld_product_count": 0,
-        "error": None,
-    }
-    try:
-        r = session.get(url, timeout=timeout, headers=HEADERS, allow_redirects=True)
-        text = r.text or ""
-        report.update({
-            "status": r.status_code,
-            "final_url": r.url,
-            "content_type": r.headers.get("content-type", ""),
-            "html_length": len(text),
-            "challenge": _is_challenge(text),
-            "cloudflare": "cloudflare" in text.lower() or "cf-chl-" in text.lower(),
-            "access_denied": any(x in text.lower() for x in (
-                "access denied", "forbidden", "request blocked", "you have been blocked"
-            )),
-        })
-        soup = BeautifulSoup(text, "html.parser")
-        report["title"] = _clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
-        h1 = soup.find("h1")
-        report["h1"] = _clean(h1.get_text(" ", strip=True)) if h1 else ""
-        urls = set()
-        for a in soup.find_all("a", href=True):
-            href = _normalise_url(urljoin(BASE_URL, a.get("href", "")))
-            if href:
-                urls.add(href)
-        report["product_url_count"] = len(urls)
-        report["jsonld_product_count"] = sum(1 for _ in _json_ld_products(soup))
-    except Exception as exc:
-        report["error"] = f"{type(exc).__name__}: {exc}"
-    return report
-
-
-def _diagnose_browser(url: str, query: str = "") -> Dict[str, Any]:
-    """Probe Notino with Playwright when Chromium is available on Render."""
-    report: Dict[str, Any] = {
-        "available": False,
-        "url": url,
-        "final_url": None,
-        "status": None,
-        "title": "",
-        "html_length": 0,
-        "challenge": False,
-        "product_url_count": 0,
-        "matching_product_urls": [],
-        "error": None,
-    }
-    try:
-        from playwright.sync_api import sync_playwright
-    except Exception as exc:
-        report["error"] = f"PlaywrightUnavailable: {type(exc).__name__}: {exc}"
-        return report
-
-    report["available"] = True
-    browser = None
-    try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent=HEADERS["User-Agent"],
-                locale="fr-FR",
-                viewport={"width": 1365, "height": 900},
-                ignore_https_errors=True,
-            )
-            page = context.new_page()
-            response = page.goto(url, wait_until="domcontentloaded", timeout=20000)
-            report["status"] = response.status if response else None
-            try:
-                page.wait_for_load_state("networkidle", timeout=7000)
-            except Exception:
-                pass
-            report["final_url"] = page.url
-            report["title"] = _clean(page.title())
-            content = page.content()
-            report["html_length"] = len(content or "")
-            report["challenge"] = _is_challenge(content or "")
-
-            hrefs = page.locator("a[href]").evaluate_all(
-                "els => els.map(e => e.href).filter(Boolean)"
-            )
-            candidates = []
-            seen = set()
-            for raw in hrefs or []:
-                href = _normalise_url(raw)
-                if not href or href in seen:
-                    continue
-                seen.add(href)
-                candidates.append(href)
-
-            report["product_url_count"] = len(candidates)
-            if query:
-                for href in candidates:
-                    name = _url_name(href)
-                    brand = _url_brand(href)
-                    if _fuzzy_match(f"{brand} {name}", query)[0]:
-                        report["matching_product_urls"].append(href)
-                        if len(report["matching_product_urls"]) >= 10:
-                            break
-            context.close()
-    except Exception as exc:
-        report["error"] = f"{type(exc).__name__}: {exc}"
-    finally:
-        try:
-            if browser is not None:
-                browser.close()
-        except Exception:
-            pass
-    return report
-
-
 def diagnose(query: str) -> Dict[str, Any]:
-    """Full Notino diagnostic used by /api/debug/notino.
+    """Full diagnostic for the Notino failure on Render.
 
-    This intentionally does not call search(), so a failed normal search cannot
-    hide the reason for failure. Every probe is isolated and converted to JSON.
+    This never calls search() and never hides failures behind count=0.
+    It reports each discovery channel, candidate URLs, direct product
+    access, and a root-cause classification.
     """
-    query = _clean(query)
-    base: Dict[str, Any] = {
-        "diagnostic": True,
-        "scraper_version": SCRAPER_VERSION,
-        "query": query,
-        "environment": {
-            "requests": requests.__version__,
-            "playwright_probe": True,
-        },
-        "direct": [],
-        "engines": [],
-        "discovery": {},
-        "browser": {},
-        "product_pages": [],
-        "conclusion": {},
-    }
+    import os
+    import socket
+    import time
+    import traceback
 
+    query = _clean(query)
+    started = time.perf_counter()
     if not query:
-        base["conclusion"] = {
-            "code": "EMPTY_QUERY",
-            "message": "La requête est vide.",
-        }
-        return base
+        return {"diagnostic": True, "error": "empty_query"}
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    try:
-        # 1) Direct Notino probes: this is the most important test because
-        # Render is known to have returned 403 in previous attempts.
-        direct_urls = [
-            SEARCH_URL + "?exps=" + quote_plus(query),
-            BASE_URL + "/search?query=" + quote_plus(query),
-            BASE_URL + "/search?exps=" + quote_plus(query),
-            BASE_URL + "/",
-        ]
-        for url in direct_urls:
-            base["direct"].append(_diagnose_http_page(session, url, TIMEOUT))
-
-        # 2) Search-engine / reader probes. Keep the actual candidate counts
-        # and errors visible instead of reducing everything to count=0.
-        engine_calls = [
-            ("bing", _bing),
-            ("bing-rss", _bing_rss),
-            ("google", _google),
-            ("jina-reader", _reader_search),
-        ]
-        all_candidates: Dict[str, Dict[str, Any]] = {}
-        for label, fn in engine_calls:
-            try:
-                candidates, report = fn(query, session)
-                report = _safe_json_value(report)
-                report["returned_candidates"] = len(candidates)
-                base["engines"].append(report)
-                for candidate in candidates:
-                    if candidate.get("url"):
-                        all_candidates[candidate["url"]] = candidate
-            except Exception as exc:
-                base["engines"].append({
-                    "engine": label,
-                    "candidate_count": 0,
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-
-        # 3) Repeat the actual discovery path, but report its result separately.
+    def probe(url: str, label: str, timeout: float = 15.0) -> Dict[str, Any]:
+        t0 = time.perf_counter()
         try:
-            candidates, discovery = _discover(query, session)
-            base["discovery"] = _safe_json_value(discovery)
-            for candidate in candidates:
-                if candidate.get("url"):
-                    all_candidates[candidate["url"]] = candidate
+            r = session.get(url, timeout=timeout, headers=HEADERS, allow_redirects=True)
+            body = r.text or ""
+            soup = BeautifulSoup(body, "html.parser")
+            text = _clean(soup.get_text(" ", strip=True))
+            links = set()
+            for a in soup.find_all("a", href=True):
+                u = _normalise_url(urljoin(BASE_URL, a.get("href", "")))
+                if u:
+                    links.add(u)
+            products = sorted(u for u in links if PRODUCT_ID_RE.search(u))
+            # Also catch raw URLs embedded in search-engine HTML/JSON.
+            for m in re.finditer(r"https?://(?:www\.)?notino\.fr/[^\s<>\"']+", body, re.I):
+                u = _normalise_url(m.group(0))
+                if u and PRODUCT_ID_RE.search(u):
+                    products.append(u)
+            products = sorted(set(products))
+            return {
+                "label": label,
+                "url": url,
+                "final_url": r.url,
+                "status": r.status_code,
+                "elapsed_s": round(time.perf_counter() - t0, 3),
+                "content_type": r.headers.get("content-type", ""),
+                "server": r.headers.get("server", ""),
+                "html_length": len(body),
+                "title": _clean(soup.title.get_text(" ", strip=True) if soup.title else ""),
+                "h1": _clean(soup.find("h1").get_text(" ", strip=True) if soup.find("h1") else ""),
+                "challenge": _is_challenge(body),
+                "product_link_count": len(products),
+                "product_links": products[:30],
+                "anchor_count": len(links),
+                "body_preview": text[:1500],
+            }
         except Exception as exc:
-            base["discovery"] = {
-                "candidate_count": 0,
-                "error": f"{type(exc).__name__}: {exc}",
+            return {
+                "label": label, "url": url, "status": None,
+                "elapsed_s": round(time.perf_counter() - t0, 3),
+                "error_type": type(exc).__name__, "error": str(exc),
             }
 
-        # 4) If any candidate exists, inspect the actual product pages.
-        for candidate in list(all_candidates.values())[:10]:
-            url = candidate.get("url", "")
-            if not url:
-                continue
-            item = _diagnose_http_page(session, url, TIMEOUT)
-            item["price_hint"] = candidate.get("price_hint", "")
-            item["candidate_name"] = candidate.get("name", "")
-            item["source"] = candidate.get("source", "")
-            base["product_pages"].append(item)
+    try:
+        encoded = quote_plus(query)
+        direct_urls = (
+            SEARCH_URL + "?exps=" + encoded,
+            BASE_URL + "/search?query=" + encoded,
+            BASE_URL + "/search?exps=" + encoded,
+        )
+        direct = [probe(u, f"notino-direct-{i+1}") for i, u in enumerate(direct_urls)]
 
-        # 5) Browser probe is independent of requests. It tells us whether
-        # Render's Chromium can see what requests cannot.
-        browser_search_url = SEARCH_URL + "?exps=" + quote_plus(query)
-        base["browser"]["search"] = _diagnose_browser(browser_search_url, query)
+        engines = {
+            "bing": probe("https://www.bing.com/search?q=" + quote_plus(f'site:notino.fr "{query}"'), "bing"),
+            "google": probe("https://www.google.com/search?q=" + quote_plus(f'site:notino.fr "{query}"'), "google"),
+            "jina": probe(READER_BASE + direct_urls[0], "jina"),
+        }
 
-        if base["product_pages"]:
-            first_product_url = base["product_pages"][0].get("url") or ""
-            if first_product_url:
-                base["browser"]["product"] = _diagnose_browser(first_product_url, query)
+        dns = {}
+        try:
+            addresses = sorted({x[4][0] for x in socket.getaddrinfo("www.notino.fr", 443, type=socket.SOCK_STREAM)})
+            dns = {"ok": True, "addresses": addresses[:20]}
+        except Exception as exc:
+            dns = {"ok": False, "error_type": type(exc).__name__, "error": str(exc)}
 
-        # 6) Automatic conclusion. This is deliberately based on observable
-        # states, not on assumptions about Notino's infrastructure.
-        direct = base["direct"]
-        engines = base["engines"]
-        discovery_count = int(base.get("discovery", {}).get("candidate_count") or 0)
-        product_pages = base["product_pages"]
-        browser_search = base["browser"].get("search", {})
+        browser = {"available": False, "ok": False, "product_links": [], "product_link_count": 0}
+        try:
+            from playwright.sync_api import sync_playwright
+            browser["available"] = True
+            t0 = time.perf_counter()
+            events = []
+            with sync_playwright() as pw:
+                b = pw.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+                c = b.new_context(user_agent=HEADERS["User-Agent"], locale="fr-FR", viewport={"width": 1365, "height": 900})
+                p = c.new_page()
+                def on_response(resp):
+                    try:
+                        if urlparse(resp.url).netloc.lower() in {"www.notino.fr", "notino.fr"} and len(events) < 100:
+                            events.append({"status": resp.status, "url": resp.url[:500], "type": resp.request.resource_type})
+                    except Exception:
+                        pass
+                p.on("response", on_response)
+                nav_error = None
+                status = None
+                try:
+                    resp = p.goto(direct_urls[0], wait_until="domcontentloaded", timeout=30000)
+                    status = resp.status if resp else None
+                except Exception as exc:
+                    nav_error = f"{type(exc).__name__}: {exc}"
+                try:
+                    p.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+                p.wait_for_timeout(3000)
+                body = p.content()
+                soup = BeautifulSoup(body, "html.parser")
+                text = _clean(soup.get_text(" ", strip=True))
+                products = set()
+                for a in soup.find_all("a", href=True):
+                    u = _normalise_url(urljoin(BASE_URL, a.get("href", "")))
+                    if u and PRODUCT_ID_RE.search(u):
+                        products.add(u)
+                browser.update({"ok": bool(status == 200 and products and not _is_challenge(text)), "initial_status": status,
+                                "navigation_error": nav_error, "final_url": p.url, "html_length": len(body),
+                                "title": _clean(soup.title.get_text(" ", strip=True) if soup.title else ""),
+                                "h1": _clean(soup.find("h1").get_text(" ", strip=True) if soup.find("h1") else ""),
+                                "challenge": _is_challenge(text), "product_link_count": len(products),
+                                "product_links": sorted(products)[:30], "body_preview": text[:1500], "network_events": events,
+                                "elapsed_s": round(time.perf_counter()-t0, 3)})
+                b.close()
+        except Exception as exc:
+            browser.update({"error_type": type(exc).__name__, "error": str(exc), "traceback": traceback.format_exc()})
 
-        direct_403 = any(x.get("status") == 403 for x in direct)
-        direct_challenge = any(x.get("challenge") for x in direct)
-        engine_candidates = sum(int(x.get("returned_candidates") or x.get("candidate_count") or 0) for x in engines)
-        engine_errors = [x for x in engines if x.get("error")]
-        browser_has_candidates = bool(browser_search.get("matching_product_urls"))
-        browser_challenge = bool(browser_search.get("challenge"))
-        product_200 = any(x.get("status") == 200 and not x.get("challenge") for x in product_pages)
-        product_403 = any(x.get("status") == 403 for x in product_pages)
+        candidates = set()
+        for item in direct + list(engines.values()):
+            candidates.update(item.get("product_links", []))
+        candidates.update(browser.get("product_links", []))
 
-        if direct_403 and browser_has_candidates:
-            code = "HTTP_BLOCKED_BROWSER_WORKS"
-            message = "Notino bloque les requêtes HTTP de Render, mais Chromium voit les produits. Le problème est le canal HTTP, pas le matching."
-        elif direct_403 and browser_challenge:
-            code = "HTTP_AND_BROWSER_BLOCKED"
-            message = "Notino bloque les requêtes HTTP et présente aussi un challenge au navigateur Render."
-        elif direct_403 and engine_candidates == 0 and not discovery_count:
+        product_pages = [probe(u, "notino-product") for u in sorted(candidates)[:12]]
+        direct_403 = sum(x.get("status") == 403 for x in direct)
+        direct_products = sum(x.get("product_link_count", 0) for x in direct)
+        engine_products = sum(x.get("product_link_count", 0) for x in engines.values())
+        browser_products = browser.get("product_link_count", 0)
+        product_403 = sum(x.get("status") == 403 for x in product_pages)
+        product_200 = sum(x.get("status") == 200 for x in product_pages)
+
+        if browser_products > 0 and not browser.get("challenge"):
+            code = "BROWSER_REACHES_NOTINO"
+            cause = "Chromium on Render reaches Notino and exposes product URLs; the remaining bug is scraper parsing/filtering."
+        elif direct_403 == len(direct) and browser.get("initial_status") == 403:
+            code = "NOTINO_BLOCKS_RENDER_HTTP_AND_BROWSER"
+            cause = "All direct Notino searches return 403 and Chromium also receives 403 without product URLs."
+        elif direct_403 and engine_products == 0 and browser_products == 0:
             code = "NOTINO_HTTP_BLOCKED_NO_DISCOVERY"
-            message = "Notino renvoie 403 depuis Render et aucun canal externe testé ne fournit de candidat exploitable."
-        elif discovery_count and product_403:
-            code = "DISCOVERY_WORKS_PRODUCT_BLOCKED"
-            message = "La découverte des produits fonctionne, mais les pages produit sont bloquées en HTTP."
-        elif discovery_count and product_200:
-            code = "DISCOVERY_AND_PRODUCT_ACCESS_WORK"
-            message = "La découverte et l'accès aux pages produit fonctionnent; il faut regarder le parsing/matching."
-        elif browser_has_candidates and not discovery_count:
-            code = "BROWSER_DISCOVERY_WORKS"
-            message = "Chromium trouve les produits mais les canaux requests ne les trouvent pas."
-        elif browser_challenge:
-            code = "BROWSER_CHALLENGE"
-            message = "Chromium atteint Notino mais reçoit un challenge/blocage."
-        elif engine_errors and not engine_candidates:
-            code = "EXTERNAL_DISCOVERY_BLOCKED"
-            message = "Les moteurs/Reader testés ne fournissent aucun candidat et signalent des erreurs."
-        elif not discovery_count:
-            code = "NO_DISCOVERY_CANDIDATES"
-            message = "Aucun candidat produit n'a été découvert par les canaux actuellement implémentés."
+            cause = "Notino blocks direct Render access and no external discovery channel returns a product URL."
+        elif engine_products > 0 and product_403 > 0 and product_200 == 0:
+            code = "DISCOVERY_WORKS_PRODUCT_ACCESS_BLOCKED"
+            cause = "Product URLs are discovered, but Notino blocks product-page requests from Render."
+        elif direct_products > 0:
+            code = "DIRECT_SEARCH_WORKS"
+            cause = "Notino search itself exposes product URLs; the failure is in candidate extraction/filtering."
+        elif any(x.get("challenge") for x in direct):
+            code = "NOTINO_CHALLENGE_PAGE"
+            cause = "Notino returned a security/challenge page instead of normal search content."
         else:
             code = "UNDETERMINED"
-            message = "Les signaux sont insuffisants ou contradictoires; consulter les détails des probes."
+            cause = "All probes completed but the evidence does not isolate one root cause."
 
-        base["conclusion"] = {
-            "code": code,
-            "message": message,
-            "direct_403": direct_403,
-            "direct_challenge": direct_challenge,
-            "engine_candidates": engine_candidates,
-            "discovery_candidates": discovery_count,
-            "product_pages_checked": len(product_pages),
-            "product_200": product_200,
-            "product_403": product_403,
-            "browser_matching_candidates": len(browser_search.get("matching_product_urls", [])),
+        return {
+            "diagnostic": True,
+            "diagnostic_version": "notino-root-cause-2026-09-13-v4",
+            "query": query,
+            "elapsed_s": round(time.perf_counter()-started, 3),
+            "dns": dns,
+            "direct_notino": direct,
+            "external_discovery": engines,
+            "browser": browser,
+            "candidate_urls": sorted(candidates)[:30],
+            "candidate_count": len(candidates),
+            "product_pages": product_pages,
+            "conclusion": {
+                "code": code,
+                "cause": cause,
+                "evidence": {
+                    "direct_403_pages": direct_403,
+                    "direct_product_links": direct_products,
+                    "engine_product_links": engine_products,
+                    "browser_product_links": browser_products,
+                    "product_403_pages": product_403,
+                    "product_200_pages": product_200,
+                },
+            },
         }
-
-        return _safe_json_value(base)
     except Exception as exc:
-        # The diagnostic must NEVER turn into a 500 that hides the actual error.
-        base["conclusion"] = {
-            "code": "DIAGNOSTIC_RUNTIME_ERROR",
-            "message": "Le diagnostic a rencontré une exception; elle est exposée ci-dessous.",
+        return {
+            "diagnostic": True,
+            "diagnostic_version": "notino-root-cause-2026-09-13-v4",
+            "query": query,
+            "diagnostic_internal_error": True,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
         }
-        base["fatal_error"] = f"{type(exc).__name__}: {exc}"
-        return _safe_json_value(base)
     finally:
         session.close()
 
