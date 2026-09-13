@@ -746,17 +746,6 @@ function shNum(o){
   const p=parsePrice(o&&o.price);
   return p===null?Infinity:p;
 }
-function offerImage(o){
-  return String(
-    o?.image ||
-    o?.image_url ||
-    o?.thumbnail ||
-    o?.source?.image ||
-    o?.source?.image_url ||
-    o?.source?.thumbnail ||
-    ""
-  ).trim();
-}
 function shGroupData(data){
   const raw=[];
 
@@ -1194,12 +1183,6 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    // L'immagine deve seguire l'ordine REALE delle offerte dopo il sort.
-    // Quindi: prima offerta con immagine; se non ce n'è una, nessuna immagine.
-    // Questo viene ricalcolato a ogni snapshot della ricerca progressiva.
-    const firstImageOffer=g.offers.find(o=>offerImage(o));
-    g.image=firstImageOffer?offerImage(firstImageOffer):"";
-
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
 
@@ -1493,6 +1476,15 @@ async function openProduct(i){
     const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
     const offers=selected?.offers||[];
     renderSingleFormatComparison(g,img,offers,sizes[0],saved);
+    return;
+  }
+
+  // NESSUN FORMATO DICHIARATO: non perdere mai le offerte/negozi.
+  // Alcuni scraper non comunicano gli ml. In quel caso il prodotto ha
+  // comunque un gruppo di offerte valido e va aperto direttamente mostrando
+  // tutti i negozi, senza creare una scheda "CONFRONTA I FORMATI" vuota.
+  if(sizes.length===0){
+    renderSingleFormatComparison(g,img,g.offers||[],"",saved);
     return;
   }
 
