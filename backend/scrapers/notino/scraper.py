@@ -702,10 +702,162 @@ def _offer_data(offers: Any) -> Tuple[str, str]:
     return "", ""
 
 
+
+def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Discover Notino products through a real Chromium page.
+
+    Render's normal HTTP client is challenged by Cloudflare, while the
+    Playwright Chromium session can load the search page and expose the
+    product cards in the rendered DOM.  Product pages themselves are not
+    fetched here; the search-card data is sufficient for ScentHunter.
+    """
+    report: Dict[str, Any] = {
+        "engine": "playwright-notino",
+        "status": None,
+        "candidate_count": 0,
+        "error": None,
+        "elapsed_s": 0.0,
+    }
+    found: Dict[str, Dict[str, Any]] = {}
+    started = __import__("time").perf_counter()
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        report["error"] = f"Playwright unavailable: {type(exc).__name__}: {exc}"
+        return [], report
+
+    url = SEARCH_URL + "?exps=" + quote_plus(query)
+
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
+            context = browser.new_context(
+                user_agent=HEADERS["User-Agent"],
+                locale="fr-FR",
+                viewport={"width": 1365, "height": 900},
+            )
+            page = context.new_page()
+            response = page.goto(url, wait_until="domcontentloaded", timeout=25000)
+            report["status"] = response.status if response else None
+
+            # The diagnostic proved that the rendered page is already useful
+            # without waiting for networkidle (which can waste 10+ seconds on
+            # tracking/Cloudflare requests).
+            page.wait_for_timeout(1800)
+
+            if _is_challenge(_clean(BeautifulSoup(page.content(), "html.parser").get_text(" ", strip=True))):
+                # Give the Cloudflare JS challenge a short additional window.
+                page.wait_for_timeout(2500)
+
+            # Work from product anchors and climb to the smallest useful card.
+            # This deliberately avoids depending on a fragile CSS class/name.
+            anchors = page.locator("a[href*='/p-']")
+            count = min(anchors.count(), 1500)
+
+            for i in range(count):
+                a = anchors.nth(i)
+                try:
+                    href_raw = a.get_attribute("href") or ""
+                    href = _normalise_url(urljoin(BASE_URL, href_raw))
+                    if not href:
+                        continue
+
+                    anchor_text = _clean(a.inner_text(timeout=1500))
+                    if not anchor_text:
+                        anchor_text = _clean(a.get_attribute("title") or "")
+
+                    # Collect text from progressively larger ancestors.  We
+                    # stop at the first one that contains a price, which tends
+                    # to be the product tile rather than the whole page.
+                    context = anchor_text
+                    node = a
+                    for _ in range(8):
+                        try:
+                            node = node.locator("..")
+                            text = _clean(node.inner_text(timeout=1000))
+                        except Exception:
+                            break
+                        if len(text) > len(context):
+                            context = text
+                        if _extract_price(text):
+                            break
+                        if len(text) > 1800:
+                            break
+
+                    # Some Notino cards expose the title on a descendant while
+                    # the first product anchor itself is an image/link.  Use
+                    # the URL slug as a stable fallback name.
+                    name = _clean_name(anchor_text) or _url_name(href)
+                    if not _fuzzy_match(f"{name} {context} {_url_name(href)}", query)[0]:
+                        # Retry using the complete card text; this catches
+                        # cases where the visible title is split across nodes.
+                        name_match = _fuzzy_match(context, query)[0]
+                        if not name_match:
+                            continue
+                        name = _url_name(href)
+
+                    if _non_perfume_product(name, href, context):
+                        continue
+                    if not _size_valid(context, query):
+                        continue
+
+                    price = _extract_product_price(context) or _extract_price(context)
+                    if not price:
+                        continue
+
+                    candidate = _make_candidate(
+                        href, name, context, query, "playwright", price
+                    )
+                    if candidate:
+                        # Prefer the richest/most exact card when the same
+                        # product has multiple anchors (image + title + CTA).
+                        old = found.get(candidate["url"])
+                        if old is None or candidate["score"] > old["score"]:
+                            found[candidate["url"]] = candidate
+                except Exception:
+                    continue
+
+            context.close()
+            browser.close()
+
+    except Exception as exc:
+        report["error"] = f"{type(exc).__name__}: {exc}"
+
+    result = sorted(found.values(), key=lambda x: (-x["score"], x["url"]))
+    report["candidate_count"] = len(result)
+    report["elapsed_s"] = round(__import__("time").perf_counter() - started, 3)
+    return result, report
+
 def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
+    # Chromium is the primary Notino path on Render.  The live diagnostic
+    # proved that it receives HTTP 200 and exposes the actual product URLs,
+    # whereas requests/Jina receive Cloudflare 403.  If Chromium succeeds,
+    # return immediately: there is no reason to spend 30-50 seconds querying
+    # channels that are known to be blocked or incomplete.
+    browser_candidates, browser_report = _browser_search(query)
+    reports.append(browser_report)
+    for candidate in browser_candidates:
+        all_found[candidate["url"]] = candidate
+
+    if browser_candidates:
+        ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
+        return ordered[:12], {
+            "query": query,
+            "channels": reports,
+            "candidate_count": len(ordered),
+            "candidates": ordered[:12],
+            "primary_channel": "playwright-notino",
+        }
+
+    # Fallbacks remain intact if Chromium is unavailable or cannot solve the
+    # challenge on a future Notino/Render change.
     channels = (
         _direct_search(query, session),
         _bing(query, session),
