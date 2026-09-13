@@ -1358,6 +1358,27 @@ def _search_http_candidates(query: str):
             out.append(x)
     return out
 
+def _merge_candidates(*groups):
+    out = []
+    seen = set()
+    for g in groups:
+        if not g:
+            continue
+        for item in g:
+            if not item:
+                continue
+            if isinstance(item, dict):
+                url = item.get("url") or item.get("link") or ""
+                key = url or repr(item)
+            else:
+                url = str(item)
+                key = url
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(item)
+    return out
+    
 def search(query: str) -> List[Dict[str, Any]]:
     query = clean(query)
     if not query:
