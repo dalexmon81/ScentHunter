@@ -10,6 +10,11 @@ try:
     app.include_router(debug_easycosmetic_router)
 except Exception as exc:
     print(f'Easycosmetic debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
+try:
+    from debug_deloox import router as debug_deloox_router
+    app.include_router(debug_deloox_router)
+except Exception as exc:
+    print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
