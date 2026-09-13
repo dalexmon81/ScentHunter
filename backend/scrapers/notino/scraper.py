@@ -704,18 +704,16 @@ def _offer_data(offers: Any) -> Tuple[str, str]:
 
 
 def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Bounded Chromium discovery for Notino.
+    """Fast Notino discovery using Chromium without Playwright locator waits.
 
-    The important change is that product-anchor extraction is done with
-    page.evaluate(), not Locator.evaluate_all(). The latter can wait for a
-    locator under Playwright's default timeout when the page has not produced
-    matching anchors yet. On Render that was enough to consume the 60s Notino
-    worker deadline.
-
-    We also wait for `commit` instead of `domcontentloaded`: Notino can keep
-    third-party resources open, while the search document itself is already
-    usable much earlier.
+    The previous implementation used locator.evaluate_all(). When the product
+    anchors were not present at the exact moment the locator was resolved,
+    Playwright could auto-wait for the selector and consume most of the store
+    timeout. We query the DOM directly with page.evaluate(), which never has
+    locator auto-wait semantics.
     """
+    import time
+
     report: Dict[str, Any] = {
         "engine": "playwright-notino",
         "status": None,
@@ -724,7 +722,7 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         "elapsed_s": 0.0,
     }
     found: Dict[str, Dict[str, Any]] = {}
-    started = __import__("time").perf_counter()
+    started = time.perf_counter()
 
     try:
         from playwright.sync_api import sync_playwright
@@ -733,152 +731,122 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         return [], report
 
     url = SEARCH_URL + "?exps=" + quote_plus(query)
-
     browser = None
     context = None
-    page = None
 
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
                 headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
-                timeout=12000,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
-
             context = browser.new_context(
                 user_agent=HEADERS["User-Agent"],
                 locale="fr-FR",
                 viewport={"width": 1365, "height": 900},
             )
-            context.set_default_timeout(2500)
             page = context.new_page()
 
-            response = page.goto(
-                url,
-                wait_until="commit",
-                timeout=15000,
-            )
-            report["status"] = response.status if response else None
-
-            # Give Notino's client-side product grid a short opportunity to
-            # render, but never wait for network-idle.
-            page.wait_for_timeout(1800)
-
-            # No locator auto-wait here. querySelectorAll() is immediate and
-            # returns an empty array if the grid is not present.
-            cards = page.evaluate(r"""() => {
-                const out = [];
-                const priceRe = /(?:€\s*)?\d{1,4}[.,]\d{2}\s*€/i;
-                const anchors = document.querySelectorAll("a[href*='/p-']");
-
-                for (const a of anchors) {
-                    const href = a.href || a.getAttribute("href") || "";
-                    if (!/notino\.[^/]+\/[^?#]*\/p-\d+/i.test(href)) continue;
-
-                    const anchorText =
-                        (a.innerText || a.getAttribute("title") || "").trim();
-
-                    let node = a;
-                    let best = anchorText;
-
-                    for (let i = 0; i < 8 && node; i++) {
-                        node = node.parentElement;
-                        if (!node) break;
-
-                        const text = (node.innerText || "")
-                            .replace(/\s+/g, " ")
-                            .trim();
-
-                        if (text.length > best.length && text.length <= 1800) {
-                            best = text;
-                        }
-                        if (priceRe.test(text)) break;
-                    }
-
-                    out.push({
-                        href,
-                        anchorText,
-                        context: best,
-                    });
-                }
-
-                return out;
-            }""")
-
-            for card in cards or []:
+            # Images/fonts/analytics are irrelevant to discovery and can keep
+            # a Render Chromium navigation alive unnecessarily.
+            def route_handler(route):
                 try:
-                    href = _normalise_url(
-                        urljoin(BASE_URL, card.get("href") or "")
-                    )
+                    if route.request.resource_type in {"image", "font", "media"}:
+                        route.abort()
+                    else:
+                        route.continue_()
+                except Exception:
+                    try:
+                        route.continue_()
+                    except Exception:
+                        pass
+
+            page.route("**/*", route_handler)
+
+            try:
+                response = page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                report["status"] = response.status if response else None
+            except Exception as exc:
+                report["navigation_error"] = f"{type(exc).__name__}: {exc}"
+
+            # Give the client-side product list a short, fixed window. There
+            # are no locator waits here, so this can never turn into a 30s
+            # hidden Playwright wait.
+            page.wait_for_timeout(1200)
+
+            def extract_dom():
+                return page.evaluate(r"""() => {
+                    const anchors = Array.from(document.querySelectorAll('a[href*="/p-"]'));
+                    const priceRe = /(?:€\s*)?\d{1,4}[.,]\d{2}\s*€/i;
+                    const out = [];
+                    for (const a of anchors) {
+                        const href = a.href || a.getAttribute('href') || '';
+                        if (!/notino\.[^/]+\/[^?#]*\/p-\d+/i.test(href)) continue;
+                        const anchorText = (a.textContent || a.getAttribute('title') || a.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+                        let node = a;
+                        let best = anchorText;
+                        for (let i = 0; i < 8 && node; i++) {
+                            node = node.parentElement;
+                            if (!node) break;
+                            const text = (node.textContent || '').replace(/\s+/g, ' ').trim();
+                            if (text.length > best.length && text.length <= 1800) best = text;
+                            if (priceRe.test(text)) break;
+                        }
+                        out.push({href, anchorText, context: best});
+                    }
+                    return {
+                        title: document.title || '',
+                        h1: (document.querySelector('h1')?.textContent || '').replace(/\s+/g, ' ').trim(),
+                        body: (document.body?.textContent || '').replace(/\s+/g, ' ').trim(),
+                        cards: out
+                    };
+                }""")
+
+            data = extract_dom()
+            if not data.get("cards"):
+                # Some Notino responses populate the product grid shortly after
+                # DOMContentLoaded. One more fixed check is cheap and bounded.
+                page.wait_for_timeout(1000)
+                data = extract_dom()
+
+            body_text = _clean(data.get("body", ""))
+            if _is_challenge(body_text):
+                report["challenge"] = True
+
+            report["title"] = _clean(data.get("title", ""))
+            report["h1"] = _clean(data.get("h1", ""))
+            report["raw_card_count"] = len(data.get("cards", []))
+
+            for card in data.get("cards", []):
+                try:
+                    href = _normalise_url(urljoin(BASE_URL, card.get("href") or ""))
                     if not href:
                         continue
-
                     anchor_text = _clean(card.get("anchorText") or "")
-                    context_text = _clean(
-                        card.get("context") or anchor_text
-                    )
-
-                    name = (
-                        _clean_name(anchor_text)
-                        or _url_name(href)
-                    )
-
-                    if not _fuzzy_match(
-                        f"{name} {context_text} {_url_name(href)}",
-                        query,
-                    )[0]:
-                        name_match = _fuzzy_match(
-                            context_text,
-                            query,
-                        )[0]
-                        if not name_match:
+                    context_text = _clean(card.get("context") or anchor_text)
+                    name = _clean_name(anchor_text) or _url_name(href)
+                    if not _fuzzy_match(f"{name} {context_text} {_url_name(href)}", query)[0]:
+                        if not _fuzzy_match(context_text, query)[0]:
                             continue
                         name = _url_name(href)
-
-                    if _non_perfume_product(
-                        name,
-                        href,
-                        context_text,
-                    ):
+                    if _non_perfume_product(name, href, context_text):
                         continue
-
                     if not _size_valid(context_text, query):
                         continue
-
-                    price = (
-                        _extract_product_price(context_text)
-                        or _extract_price(context_text)
-                    )
+                    price = _extract_product_price(context_text) or _extract_price(context_text)
                     if not price:
                         continue
-
-                    candidate = _make_candidate(
-                        href,
-                        name,
-                        context_text,
-                        query,
-                        "playwright",
-                        price,
-                    )
+                    candidate = _make_candidate(href, name, context_text, query, "playwright", price)
                     if candidate:
                         old = found.get(candidate["url"])
                         if old is None or candidate["score"] > old["score"]:
                             found[candidate["url"]] = candidate
-
                 except Exception:
                     continue
 
     except Exception as exc:
         report["error"] = f"{type(exc).__name__}: {exc}"
-
     finally:
-        # Playwright cleanup is intentionally best-effort. A cleanup operation
-        # must never hide a successful result or hold the worker indefinitely.
         try:
             if context is not None:
                 context.close()
@@ -890,15 +858,9 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         except Exception:
             pass
 
-    result = sorted(
-        found.values(),
-        key=lambda x: (-x["score"], x["url"]),
-    )
+    result = sorted(found.values(), key=lambda x: (-x["score"], x["url"]))
     report["candidate_count"] = len(result)
-    report["elapsed_s"] = round(
-        __import__("time").perf_counter() - started,
-        3,
-    )
+    report["elapsed_s"] = round(time.perf_counter() - started, 3)
     return result, report
 
 
@@ -906,19 +868,18 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
-    # Chromium is the primary Notino path on Render. It receives the actual
-    # product page and avoids the Cloudflare 403 returned by requests/Jina.
+    # Chromium is the primary Notino path on Render.  The live diagnostic
+    # proved that it receives HTTP 200 and exposes the actual product URLs,
+    # whereas requests/Jina receive Cloudflare 403.  If Chromium succeeds,
+    # return immediately: there is no reason to spend 30-50 seconds querying
+    # channels that are known to be blocked or incomplete.
     browser_candidates, browser_report = _browser_search(query)
     reports.append(browser_report)
-
     for candidate in browser_candidates:
         all_found[candidate["url"]] = candidate
 
     if browser_candidates:
-        ordered = sorted(
-            all_found.values(),
-            key=lambda x: (-x["score"], x["url"]),
-        )
+        ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
         return ordered[:12], {
             "query": query,
             "channels": reports,
@@ -927,15 +888,10 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             "primary_channel": "playwright-notino",
         }
 
-    # Keep the existing fallbacks for a future Notino change, but only if
-    # Chromium produced no usable candidates.
-    channels = (
-        _direct_search(query, session),
-        _bing(query, session),
-        _bing_rss(query, session),
-        _google(query, session),
-        _reader_search(query, session),
-    )
+    # Keep the fallback deliberately bounded. The old five-channel chain could
+    # add 40-60s after a browser miss. Bing is enough to recover product URLs
+    # without turning a failed Chromium pass into another store timeout.
+    channels = (_bing(query, session),)
 
     for candidates, report in channels:
         reports.append(report)
@@ -944,10 +900,7 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             if old is None or candidate["score"] > old["score"]:
                 all_found[candidate["url"]] = candidate
 
-    ordered = sorted(
-        all_found.values(),
-        key=lambda x: (-x["score"], x["url"]),
-    )
+    ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
     return ordered[:12], {
         "query": query,
         "channels": reports,
