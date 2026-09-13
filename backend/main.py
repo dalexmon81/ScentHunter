@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import importlib, inspect, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
 from debug_notino import router as debug_router
-APP_VERSION = '3.0-streaming-speed-notino-compatible-browser-parallel'
+APP_VERSION = '3.1-streaming-speed-timeout-fixed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 app.include_router(debug_router)
@@ -167,19 +167,39 @@ def _kill_process_tree(process):
         try: process.kill()
         except Exception: pass
 
-def _run_store_subprocess(store, query, on_result=None):
-    started=time.monotonic(); timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+def _run_store_subprocess(store, query, on_result=None, timeout_override=None):
+    started=time.monotonic()
+    configured_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+    timeout=configured_timeout if timeout_override is None else max(0.01, min(configured_timeout, float(timeout_override)))
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
     process=None; rows=[]; worker_error=None
     try:
         process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',bufsize=1,start_new_session=(os.name!='nt'))
         deadline=time.monotonic()+timeout
+        # IMPORTANTE: readline() su una pipe puo bloccare indefinitamente se il worker
+        # non scrive nulla. Era questo il motivo per cui Notino, pur avendo un timeout
+        # dichiarato di 45s, arrivava a ~100s. Usiamo select sul pipe prima di leggere,
+        # cosi il timeout viene rispettato anche quando Chromium/Playwright non emette output.
         while True:
-            if time.monotonic() >= deadline: raise subprocess.TimeoutExpired(process.args,timeout)
+            remaining=deadline-time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(process.args,timeout)
+            if process.stdout is None:
+                ready=True
+            elif os.name != 'nt':
+                import select
+                ready,_,_=select.select([process.stdout],[],[],remaining)
+                ready=bool(ready)
+            else:
+                # Render gira su Linux; questo fallback mantiene il codice utilizzabile
+                # anche su Windows, dove select non supporta le pipe di subprocess.
+                ready=True
+            if not ready:
+                raise subprocess.TimeoutExpired(process.args,timeout)
             line=process.stdout.readline() if process.stdout is not None else ''
             if not line:
                 if process.poll() is not None: break
-                time.sleep(0.01); continue
+                continue
             try: event=json.loads(line.strip())
             except json.JSONDecodeError: continue
             if not isinstance(event,dict): continue
@@ -188,7 +208,7 @@ def _run_store_subprocess(store, query, on_result=None):
                 row=clean_result(event['row'],store); rows.append(row)
                 if callable(on_result): on_result(row)
             elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
-        rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
+        rc=process.wait(timeout=max(0.01,min(1.0,max(0.01,deadline-time.monotonic())))); elapsed=round(time.monotonic()-started,3)
         if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
         return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
     except subprocess.TimeoutExpired:
@@ -204,19 +224,29 @@ def _run_store_subprocess(store, query, on_result=None):
             except Exception: pass
         return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
 
-def _run_controlled_store(store,query,on_report,on_result=None):
+def _run_controlled_store(store,query,on_report,on_result=None,job_deadline=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
     semaphore=LIGHT_SEMAPHORE; lane='light'
     if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
     elif store in NETWORK_HEAVY_STORES: semaphore=NETWORK_SEMAPHORE; lane='network'
     wait=time.monotonic()
     if semaphore is not None:
-        if not semaphore.acquire(timeout=JOB_TIMEOUT_SECONDS):
-            report=_empty_report(store,error=f'{lane}_lane_unavailable')
+        if job_deadline is None:
+            acquire_timeout=JOB_TIMEOUT_SECONDS
+        else:
+            acquire_timeout=max(0.0,job_deadline-time.monotonic())
+        if acquire_timeout <= 0 or not semaphore.acquire(timeout=acquire_timeout):
+            elapsed=round(time.monotonic()-wait,3)
+            report=_empty_report(store,elapsed=elapsed,error='job_timeout_before_lane')
             print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
         waited=round(time.monotonic()-wait,3)
         if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
-    try: report=_run_store_subprocess(store,query,on_result=on_result)
+    try:
+        remaining=None if job_deadline is None else job_deadline-time.monotonic()
+        if remaining is not None and remaining <= 0:
+            report=_empty_report(store,elapsed=round(time.monotonic()-wait,3),error='job_timeout_before_start')
+        else:
+            report=_run_store_subprocess(store,query,on_result=on_result,timeout_override=remaining)
     finally:
         if semaphore is not None: semaphore.release()
     if report.get('status')=='error':
@@ -227,13 +257,13 @@ def _run_controlled_store(store,query,on_report,on_result=None):
 
 def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
+    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
     def publish(report):
         with lock: reports[report['store']]=report
         if callable(on_report): on_report(report)
     for store in requested:
-        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result),daemon=True,name=f'scenthunter-store-{store}')
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result,deadline),daemon=True,name=f'scenthunter-store-{store}')
         t.start(); threads.append(t)
-    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
     for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
     unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
@@ -280,7 +310,7 @@ def _collect_streaming_for_job(job_id,query,stores):
         _publish_store(job_id,report)
     def publish_row(row): _publish_result(job_id,row)
     for store in stores:
-        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,publish_row),daemon=True,name=f'scenthunter-store-{store}')
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,publish_row,deadline),daemon=True,name=f'scenthunter-store-{store}')
         t.start(); threads.append(t)
     deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
     for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
