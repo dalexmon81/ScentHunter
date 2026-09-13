@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import traceback
 from urllib.parse import quote_plus, urljoin
 
@@ -12,19 +13,6 @@ router = APIRouter(prefix="/api/debug", tags=["debug"])
 
 @router.get("/deloox")
 def debug_deloox(q: str = Query(..., min_length=2)):
-    """
-    Diagnostica temporanea Deloox.
-
-    NON modifica il comportamento dello scraper.
-    Mostra:
-    - pagine realmente ricevute da Deloox
-    - URL finali dopo eventuali redirect
-    - link contenenti Liquid/Brun/Limited/Edition
-    - se ogni URL viene riconosciuto come product URL
-    - risultato di product_url()
-    - risultato di relevant()
-    - candidati prodotti restituiti da discover()
-    """
     try:
         from scrapers.deloox.scraper import (
             BASE,
@@ -49,7 +37,6 @@ def debug_deloox(q: str = Query(..., min_length=2)):
 
         session = requests.Session()
         pages = []
-        seen = set()
 
         try:
             for endpoint in endpoints:
@@ -61,76 +48,119 @@ def debug_deloox(q: str = Query(..., min_length=2)):
                         allow_redirects=True,
                     )
 
+                    html = r.text or ""
+
                     page = {
                         "requested": endpoint,
                         "status_code": r.status_code,
                         "final_url": r.url,
-                        "html_length": len(r.text or ""),
+                        "html_length": len(html),
+                        "liquid_brun_hits": [],
                     }
 
-                    if (
-                        r.status_code == 200
-                        and r.text
-                        and r.url not in seen
-                    ):
-                        seen.add(r.url)
+                    # ANALYZE THE HTML EVEN WHEN HTTP STATUS IS 404.
+                    soup = BeautifulSoup(
+                        html,
+                        "html.parser",
+                    )
 
-                        soup = BeautifulSoup(
-                            r.text,
-                            "html.parser",
+                    matching = []
+
+                    for a in soup.find_all(
+                        "a",
+                        href=True,
+                    ):
+                        text = " ".join(
+                            a.get_text(
+                                " ",
+                                strip=True,
+                            ).split()
                         )
 
-                        links = []
+                        raw_href = str(
+                            a.get("href") or ""
+                        )
 
-                        for a in soup.find_all(
-                            "a",
-                            href=True,
+                        href = urljoin(
+                            r.url,
+                            raw_href,
+                        )
+
+                        blob = (
+                            f"{text} {href}"
+                        ).lower()
+
+                        if not any(
+                            term in blob
+                            for term in (
+                                "liquid",
+                                "brun",
+                                "limited",
+                                "edition",
+                            )
                         ):
-                            text = " ".join(
-                                a.get_text(
-                                    " ",
-                                    strip=True,
-                                ).split()
-                            )
+                            continue
 
-                            href = urljoin(
-                                r.url,
-                                a.get("href", ""),
-                            )
-
-                            blob = (
-                                f"{text} {href}"
-                            ).lower()
-
-                            if any(
-                                term in blob
-                                for term in (
-                                    "liquid",
-                                    "brun",
-                                    "limited",
-                                    "edition",
-                                )
-                            ):
-                                normalized = product_url(
+                        matching.append(
+                            {
+                                "text": text[:500],
+                                "href": href[:1000],
+                                "raw_href": raw_href[:1000],
+                                "is_product_url": bool(
+                                    is_product_url(href)
+                                ),
+                                "product_url": product_url(
                                     href
-                                )
+                                ),
+                                "relevant_to_query": relevant(
+                                    f"{text} {href}",
+                                    query,
+                                ),
+                            }
+                        )
 
-                                links.append(
-                                    {
-                                        "text": text[:500],
-                                        "href": href[:1000],
-                                        "is_product_url": bool(
-                                            is_product_url(href)
-                                        ),
-                                        "product_url": normalized,
-                                        "relevant_to_query": relevant(
-                                            f"{text} {href}",
-                                            query,
-                                        ),
-                                    }
-                                )
+                    page["liquid_brun_hits"] = matching[:200]
 
-                        page["matching_links"] = links[:100]
+                    # Also inspect raw HTML around occurrences.
+                    lower_html = html.lower()
+                    snippets = []
+
+                    for term in (
+                        "liquid brun",
+                        "limited edition",
+                        "liquid-brun",
+                        "liquid_brun",
+                    ):
+                        start = 0
+                        count = 0
+
+                        while count < 10:
+                            pos = lower_html.find(
+                                term,
+                                start,
+                            )
+
+                            if pos < 0:
+                                break
+
+                            snippets.append(
+                                {
+                                    "term": term,
+                                    "position": pos,
+                                    "html": html[
+                                        max(0, pos - 350):
+                                        min(
+                                            len(html),
+                                            pos + 900,
+                                        )
+                                    ],
+                                }
+                            )
+
+                            start = pos + len(term)
+                            count += 1
+
+                    page["raw_html_snippets"] = snippets
 
                     pages.append(page)
 
@@ -143,6 +173,7 @@ def debug_deloox(q: str = Query(..., min_length=2)):
                         }
                     )
 
+            # Run the ACTUAL scraper discovery too.
             candidates = discover(
                 session,
                 query,
@@ -153,9 +184,6 @@ def debug_deloox(q: str = Query(..., min_length=2)):
                 "ok": True,
                 "store": "Deloox",
                 "query": query,
-                "token_check": sorted(
-                    set(query.lower().split())
-                ),
                 "pages": pages,
                 "discover_candidate_count": len(
                     candidates
