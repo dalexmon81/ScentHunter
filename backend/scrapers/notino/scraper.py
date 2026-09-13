@@ -21,7 +21,7 @@ READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 12
 READER_TIMEOUT = 10
 ENGINE_TIMEOUT = 10
-SCRAPER_VERSION = "notino-generic-discovery-2026-09-13-v1"
+SCRAPER_VERSION = "notino-fast-browser-2026-09-13-v5"
 
 HEADERS = {
     "User-Agent": (
@@ -704,12 +704,13 @@ def _offer_data(offers: Any) -> Tuple[str, str]:
 
 
 def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Discover Notino products through a real Chromium page.
+    """Fast Notino discovery using one real Chromium DOM extraction.
 
-    Render's normal HTTP client is challenged by Cloudflare, while the
-    Playwright Chromium session can load the search page and expose the
-    product cards in the rendered DOM.  Product pages themselves are not
-    fetched here; the search-card data is sufficient for ScentHunter.
+    Render's requests client is challenged by Cloudflare, while Chromium can
+    load the search page.  The old implementation made hundreds of Playwright
+    RPC calls (inner_text/get_attribute on every anchor and ancestor), which
+    became painfully slow when another browser scraper ran at the same time.
+    Extract the product cards in one browser-side JavaScript pass instead.
     """
     report: Dict[str, Any] = {
         "engine": "playwright-notino",
@@ -744,77 +745,58 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
             response = page.goto(url, wait_until="domcontentloaded", timeout=25000)
             report["status"] = response.status if response else None
 
-            # The diagnostic proved that the rendered page is already useful
-            # without waiting for networkidle (which can waste 10+ seconds on
-            # tracking/Cloudflare requests).
-            page.wait_for_timeout(1800)
+            # The page is useful almost immediately.  A short settle period is
+            # enough for product cards without waiting for networkidle.
+            page.wait_for_timeout(800)
 
-            if _is_challenge(_clean(BeautifulSoup(page.content(), "html.parser").get_text(" ", strip=True))):
-                # Give the Cloudflare JS challenge a short additional window.
-                page.wait_for_timeout(2500)
+            body_text = _clean(BeautifulSoup(page.content(), "html.parser").get_text(" ", strip=True))
+            if _is_challenge(body_text):
+                page.wait_for_timeout(1500)
+                body_text = _clean(BeautifulSoup(page.content(), "html.parser").get_text(" ", strip=True))
 
-            # Work from product anchors and climb to the smallest useful card.
-            # This deliberately avoids depending on a fragile CSS class/name.
-            anchors = page.locator("a[href*='/p-']")
-            count = min(anchors.count(), 1500)
+            cards = page.locator("a[href*='/p-']").evaluate_all(r"""els => {
+                const out = [];
+                const priceRe = /(?:€\s*)?\d{1,4}[.,]\d{2}\s*€/i;
+                for (const a of els) {
+                    const href = a.href || a.getAttribute('href') || '';
+                    if (!/notino\.[^/]+\/[^?#]*\/p-\d+/i.test(href)) continue;
+                    const anchorText = (a.innerText || a.getAttribute('title') || '').trim();
+                    let node = a;
+                    let best = anchorText;
+                    for (let i = 0; i < 8 && node; i++) {
+                        node = node.parentElement;
+                        if (!node) break;
+                        const text = (node.innerText || '').replace(/\s+/g, ' ').trim();
+                        if (text.length > best.length && text.length <= 1800) best = text;
+                        if (priceRe.test(text)) break;
+                    }
+                    out.push({href, anchorText, context: best});
+                }
+                return out;
+            }""")
 
-            for i in range(count):
-                a = anchors.nth(i)
+            for card in cards:
                 try:
-                    href_raw = a.get_attribute("href") or ""
-                    href = _normalise_url(urljoin(BASE_URL, href_raw))
+                    href = _normalise_url(urljoin(BASE_URL, card.get("href") or ""))
                     if not href:
                         continue
-
-                    anchor_text = _clean(a.inner_text(timeout=1500))
-                    if not anchor_text:
-                        anchor_text = _clean(a.get_attribute("title") or "")
-
-                    # Collect text from progressively larger ancestors.  We
-                    # stop at the first one that contains a price, which tends
-                    # to be the product tile rather than the whole page.
-                    context = anchor_text
-                    node = a
-                    for _ in range(8):
-                        try:
-                            node = node.locator("..")
-                            text = _clean(node.inner_text(timeout=1000))
-                        except Exception:
-                            break
-                        if len(text) > len(context):
-                            context = text
-                        if _extract_price(text):
-                            break
-                        if len(text) > 1800:
-                            break
-
-                    # Some Notino cards expose the title on a descendant while
-                    # the first product anchor itself is an image/link.  Use
-                    # the URL slug as a stable fallback name.
+                    anchor_text = _clean(card.get("anchorText") or "")
+                    context = _clean(card.get("context") or anchor_text)
                     name = _clean_name(anchor_text) or _url_name(href)
                     if not _fuzzy_match(f"{name} {context} {_url_name(href)}", query)[0]:
-                        # Retry using the complete card text; this catches
-                        # cases where the visible title is split across nodes.
                         name_match = _fuzzy_match(context, query)[0]
                         if not name_match:
                             continue
                         name = _url_name(href)
-
                     if _non_perfume_product(name, href, context):
                         continue
                     if not _size_valid(context, query):
                         continue
-
                     price = _extract_product_price(context) or _extract_price(context)
                     if not price:
                         continue
-
-                    candidate = _make_candidate(
-                        href, name, context, query, "playwright", price
-                    )
+                    candidate = _make_candidate(href, name, context, query, "playwright", price)
                     if candidate:
-                        # Prefer the richest/most exact card when the same
-                        # product has multiple anchors (image + title + CTA).
                         old = found.get(candidate["url"])
                         if old is None or candidate["score"] > old["score"]:
                             found[candidate["url"]] = candidate
@@ -891,27 +873,44 @@ def search(query: str) -> List[Dict[str, Any]]:
     session.headers.update(HEADERS)
 
     try:
-        candidates, _ = _discover(query, session)
+        candidates, discovery_report = _discover(query, session)
         results = []
         seen = set()
+
+        # Chromium already gives us the product-card name and price.  Notino
+        # blocks ordinary HTTP product-page requests with 403, so fetching
+        # those pages again only wastes time and can turn a 20-30s search into
+        # a timeout.  Use the trusted rendered card data directly.
+        if discovery_report.get("primary_channel") == "playwright-notino":
+            for candidate in candidates:
+                name = candidate.get("name", "")
+                price = candidate.get("price_hint", "")
+                url = candidate.get("url", "")
+                if not name or not price or not url:
+                    continue
+                key = url.lower() + "|" + _norm(name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append({
+                    "store": STORE,
+                    "name": _display_name(name, url),
+                    "price": price,
+                    "url": url,
+                })
+                if len(results) >= 10:
+                    break
+            return results
 
         for candidate in candidates:
             result = _fetch_product(session, candidate, query)
             if not result:
                 continue
-
-            key = (
-                result.get("url", "").lower()
-                + "|"
-                + _norm(result.get("name", ""))
-            )
-
+            key = result.get("url", "").lower() + "|" + _norm(result.get("name", ""))
             if key in seen:
                 continue
-
             seen.add(key)
             results.append(result)
-
             if len(results) >= 10:
                 break
 
