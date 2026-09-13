@@ -1269,17 +1269,19 @@ def _search_http_candidates(
 
     for url in urls:
         try:
-            proxies = None
-if NOTINO_PROXY_URL:
-    proxies = {"http": NOTINO_PROXY_URL, "https": NOTINO_PROXY_URL}
+    proxies = None
+    if NOTINO_PROXY_URL:
+        proxies = {"http": 
+    NOTINO_PROXY_URL, "https": 
+    NOTINO_PROXY_URL}
 
-response = session.get(
-    url,
-    headers=HEADERS,
-    timeout=TIMEOUT,
-    allow_redirects=True,
-    proxies=proxies,
-)
+    response = session.get(
+        url,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
+        proxies=proxies,
+    )
             response.raise_for_status()
             html = response.text or ""
             found = extract_candidates_from_html(html, response.url or url, query)
