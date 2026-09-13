@@ -821,15 +821,28 @@ def run_store(store, query, on_result=None):
         if not callable(search) and not callable(stream):
             raise RuntimeError(f'scraper {store} non espone search(query)')
 
+        raw_query = str(query or '').strip()
+
         def collect(term):
             rows = []
 
             def push(row):
                 if not isinstance(row, dict):
                     return
-                rows.append(row)
+
+                # Never stream raw retailer rows directly to the frontend.
+                # A retailer can return sibling variants for a short query
+                # (e.g. 9 PM -> 9 PM Elixir/Rebel). The same canonical
+                # query gate used for the final report must be applied before
+                # a progressive result is emitted. clean_result also restores
+                # the normalized store label before the frontend sees it.
+                cleaned_row = clean_result(row, store)
+                if not _catalog_strict_query_accepts(cleaned_row, raw_query):
+                    return
+
+                rows.append(cleaned_row)
                 if callable(on_result):
-                    on_result(row)
+                    on_result(cleaned_row)
 
             if callable(stream):
                 returned = stream(term, push)
@@ -854,8 +867,6 @@ def run_store(store, query, on_result=None):
             except TypeError:
                 pass
             return rows
-
-        raw_query = str(query or '').strip()
 
         # IMPORTANT: the user's query is authoritative.
         # Do not expand a family/line query into sibling catalog variants.
@@ -925,22 +936,20 @@ def emit(event, **payload):
 
 try:
     import main as scent_main
-    emitted = set()
 
-    def emit_row(row):
-        if not isinstance(row, dict):
-            return
-        key = (
-            str(row.get('url') or row.get('product_url') or '').strip().lower(),
-            str(row.get('name') or row.get('title') or row.get('product_name') or '').strip().lower(),
-            str(row.get('size_ml') or '').strip(),
-        )
-        if key in emitted:
-            return
-        emitted.add(key)
-        emit('result', row=row)
+    # IMPORTANT: never stream the raw scraper rows. run_store() performs the
+    # authoritative query filter first (including the strict catalog gate)
+    # and clean_result() also guarantees the store field. Streaming the
+    # on_result callback here used to bypass that filtering and caused:
+    #   - "9 pm" to leak Elixir/Rebel/Night Out sibling variants;
+    #   - rows to reach the frontend before their store/identity was final;
+    #   - incomplete product cards such as Liquid Brun without a retailer.
+    report = scent_main.run_store(store, query)
 
-    report = scent_main.run_store(store, query, on_result=emit_row)
+    for row in report.get('results') or []:
+        if isinstance(row, dict):
+            emit('result', row=row)
+
     if report.get('error'):
         emit('error', error=str(report.get('error')))
     emit('done', count=report.get('count', 0), streaming=False)
