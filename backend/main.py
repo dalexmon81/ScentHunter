@@ -15,7 +15,7 @@ import unicodedata
 import uuid
 from pathlib import Path
 
-APP_VERSION = '3.2-catalog-orchestrated'
+APP_VERSION = '3.3-catalog-strict-query'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 try:
@@ -620,6 +620,68 @@ def _offer_rank(item):
     )
 
 
+def _strict_query_tokens(value, brand=''):
+    text = _identity_without_brand(value, brand)
+    tokens = _identity_tokens(text)
+    output = []
+    for token in tokens:
+        if token in _QUERY_GENERIC_WORDS:
+            continue
+        # Retailers sometimes repeat a model number around collection words
+        # (e.g. "9 Collection 9 PM"). Treat consecutive repeated tokens as
+        # presentation noise, never as a new perfume variant.
+        if output and token == output[-1]:
+            continue
+        output.append(token)
+    return tuple(output)
+
+
+def _catalog_strict_query_accepts(product, query):
+    """Keep only the actual product requested by the user.
+
+    Retailer search engines commonly return sibling variants for short terms
+    (for example a search for a base line can also return Intense, Elixir,
+    Flame, Pour Femme, etc.).  We intentionally do not expand the query and
+    we require the normalized product-name identity to equal the normalized
+    query identity.  Concentration, bottle size and retailer boilerplate are
+    ignored; genuine variant words remain significant.
+    """
+    query_tokens = _strict_query_tokens(query)
+    if not query_tokens:
+        return True
+
+    raw_name = str(
+        product.get('name')
+        or product.get('title')
+        or product.get('product_name')
+        or ''
+    ).strip()
+    if not raw_name:
+        return True
+
+    raw_brand = str(
+        product.get('brand')
+        or product.get('source_brand')
+        or ''
+    ).strip()
+
+    # If the scraper did not expose a brand, use the catalog resolver only to
+    # recover the brand for token normalization.  The actual acceptance test
+    # still uses the retailer's raw product name.
+    if not raw_brand:
+        try:
+            resolved = _identity_resolve(product)
+            raw_brand = str(resolved.get('canonical_brand') or '').strip()
+        except Exception:
+            raw_brand = ''
+
+    name_tokens = _strict_query_tokens(raw_name, raw_brand)
+    if not name_tokens:
+        return False
+
+    return name_tokens == query_tokens
+
+
 def collapse_identity_results(results):
     """Resolve every raw retailer row to the canonical catalog identity.
 
@@ -794,59 +856,42 @@ def run_store(store, query, on_result=None):
             return rows
 
         raw_query = str(query or '').strip()
+
+        # IMPORTANT: the user's query is authoritative.
+        # Do not expand a family/line query into sibling catalog variants.
+        # The catalog is used only to normalize retailer aliases to the same
+        # canonical perfume identity.  Thus:
+        #   "9 pm" -> 9 PM only
+        #   "9 pm elixir" -> 9 PM Elixir only
+        #   "eros" -> Eros only
+        # while retailer aliases such as "9 Collection 9 Pm" still collapse
+        # into the canonical 9 PM card.
         accumulated = collect(raw_query)
 
-        target_terms = _catalog_search_targets(raw_query, limit=10)
-        present = set()
-        for row in accumulated:
-            resolved = _identity_resolve(clean_result(row, store))
-            key = _identity_key(resolved)
-            if key and key[0] == 'catalog':
-                present.add(key)
-
-        attempted = {_identity_norm(raw_query)}
-        for term in target_terms:
-            if time.monotonic() - started >= STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS) * 0.78:
-                break
-            term_key = _identity_norm(term)
-            if not term_key or term_key in attempted:
-                continue
-            attempted.add(term_key)
-
-            target_ids = []
-            for record in CATALOG_IDENTITY.records:
-                if term.lower() == f"{record.get('brand', '')} {record.get('canonical_name', '')}".strip().lower():
-                    target_ids.append(_identity_key({
-                        'catalog_product_id': record.get('product_id'),
-                        'canonical_brand': record.get('brand'),
-                        'canonical_name': record.get('canonical_name'),
-                        'canonical_concentration': record.get('concentration'),
-                        'canonical_gender': record.get('gender'),
-                    }))
-            if target_ids and target_ids[0] in present:
-                continue
-
-            try:
-                extra = collect(term)
-                accumulated.extend(extra)
-            except Exception as exc:
-                print(
-                    f'STORE_DISCOVERY_ERROR store={store} attempt={term!r} '
-                    f'error={type(exc).__name__}: {exc}',
-                    flush=True,
-                )
-                continue
-
-            present.clear()
-            for row in accumulated:
-                resolved = _identity_resolve(clean_result(row, store))
-                key = _identity_key(resolved)
-                if key and key[0] == 'catalog':
-                    present.add(key)
+        # Retailer engines frequently return sibling variants for short
+        # queries. The catalog identity is therefore also used as the final
+        # query gate: aliases of the requested perfume are accepted, sibling
+        # variants are not.
+        accumulated = [
+            row for row in accumulated
+            if isinstance(row, dict)
+            and _catalog_strict_query_accepts(
+                clean_result(row, store),
+                raw_query,
+            )
+        ]
 
         if store == 'parfumzentrum' and not accumulated:
             time.sleep(.25)
             accumulated.extend(collect(raw_query))
+            accumulated = [
+                row for row in accumulated
+                if isinstance(row, dict)
+                and _catalog_strict_query_accepts(
+                    clean_result(row, store),
+                    raw_query,
+                )
+            ]
 
         cleaned = [clean_result(x, store) for x in accumulated if isinstance(x, dict)]
         return {
