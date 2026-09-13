@@ -746,6 +746,16 @@ function shNum(o){
   const p=parsePrice(o&&o.price);
   return p===null?Infinity:p;
 }
+function offerImage(o){
+  return String(
+    o?.image ||
+    o?.image_url ||
+    o?.thumbnail ||
+    o?.source?.image ||
+    ""
+  ).trim();
+}
+
 function shGroupData(data){
   const raw=[];
 
@@ -1182,6 +1192,8 @@ function shGroupData(data){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     });
+      const firstImageOffer=g.offers.find(o=>offerImage(o));
+      g.image=firstImageOffer ? offerImage(firstImageOffer) : (g.image||"");
 
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
