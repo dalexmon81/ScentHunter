@@ -85,17 +85,22 @@ def availability(value):
 
 
 def get(session, url):
+    print(f"[DELOOX-DIAG] HTTP START url={url}", flush=True)
+    started = time.perf_counter()
     # One quick retry is enough. The old three-attempt/8.5s request budget was
     # the main reason Deloox could consume the whole 75s store timeout.
     for attempt in range(2):
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            elapsed = time.perf_counter() - started
+            print(f"[DELOOX-DIAG] HTTP END attempt={attempt+1} status={r.status_code} elapsed={elapsed:.3f}s bytes={len(r.content)} final_url={r.url}", flush=True)
             if r.status_code == 200 and r.text:
                 return r
             if r.status_code not in (429, 500, 502, 503, 504):
                 return None
-        except requests.RequestException:
-            pass
+        except requests.RequestException as exc:
+            elapsed = time.perf_counter() - started
+            print(f"[DELOOX-DIAG] HTTP ERROR attempt={attempt+1} elapsed={elapsed:.3f}s type={type(exc).__name__} error={exc}", flush=True)
         if attempt == 0:
             time.sleep(0.35)
     return None
@@ -187,7 +192,12 @@ def _candidate_contexts(html, query):
 
 
 def _row_from_card(url, context, query):
-    if not relevant(context + " " + url, query) or non_fragrance(context):
+    diag_reason = None
+    if not relevant(context + " " + url, query):
+        print(f"[DELOOX-DIAG] CARD REJECT reason=not_relevant url={url} context={context[:500]!r}", flush=True)
+        return None
+    if non_fragrance(context):
+        print(f"[DELOOX-DIAG] CARD REJECT reason=non_fragrance url={url} context={context[:500]!r}", flush=True)
         return None
     # Prefer a product-like line from the card over the whole card text.
     lines = [clean(x) for x in re.split(r"\n|(?=Delivery time\s*:)|(?=our price\s)|(?=onze prijs\s)|(?=nostro prezzo\s)", context) if clean(x)]
@@ -202,7 +212,9 @@ def _row_from_card(url, context, query):
     size = size_ml(name, context)
     n = price_num(context)
     if n is None:
+        print(f"[DELOOX-DIAG] CARD REJECT reason=no_price url={url} name={name!r} context={context[:700]!r}", flush=True)
         return None
+    print(f"[DELOOX-DIAG] CARD ACCEPT url={url} name={name!r} price={n} size_ml={size_ml(name, context)} availability={availability(context)!r}", flush=True)
     state = availability(context)
     return {
         "store": STORE,
@@ -219,6 +231,8 @@ def _row_from_card(url, context, query):
 
 
 def _bing_discover(query):
+    diag_started = time.perf_counter()
+    print(f"[DELOOX-DIAG] BING START query={query!r}", flush=True)
     """Discover Deloox product pages through Bing instead of Deloox's
     current search endpoints, which can stall on Render.
 
@@ -231,12 +245,16 @@ def _bing_discover(query):
     )
     try:
         r = requests.get(url, headers=HEADERS, timeout=(2.0, 7.0), allow_redirects=True)
+        print(f"[DELOOX-DIAG] BING HTTP status={r.status_code} elapsed={time.perf_counter()-diag_started:.3f}s bytes={len(r.content)} final_url={r.url}", flush=True)
         if r.status_code != 200 or not r.text:
+            print("[DELOOX-DIAG] BING EMPTY_OR_NON200", flush=True)
             return []
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        print(f"[DELOOX-DIAG] BING ERROR type={type(exc).__name__} error={exc}", flush=True)
         return []
 
     soup = BeautifulSoup(r.text, "html.parser")
+    print(f"[DELOOX-DIAG] BING parsed title={clean(soup.title.get_text()) if soup.title else ''!r} algo_blocks={len(soup.select('li.b_algo, div.b_algo'))}", flush=True)
     found = {}
     for block in soup.select("li.b_algo, div.b_algo"):
         a = block.select_one("h2 a, h3 a") or block.find("a", href=True)
@@ -266,15 +284,23 @@ def _bing_discover(query):
         if old is None or score > old[0]:
             found[product] = (score, context)
 
-    return sorted(found.items(), key=lambda x: (-x[1][0], x[0]))[:MAX_CANDIDATES]
+    result = sorted(found.items(), key=lambda x: (-x[1][0], x[0]))[:MAX_CANDIDATES]
+    print(f"[DELOOX-DIAG] BING END candidates={len(result)} elapsed={time.perf_counter()-diag_started:.3f}s", flush=True)
+    for u, (score, ctx) in result:
+        print(f"[DELOOX-DIAG] BING CANDIDATE score={score} url={u} context={ctx[:500]!r}", flush=True)
+    return result
 
 def discover(session, query):
+    started = time.perf_counter()
+    print(f"[DELOOX-DIAG] DISCOVER START query={query!r}", flush=True)
     # The current Deloox site can leave its internal search endpoints hanging
     # from Render. Bing is a fast discovery layer and returns first-party
     # Deloox product URLs for exact perfume searches.
     candidates = _bing_discover(query)
     if candidates:
+        print(f"[DELOOX-DIAG] DISCOVER END source=bing candidates={len(candidates)} elapsed={time.perf_counter()-started:.3f}s", flush=True)
         return candidates
+    print(f"[DELOOX-DIAG] BING RETURNED ZERO elapsed={time.perf_counter()-started:.3f}s", flush=True)
 
     # One direct Deloox search attempt as a bounded fallback. Do not iterate
     # through five endpoints: that was the source of the previous 25-45s
@@ -284,11 +310,19 @@ def discover(session, query):
         f"https://www.deloox.nl/zoeken?query={encoded}",
         f"https://www.deloox.nl/en/search?query={encoded}",
     ):
+        print(f"[DELOOX-DIAG] DIRECT ENDPOINT START {endpoint}", flush=True)
         r = get(session, endpoint)
         if not r:
+            print(f"[DELOOX-DIAG] DIRECT ENDPOINT NO_RESPONSE {endpoint}", flush=True)
             continue
+        soup = BeautifulSoup(r.text, "html.parser")
+        print(f"[DELOOX-DIAG] DIRECT HTML title={clean(soup.title.get_text()) if soup.title else ''!r} bytes={len(r.content)} product_links={sum(1 for a in soup.find_all('a', href=True) if product_url(a.get('href')))} relevant_text={relevant(soup.get_text(' ', strip=True), query)}", flush=True)
         contexts = _candidate_contexts(r.text, query)
+        print(f"[DELOOX-DIAG] DIRECT PARSED candidates={len(contexts)}", flush=True)
+        for u, (score, ctx) in contexts:
+            print(f"[DELOOX-DIAG] DIRECT CANDIDATE score={score} url={u} context={ctx[:500]!r}", flush=True)
         if contexts:
+            print(f"[DELOOX-DIAG] DISCOVER END source=direct candidates={len(contexts)} elapsed={time.perf_counter()-started:.3f}s", flush=True)
             return contexts
 
     # Last bounded catalog fallback.
@@ -298,20 +332,32 @@ def discover(session, query):
     ):
         if not endpoint:
             continue
+        print(f"[DELOOX-DIAG] CATEGORY START {endpoint}", flush=True)
         r = get(session, endpoint)
         if not r:
+            print(f"[DELOOX-DIAG] CATEGORY NO_RESPONSE {endpoint}", flush=True)
             continue
+        soup = BeautifulSoup(r.text, "html.parser")
+        print(f"[DELOOX-DIAG] CATEGORY HTML title={clean(soup.title.get_text()) if soup.title else ''!r} bytes={len(r.content)} product_links={sum(1 for a in soup.find_all('a', href=True) if product_url(a.get('href')))}", flush=True)
         contexts = _candidate_contexts(r.text, query)
+        print(f"[DELOOX-DIAG] CATEGORY PARSED candidates={len(contexts)}", flush=True)
+        for u, (score, ctx) in contexts:
+            print(f"[DELOOX-DIAG] CATEGORY CANDIDATE score={score} url={u} context={ctx[:500]!r}", flush=True)
         if contexts:
+            print(f"[DELOOX-DIAG] DISCOVER END source=category candidates={len(contexts)} elapsed={time.perf_counter()-started:.3f}s", flush=True)
             return contexts
+    print(f"[DELOOX-DIAG] DISCOVER END source=none candidates=0 elapsed={time.perf_counter()-started:.3f}s", flush=True)
     return []
 
 
 def parse_product(url, query):
+    started = time.perf_counter()
+    print(f"[DELOOX-DIAG] PRODUCT FETCH START url={url}", flush=True)
     session = requests.Session()
     try:
         r = get(session, url)
         if not r:
+            print(f"[DELOOX-DIAG] PRODUCT FETCH NO_RESPONSE url={url} elapsed={time.perf_counter()-started:.3f}s", flush=True)
             return []
         soup = BeautifulSoup(r.text, "html.parser")
         rows = []
@@ -332,18 +378,24 @@ def parse_product(url, query):
                     continue
                 state = availability(offer.get("availability"))
                 rows.append({"store": STORE, "brand": clean(brand), "name": name, "price": price_text(n), "price_num": n, "url": url, "available": state != "out_of_stock", "availability": state or "in_stock", "size_ml": size_ml(name, p.get("description", ""))})
+        print(f"[DELOOX-DIAG] PRODUCT FETCH END url={url} jsonld_products={len(jsonld_products(soup))} rows={len(rows)} elapsed={time.perf_counter()-started:.3f}s", flush=True)
         return rows
     finally:
         session.close()
 
 
 def search(query):
+    search_started = time.perf_counter()
+    print(f"[DELOOX-DIAG] SEARCH START query={query!r}", flush=True)
     query = clean(query)
     if not query:
         return []
     session = requests.Session()
     try:
         candidates = discover(session, query)
+        print(f"[DELOOX-DIAG] SEARCH DISCOVERY candidates={len(candidates)} elapsed={time.perf_counter()-search_started:.3f}s", flush=True)
+        for u, (score, ctx) in candidates:
+            print(f"[DELOOX-DIAG] CANDIDATE FINAL score={score} url={u} context={ctx[:500]!r}", flush=True)
         results = []
         seen = set()
         # First use card data already obtained from the discovery page.
@@ -371,7 +423,11 @@ def search(query):
                         continue
 
         results.sort(key=lambda x: (2 if x.get("available") is False else 0, x.get("price_num") or 999999, x.get("size_ml") or 999999))
-        return results[:MAX_RESULTS]
+        final = results[:MAX_RESULTS]
+        print(f"[DELOOX-DIAG] SEARCH END results={len(final)} elapsed={time.perf_counter()-search_started:.3f}s", flush=True)
+        for row in final:
+            print(f"[DELOOX-DIAG] RESULT name={row.get('name')!r} price={row.get('price')!r} url={row.get('url')!r} size_ml={row.get('size_ml')!r}", flush=True)
+        return final
     finally:
         session.close()
 
