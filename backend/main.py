@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import importlib, inspect, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
 from debug_notino import router as debug_router
-APP_VERSION = '3.0-streaming-speed-notino-compatible'
+APP_VERSION = '3.0-streaming-speed-notino-compatible-browser-parallel'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 app.include_router(debug_router)
@@ -19,7 +19,7 @@ NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina','notino']
 LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
-BROWSER_WORKERS = 1
+BROWSER_WORKERS = 2
 STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'notino':45.0}
 JOB_TIMEOUT_SECONDS = 125.0
