@@ -3,25 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
-from debug_notino import router as debug_router
 APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
-app.include_router(debug_router)
 
-STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','notino']
-STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','notino':'Notino'}
+STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh']
+STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh'}
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh']
 NETWORK_HEAVY_STORES = ['deloox']
-BROWSER_STORES = ['sabina','notino']
+BROWSER_STORES = ['sabina']
 LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'notino':45.0}
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0}
 JOB_TIMEOUT_SECONDS = 125.0
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
@@ -96,8 +94,8 @@ def run_store(store, query):
     except Exception as exc:
         traceback.print_exc()
         err = str(exc)
-        status = 'blocked' if (store == 'notino' and '403' in err) else 'error'
-        code = 'http_403_forbidden' if status == 'blocked' else 'runtime_error'
+        status = 'error'
+        code = 'runtime_error'
         return {
             'store': store,
             'status': status,
@@ -167,16 +165,8 @@ def _run_store_subprocess(store, query, on_result=None):
             if not line:
                 if process.poll() is not None: break
                 time.sleep(0.01); continue
-            raw_line=line.strip()
-            try:
-                event=json.loads(raw_line)
-            except json.JSONDecodeError:
-                # Scrapers normally communicate only through JSON events.
-                # Deloox diagnostic lines are intentionally plain text, so
-                # forward only those lines to the Render parent-process log.
-                if raw_line.startswith('[DELOOX-DIAG]'):
-                    print(raw_line, flush=True)
-                continue
+            try: event=json.loads(line.strip())
+            except json.JSONDecodeError: continue
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
@@ -377,52 +367,6 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['ok']=False; report['error']=f'{type(exc).__name__}: {exc}'
     report['elapsed']=round(time.monotonic()-started,3)
     return report
-
-@app.get('/diagnose-notino')
-def diagnose_notino(q: str = 'Liquid Brun', ab: str = ""):
-    query = str(q or '').strip()
-    if not query:
-        return {
-            'ok': False,
-            'query': '',
-            'error': 'empty_query',
-            'architecture': APP_VERSION
-        }
-
-    try:
-        module = load_scraper('notino')
-
-        # Scegli quale funzione diagnostica usare
-        if str(ab).lower() == "1":
-            func_name = "diagnose_ab"
-        else:
-            func_name = "diagnose"
-
-        func = getattr(module, func_name, None)
-        if not callable(func):
-            return {
-                'ok': False,
-                'query': query,
-                'error': f'{func_name}_missing',
-                'architecture': APP_VERSION
-            }
-
-        report = func(query)
-
-        return {
-            'ok': True,
-            'architecture': APP_VERSION,
-            **report
-        }
-
-    except Exception as exc:
-        return {
-            'ok': False,
-            'query': query,
-            'error': f'{type(exc).__name__}: {exc}',
-            'architecture': APP_VERSION
-        }
-
 
 @app.get('/suggest')
 def suggest(q:str):
