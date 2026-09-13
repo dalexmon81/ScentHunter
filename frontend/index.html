@@ -1637,7 +1637,26 @@ async function searchStoresProgressive(term,onPartial){
     return failed;
   }
 }
+ 
+function renderStoreWarnings(data) {
+  const box = document.getElementById("storeWarnings");
+  if (!box) return;
 
+  const errors = (data && data.errors) ? data.errors : {};
+  const notinoErr = errors.notino || "";
+
+  const blocked403 =
+    typeof notinoErr === "string" &&
+    (notinoErr.includes("403") || notinoErr.toLowerCase().includes("forbidden"));
+
+  if (blocked403) {
+    box.style.display = "block";
+    box.textContent = "Notino temporaneamente non disponibile (blocco anti-bot 403). I risultati mostrati provengono dagli altri store.";
+  } else {
+    box.style.display = "none";
+    box.textContent = "";
+  }
+}
 async function searchPerfume(){
   const q=queryInput.value.trim();
   if(!q){
