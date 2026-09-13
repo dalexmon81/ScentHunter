@@ -7,8 +7,8 @@ APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
-STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh']
-STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh'}
+STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
+STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 
@@ -19,7 +19,7 @@ LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0}
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
 JOB_TIMEOUT_SECONDS = 125.0
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
