@@ -108,7 +108,7 @@ def run_store(store, query):
         }
 
 WORKER_CODE = r'''
-import importlib, json, sys
+import importlib, inspect, json, sys
 store=sys.argv[1]; query=sys.argv[2]
 def emit(event, **payload):
     print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
