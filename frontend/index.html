@@ -1422,6 +1422,7 @@ async function fetchFormatComparisons(g, sizes){
   const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"}});
   if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
   const data=await response.json();
+  renderStoreWarnings(data);
   return Array.isArray(data?.comparisons)?data.comparisons:[];
 }
 
