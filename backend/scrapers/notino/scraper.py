@@ -1319,7 +1319,44 @@ def _search_internal(
                 playwright.stop()
             except Exception:
                 pass
+                
+def _search_http_candidates(query: str):
+    q = (query or "").strip()
+    if not q:
+        return []
 
+    q_plus = q.replace(" ", "+")
+    urls = [
+        f"https://www.notino.fr/search.asp?exps={q_plus}",
+        f"https://www.notino.fr/search/?exps={q_plus}",
+        f"https://www.notino.fr/search?exps={q_plus}",
+    ]
+
+    candidates = []
+    last_error = None
+
+    for u in urls:
+        try:
+            r = _http_get(u)   # usa la tua funzione HTTP esistente
+            if not r:
+                continue
+            html = r.text or ""
+            # Mantieni qui il tuo parser attuale dei link prodotto:
+            # es: candidates.extend(_extract_product_links(html))
+        except Exception as exc:
+            last_error = exc
+
+    if not candidates and last_error:
+        raise last_error
+
+    # dedup
+    seen = set()
+    out = []
+    for x in candidates:
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
 
 def search(query: str) -> List[Dict[str, Any]]:
     query = clean(query)
