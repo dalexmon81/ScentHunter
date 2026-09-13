@@ -379,43 +379,50 @@ def diagnose_sabina(q:str='Liquid Brun'):
     return report
 
 @app.get('/diagnose-notino')
-def diagnose_notino(q:str='Liquid Brun'):
-    query=str(q or '').strip()
+def diagnose_notino(q: str = 'Liquid Brun', ab: str = ""):
+    query = str(q or '').strip()
     if not query:
         return {
-            'ok':False,
-            'query':'',
-            'error':'empty_query',
-            'architecture':APP_VERSION
+            'ok': False,
+            'query': '',
+            'error': 'empty_query',
+            'architecture': APP_VERSION
         }
 
     try:
-        module=load_scraper('notino')
-        diagnose=getattr(module,'diagnose',None)
+        module = load_scraper('notino')
 
-        if not callable(diagnose):
+        # Scegli quale funzione diagnostica usare
+        if str(ab).lower() == "1":
+            func_name = "diagnose_ab"
+        else:
+            func_name = "diagnose"
+
+        func = getattr(module, func_name, None)
+        if not callable(func):
             return {
-                'ok':False,
-                'query':query,
-                'error':'notino_diagnose_missing',
-                'architecture':APP_VERSION
+                'ok': False,
+                'query': query,
+                'error': f'{func_name}_missing',
+                'architecture': APP_VERSION
             }
 
-        report=diagnose(query)
+        report = func(query)
 
         return {
-            'ok':True,
-            'architecture':APP_VERSION,
+            'ok': True,
+            'architecture': APP_VERSION,
             **report
         }
 
     except Exception as exc:
         return {
-            'ok':False,
-            'query':query,
-            'error':f'{type(exc).__name__}: {exc}',
-            'architecture':APP_VERSION
+            'ok': False,
+            'query': query,
+            'error': f'{type(exc).__name__}: {exc}',
+            'architecture': APP_VERSION
         }
+
 
 @app.get('/suggest')
 def suggest(q:str):
