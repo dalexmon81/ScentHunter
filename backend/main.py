@@ -49,7 +49,7 @@ def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = machine_store
-    result.setdefault('shop', STORE_LABELS.get(machine_store, machine_store))
+    result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
     if result.get('size_ml') in (None, ''):
         for key in ('volume_ml','format_ml','size'):
