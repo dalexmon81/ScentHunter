@@ -15,7 +15,7 @@ import unicodedata
 import uuid
 from pathlib import Path
 
-APP_VERSION = '3.1-catalog-identity'
+APP_VERSION = '3.2-catalog-orchestrated'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 try:
@@ -76,7 +76,7 @@ STORE_TIMEOUTS = {
     'orioudh': 60.0,
     'easycosmetic': 60.0,
 }
-JOB_TIMEOUT_SECONDS = 125.0
+JOB_TIMEOUT_SECONDS = 180.0
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
 BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
@@ -583,43 +583,152 @@ def _identity_key(product):
     )
 
 
-def _is_better_offer(candidate, current):
-    candidate_available = candidate.get('available') is not False
-    current_available = current.get('available') is not False
-    if candidate_available != current_available:
-        return candidate_available
+def _offer_image(item):
+    source = item.get('source')
+    source_image = source.get('image') if isinstance(source, dict) else ''
+    return str(
+        item.get('image')
+        or item.get('image_url')
+        or item.get('thumbnail')
+        or source_image
+        or ''
+    ).strip()
 
-    candidate_price = _safe_float(candidate.get('price_num'))
-    current_price = _safe_float(current.get('price_num'))
-    if candidate_price is not None and current_price is None:
-        return True
-    if candidate_price is None and current_price is not None:
-        return False
-    if candidate_price is not None and current_price is not None:
-        if candidate_price != current_price:
-            return candidate_price < current_price
 
-    return str(candidate.get('store', '')).lower() < str(current.get('store', '')).lower()
+def _offer_url(item):
+    source = item.get('source')
+    source_url = source.get('url') if isinstance(source, dict) else ''
+    return str(
+        item.get('url')
+        or item.get('product_url')
+        or source_url
+        or ''
+    ).strip()
+
+
+def _offer_rank(item):
+    """Order retailer offers without throwing away links, prices or images."""
+    available = item.get('available') is not False
+    price = _safe_float(item.get('price_num'))
+    return (
+        0 if available else 1,
+        0 if price is not None else 1,
+        price if price is not None else 999999.0,
+        0 if _offer_url(item) else 1,
+        0 if _offer_image(item) else 1,
+        str(item.get('store', '')).lower(),
+    )
 
 
 def collapse_identity_results(results):
-    """One card per canonical perfume identity, never one card per retailer."""
-    grouped = {}
-    for raw in results:
-        item = _identity_resolve(clean_result(raw, raw.get('store') or raw.get('shop') or ''))
-        key = _identity_key(item)
-        current = grouped.get(key)
-        if current is None:
-            grouped[key] = item
-        elif _is_better_offer(item, current):
-            replacement = dict(item)
-            replacement['offers_count'] = int(current.get('offers_count') or 1) + 1
-            grouped[key] = replacement
-        else:
-            current['offers_count'] = int(current.get('offers_count') or 1) + 1
+    """Resolve every raw retailer row to the canonical catalog identity.
 
-    output = list(grouped.values())
-    return sort_results(dedupe_results(output))
+    Important: this function deliberately does NOT collapse different stores
+    into one API row. The frontend is the presentation/grouping layer and
+    needs every retailer offer to compare prices and links. The backend's job
+    here is canonical identity, normalization and offer deduplication.
+    """
+    resolved = []
+    seen = set()
+    for raw in results:
+        if not isinstance(raw, dict):
+            continue
+        item = _identity_resolve(
+            clean_result(raw, raw.get('store') or raw.get('shop') or '')
+        )
+        key = result_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        image = _offer_image(item)
+        if image:
+            item['image'] = image
+        url = _offer_url(item)
+        if url and not item.get('url'):
+            item['url'] = url
+
+        # Keep canonical identity fields explicit so the frontend can group
+        # all stores under one product without knowing anything about the
+        # catalog itself.
+        if item.get('canonical_name'):
+            item['name'] = item['canonical_name']
+        if item.get('canonical_brand'):
+            item['brand'] = item['canonical_brand']
+
+        resolved.append(item)
+
+    return sorted(resolved, key=_offer_rank)
+
+
+# ============================================================
+# CATALOG-DRIVEN SEARCH PLAN
+# ============================================================
+
+_QUERY_GENERIC_WORDS = {
+    'collection', 'fragrance', 'fragrances', 'perfume', 'parfum',
+    'spray', 'vaporisateur', 'the', 'new', 'edition', 'original',
+    'eau', 'de', 'edp', 'edt', 'edc', 'extrait', 'intense',
+}
+
+
+def _catalog_query_tokens(value):
+    tokens = _identity_tokens(value)
+    return [token for token in tokens if token not in _QUERY_GENERIC_WORDS]
+
+
+def _catalog_search_targets(query, limit=6):
+    """Find canonical catalog variants belonging to a family-like query."""
+    query_tokens = _catalog_query_tokens(query)
+    if not query_tokens:
+        return []
+    query_set = set(query_tokens)
+    candidates = {}
+
+    for record in CATALOG_IDENTITY.records:
+        canonical = str(record.get('canonical_name') or '').strip()
+        brand = str(record.get('brand') or '').strip()
+        if not canonical or not brand:
+            continue
+        aliases = list(record.get('aliases') or []) + [canonical]
+        best_score = None
+        for alias in aliases:
+            text = _identity_without_brand(alias, brand)
+            alias_tokens = _catalog_query_tokens(text)
+            alias_set = set(alias_tokens)
+            if not query_set.issubset(alias_set):
+                continue
+            exact = ' '.join(alias_tokens) == ' '.join(query_tokens)
+            score = (
+                10000 if exact else 0,
+                len(query_set) * 1000,
+                len(alias_set),
+                len(canonical),
+            )
+            if best_score is None or score > best_score:
+                best_score = score
+        if best_score is None:
+            full_tokens = set(_catalog_query_tokens(f'{brand} {canonical}'))
+            if not query_set.issubset(full_tokens):
+                continue
+            best_score = (5000, len(query_set) * 1000, len(full_tokens), len(canonical))
+
+        identity = (
+            _identity_norm(brand),
+            _identity_norm(canonical),
+        )
+        previous = candidates.get(identity)
+        term = f'{brand} {canonical}'.strip()
+        if previous is None or best_score > previous[0]:
+            candidates[identity] = (best_score, term)
+
+    ranked = sorted(
+        candidates.values(),
+        key=lambda value: (-value[0][0], -value[0][1], -value[0][2], value[1].lower()),
+    )
+    if len(ranked) > 12:
+        return []
+    return [value[1] for value in ranked[:max(1, int(limit))]]
 
 
 # ============================================================
@@ -641,28 +750,105 @@ def load_scraper(store):
     return importlib.import_module(f'scrapers.{store}.scraper')
 
 
-def run_store(store, query):
+def run_store(store, query, on_result=None):
     started = time.monotonic()
     try:
-        search = getattr(load_scraper(store), 'search', None)
-        if not callable(search):
+        module = load_scraper(store)
+        search = getattr(module, 'search', None)
+        stream = getattr(module, 'search_stream', None)
+        if not callable(search) and not callable(stream):
             raise RuntimeError(f'scraper {store} non espone search(query)')
 
-        raw = search(query)
-        if store == 'parfumzentrum' and not raw:
-            time.sleep(.25)
-            raw = search(query)
+        def collect(term):
+            rows = []
 
-        rows = (
-            [] if raw is None
-            else list(raw) if not isinstance(raw, list)
-            else raw
-        )
-        cleaned = [
-            clean_result(x, store)
-            for x in rows
-            if isinstance(x, dict)
-        ]
+            def push(row):
+                if not isinstance(row, dict):
+                    return
+                rows.append(row)
+                if callable(on_result):
+                    on_result(row)
+
+            if callable(stream):
+                returned = stream(term, push)
+                if returned is not None:
+                    try:
+                        for row in returned:
+                            push(row)
+                    except TypeError:
+                        pass
+                return rows
+
+            raw = search(term)
+            if raw is None:
+                return rows
+            if isinstance(raw, list):
+                for row in raw:
+                    push(row)
+                return rows
+            try:
+                for row in raw:
+                    push(row)
+            except TypeError:
+                pass
+            return rows
+
+        raw_query = str(query or '').strip()
+        accumulated = collect(raw_query)
+
+        target_terms = _catalog_search_targets(raw_query, limit=10)
+        present = set()
+        for row in accumulated:
+            resolved = _identity_resolve(clean_result(row, store))
+            key = _identity_key(resolved)
+            if key and key[0] == 'catalog':
+                present.add(key)
+
+        attempted = {_identity_norm(raw_query)}
+        for term in target_terms:
+            if time.monotonic() - started >= STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS) * 0.78:
+                break
+            term_key = _identity_norm(term)
+            if not term_key or term_key in attempted:
+                continue
+            attempted.add(term_key)
+
+            target_ids = []
+            for record in CATALOG_IDENTITY.records:
+                if term.lower() == f"{record.get('brand', '')} {record.get('canonical_name', '')}".strip().lower():
+                    target_ids.append(_identity_key({
+                        'catalog_product_id': record.get('product_id'),
+                        'canonical_brand': record.get('brand'),
+                        'canonical_name': record.get('canonical_name'),
+                        'canonical_concentration': record.get('concentration'),
+                        'canonical_gender': record.get('gender'),
+                    }))
+            if target_ids and target_ids[0] in present:
+                continue
+
+            try:
+                extra = collect(term)
+                accumulated.extend(extra)
+            except Exception as exc:
+                print(
+                    f'STORE_DISCOVERY_ERROR store={store} attempt={term!r} '
+                    f'error={type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+                continue
+
+            present.clear()
+            for row in accumulated:
+                resolved = _identity_resolve(clean_result(row, store))
+                key = _identity_key(resolved)
+                if key and key[0] == 'catalog':
+                    present.add(key)
+
+        if store == 'parfumzentrum' and not accumulated:
+            time.sleep(.25)
+            accumulated.extend(collect(raw_query))
+
+        cleaned = [clean_result(x, store) for x in accumulated if isinstance(x, dict)]
         return {
             'store': store,
             'status': 'ok' if cleaned else 'empty',
@@ -684,65 +870,40 @@ def run_store(store, query):
 
 
 WORKER_CODE = r'''
-import importlib, json, sys
+import json, sys
+
 store = sys.argv[1]
 query = sys.argv[2]
 
 def emit(event, **payload):
-    print(
-        json.dumps(
-            {'event': event, **payload},
-            ensure_ascii=False,
-            default=str,
-        ),
-        flush=True,
-    )
+    print(json.dumps({'event': event, **payload}, ensure_ascii=False, default=str), flush=True)
 
 try:
-    module = importlib.import_module(f'scrapers.{store}.scraper')
-    stream = getattr(module, 'search_stream', None)
-    if callable(stream):
-        rows = []
-        def on_result(row):
-            if isinstance(row, dict):
-                rows.append(row)
-                emit('result', row=row)
-        returned = stream(query, on_result)
-        if returned is not None:
-            try:
-                for row in returned:
-                    if isinstance(row, dict):
-                        emit('result', row=row)
-                        rows.append(row)
-            except TypeError:
-                pass
-        emit('done', count=len(rows), streaming=True)
-    else:
-        search = getattr(module, 'search', None)
-        if not callable(search):
-            raise RuntimeError(
-                f'scraper {store} non espone search(query)'
-            )
-        raw = search(query)
-        if raw is None:
-            rows = []
-        elif isinstance(raw, list):
-            rows = raw
-        elif isinstance(raw, tuple):
-            rows = list(raw)
-        else:
-            try:
-                rows = list(raw)
-            except TypeError:
-                rows = []
-        for row in rows:
-            if isinstance(row, dict):
-                emit('result', row=row)
-        emit('done', count=len(rows), streaming=False)
+    import main as scent_main
+    emitted = set()
+
+    def emit_row(row):
+        if not isinstance(row, dict):
+            return
+        key = (
+            str(row.get('url') or row.get('product_url') or '').strip().lower(),
+            str(row.get('name') or row.get('title') or row.get('product_name') or '').strip().lower(),
+            str(row.get('size_ml') or '').strip(),
+        )
+        if key in emitted:
+            return
+        emitted.add(key)
+        emit('result', row=row)
+
+    report = scent_main.run_store(store, query, on_result=emit_row)
+    if report.get('error'):
+        emit('error', error=str(report.get('error')))
+    emit('done', count=report.get('count', 0), streaming=False)
 except BaseException as exc:
     emit('error', error=f'{type(exc).__name__}: {exc}')
     raise SystemExit(1)
 '''
+
 
 
 def _kill_process_tree(process):
@@ -1154,6 +1315,7 @@ def health():
         'store_timeouts': STORE_TIMEOUTS,
         'job_timeout': JOB_TIMEOUT_SECONDS,
         'catalog_identity_records': len(CATALOG_IDENTITY.records),
+        'catalog_search_expansion': True,
     }
 
 
