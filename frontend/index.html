@@ -752,10 +752,11 @@ function offerImage(o){
     o?.image_url ||
     o?.thumbnail ||
     o?.source?.image ||
+    o?.source?.image_url ||
+    o?.source?.thumbnail ||
     ""
   ).trim();
 }
-
 function shGroupData(data){
   const raw=[];
 
@@ -1192,8 +1193,12 @@ function shGroupData(data){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     });
-      const firstImageOffer=g.offers.find(o=>offerImage(o));
-      g.image=firstImageOffer ? offerImage(firstImageOffer) : (g.image||"");
+
+    // L'immagine deve seguire l'ordine REALE delle offerte dopo il sort.
+    // Quindi: prima offerta con immagine; se non ce n'è una, nessuna immagine.
+    // Questo viene ricalcolato a ogni snapshot della ricerca progressiva.
+    const firstImageOffer=g.offers.find(o=>offerImage(o));
+    g.image=firstImageOffer?offerImage(firstImageOffer):"";
 
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
