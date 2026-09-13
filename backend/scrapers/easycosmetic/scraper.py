@@ -13,6 +13,7 @@ STORE = "Easycosmetic"
 BASE_URL = "https://www.easycosmetic.de"
 SEARCH_URL = BASE_URL + "/suche?searchfor={}"
 TIMEOUT = 15
+BROWSER_TIMEOUT_MS = 15000
 
 HEADERS = {
     "User-Agent": (
@@ -26,9 +27,10 @@ HEADERS = {
     ),
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Upgrade-Insecure-Requests": "1",
 }
 
-# These are generic site/navigation exclusions, not perfume/product rules.
 BLOCKED_PATH_PARTS = (
     "/suche",
     "/service",
@@ -45,13 +47,7 @@ BLOCKED_PATH_PARTS = (
 )
 
 BLOCKED_EXTENSIONS = (
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".gif",
-    ".svg",
-    ".webp",
-    ".pdf",
+    ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".pdf",
 )
 
 
@@ -61,32 +57,29 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value)).strip()
 
 
-def _normalise_url(url: str) -> str:
-    absolute = urljoin(BASE_URL, url)
-    parsed = urlparse(absolute)
-
-    if parsed.netloc.lower() not in {
-        "easycosmetic.de",
-        "www.easycosmetic.de",
-    }:
-        return ""
-
-    path = parsed.path or "/"
-    return f"https://www.easycosmetic.de{path}".rstrip("/")
-
-
 def _normalise_text(value: str) -> str:
     value = _clean(value).lower()
     value = re.sub(r"[^\w\s]+", " ", value, flags=re.UNICODE)
     return re.sub(r"\s+", " ", value).strip()
 
 
+def _normalise_url(url: str) -> str:
+    absolute = urljoin(BASE_URL, str(url or ""))
+    parsed = urlparse(absolute)
+
+    if parsed.netloc.lower() not in {"easycosmetic.de", "www.easycosmetic.de"}:
+        return ""
+
+    path = parsed.path or "/"
+    if not path.startswith("/"):
+        path = "/" + path
+
+    # Product URLs on Easycosmetic are stable without query/fragment.
+    return f"{BASE_URL}{path}".rstrip("/")
+
+
 def _query_tokens(query: str) -> List[str]:
-    return [
-        token
-        for token in _normalise_text(query).split()
-        if len(token) >= 2
-    ]
+    return [x for x in _normalise_text(query).split() if len(x) >= 2]
 
 
 def _is_candidate_url(url: str) -> bool:
@@ -94,11 +87,7 @@ def _is_candidate_url(url: str) -> bool:
         return False
 
     parsed = urlparse(url)
-
-    if parsed.netloc.lower() not in {
-        "easycosmetic.de",
-        "www.easycosmetic.de",
-    }:
+    if parsed.netloc.lower() not in {"easycosmetic.de", "www.easycosmetic.de"}:
         return False
 
     path = parsed.path.lower()
@@ -116,26 +105,17 @@ def _is_candidate_url(url: str) -> bool:
 
 
 def _candidate_score(query: str, text: str, url: str) -> int:
-    """
-    Generic relevance score based only on the user's query.
-
-    There are no hard-coded product names, brands, categories or perfume
-    rules here. The same logic is used for every search term.
-    """
     tokens = _query_tokens(query)
-
     if not tokens:
         return 0
 
     haystack = _normalise_text(f"{text} {url}")
-
+    normalized_query = _normalise_text(query)
     score = 0
 
     for token in tokens:
         if token in haystack:
             score += 10
-
-    normalized_query = _normalise_text(query)
 
     if normalized_query and normalized_query in haystack:
         score += 25
@@ -143,15 +123,76 @@ def _candidate_score(query: str, text: str, url: str) -> int:
     return score
 
 
-def _request(url: str) -> requests.Response:
-    response = requests.get(
-        url,
-        headers=HEADERS,
-        timeout=TIMEOUT,
-        allow_redirects=True,
-    )
-    response.raise_for_status()
-    return response
+def _request_html(url: str) -> str:
+    """
+    Primary HTTP path.
+
+    If Easycosmetic rejects the requests client (403/429/5xx) or the
+    connection fails, fall back to a real Chromium page. This keeps the
+    scraper generic and avoids making the whole store fail just because
+    the retailer treats Render's HTTP client differently from a browser.
+    """
+    request_error: Optional[Exception] = None
+
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+
+        if 200 <= response.status_code < 400:
+            return response.text
+
+        request_error = requests.HTTPError(
+            f"HTTP {response.status_code} for {url}"
+        )
+
+        # A browser fallback is particularly useful for bot/rate-limit
+        # responses. Do not silently accept an error page as HTML.
+        if response.status_code not in {403, 429, 500, 502, 503, 504}:
+            response.raise_for_status()
+
+    except requests.RequestException as exc:
+        request_error = exc
+
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            try:
+                context = browser.new_context(
+                    user_agent=HEADERS["User-Agent"],
+                    locale="de-DE",
+                    extra_http_headers={
+                        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8"
+                    },
+                )
+                page = context.new_page()
+                page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=BROWSER_TIMEOUT_MS,
+                )
+                html = page.content()
+                if not html or len(html) < 500:
+                    raise RuntimeError(
+                        f"browser returned insufficient HTML for {url}"
+                    )
+                return html
+            finally:
+                browser.close()
+
+    except Exception as browser_error:
+        if request_error is not None:
+            raise RuntimeError(
+                f"HTTP failed ({type(request_error).__name__}: "
+                f"{request_error}); browser fallback failed "
+                f"({type(browser_error).__name__}: {browser_error})"
+            ) from browser_error
+        raise
 
 
 def _extract_json_ld(soup: BeautifulSoup) -> List[Dict[str, Any]]:
@@ -172,9 +213,7 @@ def _extract_json_ld(soup: BeautifulSoup) -> List[Dict[str, Any]]:
         if isinstance(data, dict):
             items.append(data)
         elif isinstance(data, list):
-            items.extend(
-                item for item in data if isinstance(item, dict)
-            )
+            items.extend(x for x in data if isinstance(x, dict))
 
     return items
 
@@ -182,10 +221,8 @@ def _extract_json_ld(soup: BeautifulSoup) -> List[Dict[str, Any]]:
 def _walk_json_ld(value: Any) -> Iterable[Dict[str, Any]]:
     if isinstance(value, dict):
         yield value
-
         for child in value.values():
             yield from _walk_json_ld(child)
-
     elif isinstance(value, list):
         for child in value:
             yield from _walk_json_ld(child)
@@ -195,13 +232,10 @@ def _find_product_json(soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
     for item in _extract_json_ld(soup):
         for node in _walk_json_ld(item):
             item_type = node.get("@type")
-
             if item_type == "Product":
                 return node
-
             if isinstance(item_type, list) and "Product" in item_type:
                 return node
-
     return None
 
 
@@ -210,23 +244,18 @@ def _price_to_float(value: Any) -> Optional[float]:
         return None
 
     raw = _clean(value)
-
-    # Remove currency and unrelated characters while preserving separators.
     raw = re.sub(r"[^\d,.\-]", "", raw)
 
     if not raw:
         return None
 
-    # German decimal format: 1.299,99
     if "," in raw and "." in raw:
         if raw.rfind(",") > raw.rfind("."):
             raw = raw.replace(".", "").replace(",", ".")
         else:
             raw = raw.replace(",", "")
-
     elif "," in raw:
         raw = raw.replace(",", ".")
-
     elif raw.count(".") > 1:
         raw = raw.replace(".", "")
 
@@ -249,9 +278,9 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            price = _price_to_float(match.group(1))
-            if price is not None:
-                return price
+            value = _price_to_float(match.group(1))
+            if value is not None:
+                return value
 
     return None
 
@@ -264,14 +293,9 @@ def _extract_brand(product_json: Dict[str, Any]) -> str:
 
     if isinstance(brand, list):
         for item in brand:
-            if isinstance(item, dict):
-                name = _clean(item.get("name"))
-            else:
-                name = _clean(item)
-
+            name = _clean(item.get("name") if isinstance(item, dict) else item)
             if name:
                 return name
-
         return ""
 
     return _clean(brand)
@@ -283,10 +307,11 @@ def _extract_offer_data(
     offers = product_json.get("offers")
 
     if isinstance(offers, dict):
-        price = _price_to_float(offers.get("price"))
-        currency = _clean(offers.get("priceCurrency")) or "EUR"
-        availability = _clean(offers.get("availability"))
-        return price, currency, availability
+        return (
+            _price_to_float(offers.get("price")),
+            _clean(offers.get("priceCurrency")) or "EUR",
+            _clean(offers.get("availability")),
+        )
 
     if isinstance(offers, list):
         for offer in offers:
@@ -306,71 +331,62 @@ def _extract_offer_data(
 def _availability_from_page(text: str) -> Tuple[bool, str]:
     normalized = _normalise_text(text)
 
-    # Generic availability language used by the retailer.
     if "nicht auf lager" in normalized:
         return False, "Out of stock"
-
     if "ausverkauft" in normalized:
         return False, "Out of stock"
-
     if "nicht verfugbar" in normalized:
         return False, "Unavailable"
-
     if "auf lager" in normalized:
         return True, "In stock"
-
     if "sofort lieferbar" in normalized:
         return True, "In stock"
-
     if "lieferbar" in normalized:
         return True, "Available"
 
     return True, ""
 
 
-def search(query: str) -> List[Dict[str, Any]]:
-    """
-    Search Easycosmetic for any user query.
-
-    The function is completely generic. It does not know any perfume,
-    brand, product name, volume or category in advance.
-    """
-    query = _clean(query)
-
-    if not query:
-        return []
-
-    search_url = SEARCH_URL.format(quote_plus(query))
-    response = _request(search_url)
-    soup = BeautifulSoup(response.text, "html.parser")
-
+def _extract_candidate_links(
+    soup: BeautifulSoup,
+    query: str,
+) -> List[Dict[str, Any]]:
     candidates: Dict[str, Dict[str, Any]] = {}
 
-    for link in soup.find_all("a", href=True):
-        href = _normalise_url(link.get("href", ""))
+    def add(url: str, text: str) -> None:
+        url = _normalise_url(url)
+        if not _is_candidate_url(url):
+            return
 
-        if not _is_candidate_url(href):
-            continue
-
-        anchor_text = _clean(link.get_text(" ", strip=True))
-        score = _candidate_score(query, anchor_text, href)
-
-        # Search pages can contain unrelated internal .aspx links.
-        # Keep candidates that have at least one query-token match.
+        score = _candidate_score(query, text, url)
         if score <= 0:
-            continue
+            return
 
-        current = candidates.get(href)
-
-        candidate = {
+        current = candidates.get(url)
+        row = {
             "shop": STORE,
-            "url": href,
-            "name": anchor_text,
+            "url": url,
+            "name": _clean(text),
             "_score": score,
         }
 
         if current is None or score > current["_score"]:
-            candidates[href] = candidate
+            candidates[url] = row
+
+    # Normal search-result anchors.
+    for link in soup.find_all("a", href=True):
+        add(link.get("href", ""), link.get_text(" ", strip=True))
+
+    # Some Easycosmetic pages expose product URLs in structured data.
+    for item in _extract_json_ld(soup):
+        for node in _walk_json_ld(item):
+            if _clean(node.get("@type")) != "Product":
+                continue
+
+            url = node.get("url")
+            name = node.get("name")
+            if isinstance(url, str):
+                add(url, _clean(name))
 
     ordered = sorted(
         candidates.values(),
@@ -383,19 +399,27 @@ def search(query: str) -> List[Dict[str, Any]]:
     return ordered
 
 
+def search(query: str) -> List[Dict[str, Any]]:
+    query = _clean(query)
+
+    if not query:
+        return []
+
+    search_url = SEARCH_URL.format(quote_plus(query))
+    html = _request_html(search_url)
+    soup = BeautifulSoup(html, "html.parser")
+
+    return _extract_candidate_links(soup, query)
+
+
 def parse_product(url: str) -> Optional[Dict[str, Any]]:
-    """
-    Parse one Easycosmetic product page using structured product data
-    first and HTML text as a fallback.
-    """
     url = _normalise_url(url)
 
     if not _is_candidate_url(url):
         return None
 
-    response = _request(url)
-    soup = BeautifulSoup(response.text, "html.parser")
-
+    html = _request_html(url)
+    soup = BeautifulSoup(html, "html.parser")
     product_json = _find_product_json(soup)
 
     name = ""
@@ -408,13 +432,9 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     if product_json:
         name = _clean(product_json.get("name"))
         brand = _extract_brand(product_json)
-
-        price, currency, availability = _extract_offer_data(
-            product_json
-        )
+        price, currency, availability = _extract_offer_data(product_json)
 
         image_data = product_json.get("image")
-
         if isinstance(image_data, str):
             image = image_data
         elif isinstance(image_data, list) and image_data:
@@ -430,18 +450,15 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     if price is None:
         price = _extract_price_from_text(page_text)
 
-    if not availability:
-        _, availability = _availability_from_page(page_text)
+    page_available, page_availability = _availability_from_page(page_text)
 
-    available, fallback_availability = _availability_from_page(page_text)
-
+    available = page_available
     if availability:
-        normalized_availability = _normalise_text(availability)
+        normalized = _normalise_text(availability)
 
         if any(
-            marker in normalized_availability
+            marker in normalized
             for marker in (
-                "outofstock",
                 "out of stock",
                 "nicht auf lager",
                 "ausverkauft",
@@ -451,9 +468,8 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
         ):
             available = False
         elif any(
-            marker in normalized_availability
+            marker in normalized
             for marker in (
-                "instock",
                 "in stock",
                 "auf lager",
                 "lieferbar",
@@ -462,9 +478,8 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
             )
         ):
             available = True
-
-    if not availability:
-        availability = fallback_availability
+    else:
+        availability = page_availability
 
     if not name:
         return None
@@ -483,36 +498,23 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def search_stream(
-    query: str,
-    emit=None,
-):
-    """
-    Generic streaming interface.
-
-    When ScentHunter supplies an emit callback, each parsed product is
-    emitted immediately. Without a callback, the function yields rows.
-    """
+def search_stream(query: str, emit=None):
     candidates = search(query)
 
     def rows():
         for candidate in candidates:
             url = candidate.get("url")
-
             if not url:
                 continue
 
             try:
                 row = parse_product(url)
-            except requests.RequestException:
-                continue
             except Exception:
+                # A single bad product must never kill the whole store.
                 continue
 
-            if not row:
-                continue
-
-            yield row
+            if row:
+                yield row
 
     if callable(emit):
         for row in rows():
@@ -523,38 +525,29 @@ def search_stream(
 
 
 def diagnose(query: str) -> Dict[str, Any]:
-    """
-    Standalone diagnostic function.
-
-    Useful before integrating the scraper into the ScentHunter store
-    list. It reports search candidates, parsed products and errors.
-    """
     query = _clean(query)
 
     report: Dict[str, Any] = {
         "diagnostic": True,
         "store": STORE,
         "query": query,
-        "search_url": (
-            SEARCH_URL.format(quote_plus(query))
-            if query
-            else None
-        ),
+        "search_url": SEARCH_URL.format(quote_plus(query)) if query else None,
         "candidate_count": 0,
         "candidates": [],
         "products": [],
         "errors": [],
     }
 
+    if not query:
+        return report
+
     try:
         candidates = search(query)
     except Exception as exc:
-        report["errors"].append(
-            {
-                "stage": "search",
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-        )
+        report["errors"].append({
+            "stage": "search",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
         return report
 
     report["candidate_count"] = len(candidates)
@@ -562,41 +555,23 @@ def diagnose(query: str) -> Dict[str, Any]:
 
     for candidate in candidates[:10]:
         url = candidate.get("url")
-
         if not url:
             continue
 
         try:
             product = parse_product(url)
-
             if product:
                 report["products"].append(product)
-
         except Exception as exc:
-            report["errors"].append(
-                {
-                    "stage": "parse_product",
-                    "url": url,
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            )
+            report["errors"].append({
+                "stage": "parse_product",
+                "url": url,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
 
     return report
 
 
 if __name__ == "__main__":
-    # Manual smoke test only.
-    # This query is NOT part of the scraper logic and can be changed
-    # freely when testing different products.
-    test_query = "Liquid Brun"
-
-    print("Easycosmetic scraper smoke test")
-    print("=" * 60)
-    print(f"Query: {test_query}")
-    print()
-
-    try:
-        result = diagnose(test_query)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    except Exception as exc:
-        print(f"FATAL ERROR: {type(exc).__name__}: {exc}")
+    result = diagnose("Liquid Brun")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
