@@ -1010,18 +1010,19 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
-    # Chromium is the primary Notino path on Render.  The live diagnostic
-    # proved that it receives HTTP 200 and exposes the actual product URLs,
-    # whereas requests/Jina receive Cloudflare 403.  If Chromium succeeds,
-    # return immediately: there is no reason to spend 30-50 seconds querying
-    # channels that are known to be blocked or incomplete.
+    # 1. Playwright: tentativo diretto sulla ricerca Notino.
+    # Se Cloudflare risponde 403, NON insistiamo.
     browser_candidates, browser_report = _browser_search(query)
     reports.append(browser_report)
+
     for candidate in browser_candidates:
         all_found[candidate["url"]] = candidate
 
     if browser_candidates:
-        ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
+        ordered = sorted(
+            all_found.values(),
+            key=lambda x: (-x["score"], x["url"])
+        )
         return ordered[:12], {
             "query": query,
             "channels": reports,
@@ -1030,35 +1031,70 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             "primary_channel": "playwright-notino",
         }
 
-    # Render is blocked by Cloudflare, so external search engines are the
-    # discovery fallback. Use several tightly-targeted variants: generic
-    # quoted searches can return thousands of irrelevant results, while the
-    # Notino slug/brand-oriented variants are much more likely to expose the
-    # actual product URLs.
-    variants = []
-    for value in (
-        query,
-        query.replace(" ", "-"),
-        f"{query} Eau de Parfum",
-        f"{query} Limited Edition",
-    ):
-        value = _clean(value)
-        if value and value not in variants:
-            variants.append(value)
+    # 2. Bing RSS.
+    #
+    # Questo canale è già implementato nel file (_bing_rss), ma prima
+    # non veniva mai chiamato da _discover().
+    #
+    # È particolarmente utile perché non dipende dal parsing HTML
+    # della pagina Bing.
+    rss_candidates, rss_report = _bing_rss(query, session)
+    reports.append(rss_report)
 
-    channels = []
-    for variant in variants:
-        channels.append(_bing(variant, session))
-        channels.append(_google(variant, session))
+    for candidate in rss_candidates:
+        old = all_found.get(candidate["url"])
+        if old is None or candidate["score"] > old["score"]:
+            all_found[candidate["url"]] = candidate
 
-    for candidates, report in channels:
-        reports.append(report)
-        for candidate in candidates:
-            old = all_found.get(candidate["url"])
-            if old is None or candidate["score"] > old["score"]:
-                all_found[candidate["url"]] = candidate
+    if rss_candidates:
+        ordered = sorted(
+            all_found.values(),
+            key=lambda x: (-x["score"], x["url"])
+        )
+        return ordered[:12], {
+            "query": query,
+            "channels": reports,
+            "candidate_count": len(ordered),
+            "candidates": ordered[:12],
+            "primary_channel": "bing-rss",
+        }
 
-    ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
+    # 3. Bing HTML.
+    bing_candidates, bing_report = _bing(query, session)
+    reports.append(bing_report)
+
+    for candidate in bing_candidates:
+        old = all_found.get(candidate["url"])
+        if old is None or candidate["score"] > old["score"]:
+            all_found[candidate["url"]] = candidate
+
+    if bing_candidates:
+        ordered = sorted(
+            all_found.values(),
+            key=lambda x: (-x["score"], x["url"])
+        )
+        return ordered[:12], {
+            "query": query,
+            "channels": reports,
+            "candidate_count": len(ordered),
+            "candidates": ordered[:12],
+            "primary_channel": "bing",
+        }
+
+    # 4. Google HTML.
+    google_candidates, google_report = _google(query, session)
+    reports.append(google_report)
+
+    for candidate in google_candidates:
+        old = all_found.get(candidate["url"])
+        if old is None or candidate["score"] > old["score"]:
+            all_found[candidate["url"]] = candidate
+
+    ordered = sorted(
+        all_found.values(),
+        key=lambda x: (-x["score"], x["url"])
+    )
+
     return ordered[:12], {
         "query": query,
         "channels": reports,
