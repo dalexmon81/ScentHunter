@@ -4,6 +4,7 @@ import difflib
 import html as html_lib
 import json
 import re
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
@@ -394,13 +395,23 @@ def _bing_rss(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
         report["error"] = f"{type(exc).__name__}: {exc}"
         return [], report
 
-    soup = BeautifulSoup(r.text or "", "xml")
     found = {}
 
-    for item in soup.find_all("item"):
-        title = _clean(item.title.get_text(" ", strip=True) if item.title else "")
-        desc = _clean(item.description.get_text(" ", strip=True) if item.description else "")
-        link = _clean(item.link.get_text(" ", strip=True) if item.link else "")
+    # ElementTree is built into Python, so this does not require
+    # BeautifulSoup's optional XML tree-builder on Render.
+    try:
+        root = ET.fromstring(r.text or "")
+        items = root.findall(".//item")
+    except ET.ParseError:
+        items = []
+
+    for item in items:
+        title_node = item.find("title")
+        desc_node = item.find("description")
+        link_node = item.find("link")
+        title = _clean(title_node.text or "") if title_node is not None else ""
+        desc = _clean(desc_node.text or "") if desc_node is not None else ""
+        link = _clean(link_node.text or "") if link_node is not None else ""
         href = _normalise_url(link)
         if not href:
             m = re.search(r"https?://(?:www\.)?notino\.fr/[^\s<>\"]+", desc, re.I)
