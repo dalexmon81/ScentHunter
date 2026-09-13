@@ -1,9 +1,13 @@
 """
-ScentHunter streaming bootstrap with timing diagnostics.
+ScentHunter streaming bootstrap.
 
-Targeted optimization: Deloox discovery only.
-All other store logic is unchanged.
+Compatibility rules:
+- The main worker always calls search_stream(query, on_result).
+- Existing scrapers are not rewritten.
+- Each adapter uses only functions that actually exist in the corresponding
+  scraper module.
 """
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
@@ -43,8 +47,12 @@ def _install_bplatz():
             session.close()
         if not candidates:
             return None
+
         with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
-            futures = [pool.submit(s.product_worker, c, query) for c in candidates]
+            futures = [
+                pool.submit(s.product_worker, candidate, query)
+                for candidate in candidates
+            ]
             for future in as_completed(futures):
                 try:
                     rows = future.result() or []
@@ -54,6 +62,7 @@ def _install_bplatz():
                     if isinstance(row, dict):
                         emit(row)
         return None
+
     s.search_stream = search_stream
 
 
@@ -70,11 +79,13 @@ def _install_parfumcity():
         if not query:
             return None
         s.CURRENT_QUERY = query
+
         session = s.requests.Session()
         try:
             urls = s._discover(session, query)
         finally:
             session.close()
+
         if not urls:
             return None
 
@@ -106,6 +117,7 @@ def _install_parfumcity():
                     if isinstance(row, dict):
                         emit(row)
         return None
+
     s.search_stream = search_stream
 
 
@@ -153,13 +165,24 @@ def _install_perfumemarket():
                 for row in rows:
                     if isinstance(row, dict):
                         _diag_emit(s, emit, row, started)
-
         return None
 
     s.search_stream = search_stream
 
 
 def _install_deloox():
+    """
+    Adapter for the CURRENT Deloox scraper.
+
+    Important: the current Deloox module exposes:
+      - discover(session, query)
+      - _row_from_card(url, context, query)
+      - parse_product(url, query)
+
+    It does NOT expose extract_candidates(). Older sitecustomize code called
+    that removed function and swallowed the resulting AttributeError, making
+    the streaming path silently empty.
+    """
     try:
         from scrapers.deloox import scraper as s
     except Exception:
@@ -175,87 +198,65 @@ def _install_deloox():
         started = time.monotonic()
         s._stream_diag = {"started": started}
 
-        # Deloox was spending ~43s in sequential discovery. The existing
-        # scraper tries six first-party search URLs one after another.
-        # Probe those same first-party URLs concurrently and move on as soon
-        # as one returns relevant product URLs.
-        encoded = s.quote_plus(query)
-        endpoints = (
-            f"{s.BASE}/en/search?query={encoded}",
-            f"{s.BASE}/en/search?q={encoded}",
-            f"{s.BASE}/en/search?search={encoded}",
-            f"{s.BASE}/en/search?searchTerm={encoded}",
-            f"https://www.deloox.nl/en/search?query={encoded}",
-            f"https://www.deloox.es/en/search?query={encoded}",
-        )
-
-        def probe(endpoint):
-            session = s.requests.Session()
-            try:
-                response = s.get(session, endpoint)
-                if not response:
-                    return []
-                return s.extract_candidates(response.text, query)
-            except Exception:
-                return []
-            finally:
-                session.close()
-
-        pool = ThreadPoolExecutor(max_workers=len(endpoints))
-        futures = [pool.submit(probe, endpoint) for endpoint in endpoints]
-        urls = []
-        seen = set()
-
+        session = s.requests.Session()
         try:
-            for future in as_completed(futures):
-                try:
-                    found = future.result() or []
-                except Exception:
-                    found = []
-
-                for url in found:
-                    if url not in seen:
-                        seen.add(url)
-                        urls.append(url)
-
-                if urls:
-                    break
+            candidates = s.discover(session, query)
         finally:
-            # Do not wait for slower/blocked discovery probes.
-            for future in futures:
-                if not future.done():
-                    future.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
-
-        # Preserve the original bounded first-party catalog fallback if all
-        # search endpoints failed.
-        if not urls:
-            session = s.requests.Session()
-            try:
-                urls = s.discover(session, query)
-            finally:
-                session.close()
+            session.close()
 
         s._stream_diag["discovery_elapsed"] = round(
             time.monotonic() - started, 3
         )
 
-        if not urls:
+        if not candidates:
             return None
 
-        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
-            futures = [
-                pool.submit(s.parse_product, url, query)
-                for url in urls
-            ]
-            for future in as_completed(futures):
-                try:
-                    rows = future.result() or []
-                except Exception:
-                    continue
-                for row in rows:
-                    if isinstance(row, dict):
-                        _diag_emit(s, emit, row, started)
+        # discover() returns:
+        # [(url, (score, context)), ...]
+        #
+        # The card already contains the name/price in the normal case.
+        # Publish those rows immediately instead of throwing them away.
+        missing = []
+        seen = set()
+
+        for item in candidates:
+            try:
+                url, info = item
+                score, context = info
+            except (TypeError, ValueError):
+                continue
+
+            if url in seen:
+                continue
+            seen.add(url)
+
+            try:
+                row = s._row_from_card(url, context, query)
+            except Exception:
+                row = None
+
+            if isinstance(row, dict):
+                _diag_emit(s, emit, row, started)
+            else:
+                missing.append((url, info))
+
+        # Only product pages whose discovery card was incomplete are fetched.
+        if missing:
+            with ThreadPoolExecutor(
+                max_workers=min(8, len(missing))
+            ) as pool:
+                futures = [
+                    pool.submit(s.parse_product, url, query)
+                    for url, _ in missing
+                ]
+                for future in as_completed(futures):
+                    try:
+                        rows = future.result() or []
+                    except Exception:
+                        continue
+                    for row in rows:
+                        if isinstance(row, dict):
+                            _diag_emit(s, emit, row, started)
 
         return None
 
@@ -313,17 +314,16 @@ def _install_orioudh():
                 for row in rows:
                     if isinstance(row, dict):
                         emit(row)
-
         return None
 
     s.search_stream = search_stream
+
 
 def _install_sabina():
     try:
         from scrapers.sabina import scraper as s
     except Exception:
         return
-
     if hasattr(s, "search_stream"):
         return
 
@@ -353,17 +353,10 @@ def _install_sabina():
         urls = list(dict.fromkeys(urls))
 
         with ThreadPoolExecutor(
-            max_workers=min(
-                getattr(s, "PRODUCT_WORKERS", 8),
-                len(urls),
-            )
+            max_workers=min(getattr(s, "PRODUCT_WORKERS", 8), len(urls))
         ) as pool:
             futures = [
-                pool.submit(
-                    s._extract_product_page,
-                    url,
-                    query,
-                )
+                pool.submit(s._extract_product_page, url, query)
                 for url in urls
             ]
 
@@ -378,16 +371,44 @@ def _install_sabina():
 
                 for row in rows:
                     if isinstance(row, dict):
-                        _diag_emit(
-                            s,
-                            emit,
-                            row,
-                            started,
-                        )
+                        _diag_emit(s, emit, row, started)
 
         return None
 
     s.search_stream = search_stream
+
+
+def _install_notino():
+    """
+    Compatibility adapter only.
+
+    The current Notino scraper already has its own search_stream(query)
+    generator. The main worker calls every stream as search_stream(query,
+    on_result). We wrap the existing generator without changing its search
+    logic or Playwright implementation.
+    """
+    try:
+        from scrapers.notino import scraper as s
+    except Exception:
+        return
+
+    original = getattr(s, "search_stream", None)
+    if not callable(original):
+        return
+
+    if getattr(s, "_scenthunter_stream_compat", False):
+        return
+
+    def search_stream(query, emit):
+        for row in original(query):
+            if isinstance(row, dict):
+                emit(row)
+        return None
+
+    s.search_stream = search_stream
+    s._scenthunter_stream_compat = True
+
+
 for _installer in (
     _install_bplatz,
     _install_parfumcity,
@@ -395,8 +416,10 @@ for _installer in (
     _install_deloox,
     _install_orioudh,
     _install_sabina,
+    _install_notino,
 ):
     try:
         _installer()
     except Exception:
+        # One optional scraper must never prevent the API from starting.
         pass
