@@ -376,6 +376,8 @@ def diagnose(query: str) -> Dict[str, Any]:
         "filtered_count": 0,
         "results": [],
         "errors": [],
+        "proxy_enabled": bool(NOTINO_PROXY_URL),
+"proxy_preview": (NOTINO_PROXY_URL.split("@")[-1] if NOTINO_PROXY_URL else ""),
     }
 
     if not query:
