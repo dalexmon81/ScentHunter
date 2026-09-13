@@ -1030,10 +1030,26 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             "primary_channel": "playwright-notino",
         }
 
-    # Keep the fallback deliberately bounded. The old five-channel chain could
-    # add 40-60s after a browser miss. Bing is enough to recover product URLs
-    # without turning a failed Chromium pass into another store timeout.
-    channels = (_bing(query, session),)
+    # Render is blocked by Cloudflare, so external search engines are the
+    # discovery fallback. Use several tightly-targeted variants: generic
+    # quoted searches can return thousands of irrelevant results, while the
+    # Notino slug/brand-oriented variants are much more likely to expose the
+    # actual product URLs.
+    variants = []
+    for value in (
+        query,
+        query.replace(" ", "-"),
+        f"{query} Eau de Parfum",
+        f"{query} Limited Edition",
+    ):
+        value = _clean(value)
+        if value and value not in variants:
+            variants.append(value)
+
+    channels = []
+    for variant in variants:
+        channels.append(_bing(variant, session))
+        channels.append(_google(variant, session))
 
     for candidates, report in channels:
         reports.append(report)
