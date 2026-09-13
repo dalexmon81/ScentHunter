@@ -29,7 +29,7 @@ PRODUCT_TIMEOUT_MS = int(os.getenv("NOTINO_PRODUCT_TIMEOUT_MS", "8000"))
 MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "24"))
 MAX_PRODUCT_PAGES = int(os.getenv("NOTINO_MAX_PRODUCT_PAGES", "8"))
 BROWSER_ENABLED = os.getenv("NOTINO_BROWSER", "1").lower() not in {"0", "false", "no"}
-
+NOTINO_PROXY_URL = os.getenv("NOTINO_PROXY_URL", "").strip()
 LOGGER = logging.getLogger(__name__)
 
 HEADERS = {
