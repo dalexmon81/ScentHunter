@@ -95,7 +95,17 @@ def run_store(store, query):
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
-        return {'store':store,'status':'error','elapsed':round(time.monotonic()-started,3),'count':0,'results':[],'error':f'{type(exc).__name__}: {exc}'}
+        err = str(exc)
+        status = 'blocked' if (store == 'notino' and '403' in err) else 'error'
+        code = 'http_403_forbidden' if status == 'blocked' else 'runtime_error'
+        return {
+            'store': store,
+            'status': status,
+            'error': err,
+            'error_code': code,
+            'elapsed_ms': int((time.monotonic() - started) * 1000),
+            'results': [],
+        }
 
 WORKER_CODE = r'''
 import importlib, json, sys
