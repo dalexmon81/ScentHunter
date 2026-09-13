@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
+import importlib, inspect, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
 from debug_notino import router as debug_router
-APP_VERSION = '3.0-streaming-speed'
+APP_VERSION = '3.0-streaming-speed-notino-compatible'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 app.include_router(debug_router)
@@ -120,7 +120,20 @@ try:
         def on_result(row):
             if isinstance(row,dict):
                 rows.append(row); emit('result',row=row)
-        returned=stream(query,on_result)
+        # Gli scraper non hanno tutti la stessa firma search_stream().
+        # Notino espone search_stream(query) e restituisce l'iterabile dei risultati;
+        # altri scraper possono invece accettare anche il callback on_result.
+        # Determiniamo la firma prima della chiamata per evitare il TypeError
+        # 'takes 1 positional argument but 2 were given' che faceva fallire Notino
+        # nella ricerca completa.
+        try:
+            signature=inspect.signature(stream)
+            positional=[p for p in signature.parameters.values() if p.kind in (p.POSITIONAL_ONLY,p.POSITIONAL_OR_KEYWORD)]
+            has_varargs=any(p.kind == p.VAR_POSITIONAL for p in signature.parameters.values())
+            accepts_callback=has_varargs or len(positional) >= 2
+        except (TypeError,ValueError):
+            accepts_callback=False
+        returned=stream(query,on_result) if accepts_callback else stream(query)
         if returned is not None:
             try:
                 for row in returned:
