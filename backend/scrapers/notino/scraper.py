@@ -5,6 +5,7 @@ import logging
 import re
 import time
 import requests
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus, urljoin, urlparse
@@ -16,6 +17,7 @@ BASE = "https://www.notino.fr"
 SEARCH_TIMEOUT = (2.0, 8.0)
 PRODUCT_TIMEOUT = (2.0, 8.0)
 MAX_CANDIDATES = 12
+NOTINO_PROXY_URL = os.getenv("NOTINO_PROXY_URL", "").strip()
 
 HEADERS = {
     "User-Agent": (
@@ -34,6 +36,11 @@ def _build_session() -> requests.Session:
     s = requests.Session()
     s.headers.update(HEADERS)
     s.cookies.update({"hl": "fr", "country": "FR"})
+    if NOTINO_PROXY_URL:
+        s.proxies.update({
+            "http": NOTINO_PROXY_URL,
+            "https": NOTINO_PROXY_URL,
+        })
     return s
 
 def _http_get(url: str, timeout=(3, 12)) -> requests.Response:
@@ -279,6 +286,7 @@ def search(query: str) -> List[Dict[str, Any]]:
 
     session = requests.Session()
     try:
+        logger.info("notino proxy enabled=%s", bool(NOTINO_PROXY_URL))
         search_urls = [
             f"{BASE}/search.asp?exps={quote_plus(query)}",
             f"{BASE}/search/?exps={quote_plus(query)}",
