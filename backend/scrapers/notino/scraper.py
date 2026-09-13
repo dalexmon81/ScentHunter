@@ -983,20 +983,20 @@ def _browser_context():
     playwright = sync_playwright().start()
 
     launch_kwargs = {
-    "headless": True,
-    "args": [
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-blink-features=AutomationControlled",
-    ],
-}
+        "headless": True,
+        "args": [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-blink-features=AutomationControlled",
+        ],
+    }
 
-pw_proxy = _parse_proxy_url(NOTINO_PROXY_URL)
-if pw_proxy:
-    launch_kwargs["proxy"] = pw_proxy
+    pw_proxy = _parse_proxy_url(NOTINO_PROXY_URL)
+    if pw_proxy:
+        launch_kwargs["proxy"] = pw_proxy
 
-browser = playwright.chromium.launch(**launch_kwargs)
+    browser = playwright.chromium.launch(**launch_kwargs)
 
     context = browser.new_context(
         user_agent=HEADERS["User-Agent"],
@@ -1004,10 +1004,7 @@ browser = playwright.chromium.launch(**launch_kwargs)
         extra_http_headers={
             "Accept-Language": HEADERS["Accept-Language"],
         },
-        viewport={
-            "width": 1365,
-            "height": 900,
-        },
+        viewport={"width": 1365, "height": 900},
         ignore_https_errors=True,
     )
 
@@ -1269,19 +1266,17 @@ def _search_http_candidates(
 
     for url in urls:
         try:
-    proxies = None
-    if NOTINO_PROXY_URL:
-        proxies = {"http": 
-    NOTINO_PROXY_URL, "https": 
-    NOTINO_PROXY_URL}
+            proxies = None
+            if NOTINO_PROXY_URL:
+                proxies = {"http": NOTINO_PROXY_URL, "https": NOTINO_PROXY_URL}
 
-    response = session.get(
-        url,
-        headers=HEADERS,
-        timeout=TIMEOUT,
-        allow_redirects=True,
-        proxies=proxies,
-    )
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+                proxies=proxies,
+            )
             response.raise_for_status()
             html = response.text or ""
             found = extract_candidates_from_html(html, response.url or url, query)
