@@ -1397,3 +1397,154 @@ if __name__ == "__main__":
         ensure_ascii=False,
         indent=2,
     ))
+    
+def diagnose_ab(query: str) -> Dict[str, Any]:
+    """A/B diagnostic: 4 browser profiles × 5 Notino URLs.
+
+    Returns a JSON report with one row per (profile, url) combination.
+    """
+    import time
+    from playwright.sync_api import sync_playwright
+
+    query = _clean(query)
+    if not query:
+        return {"error": "empty_query"}
+
+    # 5 URL da testare
+    encoded = quote_plus(query)
+    test_urls = [
+        ("homepage", BASE_URL + "/"),
+        ("category", BASE_URL + "/french-avenue/liquid-brun/"),
+        ("product-1", BASE_URL + "/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"),
+        ("product-2", BASE_URL + "/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"),
+        ("search", SEARCH_URL + "?exps=" + encoded),
+    ]
+
+    # 4 profili browser
+    profiles = [
+        {
+            "name": "native-ua",
+            "user_agent": None,  # usa user-agent nativo di Chromium su Linux
+        },
+        {
+            "name": "windows-chrome",
+            "user_agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        },
+        {
+            "name": "linux-chrome",
+            "user_agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        },
+        {
+            "name": "mobile-chrome",
+            "user_agent": (
+                "Mozilla/5.0 (Linux; Android 13; Pixel 7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Mobile Safari/537.36"
+            ),
+            "viewport": {"width": 412, "height": 915},
+        },
+    ]
+
+    results = []
+    started = time.perf_counter()
+
+    with sync_playwright() as pw:
+        for prof in profiles:
+            ua = prof.get("user_agent")
+            viewport = prof.get("viewport", {"width": 1365, "height": 900})
+
+            browser = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
+
+            context_kwargs = {
+                "locale": "fr-FR",
+                "viewport": viewport,
+            }
+            if ua is not None:
+                context_kwargs["user_agent"] = ua
+
+            context = browser.new_context(**context_kwargs)
+            page = context.new_page()
+
+            # Raccogliamo informazioni sul browser reale
+            nav_info = page.evaluate("""() => {
+                return {
+                    ua: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    webdriver: navigator.webdriver,
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                };
+            }""")
+
+            for label, url in test_urls:
+                t0 = time.perf_counter()
+                row = {
+                    "profile": prof["name"],
+                    "url_label": label,
+                    "url": url,
+                    "browser": nav_info,
+                }
+
+                try:
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                    row["initial_status"] = response.status if response else None
+                except Exception as exc:
+                    row["initial_status"] = None
+                    row["navigation_error"] = f"{type(exc).__name__}: {exc}"
+                    results.append(row)
+                    continue
+
+                # Breve attesa per eventuali redirect/JS
+                page.wait_for_timeout(1000)
+
+                # Controllo challenge
+                body = page.content()
+                soup = BeautifulSoup(body, "html.parser")
+                text = _clean(soup.get_text(" ", strip=True))
+                is_challenge = _is_challenge(text)
+
+                # Cookie Cloudflare
+                cookies = {c.name: c.value for c in context.cookies() if c.name.startswith("cf")}
+
+                # URL prodotto trovati
+                products = set()
+                for a in soup.find_all("a", href=True):
+                    u = _normalise_url(urljoin(BASE_URL, a.get("href", "")))
+                    if u and PRODUCT_ID_RE.search(u):
+                        products.add(u)
+
+                row.update({
+                    "final_url": page.url,
+                    "title": _clean(soup.title.get_text(" ", strip=True) if soup.title else ""),
+                    "h1": _clean(soup.find("h1").get_text(" ", strip=True) if soup.find("h1") else ""),
+                    "challenge": is_challenge,
+                    "cf_cookies": list(cookies.keys()),
+                    "product_link_count": len(products),
+                    "product_links": sorted(products)[:10],
+                    "elapsed_s": round(time.perf_counter() - t0, 3),
+                })
+
+                results.append(row)
+
+            context.close()
+            browser.close()
+
+    return {
+        "diagnostic": True,
+        "diagnostic_version": "notino-ab-2026-09-13-v1",
+        "query": query,
+        "elapsed_s": round(time.perf_counter() - started, 3),
+        "matrix": results,
+    }
