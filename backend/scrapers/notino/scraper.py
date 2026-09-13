@@ -950,6 +950,31 @@ def _parse_all_json_scripts(soup: BeautifulSoup) -> List[Any]:
 
     return values
 
+def _parse_proxy_url(proxy_url: str) -> Optional[Dict[str, Any]]:
+    """
+    Supports:
+    - http://user:pass@host:port
+    - http://host:port
+    - socks5://user:pass@host:port
+    """
+    if not proxy_url:
+        return None
+
+    try:
+        p = urlparse(proxy_url)
+        if not p.scheme or not p.hostname or not p.port:
+            return None
+
+        out: Dict[str, Any] = {
+            "server": f"{p.scheme}://{p.hostname}:{p.port}"
+        }
+        if p.username:
+            out["username"] = p.username
+        if p.password:
+            out["password"] = p.password
+        return out
+    except Exception:
+        return None
 
 def _browser_context():
     if sync_playwright is None or not BROWSER_ENABLED:
@@ -957,15 +982,21 @@ def _browser_context():
 
     playwright = sync_playwright().start()
 
-    browser = playwright.chromium.launch(
-        headless=True,
-        args=[
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--disable-blink-features=AutomationControlled",
-        ],
-    )
+    launch_kwargs = {
+    "headless": True,
+    "args": [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-blink-features=AutomationControlled",
+    ],
+}
+
+pw_proxy = _parse_proxy_url(NOTINO_PROXY_URL)
+if pw_proxy:
+    launch_kwargs["proxy"] = pw_proxy
+
+browser = playwright.chromium.launch(**launch_kwargs)
 
     context = browser.new_context(
         user_agent=HEADERS["User-Agent"],
@@ -1168,11 +1199,19 @@ def _fetch_product_browser(
 
 def _fetch_http(session: requests.Session, url: str) -> Optional[str]:
     try:
+        proxies = None
+        if NOTINO_PROXY_URL:
+            proxies = {
+                "http": NOTINO_PROXY_URL,
+                "https": NOTINO_PROXY_URL,
+            }
+
         response = session.get(
             url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
+            proxies=proxies,
         )
 
         if response.status_code >= 400:
@@ -1230,12 +1269,17 @@ def _search_http_candidates(
 
     for url in urls:
         try:
-            response = session.get(
-                url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
+            proxies = None
+if NOTINO_PROXY_URL:
+    proxies = {"http": NOTINO_PROXY_URL, "https": NOTINO_PROXY_URL}
+
+response = session.get(
+    url,
+    headers=HEADERS,
+    timeout=TIMEOUT,
+    allow_redirects=True,
+    proxies=proxies,
+)
             response.raise_for_status()
             html = response.text or ""
             found = extract_candidates_from_html(html, response.url or url, query)
@@ -1295,6 +1339,8 @@ def _search_internal(
         "validated_candidates": 0,
         "accepted_products": 0,
         "rejected_candidates": [],
+        "proxy_enabled": bool(NOTINO_PROXY_URL),
+        "proxy_preview": (NOTINO_PROXY_URL.split("@")[-1] if NOTINO_PROXY_URL else ""),
     }
 
     results: List[Dict[str, Any]] = []
