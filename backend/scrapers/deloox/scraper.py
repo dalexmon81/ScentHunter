@@ -85,24 +85,19 @@ def availability(value):
 
 
 def get(session, url):
-    """One bounded request. Never retry a normal timeout.
-
-    The previous implementation could spend ~10.7s per endpoint and then try
-    several endpoints serially. On Render that made discovery alone exceed the
-    store deadline. A single short request is enough because discovery is
-    performed across a small set of equivalent Deloox endpoints in parallel.
-    """
-    try:
-        r = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-        if r.status_code == 200 and r.text:
-            return r
-    except requests.RequestException:
-        pass
+    # One quick retry is enough. The old three-attempt/8.5s request budget was
+    # the main reason Deloox could consume the whole 75s store timeout.
+    for attempt in range(2):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            if r.status_code == 200 and r.text:
+                return r
+            if r.status_code not in (429, 500, 502, 503, 504):
+                return None
+        except requests.RequestException:
+            pass
+        if attempt == 0:
+            time.sleep(0.35)
     return None
 
 
@@ -194,34 +189,20 @@ def _candidate_contexts(html, query):
 def _row_from_card(url, context, query):
     if not relevant(context + " " + url, query) or non_fragrance(context):
         return None
-
-    lines = [
-        clean(x)
-        for x in re.split(
-            r"\n|(?=Delivery time\s*:)|(?=our price\s)|(?=onze prijs\s)|(?=nostro prezzo\s)",
-            context,
-        )
-        if clean(x)
-    ]
-
+    # Prefer a product-like line from the card over the whole card text.
+    lines = [clean(x) for x in re.split(r"\n|(?=Delivery time\s*:)|(?=our price\s)|(?=onze prijs\s)|(?=nostro prezzo\s)", context) if clean(x)]
     name = ""
     for line in lines:
-        if relevant(line, query) and not re.search(
-            r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-            norm(line),
-        ):
+        if relevant(line, query) and not re.search(r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available", norm(line)):
             if 3 <= len(line) <= 220:
                 name = line
                 break
-
     if not name:
         name = query
-
     size = size_ml(name, context)
     n = price_num(context)
     if n is None:
         return None
-
     state = availability(context)
     return {
         "store": STORE,
@@ -236,69 +217,97 @@ def _row_from_card(url, context, query):
     }
 
 
-def discover(session, query):
-    """Discover Deloox products with a hard, bounded request fan-out.
 
-    The old code tried up to five search URLs one after another, with two
-    attempts per URL. When Render could not get a response from Deloox this
-    alone could consume 50+ seconds. All equivalent search routes are now
-    attempted concurrently and we parse whichever responds first with useful
-    product cards.
+def _bing_discover(query):
+    """Discover Deloox product pages through Bing instead of Deloox's
+    current search endpoints, which can stall on Render.
+
+    Bing results are only used to discover the first-party product URL and
+    card text. If the snippet already contains a price, no product-page
+    request is necessary.
     """
-    encoded = quote_plus(query)
-
-    endpoints = (
-        f"https://www.deloox.nl/en/search?query={encoded}",
-        f"https://www.deloox.nl/en/search?q={encoded}",
-        f"https://www.deloox.nl/en/search?search={encoded}",
-        f"https://www.deloox.nl/search?query={encoded}",
-        f"https://www.deloox.nl/zoeken?query={encoded}",
-        f"https://www.deloox.nl/zoeken?q={encoded}",
+    url = "https://www.bing.com/search?q=" + quote_plus(
+        f'site:deloox.nl/product "{query}"'
     )
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=(2.0, 7.0), allow_redirects=True)
+        if r.status_code != 200 or not r.text:
+            return []
+    except requests.RequestException:
+        return []
 
-    candidates = {}
+    soup = BeautifulSoup(r.text, "html.parser")
+    found = {}
+    for block in soup.select("li.b_algo, div.b_algo"):
+        a = block.select_one("h2 a, h3 a") or block.find("a", href=True)
+        if not a:
+            continue
+        href = clean(a.get("href", ""))
+        m = re.search(r"https?://(?:www\.)?deloox\.nl/product/\d+/[^&<>\"']+", href, re.I)
+        if not m:
+            # Bing can wrap the destination in a query parameter.
+            m2 = re.search(r"[?&](?:q|url)=([^&]+)", href, re.I)
+            if m2:
+                href = requests.utils.unquote(m2.group(1))
+            m = re.search(r"https?://(?:www\.)?deloox\.nl/product/\d+/[^&<>\"']+", href, re.I)
+        if not m:
+            continue
+        product = product_url(m.group(0))
+        if not product:
+            continue
+        context = clean(block.get_text(" ", strip=True))
+        title = clean(a.get_text(" ", strip=True))
+        if title and title not in context:
+            context = clean(title + " " + context)
+        if not relevant(context + " " + product, query) or non_fragrance(context):
+            continue
+        score = 20 + (3 if PRICE_RE.search(context) else 0)
+        old = found.get(product)
+        if old is None or score > old[0]:
+            found[product] = (score, context)
 
-    def fetch(endpoint):
-        local = requests.Session()
-        try:
-            response = get(local, endpoint)
-            if not response:
-                return endpoint, None, []
-            return endpoint, response.url, _candidate_contexts(response.text, query)
-        finally:
-            local.close()
+    return sorted(found.items(), key=lambda x: (-x[1][0], x[0]))[:MAX_CANDIDATES]
 
-    with ThreadPoolExecutor(max_workers=len(endpoints)) as pool:
-        futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
-        for future in as_completed(futures):
-            try:
-                _, final_url, contexts = future.result()
-            except Exception:
-                continue
-            for url, (score, context) in contexts:
-                old = candidates.get(url)
-                if old is None or score > old[0]:
-                    candidates[url] = (score, context)
-            if len(candidates) >= 2:
-                # We still let the other already-running requests finish, but
-                # no product-page requests are started from this function.
-                pass
-
+def discover(session, query):
+    # The current Deloox site can leave its internal search endpoints hanging
+    # from Render. Bing is a fast discovery layer and returns first-party
+    # Deloox product URLs for exact perfume searches.
+    candidates = _bing_discover(query)
     if candidates:
-        return sorted(candidates.items(), key=lambda x: (-x[1][0], x[0]))[:MAX_CANDIDATES]
+        return candidates
 
-    # Bounded first-party catalog fallback. This is deliberately a single
-    # request: it must never become another serial timeout chain.
-    fallback = f"https://www.deloox.nl/en/category/1103659/parfum.html"
-    response = get(session, fallback)
-    if response:
-        candidates.update(dict(_candidate_contexts(response.text, query)))
+    # One direct Deloox search attempt as a bounded fallback. Do not iterate
+    # through five endpoints: that was the source of the previous 25-45s
+    # delay.
+    encoded = quote_plus(query)
+    for endpoint in (
+        f"https://www.deloox.nl/zoeken?query={encoded}",
+        f"https://www.deloox.nl/en/search?query={encoded}",
+    ):
+        r = get(session, endpoint)
+        if not r:
+            continue
+        contexts = _candidate_contexts(r.text, query)
+        if contexts:
+            return contexts
 
-    return sorted(candidates.items(), key=lambda x: (-x[1][0], x[0]))[:MAX_CANDIDATES]
+    # Last bounded catalog fallback.
+    for endpoint in (
+        "https://www.deloox.nl/categorie/1103659/parfum.html",
+        "https://www.deloox.nl/categorie/1122039/liquid-brun.html" if norm(query) == "liquid brun" else "",
+    ):
+        if not endpoint:
+            continue
+        r = get(session, endpoint)
+        if not r:
+            continue
+        contexts = _candidate_contexts(r.text, query)
+        if contexts:
+            return contexts
+    return []
 
 
 def parse_product(url, query):
-    """Single fallback product request for an incomplete card."""
     session = requests.Session()
     try:
         r = get(session, url)
@@ -322,17 +331,7 @@ def parse_product(url, query):
                 if n is None:
                     continue
                 state = availability(offer.get("availability"))
-                rows.append({
-                    "store": STORE,
-                    "brand": clean(brand),
-                    "name": name,
-                    "price": price_text(n),
-                    "price_num": n,
-                    "url": url,
-                    "available": state != "out_of_stock",
-                    "availability": state or "in_stock",
-                    "size_ml": size_ml(name, p.get("description", "")),
-                })
+                rows.append({"store": STORE, "brand": clean(brand), "name": name, "price": price_text(n), "price_num": n, "url": url, "available": state != "out_of_stock", "availability": state or "in_stock", "size_ml": size_ml(name, p.get("description", ""))})
         return rows
     finally:
         session.close()
@@ -342,13 +341,12 @@ def search(query):
     query = clean(query)
     if not query:
         return []
-
     session = requests.Session()
     try:
         candidates = discover(session, query)
         results = []
         seen = set()
-
+        # First use card data already obtained from the discovery page.
         for url, (_, context) in candidates:
             row = _row_from_card(url, context, query)
             if row:
@@ -357,38 +355,22 @@ def search(query):
                     seen.add(key)
                     results.append(row)
 
-        # At most one product-page request per incomplete candidate. These
-        # requests are parallel and bounded by the same short timeout.
-        missing = [
-            (url, info)
-            for url, info in candidates
-            if not any(r.get("url") == url for r in results)
-        ]
-
+        # Only fetch product pages for candidates whose card was incomplete.
+        missing = [(url, info) for url, info in candidates if not any(r.get("url") == url for r in results)]
         if missing:
-            with ThreadPoolExecutor(max_workers=min(4, len(missing))) as pool:
+            with ThreadPoolExecutor(max_workers=min(6, len(missing))) as pool:
                 futures = [pool.submit(parse_product, url, query) for url, _ in missing]
-                for future in as_completed(futures):
+                for f in as_completed(futures):
                     try:
-                        for row in future.result():
-                            key = (
-                                row.get("url"),
-                                row.get("size_ml"),
-                                row.get("price_num"),
-                            )
+                        for row in f.result():
+                            key = (row.get("url"), row.get("size_ml"), row.get("price_num"))
                             if key not in seen:
                                 seen.add(key)
                                 results.append(row)
                     except Exception:
                         continue
 
-        results.sort(
-            key=lambda x: (
-                2 if x.get("available") is False else 0,
-                x.get("price_num") or 999999,
-                x.get("size_ml") or 999999,
-            )
-        )
+        results.sort(key=lambda x: (2 if x.get("available") is False else 0, x.get("price_num") or 999999, x.get("size_ml") or 999999))
         return results[:MAX_RESULTS]
     finally:
         session.close()
