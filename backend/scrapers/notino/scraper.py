@@ -21,7 +21,7 @@ READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 12
 READER_TIMEOUT = 10
 ENGINE_TIMEOUT = 10
-SCRAPER_VERSION = "notino-fast-browser-2026-09-13-v5"
+SCRAPER_VERSION = "notino-external-discovery-browser-product-2026-09-13-v6"
 
 HEADERS = {
     "User-Agent": (
@@ -372,7 +372,7 @@ def _bing(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], 
                 name = branded
 
         candidate = _make_candidate(href, name, context, query, "bing", price)
-        if candidate and price:
+        if candidate:
             old = found.get(candidate["url"])
             if old is None or candidate["score"] > old["score"]:
                 found[candidate["url"]] = candidate
@@ -420,7 +420,7 @@ def _bing_rss(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             continue
         price = _extract_product_price(desc) or _extract_price(title)
         name = _clean_name(title) or _url_name(href)
-        if price and _fuzzy_match(f"{name} {desc} {_url_name(href)}", query)[0]:
+        if _fuzzy_match(f"{name} {desc} {_url_name(href)}", query)[0]:
             candidate = _make_candidate(href, name, desc, query, "bing-rss", price)
             if candidate:
                 found[href] = candidate
@@ -470,10 +470,9 @@ def _google(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]]
 
         price = _extract_product_price(context) or _extract_price(title)
         name = title if _fuzzy_match(title, query)[0] else _url_name(href)
-        if price:
-            candidate = _make_candidate(href, name, context, query, "google", price)
-            if candidate:
-                found[href] = candidate
+        candidate = _make_candidate(href, name, context, query, "google", price)
+        if candidate:
+            found[href] = candidate
 
     result = sorted(found.values(), key=lambda x: (-x["score"], x["url"]))
     report["candidate_count"] = len(result)
@@ -864,6 +863,149 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     return result, report
 
 
+
+def _browser_fetch_products(candidates: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    """Open externally discovered Notino product URLs with Chromium.
+
+    Render cannot use requests against Notino because Cloudflare returns 403.
+    The search page is also challenged, so external search engines provide the
+    product URLs and Chromium is used only for the product pages themselves.
+    """
+    import time
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return []
+
+    results: List[Dict[str, Any]] = []
+    seen = set()
+
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
+            context = browser.new_context(
+                user_agent=HEADERS["User-Agent"],
+                locale="fr-FR",
+                viewport={"width": 1365, "height": 900},
+            )
+            page = context.new_page()
+
+            def route_handler(route):
+                try:
+                    if route.request.resource_type in {"image", "font", "media"}:
+                        route.abort()
+                    else:
+                        route.continue_()
+                except Exception:
+                    try:
+                        route.continue_()
+                    except Exception:
+                        pass
+
+            page.route("**/*", route_handler)
+
+            for candidate in candidates[:12]:
+                url = candidate.get("url", "")
+                if not url or url in seen:
+                    continue
+                seen.add(url)
+
+                try:
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    status = response.status if response else None
+                    page.wait_for_timeout(700)
+
+                    data = page.evaluate(r"""() => {
+                        const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
+                        const h1 = clean(document.querySelector('h1')?.textContent || '');
+                        const title = clean(document.title || '');
+                        const body = clean(document.body?.textContent || '');
+                        const ld = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+                            .map(x => x.textContent || '').filter(Boolean);
+                        return {h1, title, body, ld};
+                    }""")
+
+                    body = _clean(data.get("body", ""))
+                    if status != 200 or _is_challenge(body):
+                        continue
+
+                    name = _clean_name(data.get("h1", "")) or _clean_name(candidate.get("name", "")) or _url_name(url)
+                    brand = _url_brand(url)
+                    price = ""
+
+                    for raw in data.get("ld", []):
+                        try:
+                            payload = json.loads(raw)
+                        except (TypeError, ValueError):
+                            continue
+                        stack = payload if isinstance(payload, list) else [payload]
+                        while stack:
+                            item = stack.pop()
+                            if isinstance(item, list):
+                                stack.extend(item)
+                                continue
+                            if not isinstance(item, dict):
+                                continue
+                            graph = item.get("@graph")
+                            if isinstance(graph, list):
+                                stack.extend(graph)
+                            types = item.get("@type", [])
+                            types = types if isinstance(types, list) else [types]
+                            if "Product" not in types:
+                                continue
+                            pname = _clean(item.get("name"))
+                            pbrand = item.get("brand")
+                            pbrand = _clean(pbrand.get("name")) if isinstance(pbrand, dict) else _clean(pbrand)
+                            if pname and _fuzzy_match(f"{pbrand} {pname}", query)[0]:
+                                name = pname
+                                brand = pbrand or brand
+                            offer_price, _ = _offer_data(item.get("offers"))
+                            if offer_price:
+                                price = offer_price
+
+                    if not price:
+                        price = _extract_product_price(body) or _extract_price(body) or candidate.get("price_hint", "")
+
+                    if not name or not price:
+                        continue
+                    if not _fuzzy_match(f"{name} {body} {_url_name(url)}", query)[0]:
+                        continue
+                    if _non_perfume_product(name, url, body):
+                        continue
+                    if not _size_valid(body, query):
+                        continue
+
+                    key = url.lower() + "|" + _norm(name)
+                    if key in seen:
+                        continue
+                    results.append({
+                        "store": STORE,
+                        "name": _display_name(name, url, brand),
+                        "price": price,
+                        "url": url,
+                    })
+                    if len(results) >= 10:
+                        break
+                except Exception:
+                    continue
+
+            try:
+                context.close()
+            except Exception:
+                pass
+            try:
+                browser.close()
+            except Exception:
+                pass
+    except Exception:
+        return results
+
+    return results
+
 def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
@@ -947,6 +1089,15 @@ def search(query: str) -> List[Dict[str, Any]]:
                     break
             return results
 
+        # External discovery can provide valid Notino product URLs even when
+        # it cannot expose a price in the search snippet. Open those product
+        # pages with Chromium: requests is known to receive Cloudflare 403.
+        browser_results = _browser_fetch_products(candidates, query)
+        if browser_results:
+            return browser_results
+
+        # Last bounded fallback for candidates where the external engine also
+        # supplied a usable price.
         for candidate in candidates:
             result = _fetch_product(session, candidate, query)
             if not result:
