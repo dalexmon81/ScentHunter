@@ -1479,15 +1479,6 @@ async function openProduct(i){
     return;
   }
 
-  // NESSUN FORMATO DICHIARATO: non perdere mai le offerte/negozi.
-  // Alcuni scraper non comunicano gli ml. In quel caso il prodotto ha
-  // comunque un gruppo di offerte valido e va aperto direttamente mostrando
-  // tutti i negozi, senza creare una scheda "CONFRONTA I FORMATI" vuota.
-  if(sizes.length===0){
-    renderSingleFormatComparison(g,img,g.offers||[],"",saved);
-    return;
-  }
-
   // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
