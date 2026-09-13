@@ -1,1480 +1,400 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib
-import json
-import os
-import re
-import signal
-import subprocess
-import sys
-import threading
-import time
-import traceback
-import unicodedata
-import uuid
+import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
-
-APP_VERSION = '3.3-catalog-strict-query'
+APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
-
 try:
     from debug_easycosmetic import router as debug_easycosmetic_router
     app.include_router(debug_easycosmetic_router)
 except Exception as exc:
     print(f'Easycosmetic debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-
 try:
     from debug_deloox import router as debug_deloox_router
     app.include_router(debug_deloox_router)
 except Exception as exc:
     print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*'],
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
-)
-
-STORES = [
-    'bplatz', 'deloox', 'parfumcity', 'parfumzentrum',
-    'perfumemarket', 'sabina', 'orioudh', 'easycosmetic',
-]
-STORE_LABELS = {
-    'bplatz': 'Bplatz',
-    'deloox': 'Deloox',
-    'parfumcity': 'ParfumCity',
-    'parfumzentrum': 'ParfumZentrum',
-    'perfumemarket': 'PerfumeMarket',
-    'sabina': 'Sabina',
-    'orioudh': 'Orioudh',
-    'easycosmetic': 'Easycosmetic',
-}
+STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
+STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
-PRODUCT_CATALOG_PATH = BASE_DIR / 'product_catalog.json'
 
-LIGHTWEIGHT_STORES = [
-    'bplatz', 'parfumcity', 'parfumzentrum',
-    'perfumemarket', 'orioudh', 'easycosmetic',
-]
+LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic']
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina']
 LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {
-    'bplatz': 60.0,
-    'deloox': 75.0,
-    'parfumcity': 60.0,
-    'parfumzentrum': 60.0,
-    'perfumemarket': 60.0,
-    'sabina': 70.0,
-    'orioudh': 60.0,
-    'easycosmetic': 60.0,
-}
-JOB_TIMEOUT_SECONDS = 180.0
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
+JOB_TIMEOUT_SECONDS = 125.0
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
 BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
 
-
 def _safe_float(value):
     try:
-        if value is None or value == '':
-            return None
+        if value is None or value == '': return None
         return float(value)
-    except (TypeError, ValueError):
-        return None
-
+    except (TypeError, ValueError): return None
 
 def _normalise_store(value, fallback):
     text = str(value or fallback).strip().lower()
-    return {
-        'bplatz.de': 'bplatz',
-        'parfum city': 'parfumcity',
-        'parfum zentrum': 'parfumzentrum',
-        'parfum-zentrum': 'parfumzentrum',
-        'perfume market': 'perfumemarket',
-        'orioudh.com': 'orioudh',
-    }.get(text, text)
-
+    return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
 
 def clean_result(item, store):
     result = dict(item)
-    machine_store = _normalise_store(
-        result.get('store') or result.get('shop'),
-        store,
-    )
+    machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
-
-    if 'available' not in result and 'in_stock' in result:
-        result['available'] = bool(result.get('in_stock'))
-
+    if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
     if result.get('size_ml') in (None, ''):
-        for key in ('volume_ml', 'format_ml', 'size'):
+        for key in ('volume_ml','format_ml','size'):
             value = result.get(key)
             if value not in (None, ''):
                 parsed = _safe_float(value)
                 if parsed is not None:
-                    result['size_ml'] = parsed
-                    break
-
+                    result['size_ml'] = parsed; break
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
-        if parsed is not None:
-            result['price_num'] = parsed
-
+        if parsed is not None: result['price_num'] = parsed
     return result
 
-
 def result_key(item):
-    store = _normalise_store(
-        item.get('store') or item.get('shop'),
-        '',
-    )
-    url = str(
-        item.get('url') or item.get('product_url') or ''
-    ).strip().lower()
-    product_id = str(
-        item.get('store_product_id')
-        or item.get('product_id')
-        or item.get('sku')
-        or ''
-    ).strip().lower()
-    name = ' '.join(
-        str(item.get('name') or item.get('title') or '').split()
-    ).lower()
+    store = _normalise_store(item.get('store') or item.get('shop'), '')
+    url = str(item.get('url') or item.get('product_url') or '').strip().lower()
+    product_id = str(item.get('store_product_id') or item.get('product_id') or item.get('sku') or '').strip().lower()
+    name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    return (
-        store,
-        url or product_id or name,
-        round(size, 3) if size is not None else '',
-    )
-
+    return (store, url or product_id or name, round(size,3) if size is not None else '')
 
 def dedupe_results(results):
-    seen = set()
-    output = []
+    seen=set(); output=[]
     for item in results:
-        key = result_key(item)
-        if key not in seen:
-            seen.add(key)
-            output.append(item)
+        key=result_key(item)
+        if key not in seen: seen.add(key); output.append(item)
     return output
-
 
 def sort_results(results):
     def key(item):
-        available = item.get('available')
-        price = _safe_float(item.get('price_num'))
-        rank = 2 if available is False else 0 if price is not None else 1
+        available=item.get('available'); price=_safe_float(item.get('price_num'))
+        rank=2 if available is False else 0 if price is not None else 1
         return rank, price if price is not None else 999999.0
-
     return sorted(results, key=key)
 
-
-# ============================================================
-# GENERIC CATALOG IDENTITY ENGINE
-# ============================================================
-
-_IDENTITY_SIZE_RE = re.compile(
-    r'\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz|fl\s*oz)\b',
-    re.I,
-)
-_IDENTITY_CONCENTRATION_RE = re.compile(
-    r'\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|'
-    r'eau\s+de\s+cologne|eau\s+fraiche|extrait\s+de\s+parfum|'
-    r'parfum|perfume|edp|edt|edc|extrait)\b',
-    re.I,
-)
-_IDENTITY_GENERIC_WORDS = {
-    'collection', 'fragrance', 'fragrances', 'perfume', 'parfum',
-    'spray', 'vaporisateur', 'for', 'him', 'her', 'men', 'women',
-    'man', 'woman', 'male', 'female', 'homme', 'femme', 'uomo',
-    'donna', 'pour', 'the', 'new', 'edition', 'original',
-}
-
-
-def _identity_norm(value):
-    text = str(value or '').strip().lower()
-    text = unicodedata.normalize('NFKD', text)
-    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
-    text = text.replace('’', "'").replace('`', "'")
-    text = re.sub(r'(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)', ' ', text)
-    text = re.sub(r'[^a-z0-9]+', ' ', text)
-    return re.sub(r'\s+', ' ', text).strip()
-
-
-def _identity_tokens(value, *, strip_size=True, strip_concentration=True):
-    text = _identity_norm(value)
-    if strip_size:
-        text = _IDENTITY_SIZE_RE.sub(' ', text)
-    if strip_concentration:
-        text = _IDENTITY_CONCENTRATION_RE.sub(' ', text)
-    return [token for token in text.split() if token]
-
-
-def _identity_without_brand(value, brand):
-    text = _identity_norm(value)
-    brand_n = _identity_norm(brand)
-    if brand_n:
-        text = re.sub(
-            rf'\b{re.escape(brand_n)}\b',
-            ' ',
-            text,
-        )
-    return re.sub(r'\s+', ' ', text).strip()
-
-
-def _identity_concentration(value):
-    text = _identity_norm(value)
-    if re.search(r'\bextrait(?:\s+de)?\s+parfum\b|\bextrait\b', text):
-        return 'extrait de parfum'
-    if re.search(r'\beau\s+de\s+parfum\b|\bedp\b', text):
-        return 'eau de parfum'
-    if re.search(r'\beau\s+de\s+toilette\b|\bedt\b', text):
-        return 'eau de toilette'
-    if re.search(r'\beau\s+de\s+cologne\b|\bedc\b', text):
-        return 'eau de cologne'
-    if re.search(r'\bparfum\b|\bperfume\b', text):
-        return 'parfum'
-    return ''
-
-
-def _identity_gender(value):
-    text = _identity_norm(value)
-    female = bool(re.search(
-        r'\b(?:for\s+her|for\s+women|women|woman|female|'
-        r'femme|femmes|donna|donne|dames|vrouwen)\b',
-        text,
-    ))
-    male = bool(re.search(
-        r'\b(?:for\s+him|for\s+men|men|man|male|'
-        r'homme|hommes|uomo|uomini|heren|mannen)\b',
-        text,
-    ))
-    if female and not male:
-        return 'Donna'
-    if male and not female:
-        return 'Uomo'
-    if re.search(r'\b(?:unisex|mixte|unisexe)\b', text):
-        return 'Unisex'
-    return ''
-
-
-class CatalogIdentityEngine:
-    """
-    Generic product identity resolver.
-
-    It does not contain perfume/store-specific rules. The only authority is
-    product_catalog.json. A retailer title is mapped to the most specific
-    catalog identity whose canonical name/alias is represented in that title.
-    Bottle size is deliberately excluded from identity, while concentration
-    and explicit gender are used only to disambiguate otherwise equal names.
-    """
-
-    def __init__(self, path):
-        self.records = []
-        self.exact = {}
-        self.by_brand = {}
-        self._load(path)
-
-    def _load(self, path):
-        try:
-            with open(path, 'r', encoding='utf-8') as handle:
-                payload = json.load(handle)
-        except Exception as exc:
-            print(
-                f'CATALOG_IDENTITY_LOAD_ERROR: {type(exc).__name__}: {exc}',
-                flush=True,
-            )
-            return
-
-        products = payload.get('products', []) if isinstance(payload, dict) else []
-        variants = payload.get('variants', []) if isinstance(payload, dict) else []
-        if not isinstance(products, list):
-            products = []
-        if not isinstance(variants, list):
-            variants = []
-
-        merged = {}
-        for product in products:
-            if not isinstance(product, dict):
-                continue
-            product_id = str(product.get('product_id') or product.get('id') or '').strip()
-            if not product_id:
-                continue
-            merged[product_id] = {
-                'product_id': product_id,
-                'brand': str(
-                    product.get('brand_name')
-                    or product.get('brand')
-                    or ''
-                ).strip(),
-                'canonical_name': str(
-                    product.get('canonical_name')
-                    or product.get('name')
-                    or ''
-                ).strip(),
-                'family_name': str(product.get('family_name') or '').strip(),
-                'concentration': str(product.get('concentration') or '').strip(),
-                'gender': str(product.get('gender') or '').strip(),
-                'aliases': [
-                    str(value).strip()
-                    for value in (product.get('aliases') or [])
-                    if str(value).strip()
-                ],
-            }
-
-        for variant in variants:
-            if not isinstance(variant, dict):
-                continue
-            product_id = str(variant.get('product_id') or '').strip()
-            target = merged.get(product_id)
-            if target is None:
-                continue
-            for value in variant.get('aliases') or []:
-                value = str(value).strip()
-                if value and value not in target['aliases']:
-                    target['aliases'].append(value)
-
-        for item in merged.values():
-            if not item['canonical_name'] or not item['brand']:
-                continue
-
-            aliases = list(item['aliases'])
-            aliases.append(item['canonical_name'])
-            alias_data = []
-            for alias in aliases:
-                alias_no_brand = _identity_without_brand(alias, item['brand'])
-                tokens = _identity_tokens(alias_no_brand)
-                if not tokens:
-                    continue
-                alias_n = ' '.join(tokens)
-                alias_data.append((alias_n, tuple(tokens)))
-                self.exact.setdefault(
-                    (self._brand_key(item['brand']), alias_n),
-                    [],
-                ).append(item)
-
-            item['_aliases'] = list(dict.fromkeys(alias_data))
-            item['_brand_key'] = self._brand_key(item['brand'])
-            item['_canonical_tokens'] = tuple(
-                _identity_tokens(
-                    _identity_without_brand(
-                        item['canonical_name'],
-                        item['brand'],
-                    )
-                )
-            )
-            self.records.append(item)
-            self.by_brand.setdefault(item['_brand_key'], []).append(item)
-
-        print(
-            f'CATALOG_IDENTITY_READY records={len(self.records)} aliases={sum(len(x["_aliases"]) for x in self.records)}',
-            flush=True,
-        )
-
-    @staticmethod
-    def _brand_key(value):
-        return _identity_norm(value)
-
-    def _candidate_score(self, item, raw_name, raw_text):
-        brand = item['brand']
-        raw_no_brand = _identity_without_brand(raw_text, brand)
-        raw_tokens = _identity_tokens(raw_no_brand)
-        raw_set = set(raw_tokens)
-        if not raw_set:
-            return None
-
-        raw_concentration = _identity_concentration(raw_name)
-        raw_gender = _identity_gender(raw_name)
-        catalog_concentration = _identity_concentration(item.get('concentration', ''))
-        catalog_gender = _identity_gender(item.get('gender', ''))
-        if not catalog_gender:
-            catalog_gender = _identity_gender(item.get('canonical_name', ''))
-
-        best = None
-        canonical_len = len(item['_canonical_tokens'])
-
-        for alias_n, alias_tokens in item['_aliases']:
-            alias_set = set(alias_tokens)
-            if not alias_set.issubset(raw_set):
-                continue
-
-            exact = alias_n == ' '.join(raw_tokens)
-            canonical_n = ' '.join(item['_canonical_tokens'])
-            canonical_exact = alias_n == canonical_n
-            overlap = len(alias_set)
-            extra = len(raw_set - alias_set)
-
-            score = (
-                100000 if exact else 0,
-                10000 if exact and canonical_exact else 0,
-                overlap * 1000,
-                canonical_len * 100,
-                500 if raw_concentration and catalog_concentration == raw_concentration else 0,
-                250 if raw_gender and catalog_gender == raw_gender else 0,
-                -extra,
-                len(alias_n),
-            )
-            if best is None or score > best:
-                best = score
-
-        return best
-
-    def resolve(self, product):
-        if not isinstance(product, dict) or not self.records:
-            return product
-
-        raw_name = str(
-            product.get('name')
-            or product.get('title')
-            or product.get('product_name')
-            or ''
-        ).strip()
-        if not raw_name:
-            return product
-
-        raw_brand = str(
-            product.get('brand')
-            or product.get('source_brand')
-            or ''
-        ).strip()
-        raw_text = ' '.join(
-            value for value in (
-                raw_name,
-                str(product.get('title') or ''),
-                str(product.get('product_name') or ''),
-            ) if value
-        )
-
-        brand_key = self._brand_key(raw_brand)
-        pool = self.by_brand.get(brand_key) if brand_key else None
-        if not pool:
-            pool = self.records
-
-        raw_no_brand = _identity_without_brand(raw_text, raw_brand)
-        raw_tokens = _identity_tokens(raw_no_brand)
-        if not raw_tokens:
-            return product
-        raw_alias_n = ' '.join(raw_tokens)
-
-        exact_candidates = []
-        if brand_key:
-            exact_candidates.extend(
-                self.exact.get((brand_key, raw_alias_n), [])
-            )
-        if not exact_candidates:
-            for item in pool:
-                for alias_n, _ in item['_aliases']:
-                    if alias_n == raw_alias_n:
-                        exact_candidates.append(item)
-                        break
-
-        candidates = exact_candidates or pool
-        best_item = None
-        best_score = None
-        for item in candidates:
-            score = self._candidate_score(item, raw_name, raw_text)
-            if score is None:
-                continue
-            if best_score is None or score > best_score:
-                best_item = item
-                best_score = score
-
-        if best_item is None:
-            return product
-
-        result = dict(product)
-        result['source_name'] = raw_name
-        result['source_brand'] = raw_brand or best_item['brand']
-        result['brand'] = best_item['brand']
-        result['canonical_brand'] = best_item['brand']
-        result['canonical_name'] = best_item['canonical_name']
-        result['catalog_variant'] = best_item['canonical_name']
-        result['catalog_product_id'] = best_item['product_id']
-        result['family_name'] = best_item.get('family_name') or best_item['canonical_name']
-        if best_item.get('concentration'):
-            result['canonical_concentration'] = best_item['concentration']
-            if not result.get('concentration'):
-                result['concentration'] = best_item['concentration']
-        if best_item.get('gender'):
-            result['canonical_gender'] = best_item['gender']
-            if not result.get('gender'):
-                result['gender'] = best_item['gender']
-        result['identity_match'] = 'catalog_alias'
-        result['name'] = best_item['canonical_name']
-        result['title'] = best_item['canonical_name']
-        return result
-
-    def key(self, product):
-        canonical_id = str(product.get('catalog_product_id') or '').strip()
-        if canonical_id:
-            # The catalog can contain historical duplicate rows for the same
-            # canonical perfume. Name/concentration/gender makes the identity
-            # stable across those rows and across catalog migrations.
-            brand = _identity_norm(
-                product.get('canonical_brand')
-                or product.get('brand')
-                or ''
-            )
-            name = _identity_norm(
-                product.get('canonical_name')
-                or product.get('name')
-                or ''
-            )
-            concentration = _identity_norm(
-                product.get('canonical_concentration')
-                or product.get('concentration')
-                or ''
-            )
-            gender = _identity_norm(
-                product.get('canonical_gender')
-                or product.get('gender')
-                or ''
-            )
-            return ('catalog', brand, name, concentration, gender)
-
-        return None
-
-
-CATALOG_IDENTITY = CatalogIdentityEngine(PRODUCT_CATALOG_PATH)
-
-
-def _identity_resolve(product):
-    try:
-        return CATALOG_IDENTITY.resolve(product)
-    except Exception as exc:
-        print(
-            f'CATALOG_IDENTITY_RUNTIME_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return product
-
-
-def _identity_key(product):
-    key = CATALOG_IDENTITY.key(product)
-    if key is not None:
-        return key
-
-    store = _normalise_store(
-        product.get('store') or product.get('shop'),
-        '',
-    )
-    url = str(
-        product.get('url') or product.get('product_url') or ''
-    ).strip().lower()
-    return (
-        'raw',
-        store,
-        url,
-        _identity_norm(
-            product.get('name')
-            or product.get('title')
-            or product.get('product_name')
-            or ''
-        ),
-    )
-
-
-def _offer_image(item):
-    source = item.get('source')
-    source_image = source.get('image') if isinstance(source, dict) else ''
-    return str(
-        item.get('image')
-        or item.get('image_url')
-        or item.get('thumbnail')
-        or source_image
-        or ''
-    ).strip()
-
-
-def _offer_url(item):
-    source = item.get('source')
-    source_url = source.get('url') if isinstance(source, dict) else ''
-    return str(
-        item.get('url')
-        or item.get('product_url')
-        or source_url
-        or ''
-    ).strip()
-
-
-def _offer_rank(item):
-    """Order retailer offers without throwing away links, prices or images."""
-    available = item.get('available') is not False
-    price = _safe_float(item.get('price_num'))
-    return (
-        0 if available else 1,
-        0 if price is not None else 1,
-        price if price is not None else 999999.0,
-        0 if _offer_url(item) else 1,
-        0 if _offer_image(item) else 1,
-        str(item.get('store', '')).lower(),
-    )
-
-
-def _strict_query_tokens(value, brand=''):
-    text = _identity_without_brand(value, brand)
-    tokens = _identity_tokens(text)
-    output = []
-    for token in tokens:
-        if token in _QUERY_GENERIC_WORDS:
-            continue
-        # Retailers sometimes repeat a model number around collection words
-        # (e.g. "9 Collection 9 PM"). Treat consecutive repeated tokens as
-        # presentation noise, never as a new perfume variant.
-        if output and token == output[-1]:
-            continue
-        output.append(token)
-    return tuple(output)
-
-
-def _catalog_strict_query_accepts(product, query):
-    """Keep only the actual product requested by the user.
-
-    Retailer search engines commonly return sibling variants for short terms
-    (for example a search for a base line can also return Intense, Elixir,
-    Flame, Pour Femme, etc.).  We intentionally do not expand the query and
-    we require the normalized product-name identity to equal the normalized
-    query identity.  Concentration, bottle size and retailer boilerplate are
-    ignored; genuine variant words remain significant.
-    """
-    query_tokens = _strict_query_tokens(query)
-    if not query_tokens:
-        return True
-
-    raw_name = str(
-        product.get('name')
-        or product.get('title')
-        or product.get('product_name')
-        or ''
-    ).strip()
-    if not raw_name:
-        return True
-
-    raw_brand = str(
-        product.get('brand')
-        or product.get('source_brand')
-        or ''
-    ).strip()
-
-    # If the scraper did not expose a brand, use the catalog resolver only to
-    # recover the brand for token normalization.  The actual acceptance test
-    # still uses the retailer's raw product name.
-    if not raw_brand:
-        try:
-            resolved = _identity_resolve(product)
-            raw_brand = str(resolved.get('canonical_brand') or '').strip()
-        except Exception:
-            raw_brand = ''
-
-    name_tokens = _strict_query_tokens(raw_name, raw_brand)
-    if not name_tokens:
-        return False
-
-    return name_tokens == query_tokens
-
-
-def collapse_identity_results(results):
-    """Resolve every raw retailer row to the canonical catalog identity.
-
-    Important: this function deliberately does NOT collapse different stores
-    into one API row. The frontend is the presentation/grouping layer and
-    needs every retailer offer to compare prices and links. The backend's job
-    here is canonical identity, normalization and offer deduplication.
-    """
-    resolved = []
-    seen = set()
-    for raw in results:
-        if not isinstance(raw, dict):
-            continue
-        item = _identity_resolve(
-            clean_result(raw, raw.get('store') or raw.get('shop') or '')
-        )
-        key = result_key(item)
-        if key in seen:
-            continue
-        seen.add(key)
-
-        image = _offer_image(item)
-        if image:
-            item['image'] = image
-        url = _offer_url(item)
-        if url and not item.get('url'):
-            item['url'] = url
-
-        # Keep canonical identity fields explicit so the frontend can group
-        # all stores under one product without knowing anything about the
-        # catalog itself.
-        if item.get('canonical_name'):
-            item['name'] = item['canonical_name']
-        if item.get('canonical_brand'):
-            item['brand'] = item['canonical_brand']
-
-        resolved.append(item)
-
-    return sorted(resolved, key=_offer_rank)
-
-
-# ============================================================
-# CATALOG-DRIVEN SEARCH PLAN
-# ============================================================
-
-_QUERY_GENERIC_WORDS = {
-    'collection', 'fragrance', 'fragrances', 'perfume', 'parfum',
-    'spray', 'vaporisateur', 'the', 'new', 'edition', 'original',
-    'eau', 'de', 'edp', 'edt', 'edc', 'extrait', 'intense',
-}
-
-
-def _catalog_query_tokens(value):
-    tokens = _identity_tokens(value)
-    return [token for token in tokens if token not in _QUERY_GENERIC_WORDS]
-
-
-def _catalog_search_targets(query, limit=6):
-    """Find canonical catalog variants belonging to a family-like query."""
-    query_tokens = _catalog_query_tokens(query)
-    if not query_tokens:
-        return []
-    query_set = set(query_tokens)
-    candidates = {}
-
-    for record in CATALOG_IDENTITY.records:
-        canonical = str(record.get('canonical_name') or '').strip()
-        brand = str(record.get('brand') or '').strip()
-        if not canonical or not brand:
-            continue
-        aliases = list(record.get('aliases') or []) + [canonical]
-        best_score = None
-        for alias in aliases:
-            text = _identity_without_brand(alias, brand)
-            alias_tokens = _catalog_query_tokens(text)
-            alias_set = set(alias_tokens)
-            if not query_set.issubset(alias_set):
-                continue
-            exact = ' '.join(alias_tokens) == ' '.join(query_tokens)
-            score = (
-                10000 if exact else 0,
-                len(query_set) * 1000,
-                len(alias_set),
-                len(canonical),
-            )
-            if best_score is None or score > best_score:
-                best_score = score
-        if best_score is None:
-            full_tokens = set(_catalog_query_tokens(f'{brand} {canonical}'))
-            if not query_set.issubset(full_tokens):
-                continue
-            best_score = (5000, len(query_set) * 1000, len(full_tokens), len(canonical))
-
-        identity = (
-            _identity_norm(brand),
-            _identity_norm(canonical),
-        )
-        previous = candidates.get(identity)
-        term = f'{brand} {canonical}'.strip()
-        if previous is None or best_score > previous[0]:
-            candidates[identity] = (best_score, term)
-
-    ranked = sorted(
-        candidates.values(),
-        key=lambda value: (-value[0][0], -value[0][1], -value[0][2], value[1].lower()),
-    )
-    if len(ranked) > 12:
-        return []
-    return [value[1] for value in ranked[:max(1, int(limit))]]
-
-
-# ============================================================
-# STORE EXECUTION
-# ============================================================
-
 def _empty_report(store, status='error', elapsed=0.0, error=None):
-    return {
-        'store': store,
-        'status': status,
-        'elapsed': round(elapsed, 3),
-        'count': 0,
-        'results': [],
-        'error': error,
-    }
+    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error}
 
+def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
-def load_scraper(store):
-    return importlib.import_module(f'scrapers.{store}.scraper')
-
-
-def run_store(store, query, on_result=None):
-    started = time.monotonic()
+def run_store(store, query):
+    started=time.monotonic()
     try:
-        module = load_scraper(store)
-        search = getattr(module, 'search', None)
-        stream = getattr(module, 'search_stream', None)
-        if not callable(search) and not callable(stream):
-            raise RuntimeError(f'scraper {store} non espone search(query)')
-
-        raw_query = str(query or '').strip()
-
-        def collect(term):
-            rows = []
-
-            def push(row):
-                if not isinstance(row, dict):
-                    return
-
-                # Never stream raw retailer rows directly to the frontend.
-                # A retailer can return sibling variants for a short query
-                # (e.g. 9 PM -> 9 PM Elixir/Rebel). The same canonical
-                # query gate used for the final report must be applied before
-                # a progressive result is emitted. clean_result also restores
-                # the normalized store label before the frontend sees it.
-                cleaned_row = clean_result(row, store)
-                if not _catalog_strict_query_accepts(cleaned_row, raw_query):
-                    return
-
-                rows.append(cleaned_row)
-                if callable(on_result):
-                    on_result(cleaned_row)
-
-            if callable(stream):
-                returned = stream(term, push)
-                if returned is not None:
-                    try:
-                        for row in returned:
-                            push(row)
-                    except TypeError:
-                        pass
-                return rows
-
-            raw = search(term)
-            if raw is None:
-                return rows
-            if isinstance(raw, list):
-                for row in raw:
-                    push(row)
-                return rows
-            try:
-                for row in raw:
-                    push(row)
-            except TypeError:
-                pass
-            return rows
-
-        # IMPORTANT: the user's query is authoritative.
-        # Do not expand a family/line query into sibling catalog variants.
-        # The catalog is used only to normalize retailer aliases to the same
-        # canonical perfume identity.  Thus:
-        #   "9 pm" -> 9 PM only
-        #   "9 pm elixir" -> 9 PM Elixir only
-        #   "eros" -> Eros only
-        # while retailer aliases such as "9 Collection 9 Pm" still collapse
-        # into the canonical 9 PM card.
-        accumulated = collect(raw_query)
-
-        # Retailer engines frequently return sibling variants for short
-        # queries. The catalog identity is therefore also used as the final
-        # query gate: aliases of the requested perfume are accepted, sibling
-        # variants are not.
-        accumulated = [
-            row for row in accumulated
-            if isinstance(row, dict)
-            and _catalog_strict_query_accepts(
-                clean_result(row, store),
-                raw_query,
-            )
-        ]
-
-        if store == 'parfumzentrum' and not accumulated:
-            time.sleep(.25)
-            accumulated.extend(collect(raw_query))
-            accumulated = [
-                row for row in accumulated
-                if isinstance(row, dict)
-                and _catalog_strict_query_accepts(
-                    clean_result(row, store),
-                    raw_query,
-                )
-            ]
-
-        cleaned = [clean_result(x, store) for x in accumulated if isinstance(x, dict)]
-        return {
-            'store': store,
-            'status': 'ok' if cleaned else 'empty',
-            'elapsed': round(time.monotonic() - started, 3),
-            'count': len(cleaned),
-            'results': cleaned,
-            'error': None,
-        }
+        search=getattr(load_scraper(store),'search',None)
+        if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
+        raw=search(query)
+        if store=='parfumzentrum' and not raw:
+            time.sleep(.25); raw=search(query)
+        rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
+        cleaned=[clean_result(x,store) for x in rows if isinstance(x,dict)]
+        return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
+        err = str(exc)
+        status = 'error'
+        code = 'runtime_error'
         return {
             'store': store,
-            'status': 'error',
-            'error': str(exc),
-            'error_code': 'runtime_error',
+            'status': status,
+            'error': err,
+            'error_code': code,
             'elapsed_ms': int((time.monotonic() - started) * 1000),
             'results': [],
         }
 
-
 WORKER_CODE = r'''
-import json, sys
-
-store = sys.argv[1]
-query = sys.argv[2]
-
+import importlib, json, sys
+store=sys.argv[1]; query=sys.argv[2]
 def emit(event, **payload):
-    print(json.dumps({'event': event, **payload}, ensure_ascii=False, default=str), flush=True)
-
+    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
 try:
-    import main as scent_main
-
-    # IMPORTANT: never stream the raw scraper rows. run_store() performs the
-    # authoritative query filter first (including the strict catalog gate)
-    # and clean_result() also guarantees the store field. Streaming the
-    # on_result callback here used to bypass that filtering and caused:
-    #   - "9 pm" to leak Elixir/Rebel/Night Out sibling variants;
-    #   - rows to reach the frontend before their store/identity was final;
-    #   - incomplete product cards such as Liquid Brun without a retailer.
-    report = scent_main.run_store(store, query)
-
-    for row in report.get('results') or []:
-        if isinstance(row, dict):
-            emit('result', row=row)
-
-    if report.get('error'):
-        emit('error', error=str(report.get('error')))
-    emit('done', count=report.get('count', 0), streaming=False)
+    module=importlib.import_module(f'scrapers.{store}.scraper')
+    stream=getattr(module,'search_stream',None)
+    if callable(stream):
+        rows=[]
+        def on_result(row):
+            if isinstance(row,dict):
+                rows.append(row); emit('result',row=row)
+        returned=stream(query,on_result)
+        if returned is not None:
+            try:
+                for row in returned:
+                    if isinstance(row,dict): emit('result',row=row); rows.append(row)
+            except TypeError: pass
+        emit('done',count=len(rows),streaming=True)
+    else:
+        search=getattr(module,'search',None)
+        if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
+        raw=search(query)
+        if raw is None: rows=[]
+        elif isinstance(raw,list): rows=raw
+        elif isinstance(raw,tuple): rows=list(raw)
+        else:
+            try: rows=list(raw)
+            except TypeError: rows=[]
+        for row in rows:
+            if isinstance(row,dict): emit('result',row=row)
+        emit('done',count=len(rows),streaming=False)
 except BaseException as exc:
-    emit('error', error=f'{type(exc).__name__}: {exc}')
+    emit('error',error=f'{type(exc).__name__}: {exc}')
     raise SystemExit(1)
 '''
 
-
-
 def _kill_process_tree(process):
     try:
-        if process.poll() is not None:
-            return
-        if os.name != 'nt':
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
+        if process.poll() is not None: return
+        if os.name != 'nt': os.killpg(process.pid, signal.SIGKILL)
+        else: process.kill()
     except Exception:
-        try:
-            process.kill()
-        except Exception:
-            pass
-
+        try: process.kill()
+        except Exception: pass
 
 def _run_store_subprocess(store, query, on_result=None):
-    started = time.monotonic()
-    timeout = STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS)
-    env = os.environ.copy()
-    current = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = str(BASE_DIR) + (
-        os.pathsep + current if current else ''
-    )
-    process = None
-    rows = []
-    worker_error = None
-
+    started=time.monotonic(); timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+    env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
+    process=None; rows=[]; worker_error=None
     try:
-        process = subprocess.Popen(
-            [sys.executable, '-u', '-c', WORKER_CODE, store, query],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
-            bufsize=1,
-            start_new_session=(os.name != 'nt'),
-        )
-        deadline = time.monotonic() + timeout
+        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',bufsize=1,start_new_session=(os.name!='nt'))
+        deadline=time.monotonic()+timeout
         while True:
-            if time.monotonic() >= deadline:
-                raise subprocess.TimeoutExpired(process.args, timeout)
-            line = (
-                process.stdout.readline()
-                if process.stdout is not None
-                else ''
-            )
+            if time.monotonic() >= deadline: raise subprocess.TimeoutExpired(process.args,timeout)
+            line=process.stdout.readline() if process.stdout is not None else ''
             if not line:
-                if process.poll() is not None:
-                    break
-                time.sleep(0.01)
-                continue
-
-            try:
-                event = json.loads(line.strip())
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(event, dict):
-                continue
-
-            kind = event.get('event')
-            if kind == 'result' and isinstance(event.get('row'), dict):
-                row = clean_result(event['row'], store)
-                rows.append(row)
-                if callable(on_result):
-                    on_result(row)
-            elif kind == 'error':
-                worker_error = str(
-                    event.get('error') or 'worker_error'
-                )
-
-        rc = process.wait(timeout=1)
-        elapsed = round(time.monotonic() - started, 3)
-        if rc != 0 or worker_error:
-            return {
-                'store': store,
-                'status': 'error',
-                'elapsed': elapsed,
-                'count': len(rows),
-                'results': rows,
-                'error': worker_error or f'worker_exit_{rc}',
-            }
-        return {
-            'store': store,
-            'status': 'ok' if rows else 'empty',
-            'elapsed': elapsed,
-            'count': len(rows),
-            'results': rows,
-            'error': None,
-        }
+                if process.poll() is not None: break
+                time.sleep(0.01); continue
+            try: event=json.loads(line.strip())
+            except json.JSONDecodeError: continue
+            if not isinstance(event,dict): continue
+            kind=event.get('event')
+            if kind=='result' and isinstance(event.get('row'),dict):
+                row=clean_result(event['row'],store); rows.append(row)
+                if callable(on_result): on_result(row)
+            elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
+        rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
+        if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
+        return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
     except subprocess.TimeoutExpired:
         if process is not None:
             _kill_process_tree(process)
-            try:
-                process.communicate(timeout=2)
-            except Exception:
-                pass
-        return _empty_report(
-            store,
-            elapsed=round(time.monotonic() - started, 3),
-            error=f'store_timeout_{timeout:.0f}s',
-        )
+            try: process.communicate(timeout=2)
+            except Exception: pass
+        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s')
     except Exception as exc:
         if process is not None:
             _kill_process_tree(process)
-            try:
-                process.communicate(timeout=1)
-            except Exception:
-                pass
-        return _empty_report(
-            store,
-            elapsed=round(time.monotonic() - started, 3),
-            error=f'{type(exc).__name__}: {exc}',
-        )
+            try: process.communicate(timeout=1)
+            except Exception: pass
+        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
 
-
-def _run_controlled_store(store, query, on_report, on_result=None):
-    print(
-        f'STORE START store={store} query={query!r}',
-        flush=True,
-    )
-    semaphore = LIGHT_SEMAPHORE
-    lane = 'light'
-    if store in BROWSER_STORES:
-        semaphore = BROWSER_SEMAPHORE
-        lane = 'browser'
-    elif store in NETWORK_HEAVY_STORES:
-        semaphore = NETWORK_SEMAPHORE
-        lane = 'network'
-
-    wait = time.monotonic()
+def _run_controlled_store(store,query,on_report,on_result=None):
+    print(f'STORE START store={store} query={query!r}',flush=True)
+    semaphore=LIGHT_SEMAPHORE; lane='light'
+    if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
+    elif store in NETWORK_HEAVY_STORES: semaphore=NETWORK_SEMAPHORE; lane='network'
+    wait=time.monotonic()
     if semaphore is not None:
         if not semaphore.acquire(timeout=JOB_TIMEOUT_SECONDS):
-            report = _empty_report(
-                store,
-                error=f'{lane}_lane_unavailable',
-            )
-            on_report(report)
-            return
-        waited = round(time.monotonic() - wait, 3)
-        if waited > .1:
-            print(
-                f'STORE QUEUED store={store} lane={lane} waited={waited}',
-                flush=True,
-            )
-
-    try:
-        report = _run_store_subprocess(
-            store,
-            query,
-            on_result=on_result,
-        )
+            report=_empty_report(store,error=f'{lane}_lane_unavailable')
+            print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
+        waited=round(time.monotonic()-wait,3)
+        if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
+    try: report=_run_store_subprocess(store,query,on_result=on_result)
     finally:
-        if semaphore is not None:
-            semaphore.release()
-
-    if report.get('status') == 'error':
-        print(
-            f"STORE ERROR store={store} error={report.get('error')}",
-            flush=True,
-        )
-    print(
-        f"STORE END store={store} status={report.get('status')} "
-        f"elapsed={report.get('elapsed')} count={report.get('count')}",
-        flush=True,
-    )
+        if semaphore is not None: semaphore.release()
+    if report.get('status')=='error':
+        if str(report.get('error','')).startswith('store_timeout_'): print(f"STORE TIMEOUT store={store} timeout={report['error']}",flush=True)
+        else: print(f"STORE ERROR store={store} error={report.get('error')}",flush=True)
+    print(f"STORE END store={store} status={report.get('status')} elapsed={report.get('elapsed')} count={report.get('count')}",flush=True)
     on_report(report)
 
-
-def collect_store_reports_isolated(
-    query,
-    stores,
-    on_report=None,
-    on_result=None,
-):
-    requested = list(stores)
-    reports = {}
-    lock = threading.Lock()
-    threads = []
-
+def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
+    requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
     def publish(report):
-        with lock:
-            reports[report['store']] = report
-        if callable(on_report):
-            on_report(report)
-
+        with lock: reports[report['store']]=report
+        if callable(on_report): on_report(report)
     for store in requested:
-        thread = threading.Thread(
-            target=_run_controlled_store,
-            args=(store, query, publish, on_result),
-            daemon=True,
-            name=f'scenthunter-store-{store}',
-        )
-        thread.start()
-        threads.append(thread)
-
-    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
-    for thread in threads:
-        thread.join(
-            timeout=max(0.0, deadline - time.monotonic())
-        )
-
-    unfinished = [
-        thread.name.rsplit('scenthunter-store-', 1)[-1]
-        for thread in threads
-        if thread.is_alive()
-    ]
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result),daemon=True,name=f'scenthunter-store-{store}')
+        t.start(); threads.append(t)
+    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
+    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
+    unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
-        print(
-            f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',
-            flush=True,
-        )
+        print(f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',flush=True)
         with lock:
-            for store in unfinished:
-                reports.setdefault(
-                    store,
-                    _empty_report(
-                        store,
-                        elapsed=JOB_TIMEOUT_SECONDS,
-                        error='job_timeout',
-                    ),
-                )
+            for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
+    return [reports[s] for s in requested if s in reports]
 
-    return [
-        reports[store]
-        for store in requested
-        if store in reports
-    ]
-
-
-# ============================================================
-# SEARCH JOBS / STREAMING
-# ============================================================
-
-JOBS = {}
-JOBS_LOCK = threading.Lock()
-
+JOBS={}; JOBS_LOCK=threading.Lock()
 
 def _new_job(query):
-    job_id = uuid.uuid4().hex
-    with JOBS_LOCK:
-        JOBS[job_id] = {
-            'job_id': job_id,
-            'query': query,
-            'started_at': time.time(),
-            'completed': False,
-            'results': [],
-            'comparisons': [],
-            'errors': {},
-            'stores': {},
-        }
+    job_id=uuid.uuid4().hex
+    with JOBS_LOCK: JOBS[job_id]={'job_id':job_id,'query':query,'started_at':time.time(),'completed':False,'results':[],'comparisons':[],'errors':{},'stores':{}}
     return job_id
-
 
 def _snapshot(job_id):
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job:
-            return {
-                'job_id': job_id,
-                'query': '',
-                'completed': True,
-                'status': 'completed',
-                'count': 0,
-                'results': [],
-                'comparisons': [],
-                'errors': {'job': 'job_not_found'},
-                'stores': {},
-            }
+        job=JOBS.get(job_id)
+        if not job: return {'job_id':job_id,'query':'','completed':True,'status':'completed','count':0,'results':[],'comparisons':[],'errors':{'job':'job_not_found'},'stores':{}}
+        return {'job_id':job['job_id'],'query':job['query'],'completed':job['completed'],'status':'completed' if job['completed'] else 'searching','count':len(job['results']),'results':list(job['results']),'comparisons':list(job['comparisons']),'errors':dict(job['errors']),'stores':dict(job['stores'])}
 
-        # Rebuild identities at read time as a final safety net. This also
-        # guarantees that a progressive stream cannot leave duplicate cards
-        # after late retailer results arrive.
-        results = collapse_identity_results(
-            list(job['results'])
-        )
-        job['results'] = results
-        return {
-            'job_id': job['job_id'],
-            'query': job['query'],
-            'completed': job['completed'],
-            'status': 'completed' if job['completed'] else 'searching',
-            'count': len(results),
-            'results': list(results),
-            'comparisons': list(job['comparisons']),
-            'errors': dict(job['errors']),
-            'stores': dict(job['stores']),
-        }
-
-
-def _publish_result(job_id, row):
+def _publish_result(job_id,row):
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job or job.get('completed'):
-            return
+        job=JOBS.get(job_id)
+        if not job or job.get('completed'): return
+        clean=clean_result(row,row.get('store') or row.get('shop') or '')
+        job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
+    print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
-        clean = clean_result(
-            row,
-            row.get('store') or row.get('shop') or '',
-        )
-        clean = _identity_resolve(clean)
-        job['results'].append(clean)
-        job['results'] = collapse_identity_results(job['results'])
-        total = len(job['results'])
-
-    print(
-        f"SEARCH PUBLISH RESULT job={job_id} "
-        f"store={clean.get('store')} total={total}",
-        flush=True,
-    )
-
-
-def _publish_store(job_id, report):
+def _publish_store(job_id,report):
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job or job.get('completed'):
-            return
+        job=JOBS.get(job_id)
+        if not job or job.get('completed'): return
+        store=report['store']; job['stores'][store]={'status':report['status'],'elapsed':report['elapsed'],'count':report['count']}
+        if report.get('error'): job['errors'][store]=report['error']
+        if report.get('results'): job['results'].extend(report['results'])
+        job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
+    print(f"SEARCH PUBLISH job={job_id} store={store} count={report.get('count')} total={total}",flush=True)
 
-        store = report['store']
-        job['stores'][store] = {
-            'status': report.get('status'),
-            'elapsed': report.get('elapsed'),
-            'count': report.get('count', 0),
-        }
-        if report.get('error'):
-            job['errors'][store] = report['error']
+def _collect_streaming_for_job(job_id,query,stores):
+    reports={}; lock=threading.Lock(); threads=[]
+    def publish(report):
+        with lock: reports[report['store']]=report
+        _publish_store(job_id,report)
+    def publish_row(row): _publish_result(job_id,row)
+    for store in stores:
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,publish_row),daemon=True,name=f'scenthunter-store-{store}')
+        t.start(); threads.append(t)
+    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
+    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
+    return [reports[s] for s in stores if s in reports]
 
-        # Streaming rows have already been published through on_result. Do
-        # not append them again here; otherwise the same offer would count
-        # twice when the store completion event arrives.
-        job['results'] = collapse_identity_results(job['results'])
-        total = len(job['results'])
-
-    print(
-        f"SEARCH PUBLISH job={job_id} store={store} "
-        f"count={report.get('count')} total={total}",
-        flush=True,
-    )
-
-
-def _run_job(job_id, query):
-    started = time.monotonic()
-    print(
-        f'SEARCH START job={job_id} query={query!r}',
-        flush=True,
-    )
-
-    collect_store_reports_isolated(
-        query,
-        STORES,
-        on_report=lambda report: _publish_store(job_id, report),
-        on_result=lambda row: _publish_result(job_id, row),
-    )
-
+def _run_job(job_id,query):
+    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
+    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
+        job=JOBS.get(job_id)
         if job:
-            job['results'] = collapse_identity_results(job['results'])
-            job['completed'] = True
-            job['elapsed'] = round(
-                time.monotonic() - started,
-                3,
-            )
-            elapsed = job['elapsed']
-            total = len(job['results'])
-        else:
-            elapsed = round(
-                time.monotonic() - started,
-                3,
-            )
-            total = 0
+            job['results']=sort_results(dedupe_results(job['results'])); job['completed']=True; job['elapsed']=round(time.monotonic()-started,3); elapsed=job['elapsed']; total=len(job['results'])
+        else: elapsed=round(time.monotonic()-started,3); total=0
+    print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
 
-    print(
-        f'SEARCH END job={job_id} elapsed={elapsed} total={total}',
-        flush=True,
-    )
-
-
-# ============================================================
-# HTTP API
-# ============================================================
-
-@app.get('/', include_in_schema=False)
+@app.get('/',include_in_schema=False)
 def root():
-    if not FRONTEND_INDEX.exists():
-        raise HTTPException(
-            status_code=500,
-            detail='frontend/index.html non trovato',
-        )
-    return FileResponse(FRONTEND_INDEX)
-
+    if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
+    return {'app':'ScentHunter','status':'running','architecture':APP_VERSION,'error':'frontend/index.html not found'}
 
 @app.get('/health')
 def health():
-    return {
-        'status': 'healthy',
-        'architecture': APP_VERSION,
-        'stores': STORES,
-        'lightweight_stores': LIGHTWEIGHT_STORES,
-        'network_heavy_stores': NETWORK_HEAVY_STORES,
-        'browser_stores': BROWSER_STORES,
-        'light_workers': LIGHT_WORKERS,
-        'network_workers': NETWORK_WORKERS,
-        'browser_workers': BROWSER_WORKERS,
-        'store_timeouts': STORE_TIMEOUTS,
-        'job_timeout': JOB_TIMEOUT_SECONDS,
-        'catalog_identity_records': len(CATALOG_IDENTITY.records),
-        'catalog_search_expansion': True,
-    }
-
+    return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
 @app.get('/search-start')
-def search_start(q: str):
-    query = str(q or '').strip()
-    if not query:
-        return {
-            'job_id': '',
-            'query': '',
-            'completed': True,
-            'status': 'completed',
-            'count': 0,
-            'results': [],
-            'comparisons': [],
-            'errors': {},
-            'stores': {},
-        }
-
-    job_id = _new_job(query)
-    thread = threading.Thread(
-        target=_run_job,
-        args=(job_id, query),
-        daemon=True,
-        name=f'scenthunter-job-{job_id}',
-    )
-    thread.start()
-
-    return {
-        'job_id': job_id,
-        'query': query,
-        'completed': False,
-        'status': 'searching',
-        'count': 0,
-        'results': [],
-        'comparisons': [],
-        'errors': {},
-        'stores': {},
-    }
-
+def search_start(q:str):
+    query=str(q or '').strip()
+    if not query: return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'comparisons':[],'errors':{},'stores':{}}
+    job_id=_new_job(query)
+    threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start()
+    return _snapshot(job_id)
 
 @app.get('/search-status/{job_id}')
-def search_status_path(job_id: str):
-    return _snapshot(job_id)
-
-
+def search_status_path(job_id:str): return _snapshot(job_id)
 @app.get('/search-status')
-def search_status_query(job_id: str):
-    return _snapshot(job_id)
-
+def search_status_query(job_id:str): return _snapshot(job_id)
 
 @app.get('/search')
-def search_perfume(q: str):
-    query = str(q or '').strip()
-    if not query:
-        return {
-            'query': '',
-            'count': 0,
-            'results': [],
-            'comparisons': [],
-            'errors': {},
-            'stores': {},
-        }
-
-    job_id = _new_job(query)
-    _run_job(job_id, query)
-    return _snapshot(job_id)
-
+def search_perfume(q:str):
+    query=str(q or '').strip()
+    if not query: return {'query':'','count':0,'results':[],'errors':{},'stores':{}}
+    reports=collect_store_reports_isolated(query,STORES); all_results=[]
+    for report in reports: all_results.extend(report['results'])
+    results=sort_results(dedupe_results(all_results))
+    return {'query':query,'count':len(results),'results':results,'errors':{r['store']:r['error'] for r in reports if r.get('error')},'stores':{r['store']:{'status':r['status'],'count':r['count'],'elapsed':r['elapsed']} for r in reports}}
 
 @app.get('/test-store')
-def test_store(store: str, q: str):
-    store = str(store or '').strip().lower()
-    query = str(q or '').strip()
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                'Store non valido. Disponibili: '
-                + ', '.join(STORES)
-            ),
-        )
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail='Parametro q mancante',
-        )
+def test_store(store:str,q:str):
+    store=str(store or '').strip().lower(); query=str(q or '').strip()
+    if store not in STORES: return {'ok':False,'store':store,'query':query,'error':'unknown_store','stores':STORES}
+    report=run_store(store,query); return {'ok':report['status']!='error','store':store,'query':query,**report}
 
+@app.get('/diagnose-stores')
+def diagnose_stores(q:str='Liquid Brun'):
+    query=str(q or '').strip()
+    if not query: return {'ok':False,'query':'','stores':[],'total_count':0,'architecture':APP_VERSION}
+    reports=collect_store_reports_isolated(query,STORES); by_store={r['store']:r for r in reports}; ordered=[by_store[s] for s in STORES if s in by_store]
+    return {'ok':True,'architecture':APP_VERSION,'query':query,'stores':ordered,'total_count':sum(r.get('count',0) for r in ordered)}
+
+@app.get('/diagnose-sabina')
+def diagnose_sabina(q:str='Liquid Brun'):
+    query=str(q or '').strip()
+    started=time.monotonic()
+    report={'ok':True,'architecture':APP_VERSION,'query':query,'elapsed':0.0,'module':{},'direct_search':{},'stream_search':{}}
     try:
-        report = run_store(store, query)
-        results = collapse_identity_results(report.get('results', []))
-        return {
-            'store': store,
-            'query': query,
-            'count': len(results),
-            'results': results,
-            'raw_count': report.get('count', 0),
-            'status': report.get('status'),
-            'error': report.get('error'),
-        }
+        if str(BASE_DIR) not in sys.path:
+            sys.path.insert(0, str(BASE_DIR))
+        try:
+            import sitecustomize as _sitecustomize
+            importlib.reload(_sitecustomize)
+            report['sitecustomize']={'loaded':True,'module':getattr(_sitecustomize,'__file__',None)}
+        except Exception as exc:
+            report['sitecustomize']={'loaded':False,'error':f'{type(exc).__name__}: {exc}'}
+        module=load_scraper('sabina')
+        report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
+        try:
+            t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
+        except Exception as exc:
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
+        stream=getattr(module,'search_stream',None)
+        if callable(stream):
+            stream_rows=[]; t=time.monotonic()
+            def collect(row):
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+            try:
+                returned=stream(query,collect)
+                if returned is not None:
+                    try:
+                        for row in returned:
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                    except TypeError: pass
+                report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
+            except Exception as exc:
+                report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows,'error':f'{type(exc).__name__}: {exc}'}
+        else:
+            report['stream_search']={'elapsed':0.0,'count':0,'error':'search_stream_missing'}
     except Exception as exc:
-        traceback.print_exc()
-        return {
-            'store': store,
-            'query': query,
-            'count': 0,
-            'results': [],
-            'error': f'{type(exc).__name__}: {exc}',
-        }
+        report['ok']=False; report['error']=f'{type(exc).__name__}: {exc}'
+    report['elapsed']=round(time.monotonic()-started,3)
+    return report
+
+@app.get('/suggest')
+def suggest(q:str):
+    query=str(q or '').strip()
+    if len(query)<2: return {'query':query,'count':0,'suggestions':[]}
+    suggestions=[]; seen=set(); reports=collect_store_reports_isolated(query,LIGHTWEIGHT_STORES[:4])
+    for report in reports:
+        for item in report.get('results',[]):
+            name=str(item.get('name') or item.get('title') or '').strip(); brand=str(item.get('brand') or '').strip()
+            if not name: continue
+            key=f'{brand}|{name}'.lower()
+            if key in seen: continue
+            seen.add(key); suggestions.append({'brand':brand,'name':name})
+            if len(suggestions)>=8: break
+        if len(suggestions)>=8: break
+    return {'query':query,'count':len(suggestions),'suggestions':suggestions[:8]}
+
+@app.get('/frontend')
+def frontend():
+    if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
+    return {'error':'frontend/index.html not found'}
