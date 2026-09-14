@@ -765,72 +765,291 @@ def _is_struck(node):
 def _extract_price(soup, data):
     """Return the active customer-facing price of the current product.
 
-    The page contains many other product cards and prices (recommendations,
-    navigation, related products). A global lowest-price scan is therefore
-    unsafe. First anchor extraction to the current product H1 and its
-    purchase area; only then use generic visible/structured fallbacks.
+    Prices shown on ParfumZentrum can include an old/list price together
+    with the actual customer price. Never prefer a crossed-out/list price.
+    Extraction is anchored to the current product and purchase area so that
+    prices from recommendations or related products cannot win.
     """
-    # PRIMARY: extract from the DOM subtree belonging to the current product.
-    # This prevents unrelated recommendation prices such as 11,95 EUR from
-    # winning simply because they are cheaper.
+
+    def _candidate_price(node):
+        """Extract a numeric price from one DOM node."""
+        for attr in (
+            "content",
+            "data-price",
+            "data-product-price",
+            "value",
+        ):
+            if node.has_attr(attr):
+                value = _parse_price(node.get(attr))
+                if value is not None:
+                    return value
+
+        text = node.get_text(" ", strip=True)
+
+        matches = re.findall(
+            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+            r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+            text,
+            re.I,
+        )
+
+        for match in matches:
+            value = _parse_price(match)
+            if value is not None:
+                return value
+
+        return None
+
+    def _is_bad_customer_price(node):
+        """Reject prices that are clearly not the active customer price."""
+        if _is_struck(node):
+            return True
+
+        current = node
+
+        for _ in range(8):
+            if current is None:
+                break
+
+            text = current.get_text(" ", strip=True).lower()
+
+            marker = (
+                " ".join(current.get("class", [])).lower()
+                + " "
+                + str(current.get("id", "")).lower()
+            )
+
+            # Old/list/comparison prices.
+            if any(
+                term in marker
+                for term in (
+                    "old-price",
+                    "old_price",
+                    "regular-price",
+                    "regular_price",
+                    "list-price",
+                    "list_price",
+                    "was-price",
+                    "was_price",
+                    "compare-price",
+                    "compare_price",
+                    "crossed",
+                    "strike",
+                    "strikethrough",
+                    "previous-price",
+                    "previous_price",
+                )
+            ):
+                return True
+
+            # Prices which are not the actual product selling price.
+            if any(
+                term in text
+                for term in (
+                    "grundpreis",
+                    "pro liter",
+                    "per liter",
+                    "€/l",
+                    "/l",
+                    "preis inkl. code",
+                    "preis inkl code",
+                )
+            ):
+                return True
+
+            # Coupon/discount/related-product contexts.
+            if any(
+                term in marker
+                for term in (
+                    "coupon",
+                    "voucher",
+                    "gutschein",
+                    "rabattcode",
+                    "discount",
+                    "recommend",
+                    "related",
+                    "cross-sell",
+                    "upsell",
+                )
+            ):
+                return True
+
+            current = current.parent
+
+        return False
+
+    def _collect_candidates(container, base_score=0):
+        candidates = []
+
+        for node in container.find_all(
+            [
+                "span",
+                "div",
+                "p",
+                "strong",
+                "b",
+                "ins",
+                "meta",
+            ]
+        ):
+            if _is_bad_customer_price(node):
+                continue
+
+            price = _candidate_price(node)
+            if price is None:
+                continue
+
+            marker = (
+                " ".join(node.get("class", [])).lower()
+                + " "
+                + str(node.get("id", "")).lower()
+            )
+
+            parent_text = ""
+            if node.parent:
+                parent_text = node.parent.get_text(
+                    " ",
+                    strip=True,
+                ).lower()
+
+            score = base_score
+
+            # Strong indicators of the actual selling price.
+            if any(
+                term in marker
+                for term in (
+                    "current-price",
+                    "current_price",
+                    "price-current",
+                    "price_current",
+                    "final-price",
+                    "final_price",
+                    "sale-price",
+                    "sale_price",
+                    "special-price",
+                    "special_price",
+                    "selling-price",
+                    "selling_price",
+                )
+            ):
+                score += 1000
+
+            if "price" in marker:
+                score += 100
+
+            if "in den warenkorb" in parent_text:
+                score += 300
+
+            if (
+                "auf lager" in parent_text
+                or "versandbereit" in parent_text
+            ):
+                score += 200
+
+            if (
+                "inkl. mwst" in parent_text
+                or "inkl mwst" in parent_text
+            ):
+                score += 100
+
+            # <ins> is normally the active discounted price.
+            if node.name == "ins":
+                score += 500
+
+            candidates.append((score, price))
+
+        return candidates
+
+    # ------------------------------------------------------------------
+    # PRIMARY: current product purchase area
+    # ------------------------------------------------------------------
     h1 = soup.find("h1")
+
     if h1:
         current = h1
+
         for distance in range(8):
             current = getattr(current, "parent", None)
+
             if current is None:
                 break
 
             text = current.get_text(" ", strip=True)
             low = text.lower()
+
             if "€" not in text:
                 continue
 
             purchase_score = 0
+
             if "in den warenkorb" in low:
                 purchase_score += 300
-            if "auf lager" in low or "versandbereit" in low:
+
+            if (
+                "auf lager" in low
+                or "versandbereit" in low
+            ):
                 purchase_score += 200
-            if "inkl. mwst" in low or "inkl mwst" in low:
+
+            if (
+                "inkl. mwst" in low
+                or "inkl mwst" in low
+            ):
                 purchase_score += 100
 
             if purchase_score <= 0:
                 continue
 
-            for node in current.find_all(
-                ["span", "div", "p", "strong", "b", "ins"]
-            ):
-                node_text = node.get_text(" ", strip=True)
-                if "€" not in node_text:
-                    continue
+            candidates = _collect_candidates(
+                current,
+                base_score=purchase_score,
+            )
 
-                node_low = node_text.lower()
-                if any(term in node_low for term in (
-                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
-                    "coupon", "gutschein", "rabattcode", "discount-code",
-                )):
-                    continue
-                if _is_struck(node):
-                    continue
-
-                matches = re.findall(
-                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-                    node_text,
-                    re.I,
+            if candidates:
+                candidates.sort(
+                    key=lambda item: (
+                        -item[0],
+                        item[1],
+                    )
                 )
 
-                for match in matches:
-                    price = _parse_price(match)
-                    if price is not None:
-                        return price
+                return candidates[0][1]
 
             # Do not climb into the entire document.
             if distance >= 5:
                 break
 
-    # SECONDARY: generic customer-facing visible prices, with context scoring.
-    visible_candidates = []
+    # ------------------------------------------------------------------
+    # SECONDARY: visible prices on the page, but still reject old/struck
+    # prices and related-product/coupon contexts.
+    # ------------------------------------------------------------------
+    visible_candidates = _collect_candidates(
+        soup,
+        base_score=0,
+    )
+
+    if visible_candidates:
+        visible_candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
+        )
+
+        return visible_candidates[0][1]
+
+    # ------------------------------------------------------------------
+    # TERTIARY: existing semantic DOM extractor.
+    # ------------------------------------------------------------------
+    semantic_price = _semantic_price(soup)
+
+    if semantic_price is not None:
+        return semantic_price
+
+    # ------------------------------------------------------------------
+    # FINAL FALLBACK: structured data / JSON-LD.
+    # ------------------------------------------------------------------
+    return _jsonld_price(data)
 
 
 def _extract_name(soup, data):
