@@ -763,53 +763,35 @@ def _is_struck(node):
 
 
 def _extract_price(soup, data):
-    """Return the active customer-facing price of the current product.
+    """
+    Restituisce esclusivamente il prezzo attuale visibile al cliente.
 
-    ParfumZentrum may show an old/list price together with the active
-    customer price. The old price must never win. Extraction is anchored
-    to the current product and its purchase area.
+    Priorità:
+    1. Prezzo dentro il blocco reale del prodotto.
+    2. Selettori HTML del prezzo corrente.
+    3. JSON-LD.
+    4. Fallback sui prezzi visibili.
+
+    Esclude:
+    - prezzi barrati;
+    - prezzi consigliati;
+    - prezzi per litro;
+    - prezzi di prodotti correlati;
+    - coupon e codici sconto.
     """
 
-    def _candidate_price(node):
-        """Extract a price only when the node represents one price value."""
+    def has_struck_price(node):
+        """
+        Verifica se il nodo appartiene a un prezzo barrato
+        oppure contiene un prezzo barrato.
+        """
+        if node is None:
+            return True
 
-        # Never extract a price directly from a struck element.
-        if _is_struck(node):
-            return None
+        if node.find(["del", "s", "strike"]):
+            return True
 
-        # Prefer explicit numeric attributes.
-        for attr in (
-            "content",
-            "data-price",
-            "data-product-price",
-            "value",
-        ):
-            if node.has_attr(attr):
-                value = _parse_price(node.get(attr))
-                if value is not None:
-                    return value
-
-        text = node.get_text(" ", strip=True)
-
-        matches = re.findall(
-            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-            r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-            text,
-            re.I,
-        )
-
-        # IMPORTANT:
-        # If a container contains multiple prices, do not blindly take
-        # the first one. The first one can be the old/list price.
-        if len(matches) != 1:
-            return None
-
-        return _parse_price(matches[0])
-
-    def _is_bad_customer_price(node):
-        """Reject prices that are not the active customer price."""
-
-        if _is_struck(node):
+        if node.find_parent(["del", "s", "strike"]):
             return True
 
         current = node
@@ -818,178 +800,307 @@ def _extract_price(soup, data):
             if current is None:
                 break
 
-            marker = (
-                " ".join(current.get("class", [])).lower()
-                + " "
-                + str(current.get("id", "")).lower()
-            )
-
-            text = current.get_text(
-                " ",
-                strip=True,
+            classes = " ".join(
+                current.get("class", [])
             ).lower()
 
-            # Old/list/comparison price containers.
-            if any(
-                term in marker
-                for term in (
-                    "old-price",
-                    "old_price",
-                    "regular-price",
-                    "regular_price",
-                    "list-price",
-                    "list_price",
-                    "was-price",
-                    "was_price",
-                    "compare-price",
-                    "compare_price",
-                    "previous-price",
-                    "previous_price",
-                    "crossed",
-                    "strike",
-                    "strikethrough",
-                )
-            ):
-                return True
+            node_id = str(
+                current.get("id", "")
+            ).lower()
 
-            # Non-selling-price contexts.
-            if any(
-                term in text
-                for term in (
-                    "grundpreis",
-                    "pro liter",
-                    "per liter",
-                    "€/l",
-                    "/l",
-                    "preis inkl. code",
-                    "preis inkl code",
-                )
-            ):
-                return True
+            marker = f"{classes} {node_id}"
 
-            # Coupon / recommendation / related-product contexts.
-            if any(
-                term in marker
-                for term in (
-                    "coupon",
-                    "voucher",
-                    "gutschein",
-                    "rabattcode",
-                    "discount",
-                    "recommend",
-                    "related",
-                    "cross-sell",
-                    "upsell",
-                )
-            ):
+            if any(word in marker for word in (
+                "old-price",
+                "old_price",
+                "regular-price",
+                "regular_price",
+                "list-price",
+                "list_price",
+                "was-price",
+                "was_price",
+                "compare-price",
+                "compare_price",
+                "strike",
+                "struck",
+                "strikethrough",
+                "crossed",
+                "uvp",
+                "msrp",
+            )):
                 return True
 
             current = current.parent
 
         return False
 
-    def _collect_candidates(container, base_score=0):
-        candidates = []
+    def is_invalid_context(node):
+        """
+        Ignora prezzi appartenenti a blocchi non utilizzabili.
+        """
+        current = node
 
-        for node in container.find_all(
-            [
-                "span",
-                "div",
-                "p",
-                "strong",
-                "b",
-                "ins",
-                "meta",
-            ]
+        for _ in range(8):
+            if current is None:
+                break
+
+            text = current.get_text(
+                " ",
+                strip=True,
+            ).lower()
+
+            classes = " ".join(
+                current.get("class", [])
+            ).lower()
+
+            node_id = str(
+                current.get("id", "")
+            ).lower()
+
+            marker = f"{classes} {node_id}"
+
+            if any(term in text for term in (
+                "grundpreis",
+                "pro liter",
+                "per liter",
+                "€/l",
+                "€ / l",
+                "/l",
+                "preis inkl. code",
+                "preis inkl code",
+                "mit rabattcode",
+                "mit rabatt-code",
+            )):
+                return True
+
+            if any(term in marker for term in (
+                "coupon",
+                "voucher",
+                "gutschein",
+                "rabattcode",
+                "discount",
+                "recommend",
+                "related",
+                "cross-sell",
+                "upsell",
+                "accessory",
+            )):
+                return True
+
+            current = current.parent
+
+        return False
+
+    def price_from_node(node):
+        """
+        Estrae il prezzo dal nodo senza includere il testo
+        dei nodi figli barrati.
+        """
+        if node is None:
+            return None
+
+        if has_struck_price(node):
+            return None
+
+        for attr in (
+            "content",
+            "data-price",
+            "data-product-price",
+            "data-current-price",
+            "value",
         ):
-            if _is_bad_customer_price(node):
+            if node.has_attr(attr):
+                value = _parse_price(
+                    node.get(attr)
+                )
+
+                if value is not None:
+                    return value
+
+        # Prima prova il testo diretto del nodo, escludendo eventuali
+        # figli come <del>24,70 €</del>.
+        direct_text_parts = []
+
+        for child in node.children:
+            if getattr(child, "name", None) in (
+                "del",
+                "s",
+                "strike",
+            ):
                 continue
 
-            marker = (
-                " ".join(node.get("class", [])).lower()
-                + " "
-                + str(node.get("id", "")).lower()
-            )
+            if hasattr(child, "get_text"):
+                direct_text_parts.append(
+                    child.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+            else:
+                direct_text_parts.append(
+                    str(child)
+                )
 
-            # Strongly prefer nodes explicitly representing the active
-            # customer price.
-            explicit_active = any(
-                term in marker
-                for term in (
-                    "current-price",
-                    "current_price",
-                    "price-current",
-                    "price_current",
-                    "final-price",
-                    "final_price",
-                    "sale-price",
-                    "sale_price",
-                    "special-price",
-                    "special_price",
-                    "selling-price",
-                    "selling_price",
+        direct_text = " ".join(
+            direct_text_parts
+        ).strip()
+
+        if direct_text:
+            value = _parse_price(direct_text)
+
+            if value is not None:
+                return value
+
+        # Fallback solamente se non ci sono prezzi barrati
+        # all'interno del nodo.
+        if not node.find([
+            "del",
+            "s",
+            "strike",
+        ]):
+            return _parse_price(
+                node.get_text(
+                    " ",
+                    strip=True,
                 )
             )
 
-            # <ins> is a strong semantic indication of the new price.
-            is_ins = node.name == "ins"
+        return None
 
-            price = _candidate_price(node)
+    def node_score(node):
+        """
+        Assegna una priorità ai nodi che rappresentano
+        il prezzo corrente del prodotto.
+        """
+        classes = " ".join(
+            node.get("class", [])
+        ).lower()
+
+        node_id = str(
+            node.get("id", "")
+        ).lower()
+
+        marker = f"{classes} {node_id}"
+
+        score = 0
+
+        if "price" in marker:
+            score += 20
+
+        if any(word in marker for word in (
+            "current",
+            "current-price",
+            "current_price",
+            "actual",
+            "active",
+            "final",
+            "sale",
+            "selling",
+            "offer",
+            "special",
+            "now",
+        )):
+            score += 100
+
+        if node.name == "ins":
+            score += 50
+
+        if node.name in (
+            "strong",
+            "b",
+        ):
+            score += 15
+
+        parent = node.parent
+
+        if parent is not None:
+            parent_text = parent.get_text(
+                " ",
+                strip=True,
+            ).lower()
+
+            if "in den warenkorb" in parent_text:
+                score += 40
+
+            if "inkl. mwst" in parent_text:
+                score += 20
+
+            if "inkl mwst" in parent_text:
+                score += 20
+
+            if "auf lager" in parent_text:
+                score += 20
+
+            if "versandbereit" in parent_text:
+                score += 20
+
+        return score
+
+    candidates = []
+
+    # 1. Cerca il prezzo nei selettori specifici del prezzo corrente.
+    selectors = (
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
+        '[data-current-price]',
+        '[class*="current-price"]',
+        '[class*="current_price"]',
+        '[class*="sale-price"]',
+        '[class*="sale_price"]',
+        '[class*="final-price"]',
+        '[class*="final_price"]',
+        '[class*="actual-price"]',
+        '[class*="selling-price"]',
+        ".product-price",
+        ".product_price",
+        ".price--current",
+        ".price-current",
+        ".current-price",
+        ".current_price",
+        ".final-price",
+        ".final_price",
+        ".sale-price",
+        ".sale_price",
+    )
+
+    for selector in selectors:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            nodes = []
+
+        for node in nodes:
+            if is_invalid_context(node):
+                continue
+
+            price = price_from_node(node)
+
             if price is None:
                 continue
 
-            score = base_score
+            candidates.append((
+                node_score(node),
+                price,
+            ))
 
-            if explicit_active:
-                score += 2000
-
-            if is_ins:
-                score += 1500
-
-            if "price" in marker:
-                score += 100
-
-            # Look only at the immediate parent for purchase context.
-            parent_text = ""
-            if node.parent:
-                parent_text = node.parent.get_text(
-                    " ",
-                    strip=True,
-                ).lower()
-
-            if "in den warenkorb" in parent_text:
-                score += 300
-
-            if (
-                "auf lager" in parent_text
-                or "versandbereit" in parent_text
-            ):
-                score += 200
-
-            if (
-                "inkl. mwst" in parent_text
-                or "inkl mwst" in parent_text
-            ):
-                score += 100
-
-            candidates.append(
-                (
-                    score,
-                    price,
-                )
+    if candidates:
+        candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
             )
+        )
 
-        return candidates
+        return candidates[0][1]
 
-    # ------------------------------------------------------------------
-    # PRIMARY: current product purchase area
-    # ------------------------------------------------------------------
+    # 2. Cerca nel blocco principale del prodotto.
     h1 = soup.find("h1")
 
-    if h1:
+    if h1 is not None:
         current = h1
 
-        for distance in range(8):
+        for _ in range(10):
             current = getattr(
                 current,
                 "parent",
@@ -999,40 +1110,54 @@ def _extract_price(soup, data):
             if current is None:
                 break
 
-            text = current.get_text(
+            block_text = current.get_text(
                 " ",
                 strip=True,
-            )
+            ).lower()
 
-            low = text.lower()
-
-            if "€" not in text:
+            if "€" not in block_text:
                 continue
 
-            purchase_score = 0
+            purchase_context = any(term in block_text for term in (
+                "in den warenkorb",
+                "auf lager",
+                "versandbereit",
+                "sofort lieferbar",
+                "inkl. mwst",
+                "inkl mwst",
+            ))
 
-            if "in den warenkorb" in low:
-                purchase_score += 300
-
-            if (
-                "auf lager" in low
-                or "versandbereit" in low
-            ):
-                purchase_score += 200
-
-            if (
-                "inkl. mwst" in low
-                or "inkl mwst" in low
-            ):
-                purchase_score += 100
-
-            if purchase_score <= 0:
+            if not purchase_context:
                 continue
 
-            candidates = _collect_candidates(
-                current,
-                base_score=purchase_score,
-            )
+            for node in current.find_all([
+                "span",
+                "div",
+                "p",
+                "strong",
+                "b",
+                "ins",
+            ]):
+                if is_invalid_context(node):
+                    continue
+
+                text = node.get_text(
+                    " ",
+                    strip=True,
+                )
+
+                if "€" not in text:
+                    continue
+
+                price = price_from_node(node)
+
+                if price is None:
+                    continue
+
+                candidates.append((
+                    node_score(node) + 200,
+                    price,
+                ))
 
             if candidates:
                 candidates.sort(
@@ -1044,21 +1169,59 @@ def _extract_price(soup, data):
 
                 return candidates[0][1]
 
-            if distance >= 5:
-                break
+    # 3. JSON-LD come fallback.
+    # Viene usato dopo l'HTML visibile perché alcuni siti
+    # pubblicano nel JSON-LD il prezzo listino invece del prezzo
+    # realmente mostrato nella pagina.
+    jsonld_price = _jsonld_price(data)
 
-    # ------------------------------------------------------------------
-    # SECONDARY: existing semantic extractor.
-    # ------------------------------------------------------------------
-    semantic_price = _semantic_price(soup)
+    if jsonld_price is not None:
+        return jsonld_price
 
-    if semantic_price is not None:
-        return semantic_price
+    # 4. Ultimo fallback: tutti i prezzi visibili non barrati.
+    fallback_candidates = []
 
-    # ------------------------------------------------------------------
-    # FINAL FALLBACK: structured data / JSON-LD.
-    # ------------------------------------------------------------------
-    return _jsonld_price(data)
+    for node in soup.find_all([
+        "span",
+        "div",
+        "p",
+        "strong",
+        "b",
+        "ins",
+    ]):
+        if is_invalid_context(node):
+            continue
+
+        text = node.get_text(
+            " ",
+            strip=True,
+        )
+
+        if "€" not in text:
+            continue
+
+        price = price_from_node(node)
+
+        if price is None:
+            continue
+
+        fallback_candidates.append((
+            node_score(node),
+            price,
+        ))
+
+    if fallback_candidates:
+        fallback_candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
+        )
+
+        return fallback_candidates[0][1]
+
+    return None
+
 
 
 def _extract_name(soup, data):
