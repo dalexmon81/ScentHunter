@@ -905,6 +905,19 @@ class ProductMatcher:
             " ",
             text,
         )
+        # Retailers sometimes append a presentation label such as
+        # "By - Men Perfume" or "By - Unisex Perfume". This is commercial
+        # metadata, not a product variant. Remove the whole construction only
+        # when it is explicitly followed by an audience marker.
+        text = re.sub(
+            r"\bby\b\s*(?:[-:|/]\s*)?(?:pour\s+)?"
+            r"(?:homme|hommes|man|men|male|uomo|"
+            r"femme|femmes|woman|women|female|donna|"
+            r"unisex|mixte|unisexe)"
+            r"(?:\s+(?:perfume|parfum))?\b",
+            " ",
+            text,
+        )
         text = re.sub(
             r"\b(?:pour homme|pour femme|pour hommes|pour femmes|"
             r"for men|for women|for him|for her|"
@@ -1107,7 +1120,12 @@ class ProductMatcher:
         if not candidates:
             return None, "none"
 
-        # Generic metadata disambiguation for identical catalog names.
+        # Metadata disambiguation is applied only after exact/alias lookup.
+        # A retailer gender marker is not itself a catalog variant: "9 PM Men"
+        # must still resolve to the neutral 9 PM record when no distinct
+        # catalog product named "9 PM Men" exists. A real variant such as
+        # "9 PM Pour Femme" has already matched above and therefore remains
+        # separate.
         offer_gender = gender_from_offer(offer)
         if offer_gender:
             filtered = [
@@ -1117,16 +1135,38 @@ class ProductMatcher:
             ]
             if filtered:
                 candidates = filtered
+            else:
+                neutral = [
+                    product
+                    for product in candidates
+                    if not normalize(product.gender)
+                ]
+                neutral_ids = {
+                    str(product.catalog_id or "")
+                    for product in neutral
+                }
+                if len(neutral_ids) == 1:
+                    candidates = [
+                        product
+                        for product in neutral
+                        if str(product.catalog_id or "") == next(iter(neutral_ids))
+                    ]
         else:
-            # If the retailer does not state a gender, prefer a single neutral
-            # catalog record over gendered variants with the same display name.
             neutral = [
                 product
                 for product in candidates
                 if not normalize(product.gender)
             ]
-            if len(neutral) == 1:
-                candidates = neutral
+            neutral_ids = {
+                str(product.catalog_id or "")
+                for product in neutral
+            }
+            if len(neutral_ids) == 1:
+                candidates = [
+                    product
+                    for product in neutral
+                    if str(product.catalog_id or "") == next(iter(neutral_ids))
+                ]
 
         offer_concentration = (
             str(offer.get("concentration") or "").strip()
@@ -1141,18 +1181,20 @@ class ProductMatcher:
             if filtered:
                 candidates = filtered
 
-        # De-duplicate catalog records that describe the same canonical
-        # variant. Older CAT/AUTO records can coexist with the verified SH-*
-        # record; they must not make an exact product match ambiguous.
-        unique: Dict[Tuple[str, str, str, str], CatalogProduct] = {}
+        # De-duplicate catalog records by the *variant-preserving* identity.
+        # Do not use _clean_identity_name() here: it intentionally removes
+        # audience words and would merge real variants such as 9 PM and
+        # 9 PM Pour Femme. A blank concentration is treated as incomplete
+        # metadata when the same brand/variant/gender also has a concrete
+        # concentration record.
+        unique: Dict[Tuple[str, str, str], CatalogProduct] = {}
         for product in candidates:
             identity_key = (
                 normalize(self._canonical_brand_for_product(product)),
-                self._clean_identity_name(
+                self._clean_variant_identity_name(
                     self._canonical_brand_for_product(product),
                     product.catalog_variant or product.name,
                 ),
-                normalize(product.concentration),
                 normalize(product.gender),
             )
             current = unique.get(identity_key)
@@ -1164,6 +1206,15 @@ class ProductMatcher:
             # records when both describe the same canonical variant.
             current_id = str(current.catalog_id or "")
             product_id = str(product.catalog_id or "")
+            current_concentration = normalize(current.concentration)
+            product_concentration = normalize(product.concentration)
+
+            if current_concentration and not product_concentration:
+                continue
+            if product_concentration and not current_concentration:
+                unique[identity_key] = product
+                continue
+
             if current_id.startswith(("CAT-", "AUTO-")) and not product_id.startswith(("CAT-", "AUTO-")):
                 unique[identity_key] = product
 
@@ -1270,6 +1321,38 @@ class ProductMatcher:
             title = f"{title} {gender}".strip()
         return re.sub(r"\s+", " ", title).strip()
 
+    @classmethod
+    def _canonical_catalog_name_for_offer(
+        cls,
+        product: CatalogProduct,
+        offer_name: str,
+    ) -> str:
+        """Choose the most specific catalog name actually represented by the offer."""
+        canonical = str(
+            product.catalog_variant or product.name or ""
+        ).strip()
+        family_name = str(product.family_name or "").strip()
+        if not family_name or normalize(family_name) == normalize(canonical):
+            return canonical
+
+        raw = normalize(offer_name)
+        family_n = normalize(family_name)
+        canonical_n = normalize(canonical)
+
+        # Some catalog records use a generic canonical_name while the family
+        # name carries the actual variant, e.g. 9 PM / 9 PM Pour Femme.
+        # Prefer that more specific family name only when it is explicitly
+        # present in the retailer title and canonical_name is its prefix.
+        if (
+            family_n
+            and family_n in f" {raw} "
+            and canonical_n
+            and family_n.startswith(canonical_n + " ")
+        ):
+            return family_name
+
+        return canonical
+
     def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not isinstance(offer, dict):
             return None
@@ -1313,8 +1396,14 @@ class ProductMatcher:
             )
             canonical_name = self._clean_identity_display(
                 canonical_brand,
-                product.catalog_variant or product.name,
-            ) or (product.catalog_variant or product.name)
+                self._canonical_catalog_name_for_offer(
+                    product,
+                    self._offer_name(offer),
+                ),
+            ) or self._canonical_catalog_name_for_offer(
+                product,
+                self._offer_name(offer),
+            )
             concentration = (
                 str(result.get("concentration") or "").strip()
                 or product.concentration
