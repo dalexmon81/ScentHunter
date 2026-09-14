@@ -294,12 +294,10 @@ def _item(product, variant, url):
 
     image = product.get("featured_image")
     if isinstance(image, dict):
-        image = image.get("src") or image.get("url") or image.get("original_src")
+        image = image.get("src") or image.get("url")
     if not image:
         imgs = product.get("images") or []
         image = imgs[0] if imgs else None
-        if isinstance(image, dict):
-            image = image.get("src") or image.get("url") or image.get("original_src")
 
     return {
         "store": STORE,
@@ -309,6 +307,7 @@ def _item(product, variant, url):
             "url": url,
             "image": urljoin(BASE_URL, str(image)) if image else None,
         },
+        "image": urljoin(BASE_URL, str(image)) if image else None,
         "identity": {
             "gtin": None,
             "mpn": None,
