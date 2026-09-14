@@ -765,14 +765,19 @@ def _is_struck(node):
 def _extract_price(soup, data):
     """Return the active customer-facing price of the current product.
 
-    Prices shown on ParfumZentrum can include an old/list price together
-    with the actual customer price. Never prefer a crossed-out/list price.
-    Extraction is anchored to the current product and purchase area so that
-    prices from recommendations or related products cannot win.
+    ParfumZentrum may show an old/list price together with the active
+    customer price. The old price must never win. Extraction is anchored
+    to the current product and its purchase area.
     """
 
     def _candidate_price(node):
-        """Extract a numeric price from one DOM node."""
+        """Extract a price only when the node represents one price value."""
+
+        # Never extract a price directly from a struck element.
+        if _is_struck(node):
+            return None
+
+        # Prefer explicit numeric attributes.
         for attr in (
             "content",
             "data-price",
@@ -793,15 +798,17 @@ def _extract_price(soup, data):
             re.I,
         )
 
-        for match in matches:
-            value = _parse_price(match)
-            if value is not None:
-                return value
+        # IMPORTANT:
+        # If a container contains multiple prices, do not blindly take
+        # the first one. The first one can be the old/list price.
+        if len(matches) != 1:
+            return None
 
-        return None
+        return _parse_price(matches[0])
 
     def _is_bad_customer_price(node):
-        """Reject prices that are clearly not the active customer price."""
+        """Reject prices that are not the active customer price."""
+
         if _is_struck(node):
             return True
 
@@ -811,15 +818,18 @@ def _extract_price(soup, data):
             if current is None:
                 break
 
-            text = current.get_text(" ", strip=True).lower()
-
             marker = (
                 " ".join(current.get("class", [])).lower()
                 + " "
                 + str(current.get("id", "")).lower()
             )
 
-            # Old/list/comparison prices.
+            text = current.get_text(
+                " ",
+                strip=True,
+            ).lower()
+
+            # Old/list/comparison price containers.
             if any(
                 term in marker
                 for term in (
@@ -833,16 +843,16 @@ def _extract_price(soup, data):
                     "was_price",
                     "compare-price",
                     "compare_price",
+                    "previous-price",
+                    "previous_price",
                     "crossed",
                     "strike",
                     "strikethrough",
-                    "previous-price",
-                    "previous_price",
                 )
             ):
                 return True
 
-            # Prices which are not the actual product selling price.
+            # Non-selling-price contexts.
             if any(
                 term in text
                 for term in (
@@ -857,7 +867,7 @@ def _extract_price(soup, data):
             ):
                 return True
 
-            # Coupon/discount/related-product contexts.
+            # Coupon / recommendation / related-product contexts.
             if any(
                 term in marker
                 for term in (
@@ -895,27 +905,15 @@ def _extract_price(soup, data):
             if _is_bad_customer_price(node):
                 continue
 
-            price = _candidate_price(node)
-            if price is None:
-                continue
-
             marker = (
                 " ".join(node.get("class", [])).lower()
                 + " "
                 + str(node.get("id", "")).lower()
             )
 
-            parent_text = ""
-            if node.parent:
-                parent_text = node.parent.get_text(
-                    " ",
-                    strip=True,
-                ).lower()
-
-            score = base_score
-
-            # Strong indicators of the actual selling price.
-            if any(
+            # Strongly prefer nodes explicitly representing the active
+            # customer price.
+            explicit_active = any(
                 term in marker
                 for term in (
                     "current-price",
@@ -931,11 +929,33 @@ def _extract_price(soup, data):
                     "selling-price",
                     "selling_price",
                 )
-            ):
-                score += 1000
+            )
+
+            # <ins> is a strong semantic indication of the new price.
+            is_ins = node.name == "ins"
+
+            price = _candidate_price(node)
+            if price is None:
+                continue
+
+            score = base_score
+
+            if explicit_active:
+                score += 2000
+
+            if is_ins:
+                score += 1500
 
             if "price" in marker:
                 score += 100
+
+            # Look only at the immediate parent for purchase context.
+            parent_text = ""
+            if node.parent:
+                parent_text = node.parent.get_text(
+                    " ",
+                    strip=True,
+                ).lower()
 
             if "in den warenkorb" in parent_text:
                 score += 300
@@ -952,11 +972,12 @@ def _extract_price(soup, data):
             ):
                 score += 100
 
-            # <ins> is normally the active discounted price.
-            if node.name == "ins":
-                score += 500
-
-            candidates.append((score, price))
+            candidates.append(
+                (
+                    score,
+                    price,
+                )
+            )
 
         return candidates
 
@@ -969,12 +990,20 @@ def _extract_price(soup, data):
         current = h1
 
         for distance in range(8):
-            current = getattr(current, "parent", None)
+            current = getattr(
+                current,
+                "parent",
+                None,
+            )
 
             if current is None:
                 break
 
-            text = current.get_text(" ", strip=True)
+            text = current.get_text(
+                " ",
+                strip=True,
+            )
+
             low = text.lower()
 
             if "€" not in text:
@@ -1015,23 +1044,11 @@ def _extract_price(soup, data):
 
                 return candidates[0][1]
 
-            # Do not climb into the entire document.
             if distance >= 5:
                 break
 
-    # SECONDARY: use the existing semantic extractor.
-    # Do not scan the entire page for the lowest/most visible price,
-    # because ParfumZentrum contains prices from unrelated products.
-    semantic_price = _semantic_price(soup)
-
-    if semantic_price is not None:
-        return semantic_price
-
-    # FINAL FALLBACK: structured data / JSON-LD.
-    return _jsonld_price(data)
-
     # ------------------------------------------------------------------
-    # TERTIARY: existing semantic DOM extractor.
+    # SECONDARY: existing semantic extractor.
     # ------------------------------------------------------------------
     semantic_price = _semantic_price(soup)
 
