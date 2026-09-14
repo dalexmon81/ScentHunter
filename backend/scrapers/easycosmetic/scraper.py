@@ -526,8 +526,21 @@ def search(query: str) -> List[Dict[str, Any]]:
     search_url = SEARCH_URL.format(quote_plus(query))
     html = _request_html(search_url)
     soup = BeautifulSoup(html, "html.parser")
+    candidates = _extract_candidate_links(soup, query)
 
-    return _extract_candidate_links(soup, query)
+    results: List[Dict[str, Any]] = []
+    for candidate in candidates:
+        url = candidate.get("url")
+        if not url:
+            continue
+        try:
+            row = parse_product(url)
+        except Exception:
+            continue
+        if row:
+            results.append(row)
+
+    return results
 
 
 def parse_product(url: str) -> Optional[Dict[str, Any]]:
@@ -616,22 +629,10 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
 
 
 def search_stream(query: str, emit=None):
-    candidates = search(query)
+    results = search(query)
 
     def rows():
-        for candidate in candidates:
-            url = candidate.get("url")
-            if not url:
-                continue
-
-            try:
-                row = parse_product(url)
-            except Exception:
-                # A single bad product must never kill the whole store.
-                continue
-
-            if row:
-                yield row
+        yield from results
 
     if callable(emit):
         for row in rows():
