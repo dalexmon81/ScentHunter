@@ -104,6 +104,32 @@ def _is_candidate_url(url: str) -> bool:
     return True
 
 
+def _is_bundle_product(name: str) -> bool:
+    """
+    Reject obvious multi-product sets/boxes from single-product searches.
+
+    This is intentionally conservative: only explicit bundle/box/set terms
+    are rejected, so normal product-family searches remain broad.
+    """
+    normalized = _normalise_text(name)
+
+    bundle_markers = (
+        "box",
+        "gift set",
+        "set",
+        "geschenkset",
+        "duftset",
+        "parfumset",
+        "bundle",
+        "duo",
+        "trio",
+        "discovery set",
+        "coffret",
+    )
+
+    return any(marker in normalized for marker in bundle_markers)
+
+
 def _candidate_score(query: str, text: str, url: str) -> int:
     tokens = _query_tokens(query)
     if not tokens:
@@ -119,6 +145,9 @@ def _candidate_score(query: str, text: str, url: str) -> int:
 
     if normalized_query and normalized_query in haystack:
         score += 25
+
+    if _is_bundle_product(text):
+        score -= 1000
 
     return score
 
@@ -285,64 +314,6 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     return None
 
 
-def _extract_image_url(value: Any, base_url: str = BASE_URL) -> str:
-    """
-    Normalize Easycosmetic/Schema.org image values.
-
-    The Product JSON-LD may expose image as:
-    - a plain URL string
-    - an ImageObject with contentUrl/url
-    - a list containing either of the above
-
-    Never stringify a dict into the final URL.
-    """
-    if isinstance(value, str):
-        value = value.strip()
-        if not value:
-            return ""
-        return urljoin(base_url, value)
-
-    if isinstance(value, dict):
-        for key in ("contentUrl", "url", "src", "image"):
-            candidate = value.get(key)
-            if isinstance(candidate, str) and candidate.strip():
-                return urljoin(base_url, candidate.strip())
-
-    if isinstance(value, list):
-        for item in value:
-            result = _extract_image_url(item, base_url)
-            if result:
-                return result
-
-    return ""
-
-
-def _extract_page_image(soup: BeautifulSoup, base_url: str = BASE_URL) -> str:
-    """
-    Fallback image extraction from standard social/meta tags and the
-    product page itself when JSON-LD does not contain a usable image.
-    """
-    for selector in (
-        'meta[property="og:image"]',
-        'meta[name="twitter:image"]',
-        'meta[property="og:image:url"]',
-    ):
-        meta = soup.select_one(selector)
-        if meta:
-            content = meta.get("content")
-            image = _extract_image_url(content, base_url)
-            if image:
-                return image
-
-    for img in soup.find_all("img"):
-        for attribute in ("src", "data-src", "data-original"):
-            image = _extract_image_url(img.get(attribute), base_url)
-            if image:
-                return image
-
-    return ""
-
-
 def _extract_brand(product_json: Dict[str, Any]) -> str:
     brand = product_json.get("brand")
 
@@ -414,6 +385,9 @@ def _extract_candidate_links(
     def add(url: str, text: str) -> None:
         url = _normalise_url(url)
         if not _is_candidate_url(url):
+            return
+
+        if _is_bundle_product(text):
             return
 
         score = _candidate_score(query, text, url)
@@ -492,10 +466,11 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
         brand = _extract_brand(product_json)
         price, currency, availability = _extract_offer_data(product_json)
 
-        image = _extract_image_url(product_json.get("image"))
-
-    if not image:
-        image = _extract_page_image(soup)
+        image_data = product_json.get("image")
+        if isinstance(image_data, str):
+            image = image_data
+        elif isinstance(image_data, list) and image_data:
+            image = _clean(image_data[0])
 
     if not name:
         h1 = soup.find("h1")
