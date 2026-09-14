@@ -285,6 +285,64 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     return None
 
 
+def _extract_image_url(value: Any, base_url: str = BASE_URL) -> str:
+    """
+    Normalize Easycosmetic/Schema.org image values.
+
+    The Product JSON-LD may expose image as:
+    - a plain URL string
+    - an ImageObject with contentUrl/url
+    - a list containing either of the above
+
+    Never stringify a dict into the final URL.
+    """
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return ""
+        return urljoin(base_url, value)
+
+    if isinstance(value, dict):
+        for key in ("contentUrl", "url", "src", "image"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return urljoin(base_url, candidate.strip())
+
+    if isinstance(value, list):
+        for item in value:
+            result = _extract_image_url(item, base_url)
+            if result:
+                return result
+
+    return ""
+
+
+def _extract_page_image(soup: BeautifulSoup, base_url: str = BASE_URL) -> str:
+    """
+    Fallback image extraction from standard social/meta tags and the
+    product page itself when JSON-LD does not contain a usable image.
+    """
+    for selector in (
+        'meta[property="og:image"]',
+        'meta[name="twitter:image"]',
+        'meta[property="og:image:url"]',
+    ):
+        meta = soup.select_one(selector)
+        if meta:
+            content = meta.get("content")
+            image = _extract_image_url(content, base_url)
+            if image:
+                return image
+
+    for img in soup.find_all("img"):
+        for attribute in ("src", "data-src", "data-original"):
+            image = _extract_image_url(img.get(attribute), base_url)
+            if image:
+                return image
+
+    return ""
+
+
 def _extract_brand(product_json: Dict[str, Any]) -> str:
     brand = product_json.get("brand")
 
@@ -434,11 +492,10 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
         brand = _extract_brand(product_json)
         price, currency, availability = _extract_offer_data(product_json)
 
-        image_data = product_json.get("image")
-        if isinstance(image_data, str):
-            image = image_data
-        elif isinstance(image_data, list) and image_data:
-            image = _clean(image_data[0])
+        image = _extract_image_url(product_json.get("image"))
+
+    if not image:
+        image = _extract_page_image(soup)
 
     if not name:
         h1 = soup.find("h1")
