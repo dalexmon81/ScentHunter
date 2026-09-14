@@ -266,10 +266,14 @@ def _extract_image_url(value: Any) -> str:
     return ""
 
 
-def _extract_page_image(soup: BeautifulSoup) -> str:
+def _extract_page_image(
+    soup: BeautifulSoup,
+    product_name: str = "",
+) -> str:
     """
-    Fallback image extraction from the product page when JSON-LD has no
-    directly usable image URL.
+    Fallback image extraction from the product page.
+
+    Prefer the actual product image over brand/logo images.
     """
     selectors = (
         'meta[property="og:image"]',
@@ -284,12 +288,41 @@ def _extract_page_image(soup: BeautifulSoup) -> str:
             if image:
                 return image
 
-    # Last-resort fallback: use a real image element, preferring lazy-load
-    # attributes commonly used by Easycosmetic.
+    normalized_product = _normalise_text(product_name)
+
+    if normalized_product:
+        for img in soup.find_all("img"):
+            descriptive = _normalise_text(
+                f"{img.get('alt', '')} {img.get('title', '')}"
+            )
+
+            if normalized_product in descriptive or (
+                descriptive
+                and all(
+                    token in descriptive
+                    for token in normalized_product.split()
+                    if len(token) >= 3
+                )
+            ):
+                for attribute in (
+                    "src",
+                    "data-src",
+                    "data-original",
+                    "data-lazy-src",
+                ):
+                    image = _extract_image_url(img.get(attribute))
+                    if image:
+                        return image
+
     for img in soup.find_all("img"):
-        for attribute in ("src", "data-src", "data-original"):
+        for attribute in (
+            "src",
+            "data-src",
+            "data-original",
+            "data-lazy-src",
+        ):
             image = _extract_image_url(img.get(attribute))
-            if image:
+            if image and "cdn2.easycosmetic.de" in image.lower():
                 return image
 
     return ""
@@ -414,7 +447,9 @@ def _extract_candidate_links(
         if not _is_candidate_url(url):
             return
 
-        normalized_candidate_text = _normalise_text(text)
+        normalized_candidate_text = _normalise_text(
+            f"{text} {url}"
+        )
 
         bundle_markers = (
             "box",
@@ -430,14 +465,16 @@ def _extract_candidate_links(
             "coffret",
         )
 
-        if any(
-            re.search(
-                rf"\\b{re.escape(_normalise_text(marker))}\\b",
+        for marker in bundle_markers:
+            marker_normalized = _normalise_text(marker)
+            if not marker_normalized:
+                continue
+
+            if re.search(
+                rf"\b{re.escape(marker_normalized)}\b",
                 normalized_candidate_text,
-            )
-            for marker in bundle_markers
-        ):
-            return
+            ):
+                return
 
         score = _candidate_score(query, text, url)
         if score <= 0:
@@ -518,7 +555,7 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
         image = _extract_image_url(product_json.get("image"))
 
     if not image:
-        image = _extract_page_image(soup)
+        image = _extract_page_image(soup, name)
 
     if not name:
         h1 = soup.find("h1")
