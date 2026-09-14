@@ -2,6 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
+try:
+    from product_matcher import ProductMatcher
+except Exception as exc:
+    ProductMatcher = None
+    print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
 APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
@@ -21,6 +26,7 @@ STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
+PRODUCT_CATALOG_PATH = BASE_DIR / 'product_catalog.json'
 
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic']
 NETWORK_HEAVY_STORES = ['deloox']
@@ -45,6 +51,93 @@ def _normalise_store(value, fallback):
     text = str(value or fallback).strip().lower()
     return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
 
+def _load_product_matcher():
+    if ProductMatcher is None:
+        return None
+
+    try:
+        with open(PRODUCT_CATALOG_PATH, 'r', encoding='utf-8') as handle:
+            payload = json.load(handle)
+
+        if isinstance(payload, dict):
+            catalog = payload.get('products') or []
+        elif isinstance(payload, list):
+            catalog = payload
+        else:
+            catalog = []
+
+        if not catalog:
+            print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
+            return None
+
+        return ProductMatcher(catalog=catalog)
+    except Exception as exc:
+        print(
+            f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        return None
+
+
+PRODUCT_MATCHER = _load_product_matcher()
+
+
+def _apply_product_identity(result):
+    """
+    Normalize a retailer offer through the existing central ProductMatcher.
+
+    This is deliberately an enrichment step, not a filter: a failed/unknown
+    match must never remove a scraper result from the search. The user's
+    original query is still passed unchanged to every scraper.
+    """
+    if PRODUCT_MATCHER is None or not isinstance(result, dict):
+        return result
+
+    raw_name = str(result.get('name') or result.get('title') or '').strip()
+    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+
+    try:
+        matched = PRODUCT_MATCHER.match(result)
+    except Exception as exc:
+        print(
+            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        return result
+
+    if not isinstance(matched, dict):
+        return result
+
+    normalized = dict(matched)
+
+    # Keep the original retailer fields for diagnostics/provenance.
+    if raw_name:
+        normalized.setdefault('_source_name', raw_name)
+    if raw_brand:
+        normalized.setdefault('_source_brand', raw_brand)
+
+    canonical_name = str(
+        normalized.get('canonical_name')
+        or normalized.get('catalog_variant')
+        or raw_name
+    ).strip()
+    canonical_brand = str(
+        normalized.get('canonical_brand')
+        or normalized.get('brand')
+        or raw_brand
+    ).strip()
+
+    if canonical_name:
+        # The frontend groups offers by the normalized name. Keep the raw
+        # retailer name separately so the identity layer can normalize it
+        # without changing price, URL, store, availability or image data.
+        normalized['name'] = canonical_name
+    if canonical_brand:
+        normalized['brand'] = canonical_brand
+
+    return normalized
+
+
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
@@ -61,7 +154,7 @@ def clean_result(item, store):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return result
+    return _apply_product_identity(result)
 
 def result_key(item):
     store = _normalise_store(item.get('store') or item.get('shop'), '')
