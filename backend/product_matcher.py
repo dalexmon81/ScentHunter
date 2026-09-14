@@ -239,7 +239,12 @@ class CatalogProduct:
         ).strip()
 
         return cls(
-            catalog_id=str(data.get("id") or data.get("catalog_id") or "").strip(),
+            catalog_id=str(
+                data.get("id")
+                or data.get("product_id")
+                or data.get("catalog_id")
+                or ""
+            ).strip(),
             brand=str(data.get("brand") or data.get("brand_name") or "").strip(),
             name=name,
             concentration=str(data.get("concentration") or "").strip(),
@@ -1021,6 +1026,18 @@ class ProductMatcher:
             ]
             if filtered:
                 candidates = filtered
+        else:
+            # If the retailer does not state a gender, prefer a single neutral
+            # catalog record over gendered variants with the same display name.
+            # This prevents a neutral query such as “9 PM” from becoming
+            # ambiguous because “9 PM Pour Femme” is also in the catalog.
+            neutral = [
+                product
+                for product in candidates
+                if not normalize(product.gender)
+            ]
+            if len(neutral) == 1:
+                candidates = neutral
 
         offer_concentration = (
             str(offer.get("concentration") or "").strip()
@@ -1035,10 +1052,32 @@ class ProductMatcher:
             if filtered:
                 candidates = filtered
 
-        # De-duplicate the same catalog product reached through multiple aliases.
-        unique: Dict[str, CatalogProduct] = {}
+        # De-duplicate catalog records that describe the same canonical
+        # variant. Older CAT/AUTO records can coexist with the verified SH-*
+        # record; they must not make an exact product match ambiguous.
+        unique: Dict[Tuple[str, str, str, str], CatalogProduct] = {}
         for product in candidates:
-            unique[product.catalog_id] = product
+            identity_key = (
+                normalize(self._canonical_brand_for_product(product)),
+                self._clean_identity_name(
+                    self._canonical_brand_for_product(product),
+                    product.catalog_variant or product.name,
+                ),
+                normalize(product.concentration),
+                normalize(product.gender),
+            )
+            current = unique.get(identity_key)
+            if current is None:
+                unique[identity_key] = product
+                continue
+
+            # Prefer the verified/legacy SH-* identity over generated CAT/AUTO
+            # records when both describe the same canonical variant.
+            current_id = str(current.catalog_id or "")
+            product_id = str(product.catalog_id or "")
+            if current_id.startswith(("CAT-", "AUTO-")) and not product_id.startswith(("CAT-", "AUTO-")):
+                unique[identity_key] = product
+
         candidates = list(unique.values())
 
         candidates.sort(
