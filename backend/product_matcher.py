@@ -668,6 +668,22 @@ class ProductMatcher:
             if stripped and stripped not in candidates:
                 candidates.append(stripped)
 
+        # Also generate a candidate with audience wrappers removed anywhere
+        # in the title. This handles retailer constructions such as
+        # "Hawas For Him Chrome" -> "Hawas Chrome" while keeping the original
+        # title available so "Hawas For Him" still resolves to its own alias.
+        stripped_middle = base
+        stripped_middle = re.sub(
+            r"\b(?:for\s+him|for\s+her|pour\s+homme|pour\s+femme|"
+            r"homme|femme|uomo|donna)\b",
+            " ",
+            stripped_middle,
+            flags=re.I,
+        )
+        stripped_middle = re.sub(r"\s+", " ", stripped_middle).strip()
+        if stripped_middle and stripped_middle not in candidates:
+            candidates.append(stripped_middle)
+
         return tuple(candidates)
 
     @staticmethod
@@ -713,118 +729,111 @@ class ProductMatcher:
             return None
 
         offer_brand = self._offer_brand(offer)
-        name_candidates = self._family_commercial_candidates(raw_name)
-        matches: List[Dict[str, Any]] = []
+        raw_normalized = normalize(raw_name)
+        commercial_candidates = self._family_commercial_candidates(raw_name)
+        candidates: List[str] = []
+        for value in (*commercial_candidates, raw_normalized):
+            cleaned = self._clean_family_candidate(value, "")
+            for candidate in (cleaned, value):
+                candidate_n = normalize(candidate)
+                if candidate_n and candidate_n not in candidates:
+                    candidates.append(candidate_n)
 
+        # A family is anchored by its query alias in the product title.
+        # The retailer brand alone is NOT enough: otherwise every product of
+        # a brand such as Rasasi would be treated as a Hawas product.
         for family in self.family_registry:
             family_brand = str(family.get("brand") or "").strip()
             if not self._family_brand_matches(offer_brand, family_brand):
                 continue
 
             family_aliases = tuple(
-                str(alias).strip()
+                normalize(alias)
                 for alias in family.get("query_aliases", ())
-                if str(alias).strip()
+                if normalize(alias)
             )
+            family_candidates: List[str] = []
+            for value in candidates:
+                for candidate in (
+                    value,
+                    self._clean_family_candidate(value, family_brand),
+                ):
+                    candidate_n = normalize(candidate)
+                    if candidate_n and candidate_n not in family_candidates:
+                        family_candidates.append(candidate_n)
 
-            for candidate in name_candidates:
-                candidate_n = normalize(candidate)
-                family_anchor = (
-                    bool(offer_brand and family_brand)
-                    and normalize(offer_brand) == normalize(family_brand)
-                ) or any(
-                    alias and (
-                        candidate_n == normalize(alias)
-                        or f" {normalize(alias)} " in f" {candidate_n} "
-                    )
-                    for alias in family_aliases
-                )
-                if not family_anchor:
-                    continue
-
-                for variant in family.get("variants", []):
-                    for alias in variant.get("normalized_aliases", ()):
-                        if candidate_n == normalize(alias):
-                            matches.append(
-                                {
-                                    "family_id": family.get("family_id", ""),
-                                    "brand": family_brand,
-                                    "canonical_name": variant.get(
-                                        "canonical_name", ""
-                                    ),
-                                }
-                            )
-
-        unique = {
-            (
-                normalize(item.get("family_id")),
-                normalize(item.get("canonical_name")),
-            ): item
-            for item in matches
-        }
-        if len(unique) == 1:
-            return next(iter(unique.values()))
-
-        # A verified family may contain legitimate variants that are not yet
-        # explicit aliases. If the retailer title is anchored to that family,
-        # keep the cleaned variant under the family identity instead of creating
-        # a separate raw identity. Explicit exclusions are rejected before this
-        # path. This is what keeps new Hawas variants such as Verde/Exotic from
-        # splitting into separate retailer-specific identities.
-        anchored: List[Dict[str, Any]] = []
-        for family in self.family_registry:
-            family_brand = str(family.get("brand") or "").strip()
-            if not self._family_brand_matches(offer_brand, family_brand):
-                continue
-
-            family_aliases = tuple(
-                str(alias).strip()
-                for alias in family.get("query_aliases", ())
-                if str(alias).strip()
-            )
-            if not any(
-                alias and normalize(raw_name).startswith(normalize(alias) + " ")
-                for alias in family_aliases
-            ):
-                continue
-
-            for candidate in name_candidates:
-                candidate_n = normalize(candidate)
-                for alias in family_aliases:
-                    alias_n = normalize(alias)
-                    if not candidate_n.startswith(alias_n + " "):
-                        continue
-                    suffix = candidate_n[len(alias_n):].strip()
-                    if not suffix:
-                        continue
-                    canonical = f"{alias.title()} {suffix}".strip().title()
-                    anchored.append(
-                        {
-                            "family_id": family.get("family_id", ""),
-                            "brand": family_brand,
-                            "canonical_name": canonical,
-                        }
-                    )
+            family_anchored = False
+            for candidate_n in candidates:
+                for family_alias in family_aliases:
+                    if (
+                        candidate_n == family_alias
+                        or f" {family_alias} " in f" {candidate_n} "
+                    ):
+                        family_anchored = True
+                        break
+                if family_anchored:
                     break
 
-        generic_unique = {
-            (
-                normalize(item.get("family_id")),
-                normalize(item.get("canonical_name")),
-            ): item
-            for item in anchored
-        }
-        if not generic_unique:
-            return None
-        if len(generic_unique) > 1:
-            return sorted(
-                generic_unique.values(),
-                key=lambda item: (
-                    len(normalize(item.get("canonical_name"))),
+            if not family_anchored:
+                continue
+
+            matches: List[Dict[str, Any]] = []
+            for variant in family.get("variants", []):
+                for alias in variant.get("normalized_aliases", ()):
+                    alias_n = normalize(alias)
+                    if not alias_n:
+                        continue
+                    if any(candidate_n == alias_n for candidate_n in family_candidates):
+                        matches.append(
+                            {
+                                "family_id": family.get("family_id", ""),
+                                "brand": family_brand,
+                                "canonical_name": variant.get(
+                                    "canonical_name", ""
+                                ),
+                            }
+                        )
+                        break
+
+            unique = {
+                (
+                    normalize(item.get("family_id")),
                     normalize(item.get("canonical_name")),
-                ),
-            )[0]
-        return next(iter(generic_unique.values()))
+                ): item
+                for item in matches
+            }
+            if len(unique) == 1:
+                return next(iter(unique.values()))
+
+            # The registry is the authority for the family boundary, but it
+            # may legitimately lag behind a newly released variant. When the
+            # title is clearly anchored to this family, keep that variant under
+            # the family identity instead of allowing retailer identifiers to
+            # create a second identity. Explicit exclusions are rejected by
+            # match() before this method is called.
+            family_alias = min(
+                family_aliases,
+                key=len,
+                default="",
+            )
+            if family_alias:
+                for candidate_n in family_candidates:
+                    if candidate_n == family_alias:
+                        continue
+                    if candidate_n.startswith(family_alias + " "):
+                        suffix = candidate_n[len(family_alias):].strip()
+                        if suffix:
+                            canonical = " ".join(
+                                word.capitalize() for word in suffix.split()
+                            )
+                            canonical = f"{family_alias.title()} {canonical}"
+                            return {
+                                "family_id": family.get("family_id", ""),
+                                "brand": family_brand,
+                                "canonical_name": canonical,
+                            }
+
+        return None
 
     def _match_family_registry(
         self,
@@ -1464,24 +1473,26 @@ class ProductMatcher:
         if is_set:
             product, method = None, "set_identity"
         else:
+            # Family resolution is deliberately first. Retailer GTIN/MPN/SKU
+            # values can point at store-specific or legacy catalog records;
+            # for a verified family they must not create a second identity.
+            family_result = self._match_family_registry(offer)
+            if family_result is not None:
+                result.update(family_result)
+                result["result_category"] = "perfume"
+                result["canonical_display_name"] = (
+                    self._canonical_display_title(
+                        result.get("canonical_brand", ""),
+                        result.get("canonical_name", ""),
+                        result.get("canonical_concentration")
+                        or result.get("concentration", ""),
+                        "",
+                    )
+                )
+                return result
+
             product, method = self._identifier_match(offer)
             if product is None:
-                family_result = self._match_family_registry(offer)
-                if family_result is not None:
-                    result.update(family_result)
-                    result["result_category"] = (
-                        "set" if is_set else "perfume"
-                    )
-                    result["canonical_display_name"] = (
-                        self._canonical_display_title(
-                            result.get("canonical_brand", ""),
-                            result.get("canonical_name", ""),
-                            result.get("canonical_concentration")
-                            or result.get("concentration", ""),
-                            "",
-                        )
-                    )
-                    return result
                 product, method = self._exact_catalog_match(offer)
 
         if product is not None:
