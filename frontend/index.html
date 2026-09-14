@@ -1032,12 +1032,17 @@ function shGroupData(data){
         o.canonical_brand||o.brand||rawBrand
       );
       const backendName=cleanBrandText(
-        o.canonical_name||o.catalog_variant||o.name||rawName
+        o.canonical_display_name||o.canonical_name||o.catalog_variant||o.name||rawName
       );
       if(backendName){
+        let displayName=backendName;
+        if(backendBrand){
+          const brandPrefix=new RegExp("^\\s*"+backendBrand.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*[-–—:]?\\s*","i");
+          displayName=displayName.replace(brandPrefix,"").trim();
+        }
         return {
           brand:backendBrand,
-          name:pretty(backendName),
+          name:pretty(displayName),
           key:"identity|"+backendIdentity
         };
       }
