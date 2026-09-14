@@ -27,6 +27,7 @@ STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','p
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 PRODUCT_CATALOG_PATH = BASE_DIR / 'product_catalog.json'
+FAMILY_REGISTRY_PATH = BASE_DIR / 'family_registry.json'
 
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic']
 NETWORK_HEAVY_STORES = ['deloox']
@@ -70,7 +71,22 @@ def _load_product_matcher():
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
             return None
 
-        return ProductMatcher(catalog=catalog)
+        family_registry = None
+        if FAMILY_REGISTRY_PATH.exists():
+            try:
+                with open(FAMILY_REGISTRY_PATH, 'r', encoding='utf-8') as handle:
+                    family_registry = json.load(handle)
+            except Exception as exc:
+                print(
+                    f'PRODUCT_MATCHER_FAMILY_REGISTRY_ERROR: '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+
+        return ProductMatcher(
+            catalog=catalog,
+            family_registry=family_registry,
+        )
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
