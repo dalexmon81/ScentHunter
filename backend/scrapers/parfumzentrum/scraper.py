@@ -761,361 +761,160 @@ def _is_struck(node):
 
     return False
 
-def _extract_price(soup, data):
-    print("===== PARFUMZENTRUM PRICE DEBUG =====")
+
+
+def _debug_price_candidates(soup, data):
+    """Temporary diagnostic output for ParfumZentrum price extraction.
+
+    Prints every plausible EUR price found near the product H1, including
+    tag/class context and whether the node looks crossed/old. It also prints
+    the JSON-LD offer price. This is diagnostic only: it does not alter the
+    returned price.
+    """
+    print("\n===== PARFUMZENTRUM PRICE DEBUG =====")
 
     h1 = soup.find("h1")
-    print("H1:", repr(
-        h1.get_text(" ", strip=True)
-        if h1 else None
-    ))
+    print("H1:", h1.get_text(" ", strip=True) if h1 else "<none>")
 
-    for node in soup.find_all(string=re.compile(
-        r"(23[,.]96|24[,.](70|79)|99|4[,.]99)"
-    )):
-        parent = node.parent
-
-        print(
-            "MATCH TEXT:",
-            repr(str(node)),
-        )
-
-        print(
-            "PARENT:",
-            parent.name if parent else None,
-            parent.get("class") if parent else None,
-            parent.get("id") if parent else None,
-        )
-
-        print(
-            "PARENT HTML:",
-            str(parent)[:2500]
-            if parent else None
-        )
-
-    print("JSONLD DATA:")
-    print(json.dumps(
-        data,
-        ensure_ascii=False,
-        indent=2,
-        default=str,
-    )[:10000])
-
-    print("===== END PRICE DEBUG =====")
-
-    return None
-
-
-def _extract_price(soup, data):
-    """
-    Estrae il prezzo attuale del prodotto.
-
-    Regole:
-    - cerca soltanto nel blocco del prodotto;
-    - ignora prezzo barrato;
-    - ignora spedizione e soglia spedizione gratuita;
-    - se trova più prezzi, preferisce quello non barrato;
-    - non usa il prezzo più basso della pagina;
-    """
-
-    def parse_node_price(node):
-        if node is None:
-            return None
-
-        for attr in (
-            "content",
-            "data-price",
-            "data-product-price",
-            "data-current-price",
-            "data-sale-price",
-        ):
-            if node.has_attr(attr):
-                value = _parse_price(
-                    node.get(attr)
-                )
-
-                if value is not None:
-                    return value
-
-        text = node.get_text(
-            " ",
-            strip=True,
-        )
-
-        if not text:
-            return None
-
-        return _parse_price(text)
-
-    def is_struck(node):
-        """
-        True soltanto per il nodo del prezzo barrato.
-        """
-        if node is None:
-            return True
-
-        if node.find_parent([
-            "del",
-            "s",
-            "strike",
-        ]):
-            return True
-
-        classes = " ".join(
-            node.get("class", [])
-        ).lower()
-
-        node_id = str(
-            node.get("id", "")
-        ).lower()
-
-        marker = f"{classes} {node_id}"
-
-        return any(term in marker for term in (
-            "old-price",
-            "old_price",
-            "was-price",
-            "was_price",
-            "regular-price",
-            "regular_price",
-            "list-price",
-            "list_price",
-            "compare-price",
-            "compare_price",
-            "strikethrough",
-            "crossed-price",
-            "crossed_price",
-        ))
-
-    def is_shipping_block(node):
-        """
-        Elimina solo blocchi relativi a spedizione o altri prodotti.
-        """
-        current = node
-
-        for _ in range(6):
+    if h1:
+        current = h1
+        for distance in range(8):
+            current = getattr(current, "parent", None)
             if current is None:
                 break
 
-            text = current.get_text(
-                " ",
-                strip=True,
-            ).lower()
+            text = current.get_text(" ", strip=True)
+            if "€" not in text:
+                continue
 
-            classes = " ".join(
-                current.get("class", [])
-            ).lower()
+            print(f"\n--- H1 parent distance {distance} ---")
+            print("TEXT:", text[:1200])
 
-            node_id = str(
-                current.get("id", "")
-            ).lower()
-
-            marker = f"{classes} {node_id}"
-
-            if any(term in text for term in (
-                "versand",
-                "versandkosten",
-                "versandkostenfrei",
-                "lieferung",
-                "lieferkosten",
-                "kostenlose lieferung",
-                "kostenloser versand",
-                "free shipping",
-                "shipping",
-                "delivery",
-                "ab 99",
-                "ab €99",
-                "ab 99€",
-                "bestellwert",
-                "mindestbestellwert",
-            )):
-                return True
-
-            if any(term in marker for term in (
-                "shipping",
-                "delivery",
-                "versand",
-                "lieferung",
-                "free-shipping",
-                "freedelivery",
-                "related-product",
-                "related_product",
-                "recommendation",
-                "recommended",
-                "cross-sell",
-                "cross_sell",
-                "upsell",
-            )):
-                return True
-
-            current = current.parent
-
-        return False
-
-    def score_node(node):
-        classes = " ".join(
-            node.get("class", [])
-        ).lower()
-
-        node_id = str(
-            node.get("id", "")
-        ).lower()
-
-        marker = f"{classes} {node_id}"
-
-        score = 0
-
-        if "price" in marker:
-            score += 30
-
-        if any(term in marker for term in (
-            "current",
-            "sale",
-            "final",
-            "actual",
-            "selling",
-            "offer",
-            "active",
-        )):
-            score += 100
-
-        if node.name == "ins":
-            score += 100
-
-        # Il prezzo attuale normalmente è il prezzo più vicino
-        # al pulsante del carrello.
-        parent = node.parent
-
-        for _ in range(5):
-            if parent is None:
-                break
-
-            parent_text = parent.get_text(
-                " ",
-                strip=True,
-            ).lower()
-
-            if "in den warenkorb" in parent_text:
-                score += 200
-
-            if "inkl. mwst" in parent_text:
-                score += 20
-
-            if "inkl mwst" in parent_text:
-                score += 20
-
-            parent = parent.parent
-
-        return score
-
-    h1 = soup.find("h1")
-
-    if h1 is None:
-        return None
-
-    # Costruiamo i blocchi antenati dell'H1.
-    product_blocks = []
-    current = h1
-
-    for _ in range(10):
-        current = getattr(
-            current,
-            "parent",
-            None,
-        )
-
-        if current is None:
-            break
-
-        product_blocks.append(current)
-
-    selectors = (
-        '[itemprop="price"]',
-        '[data-current-price]',
-        '[data-sale-price]',
-        '[data-product-price]',
-        '[data-price]',
-        ".current-price",
-        ".current_price",
-        ".price-current",
-        ".price--current",
-        ".sale-price",
-        ".sale_price",
-        ".final-price",
-        ".final_price",
-        "ins",
-        "span",
-        "strong",
-        "b",
-    )
-
-    # Cerca dal blocco più piccolo a quello più grande.
-    for block in product_blocks:
-        candidates = []
-
-        for selector in selectors:
-            for node in block.select(selector):
-                if is_struck(node):
+            for node in current.find_all(["span", "div", "p", "strong", "b", "ins"]):
+                node_text = node.get_text(" ", strip=True)
+                if "€" not in node_text:
                     continue
 
-                if is_shipping_block(node):
+                matches = re.findall(
+                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+                    node_text,
+                    re.I,
+                )
+                if not matches:
                     continue
 
-                text = node.get_text(
-                    " ",
-                    strip=True,
+                classes = " ".join(node.get("class", []))
+                node_id = node.get("id", "")
+                print(
+                    "PRICE NODE:",
+                    repr(node_text[:300]),
+                    "| tag=", node.name,
+                    "| class=", repr(classes),
+                    "| id=", repr(node_id),
+                    "| struck=", _is_struck(node),
+                    "| matches=", matches,
                 )
 
-                if "€" not in text:
+            if distance >= 5:
+                break
+
+    # JSON-LD offer/price diagnostics.
+    print("\n--- JSON-LD ---")
+    if isinstance(data, dict):
+        print("price:", repr(data.get("price")))
+        print("lowPrice:", repr(data.get("lowPrice")))
+        print("highPrice:", repr(data.get("highPrice")))
+        offers = data.get("offers")
+        print("offers:", repr(offers)[:2000])
+    else:
+        print("data:", repr(data)[:2000])
+
+    # Global HTML price scan, useful when the customer price is injected
+    # somewhere outside the H1 subtree.
+    global_matches = re.findall(
+        r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+        r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+        soup.get_text(" ", strip=True),
+        re.I,
+    )
+    print("\nGLOBAL EUR PRICES (first 100):", global_matches[:100])
+    print("===== END PARFUMZENTRUM PRICE DEBUG =====\n")
+
+
+
+def _extract_price(soup, data):
+    """Return the active customer-facing price of the current product.
+
+    The page contains many other product cards and prices (recommendations,
+    navigation, related products). A global lowest-price scan is therefore
+    unsafe. First anchor extraction to the current product H1 and its
+    purchase area; only then use generic visible/structured fallbacks.
+    """
+    # TEMPORARY DEBUG: inspect exactly which prices the downloaded HTML exposes.
+    _debug_price_candidates(soup, data)
+
+    # PRIMARY: extract from the DOM subtree belonging to the current product.
+    # This prevents unrelated recommendation prices such as 11,95 EUR from
+    # winning simply because they are cheaper.
+    h1 = soup.find("h1")
+    if h1:
+        current = h1
+        for distance in range(8):
+            current = getattr(current, "parent", None)
+            if current is None:
+                break
+
+            text = current.get_text(" ", strip=True)
+            low = text.lower()
+            if "€" not in text:
+                continue
+
+            purchase_score = 0
+            if "in den warenkorb" in low:
+                purchase_score += 300
+            if "auf lager" in low or "versandbereit" in low:
+                purchase_score += 200
+            if "inkl. mwst" in low or "inkl mwst" in low:
+                purchase_score += 100
+
+            if purchase_score <= 0:
+                continue
+
+            for node in current.find_all(
+                ["span", "div", "p", "strong", "b", "ins"]
+            ):
+                node_text = node.get_text(" ", strip=True)
+                if "€" not in node_text:
                     continue
 
-                price = parse_node_price(node)
-
-                if price is None:
+                node_low = node_text.lower()
+                if any(term in node_low for term in (
+                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
+                    "coupon", "gutschein", "rabattcode", "discount-code",
+                )):
+                    continue
+                if _is_struck(node):
                     continue
 
-                # Evita contenitori che comprendono più prezzi.
-                nested_price_nodes = node.find_all([
-                    "span",
-                    "strong",
-                    "b",
-                    "ins",
-                    "del",
-                    "s",
-                    "strike",
-                ])
+                matches = re.findall(
+                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+                    node_text,
+                    re.I,
+                )
 
-                if len(nested_price_nodes) > 1:
-                    continue
+                for match in matches:
+                    price = _parse_price(match)
+                    if price is not None:
+                        return price
 
-                candidates.append((
-                    score_node(node),
-                    price,
-                    node,
-                ))
+            # Do not climb into the entire document.
+            if distance >= 5:
+                break
 
-        if not candidates:
-            continue
-
-        # Prima regola: punteggio del nodo.
-        # Seconda regola: in caso di parità, prezzo più basso.
-        candidates.sort(
-            key=lambda item: (
-                -item[0],
-                item[1],
-            )
-        )
-
-        return candidates[0][1]
-
-    # JSON-LD solo come fallback finale.
-    jsonld_price = _jsonld_price(data)
-
-    if jsonld_price is not None:
-        return jsonld_price
-
-    return None
-
+    # SECONDARY: generic customer-facing visible prices, with context scoring.
+    visible_candidates = []
 
 
 def _extract_name(soup, data):
@@ -1705,46 +1504,6 @@ def _extract_product(url, query):
     data = _jsonld_product(
         soup
     )
-    print("===== PARFUMZENTRUM PRODUCT DEBUG =====")
-print("URL:", url)
-
-h1_debug = soup.find("h1")
-print(
-    "H1:",
-    h1_debug.get_text(" ", strip=True)
-    if h1_debug
-    else None
-)
-
-for node in soup.find_all(string=re.compile(
-    r"(23[,.]96|24[,.](70|79)|99|4[,.]99)"
-)):
-    parent = node.parent
-
-    print("MATCH TEXT:", repr(str(node)))
-    print(
-        "PARENT:",
-        parent.name if parent else None,
-        parent.get("class") if parent else None,
-        parent.get("id") if parent else None,
-    )
-    print(
-        "PARENT HTML:",
-        str(parent)[:3000]
-        if parent
-        else None
-    )
-
-print("JSONLD DATA:")
-print(json.dumps(
-    data,
-    ensure_ascii=False,
-    indent=2,
-    default=str,
-)[:10000])
-
-print("===== END PARFUMZENTRUM PRODUCT DEBUG =====")
-
 
     name = _extract_name(
         soup,
