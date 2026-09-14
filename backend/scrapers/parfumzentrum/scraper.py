@@ -764,84 +764,69 @@ def _is_struck(node):
 
 
 def _debug_price_candidates(soup, data):
-    """Temporary diagnostic output for ParfumZentrum price extraction.
+    """Safe/minimal temporary diagnostic; never blocks price extraction."""
+    try:
+        print("\n===== PARFUMZENTRUM PRICE DEBUG =====", flush=True)
 
-    Prints every plausible EUR price found near the product H1, including
-    tag/class context and whether the node looks crossed/old. It also prints
-    the JSON-LD offer price. This is diagnostic only: it does not alter the
-    returned price.
-    """
-    print("\n===== PARFUMZENTRUM PRICE DEBUG =====")
+        h1 = soup.find("h1")
+        print("H1:", h1.get_text(" ", strip=True)[:300] if h1 else "<none>", flush=True)
 
-    h1 = soup.find("h1")
-    print("H1:", h1.get_text(" ", strip=True) if h1 else "<none>")
-
-    if h1:
-        current = h1
-        for distance in range(8):
-            current = getattr(current, "parent", None)
-            if current is None:
-                break
-
-            text = current.get_text(" ", strip=True)
-            if "€" not in text:
+        # JSON-LD: only inspect a small number of scripts.
+        ld_prices = []
+        for script in soup.find_all("script", type="application/ld+json")[:20]:
+            raw = script.string or script.get_text(" ", strip=True)
+            if not raw:
                 continue
+            for key in ("price", "lowPrice"):
+                for m in re.finditer(rf'"{key}"\s*:\s*"?([0-9]+[.,][0-9]{{2}})', raw, re.I):
+                    ld_prices.append(f"{key}={m.group(1)}")
+                    if len(ld_prices) >= 10:
+                        break
+                if len(ld_prices) >= 10:
+                    break
+            if len(ld_prices) >= 10:
+                break
+        print("JSON-LD prices:", ld_prices or "<none>", flush=True)
 
-            print(f"\n--- H1 parent distance {distance} ---")
-            print("TEXT:", text[:1200])
+        # Inspect only a small subtree around H1.
+        area = h1.parent if h1 else soup
+        if h1:
+            for _ in range(3):
+                if getattr(area, "parent", None) is not None:
+                    area = area.parent
 
-            for node in current.find_all(["span", "div", "p", "strong", "b", "ins"]):
-                node_text = node.get_text(" ", strip=True)
-                if "€" not in node_text:
-                    continue
-
-                matches = re.findall(
-                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-                    node_text,
-                    re.I,
-                )
-                if not matches:
-                    continue
-
-                classes = " ".join(node.get("class", []))
-                node_id = node.get("id", "")
-                print(
-                    "PRICE NODE:",
-                    repr(node_text[:300]),
-                    "| tag=", node.name,
-                    "| class=", repr(classes),
-                    "| id=", repr(node_id),
-                    "| struck=", _is_struck(node),
-                    "| matches=", matches,
-                )
-
-            if distance >= 5:
+        seen = set()
+        count = 0
+        for node in area.find_all(["span", "div", "p", "strong", "b", "del", "ins"])[:400]:
+            txt = node.get_text(" ", strip=True)
+            if not txt or len(txt) > 160 or "€" not in txt:
+                continue
+            matches = re.findall(r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€|(?<![\d.,])\d+(?:[.,]\d{2})\s*€", txt, re.I)
+            if not matches:
+                continue
+            key=(node.name, tuple(node.get("class", [])), node.get("id", ""), tuple(matches))
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                struck = _is_struck(node)
+            except Exception:
+                struck = "ERROR"
+            print("PRICE NODE:", repr(txt[:160]), "| tag=", node.name, "| class=", repr(" ".join(node.get("class", []))), "| id=", repr(node.get("id", "")), "| struck=", struck, "| matches=", matches, flush=True)
+            count += 1
+            if count >= 25:
                 break
 
-    # JSON-LD offer/price diagnostics.
-    print("\n--- JSON-LD ---")
-    if isinstance(data, dict):
-        print("price:", repr(data.get("price")))
-        print("lowPrice:", repr(data.get("lowPrice")))
-        print("highPrice:", repr(data.get("highPrice")))
-        offers = data.get("offers")
-        print("offers:", repr(offers)[:2000])
-    else:
-        print("data:", repr(data)[:2000])
+        print("DOM candidates printed:", count, flush=True)
+        if isinstance(data, dict):
+            print("JSON-LD data price:", repr(data.get("price")), "lowPrice:", repr(data.get("lowPrice")), flush=True)
+            print("JSON-LD offers:", repr(data.get("offers"))[:1200], flush=True)
+        else:
+            print("JSON-LD data:", repr(data)[:1200], flush=True)
 
-    # Global HTML price scan, useful when the customer price is injected
-    # somewhere outside the H1 subtree.
-    global_matches = re.findall(
-        r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-        r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-        soup.get_text(" ", strip=True),
-        re.I,
-    )
-    print("\nGLOBAL EUR PRICES (first 100):", global_matches[:100])
-    print("===== END PARFUMZENTRUM PRICE DEBUG =====\n")
-
-
+        print("===== END PARFUMZENTRUM PRICE DEBUG =====\n", flush=True)
+    except Exception as exc:
+        print(f"===== PARFUMZENTRUM PRICE DEBUG ERROR: {type(exc).__name__}: {exc} =====", flush=True)
 
 def _extract_price(soup, data):
     """Return the active customer-facing price of the current product.
