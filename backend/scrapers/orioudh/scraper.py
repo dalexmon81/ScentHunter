@@ -229,7 +229,7 @@ def _page_image(session, url, product_name):
             best = urljoin(BASE_URL, candidate)
     return best if best_score > 0 else None
 
-def _item(product,variant,url,session):
+def _item(product,variant,url,session=None):
     name=clean(product.get("title"))
     vname=clean(variant.get("title"))
     source_name=name if not vname or vname=="Default Title" else f"{name} {vname}"
@@ -252,7 +252,16 @@ def _item(product,variant,url,session):
     if not image:
         image=_extract_image_url(product.get("images"))
     if not image:
-        image=_page_image(session,url,name)
+        local_session = session
+        owns_session = False
+        if local_session is None:
+            local_session = requests.Session()
+            owns_session = True
+        try:
+            image=_page_image(local_session,url,name)
+        finally:
+            if owns_session:
+                local_session.close()
 
     return {
         "store":STORE,
