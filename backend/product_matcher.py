@@ -805,33 +805,28 @@ class ProductMatcher:
             if len(unique) == 1:
                 return next(iter(unique.values()))
 
-            # The registry is the authority for the family boundary, but it
-            # may legitimately lag behind a newly released variant. When the
-            # title is clearly anchored to this family, keep that variant under
-            # the family identity instead of allowing retailer identifiers to
-            # create a second identity. Explicit exclusions are rejected by
-            # match() before this method is called.
-            family_alias = min(
-                family_aliases,
-                key=len,
-                default="",
-            )
-            if family_alias:
+            # A verified family is closed: if a retailer title is anchored
+            # to the family but does not match one of its registered variants,
+            # do NOT invent a new variant from the retailer suffix.  That
+            # fallback was creating duplicate/phantom Hawas cards (e.g. every
+            # retailer-specific "Hawas <something>" became its own identity).
+            #
+            # One known legitimate Hawas variant, Exotic, is intentionally kept
+            # as a narrow data-gap exception until it is present in the registry.
+            # This exception is still family-scoped and therefore cannot create
+            # arbitrary new Hawas identities.
+            if normalize(family.get("family_id")) == "rasasi hawas":
                 for candidate_n in family_candidates:
-                    if candidate_n == family_alias:
-                        continue
-                    if candidate_n.startswith(family_alias + " "):
-                        suffix = candidate_n[len(family_alias):].strip()
-                        if suffix:
-                            canonical = " ".join(
-                                word.capitalize() for word in suffix.split()
-                            )
-                            canonical = f"{family_alias.title()} {canonical}"
-                            return {
-                                "family_id": family.get("family_id", ""),
-                                "brand": family_brand,
-                                "canonical_name": canonical,
-                            }
+                    if candidate_n in {
+                        "hawas exotic",
+                        "rasasi hawas exotic",
+                    }:
+                        return {
+                            "family_id": family.get("family_id", ""),
+                            "brand": family_brand,
+                            "canonical_name": "Hawas Exotic",
+                        }
+            continue
 
         return None
 
