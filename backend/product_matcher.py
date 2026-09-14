@@ -1013,6 +1013,33 @@ class ProductMatcher:
             for product in self._by_clean_name.get(cleaned, [])
             if self._brand_matches(effective_brand, product)
         ]
+
+        # Some retailers insert a commercial label such as "Collection"
+        # into an otherwise exact product title (for example:
+        # "Afnan - 9 Collection 9 PM" or "9 Collection 9 PM Rebel").
+        # Treat that word as removable only as a second-pass lookup, and only
+        # when the resulting text maps to an existing catalog identity. This
+        # is deliberately not fuzzy matching: true variant words remain
+        # untouched and no product is invented from similarity alone.
+        if not candidates:
+            commercial_cleaned = re.sub(
+                r"\b\d{1,4}\s+collection\b",
+                " ",
+                cleaned,
+            )
+            commercial_cleaned = re.sub(
+                r"\bcollection\b",
+                " ",
+                commercial_cleaned,
+            )
+            commercial_cleaned = re.sub(r"\s+", " ", commercial_cleaned).strip()
+            if commercial_cleaned and commercial_cleaned != cleaned:
+                candidates = [
+                    product
+                    for product in self._by_clean_name.get(commercial_cleaned, [])
+                    if self._brand_matches(effective_brand, product)
+                ]
+
         if not candidates:
             return None, "none"
 
@@ -1029,8 +1056,6 @@ class ProductMatcher:
         else:
             # If the retailer does not state a gender, prefer a single neutral
             # catalog record over gendered variants with the same display name.
-            # This prevents a neutral query such as “9 PM” from becoming
-            # ambiguous because “9 PM Pour Femme” is also in the catalog.
             neutral = [
                 product
                 for product in candidates
