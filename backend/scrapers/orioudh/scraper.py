@@ -294,10 +294,12 @@ def _item(product, variant, url):
 
     image = product.get("featured_image")
     if isinstance(image, dict):
-        image = image.get("src") or image.get("url")
+        image = image.get("src") or image.get("url") or image.get("original_src")
     if not image:
         imgs = product.get("images") or []
         image = imgs[0] if imgs else None
+        if isinstance(image, dict):
+            image = image.get("src") or image.get("url") or image.get("original_src")
 
     return {
         "store": STORE,
