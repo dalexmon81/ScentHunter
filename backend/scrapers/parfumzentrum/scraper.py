@@ -761,6 +761,50 @@ def _is_struck(node):
 
     return False
 
+def _extract_price(soup, data):
+    print("===== PARFUMZENTRUM PRICE DEBUG =====")
+
+    h1 = soup.find("h1")
+    print("H1:", repr(
+        h1.get_text(" ", strip=True)
+        if h1 else None
+    ))
+
+    for node in soup.find_all(string=re.compile(
+        r"(23[,.]96|24[,.](70|79)|99|4[,.]99)"
+    )):
+        parent = node.parent
+
+        print(
+            "MATCH TEXT:",
+            repr(str(node)),
+        )
+
+        print(
+            "PARENT:",
+            parent.name if parent else None,
+            parent.get("class") if parent else None,
+            parent.get("id") if parent else None,
+        )
+
+        print(
+            "PARENT HTML:",
+            str(parent)[:2500]
+            if parent else None
+        )
+
+    print("JSONLD DATA:")
+    print(json.dumps(
+        data,
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    )[:10000])
+
+    print("===== END PRICE DEBUG =====")
+
+    return None
+
 
 def _extract_price(soup, data):
     """
