@@ -764,69 +764,97 @@ def _is_struck(node):
 
 def _extract_price(soup, data):
     """
-    Estrae il prezzo reale del prodotto.
+    Estrae il prezzo attuale del prodotto.
 
-    Ordine di priorità:
-    1. Prezzo corrente nel blocco del prodotto.
-    2. Prezzo con itemprop/data-price.
-    3. JSON-LD soltanto come fallback.
-
-    Ignora sempre:
-    - prezzi barrati;
-    - prezzi consigliati;
-    - prezzi per litro;
-    - prodotti correlati;
-    - prezzi di altri prodotti presenti nella pagina.
+    Non usa il prezzo più basso della pagina e non considera
+    automaticamente tutto il contenitore come prezzo barrato.
     """
 
-    def is_struck(node):
+    def parse_node_price(node):
+        """
+        Estrae il prezzo da un singolo nodo.
+        """
+        if node is None:
+            return None
+
+        # Prezzo presente in un attributo HTML
+        for attr in (
+            "content",
+            "data-price",
+            "data-product-price",
+            "data-current-price",
+        ):
+            if node.has_attr(attr):
+                value = _parse_price(
+                    node.get(attr)
+                )
+
+                if value is not None:
+                    return value
+
+        # Testo del nodo
+        text = node.get_text(
+            " ",
+            strip=True,
+        )
+
+        if not text:
+            return None
+
+        return _parse_price(text)
+
+    def node_is_struck(node):
+        """
+        Restituisce True solo quando il nodo è realmente
+        dentro <del>, <s>, <strike> oppure ha una classe
+        chiaramente riferita al vecchio prezzo.
+        """
         if node is None:
             return True
 
-        if node.find_parent(["del", "s", "strike"]):
+        # Questo è il controllo più affidabile.
+        if node.find_parent([
+            "del",
+            "s",
+            "strike",
+        ]):
             return True
 
+        classes = " ".join(
+            node.get("class", [])
+        ).lower()
+
+        node_id = str(
+            node.get("id", "")
+        ).lower()
+
+        marker = f"{classes} {node_id}"
+
+        # Non consideriamo genericamente "price" come prezzo barrato.
+        # Usiamo solo nomi molto specifici.
+        return any(word in marker for word in (
+            "old-price",
+            "old_price",
+            "was-price",
+            "was_price",
+            "regular-price",
+            "regular_price",
+            "list-price",
+            "list_price",
+            "compare-price",
+            "compare_price",
+            "strikethrough",
+            "crossed-price",
+            "crossed_price",
+        ))
+
+    def invalid_price_context(node):
+        """
+        Esclude solo prezzi chiaramente non utilizzabili.
+        """
         current = node
 
-        for _ in range(8):
-            if current is None:
-                break
-
-            classes = " ".join(
-                current.get("class", [])
-            ).lower()
-
-            node_id = str(
-                current.get("id", "")
-            ).lower()
-
-            marker = f"{classes} {node_id}"
-
-            if any(word in marker for word in (
-                "old-price",
-                "old_price",
-                "regular-price",
-                "regular_price",
-                "list-price",
-                "list_price",
-                "was-price",
-                "was_price",
-                "compare-price",
-                "compare_price",
-                "strike",
-                "strikethrough",
-                "crossed",
-            )):
-                return True
-
-            current = current.parent
-
-        return False
-
-    def invalid_context(node):
-        current = node
-
-        for _ in range(8):
+        for _ in range(5):
             if current is None:
                 break
 
@@ -845,6 +873,7 @@ def _extract_price(soup, data):
 
             marker = f"{classes} {node_id}"
 
+            # Prezzo al litro o prezzo riferito a un codice.
             if any(term in text for term in (
                 "grundpreis",
                 "pro liter",
@@ -852,21 +881,20 @@ def _extract_price(soup, data):
                 "€/l",
                 "€ / l",
                 "/l",
-                "coupon",
-                "gutschein",
-                "rabattcode",
-                "discount code",
+                "preis inkl. code",
+                "preis inkl code",
             )):
                 return True
 
+            # Prodotti raccomandati o correlati.
             if any(term in marker for term in (
-                "related",
-                "recommend",
+                "related-product",
+                "related_product",
+                "recommendation",
+                "recommended",
                 "cross-sell",
+                "cross_sell",
                 "upsell",
-                "coupon",
-                "voucher",
-                "gutschein",
             )):
                 return True
 
@@ -874,53 +902,88 @@ def _extract_price(soup, data):
 
         return False
 
-    def extract_node_price(node):
-        if node is None:
-            return None
+    def score_node(node):
+        """
+        Assegna priorità al prezzo corrente.
+        """
+        classes = " ".join(
+            node.get("class", [])
+        ).lower()
 
-        if is_struck(node):
-            return None
+        node_id = str(
+            node.get("id", "")
+        ).lower()
 
-        if invalid_context(node):
-            return None
+        marker = f"{classes} {node_id}"
 
-        # Prima prova gli attributi numerici.
-        for attr in (
-            "content",
-            "data-price",
-            "data-product-price",
-            "data-current-price",
+        score = 0
+
+        if "price" in marker:
+            score += 20
+
+        if any(word in marker for word in (
+            "current",
+            "current-price",
+            "current_price",
+            "sale",
+            "sale-price",
+            "sale_price",
+            "final",
+            "final-price",
+            "final_price",
+            "actual",
+            "selling",
+            "active",
+        )):
+            score += 100
+
+        if node.name == "ins":
+            score += 80
+
+        if node.name in (
+            "strong",
+            "b",
         ):
-            if node.has_attr(attr):
-                value = _parse_price(
-                    node.get(attr)
-                )
+            score += 10
 
-                if value is not None:
-                    return value
+        # Un prezzo dentro un blocco con il carrello
+        # è probabilmente quello attuale.
+        parent = node.parent
 
-        # Se il nodo contiene un prezzo barrato, non usare il testo
-        # complessivo del contenitore.
-        if node.find(["del", "s", "strike"]):
-            return None
-
-        return _parse_price(
-            node.get_text(
+        if parent is not None:
+            parent_text = parent.get_text(
                 " ",
                 strip=True,
-            )
-        )
+            ).lower()
+
+            if "in den warenkorb" in parent_text:
+                score += 40
+
+            if "inkl. mwst" in parent_text:
+                score += 20
+
+            if "inkl mwst" in parent_text:
+                score += 20
+
+        return score
+
+    candidates = []
 
     # ==========================================================
-    # 1. PRIMA PRIORITÀ: blocco principale del prodotto
+    # 1. Cerca nel blocco principale del prodotto
     # ==========================================================
 
     h1 = soup.find("h1")
 
     if h1 is not None:
+        product_blocks = []
+
         current = h1
 
-        for _ in range(10):
+        # Salviamo diversi antenati dell'H1.
+        # Non filtriamo subito il blocco in base al testo,
+        # perché il sito potrebbe usare HTML particolare.
+        for _ in range(8):
             current = getattr(
                 current,
                 "parent",
@@ -930,23 +993,160 @@ def _extract_price(soup, data):
             if current is None:
                 break
 
-            block_text = current.get_text(
-                " ",
-                strip=True,
-            ).lower()
+            product_blocks.append(current)
 
-            # Deve essere il blocco con acquisto/prezzo del prodotto.
-            if "€" not in block_text:
+        # Partiamo dal blocco più piccolo e preciso.
+        for block in product_blocks:
+            for selector in (
+                '[itemprop="price"]',
+                '[data-current-price]',
+                '[data-product-price]',
+                '[data-price]',
+                ".current-price",
+                ".current_price",
+                ".price-current",
+                ".price--current",
+                ".sale-price",
+                ".sale_price",
+                ".final-price",
+                ".final_price",
+                "ins",
+            ):
+                for node in block.select(selector):
+                    if node_is_struck(node):
+                        continue
+
+                    if invalid_price_context(node):
+                        continue
+
+                    price = parse_node_price(node)
+
+                    if price is None:
+                        continue
+
+                    candidates.append((
+                        score_node(node) + 200,
+                        price,
+                    ))
+
+            if candidates:
+                break
+
+        if candidates:
+            candidates.sort(
+                key=lambda item: (
+                    -item[0],
+                    item[1],
+                )
+            )
+
+            return candidates[0][1]
+
+        # Secondo tentativo nel blocco del prodotto:
+        # solo nodi piccoli, non contenitori generici.
+        for block in product_blocks:
+            for node in block.find_all([
+                "span",
+                "strong",
+                "b",
+                "ins",
+            ]):
+                if node_is_struck(node):
+                    continue
+
+                if invalid_price_context(node):
+                    continue
+
+                text = node.get_text(
+                    " ",
+                    strip=True,
+                )
+
+                if "€" not in text:
+                    continue
+
+                price = parse_node_price(node)
+
+                if price is None:
+                    continue
+
+                candidates.append((
+                    score_node(node) + 100,
+                    price,
+                ))
+
+            if candidates:
+                break
+
+        if candidates:
+            candidates.sort(
+                key=lambda item: (
+                    -item[0],
+                    item[1],
+                )
+            )
+
+            return candidates[0][1]
+
+    # ==========================================================
+    # 2. Selettori prezzo a livello pagina
+    # ==========================================================
+
+    for selector in (
+        '[itemprop="price"]',
+        '[data-current-price]',
+        '[data-product-price]',
+        '[data-price]',
+        ".current-price",
+        ".current_price",
+        ".price-current",
+        ".price--current",
+        ".sale-price",
+        ".sale_price",
+        ".final-price",
+        ".final_price",
+        "ins",
+    ):
+        for node in soup.select(selector):
+            if node_is_struck(node):
                 continue
 
-            has_purchase_context = any(term in block_text for term in (
-                "in den warenkorb",
-                "auf lager",
-                "versandbereit",
-                "sofort lieferbar",
-                "inkl. mwst",
-                "inkl mwst",
+            if invalid_price_context(node):
+                continue
+
+            price = parse_node_price(node)
+
+            if price is None:
+                continue
+
+            candidates.append((
+                score_node(node),
+                price,
             ))
+
+    if candidates:
+        candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
+        )
+
+        return candidates[0][1]
+
+    # ==========================================================
+    # 3. JSON-LD come ultimo fallback
+    # ==========================================================
+
+    # Se il sito non espone il prezzo in un nodo HTML leggibile,
+    # proviamo il prezzo dell'offerta JSON-LD.
+    jsonld_price = _jsonld_price(data)
+
+    if jsonld_price is not None:
+        return jsonld_price
+
+    return None
+
 
 
 def _extract_name(soup, data):
