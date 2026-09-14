@@ -1019,24 +1019,16 @@ def _extract_price(soup, data):
             if distance >= 5:
                 break
 
-    # ------------------------------------------------------------------
-    # SECONDARY: visible prices on the page, but still reject old/struck
-    # prices and related-product/coupon contexts.
-    # ------------------------------------------------------------------
-    visible_candidates = _collect_candidates(
-        soup,
-        base_score=0,
-    )
+    # SECONDARY: use the existing semantic extractor.
+    # Do not scan the entire page for the lowest/most visible price,
+    # because ParfumZentrum contains prices from unrelated products.
+    semantic_price = _semantic_price(soup)
 
-    if visible_candidates:
-        visible_candidates.sort(
-            key=lambda item: (
-                -item[0],
-                item[1],
-            )
-        )
+    if semantic_price is not None:
+        return semantic_price
 
-        return visible_candidates[0][1]
+    # FINAL FALLBACK: structured data / JSON-LD.
+    return _jsonld_price(data)
 
     # ------------------------------------------------------------------
     # TERTIARY: existing semantic DOM extractor.
