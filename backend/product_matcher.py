@@ -392,6 +392,7 @@ class ProductMatcher:
         # deterministic while reducing the identity lookup to dictionary
         # operations plus a small candidate set.
         self._by_clean_name: Dict[str, List[CatalogProduct]] = {}
+        self._by_variant_name: Dict[str, List[CatalogProduct]] = {}
         self._brand_by_prefix: Dict[str, Set[str]] = {}
         self._brand_display_by_normalized: Dict[str, str] = {}
         self._catalog_brands: Set[str] = set()
@@ -429,6 +430,22 @@ class ProductMatcher:
                     continue
                 cleaned_names.add(cleaned)
                 self._by_clean_name.setdefault(cleaned, []).append(product)
+
+            variant_names: Set[str] = set()
+            for value in (
+                product.catalog_variant,
+                product.name,
+                product.family_name,
+                *product.aliases,
+            ):
+                variant_cleaned = self._clean_variant_identity_name(
+                    canonical_product_brand,
+                    value,
+                )
+                if not variant_cleaned:
+                    continue
+                variant_names.add(variant_cleaned)
+                self._by_variant_name.setdefault(variant_cleaned, []).append(product)
 
             # Every token-prefix is a possible brand-recovery key. Brand
             # recovery still requires a unique resulting brand, so this does
@@ -900,6 +917,41 @@ class ProductMatcher:
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
+    def _clean_variant_identity_name(cls, brand: str, value: Any) -> str:
+        """
+        Clean a product name while preserving audience/variant words.
+
+        This is intentionally separate from _clean_identity_name(). The latter
+        is useful for broad fallback matching, but removing words such as
+        "pour femme" there can collapse real variants (for example 9 PM and
+        9 PM Pour Femme). Exact/alias matching must retain those words.
+        """
+        text = normalize(value)
+        if not text:
+            return ""
+
+        for token in normalize(brand).split():
+            text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+
+        for phrase in cls._NON_IDENTITY_PHRASES + cls._STATUS_PHRASES:
+            text = re.sub(rf"\b{re.escape(normalize(phrase))}\b", " ", text)
+
+        text = re.sub(
+            r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|l|oz|fl\s*oz)\b",
+            " ",
+            text,
+        )
+        text = re.sub(
+            r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+            r"extrait de parfum|extrait|parfum|edp|edt|edc|"
+            r"spray|vaporisateur)\b",
+            " ",
+            text,
+        )
+        text = re.sub(r"\(\s*\)", " ", text)
+        return re.sub(r"\s+", " ", text).strip()
+
+    @classmethod
     def _clean_identity_display(cls, brand: str, value: Any) -> str:
         text = str(value or "").strip()
         if not text:
@@ -925,15 +977,8 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
-        text = re.sub(
-            r"\b(?:pour\s+homme|pour\s+femme|pour\s+hommes|"
-            r"pour\s+femmes|for\s+men|for\s+women|for\s+him|"
-            r"for\s+her|homme|uomo|men|man|femme|donna|women|woman|"
-            r"unisex|mixte|unisexe)\b",
-            " ",
-            text,
-            flags=re.I,
-        )
+        # Keep audience/variant words in the canonical display name.
+        # "9 PM" and "9 PM Pour Femme" are different catalog identities.
         text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip(" -:|/")
 
@@ -1008,9 +1053,18 @@ class ProductMatcher:
         if not cleaned:
             return None, "none"
 
+        # First try a variant-preserving exact/alias key. This is critical for
+        # products whose audience is part of the real identity, such as
+        # "9 PM" versus "9 PM Pour Femme". The broad cleaner below deliberately
+        # removes audience words, so it must never get first chance to decide
+        # between those two variants.
+        variant_cleaned = self._clean_variant_identity_name(
+            effective_brand,
+            raw_name,
+        )
         candidates = [
             product
-            for product in self._by_clean_name.get(cleaned, [])
+            for product in self._by_variant_name.get(variant_cleaned, [])
             if self._brand_matches(effective_brand, product)
         ]
 
@@ -1025,7 +1079,7 @@ class ProductMatcher:
             commercial_cleaned = re.sub(
                 r"\b\d{1,4}\s+collection\b",
                 " ",
-                cleaned,
+                variant_cleaned,
             )
             commercial_cleaned = re.sub(
                 r"\bcollection\b",
@@ -1033,12 +1087,22 @@ class ProductMatcher:
                 commercial_cleaned,
             )
             commercial_cleaned = re.sub(r"\s+", " ", commercial_cleaned).strip()
-            if commercial_cleaned and commercial_cleaned != cleaned:
+            if commercial_cleaned and commercial_cleaned != variant_cleaned:
                 candidates = [
                     product
-                    for product in self._by_clean_name.get(commercial_cleaned, [])
+                    for product in self._by_variant_name.get(commercial_cleaned, [])
                     if self._brand_matches(effective_brand, product)
                 ]
+
+        # Only after variant-preserving lookup fails do we use the historical
+        # broad cleaner. That fallback may remove audience words, so it is not
+        # allowed to override an exact variant/alias match.
+        if not candidates:
+            candidates = [
+                product
+                for product in self._by_clean_name.get(cleaned, [])
+                if self._brand_matches(effective_brand, product)
+            ]
 
         if not candidates:
             return None, "none"
