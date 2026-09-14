@@ -553,6 +553,11 @@ class ProductMatcher:
                             if normalize(value)
                         ),
                         "variants": variants,
+                        "excluded_aliases": tuple(
+                            normalize(value)
+                            for value in (family.get("excluded_aliases") or [])
+                            if normalize(value)
+                        ),
                     }
                 )
 
@@ -619,6 +624,86 @@ class ProductMatcher:
 
         return text
 
+    @staticmethod
+    def _family_commercial_candidates(value: Any) -> Tuple[str, ...]:
+        """Return family candidates after removing retailer-only decorations.
+
+        Only commercial/audience decorations are removed. Real variant words
+        such as For Him, For Her, Malibu, Elixir, Reina, etc. remain unless
+        removing an audience wrapper produces an exact verified family alias.
+        """
+        base = normalize(value)
+        if not base:
+            return ()
+
+        candidates: List[str] = [base]
+
+        patterns = (
+            r"\s+by\s+(?:men|man|women|woman|unisex|unisexe|homme|femme|uomo|donna)\s+perfume\b",
+            r"\s+by\s+(?:men|man|women|woman|unisex|unisexe|homme|femme|uomo|donna)\b",
+            r"\s*[-–—]\s*(?:men|man|women|woman|unisex|unisexe|homme|femme|uomo|donna)\b",
+            r"\s*\((?:men|man|women|woman|unisex|unisexe|homme|femme|uomo|donna)\)",
+            r"\s+(?:men|man|women|woman|unisex|unisexe|homme|femme|uomo|donna)\s*$",
+        )
+
+        changed = base
+        for pattern in patterns:
+            changed = re.sub(pattern, " ", changed, flags=re.I)
+        changed = re.sub(r"\s+", " ", changed).strip()
+        if changed and changed not in candidates:
+            candidates.append(changed)
+
+        # Audience wrappers can be retailer decoration when the remaining
+        # text is a verified family alias (e.g. Hawas Pink For Her).
+        audience_patterns = (
+            r"\s+for\s+(?:him|her)\b",
+            r"\s+pour\s+(?:homme|femme)\b",
+            r"\s+(?:homme|femme|uomo|donna)\b",
+        )
+        for current in tuple(candidates):
+            stripped = current
+            for pattern in audience_patterns:
+                stripped = re.sub(pattern, " ", stripped, flags=re.I)
+            stripped = re.sub(r"\s+", " ", stripped).strip()
+            if stripped and stripped not in candidates:
+                candidates.append(stripped)
+
+        return tuple(candidates)
+
+    @staticmethod
+    def _family_excluded_for_offer(
+        offer: Dict[str, Any],
+        family_registry: Sequence[Dict[str, Any]],
+    ) -> bool:
+        """Reject a retailer name explicitly excluded from a verified family."""
+        raw_name = first_value(offer, ProductMatcher.NAME_KEYS)
+        if not raw_name:
+            raw_name = first_value(
+                _nested_dict(offer, "source"),
+                ("source_name", "name", "title"),
+            )
+        candidate = normalize(raw_name)
+        if not candidate:
+            return False
+
+        offer_brand = first_value(offer, ProductMatcher.BRAND_KEYS)
+        if not offer_brand:
+            offer_brand = first_value(
+                _nested_dict(offer, "source"),
+                ("source_brand", "brand", "manufacturer"),
+            )
+        offer_brand_n = normalize(offer_brand)
+
+        for family in family_registry:
+            family_brand_n = normalize(family.get("brand"))
+            if family_brand_n and offer_brand_n and family_brand_n != offer_brand_n:
+                continue
+            for excluded in family.get("excluded_aliases", ()):
+                excluded_n = normalize(excluded)
+                if excluded_n and (candidate == excluded_n or excluded_n in candidate):
+                    return True
+        return False
+
     def _family_variant_for_offer(
         self,
         offer: Dict[str, Any],
@@ -628,103 +713,47 @@ class ProductMatcher:
             return None
 
         offer_brand = self._offer_brand(offer)
-
-        # Exact alias matching is the authoritative family route.
-        candidate = normalize(raw_name)
+        name_candidates = self._family_commercial_candidates(raw_name)
         matches: List[Dict[str, Any]] = []
 
         for family in self.family_registry:
-            family_brand = str(
-                family.get("brand") or ""
-            ).strip()
-
-            if not self._family_brand_matches(
-                offer_brand,
-                family_brand,
-            ):
+            family_brand = str(family.get("brand") or "").strip()
+            if not self._family_brand_matches(offer_brand, family_brand):
                 continue
 
-            family_aliases = family.get("query_aliases", ())
-            family_anchor = (
-                bool(offer_brand and family_brand)
-                and normalize(offer_brand) == normalize(family_brand)
-            ) or any(
-                alias and (
-                    candidate == alias
-                    or f" {alias} " in f" {candidate} "
-                )
-                for alias in family_aliases
+            family_aliases = tuple(
+                str(alias).strip()
+                for alias in family.get("query_aliases", ())
+                if str(alias).strip()
             )
-            if not family_anchor:
-                continue
 
-            for variant in family.get("variants", []):
-                for alias in variant.get("normalized_aliases", ()):
-                    if candidate == alias:
-                        matches.append(
-                            {
-                                "family_id": family.get("family_id", ""),
-                                "brand": family_brand,
-                                "canonical_name": variant.get(
-                                    "canonical_name", ""
-                                ),
-                            }
-                        )
-
-        if len(matches) == 1:
-            return matches[0]
-
-        # Retailer titles commonly add size/concentration/commercial
-        # descriptors around an exact family alias. Strip only those generic
-        # descriptors and retry; never strip variant/audience words here.
-        cleaned = self._clean_family_candidate(
-            raw_name,
-            "",
-        )
-        if not cleaned:
-            return None
-
-        for family in self.family_registry:
-            family_brand = str(
-                family.get("brand") or ""
-            ).strip()
-
-            if not self._family_brand_matches(
-                offer_brand,
-                family_brand,
-            ):
-                continue
-
-            family_aliases = family.get("query_aliases", ())
-            family_anchor = (
-                bool(offer_brand and family_brand)
-                and normalize(offer_brand) == normalize(family_brand)
-            ) or any(
-                alias and (
-                    alias in f" {cleaned} "
-                    or alias in f" {normalize(raw_name)} "
+            for candidate in name_candidates:
+                candidate_n = normalize(candidate)
+                family_anchor = (
+                    bool(offer_brand and family_brand)
+                    and normalize(offer_brand) == normalize(family_brand)
+                ) or any(
+                    alias and (
+                        candidate_n == normalize(alias)
+                        or f" {normalize(alias)} " in f" {candidate_n} "
+                    )
+                    for alias in family_aliases
                 )
-                for alias in family_aliases
-            )
-            if not family_anchor:
-                continue
+                if not family_anchor:
+                    continue
 
-            for variant in family.get("variants", []):
-                family_cleaned = self._clean_family_candidate(
-                    raw_name,
-                    family_brand,
-                )
-                for alias in variant.get("normalized_aliases", ()):
-                    if family_cleaned == alias or cleaned == alias:
-                        matches.append(
-                            {
-                                "family_id": family.get("family_id", ""),
-                                "brand": family_brand,
-                                "canonical_name": variant.get(
-                                    "canonical_name", ""
-                                ),
-                            }
-                        )
+                for variant in family.get("variants", []):
+                    for alias in variant.get("normalized_aliases", ()):
+                        if candidate_n == normalize(alias):
+                            matches.append(
+                                {
+                                    "family_id": family.get("family_id", ""),
+                                    "brand": family_brand,
+                                    "canonical_name": variant.get(
+                                        "canonical_name", ""
+                                    ),
+                                }
+                            )
 
         unique = {
             (
@@ -733,7 +762,69 @@ class ProductMatcher:
             ): item
             for item in matches
         }
-        return next(iter(unique.values())) if len(unique) == 1 else None
+        if len(unique) == 1:
+            return next(iter(unique.values()))
+
+        # A verified family may contain legitimate variants that are not yet
+        # explicit aliases. If the retailer title is anchored to that family,
+        # keep the cleaned variant under the family identity instead of creating
+        # a separate raw identity. Explicit exclusions are rejected before this
+        # path. This is what keeps new Hawas variants such as Verde/Exotic from
+        # splitting into separate retailer-specific identities.
+        anchored: List[Dict[str, Any]] = []
+        for family in self.family_registry:
+            family_brand = str(family.get("brand") or "").strip()
+            if not self._family_brand_matches(offer_brand, family_brand):
+                continue
+
+            family_aliases = tuple(
+                str(alias).strip()
+                for alias in family.get("query_aliases", ())
+                if str(alias).strip()
+            )
+            if not any(
+                alias and normalize(raw_name).startswith(normalize(alias) + " ")
+                for alias in family_aliases
+            ):
+                continue
+
+            for candidate in name_candidates:
+                candidate_n = normalize(candidate)
+                for alias in family_aliases:
+                    alias_n = normalize(alias)
+                    if not candidate_n.startswith(alias_n + " "):
+                        continue
+                    suffix = candidate_n[len(alias_n):].strip()
+                    if not suffix:
+                        continue
+                    canonical = f"{alias.title()} {suffix}".strip().title()
+                    anchored.append(
+                        {
+                            "family_id": family.get("family_id", ""),
+                            "brand": family_brand,
+                            "canonical_name": canonical,
+                        }
+                    )
+                    break
+
+        generic_unique = {
+            (
+                normalize(item.get("family_id")),
+                normalize(item.get("canonical_name")),
+            ): item
+            for item in anchored
+        }
+        if not generic_unique:
+            return None
+        if len(generic_unique) > 1:
+            return sorted(
+                generic_unique.values(),
+                key=lambda item: (
+                    len(normalize(item.get("canonical_name"))),
+                    normalize(item.get("canonical_name")),
+                ),
+            )[0]
+        return next(iter(generic_unique.values()))
 
     def _match_family_registry(
         self,
@@ -1306,19 +1397,7 @@ class ProductMatcher:
                 flags=re.I,
             )
         clean_name = re.sub(r"\(\s*\)", " ", clean_name)
-        # "Pour Femme" / "Pour Homme" are part of the complete product
-        # name. When the catalog stores the name as "9 PM - Pour Femme",
-        # the display must not introduce a second separator: "9 PM pour Femme".
-        clean_name = re.sub(
-            r"\s*-\s*(pour femme|pour homme)\b",
-            lambda m: " pour " + m.group(1).split()[1].capitalize(),
-            clean_name,
-            flags=re.I,
-        )
         clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
-        # Use the official compact spelling for the Afnan variant name.
-        # This is a display normalization only; matching/identity is unchanged.
-        clean_name = re.sub(r"\bnight\s+out\b", "Nightout", clean_name, flags=re.I)
 
         parts = []
         if brand:
@@ -1370,6 +1449,9 @@ class ProductMatcher:
             return None
 
         if self._is_non_fragrance(offer):
+            return None
+
+        if self._family_excluded_for_offer(offer, self.family_registry):
             return None
 
         result = dict(offer)
