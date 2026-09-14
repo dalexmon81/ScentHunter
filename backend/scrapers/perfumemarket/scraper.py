@@ -550,20 +550,68 @@ def variant_option_text(variant: Dict[str, Any]) -> str:
     return " ".join(dict.fromkeys(values))
 
 
-def extract_image(product: Dict[str, Any], variant: Dict[str, Any]) -> Optional[str]:
-    image = variant.get("featured_image")
-    if isinstance(image, dict):
-        image = image.get("src") or image.get("url")
+def _image_url(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        value = value.strip()
+        return normalize_url(value) if value else None
 
+    if isinstance(value, dict):
+        for key in ("src", "url", "contentUrl", "image"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return normalize_url(candidate.strip())
+
+    if isinstance(value, list):
+        for item in value:
+            result = _image_url(item)
+            if result:
+                return result
+
+    return None
+
+
+def _page_image(url: str) -> Optional[str]:
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+        if not response.ok:
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        for selector in (
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]',
+            'meta[property="og:image:url"]',
+        ):
+            meta = soup.select_one(selector)
+            if meta:
+                image = _image_url(meta.get("content"))
+                if image:
+                    return image
+    except requests.RequestException:
+        pass
+
+    return None
+
+
+def extract_image(
+    product: Dict[str, Any],
+    variant: Dict[str, Any],
+    product_url: Optional[str] = None,
+) -> Optional[str]:
+    image = _image_url(variant.get("featured_image"))
     if image:
-        return normalize_url(image)
+        return image
 
-    images = product.get("images")
-    if isinstance(images, list) and images:
-        first = images[0]
-        if isinstance(first, dict):
-            return normalize_url(first.get("src") or first.get("url"))
-        return normalize_url(first)
+    image = _image_url(product.get("images"))
+    if image:
+        return image
+
+    if product_url:
+        return _page_image(product_url)
 
     return None
 
@@ -594,7 +642,7 @@ def variant_result(
 
     concentration = concentration_from_text(full_name)
     brand = brand_from_product(product, title)
-    image = extract_image(product, variant)
+    image = extract_image(product, variant, product_url)
 
     # Keep an offer even when price is absent: this is important for OOS.
     if available is None and price is None:
