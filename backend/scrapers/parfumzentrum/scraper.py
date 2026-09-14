@@ -1705,6 +1705,46 @@ def _extract_product(url, query):
     data = _jsonld_product(
         soup
     )
+    print("===== PARFUMZENTRUM PRODUCT DEBUG =====")
+print("URL:", url)
+
+h1_debug = soup.find("h1")
+print(
+    "H1:",
+    h1_debug.get_text(" ", strip=True)
+    if h1_debug
+    else None
+)
+
+for node in soup.find_all(string=re.compile(
+    r"(23[,.]96|24[,.](70|79)|99|4[,.]99)"
+)):
+    parent = node.parent
+
+    print("MATCH TEXT:", repr(str(node)))
+    print(
+        "PARENT:",
+        parent.name if parent else None,
+        parent.get("class") if parent else None,
+        parent.get("id") if parent else None,
+    )
+    print(
+        "PARENT HTML:",
+        str(parent)[:3000]
+        if parent
+        else None
+    )
+
+print("JSONLD DATA:")
+print(json.dumps(
+    data,
+    ensure_ascii=False,
+    indent=2,
+    default=str,
+)[:10000])
+
+print("===== END PARFUMZENTRUM PRODUCT DEBUG =====")
+
 
     name = _extract_name(
         soup,
