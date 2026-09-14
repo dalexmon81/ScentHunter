@@ -1306,7 +1306,19 @@ class ProductMatcher:
                 flags=re.I,
             )
         clean_name = re.sub(r"\(\s*\)", " ", clean_name)
+        # "Pour Femme" / "Pour Homme" are part of the complete product
+        # name. When the catalog stores the name as "9 PM - Pour Femme",
+        # the display must not introduce a second separator: "9 PM pour Femme".
+        clean_name = re.sub(
+            r"\s*-\s*(pour femme|pour homme)\b",
+            lambda m: " pour " + m.group(1).split()[1].capitalize(),
+            clean_name,
+            flags=re.I,
+        )
         clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
+        # Use the official compact spelling for the Afnan variant name.
+        # This is a display normalization only; matching/identity is unchanged.
+        clean_name = re.sub(r"\bnight\s+out\b", "Nightout", clean_name, flags=re.I)
 
         parts = []
         if brand:
