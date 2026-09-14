@@ -1408,6 +1408,22 @@ class ProductMatcher:
         clean_name = re.sub(r"\(\s*\)", " ", clean_name)
         clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
 
+        # Display-only normalization for the verified Afnan 9 PM variants.
+        # This does not affect matching, identity, aliases, or catalog data.
+        if normalize(brand) == "afnan":
+            clean_name = re.sub(
+                r"^9\s*pm\s*[-–—:]\s*pour\s+femme$",
+                "9 PM Pour Femme",
+                clean_name,
+                flags=re.I,
+            )
+            clean_name = re.sub(
+                r"^9\s*pm\s+night\s+out$",
+                "9 PM Nightout",
+                clean_name,
+                flags=re.I,
+            )
+
         parts = []
         if brand:
             parts.append(str(brand).strip())
