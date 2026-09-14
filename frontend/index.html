@@ -746,6 +746,16 @@ function shNum(o){
   const p=parsePrice(o&&o.price);
   return p===null?Infinity:p;
 }
+function offerImage(o){
+  return String(
+    o?.image ||
+    o?.image_url ||
+    o?.thumbnail ||
+    o?.source?.image ||
+    ""
+  ).trim();
+}
+
 function shGroupData(data){
   const raw=[];
 
@@ -1009,6 +1019,30 @@ function shGroupData(data){
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
 
+    // Se il backend ha già risolto l'identità centrale del prodotto,
+    // usiamo quella come chiave di raggruppamento. In questo modo titoli
+    // diversi dello stesso profumo (es. "Afnan - 9 Collection 9 Pm" e
+    // "Afnan - 9 Pm") finiscono nella stessa scheda, mentre varianti
+    // diverse mantengono identità separate.
+    const backendIdentity=String(
+      o.product_identity||o.variant_id||o.catalog_id||""
+    ).trim();
+    if(backendIdentity){
+      const backendBrand=cleanBrandText(
+        o.canonical_brand||o.brand||rawBrand
+      );
+      const backendName=cleanBrandText(
+        o.canonical_name||o.catalog_variant||o.name||rawName
+      );
+      if(backendName){
+        return {
+          brand:backendBrand,
+          name:pretty(backendName),
+          key:"identity|"+backendIdentity
+        };
+      }
+    }
+
     // Il frontend non contiene il Product Catalog: identità e nome arrivano
     // dai risultati reali degli scraper. Usiamo solo le normali regole di
     // pulizia del risultato e la famiglia speciale Liquid Brun.
@@ -1182,6 +1216,8 @@ function shGroupData(data){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     });
+      const firstImageOffer=g.offers.find(o=>offerImage(o));
+      g.image=firstImageOffer ? offerImage(firstImageOffer) : (g.image||"");
 
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
