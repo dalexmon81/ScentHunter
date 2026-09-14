@@ -173,7 +173,43 @@ def _product_json(session,url):
     finally:
         r.close()
 
-def _item(product,variant,url):
+def _extract_image_url(value):
+    if isinstance(value, str):
+        value = value.strip()
+        return urljoin(BASE_URL, value) if value else None
+    if isinstance(value, dict):
+        for key in ("src", "url", "contentUrl", "image"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return urljoin(BASE_URL, candidate.strip())
+    if isinstance(value, list):
+        for item in value:
+            result = _extract_image_url(item)
+            if result:
+                return result
+    return None
+
+def _page_image(session, url):
+    try:
+        r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        if not r.ok:
+            return None
+        soup = BeautifulSoup(r.text, "html.parser")
+        for selector in (
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]',
+            'meta[property="og:image:url"]',
+        ):
+            meta = soup.select_one(selector)
+            if meta:
+                image = _extract_image_url(meta.get("content"))
+                if image:
+                    return image
+        return None
+    except requests.RequestException:
+        return None
+
+def _item(product,variant,url,session=None):
     name=clean(product.get("title"))
     vname=clean(variant.get("title"))
     source_name=name if not vname or vname=="Default Title" else f"{name} {vname}"
@@ -187,11 +223,11 @@ def _item(product,variant,url):
     if available is True: stock="in_stock"
     elif available is False: stock="out_of_stock"
     else: stock="unknown"
-    image=product.get("featured_image")
-    if isinstance(image,dict): image=image.get("src") or image.get("url")
+    image=_extract_image_url(product.get("featured_image"))
     if not image:
-        imgs=product.get("images") or []
-        image=imgs[0] if imgs else None
+        image=_extract_image_url(product.get("images"))
+    if not image and session is not None:
+        image=_page_image(session,url)
     return {
         "store":STORE,
         "source":{"source_name":source_name,"source_brand":clean(product.get("vendor")) or None,
@@ -228,7 +264,7 @@ def search(query):
             for v in data.get("variants") or []:
                 if not isinstance(v,dict):
                     continue
-                item=_item(data,v,url)
+                item=_item(data,v,url,session)
                 if not item:
                     continue
                 key=(item["url"],(item["identity"]["store_variant_id"] or {}).get("value"))
