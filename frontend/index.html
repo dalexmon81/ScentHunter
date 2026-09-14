@@ -1036,6 +1036,15 @@ function shGroupData(data){
       );
       if(backendName){
         let displayName=backendName;
+        // La concentrazione è un attributo del prodotto, non parte del nome
+        // commerciale mostrato nella scheda. Il backend può restituirla
+        // dentro canonical_name/catalog_variant: la rimuoviamo solo qui,
+        // senza modificare identità, matching o dati dell'offerta.
+        displayName=displayName
+          .replace(/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|edp|edt|edc)\b/gi," ")
+          .replace(/\s+/g," ")
+          .replace(/\s*[-–—:]\s*(?=$)/g,"")
+          .trim();
         if(backendBrand){
           const brandPrefix=new RegExp("^\\s*"+backendBrand.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*[-–—:]?\\s*","i");
           displayName=displayName.replace(brandPrefix,"").trim();
