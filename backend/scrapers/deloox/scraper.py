@@ -439,14 +439,34 @@ def _row_from_card(
         # product title (e.g. "Hawas Black En stock notre prix 24,79").
         # That suffix is presentation metadata, not part of the fragrance
         # identity. Remove it before ProductMatcher sees the offer.
+        candidate = line
+
+        # Deloox can expose UTF-8 text decoded once too many times
+        # (e.g. "Ã‰clat"). Repair only obvious mojibake sequences.
+        if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
+            try:
+                repaired = candidate.encode("cp1252").decode("utf-8")
+                if repaired != candidate:
+                    candidate = repaired
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+
+        # Remove retailer presentation metadata from the product title.
+        # This also handles Deloox's delivery-time suffix directly.
         candidate = re.sub(
             r"\s+(?:en stock|in stock|available|disponible|beschikbaar)\b.*$",
             "",
-            line,
+            candidate,
             flags=re.I,
         )
         candidate = re.sub(
             r"\s+(?:notre prix|our price|onze prijs|nostro prezzo)\b.*$",
+            "",
+            candidate,
+            flags=re.I,
+        )
+        candidate = re.sub(
+            r"\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\s*:\s*.*$",
             "",
             candidate,
             flags=re.I,
