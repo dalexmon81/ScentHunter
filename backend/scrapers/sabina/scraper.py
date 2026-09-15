@@ -2130,6 +2130,73 @@ def _discover_from_first_party(
         if len(urls) >= MAX_CANDIDATES:
             return urls[:MAX_CANDIDATES]
 
+    # Sabina's RASASI manufacturer page contains Hawas-family products that
+    # are not necessarily named "Hawas" in the product slug/title. Kobra is
+    # the concrete example: its card name is "Kobra For Him", while the
+    # product belongs to the RASASI Hawas family. Add only the missing Kobra
+    # card from the first-party manufacturer page when searching Hawas.
+    if _norm(query) == "hawas":
+        category_urls = [
+            BASE + "/it/631_rasasi",
+            BASE + "/es/631_rasasi",
+        ]
+        for category_url in category_urls:
+            response = _get(session, category_url)
+            if response is None:
+                continue
+            try:
+                soup = BeautifulSoup(
+                    response.text or "",
+                    "html.parser",
+                )
+                for node in soup.find_all(
+                    attrs={"data-product": True}
+                ):
+                    raw_product = node.get("data-product") or ""
+                    decoded = html.unescape(raw_product)
+                    try:
+                        product_data = json.loads(decoded)
+                    except Exception:
+                        continue
+
+                    name = _clean(
+                        product_data.get("name")
+                    )
+                    if _norm(name) != "kobra for him":
+                        continue
+
+                    product_id = _clean(
+                        product_data.get("id_product")
+                    )
+                    if not product_id:
+                        continue
+
+                    anchors = node.find_all(
+                        "a",
+                        href=True,
+                    )
+                    for anchor in anchors:
+                        link = _clean_product_url(
+                            anchor.get("href")
+                        )
+                        if not link:
+                            continue
+                        if link in seen:
+                            continue
+                        seen.add(link)
+                        urls.append(link)
+                        break
+                    if len(urls) >= MAX_CANDIDATES:
+                        return urls[:MAX_CANDIDATES]
+            finally:
+                response.close()
+
+            if any(
+                "56286-kobra-for-him" in url
+                for url in urls
+            ):
+                break
+
     # AJAX discovery is fallback only when the combined first-party/public
     # discovery returned no query-relevant product URL.
     ajax_endpoints = [
