@@ -1462,30 +1462,28 @@ def _extract_product_page(
             soup,
         )
 
-        if not title:
-            return []
+        title = _extract_product_name(product, soup)
 
-        query_matches = _query_matches(
-            title,
-            final_url,
-            query,
-        )
+if not title:
+    return []
 
-        # Sabina's Kobra page is a confirmed Hawas-family product, but its
-        # current product title/slug is "Kobra For Him" and contains neither
-        # the word "Hawas" nor a Hawas slug. The page itself exposes the
-        # authoritative product ID 56286 and name in data-product.
-        is_confirmed_hawas_kobra = (
-            _norm(query) == "hawas"
-            and (
-                "56286 kobra for him"
-                in _norm(final_url)
-                or "56286" in _norm(final_url)
-            )
-        )
+query_matches = _query_matches(title, final_url, query)
 
-        if not query_matches and not is_confirmed_hawas_kobra:
-            return []
+is_confirmed_hawas_kobra = (
+    _norm(query) == "hawas"
+    and (
+        "56286 kobra for him" in _norm(final_url)
+        or "56286" in _norm(final_url)
+    )
+)
+
+if not query_matches and not is_confirmed_hawas_kobra:
+    return []
+
+# Sabina's Kobra page: normalize the name to "Hawas Kobra" for family matching.
+if is_confirmed_hawas_kobra:
+    title = "Hawas Kobra"
+
 
         if _contains_non_product_term(
             title,
