@@ -31,8 +31,6 @@ def debug_deloox(q: str = Query(..., min_length=2)):
             f"{BASE}/en/search?query={encoded}",
             f"{BASE}/en/search?q={encoded}",
             f"{BASE}/en/search?search={encoded}",
-            f"https://www.deloox.nl/en/search?query={encoded}",
-            f"https://www.deloox.es/en/search?query={encoded}",
         )
 
         session = requests.Session()
@@ -177,8 +175,8 @@ def debug_deloox(q: str = Query(..., min_length=2)):
             # actual Hawas discovery fix. This does not alter scraper
             # behavior; it only reports where candidate discovery stops.
             rasasi_endpoint = (
-                f"{BASE}/it/categoria/"
-                "1080044/rasasi-profumi.html"
+                f"{BASE}/categorie/"
+                "1080044/rasasi-parfum.html"
             )
 
             try:
@@ -249,7 +247,7 @@ def debug_deloox(q: str = Query(..., min_length=2)):
                             best_context = context
 
                         if re.search(
-                            r"(?:€\s*)?\d{1,4}[.,]\d{2}(?:\s*€)?",
+                            r"(?:€\s*)?\d{1,4}\s*[.,]\s*\d{2}(?:\s*€)?",
                             context,
                         ):
                             break
@@ -260,7 +258,7 @@ def debug_deloox(q: str = Query(..., min_length=2)):
                     )
                     has_price = bool(
                         re.search(
-                            r"(?:€\s*)?\d{1,4}[.,]\d{2}(?:\s*€)?",
+                            r"(?:€\s*)?\d{1,4}\s*[.,]\s*\d{2}(?:\s*€)?",
                             best_context,
                         )
                     )
