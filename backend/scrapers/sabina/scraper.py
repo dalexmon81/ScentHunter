@@ -2182,17 +2182,21 @@ def _discover_from_first_party(
                     attrs={"data-product": True},
                 ):
                     raw_product = node.get("data-product") or ""
+
                     try:
                         product_data = json.loads(
-                            html.unescape(raw_product)
+                            html_lib.unescape(raw_product)
                         )
                     except (TypeError, ValueError):
                         continue
 
-                    if str(product_data.get("id_product") or "").strip() != "56286":
+                    if str(
+                        product_data.get("id_product") or ""
+                    ).strip() != "56286":
                         continue
 
                     candidates = []
+
                     for anchor in node.find_all(
                         "a",
                         href=True,
@@ -2203,6 +2207,7 @@ def _discover_from_first_party(
                                 anchor.get("href") or "",
                             )
                         )
+
                         if link:
                             candidates.append(link)
 
@@ -2217,6 +2222,7 @@ def _discover_from_first_party(
                                 "parent",
                                 None,
                             )
+
                             if parent is None:
                                 break
 
@@ -2230,6 +2236,7 @@ def _discover_from_first_party(
                                         anchor.get("href") or "",
                                     )
                                 )
+
                                 if link:
                                     candidates.append(link)
 
@@ -2239,6 +2246,7 @@ def _discover_from_first_party(
                     for link in candidates:
                         if link in seen:
                             continue
+
                         seen.add(link)
                         urls.append(link)
                         break
@@ -2246,12 +2254,13 @@ def _discover_from_first_party(
                     if len(urls) >= MAX_CANDIDATES:
                         return urls[:MAX_CANDIDATES]
 
-                    if any(
-                        "56286" in link
-                        or "kobra-for-him" in link.casefold()
-                        for link in urls
-                    ):
-                        break
+                if any(
+                    "56286" in link
+                    or "kobra-for-him" in link.casefold()
+                    for link in urls
+                ):
+                    break
+
             finally:
                 response.close()
 
@@ -2300,6 +2309,7 @@ def _discover_from_first_party(
                 params=payload,
                 ajax=True,
             )
+
             if response is None:
                 continue
 
@@ -2319,10 +2329,11 @@ def _discover_from_first_party(
                 if len(urls) >= MAX_CANDIDATES:
                     return urls[:MAX_CANDIDATES]
 
-            if urls:
-                return urls[:MAX_CANDIDATES]
+    if urls:
+        return urls[:MAX_CANDIDATES]
 
     return urls[:MAX_CANDIDATES]
+
 
 def _extract_search_engine_urls(
     text,
