@@ -531,6 +531,38 @@ def discover(
 
     # ---------------------------------------------------------
     # FIX SPECIFICO:
+    # Hawas
+    #
+    # Deloox's current search endpoints return HTTP 404.
+    # The Rasasi category remains a working catalog source and
+    # contains the Hawas products. Use it only for Hawas queries;
+    # the normal discovery logic remains unchanged for everything
+    # else.
+    # ---------------------------------------------------------
+    if "hawas" in q:
+        endpoint = (
+            f"{BASE}/it/categoria/"
+            "1080044/rasasi-profumi.html"
+        )
+
+        r = get(
+            session,
+            endpoint,
+        )
+
+        if r:
+            for url, info in _candidate_contexts(
+                r.text,
+                query,
+            ):
+                if (
+                    url not in candidates
+                    or info[0] > candidates[url][0]
+                ):
+                    candidates[url] = info
+
+    # ---------------------------------------------------------
+    # FIX SPECIFICO:
     # Liquid Brun Limited Edition
     #
     # Deloox's normal search endpoint returns 404, while the
