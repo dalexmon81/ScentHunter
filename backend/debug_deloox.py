@@ -31,6 +31,9 @@ def debug_deloox(q: str = Query(..., min_length=2)):
             f"{BASE}/en/search?query={encoded}",
             f"{BASE}/en/search?q={encoded}",
             f"{BASE}/en/search?search={encoded}",
+            # Deloox.be native search route (Belgium market).
+            # This is intentionally tested separately from the legacy /en/search routes.
+            f"{BASE}/chercher.html?q={encoded}",
         )
 
         session = requests.Session()
