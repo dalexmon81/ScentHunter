@@ -228,6 +228,64 @@ def normalize_url(url: Any) -> str:
     return value.split("?", 1)[0].rstrip("/")
 
 
+def normalize_image_url(url: Any) -> str:
+    """Normalize a PerfumeMarket/Shopify image URL without rejecting CDN hosts."""
+    value = urljoin(BASE_URL, clean(url))
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https"):
+        return ""
+
+    host = parsed.netloc.lower()
+    if (
+        "perfumemarket" in host
+        or host == "cdn.shopify.com"
+        or host.endswith(".myshopify.com")
+    ):
+        return value.split("?", 1)[0]
+
+    return ""
+
+
+def extract_discovery_image(card: Any, link: Any) -> Optional[str]:
+    """Extract the product-card image when Shopify product enrichment is unavailable."""
+    nodes = []
+    if card is not None:
+        nodes.append(card)
+    if link is not None and link is not card:
+        nodes.append(link)
+
+    for node in nodes:
+        try:
+            images = node.select("img")
+        except Exception:
+            images = []
+
+        for image in images:
+            for attribute in (
+                "src",
+                "data-src",
+                "data-original",
+                "data-lazy-src",
+                "data-image",
+            ):
+                value = clean(image.get(attribute))
+                if value:
+                    normalized = normalize_image_url(value)
+                    if normalized:
+                        return normalized
+
+            for attribute in ("srcset", "data-srcset"):
+                value = clean(image.get(attribute))
+                if not value:
+                    continue
+                first = value.split(",", 1)[0].strip().split(" ", 1)[0]
+                normalized = normalize_image_url(first)
+                if normalized:
+                    return normalized
+
+    return None
+
+
 def request_json(session: requests.Session, url: str) -> Optional[Any]:
     try:
         response = session.get(
@@ -386,6 +444,7 @@ def parse_search_html(html: str, query: str) -> List[Dict[str, Any]]:
                 "url": url,
                 "name": title,
                 "price": parse_price_text(card_text),
+                "image": extract_discovery_image(card, link),
                 "source": "search_html",
             }
         )
@@ -443,36 +502,36 @@ def discover(session: requests.Session, query: str) -> List[Dict[str, Any]]:
     found: List[Dict[str, Any]] = []
     seen = set()
 
-    # These are independent HTTP requests, so do not serialize them.
-    with ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as executor:
-        futures = [
-            executor.submit(discovery_request, session, url, kind, query)
-            for url, kind in urls
-        ]
+    # PerfumeMarket rate-limits bursts of simultaneous discovery requests.
+    # Probe endpoints sequentially and stop at the first usable response.
+    for url, kind in urls:
+        try:
+            items = discovery_request(session, url, kind, query) or []
+        except Exception:
+            items = []
 
-        for future in as_completed(futures):
-            try:
-                items = future.result() or []
-            except Exception:
-                items = []
+        for item in items:
+            product_url = normalize_url(item.get("url"))
+            if not product_url:
+                continue
 
-            for item in items:
-                url = normalize_url(item.get("url"))
-                if not url:
-                    continue
+            key = product_url.lower()
+            if key in seen:
+                continue
 
-                key = url.lower()
-                if key in seen:
-                    continue
-
-                seen.add(key)
-                found.append(item)
-
-                if len(found) >= MAX_CANDIDATES:
-                    break
+            seen.add(key)
+            found.append(item)
 
             if len(found) >= MAX_CANDIDATES:
                 break
+
+        if len(found) >= MAX_CANDIDATES:
+            break
+
+        # Once an endpoint gives us usable candidates, there is no need to
+        # hammer the remaining fallback endpoints and risk another 429.
+        if found:
+            break
 
     return found[:MAX_CANDIDATES]
 
@@ -556,14 +615,14 @@ def extract_image(product: Dict[str, Any], variant: Dict[str, Any]) -> Optional[
         image = image.get("src") or image.get("url")
 
     if image:
-        return normalize_url(image)
+        return normalize_image_url(image)
 
     images = product.get("images")
     if isinstance(images, list) and images:
         first = images[0]
         if isinstance(first, dict):
-            return normalize_url(first.get("src") or first.get("url"))
-        return normalize_url(first)
+            return normalize_image_url(first.get("src") or first.get("url"))
+        return normalize_image_url(first)
 
     return None
 
@@ -824,6 +883,21 @@ def parse_product_html(
     if not price and available is not False:
         return []
 
+    image = None
+    for selector in (
+        "meta[property='og:image']",
+        "meta[property='og:image:url']",
+        "meta[name='twitter:image']",
+    ):
+        element = soup.select_one(selector)
+        if element:
+            image = normalize_image_url(element.get("content"))
+            if image:
+                break
+
+    if not image:
+        image = extract_discovery_image(soup, None)
+
     brand = None
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text(" ", strip=True)
@@ -869,7 +943,7 @@ def parse_product_html(
         "size": size,
         "size_ml": size_ml,
         "concentration": concentration,
-        "image": None,
+        "image": image,
         "sku": None,
         "gtin": None,
         "mpn": None,
@@ -958,7 +1032,7 @@ def enrich_candidate(
                     "size": size_label(fallback_name, parse_size_ml(fallback_name)),
                     "size_ml": parse_size_ml(fallback_name),
                     "concentration": concentration_from_text(fallback_name),
-                    "image": None,
+                    "image": candidate.get("image"),
                     "sku": None,
                     "gtin": None,
                     "mpn": None,
