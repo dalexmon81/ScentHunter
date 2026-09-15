@@ -1,6 +1,6 @@
 import json
 import re
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -41,7 +41,7 @@ def matches(text,q):
 def size_ml(*values):
     m=re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b"," ".join(clean(x) for x in values),re.I)
     if not m: return None
-    n=float(m.group(1).replace(",","."))
+    n=float(m.group(1).replace(",","." ))
     if m.group(2).lower()=="cl": n*=10
     return int(n) if n.is_integer() else n
 
@@ -63,7 +63,7 @@ def price(v):
     if not m: return None
     raw=m.group(0)
     try:
-        n=float(raw.replace(",","." ))
+        n=float(raw.replace(",","."))
         if re.fullmatch(r"\d+",raw) and n>=100: n/=100.0
         return round(n,2)
     except ValueError:
@@ -78,17 +78,15 @@ def _get(session,url,params=None):
 
 def _discover(session,q):
     """
-    Fast bounded Shopify discovery.
+    Bounded Shopify discovery.
 
-    The previous implementation performed 3-4 query variants, each against
-    multiple endpoints, then a full HTML search and a sitemap crawl. A slow or
-    blocked endpoint therefore dominated the store time.
+    Collect matching product URLs from all three available discovery paths:
+      1. Shopify suggest;
+      2. Shopify search.json;
+      3. normal HTML search.
 
-    We now use:
-      1. Shopify suggest for the exact query;
-      2. Shopify search.json once;
-      3. normal HTML search once.
-    Sitemap crawling is intentionally removed from the normal request path.
+    The important point is that a partial result from one endpoint must not
+    prevent the other endpoints from contributing additional products.
     """
     urls=[]
     seen=set()
@@ -122,9 +120,6 @@ def _discover(session,q):
         finally:
             r.close()
 
-    if urls:
-        return urls[:8]
-
     # 2) Shopify JSON search.
     r=_get(session,BASE_URL+"/search.json",{"q":q,"type":"product","limit":12})
     if r:
@@ -142,10 +137,7 @@ def _discover(session,q):
         finally:
             r.close()
 
-    if urls:
-        return urls[:8]
-
-    # 3) HTML search, one request only.
+    # 3) HTML search.
     r=_get(session,BASE_URL+"/search",{"q":q,"type":"product"})
     if r:
         try:
@@ -155,12 +147,10 @@ def _discover(session,q):
                 text=f"{a.get('title','')} {a.get_text(' ',strip=True)} {u or ''}"
                 if matches(text,q):
                     add(u)
-                    if len(urls)>=8:
-                        break
         finally:
             r.close()
 
-    return urls[:8]
+    return urls[:20]
 
 def _product_json(session,url):
     r=_get(session,url.rstrip("/")+".js")
