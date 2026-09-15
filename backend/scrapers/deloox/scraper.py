@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 STORE = "Deloox"
 BASE = "https://www.deloox.be"
 TIMEOUT = (2.0, 5.0)
-MAX_CANDIDATES = 8
+MAX_CANDIDATES = 40
 MAX_RESULTS = 40
 
 HEADERS = {
@@ -488,10 +488,10 @@ def discover(
     candidates = {}
     seen_pages = set()
 
+    # Deloox.be uses its native search route /chercher.html.
+    # The former /en/search endpoints return HTTP 404 on the .be market.
     endpoints = (
-        f"{BASE}/en/search?query={encoded}",
-        f"{BASE}/en/search?q={encoded}",
-        f"{BASE}/en/search?search={encoded}",
+        f"{BASE}/chercher.html?q={encoded}",
     )
 
     for endpoint in endpoints:
@@ -518,14 +518,9 @@ def discover(
             ):
                 candidates[url] = info
 
-        if (
-            len(candidates) >= 2
-            and not (
-                {"limited", "edition"}
-                & q
-            )
-        ):
-            break
+        # Keep the complete result set from Deloox.be search;
+        # do not stop after the first two candidates.
+        continue
 
     # ---------------------------------------------------------
     # FIX SPECIFICO:
