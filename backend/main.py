@@ -21,6 +21,11 @@ try:
 except Exception as exc:
     print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+     try:
+    from debug_bplatz import router as debug_bplatz_router
+    app.include_router(debug_bplatz_router)
+except Exception as exc:
+    print(f'Bplatz debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
