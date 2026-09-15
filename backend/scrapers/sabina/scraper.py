@@ -962,7 +962,33 @@ def _availability_from_product(
 def _extract_price_and_currency(
     product,
     soup,
+    url=None,
 ):
+    # Kobra is a special Sabina product page: it has no Product JSON-LD,
+    # while the authoritative product payload is embedded in data-product.
+    # Read that payload before generic page prices so we do not accidentally
+    # take a recommendation/related-product price.
+    if url and "56286-" in str(url).lower():
+        for node in soup.select("[data-product]"):
+            raw = node.get("data-product") or ""
+            if '"id_product":56286' not in raw and '"id_product":"56286"' not in raw:
+                continue
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            price = _price_number(
+                data.get("price_with_reduction")
+                or data.get("price")
+                or data.get("total_wt")
+            )
+            if price is not None:
+                return (
+                    price,
+                    "EUR",
+                    "data_product",
+                )
+
     for offer in _offer_objects(
         product
     ):
@@ -1439,11 +1465,22 @@ def _extract_product_page(
         if not title:
             return []
 
-        if not _query_matches(
+        query_matches = _query_matches(
             title,
             final_url,
             query,
-        ):
+        )
+
+        # Sabina's Kobra page is a confirmed Hawas-family product, but its
+        # current product title/slug is "Kobra For Him" and contains neither
+        # the word "Hawas" nor a Hawas slug. The page itself exposes the
+        # authoritative product ID 56286 and name in data-product.
+        is_confirmed_hawas_kobra = (
+            _norm(query) == "hawas"
+            and "56286-kobra-for-him" in _norm(final_url)
+        )
+
+        if not query_matches and not is_confirmed_hawas_kobra:
             return []
 
         if _contains_non_product_term(
@@ -1461,6 +1498,7 @@ def _extract_product_page(
             _extract_price_and_currency(
                 product,
                 soup,
+                final_url,
             )
         )
 
@@ -2129,73 +2167,6 @@ def _discover_from_first_party(
         urls.append(link)
         if len(urls) >= MAX_CANDIDATES:
             return urls[:MAX_CANDIDATES]
-
-    # Sabina's RASASI manufacturer page contains Hawas-family products that
-    # are not necessarily named "Hawas" in the product slug/title. Kobra is
-    # the concrete example: its card name is "Kobra For Him", while the
-    # product belongs to the RASASI Hawas family. Add only the missing Kobra
-    # card from the first-party manufacturer page when searching Hawas.
-    if _norm(query) == "hawas":
-        category_urls = [
-            BASE + "/it/631_rasasi",
-            BASE + "/es/631_rasasi",
-        ]
-        for category_url in category_urls:
-            response = _get(session, category_url)
-            if response is None:
-                continue
-            try:
-                soup = BeautifulSoup(
-                    response.text or "",
-                    "html.parser",
-                )
-                for node in soup.find_all(
-                    attrs={"data-product": True}
-                ):
-                    raw_product = node.get("data-product") or ""
-                    decoded = html.unescape(raw_product)
-                    try:
-                        product_data = json.loads(decoded)
-                    except Exception:
-                        continue
-
-                    name = _clean(
-                        product_data.get("name")
-                    )
-                    if _norm(name) != "kobra for him":
-                        continue
-
-                    product_id = _clean(
-                        product_data.get("id_product")
-                    )
-                    if not product_id:
-                        continue
-
-                    anchors = node.find_all(
-                        "a",
-                        href=True,
-                    )
-                    for anchor in anchors:
-                        link = _clean_product_url(
-                            anchor.get("href")
-                        )
-                        if not link:
-                            continue
-                        if link in seen:
-                            continue
-                        seen.add(link)
-                        urls.append(link)
-                        break
-                    if len(urls) >= MAX_CANDIDATES:
-                        return urls[:MAX_CANDIDATES]
-            finally:
-                response.close()
-
-            if any(
-                "56286-kobra-for-him" in url
-                for url in urls
-            ):
-                break
 
     # AJAX discovery is fallback only when the combined first-party/public
     # discovery returned no query-relevant product URL.
