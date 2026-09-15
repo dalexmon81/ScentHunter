@@ -1,12 +1,13 @@
-import json
 import re
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 
 BASE = "https://bplatz.de"
+LOCALIZED_BASE = "https://it.bplatz.de"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
     "Accept": "application/json,text/javascript,text/html;q=0.9,*/*;q=0.8",
@@ -162,6 +163,81 @@ def _append_candidate(candidates, seen, product):
     })
 
 
+def _decode_embedded_shopify_text(text):
+    """
+    The Bplatz search page embeds Shopify product data inside script
+    containers. In the returned HTML those objects are JSON-escaped.
+    Normalize only the escaping needed for discovery; product.js remains
+    the authoritative source for price/availability.
+    """
+    value = str(text or "")
+    value = value.replace("\\/", "/")
+    value = value.replace('\\"', '"')
+    return value
+
+
+def embedded_search_products(session, query):
+    """
+    Recover products omitted by Bplatz's predictive endpoint.
+
+    For the confirmed Hawas case, the localized search page contains
+    product objects in embedded JSON/script data. Kobra and Reina are
+    present there with their Shopify handles even though
+    /search/suggest.json returns only 10 products.
+
+    This function only discovers title + handle. The normal product .js
+    stage remains responsible for validating the real product.
+    """
+    response = request_get(
+        session,
+        LOCALIZED_BASE + "/search",
+        SEARCH_TIMEOUT,
+        params={"q": query},
+    )
+
+    if not response:
+        return []
+
+    html = response.text or ""
+    if not html:
+        return []
+
+    decoded = _decode_embedded_shopify_text(html)
+
+    # Product objects in Bplatz's embedded search data use the sequence:
+    # "title":"...","handle":"..."
+    pattern = re.compile(
+        r'"title"\s*:\s*"([^"]+)"\s*,\s*"handle"\s*:\s*"([^"]+)"',
+        flags=re.I,
+    )
+
+    candidates = []
+    seen = set()
+
+    _append_candidate.query = query
+
+    for match in pattern.finditer(decoded):
+        title = match.group(1).strip()
+        handle = match.group(2).strip()
+
+        if not title or not handle:
+            continue
+
+        _append_candidate(
+            candidates,
+            seen,
+            {
+                "title": title,
+                "handle": handle,
+            },
+        )
+
+        if len(candidates) >= MAX_CANDIDATES:
+            break
+
+    return candidates
+
+
 def predictive_products(session, query):
     candidates = []
     seen = set()
@@ -200,40 +276,19 @@ def predictive_products(session, query):
             _append_candidate(candidates, seen, product)
 
     # TARGETED DISCOVERY FALLBACK:
-    # Bplatz's predictive endpoint returns only 10 Hawas products even though
-    # the real Bplatz search contains 12. Use Shopify's normal product search
-    # JSON only for Hawas to recover products omitted by predictive search.
-    #
-    # Everything after candidate discovery remains unchanged.
+    # The predictive endpoint demonstrably omits two real Hawas products.
+    # The localized search HTML contains their embedded Shopify objects.
+    # Use that page only for the confirmed Hawas case and only when the
+    # predictive discovery did not fill the normal candidate budget.
     if norm(query) == "hawas" and len(candidates) < MAX_CANDIDATES:
-        search_endpoint = BASE + "/search.json"
-        search_params = {
-            "q": query,
-            "type": "product",
-            "options[prefix]": "last",
-            "limit": "50",
-        }
+        embedded_candidates = embedded_search_products(session, query)
 
-        search_response = request_get(
-            session,
-            search_endpoint,
-            SEARCH_TIMEOUT,
-            params=search_params,
-        )
-
-        if search_response:
-            try:
-                search_data = search_response.json()
-            except (ValueError, TypeError):
-                search_data = {}
-
-            search_products = (search_data or {}).get("products") or []
+        for candidate in embedded_candidates:
+            if len(candidates) >= MAX_CANDIDATES:
+                break
 
             _append_candidate.query = query
-            for product in search_products:
-                if len(candidates) >= MAX_CANDIDATES:
-                    break
-                _append_candidate(candidates, seen, product)
+            _append_candidate(candidates, seen, candidate)
 
     return candidates
 
@@ -556,6 +611,6 @@ def search(query):
 
 if __name__ == "__main__":
     for test_query in ("Liquid Brun", "9 PM", "Turathi Blue"):
-        print("\nQUERY:", test_query)
+        print(f"\n=== {test_query} ===")
         for result in search(test_query):
             print(result)
