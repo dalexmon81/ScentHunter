@@ -314,6 +314,9 @@ def jsonld_products(soup):
     return out
 
 
+_CARD_IMAGES = {}
+
+
 def _image_url(value):
     if isinstance(value, (list, tuple)):
         for item in value:
@@ -355,7 +358,6 @@ def _image_from_node(node):
             if image:
                 return image
     return ""
-
 
 
 def _candidate_contexts(
@@ -445,8 +447,9 @@ def _candidate_contexts(
             found[url] = (
                 score,
                 best,
-                card_image,
             )
+            if card_image:
+                _CARD_IMAGES[url] = card_image
 
     return sorted(
         found.items(),
@@ -462,7 +465,6 @@ def _row_from_card(
     url,
     context,
     query,
-    image="",
 ):
     if (
         not relevant(
@@ -552,8 +554,8 @@ def _row_from_card(
         "price": price_text(n),
         "price_num": n,
         "url": url,
-        "image": image or "",
-        "image_url": image or "",
+        "image": _CARD_IMAGES.get(url, ""),
+        "image_url": _CARD_IMAGES.get(url, ""),
         "available": (
             state != "out_of_stock"
         ),
@@ -817,8 +819,8 @@ def parse_product(
                         ),
                         "price_num": n,
                         "url": url,
-                        "image": image or "",
-                        "image_url": image or "",
+                        "image": image,
+                        "image_url": image,
                         "available": (
                             state
                             != "out_of_stock"
@@ -863,13 +865,11 @@ def search(query):
         for url, (
             _,
             context,
-            image,
         ) in candidates:
             row = _row_from_card(
                 url,
                 context,
                 query,
-                image,
             )
 
             if row:
