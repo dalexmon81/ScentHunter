@@ -39,10 +39,7 @@
         },
         {
           "canonical_name": "Hawas Kobra",
-          "aliases": [
-            "Hawas Kobra",
-            "Hawas Cobra"
-          ]
+          "aliases": ["Hawas Kobra", "Hawas Cobra", "Rasasi Kobra For Him", "Kobra For Him"]
         },
         {
           "canonical_name": "Hawas Fire",
@@ -138,6 +135,12 @@
           ]
         },
         {
+          "canonical_name": "Hawas Overdose",
+          "aliases": [
+            "Hawas Overdose"
+          ]
+        },
+        {
           "canonical_name": "Hawas Thunder",
           "aliases": [
             "Hawas Thunder"
@@ -150,7 +153,7 @@
           ]
         },
         {
-          "canonical_name": "Hawas For Her Éclat",
+          "canonical_name": "Hawas Éclat",
           "aliases": [
             "Hawas For Her Éclat",
             "Hawas Eclat",
@@ -213,33 +216,26 @@
           "canonical_name": "Born in Roma Uomo Intense",
           "aliases": [
             "Born in Roma Uomo Intense",
-            "Born in Roma Intense Uomo",
-            "Born in Roma Uomo Eau de Parfum Intense",
-            "Born In Roma Intense For Him"
+            "Born in Roma Uomo Eau de Parfum Intense"
           ]
         },
         {
           "canonical_name": "Born in Roma Uomo Extradose",
           "aliases": [
             "Born in Roma Uomo Extradose",
-            "Born in Roma Extradose Uomo",
-            "Born In Roma Extradose For Him",
             "Born In Roma Extradose"
           ]
         },
         {
           "canonical_name": "Born in Roma Uomo Green Stravaganza",
           "aliases": [
-            "Born in Roma Uomo Green Stravaganza",
-            "Born in Roma Green Stravaganza Uomo",
-            "Born In Roma Green Stravaganza For Him"
+            "Born in Roma Uomo Green Stravaganza"
           ]
         },
         {
           "canonical_name": "Born in Roma Uomo Coral Fantasy",
           "aliases": [
             "Born in Roma Uomo Coral Fantasy",
-            "Born in Roma Coral Fantasy Uomo",
             "Born In Roma Coral Fantasy For Him"
           ]
         },
@@ -247,7 +243,6 @@
           "canonical_name": "Born in Roma Uomo Yellow Dream",
           "aliases": [
             "Born in Roma Uomo Yellow Dream",
-            "Born in Roma Yellow Dream Uomo",
             "Born In Roma Yellow Dream For Him"
           ]
         },
@@ -255,20 +250,6 @@
           "canonical_name": "Born in Roma Uomo Purple Melancholia",
           "aliases": [
             "Born in Roma Uomo Purple Melancholia"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Uomo The Gold",
-          "aliases": [
-            "Born in Roma Uomo The Gold",
-            "Born In Roma The Gold Uomo"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Uomo Ivory",
-          "aliases": [
-            "Born in Roma Uomo Ivory",
-            "Born In Roma Ivory Uomo"
           ]
         },
         {
@@ -282,32 +263,26 @@
           "canonical_name": "Born in Roma Donna Intense",
           "aliases": [
             "Born in Roma Donna Intense",
-            "Born in Roma Intense Donna",
-            "Born in Roma Donna Eau de Parfum Intense",
-            "Born In Roma Intense For Her"
+            "Born in Roma Donna Eau de Parfum Intense"
           ]
         },
         {
           "canonical_name": "Born in Roma Donna Extradose",
           "aliases": [
             "Born in Roma Donna Extradose",
-            "Born in Roma Extradose Donna",
             "Born In Roma Extradose For Her"
           ]
         },
         {
           "canonical_name": "Born in Roma Donna Green Stravaganza",
           "aliases": [
-            "Born in Roma Donna Green Stravaganza",
-            "Born in Roma Green Stravaganza Donna",
-            "Born In Roma Green Stravaganza For Her"
+            "Born in Roma Donna Green Stravaganza"
           ]
         },
         {
           "canonical_name": "Born in Roma Donna Coral Fantasy",
           "aliases": [
             "Born in Roma Donna Coral Fantasy",
-            "Born in Roma Coral Fantasy Donna",
             "Born In Roma Coral Fantasy For Her"
           ]
         },
@@ -315,7 +290,6 @@
           "canonical_name": "Born in Roma Donna Yellow Dream",
           "aliases": [
             "Born in Roma Donna Yellow Dream",
-            "Born in Roma Yellow Dream Donna",
             "Born In Roma Yellow Dream For Her"
           ]
         },
@@ -323,20 +297,6 @@
           "canonical_name": "Born in Roma Donna Purple Melancholia",
           "aliases": [
             "Born in Roma Donna Purple Melancholia"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Donna The Gold",
-          "aliases": [
-            "Born in Roma Donna The Gold",
-            "Born In Roma The Gold Donna"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Donna Ivory",
-          "aliases": [
-            "Born in Roma Donna Ivory",
-            "Born In Roma Ivory Donna"
           ]
         }
       ]
@@ -505,3 +465,4 @@
       ]
     }
   ]
+}
