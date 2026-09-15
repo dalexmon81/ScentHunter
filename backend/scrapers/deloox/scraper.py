@@ -314,6 +314,62 @@ def jsonld_products(soup):
     return out
 
 
+def _image_url(value):
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            image = _image_url(item)
+            if image:
+                return image
+        return ""
+
+    if isinstance(value, dict):
+        for key in ("url", "src", "contentUrl", "image"):
+            image = _image_url(value.get(key))
+            if image:
+                return image
+        return ""
+
+    value = clean(value)
+    if not value or value.startswith("data:"):
+        return ""
+
+    if value.startswith("//"):
+        return "https:" + value
+
+    return urljoin(BASE, value)
+
+
+def _image_from_node(node):
+    if not node:
+        return ""
+
+    # Read the product-card image from the HTML already downloaded for search.
+    # This avoids an extra HTTP request for every Deloox result.
+    for candidate in node.find_all(["img", "source"]):
+        for attr in (
+            "src",
+            "data-src",
+            "data-lazy-src",
+            "data-original",
+            "data-image",
+            "content",
+        ):
+            image = _image_url(candidate.get(attr))
+            if image:
+                return image
+
+        for attr in ("srcset", "data-srcset"):
+            raw = candidate.get(attr)
+            if not raw:
+                continue
+            first = str(raw).split(",", 1)[0].strip().split(" ", 1)[0]
+            image = _image_url(first)
+            if image:
+                return image
+
+    return ""
+
+
 def _candidate_contexts(
     html,
     query,
@@ -338,6 +394,7 @@ def _candidate_contexts(
             continue
 
         node = a
+        card_image = ""
 
         best = clean(
             a.get_text(
@@ -358,6 +415,9 @@ def _candidate_contexts(
                     strip=True,
                 )
             )
+
+            if not card_image:
+                card_image = _image_from_node(node)
 
             if (
                 len(text) > len(best)
@@ -397,6 +457,7 @@ def _candidate_contexts(
             found[url] = (
                 score,
                 best,
+                card_image,
             )
 
     return sorted(
@@ -413,6 +474,7 @@ def _row_from_card(
     url,
     context,
     query,
+    image="",
 ):
     if (
         not relevant(
@@ -502,6 +564,8 @@ def _row_from_card(
         "price": price_text(n),
         "price_num": n,
         "url": url,
+        "image": image or "",
+        "image_url": image or "",
         "available": (
             state != "out_of_stock"
         ),
@@ -751,6 +815,8 @@ def parse_product(
                     )
                 )
 
+                image = _image_url(p.get("image"))
+
                 rows.append(
                     {
                         "store": STORE,
@@ -763,6 +829,8 @@ def parse_product(
                         ),
                         "price_num": n,
                         "url": url,
+                        "image": image,
+                        "image_url": image,
                         "available": (
                             state
                             != "out_of_stock"
@@ -807,11 +875,13 @@ def search(query):
         for url, (
             _,
             context,
+            image,
         ) in candidates:
             row = _row_from_card(
                 url,
                 context,
                 query,
+                image,
             )
 
             if row:
