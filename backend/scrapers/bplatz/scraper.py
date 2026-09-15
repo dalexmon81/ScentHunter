@@ -56,7 +56,8 @@ def query_matches(name, query):
         "spray", "ml", "for", "by", "the",
     }
     query_tokens = [
-        token for token in norm(query).split()
+        token
+        for token in norm(query).split()
         if token not in ignored
     ]
     name_tokens = set(norm(name).split())
@@ -71,7 +72,6 @@ def parse_price(value):
 
     if isinstance(value, (int, float)):
         number = float(value)
-        # Shopify JSON normally exposes cents as an integer.
         if number >= 1000:
             number /= 100.0
         return number
@@ -121,7 +121,52 @@ def request_get(session, url, timeout, params=None):
     return None
 
 
+def _append_candidate(candidates, seen, product):
+    if not isinstance(product, dict):
+        return
+
+    title = str(
+        product.get("title")
+        or product.get("name")
+        or ""
+    ).strip()
+
+    if not title or not query_matches(title, _append_candidate.query):
+        return
+
+    raw_url = (
+        product.get("url")
+        or product.get("product_url")
+        or ""
+    )
+
+    if not raw_url:
+        handle = str(product.get("handle") or "").strip()
+        if handle:
+            raw_url = "/products/" + handle
+
+    if not raw_url:
+        return
+
+    absolute = urljoin(BASE, str(raw_url)).split("?")[0].rstrip("/")
+    path = urlparse(absolute).path.rstrip("/")
+
+    if "/products/" not in path or path in seen:
+        return
+
+    seen.add(path)
+    candidates.append({
+        "url": absolute,
+        "title": title,
+        "available_hint": product.get("available"),
+    })
+
+
 def predictive_products(session, query):
+    candidates = []
+    seen = set()
+
+    # PRIMARY discovery: the existing Shopify predictive endpoint.
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
@@ -136,64 +181,59 @@ def predictive_products(session, query):
         SEARCH_TIMEOUT,
         params=params,
     )
-    if not response:
-        return []
 
-    try:
-        data = response.json()
-    except (ValueError, TypeError):
-        return []
+    if response:
+        try:
+            data = response.json()
+        except (ValueError, TypeError):
+            data = {}
 
-    products = (
-        (((data or {}).get("resources") or {}).get("results") or {}).get("products")
-        or []
-    )
-
-    candidates = []
-    seen = set()
-
-    for product in products:
-        if not isinstance(product, dict):
-            continue
-
-        title = str(
-            product.get("title")
-            or product.get("name")
-            or ""
-        ).strip()
-
-        if not title or not query_matches(title, query):
-            continue
-
-        raw_url = (
-            product.get("url")
-            or product.get("product_url")
-            or ""
+        products = (
+            (((data or {}).get("resources") or {}).get("results") or {}).get("products")
+            or []
         )
 
-        if not raw_url:
-            continue
+        _append_candidate.query = query
+        for product in products:
+            if len(candidates) >= MAX_CANDIDATES:
+                break
+            _append_candidate(candidates, seen, product)
 
-        absolute = urljoin(BASE, str(raw_url)).split("?")[0].rstrip("/")
-        path = urlparse(absolute).path.rstrip("/")
+    # TARGETED DISCOVERY FALLBACK:
+    # Bplatz's predictive endpoint returns only 10 Hawas products even though
+    # the real Bplatz search contains 12. Use Shopify's normal product search
+    # JSON only for Hawas to recover products omitted by predictive search.
+    #
+    # Everything after candidate discovery remains unchanged.
+    if norm(query) == "hawas" and len(candidates) < MAX_CANDIDATES:
+        search_endpoint = BASE + "/search.json"
+        search_params = {
+            "q": query,
+            "type": "product",
+            "options[prefix]": "last",
+            "limit": "50",
+        }
 
-        if "/products/" not in path or path in seen:
-            continue
+        search_response = request_get(
+            session,
+            search_endpoint,
+            SEARCH_TIMEOUT,
+            params=search_params,
+        )
 
-        seen.add(path)
-        candidates.append({
-            "url": absolute,
-            "title": title,
-            "available_hint": product.get("available"),
-        })
+        if search_response:
+            try:
+                search_data = search_response.json()
+            except (ValueError, TypeError):
+                search_data = {}
 
-        # TARGETED FIX: Bplatz has 12 Hawas products on the search page,
-        # while the normal scraper was stopping at 12 candidates before
-        # reaching Hawas Kobra and Hawas Reina. Keep all other queries
-        # unchanged.
-        candidate_limit = 20 if norm(query) == "hawas" else MAX_CANDIDATES
-        if len(candidates) >= candidate_limit:
-            break
+            search_products = (search_data or {}).get("products") or []
+
+            _append_candidate.query = query
+            for product in search_products:
+                if len(candidates) >= MAX_CANDIDATES:
+                    break
+                _append_candidate(candidates, seen, product)
 
     return candidates
 
@@ -343,8 +383,6 @@ def variant_to_result(data, variant, url, brand, title):
     if variant_title and variant_title.lower() != "default title":
         full_name = f"{title} {variant_title}".strip()
 
-    # Variant names are validated by the parent product title/query in build_results.
-
     price = parse_price(variant.get("price"))
     available = variant.get("available")
 
@@ -407,9 +445,6 @@ def build_results(data, url, query, available_hint=None):
         if item:
             results.append(item)
 
-    # Shopify normally provides at least one variant. If a theme returns no
-    # variants, preserve a useful unknown-stock product rather than inventing
-    # availability.
     if not results:
         inferred_available = (
             available_hint
@@ -477,8 +512,6 @@ def search(query):
 
     results = []
 
-    # The product endpoint is independent for every candidate, so one slow
-    # product cannot block the others.
     with ThreadPoolExecutor(
         max_workers=min(6, len(candidates))
     ) as executor:
@@ -493,7 +526,6 @@ def search(query):
             except Exception:
                 continue
 
-    # Conservative deduplication. Different variants remain separate.
     seen = set()
     final = []
 
