@@ -286,7 +286,10 @@ def _run_store_subprocess(store, query, on_result=None):
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store); rows.append(row)
+                row=clean_result(event['row'],store)
+                if row is None:
+                    continue
+                rows.append(row)
                 if callable(on_result): on_result(row)
             elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
         rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
