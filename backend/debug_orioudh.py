@@ -45,6 +45,8 @@ def _request(session, method, url, params=None):
         "elapsed_ms": None,
         "error": None,
         "json": None,
+        "json_parse_error": None,
+        "text_length": None,
         "text_preview": None,
     }
 
@@ -61,13 +63,15 @@ def _request(session, method, url, params=None):
         result["content_type"] = r.headers.get("content-type")
         result["elapsed_ms"] = round(r.elapsed.total_seconds() * 1000)
 
-        if "json" in (r.headers.get("content-type") or "").lower():
-            try:
-                result["json"] = r.json()
-            except Exception:
-                result["text_preview"] = (r.text or "")[:3000]
-        else:
-            result["text_preview"] = (r.text or "")[:5000]
+        # IMPORTANT: do not trust Content-Type for Shopify .js endpoints.
+        # Try JSON regardless of the advertised MIME type.
+        try:
+            result["json"] = r.json()
+        except Exception as exc:
+            result["json_parse_error"] = f"{type(exc).__name__}: {exc}"
+            body = r.text or ""
+            result["text_length"] = len(body)
+            result["text_preview"] = body[:5000]
 
     except requests.RequestException as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
@@ -312,6 +316,56 @@ def diagnose_endpoints(query="Hawas"):
             _diagnose_product_js(session, u)
             for u in candidate_urls
         ]
+
+        # 5. Compare with the ACTUAL Orioudh scraper parser.
+        # This does not modify scraper behaviour; it only reports whether
+        # the production _product_json() can parse the same URLs.
+        try:
+            from scrapers.orioudh import scraper as live_scraper
+
+            live_rows = []
+            for u in candidate_urls[:10]:
+                row = {
+                    "url": u,
+                    "scraper_module": getattr(
+                        live_scraper, "__file__", None
+                    ),
+                }
+                try:
+                    data = live_scraper._product_json(session, u)
+                    row["product_json_ok"] = isinstance(data, dict)
+                    if isinstance(data, dict):
+                        row["product"] = {
+                            "title": data.get("title"),
+                            "vendor": data.get("vendor"),
+                            "handle": data.get("handle"),
+                            "id": data.get("id"),
+                            "featured_image": data.get("featured_image"),
+                            "variant_count": len(data.get("variants") or []),
+                            "variants": [
+                                {
+                                    "id": v.get("id"),
+                                    "title": v.get("title"),
+                                    "available": v.get("available"),
+                                    "price": v.get("price"),
+                                    "sku": v.get("sku"),
+                                }
+                                for v in (data.get("variants") or [])
+                                if isinstance(v, dict)
+                            ],
+                        }
+                except Exception as exc:
+                    row["product_json_ok"] = False
+                    row["error_type"] = type(exc).__name__
+                    row["error"] = str(exc)
+                live_rows.append(row)
+
+            result["live_scraper_product_json"] = live_rows
+        except Exception as exc:
+            result["live_scraper_import_error"] = {
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
 
     return result
 
