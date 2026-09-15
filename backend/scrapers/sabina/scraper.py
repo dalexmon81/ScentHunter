@@ -1478,8 +1478,7 @@ def _extract_product_page(
         is_confirmed_hawas_kobra = (
             _norm(query) == "hawas"
             and (
-                "56286 kobra for him"
-                in _norm(final_url)
+                "56286 kobra for him" in _norm(final_url)
                 or "56286" in _norm(final_url)
             )
         )
