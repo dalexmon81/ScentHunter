@@ -60,6 +60,29 @@ def diagnose_endpoints(query="Hawas"):
         result["error"] = "Empty query"
         return result
 
+    # Runtime bootstrap check: sitecustomize should normally be auto-loaded by
+    # Python before uvicorn starts. We first observe that state, then explicitly
+    # import it ONLY inside this diagnostic request so we can prove whether the
+    # adapter installs successfully. This does not edit production source.
+    import os
+    import sys
+    import importlib
+
+    result["runtime"] = {
+        "cwd": os.getcwd(),
+        "python_executable": sys.executable,
+        "sitecustomize_in_sys_modules_before": "sitecustomize" in sys.modules,
+        "sys_path_head": sys.path[:12],
+    }
+
+    try:
+        sc = importlib.import_module("sitecustomize")
+        result["runtime"]["sitecustomize_import"] = "ok"
+        result["runtime"]["sitecustomize_file"] = getattr(sc, "__file__", None)
+    except Exception as exc:
+        result["runtime"]["sitecustomize_import"] = "error"
+        result["runtime"]["sitecustomize_error"] = f"{type(exc).__name__}: {exc}"
+
     try:
         from scrapers.orioudh import scraper
     except Exception as exc:
@@ -68,6 +91,7 @@ def diagnose_endpoints(query="Hawas"):
 
     result["scraper_module"] = getattr(scraper, "__file__", None)
     result["search_stream_present"] = callable(getattr(scraper, "search_stream", None))
+    result["search_stream_object"] = repr(getattr(scraper, "search_stream", None))
 
     with requests.Session() as session:
         try:
