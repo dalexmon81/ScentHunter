@@ -1465,6 +1465,18 @@ def _extract_product_page(
         if not title:
             return []
 
+        # Sabina Kobra is officially the Hawas Kobra variant.
+        # Sabina's retailer title is "RASASI Kobra For Him", which does not
+        # contain the Hawas family anchor required by ProductMatcher.
+        # Normalize this one confirmed product to the canonical family wording.
+        is_confirmed_hawas_kobra = (
+            _norm(query) == "hawas"
+            and "56286" in _norm(final_url)
+        )
+
+        if is_confirmed_hawas_kobra:
+            title = "Hawas Kobra"
+
         query_matches = _query_matches(
             title,
             final_url,
