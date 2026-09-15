@@ -1,407 +1,195 @@
-"""
-Temporary diagnostic helper for Orioudh.
-
-Purpose:
-- Diagnose discovery endpoints only.
-- Does NOT call ProductMatcher/family_registry.
-- Does NOT modify scraper behaviour.
-- Intended to be imported by a temporary main.py route.
-
-Example:
-    from debug_orioudh import diagnose_endpoints
-    return diagnose_endpoints("Hawas")
-"""
-
+"""Temporary Orioudh diagnostic. No production scraper logic is changed."""
 import json
 import re
 from urllib.parse import urljoin
-
 import requests
-from bs4 import BeautifulSoup
 from fastapi import APIRouter, Query
 
-router = APIRouter(
-    prefix="/api/debug",
-    tags=["debug"],
-)
-
+router = APIRouter(prefix="/api/debug", tags=["debug"])
 BASE_URL = "https://orioudh.com"
 TIMEOUT = 8
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
 }
 
+def clean(v):
+    return re.sub(r"\s+", " ", str(v or "")).strip()
 
-def _request(session, method, url, params=None):
-    result = {
-        "url": url,
-        "params": params or {},
-        "ok": False,
-        "status_code": None,
-        "content_type": None,
-        "elapsed_ms": None,
-        "error": None,
-        "json": None,
-        "json_parse_error": None,
-        "text_length": None,
-        "text_preview": None,
+def gate_diagnostics(scraper, product, variant, url, q):
+    name = scraper.clean(product.get("title"))
+    vname = scraper.clean(variant.get("title"))
+    ptype = scraper.clean(product.get("product_type"))
+    haystack = scraper.norm(f"{name} {vname} {ptype}")
+    match_text = f"{name} {product.get('vendor','')} {url}"
+    gates = {
+        "mystery_or_gift": bool(re.search(r"\bmystery\s+box\b|\bgift\s+set\b", haystack)),
+        "matches_query": scraper.matches(match_text, q),
+        "price": scraper.price(variant.get("price")),
+        "available": variant.get("available"),
+        "title": name,
+        "vendor": product.get("vendor"),
+        "variant_title": vname,
+        "variant_id": variant.get("id"),
+        "sku": variant.get("sku"),
+        "raw_price": variant.get("price"),
     }
-
     try:
-        r = session.request(
-            method,
-            url,
-            params=params,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-        result["ok"] = r.ok
-        result["status_code"] = r.status_code
-        result["content_type"] = r.headers.get("content-type")
-        result["elapsed_ms"] = round(r.elapsed.total_seconds() * 1000)
-
-        # IMPORTANT: do not trust Content-Type for Shopify .js endpoints.
-        # Try JSON regardless of the advertised MIME type.
-        try:
-            result["json"] = r.json()
-        except Exception as exc:
-            result["json_parse_error"] = f"{type(exc).__name__}: {exc}"
-            body = r.text or ""
-            result["text_length"] = len(body)
-            result["text_preview"] = body[:5000]
-
-    except requests.RequestException as exc:
-        result["error"] = f"{type(exc).__name__}: {exc}"
+        item = scraper._item(product, variant, url)
+        gates["item_ok"] = isinstance(item, dict)
+        if item:
+            gates["item_name"] = item.get("name")
+            gates["item_price"] = item.get("price")
+            gates["item_available"] = item.get("available")
     except Exception as exc:
-        result["error"] = f"{type(exc).__name__}: {exc}"
-
-    return result
-
-
-def _extract_suggest_products(payload):
-    products = (
-        ((payload or {}).get("resources") or {})
-        .get("results") or {}
-    ).get("products") or []
-
-    out = []
-    for p in products:
-        if not isinstance(p, dict):
-            continue
-        out.append({
-            "title": p.get("title"),
-            "vendor": p.get("vendor"),
-            "url": p.get("url") or p.get("product_url"),
-            "handle": p.get("handle"),
-            "available": p.get("available"),
-            "price": p.get("price"),
-        })
-    return out
-
-
-def _extract_search_products(html):
-    soup = BeautifulSoup(html or "", "html.parser")
-    out = []
-    seen = set()
-
-    for a in soup.select('a[href*="/products/"]'):
-        href = a.get("href")
-        if not href:
-            continue
-
-        u = urljoin(BASE_URL, href).split("?")[0].split("#")[0].rstrip("/")
-        if u in seen:
-            continue
-        seen.add(u)
-
-        out.append({
-            "title_attr": a.get("title"),
-            "text": a.get_text(" ", strip=True)[:500],
-            "url": u,
-        })
-
-    return out
-
-
-def _extract_catalog_products(payload, query):
-    products = (payload or {}).get("products") or []
-    q = re.sub(r"[^a-z0-9]+", " ", query.lower()).split()
-
-    out = []
-    for p in products:
-        if not isinstance(p, dict):
-            continue
-
-        hay = " ".join([
-            str(p.get("title") or ""),
-            str(p.get("vendor") or ""),
-            str(p.get("handle") or ""),
-        ]).lower()
-
-        if q and all(token in hay for token in q):
-            out.append({
-                "title": p.get("title"),
-                "vendor": p.get("vendor"),
-                "handle": p.get("handle"),
-                "id": p.get("id"),
-                "variants": [
-                    {
-                        "id": v.get("id"),
-                        "title": v.get("title"),
-                        "available": v.get("available"),
-                        "price": v.get("price"),
-                        "sku": v.get("sku"),
-                    }
-                    for v in (p.get("variants") or [])
-                    if isinstance(v, dict)
-                ],
-            })
-
-    return out
-
-
-def _diagnose_product_js(session, product_url):
-    url = product_url.rstrip("/") + ".js"
-    r = _request(session, "GET", url)
-
-    summary = {
-        "url": url,
-        "ok": r["ok"],
-        "status_code": r["status_code"],
-        "error": r["error"],
-        "product": None,
-    }
-
-    data = r.get("json")
-    if isinstance(data, dict):
-        summary["product"] = {
-            "title": data.get("title"),
-            "vendor": data.get("vendor"),
-            "handle": data.get("handle"),
-            "id": data.get("id"),
-            "featured_image": data.get("featured_image"),
-            "variants": [
-                {
-                    "id": v.get("id"),
-                    "title": v.get("title"),
-                    "available": v.get("available"),
-                    "price": v.get("price"),
-                    "sku": v.get("sku"),
-                }
-                for v in (data.get("variants") or [])
-                if isinstance(v, dict)
-            ],
-        }
-
-    return summary
-
+        gates["item_ok"] = False
+        gates["item_error"] = f"{type(exc).__name__}: {exc}"
+    return gates
 
 def diagnose_endpoints(query="Hawas"):
-    query = str(query or "").strip()
-
+    q = clean(query)
     result = {
         "diagnostic": True,
         "store": "Orioudh",
-        "query": query,
-        "note": "Temporary endpoint diagnostic. No matcher/family_registry logic is executed.",
+        "query": q,
+        "purpose": "Direct pipeline test: _discover -> _product_json -> _item -> search -> search_stream",
         "endpoints": {},
     }
-
-    if not query:
+    if not q:
         result["error"] = "Empty query"
         return result
 
+    try:
+        from scrapers.orioudh import scraper
+    except Exception as exc:
+        result["scraper_import_error"] = f"{type(exc).__name__}: {exc}"
+        return result
+
+    result["scraper_module"] = getattr(scraper, "__file__", None)
+    result["search_stream_present"] = callable(getattr(scraper, "search_stream", None))
+
     with requests.Session() as session:
-        # 1. Shopify predictive search
-        suggest_params = {
-            "q": query,
-            "resources[type]": "product",
-            "resources[limit]": 20,
-            "resources[options][unavailable_products]": "show",
-        }
-        suggest = _request(
-            session,
-            "GET",
-            BASE_URL + "/search/suggest.json",
-            suggest_params,
-        )
-        result["endpoints"]["suggest"] = {
-            **{k: suggest[k] for k in (
-                "url", "params", "ok", "status_code",
-                "content_type", "elapsed_ms", "error"
-            )},
-            "products": _extract_suggest_products(suggest.get("json")),
-        }
-
-        # 2. Normal Shopify search
-        search_params = {"q": query, "type": "product"}
-        search = _request(
-            session,
-            "GET",
-            BASE_URL + "/search",
-            search_params,
-        )
-        result["endpoints"]["search"] = {
-            **{k: search[k] for k in (
-                "url", "params", "ok", "status_code",
-                "content_type", "elapsed_ms", "error"
-            )},
-            "products": _extract_search_products(search.get("text_preview", "")),
-        }
-
-        # 3. Public Shopify catalogue
-        catalog = _request(
-            session,
-            "GET",
-            BASE_URL + "/products.json",
-            {"limit": 250, "page": 1},
-        )
-        result["endpoints"]["products_json"] = {
-            **{k: catalog[k] for k in (
-                "url", "params", "ok", "status_code",
-                "content_type", "elapsed_ms", "error"
-            )},
-            "matching_products": _extract_catalog_products(
-                catalog.get("json"), query
-            ),
-        }
-
-        # 4. robots/sitemap discovery
-        robots = _request(session, "GET", BASE_URL + "/robots.txt")
-        sitemap_urls = []
-
-        if robots.get("ok"):
-            sitemap_urls = re.findall(
-                r"(?im)^\s*sitemap:\s*(\S+)",
-                robots.get("text_preview") or "",
-            )
-
-        result["endpoints"]["robots"] = {
-            **{k: robots[k] for k in (
-                "url", "params", "ok", "status_code",
-                "content_type", "elapsed_ms", "error"
-            )},
-            "sitemaps": sitemap_urls,
-        }
-
-        # Product .js checks for candidates returned by suggest/search/catalog.
-        candidate_urls = []
-
-        for p in result["endpoints"]["suggest"]["products"]:
-            u = p.get("url")
-            if u:
-                candidate_urls.append(urljoin(BASE_URL, u))
-
-        for p in result["endpoints"]["search"]["products"]:
-            u = p.get("url")
-            if u:
-                candidate_urls.append(urljoin(BASE_URL, u))
-
-        for p in result["endpoints"]["products_json"]["matching_products"]:
-            h = p.get("handle")
-            if h:
-                candidate_urls.append(BASE_URL + "/products/" + h)
-
-        seen = set()
-        candidate_urls = [
-            u for u in candidate_urls
-            if not (u in seen or seen.add(u))
-        ][:20]
-
-        result["candidate_urls"] = candidate_urls
-        result["product_js"] = [
-            _diagnose_product_js(session, u)
-            for u in candidate_urls
-        ]
-
-        # 5. Compare with the ACTUAL Orioudh scraper parser.
-        # This does not modify scraper behaviour; it only reports whether
-        # the production _product_json() can parse the same URLs.
         try:
-            from scrapers.orioudh import scraper as live_scraper
-
-            live_rows = []
-            for u in candidate_urls[:10]:
-                row = {
-                    "url": u,
-                    "scraper_module": getattr(
-                        live_scraper, "__file__", None
-                    ),
-                }
-                try:
-                    data = live_scraper._product_json(session, u)
-                    row["product_json_ok"] = isinstance(data, dict)
-                    if isinstance(data, dict):
-                        row["product"] = {
-                            "title": data.get("title"),
-                            "vendor": data.get("vendor"),
-                            "handle": data.get("handle"),
-                            "id": data.get("id"),
-                            "featured_image": data.get("featured_image"),
-                            "variant_count": len(data.get("variants") or []),
-                            "variants": [
-                                {
-                                    "id": v.get("id"),
-                                    "title": v.get("title"),
-                                    "available": v.get("available"),
-                                    "price": v.get("price"),
-                                    "sku": v.get("sku"),
-                                }
-                                for v in (data.get("variants") or [])
-                                if isinstance(v, dict)
-                            ],
-                        }
-                except Exception as exc:
-                    row["product_json_ok"] = False
-                    row["error_type"] = type(exc).__name__
-                    row["error"] = str(exc)
-                live_rows.append(row)
-
-            result["live_scraper_product_json"] = live_rows
-        except Exception as exc:
-            result["live_scraper_import_error"] = {
-                "error_type": type(exc).__name__,
-                "error": str(exc),
+            discovered = scraper._discover(session, q)
+            result["pipeline_discover"] = {
+                "ok": True, "count": len(discovered), "urls": discovered[:8]
             }
+        except Exception as exc:
+            result["pipeline_discover"] = {
+                "ok": False, "error": f"{type(exc).__name__}: {exc}"
+            }
+            discovered = []
+
+        products_out = []
+        for url in discovered[:8]:
+            entry = {"url": url}
+            try:
+                data = scraper._product_json(session, url)
+                entry["product_json_ok"] = isinstance(data, dict)
+                if isinstance(data, dict):
+                    entry["product"] = {
+                        "title": data.get("title"),
+                        "vendor": data.get("vendor"),
+                        "handle": data.get("handle"),
+                        "id": data.get("id"),
+                        "variant_count": len(data.get("variants") or []),
+                    }
+                    entry["variants"] = [
+                        gate_diagnostics(scraper, data, v, url, q)
+                        for v in (data.get("variants") or [])
+                        if isinstance(v, dict)
+                    ]
+                else:
+                    entry["reason"] = "_product_json returned None/non-dict"
+            except Exception as exc:
+                entry["product_json_ok"] = False
+                entry["error"] = f"{type(exc).__name__}: {exc}"
+            products_out.append(entry)
+        result["pipeline_product_json_item"] = products_out
+
+        try:
+            rows = scraper.search(q)
+            result["pipeline_search"] = {
+                "ok": True, "count": len(rows), "rows": rows[:12]
+            }
+        except Exception as exc:
+            result["pipeline_search"] = {
+                "ok": False, "error": f"{type(exc).__name__}: {exc}"
+            }
+
+        stream = getattr(scraper, "search_stream", None)
+        if callable(stream):
+            emitted = []
+            try:
+                def emit(row):
+                    emitted.append(row)
+                ret = stream(q, emit)
+                result["pipeline_search_stream"] = {
+                    "ok": True,
+                    "return_type": type(ret).__name__,
+                    "emitted_count": len(emitted),
+                    "emitted_rows": emitted[:12],
+                }
+            except Exception as exc:
+                result["pipeline_search_stream"] = {
+                    "ok": False,
+                    "emitted_count_before_error": len(emitted),
+                    "emitted_rows_before_error": emitted[:12],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+        else:
+            result["pipeline_search_stream"] = {
+                "ok": False,
+                "reason": "search_stream is not installed on the imported scraper module",
+            }
+
+        suggest = session.get(
+            BASE_URL + "/search/suggest.json",
+            params={
+                "q": q,
+                "resources[type]": "product",
+                "resources[limit]": 20,
+                "resources[options][unavailable_products]": "show",
+            },
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+        try:
+            payload = suggest.json()
+        except Exception:
+            payload = {}
+        products = (((payload or {}).get("resources") or {}).get("results") or {}).get("products") or []
+        result["endpoints"]["suggest"] = {
+            "ok": suggest.ok,
+            "status": suggest.status_code,
+            "product_count": len(products),
+            "products": [
+                {
+                    "title": p.get("title"),
+                    "url": p.get("url"),
+                    "available": p.get("available"),
+                    "price": p.get("price"),
+                }
+                for p in products if isinstance(p, dict)
+            ],
+        }
 
     return result
 
-
 @router.get("/orioudh")
-def debug_orioudh(
-    q: str = Query("Hawas", min_length=2),
-):
-    """
-    Diagnostic endpoint for Orioudh discovery.
-
-    Does not call ProductMatcher/family_registry and does not modify
-    scraper behaviour.
-    """
+def debug_orioudh(q: str = Query("Hawas", min_length=2)):
     try:
         return diagnose_endpoints(q)
     except Exception as exc:
         return {
-            "diagnostic": True,
-            "ok": False,
-            "store": "Orioudh",
-            "query": q,
-            "error_type": type(exc).__name__,
-            "error": str(exc),
+            "diagnostic": True, "ok": False, "store": "Orioudh", "query": q,
+            "error_type": type(exc).__name__, "error": str(exc),
         }
-
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("query", nargs="?", default="Hawas")
     args = parser.parse_args()
-
-    print(json.dumps(
-        diagnose_endpoints(args.query),
-        ensure_ascii=False,
-        indent=2,
-    ))
+    print(json.dumps(diagnose_endpoints(args.query), ensure_ascii=False, indent=2))
