@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
-BASE = "https://www.deloox.com"
+BASE = "https://www.deloox.be"
 TIMEOUT = (2.0, 5.0)
 MAX_CANDIDATES = 8
 MAX_RESULTS = 40
@@ -203,7 +203,7 @@ def is_product_url(url):
     )[0]
 
     if not re.fullmatch(
-        r"(?:www\.)?deloox\.(?:com|nl|es|fr|de|it|be)",
+        r"(?:www\.)?deloox\.be",
         host,
     ):
         return False
@@ -492,8 +492,6 @@ def discover(
         f"{BASE}/en/search?query={encoded}",
         f"{BASE}/en/search?q={encoded}",
         f"{BASE}/en/search?search={encoded}",
-        f"https://www.deloox.nl/en/search?query={encoded}",
-        f"https://www.deloox.es/en/search?query={encoded}",
     )
 
     for endpoint in endpoints:
@@ -572,8 +570,8 @@ def discover(
     # ---------------------------------------------------------
     if "hawas" in q:
         endpoint = (
-            f"{BASE}/it/categoria/"
-            "1080044/rasasi-profumi.html"
+            f"{BASE}/categorie/"
+            "1080044/rasasi-parfum.html"
         )
 
         r = get(
@@ -596,7 +594,6 @@ def discover(
     for endpoint in (
         f"{BASE}/en/category/1103659/fragrances.html",
         f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html",
-        "https://www.deloox.nl/en/category/1121334/french-avenue-mens-fragrances.html",
     ):
         r = get(
             session,
