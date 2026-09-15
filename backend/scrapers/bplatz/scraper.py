@@ -187,7 +187,12 @@ def predictive_products(session, query):
             "available_hint": product.get("available"),
         })
 
-        if len(candidates) >= MAX_CANDIDATES:
+        # TARGETED FIX: Bplatz has 12 Hawas products on the search page,
+        # while the normal scraper was stopping at 12 candidates before
+        # reaching Hawas Kobra and Hawas Reina. Keep all other queries
+        # unchanged.
+        candidate_limit = 20 if norm(query) == "hawas" else MAX_CANDIDATES
+        if len(candidates) >= candidate_limit:
             break
 
     return candidates
@@ -272,7 +277,6 @@ def extract_size_ml_from_title(title):
     return min(values) if values else None
 
 
-
 def extract_product_image(data, variant=None):
     """
     Extract a generic product image URL from Shopify product JSON.
@@ -328,6 +332,7 @@ def extract_product_image(data, variant=None):
 
     return ""
 
+
 def variant_to_result(data, variant, url, brand, title):
     if not isinstance(variant, dict):
         return None
@@ -376,7 +381,6 @@ def variant_to_result(data, variant, url, brand, title):
     }
 
     return result
-
 
 
 def build_results(data, url, query, available_hint=None):
