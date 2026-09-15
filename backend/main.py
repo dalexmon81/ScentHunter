@@ -26,6 +26,11 @@ try:
     app.include_router(debug_bplatz_router)
 except Exception as exc:
     print(f'Bplatz debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
+try:
+    from debug_sabina import router as debug_sabina_router
+    app.include_router(debug_sabina_router)
+except Exception as exc:
+    print(f'Sabina debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
