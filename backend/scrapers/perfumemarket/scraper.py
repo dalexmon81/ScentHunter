@@ -550,20 +550,68 @@ def variant_option_text(variant: Dict[str, Any]) -> str:
     return " ".join(dict.fromkeys(values))
 
 
-def extract_image(product: Dict[str, Any], variant: Dict[str, Any]) -> Optional[str]:
-    image = variant.get("featured_image")
-    if isinstance(image, dict):
-        image = image.get("src") or image.get("url")
+def _image_url(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        value = value.strip()
+        return normalize_url(value) if value else None
 
+    if isinstance(value, dict):
+        for key in ("src", "url", "contentUrl", "image"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return normalize_url(candidate.strip())
+
+    if isinstance(value, list):
+        for item in value:
+            result = _image_url(item)
+            if result:
+                return result
+
+    return None
+
+
+def _page_image(url: str) -> Optional[str]:
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+        if not response.ok:
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        for selector in (
+            'meta[property="og:image"]',
+            'meta[name="twitter:image"]',
+            'meta[property="og:image:url"]',
+        ):
+            meta = soup.select_one(selector)
+            if meta:
+                image = _image_url(meta.get("content"))
+                if image:
+                    return image
+    except requests.RequestException:
+        pass
+
+    return None
+
+
+def extract_image(
+    product: Dict[str, Any],
+    variant: Dict[str, Any],
+    product_url: Optional[str] = None,
+) -> Optional[str]:
+    image = _image_url(variant.get("featured_image"))
     if image:
-        return normalize_url(image)
+        return image
 
-    images = product.get("images")
-    if isinstance(images, list) and images:
-        first = images[0]
-        if isinstance(first, dict):
-            return normalize_url(first.get("src") or first.get("url"))
-        return normalize_url(first)
+    image = _image_url(product.get("images"))
+    if image:
+        return image
+
+    if product_url:
+        return _page_image(product_url)
 
     return None
 
@@ -594,7 +642,7 @@ def variant_result(
 
     concentration = concentration_from_text(full_name)
     brand = brand_from_product(product, title)
-    image = extract_image(product, variant)
+    image = extract_image(product, variant, product_url)
 
     # Keep an offer even when price is absent: this is important for OOS.
     if available is None and price is None:
@@ -931,66 +979,7 @@ def enrich_candidate(
 
         html = request_text(session, url)
         if html:
-            results = parse_product_html(html, url, query, candidate)
-            if results:
-                return results
-
-        # Shopify can expose a product in search while the product JSON
-        # endpoint is unavailable (for example for an out-of-stock product).
-        # In that case the discovery card already contains the customer-facing
-        # name and price. Preserve that verified candidate instead of dropping
-        # it solely because enrichment failed.
-        fallback_name = clean(candidate.get("name"))
-        fallback_price = candidate.get("price")
-        if fallback_name and query_matches(fallback_name + " " + url, query):
-            return [
-                {
-                    "store": STORE,
-                    "shop": STORE,
-                    "name": fallback_name,
-                    "brand": brand_from_product({}, fallback_name),
-                    "price": fallback_price or "",
-                    "price_num": parse_float(fallback_price),
-                    "url": url,
-                    "available": None,
-                    "in_stock": None,
-                    "availability": "unknown",
-                    "size": size_label(fallback_name, parse_size_ml(fallback_name)),
-                    "size_ml": parse_size_ml(fallback_name),
-                    "concentration": concentration_from_text(fallback_name),
-                    "image": None,
-                    "sku": None,
-                    "gtin": None,
-                    "mpn": None,
-                    "store_product_id": None,
-                    "store_variant_id": None,
-                    "source": {
-                        "store": STORE,
-                        "method": "shopify_search_candidate_fallback",
-                        "product_url": url,
-                    },
-                    "identity": {
-                        "brand": brand_from_product({}, fallback_name),
-                        "name": fallback_name,
-                    },
-                    "attributes": {
-                        "size": size_label(fallback_name, parse_size_ml(fallback_name)),
-                        "size_ml": parse_size_ml(fallback_name),
-                        "concentration": concentration_from_text(fallback_name),
-                    },
-                    "offer": {
-                        "price": fallback_price or "",
-                        "price_num": parse_float(fallback_price),
-                        "available": None,
-                        "availability": "unknown",
-                    },
-                    "provenance": {
-                        "discovery": "shopify_search",
-                        "enrichment": "shopify_search_candidate_fallback",
-                    },
-                    "raw_data": {},
-                }
-            ]
+            return parse_product_html(html, url, query, candidate)
 
         return []
     finally:
