@@ -25,7 +25,7 @@ HEADERS = {
 SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", re.I)
 
 PRICE_RE = re.compile(
-    r"(?:€\s*)?(\d{1,4}[.,]\s*\d{2})(?:\s*€)?"
+    r"(?:€\s*)?(\d{1,4}\s*[.,]\s*\d{2})(?:\s*€)?"
 )
 
 NON_FRAGRANCE = (
