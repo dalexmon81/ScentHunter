@@ -1679,26 +1679,33 @@ def _extract_product_page(
         ):
             return []
 
-        return [
-            _build_result(
-                title=title,
-                brand=brand,
-                price=price,
-                currency=currency,
-                availability=availability,
-                availability_source=availability_source,
-                size_ml=size,
-                size_source=size_source,
-                concentration=concentration,
-                image=image,
-                gtin=gtin,
-                mpn=mpn,
-                sku=sku,
-                product_id=product_id,
-                url=final_url,
-                price_source=price_source,
-            )
-        ]
+        result = _build_result(
+            title=title,
+            brand=brand,
+            price=price,
+            currency=currency,
+            availability=availability,
+            availability_source=availability_source,
+            size_ml=size,
+            size_source=size_source,
+            concentration=concentration,
+            image=image,
+            gtin=gtin,
+            mpn=mpn,
+            sku=sku,
+            product_id=product_id,
+            url=final_url,
+            price_source=price_source,
+        )
+
+        # Keep Sabina's raw source title untouched, but expose the verified
+        # Hawas family identity to ProductMatcher. Sabina names product 56286
+        # "Kobra For Him" without the family word "Hawas"; the family registry
+        # already contains the canonical variant "Hawas Kobra".
+        if is_confirmed_hawas_kobra:
+            result["name"] = "Hawas Kobra"
+
+        return [result]
 
     finally:
         session.close()
