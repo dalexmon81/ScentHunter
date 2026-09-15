@@ -1,3 +1,4 @@
+# ScentHunter main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -10,32 +11,19 @@ except Exception as exc:
 from pathlib import Path
 APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
-try:
-    from debug_easycosmetic import router as debug_easycosmetic_router
-    app.include_router(debug_easycosmetic_router)
-except Exception as exc:
-    print(f'Easycosmetic debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-try:
-    from debug_deloox import router as debug_deloox_router
-    app.include_router(debug_deloox_router)
-except Exception as exc:
-    print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
+for module_name, router_name, label in [
+    ('debug_easycosmetic', 'debug_easycosmetic_router', 'Easycosmetic'),
+    ('debug_deloox', 'debug_deloox_router', 'Deloox'),
+    ('debug_bplatz', 'debug_bplatz_router', 'Bplatz'),
+    ('debug_sabina', 'debug_sabina_router', 'Sabina'),
+    ('debug_orioudh', 'debug_orioudh_router', 'Orioudh'),
+]:
+    try:
+        module = importlib.import_module(module_name)
+        app.include_router(getattr(module, 'router'))
+    except Exception as exc:
+        print(f'{label} debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
-try:
-    from debug_bplatz import router as debug_bplatz_router
-    app.include_router(debug_bplatz_router)
-except Exception as exc:
-    print(f'Bplatz debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-try:
-    from debug_sabina import router as debug_sabina_router
-    app.include_router(debug_sabina_router)
-except Exception as exc:
-    print(f'Sabina debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-try:
-    from debug_orioudh import router as debug_orioudh_router
-    app.include_router(debug_orioudh_router)
-except Exception as exc:
-    print(f'Orioudh debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
@@ -43,7 +31,6 @@ BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 PRODUCT_CATALOG_PATH = BASE_DIR / 'product_catalog.json'
 FAMILY_REGISTRY_PATH = BASE_DIR / 'family_registry.json'
-
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic']
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina']
@@ -68,106 +55,85 @@ def _normalise_store(value, fallback):
     return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
 
 def _load_product_matcher():
-    if ProductMatcher is None:
-        return None
-
+    if ProductMatcher is None: return None
     try:
         with open(PRODUCT_CATALOG_PATH, 'r', encoding='utf-8') as handle:
             payload = json.load(handle)
-
-        if isinstance(payload, dict):
-            catalog = payload.get('products') or []
-        elif isinstance(payload, list):
-            catalog = payload
-        else:
-            catalog = []
-
+        if isinstance(payload, dict): catalog = payload.get('products') or []
+        elif isinstance(payload, list): catalog = payload
+        else: catalog = []
         if not catalog:
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
             return None
-
         family_registry = None
         try:
             with open(FAMILY_REGISTRY_PATH, 'r', encoding='utf-8') as registry_handle:
                 family_registry = json.load(registry_handle)
         except Exception as registry_exc:
-            print(
-                f'PRODUCT_MATCHER_REGISTRY_LOAD_ERROR: {type(registry_exc).__name__}: {registry_exc}',
-                flush=True,
-            )
-
+            print(f'PRODUCT_MATCHER_REGISTRY_LOAD_ERROR: {type(registry_exc).__name__}: {registry_exc}', flush=True)
         return ProductMatcher(catalog=catalog, family_registry=family_registry)
     except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
+        print(f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}', flush=True)
         return None
-
 
 PRODUCT_MATCHER = _load_product_matcher()
 
-
-def _apply_product_identity(result, query=""):
-    """
-    Normalize a retailer offer through the existing central ProductMatcher.
-
-    This enriches valid retailer offers through the central ProductMatcher.
-    A matcher exception is non-fatal, but an explicit matcher rejection (None)
-    must remove the offer from the result set. This is required for samples,
-    testers, sets excluded by policy, and other non-identity listings.
-    """
-    if PRODUCT_MATCHER is None or not isinstance(result, dict):
-        return result
-
+def _apply_product_identity(result, query=''):
+    """Normalize a retailer offer through ProductMatcher, fail-closed for family queries."""
+    if PRODUCT_MATCHER is None or not isinstance(result, dict): return result
     raw_name = str(result.get('name') or result.get('title') or '').strip()
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+
+    requested_family = None
+    try:
+        resolver = getattr(PRODUCT_MATCHER, '_family_for_query', None)
+        if callable(resolver):
+            requested_family = resolver(query)
+    except Exception as exc:
+        print(f'PRODUCT_MATCHER_FAMILY_RESOLVE_ERROR: {type(exc).__name__}: {exc}', flush=True)
 
     try:
         matched = PRODUCT_MATCHER.match(result, query)
     except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return result
-
-    if matched is None:
-        return None
-    if not isinstance(matched, dict):
-        return result
-
+        print(f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return None if requested_family is not None else result
+    if matched is None: return None
+    if not isinstance(matched, dict): return None if requested_family is not None else result
     normalized = dict(matched)
 
-    # Keep the original retailer fields for diagnostics/provenance.
-    if raw_name:
-        normalized.setdefault('_source_name', raw_name)
-    if raw_brand:
-        normalized.setdefault('_source_brand', raw_brand)
+    if requested_family is not None:
+        requested_family_id = str(requested_family.get('family_id') or '').strip()
+        matched_family_id = str(normalized.get('family_id') or '').strip()
+        if not requested_family_id or matched_family_id != requested_family_id:
+            print(f'PRODUCT_MATCHER_FAMILY_REJECT: query={query!r} requested_family={requested_family_id!r} matched_family={matched_family_id!r} name={raw_name!r} brand={raw_brand!r}', flush=True)
+            return None
+        requested_family_brand = str(requested_family.get('brand') or '').strip()
+        matched_brand = str(normalized.get('canonical_brand') or normalized.get('brand') or '').strip()
+        if requested_family_brand and matched_brand:
+            normalise = getattr(PRODUCT_MATCHER, '_norm', None)
+            try:
+                if callable(normalise):
+                    family_brand_key = normalise(requested_family_brand)
+                    matched_brand_key = normalise(matched_brand)
+                else:
+                    family_brand_key = requested_family_brand.casefold()
+                    matched_brand_key = matched_brand.casefold()
+            except Exception:
+                family_brand_key = requested_family_brand.casefold()
+                matched_brand_key = matched_brand.casefold()
+            if family_brand_key != matched_brand_key:
+                print(f'PRODUCT_MATCHER_BRAND_REJECT: query={query!r} requested_brand={requested_family_brand!r} matched_brand={matched_brand!r} family={requested_family_id!r} name={raw_name!r}', flush=True)
+                return None
 
-    canonical_name = str(
-        normalized.get('canonical_name')
-        or normalized.get('catalog_variant')
-        or raw_name
-    ).strip()
-    canonical_brand = str(
-        normalized.get('canonical_brand')
-        or normalized.get('brand')
-        or raw_brand
-    ).strip()
-
-    if canonical_name:
-        # The frontend groups offers by the normalized name. Keep the raw
-        # retailer name separately so the identity layer can normalize it
-        # without changing price, URL, store, availability or image data.
-        normalized['name'] = canonical_name
-    if canonical_brand:
-        normalized['brand'] = canonical_brand
-
+    if raw_name: normalized.setdefault('_source_name', raw_name)
+    if raw_brand: normalized.setdefault('_source_brand', raw_brand)
+    canonical_name = str(normalized.get('canonical_name') or normalized.get('catalog_variant') or raw_name).strip()
+    canonical_brand = str(normalized.get('canonical_brand') or normalized.get('brand') or raw_brand).strip()
+    if canonical_name: normalized['name'] = canonical_name
+    if canonical_brand: normalized['brand'] = canonical_brand
     return normalized
 
-
-def clean_result(item, store, query=""):
+def clean_result(item, store, query=''):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
@@ -224,32 +190,20 @@ def run_store(store, query):
         cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
-        traceback.print_exc()
-        err = str(exc)
-        status = 'error'
-        code = 'runtime_error'
-        return {
-            'store': store,
-            'status': status,
-            'error': err,
-            'error_code': code,
-            'elapsed_ms': int((time.monotonic() - started) * 1000),
-            'results': [],
-        }
+        traceback.print_exc(); err=str(exc)
+        return {'store':store,'status':'error','error':err,'error_code':'runtime_error','elapsed_ms':int((time.monotonic()-started)*1000),'results':[]}
 
 WORKER_CODE = r'''
 import importlib, json, sys
 store=sys.argv[1]; query=sys.argv[2]
-def emit(event, **payload):
-    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
+def emit(event, **payload): print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
     stream=getattr(module,'search_stream',None)
     if callable(stream):
         rows=[]
         def on_result(row):
-            if isinstance(row,dict):
-                rows.append(row); emit('result',row=row)
+            if isinstance(row,dict): rows.append(row); emit('result',row=row)
         returned=stream(query,on_result)
         if returned is not None:
             try:
@@ -271,8 +225,7 @@ try:
             if isinstance(row,dict): emit('result',row=row)
         emit('done',count=len(rows),streaming=False)
 except BaseException as exc:
-    emit('error',error=f'{type(exc).__name__}: {exc}')
-    raise SystemExit(1)
+    emit('error',error=f'{type(exc).__name__}: {exc}'); raise SystemExit(1)
 '''
 
 def _kill_process_tree(process):
@@ -303,8 +256,7 @@ def _run_store_subprocess(store, query, on_result=None):
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
                 row=clean_result(event['row'],store,query)
-                if row is None:
-                    continue
+                if row is None: continue
                 rows.append(row)
                 if callable(on_result): on_result(row)
             elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
@@ -332,8 +284,7 @@ def _run_controlled_store(store,query,on_report,on_result=None):
     wait=time.monotonic()
     if semaphore is not None:
         if not semaphore.acquire(timeout=JOB_TIMEOUT_SECONDS):
-            report=_empty_report(store,error=f'{lane}_lane_unavailable')
-            print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
+            report=_empty_report(store,error=f'{lane}_lane_unavailable'); print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
         waited=round(time.monotonic()-wait,3)
         if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
     try: report=_run_store_subprocess(store,query,on_result=on_result)
@@ -363,7 +314,6 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     return [reports[s] for s in requested if s in reports]
 
 JOBS={}; JOBS_LOCK=threading.Lock()
-
 def _new_job(query):
     job_id=uuid.uuid4().hex
     with JOBS_LOCK: JOBS[job_id]={'job_id':job_id,'query':query,'started_at':time.time(),'completed':False,'results':[],'comparisons':[],'errors':{},'stores':{}}
@@ -380,6 +330,7 @@ def _publish_result(job_id,row,query):
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
         clean=clean_result(row,row.get('store') or row.get('shop') or '',query)
+        if clean is None: return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
@@ -420,24 +371,18 @@ def _run_job(job_id,query):
 def root():
     if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
     return {'app':'ScentHunter','status':'running','architecture':APP_VERSION,'error':'frontend/index.html not found'}
-
 @app.get('/health')
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
-
 @app.get('/search-start')
 def search_start(q:str):
     query=str(q or '').strip()
     if not query: return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'comparisons':[],'errors':{},'stores':{}}
-    job_id=_new_job(query)
-    threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start()
-    return _snapshot(job_id)
-
+    job_id=_new_job(query); threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start(); return _snapshot(job_id)
 @app.get('/search-status/{job_id}')
 def search_status_path(job_id:str): return _snapshot(job_id)
 @app.get('/search-status')
 def search_status_query(job_id:str): return _snapshot(job_id)
-
 @app.get('/search')
 def search_perfume(q:str):
     query=str(q or '').strip()
@@ -446,63 +391,52 @@ def search_perfume(q:str):
     for report in reports: all_results.extend(report['results'])
     results=sort_results(dedupe_results(all_results))
     return {'query':query,'count':len(results),'results':results,'errors':{r['store']:r['error'] for r in reports if r.get('error')},'stores':{r['store']:{'status':r['status'],'count':r['count'],'elapsed':r['elapsed']} for r in reports}}
-
 @app.get('/test-store')
 def test_store(store:str,q:str):
     store=str(store or '').strip().lower(); query=str(q or '').strip()
     if store not in STORES: return {'ok':False,'store':store,'query':query,'error':'unknown_store','stores':STORES}
     report=run_store(store,query); return {'ok':report['status']!='error','store':store,'query':query,**report}
-
 @app.get('/diagnose-stores')
 def diagnose_stores(q:str='Liquid Brun'):
     query=str(q or '').strip()
     if not query: return {'ok':False,'query':'','stores':[],'total_count':0,'architecture':APP_VERSION}
     reports=collect_store_reports_isolated(query,STORES); by_store={r['store']:r for r in reports}; ordered=[by_store[s] for s in STORES if s in by_store]
     return {'ok':True,'architecture':APP_VERSION,'query':query,'stores':ordered,'total_count':sum(r.get('count',0) for r in ordered)}
-
 @app.get('/diagnose-sabina')
 def diagnose_sabina(q:str='Liquid Brun'):
-    query=str(q or '').strip()
-    started=time.monotonic()
-    report={'ok':True,'architecture':APP_VERSION,'query':query,'elapsed':0.0,'module':{},'direct_search':{},'stream_search':{}}
+    query=str(q or '').strip(); started=time.monotonic(); report={'ok':True,'architecture':APP_VERSION,'query':query,'elapsed':0.0,'module':{},'direct_search':{},'stream_search':{}}
     try:
-        if str(BASE_DIR) not in sys.path:
-            sys.path.insert(0, str(BASE_DIR))
+        if str(BASE_DIR) not in sys.path: sys.path.insert(0,str(BASE_DIR))
         try:
-            import sitecustomize as _sitecustomize
-            importlib.reload(_sitecustomize)
-            report['sitecustomize']={'loaded':True,'module':getattr(_sitecustomize,'__file__',None)}
-        except Exception as exc:
-            report['sitecustomize']={'loaded':False,'error':f'{type(exc).__name__}: {exc}'}
+            import sitecustomize as _sitecustomize; importlib.reload(_sitecustomize); report['sitecustomize']={'loaded':True,'module':getattr(_sitecustomize,'__file__',None)}
+        except Exception as exc: report['sitecustomize']={'loaded':False,'error':f'{type(exc).__name__}: {exc}'}
         module=load_scraper('sabina')
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
-        except Exception as exc:
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
+        except Exception as exc: report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                if isinstance(row,dict):
+                    clean=clean_result(row,'sabina',query)
+                    if clean is not None: stream_rows.append(clean)
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                            if isinstance(row,dict):
+                                clean=clean_result(row,'sabina',query)
+                                if clean is not None: stream_rows.append(clean)
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
-            except Exception as exc:
-                report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows,'error':f'{type(exc).__name__}: {exc}'}
-        else:
-            report['stream_search']={'elapsed':0.0,'count':0,'error':'search_stream_missing'}
-    except Exception as exc:
-        report['ok']=False; report['error']=f'{type(exc).__name__}: {exc}'
-    report['elapsed']=round(time.monotonic()-started,3)
-    return report
-
+            except Exception as exc: report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows,'error':f'{type(exc).__name__}: {exc}'}
+        else: report['stream_search']={'elapsed':0.0,'count':0,'error':'search_stream_missing'}
+    except Exception as exc: report['ok']=False; report['error']=f'{type(exc).__name__}: {exc}'
+    report['elapsed']=round(time.monotonic()-started,3); return report
 @app.get('/suggest')
 def suggest(q:str):
     query=str(q or '').strip()
@@ -518,7 +452,6 @@ def suggest(q:str):
             if len(suggestions)>=8: break
         if len(suggestions)>=8: break
     return {'query':query,'count':len(suggestions),'suggestions':suggestions[:8]}
-
 @app.get('/frontend')
 def frontend():
     if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
