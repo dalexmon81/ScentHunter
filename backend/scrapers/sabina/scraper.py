@@ -1477,7 +1477,11 @@ def _extract_product_page(
         # authoritative product ID 56286 and name in data-product.
         is_confirmed_hawas_kobra = (
             _norm(query) == "hawas"
-            and "56286-kobra-for-him" in _norm(final_url)
+            and (
+                "56286 kobra for him"
+                in _norm(final_url)
+                or "56286" in _norm(final_url)
+            )
         )
 
         if not query_matches and not is_confirmed_hawas_kobra:
@@ -2091,90 +2095,6 @@ def _get(
     return response
 
 
-def _discover_confirmed_kobra(session, query):
-    """
-    Targeted discovery for Sabina's confirmed Hawas Kobra product.
-
-    Kobra is a real Hawas-family product on Sabina, but its product title and
-    slug do not contain the search token "Hawas". Sabina exposes it in the
-    RASASI manufacturer/category page through a data-product payload with the
-    authoritative product id 56286.
-    """
-    if _norm(query) != "hawas":
-        return []
-
-    category_urls = (
-        BASE + "/it/631_rasasi",
-        BASE + "/es/631_rasasi",
-    )
-
-    for category_url in category_urls:
-        response = _get(session, category_url)
-        if response is None:
-            continue
-
-        try:
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            for node in soup.select("[data-product]"):
-                raw = node.get("data-product") or ""
-                if (
-                    '"id_product":56286' not in raw
-                    and '"id_product":"56286"' not in raw
-                ):
-                    continue
-
-                # Prefer the product-card link containing the confirmed
-                # Kobra product id/slug.
-                candidates = []
-                for anchor in node.select("a[href]"):
-                    href = _clean_product_url(
-                        urljoin(category_url, anchor.get("href") or "")
-                    )
-                    if not href:
-                        continue
-                    low = href.casefold()
-                    if (
-                        "56286-" in low
-                        or "kobra-for-him" in low
-                    ):
-                        candidates.append(href)
-
-                # The data-product node is sometimes nested differently from
-                # its product link, so also inspect the nearest product card.
-                if not candidates:
-                    parent = node
-                    for _ in range(5):
-                        parent = parent.parent
-                        if parent is None:
-                            break
-                        for anchor in parent.select("a[href]"):
-                            href = _clean_product_url(
-                                urljoin(
-                                    category_url,
-                                    anchor.get("href") or "",
-                                )
-                            )
-                            if not href:
-                                continue
-                            low = href.casefold()
-                            if (
-                                "56286-" in low
-                                or "kobra-for-him" in low
-                            ):
-                                candidates.append(href)
-
-                        if candidates:
-                            break
-
-                if candidates:
-                    return list(dict.fromkeys(candidates))[:1]
-        finally:
-            response.close()
-
-    return []
-
-
 def _discover_from_first_party(
     session,
     query,
@@ -2235,24 +2155,10 @@ def _discover_from_first_party(
         if urls:
             break
 
-    # Kobra is a confirmed Hawas-family exception: Sabina's RASASI page
-    # contains it under the authoritative product id 56286, even though
-    # neither its title nor slug contains the word "Hawas".
-    kobra_urls = _discover_confirmed_kobra(
-        session,
-        query,
-    )
-
-    for link in kobra_urls:
-        if link in seen:
-            continue
-        seen.add(link)
-        urls.append(link)
-        if len(urls) >= MAX_CANDIDATES:
-            return urls[:MAX_CANDIDATES]
-
-    # Public-index discovery remains a bounded fallback for other products
-    # that may not be present in Sabina's internal search index.
+    # Public-index discovery is normally skipped when first-party search is
+    # healthy, but a small bounded pass is important for newly launched
+    # products that Sabina exposes to search engines before its internal
+    # search index catches up.
     external_urls = _discover_from_external_search(
         session,
         query,
