@@ -489,12 +489,20 @@ def discover(
     seen_pages = set()
 
     # Deloox.be uses its native search route /chercher.html.
-    # The former /en/search endpoints return HTTP 404 on the .be market.
-    endpoints = (
-        f"{BASE}/chercher.html?q={encoded}",
-    )
+    # The first page shows 12 results and the site's "Charger plus"
+    # button loads the next batch with the same URL plus &page=2.
+    # Follow subsequent pages until Deloox stops returning new candidates.
+    page = 1
 
-    for endpoint in endpoints:
+    while page <= 10:
+        if page == 1:
+            endpoint = f"{BASE}/chercher.html?q={encoded}"
+        else:
+            endpoint = (
+                f"{BASE}/chercher.html?q={encoded}"
+                f"&page={page}"
+            )
+
         r = get(
             session,
             endpoint,
@@ -504,9 +512,11 @@ def discover(
             not r
             or r.url in seen_pages
         ):
-            continue
+            break
 
         seen_pages.add(r.url)
+
+        before = len(candidates)
 
         for url, info in _candidate_contexts(
             r.text,
@@ -518,9 +528,11 @@ def discover(
             ):
                 candidates[url] = info
 
-        # Keep the complete result set from Deloox.be search;
-        # do not stop after the first two candidates.
-        continue
+        # Stop when a subsequent Deloox page adds nothing new.
+        if len(candidates) == before:
+            break
+
+        page += 1
 
     # ---------------------------------------------------------
     # FIX SPECIFICO:
