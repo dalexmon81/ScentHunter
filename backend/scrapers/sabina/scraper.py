@@ -989,6 +989,32 @@ def _extract_price_and_currency(
                     "data_product",
                 )
 
+    # Hawas Ice is another confirmed Sabina product whose product-page
+    # JSON-LD can expose an unrelated/recommendation price. The authoritative
+    # first-party payload is the data-product node for id_product 39471.
+    # Read that payload before generic page prices, exactly like the verified
+    # Kobra handling above.
+    if url and "39471-" in str(url).lower():
+        for node in soup.select("[data-product]"):
+            raw = node.get("data-product") or ""
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            if str(data.get("id_product") or "").strip() != "39471":
+                continue
+            price = _price_number(
+                data.get("price_with_reduction")
+                or data.get("price")
+                or data.get("total_wt")
+            )
+            if price is not None:
+                return (
+                    price,
+                    "EUR",
+                    "data_product",
+                )
+
     for offer in _offer_objects(
         product
     ):
