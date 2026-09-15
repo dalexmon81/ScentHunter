@@ -25,7 +25,7 @@ HEADERS = {
 SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", re.I)
 
 PRICE_RE = re.compile(
-    r"(?:€\s*)?(\d{1,4}[.,]\d{2})(?:\s*€)?"
+    r"(?:€\s*)?(\d{1,4}[.,]\s*\d{2})(?:\s*€)?"
 )
 
 NON_FRAGRANCE = (
@@ -103,7 +103,7 @@ def price_num(v):
     for raw in PRICE_RE.findall(text):
         try:
             n = float(
-                raw.replace(",", ".")
+                raw.replace(" ", "").replace(",", ".")
             )
         except ValueError:
             continue
