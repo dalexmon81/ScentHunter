@@ -435,18 +435,35 @@ def _row_from_card(
     name = ""
 
     for line in lines:
+        # Deloox search cards append retailer status/price text to the
+        # product title (e.g. "Hawas Black En stock notre prix 24,79").
+        # That suffix is presentation metadata, not part of the fragrance
+        # identity. Remove it before ProductMatcher sees the offer.
+        candidate = re.sub(
+            r"\s+(?:en stock|in stock|available|disponible|beschikbaar)\b.*$",
+            "",
+            line,
+            flags=re.I,
+        )
+        candidate = re.sub(
+            r"\s+(?:notre prix|our price|onze prijs|nostro prezzo)\b.*$",
+            "",
+            candidate,
+            flags=re.I,
+        ).strip()
+
         if (
             relevant(
-                line,
+                candidate,
                 query,
             )
             and not re.search(
                 r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-                norm(line),
+                norm(candidate),
             )
-            and 3 <= len(line) <= 220
+            and 3 <= len(candidate) <= 220
         ):
-            name = line
+            name = candidate
             break
 
     name = name or query
