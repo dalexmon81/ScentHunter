@@ -2078,6 +2078,11 @@ def _discover_from_first_party(
         BASE + "/es/search?s=" + q,
     ]
 
+    # Keep a small discovery reserve for external index results. Some Sabina
+    # products (notably newly launched variants) are indexed publicly but do
+    # not appear in the normal first-party search response.
+    first_party_limit = max(1, MAX_CANDIDATES - 4)
+
     for url in search_urls:
         response = _get(session, url)
         if response is None:
@@ -2099,16 +2104,34 @@ def _discover_from_first_party(
                 continue
             seen.add(link)
             urls.append(link)
-            if len(urls) >= MAX_CANDIDATES:
-                return urls[:MAX_CANDIDATES]
+            if len(urls) >= first_party_limit:
+                break
 
-        # A successful first-party search is enough. Do not spend several
-        # additional network round-trips against equivalent legacy routes.
+        # A successful first-party search is enough to stop trying equivalent
+        # legacy routes, but we intentionally keep a small reserve for the
+        # public-index discovery below.
         if urls:
+            break
+
+    # Public-index discovery is normally skipped when first-party search is
+    # healthy, but a small bounded pass is important for newly launched
+    # products that Sabina exposes to search engines before its internal
+    # search index catches up.
+    external_urls = _discover_from_external_search(
+        session,
+        query,
+    )
+
+    for link in external_urls:
+        if link in seen:
+            continue
+        seen.add(link)
+        urls.append(link)
+        if len(urls) >= MAX_CANDIDATES:
             return urls[:MAX_CANDIDATES]
 
-    # AJAX discovery is fallback only when the normal first-party search
-    # returned no query-relevant product URL.
+    # AJAX discovery is fallback only when the combined first-party/public
+    # discovery returned no query-relevant product URL.
     ajax_endpoints = [
         BASE + "/es/module/ec_customization/ajax",
         BASE + "/es/modules/ec_customization/ajax",
