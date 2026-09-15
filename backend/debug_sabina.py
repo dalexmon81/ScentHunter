@@ -212,6 +212,196 @@ def _route_diagnostic(session, route, query):
     }
 
 
+
+def _deep_product_trace(session, url, query):
+    """Deep, non-invasive trace of every gate inside the real parser."""
+    fetched = _fetch(session, url)
+    text = fetched.get("text", "")
+    if not text:
+        return {
+            "url": url,
+            "fetch": {k: v for k, v in fetched.items() if k != "text"},
+            "parser_gates": {},
+        }
+
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(text, "html.parser")
+    final_url = sabina._clean_product_url(
+        fetched.get("final_url")
+    ) or url
+
+    try:
+        product = sabina._jsonld_product(soup)
+        jsonld_error = None
+    except Exception as exc:
+        product = {}
+        jsonld_error = f"{type(exc).__name__}: {exc}"
+
+    try:
+        all_jsonld = sabina._jsonld_products(soup)
+    except Exception:
+        all_jsonld = []
+
+    title = sabina._extract_product_name(product, soup)
+
+    try:
+        query_match = sabina._query_matches(title, final_url, query)
+    except Exception as exc:
+        query_match = f"EXCEPTION: {type(exc).__name__}: {exc}"
+
+    try:
+        non_product = sabina._contains_non_product_term(title, final_url)
+    except Exception as exc:
+        non_product = f"EXCEPTION: {type(exc).__name__}: {exc}"
+
+    try:
+        price, currency, price_source = sabina._extract_price_and_currency(
+            product, soup
+        )
+    except Exception as exc:
+        price, currency, price_source = None, None, f"EXCEPTION: {type(exc).__name__}: {exc}"
+
+    try:
+        availability, availability_source = sabina._availability_from_product(
+            product, soup
+        )
+    except Exception as exc:
+        availability, availability_source = None, f"EXCEPTION: {type(exc).__name__}: {exc}"
+
+    try:
+        variant_rows = sabina._extract_variant_rows(
+            soup, product, title, final_url
+        )
+        variant_error = None
+    except Exception as exc:
+        variant_rows = []
+        variant_error = f"{type(exc).__name__}: {exc}"
+
+    selectors = (
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
+        ".product-price",
+        ".current-price",
+        ".current_price",
+        ".sale-price",
+        ".final-price",
+    )
+    price_nodes = []
+    seen_nodes = set()
+    for selector in selectors:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes:
+            if id(node) in seen_nodes:
+                continue
+            seen_nodes.add(id(node))
+            raw = (
+                node.get("content")
+                or node.get("data-price")
+                or node.get("data-product-price")
+                or node.get_text(" ", strip=True)
+            )
+            try:
+                parsed = sabina._price_number(raw)
+            except Exception:
+                parsed = None
+            parent = node.parent
+            price_nodes.append({
+                "selector": selector,
+                "tag": node.name,
+                "class": " ".join(node.get("class", [])),
+                "id": node.get("id"),
+                "raw": str(raw)[:250],
+                "parsed": parsed,
+                "parent_text": (
+                    parent.get_text(" ", strip=True)[:700]
+                    if parent else ""
+                ),
+            })
+            if len(price_nodes) >= 100:
+                break
+        if len(price_nodes) >= 100:
+            break
+
+    jsonld_products = []
+    for item in all_jsonld[:30]:
+        jsonld_products.append({
+            "type": item.get("@type"),
+            "name": item.get("name"),
+            "productID": item.get("productID") or item.get("productId"),
+            "sku": item.get("sku"),
+            "url": item.get("url"),
+            "brand": item.get("brand"),
+            "offers": item.get("offers"),
+            "hasVariant_count": (
+                len(item.get("hasVariant"))
+                if isinstance(item.get("hasVariant"), list)
+                else (1 if isinstance(item.get("hasVariant"), dict) else 0)
+            ),
+        })
+
+    data_product_blocks = []
+    for node in soup.select("[data-product]"):
+        raw = node.get("data-product") or ""
+        low = raw.casefold()
+        if any(x in low for x in ("kobra", "56286", "hawas")):
+            data_product_blocks.append({
+                "tag": node.name,
+                "class": " ".join(node.get("class", [])),
+                "id": node.get("id"),
+                "data_product": raw[:5000],
+            })
+        if len(data_product_blocks) >= 30:
+            break
+
+    related_links = []
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor.get("href"))
+        txt = anchor.get_text(" ", strip=True)
+        low = f"{href} {txt}".casefold()
+        if any(x in low for x in ("56286", "kobra", "hawas")):
+            related_links.append({
+                "href": href[:1200],
+                "text": txt[:600],
+            })
+        if len(related_links) >= 100:
+            break
+
+    return {
+        "url": url,
+        "fetch": {k: v for k, v in fetched.items() if k != "text"},
+        "final_url_cleaned": final_url,
+        "page_markers": _raw_presence(text),
+        "parser_gates": {
+            "jsonld_error": jsonld_error,
+            "jsonld_product_found": bool(product),
+            "title": title,
+            "query": query,
+            "query_matches": query_match,
+            "contains_non_product_term": non_product,
+            "price": price,
+            "currency": currency,
+            "price_source": price_source,
+            "availability": availability,
+            "availability_source": availability_source,
+            "variant_row_count": len(variant_rows),
+            "variant_error": variant_error,
+            "would_return_empty_at_query_gate": query_match is False,
+            "would_return_empty_at_non_product_gate": non_product is True,
+            "would_return_empty_at_final_gate": (
+                price is None and availability == "unknown"
+            ),
+        },
+        "jsonld_products": jsonld_products,
+        "kobra_data_product_blocks": data_product_blocks,
+        "related_links": related_links,
+        "price_nodes": price_nodes,
+    }
+
 @router.get("/diagnose-sabina")
 def diagnose_sabina(
     q: str = Query("Hawas", min_length=1, max_length=80),
@@ -311,6 +501,11 @@ def diagnose_sabina(
             for key, urls in exact_targets.items()
         }
 
+        deep_kobra_traces = [
+            _deep_product_trace(session, url, query)
+            for url in KOBRA_URLS
+        ]
+
         # Trace production candidates and external candidates separately.
         production_traces = [
             _product_page_trace(session, url, query)
@@ -344,6 +539,7 @@ def diagnose_sabina(
             "production_candidate_traces": production_traces,
             "external_candidate_traces": external_traces,
             "exact_product_traces": exact_traces,
+            "deep_kobra_traces": deep_kobra_traces,
         }
     finally:
         session.close()
