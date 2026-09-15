@@ -210,7 +210,7 @@ def is_product_url(url):
 
     return bool(
         re.search(
-            r"/(?:product|produit|producto)/\d+/",
+            r"/(?:product|produit|producto|prodotto)/\d+/",
             p.path,
             re.I,
         )
