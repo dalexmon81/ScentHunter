@@ -229,6 +229,54 @@ def inspect_sitemap(session, sitemap_url, terms):
     return result
 
 
+def inspect_product_js(session, product_url):
+    response = request(
+        session,
+        product_url + ".js",
+    )
+
+    entry = {
+        "product_url": product_url,
+        "status_code": response.get("status_code"),
+        "final_url": response.get("final_url"),
+        "content_type": response.get("content_type"),
+        "error": response.get("error"),
+    }
+
+    if not response.get("ok"):
+        return entry
+
+    text = response.get("text") or ""
+
+    try:
+        payload = json.loads(text)
+
+        if isinstance(payload, dict):
+            entry["title"] = payload.get("title")
+            entry["vendor"] = payload.get("vendor")
+            entry["handle"] = payload.get("handle")
+            entry["available"] = payload.get("available")
+
+            variants = payload.get("variants") or []
+
+            if isinstance(variants, list):
+                entry["variant_count"] = len(variants)
+                entry["variants"] = [
+                    {
+                        "id": variant.get("id"),
+                        "title": variant.get("title"),
+                        "available": variant.get("available"),
+                        "price": variant.get("price"),
+                    }
+                    for variant in variants[:30]
+                    if isinstance(variant, dict)
+                ]
+    except Exception:
+        entry["raw_prefix"] = text[:1500]
+
+    return entry
+
+
 @router.get("/perfumemarket")
 def debug_perfumemarket(
     q: str = Query(..., min_length=2),
@@ -244,14 +292,15 @@ def debug_perfumemarket(
     3. The public sitemap/index and product sitemap URLs.
     4. The two collections currently known to contain the missing products.
     5. The actual scraper discovery() result.
+    6. The .js product payloads for EVERY candidate returned by
+       the actual production discovery() function.
 
-    The goal is to identify exactly where Hawas Black / Hawas Diva
-    disappear from the discovery pipeline.
+    The last step is the important diagnostic addition: it lets us follow
+    Black and Diva from actual discovery directly into product enrichment,
+    instead of relying on sitemap/collection candidates.
     """
     query = str(q or "").strip()
 
-    # These are diagnostic targets only. They do not alter production
-    # matching or discovery behavior.
     focus_terms = [
         query,
         "Hawas Black",
@@ -260,7 +309,6 @@ def debug_perfumemarket(
         "Hawas Women Eclat",
     ]
 
-    # Remove duplicates while preserving order.
     unique_terms = []
     seen_terms = set()
 
@@ -303,8 +351,6 @@ def debug_perfumemarket(
         ),
     ]
 
-    # These are public collection pages confirmed to contain the relevant
-    # PerfumeMarket products. They are inspected only diagnostically.
     collection_endpoints = [
         (
             "oriental_woody",
@@ -347,8 +393,6 @@ def debug_perfumemarket(
                 html = response.get("text") or ""
 
                 if "json" in (response.get("content_type") or "").lower():
-                    # Predictive endpoint: preserve useful raw matches but
-                    # also inspect any product URLs exposed in the JSON.
                     product_urls = sorted(
                         set(
                             re.findall(
@@ -427,8 +471,6 @@ def debug_perfumemarket(
                 )
             )
 
-        # If sitemap.xml exposes additional product sitemaps, inspect
-        # those too, but cap the total to keep this diagnostic bounded.
         sitemap_index = sitemap_results[0]
 
         for child in sitemap_index.get("child_sitemaps", [])[:20]:
@@ -482,49 +524,12 @@ def debug_perfumemarket(
         product_inspections = []
 
         for product_url in candidate_urls[:50]:
-            response = request(
-                session,
-                product_url + ".js",
+            product_inspections.append(
+                inspect_product_js(
+                    session,
+                    product_url,
+                )
             )
-
-            entry = {
-                "product_url": product_url,
-                "status_code": response.get("status_code"),
-                "final_url": response.get("final_url"),
-                "content_type": response.get("content_type"),
-                "error": response.get("error"),
-            }
-
-            if response.get("ok"):
-                text = response.get("text") or ""
-
-                try:
-                    payload = json.loads(text)
-
-                    if isinstance(payload, dict):
-                        entry["title"] = payload.get("title")
-                        entry["vendor"] = payload.get("vendor")
-                        entry["handle"] = payload.get("handle")
-                        entry["available"] = payload.get("available")
-
-                        variants = payload.get("variants") or []
-
-                        if isinstance(variants, list):
-                            entry["variant_count"] = len(variants)
-                            entry["variants"] = [
-                                {
-                                    "id": variant.get("id"),
-                                    "title": variant.get("title"),
-                                    "available": variant.get("available"),
-                                    "price": variant.get("price"),
-                                }
-                                for variant in variants[:30]
-                                if isinstance(variant, dict)
-                            ]
-                except Exception:
-                    entry["raw_prefix"] = text[:1500]
-
-            product_inspections.append(entry)
 
         # ---------------------------------------------------------------
         # 5. Run the ACTUAL PerfumeMarket discovery() function.
@@ -553,6 +558,45 @@ def debug_perfumemarket(
                 "traceback": traceback.format_exc(),
             }
 
+        # ---------------------------------------------------------------
+        # 6. CRITICAL: inspect the exact candidates returned by the
+        #    production discover() function.
+        #
+        #    This is intentionally separate from product_inspections above.
+        #    It follows the real production path:
+        #
+        #      discover()
+        #        -> candidate
+        #        -> product .js
+        #
+        #    Therefore Black/Diva can no longer disappear between discovery
+        #    and diagnostic inspection.
+        # ---------------------------------------------------------------
+        actual_product_inspections = []
+
+        for candidate in actual_discovery.get("candidates", []):
+            if not isinstance(candidate, dict):
+                continue
+
+            product_url = normalize_url(candidate.get("url"))
+
+            if not product_url or "/products/" not in product_url.lower():
+                continue
+
+            inspection = inspect_product_js(
+                session,
+                product_url,
+            )
+
+            inspection["discovery_candidate"] = {
+                "name": candidate.get("name"),
+                "price": candidate.get("price"),
+                "source": candidate.get("source"),
+                "url": product_url,
+            }
+
+            actual_product_inspections.append(inspection)
+
         return {
             "diagnostic": True,
             "ok": True,
@@ -563,6 +607,7 @@ def debug_perfumemarket(
             "sitemaps": sitemap_results,
             "product_inspections": product_inspections,
             "actual_discovery": actual_discovery,
+            "actual_product_inspections": actual_product_inspections,
         }
 
     except Exception as exc:
