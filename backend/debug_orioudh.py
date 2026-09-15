@@ -18,6 +18,12 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+from fastapi import APIRouter, Query
+
+router = APIRouter(
+    prefix="/api/debug",
+    tags=["debug"],
+)
 
 BASE_URL = "https://orioudh.com"
 TIMEOUT = 8
@@ -308,6 +314,29 @@ def diagnose_endpoints(query="Hawas"):
         ]
 
     return result
+
+
+@router.get("/orioudh")
+def debug_orioudh(
+    q: str = Query("Hawas", min_length=2),
+):
+    """
+    Diagnostic endpoint for Orioudh discovery.
+
+    Does not call ProductMatcher/family_registry and does not modify
+    scraper behaviour.
+    """
+    try:
+        return diagnose_endpoints(q)
+    except Exception as exc:
+        return {
+            "diagnostic": True,
+            "ok": False,
+            "store": "Orioudh",
+            "query": q,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+        }
 
 
 if __name__ == "__main__":
