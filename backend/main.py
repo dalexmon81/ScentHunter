@@ -86,9 +86,10 @@ def _apply_product_identity(result):
     """
     Normalize a retailer offer through the existing central ProductMatcher.
 
-    This is deliberately an enrichment step, not a filter: a failed/unknown
-    match must never remove a scraper result from the search. The user's
-    original query is still passed unchanged to every scraper.
+    This enriches valid retailer offers through the central ProductMatcher.
+    A matcher exception is non-fatal, but an explicit matcher rejection (None)
+    must remove the offer from the result set. This is required for samples,
+    testers, sets excluded by policy, and other non-identity listings.
     """
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
@@ -105,6 +106,8 @@ def _apply_product_identity(result):
         )
         return result
 
+    if matched is None:
+        return None
     if not isinstance(matched, dict):
         return result
 
@@ -192,7 +195,7 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[clean_result(x,store) for x in rows if isinstance(x,dict)]
+        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -215,12 +218,7 @@ def emit(event, **payload):
     print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
-    # Use the scraper's canonical search() path for result completeness.
-    # sitecustomize may inject a search_stream adapter, but those adapters
-    # can use narrower discovery paths than the scraper's full search().
-    # Keeping the worker on search() prevents valid retailer results from
-    # being silently lost. The API still runs every store in isolation.
-    stream=None
+    stream=getattr(module,'search_stream',None)
     if callable(stream):
         rows=[]
         def on_result(row):
