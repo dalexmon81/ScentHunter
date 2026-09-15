@@ -1465,18 +1465,6 @@ def _extract_product_page(
         if not title:
             return []
 
-        # Sabina Kobra is officially the Hawas Kobra variant.
-        # Sabina's retailer title is "RASASI Kobra For Him", which does not
-        # contain the Hawas family anchor required by ProductMatcher.
-        # Normalize this one confirmed product to the canonical family wording.
-        is_confirmed_hawas_kobra = (
-            _norm(query) == "hawas"
-            and "56286" in _norm(final_url)
-        )
-
-        if is_confirmed_hawas_kobra:
-            title = "Hawas Kobra"
-
         query_matches = _query_matches(
             title,
             final_url,
@@ -1490,7 +1478,8 @@ def _extract_product_page(
         is_confirmed_hawas_kobra = (
             _norm(query) == "hawas"
             and (
-                "56286 kobra for him" in _norm(final_url)
+                "56286 kobra for him"
+                in _norm(final_url)
                 or "56286" in _norm(final_url)
             )
         )
@@ -2165,6 +2154,113 @@ def _discover_from_first_party(
         # public-index discovery below.
         if urls:
             break
+
+    # Sabina's RASASI manufacturer page is a first-party source for the
+    # confirmed Hawas Kobra product. Kobra is named "Kobra For Him" on Sabina,
+    # so the generic query-link extractor correctly rejects it because the
+    # word "Hawas" is absent from the card title/URL. Read the authoritative
+    # data-product payload and add only product 56286 when the query is exactly
+    # "Hawas".
+    if _norm(query) == "hawas":
+        category_urls = (
+            BASE + "/it/631_rasasi",
+            BASE + "/es/631_rasasi",
+        )
+
+        for category_url in category_urls:
+            response = _get(session, category_url)
+            if response is None:
+                continue
+
+            try:
+                soup = BeautifulSoup(
+                    response.text or "",
+                    "html.parser",
+                )
+
+                for node in soup.find_all(
+                    attrs={"data-product": True},
+                ):
+                    raw_product = node.get("data-product") or ""
+                    try:
+                        product_data = json.loads(
+                            html.unescape(raw_product)
+                        )
+                    except (TypeError, ValueError):
+                        continue
+
+                    if str(product_data.get("id_product") or "").strip() != "56286":
+                        continue
+
+                    candidates = []
+                    for anchor in node.find_all(
+                        "a",
+                        href=True,
+                    ):
+                        link = _clean_product_url(
+                            urljoin(
+                                category_url,
+                                anchor.get("href") or "",
+                            )
+                        )
+                        if link:
+                            candidates.append(link)
+
+                    # The data-product node can be separated from its anchor
+                    # by the site's card markup. Search a few parent levels
+                    # only if the direct node did not contain the link.
+                    if not candidates:
+                        parent = node
+                        for _ in range(5):
+                            parent = getattr(
+                                parent,
+                                "parent",
+                                None,
+                            )
+                            if parent is None:
+                                break
+
+                            for anchor in parent.find_all(
+                                "a",
+                                href=True,
+                            ):
+                                link = _clean_product_url(
+                                    urljoin(
+                                        category_url,
+                                        anchor.get("href") or "",
+                                    )
+                                )
+                                if link:
+                                    candidates.append(link)
+
+                            if candidates:
+                                break
+
+                    for link in candidates:
+                        if link in seen:
+                            continue
+                        seen.add(link)
+                        urls.append(link)
+                        break
+
+                    if len(urls) >= MAX_CANDIDATES:
+                        return urls[:MAX_CANDIDATES]
+
+                    if any(
+                        "56286" in link
+                        or "kobra-for-him" in link.casefold()
+                        for link in urls
+                    ):
+                        break
+            finally:
+                response.close()
+
+            if any(
+                "56286" in link
+                or "kobra-for-him" in link.casefold()
+                for link in urls
+            ):
+                break
 
     # Public-index discovery is normally skipped when first-party search is
     # healthy, but a small bounded pass is important for newly launched
