@@ -318,6 +318,73 @@ def inspect_product(product, query):
     return result
 
 
+def _context_snippets(text, needle, radius=500, max_matches=5):
+    text = str(text or "")
+    needle = str(needle or "")
+    if not needle:
+        return []
+
+    lowered = text.lower()
+    target = needle.lower()
+    snippets = []
+    start = 0
+
+    while len(snippets) < max_matches:
+        position = lowered.find(target, start)
+        if position < 0:
+            break
+
+        left = max(0, position - radius)
+        right = min(len(text), position + len(needle) + radius)
+
+        snippets.append({
+            "position": position,
+            "text": text[left:right],
+        })
+
+        start = position + len(needle)
+
+    return snippets
+
+
+def _extract_product_paths_near_target(text, target):
+    snippets = _context_snippets(text, target, radius=1800, max_matches=10)
+    results = []
+
+    patterns = [
+        r'https?://[^"\']+/products/[^"\']+',
+        r'//[^"\']+/products/[^"\']+',
+        r'["\']((?:\\?/)+products\\?/[^"\']+)["\']',
+        r'["\']((?:/|\\/)products(?:/|\\/)[^"\']+)["\']',
+        r'["\']([^"\']*rasasi[^"\']*(?:kobra|reina)[^"\']*)["\']',
+    ]
+
+    for snippet in snippets:
+        local = snippet["text"]
+
+        for pattern in patterns:
+            for match in re.finditer(pattern, local, flags=re.IGNORECASE):
+                value = match.group(1) if match.lastindex else match.group(0)
+                value = value.replace("\\/", "/")
+                results.append({
+                    "target": target,
+                    "value": value[:1000],
+                    "context_position": snippet["position"],
+                })
+
+    # Deduplicate while preserving order.
+    seen = set()
+    unique = []
+    for item in results:
+        key = item["value"]
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+
+    return unique[:30]
+
+
 def inspect_search_page(query):
     url = LOCALIZED_BASE + "/search"
     response, elapsed, error = get(
@@ -336,6 +403,7 @@ def inspect_search_page(query):
         "html_length": len(response.text) if response else 0,
         "products": [],
         "targets": {},
+        "raw_target_diagnostics": {},
     }
 
     if error or response is None or response.status_code != 200:
@@ -343,11 +411,66 @@ def inspect_search_page(query):
             report["body_preview"] = response.text[:2000]
         return report
 
+    html = response.text
+
+    # Diagnostic only: inspect the raw HTML for the two missing products.
+    # This deliberately does not change production discovery behavior.
+    for target in ("Kobra", "Reina"):
+        report["raw_target_diagnostics"][target.lower()] = {
+            "literal_occurrences": len(
+                re.findall(re.escape(target), html, flags=re.IGNORECASE)
+            ),
+            "contexts": _context_snippets(
+                html, target, radius=700, max_matches=5
+            ),
+            "product_paths_near_target": _extract_product_paths_near_target(
+                html, target
+            ),
+        }
+
+    # Inspect JSON/script containers because Shopify themes often embed
+    # product-card data there instead of ordinary <a href="/products/..."> links.
+    if BeautifulSoup is not None:
+        soup = BeautifulSoup(html, "html.parser")
+
+        script_report = []
+        for index, script in enumerate(soup.find_all("script"), 1):
+            script_type = str(script.get("type") or "").strip()
+            script_text = script.string or script.get_text() or ""
+
+            if not script_text:
+                continue
+
+            hits = []
+            for target in ("Kobra", "Reina"):
+                if re.search(re.escape(target), script_text, flags=re.IGNORECASE):
+                    hits.append({
+                        "target": target,
+                        "contexts": _context_snippets(
+                            script_text, target, radius=500, max_matches=3
+                        ),
+                        "product_paths_near_target": _extract_product_paths_near_target(
+                            script_text, target
+                        ),
+                    })
+
+            if hits:
+                script_report.append({
+                    "index": index,
+                    "type": script_type,
+                    "id": str(script.get("id") or ""),
+                    "length": len(script_text),
+                    "hits": hits,
+                })
+
+        report["raw_target_diagnostics"]["script_containers"] = script_report
+
+    # Keep the original simple anchor parser for comparison.
     if BeautifulSoup is None:
         report["error"] = "beautifulsoup4_not_installed"
         return report
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
     seen = set()
 
     for anchor in soup.find_all("a", href=True):
