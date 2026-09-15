@@ -679,6 +679,26 @@ class ProductMatcher:
             offer.get("name") or offer.get("title") or offer.get("product_name") or ""
         )
 
+        # Never treat samples/decants/testers as full-size fragrance offers.
+        # This guard runs before family and generic matching, so removing bottle
+        # size from identity normalization can never turn a sample into a product.
+        identity_text = " ".join(
+            str(offer.get(key) or "")
+            for key in ("name", "title", "product_name")
+        )
+        if re.search(
+            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
+            identity_text,
+            flags=re.I,
+        ):
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                "method=sample_or_tester",
+                flush=True,
+            )
+            return None
+
         family = self._family_for_query(query)
         if family is not None:
             result = self._match_family(offer, query, family)
