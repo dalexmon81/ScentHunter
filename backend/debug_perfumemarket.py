@@ -229,6 +229,104 @@ def inspect_sitemap(session, sitemap_url, terms):
     return result
 
 
+def inspect_product_html(session, product_url):
+    response = request(
+        session,
+        product_url,
+    )
+
+    entry = {
+        "product_url": product_url,
+        "status_code": response.get("status_code"),
+        "final_url": response.get("final_url"),
+        "content_type": response.get("content_type"),
+        "error": response.get("error"),
+    }
+
+    if not response.get("ok"):
+        return entry
+
+    text = response.get("text") or ""
+    entry["html_length"] = len(text)
+
+    soup = BeautifulSoup(text, "html.parser")
+
+    title = ""
+    for selector in (
+        "h1",
+        "meta[property='og:title']",
+        "title",
+    ):
+        element = soup.select_one(selector)
+        if not element:
+            continue
+
+        title = clean(
+            element.get("content")
+            if element.name == "meta"
+            else element.get_text(" ", strip=True)
+        )
+        if title:
+            break
+
+    entry["title"] = title
+    entry["price_text"] = None
+    entry["has_add_to_cart"] = False
+    entry["has_out_of_stock_marker"] = False
+    entry["json_ld"] = []
+
+    page_text = soup.get_text(" ", strip=True)
+    lower_text = page_text.lower()
+
+    entry["has_add_to_cart"] = any(
+        marker in lower_text
+        for marker in (
+            "add to cart",
+            "ajouter au panier",
+            "in den warenkorb",
+            "add to bag",
+        )
+    )
+
+    entry["has_out_of_stock_marker"] = any(
+        marker in lower_text
+        for marker in (
+            "out of stock",
+            "sold out",
+            "uitverkocht",
+            "rupture de stock",
+            "ausverkauft",
+        )
+    )
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+
+        objects = data if isinstance(data, list) else [data]
+
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+
+            summary = {
+                "@type": obj.get("@type"),
+                "name": obj.get("name"),
+                "brand": obj.get("brand"),
+                "offers": obj.get("offers"),
+            }
+            entry["json_ld"].append(summary)
+
+    entry["raw_prefix"] = text[:2500]
+    return entry
+
+
 def inspect_product_js(session, product_url):
     response = request(
         session,
@@ -573,6 +671,7 @@ def debug_perfumemarket(
         #    and diagnostic inspection.
         # ---------------------------------------------------------------
         actual_product_inspections = []
+        actual_product_html_inspections = []
 
         for candidate in actual_discovery.get("candidates", []):
             if not isinstance(candidate, dict):
@@ -597,6 +696,20 @@ def debug_perfumemarket(
 
             actual_product_inspections.append(inspection)
 
+            html_inspection = inspect_product_html(
+                session,
+                product_url,
+            )
+
+            html_inspection["discovery_candidate"] = {
+                "name": candidate.get("name"),
+                "price": candidate.get("price"),
+                "source": candidate.get("source"),
+                "url": product_url,
+            }
+
+            actual_product_html_inspections.append(html_inspection)
+
         return {
             "diagnostic": True,
             "ok": True,
@@ -608,6 +721,7 @@ def debug_perfumemarket(
             "product_inspections": product_inspections,
             "actual_discovery": actual_discovery,
             "actual_product_inspections": actual_product_inspections,
+            "actual_product_html_inspections": actual_product_html_inspections,
         }
 
     except Exception as exc:
