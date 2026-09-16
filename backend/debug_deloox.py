@@ -3,12 +3,10 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import multiprocessing as mp
 import re
-import sys
 import time
 import traceback
-from collections import Counter
-from types import ModuleType
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -17,7 +15,8 @@ from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
-DLOOX_BASE = "https://www.deloox.be"
+BASE_FALLBACK = "https://www.deloox.be"
+
 KNOWN_URLS = [
     "https://www.deloox.be/produit/1214441/valentino-born-in-roma-uomo-eau-de-toilette-100-ml.html",
     "https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html",
@@ -26,568 +25,163 @@ KNOWN_URLS = [
 ]
 
 
-def _short(value, limit=1200):
+def _short(v, limit=2500):
     try:
-        if isinstance(value, str):
-            return value[:limit]
-        if isinstance(value, (list, tuple, set)):
-            data = list(value)
-            return {
-                "type": type(value).__name__,
-                "count": len(data),
-                "items": [_short(x, 500) for x in data[:20]],
-            }
-        if isinstance(value, dict):
+        if isinstance(v, str):
+            return v[:limit]
+        if isinstance(v, (list, tuple, set)):
+            x = list(v)
+            return {"type": type(v).__name__, "count": len(x), "items": [_short(i, 700) for i in x[:30]]}
+        if isinstance(v, dict):
             return {
                 "type": "dict",
-                "keys": list(value.keys())[:80],
-                "sample": {str(k): _short(v, 500) for k, v in list(value.items())[:20]},
+                "keys": list(v.keys())[:100],
+                "sample": {str(k): _short(val, 700) for k, val in list(v.items())[:30]},
             }
-        return repr(value)[:limit]
+        return repr(v)[:limit]
     except Exception as exc:
         return f"<summary_error:{type(exc).__name__}:{exc}>"
 
 
 def _source(obj):
+    if not callable(obj):
+        return None
     try:
         return inspect.getsource(obj)
     except Exception as exc:
         return f"<SOURCE_ERROR {type(exc).__name__}: {exc}>"
 
 
-def _module_fingerprint(module: ModuleType):
+def _fingerprint(module):
     path = getattr(module, "__file__", None)
     origin = getattr(getattr(module, "__spec__", None), "origin", None)
-    source = ""
-    source_error = None
 
-    if path:
-        try:
-            with open(path, "rb") as fh:
-                raw = fh.read()
-            source = raw.decode("utf-8", errors="replace")
-            sha = hashlib.sha256(raw).hexdigest()
-            lines = source.count("\n") + 1
-        except Exception as exc:
-            sha = None
-            lines = None
-            source_error = f"{type(exc).__name__}: {exc}"
-    else:
-        sha = None
-        lines = None
-        source_error = "module_has_no___file__"
-
-    return {
-        "module_name": module.__name__,
-        "module_file": path,
-        "module_origin": origin,
-        "module_source_sha256": sha,
-        "module_source_lines": lines,
-        "module_source_error": source_error,
-        "module_source_text": source,
-    }
+    try:
+        raw = open(path, "rb").read() if path else b""
+        text = raw.decode("utf-8", errors="replace")
+        return {
+            "module": module.__name__,
+            "module_file": path,
+            "module_origin": origin,
+            "sha256": hashlib.sha256(raw).hexdigest() if raw else None,
+            "lines": text.count("\n") + 1 if text else None,
+            "file_read_error": None,
+        }
+    except Exception as exc:
+        return {
+            "module": module.__name__,
+            "module_file": path,
+            "module_origin": origin,
+            "sha256": None,
+            "lines": None,
+            "file_read_error": f"{type(exc).__name__}: {exc}",
+        }
 
 
-def _module_functions(module):
-    names = []
-    for name in dir(module):
-        try:
-            value = getattr(module, name)
-        except Exception:
-            continue
-        if callable(value) and (
-            name == "discover"
-            or name == "_discover"
-            or "candidate" in name.lower()
-            or "product" in name.lower()
-            or "search" in name.lower()
-            or "category" in name.lower()
-            or "sitemap" in name.lower()
-        ):
-            names.append(name)
-    return sorted(set(names))
-
-
-def _is_deloox_product_url(url):
+def _product_url(url):
     try:
         p = urlparse(str(url))
-        host = p.netloc.lower()
-        path = p.path.lower()
         return (
-            host in {"deloox.be", "www.deloox.be"}
-            and re.search(r"/(?:produit|product|products?)/\d+/", path) is not None
+            p.netloc.lower() in {"deloox.be", "www.deloox.be"}
+            and re.search(r"/(?:produit|product)/\d+/", p.path.lower()) is not None
         )
     except Exception:
         return False
 
 
-def _generic_raw_urls(html, base_url):
+def _raw_product_urls(html, final_url):
     soup = BeautifulSoup(html or "", "html.parser")
-    found = set()
+    out = set()
 
     for a in soup.find_all("a", href=True):
-        href = str(a.get("href") or "").strip()
-        if not href:
-            continue
-        u = urljoin(base_url, href).split("#", 1)[0].split("?", 1)[0]
-        if _is_deloox_product_url(u):
-            found.add(u)
+        u = urljoin(final_url, str(a.get("href") or "")).split("#", 1)[0].split("?", 1)[0]
+        if _product_url(u):
+            out.add(u)
 
     patterns = [
-        r'https?://(?:www\.)?deloox\.be/[^"\'<>\s]+/(?:produit|product|products?)/\d+/[^"\'<>\s]+',
-        r'["\']((?:/)?(?:en/|fr/|nl/|it/)?(?:produit|product|products?)/\d+/[^"\']+)["\']',
+        r'https?://(?:www\.)?deloox\.be/[^"\'<>\s]+/(?:produit|product)/\d+/[^"\'<>\s]+',
+        r'["\']((?:/)?(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\']+)["\']',
     ]
-
     for pattern in patterns:
         for raw in re.findall(pattern, html or "", re.I):
-            u = urljoin(base_url, raw).split("#", 1)[0].split("?", 1)[0]
-            if _is_deloox_product_url(u):
-                found.add(u)
+            u = urljoin(final_url, raw).split("#", 1)[0].split("?", 1)[0]
+            if _product_url(u):
+                out.add(u)
 
-    return sorted(found)
-
-
-def _born_urls(urls):
-    out = []
-    for u in urls:
-        low = u.casefold()
-        if "born-in-roma" in low or "born%20in%20roma" in low:
-            out.append(u)
-    return sorted(set(out))
+    return sorted(out)
 
 
-def _jsonld_products(html):
-    soup = BeautifulSoup(html or "", "html.parser")
-    products = []
-
-    for script in soup.find_all("script", type=re.compile(r"ld\+json", re.I)):
-        raw = script.string or script.get_text("", strip=True)
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            item = stack.pop(0)
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
-            if not isinstance(item, dict):
-                continue
-
-            typ = item.get("@type")
-            is_product = typ == "Product" or (
-                isinstance(typ, list) and "Product" in typ
-            )
-            if is_product:
-                products.append({
-                    "name": item.get("name"),
-                    "brand": item.get("brand"),
-                    "sku": item.get("sku"),
-                    "gtin": item.get("gtin13") or item.get("gtin"),
-                    "url": item.get("url"),
-                    "offers": _short(item.get("offers"), 1000),
-                })
-
-            for value in item.values():
-                if isinstance(value, (dict, list)):
-                    stack.append(value)
-
-    return products[:50]
+def _born(urls):
+    return sorted({u for u in urls if "born-in-roma" in u.casefold()})
 
 
-class LoggedSession(requests.Session):
-    def __init__(self):
-        super().__init__()
-        self.calls = []
-
-    def get(self, url, **kwargs):
-        started = time.monotonic()
-        try:
-            response = super().get(url, **kwargs)
-            self.calls.append({
-                "url": str(url),
-                "final_url": str(getattr(response, "url", "") or ""),
-                "status": response.status_code,
-                "bytes": len(response.content or b""),
-                "content_type": response.headers.get("content-type"),
-                "elapsed_ms": round((time.monotonic() - started) * 1000),
-            })
-            return response
-        except Exception as exc:
-            self.calls.append({
-                "url": str(url),
-                "status": None,
-                "bytes": 0,
-                "elapsed_ms": round((time.monotonic() - started) * 1000),
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-            raise
-
-
-def _traceable_function_names(module, discover):
-    wanted = set()
-
+def _http_probe(url, headers, timeout):
+    t0 = time.monotonic()
     try:
-        for name in discover.__code__.co_names:
-            value = getattr(module, name, None)
-            if callable(value):
-                wanted.add(name)
-    except Exception:
-        pass
-
-    for name in (
-        "_candidate_product_urls",
-        "_candidate_contexts",
-        "_discover_from_categories",
-        "_category_product_line_links",
-        "_sitemap_product_urls",
-        "_find_catalog_filter_url",
-        "_product",
-        "product_url",
-        "relevant",
-        "matches",
-    ):
-        if callable(getattr(module, name, None)):
-            wanted.add(name)
-
-    return sorted(wanted)
-
-
-def _profile_discover(module, discover, query, headers, timeout):
-    """
-    Runs the loaded discovery function in-memory only.
-
-    The profiler records Python function entry/return values for functions
-    belonging to the loaded Deloox module. This is deliberately read-only:
-    no source file is edited and no production function is replaced.
-    """
-    events = []
-    session = LoggedSession()
-    if headers:
-        session.headers.update(headers)
-
-    function_names = set(_traceable_function_names(module, discover))
-    previous_profile = sys.getprofile()
-
-    started = time.monotonic()
-
-    def profile(frame, event, arg):
-        if event not in {"call", "return", "exception"}:
-            return profile
-
-        if frame.f_globals is not getattr(module, "__dict__", {}):
-            return profile
-
-        name = frame.f_code.co_name
-        if name not in function_names and name not in {
-            getattr(discover, "__name__", ""),
-            "discover",
-            "_discover",
-        }:
-            return profile
-
-        if len(events) >= 300:
-            return profile
-
-        if event == "call":
-            events.append({
-                "event": "call",
-                "function": name,
-                "line": frame.f_lineno,
-            })
-        elif event == "return":
-            events.append({
-                "event": "return",
-                "function": name,
-                "line": frame.f_lineno,
-                "value": _short(arg, 1600),
-            })
-        elif event == "exception":
-            exc_type, exc_value, _tb = arg
-            events.append({
-                "event": "exception",
-                "function": name,
-                "line": frame.f_lineno,
-                "exception": f"{getattr(exc_type, '__name__', str(exc_type))}: {exc_value}",
-            })
-
-        return profile
-
-    # If the discovery function explicitly receives a Session, use our logged
-    # session. If it creates its own Session, patch only the module's requests
-    # object for the duration of this one diagnostic call.
-    requests_obj = getattr(module, "requests", None)
-    original_session_factory = getattr(requests_obj, "Session", None) if requests_obj else None
-
-    try:
-        if requests_obj is not None and original_session_factory is not None:
-            requests_obj.Session = lambda: session
-
-        sys.setprofile(profile)
-
-        try:
-            result = discover(session, query)
-        except TypeError:
-            # Some deployed variants expose discover(query) instead.
-            result = discover(query)
-
+        r = requests.get(
+            url,
+            headers=headers or None,
+            timeout=timeout,
+            allow_redirects=True,
+        )
         return {
-            "ok": True,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "returned_type": type(result).__name__,
-            "returned": _short(result, 8000),
-            "returned_count": len(result) if isinstance(result, (list, tuple, set, dict)) else None,
-            "profile_events": events,
-            "http_calls": session.calls,
-        }
-
-    except Exception as exc:
-        return {
-            "ok": False,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-            "profile_events": events,
-            "http_calls": session.calls,
-        }
-
-    finally:
-        sys.setprofile(previous_profile)
-        if requests_obj is not None and original_session_factory is not None:
-            requests_obj.Session = original_session_factory
-        session.close()
-
-
-def _call_candidate_extractor(module, html, query):
-    fn = getattr(module, "_candidate_product_urls", None)
-    if not callable(fn):
-        fn = getattr(module, "candidate_product_urls", None)
-
-    if not callable(fn):
-        return {
-            "available": False,
-            "reason": "candidate_extractor_not_found",
-        }
-
-    try:
-        sig = inspect.signature(fn)
-        kwargs = {}
-        args = []
-
-        params = list(sig.parameters.values())
-
-        # Most deployed versions use:
-        #   (html, query)
-        # or:
-        #   (html, query, discovery_query=None, accept_all_products=False)
-        # Handle these without guessing beyond the signature.
-        if len(params) >= 1:
-            args.append(html)
-        if len(params) >= 2:
-            args.append(query)
-
-        if "discovery_query" in sig.parameters:
-            kwargs["discovery_query"] = query
-
-        if "accept_all_products" in sig.parameters:
-            kwargs["accept_all_products"] = True
-
-        result = fn(*args, **kwargs)
-
-        return {
-            "available": True,
-            "function": fn.__name__,
-            "signature": str(sig),
-            "returned_type": type(result).__name__,
-            "returned_count": len(result) if isinstance(result, (list, tuple, set, dict)) else None,
-            "returned": _short(result, 12000),
-        }
-
-    except Exception as exc:
-        return {
-            "available": True,
-            "function": getattr(fn, "__name__", repr(fn)),
-            "signature": str(inspect.signature(fn)),
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-        }
-
-
-def _direct_pages(module, query):
-    base = str(
-        getattr(module, "BASE", None)
-        or getattr(module, "BASE_URL", None)
-        or DLOOX_BASE
-    ).rstrip("/")
-
-    headers = dict(getattr(module, "HEADERS", {}) or {})
-    timeout = getattr(module, "TIMEOUT", (4, 8))
-
-    pages = []
-    session = requests.Session()
-    if headers:
-        session.headers.update(headers)
-
-    for page_number in range(1, 5):
-        candidates = [
-            f"{base}/chercher.html?q={quote_plus(query)}&page={page_number}",
-        ]
-
-        if page_number == 1:
-            candidates.append(f"{base}/chercher.html?q={quote_plus(query)}")
-
-        report = {
-            "page": page_number,
-            "requested": candidates[0],
-        }
-
-        response = None
-        try:
-            for url in candidates:
-                response = session.get(
-                    url,
-                    headers=headers or None,
-                    timeout=timeout,
-                    allow_redirects=True,
-                )
-                report["attempts"] = report.get("attempts", []) + [{
-                    "url": url,
-                    "status": response.status_code,
-                    "final_url": response.url,
-                    "bytes": len(response.content or b""),
-                }]
-                if response.status_code < 400 and response.text:
-                    break
-
-            if response is None:
-                raise RuntimeError("no_response")
-
-            html = response.text or ""
-            raw_urls = _generic_raw_urls(html, response.url)
-            born = _born_urls(raw_urls)
-
-            report.update({
-                "status": response.status_code,
-                "final_url": response.url,
-                "html_length": len(html),
-                "generic_product_url_count": len(raw_urls),
-                "born_in_roma_url_count": len(born),
-                "born_in_roma_urls": born[:100],
-                "candidate_extractor": _call_candidate_extractor(
-                    module,
-                    html,
-                    query,
-                ),
-            })
-
-        except Exception as exc:
-            report.update({
-                "error": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc(),
-            })
-
-        pages.append(report)
-
-    session.close()
-    return pages
-
-
-def _known_url_probe(module, query):
-    headers = dict(getattr(module, "HEADERS", {}) or {})
-    timeout = getattr(module, "TIMEOUT", (4, 8))
-
-    rows = []
-    session = requests.Session()
-    if headers:
-        session.headers.update(headers)
-
-    for url in KNOWN_URLS:
-        item = {
             "url": url,
-            "is_generic_product_url": _is_deloox_product_url(url),
+            "status": r.status_code,
+            "final_url": r.url,
+            "bytes": len(r.content or b""),
+            "elapsed_ms": round((time.monotonic() - t0) * 1000),
+            "born_url_count": len(_born(_raw_product_urls(r.text or "", r.url))),
+            "born_urls": _born(_raw_product_urls(r.text or "", r.url))[:60],
+            "html_length": len(r.text or ""),
+        }
+    except Exception as exc:
+        return {
+            "url": url,
+            "status": None,
+            "elapsed_ms": round((time.monotonic() - t0) * 1000),
+            "error": f"{type(exc).__name__}: {exc}",
         }
 
-        try:
-            response = session.get(
-                url,
-                headers=headers or None,
-                timeout=timeout,
-                allow_redirects=True,
-            )
-            html = response.text or ""
 
-            item.update({
-                "status": response.status_code,
-                "final_url": response.url,
-                "bytes": len(response.content or b""),
-                "html_length": len(html),
-                "contains_born_in_roma": "born in roma" in html.casefold(),
-                "contains_ivoory": "ivory" in html.casefold(),
-                "jsonld_products": _jsonld_products(html),
-            })
-
-        except Exception as exc:
-            item.update({
-                "error": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc(),
-            })
-
-    session.close()
-    return rows
-
-
-@router.get("/deloox-runtime-forensic")
-def deloox_runtime_forensic(
-    q: str = Query("Born in Roma", min_length=1),
-):
-    query = str(q or "").strip()
+def _child_discover(module_name, query, queue):
     started = time.monotonic()
-
     try:
         import importlib
 
-        module = importlib.import_module("scrapers.deloox.scraper")
-
-        fingerprint = _module_fingerprint(module)
-        source_text = fingerprint.pop("module_source_text")
-
-        public_functions = _module_functions(module)
-
+        module = importlib.import_module(module_name)
         discover = getattr(module, "discover", None)
-        discover_name = "discover"
+        name = "discover"
 
         if not callable(discover):
             discover = getattr(module, "_discover", None)
-            discover_name = "_discover"
+            name = "_discover"
 
         if not callable(discover):
-            discover = None
-            discover_name = None
+            queue.put({
+                "ok": False,
+                "stage": "no_discover",
+                "functions": sorted(
+                    n for n in dir(module)
+                    if n.startswith("_") and callable(getattr(module, n, None))
+                )[:250],
+            })
+            return
 
-        result = {
-            "ok": True,
-            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V1",
-            "query": query,
-            "warning": "READ-ONLY DIAGNOSTIC. NO PRODUCTION FILE IS MODIFIED.",
-            "runtime": fingerprint,
-            "available_relevant_functions": public_functions,
-            "discover": {
-                "name": discover_name,
-                "exists": callable(discover),
-                "signature": str(inspect.signature(discover)) if callable(discover) else None,
-                "source": _source(discover) if callable(discover) else None,
-            },
-            "helper_sources": {},
-        }
+        session = requests.Session()
+        headers = dict(getattr(module, "HEADERS", {}) or {})
+        timeout = getattr(module, "TIMEOUT", (2.0, 5.0))
+        if headers:
+            session.headers.update(headers)
 
-        for name in public_functions:
-            if name in {
-                "discover",
-                "_discover",
+        try:
+            # Trace only functions belonging to the loaded Deloox module.
+            wanted = set()
+            try:
+                wanted.update(n for n in discover.__code__.co_names if callable(getattr(module, n, None)))
+            except Exception:
+                pass
+
+            for n in (
                 "_candidate_product_urls",
                 "_candidate_contexts",
                 "_discover_from_categories",
@@ -598,43 +192,185 @@ def deloox_runtime_forensic(
                 "product_url",
                 "relevant",
                 "matches",
-            }:
-                value = getattr(module, name, None)
-                if callable(value):
-                    result["helper_sources"][name] = {
-                        "signature": str(inspect.signature(value)),
-                        "source": _source(value),
-                    }
+            ):
+                if callable(getattr(module, n, None)):
+                    wanted.add(n)
 
-        result["direct_html"] = _direct_pages(module, query)
-        result["known_product_pages"] = _known_url_probe(module, query)
+            events = []
+            old_profile = __import__("sys").getprofile()
 
-        if callable(discover):
-            headers = dict(getattr(module, "HEADERS", {}) or {})
-            timeout = getattr(module, "TIMEOUT", (4, 8))
-            result["discover_execution"] = _profile_discover(
-                module,
-                discover,
-                query,
-                headers,
-                timeout,
-            )
-        else:
-            result["discover_execution"] = {
+            def profile(frame, event, arg):
+                if event not in ("call", "return", "exception"):
+                    return profile
+                if frame.f_globals is not module.__dict__:
+                    return profile
+                fn = frame.f_code.co_name
+                if fn not in wanted and fn not in {name, "discover", "_discover"}:
+                    return profile
+                if len(events) >= 250:
+                    return profile
+
+                if event == "call":
+                    events.append({"event": "call", "fn": fn, "line": frame.f_lineno})
+                elif event == "return":
+                    events.append({"event": "return", "fn": fn, "line": frame.f_lineno, "value": _short(arg, 1800)})
+                else:
+                    et, ev, _ = arg
+                    events.append({
+                        "event": "exception",
+                        "fn": fn,
+                        "line": frame.f_lineno,
+                        "error": f"{getattr(et, '__name__', str(et))}: {ev}",
+                    })
+                return profile
+
+            import sys
+            sys.setprofile(profile)
+            try:
+                try:
+                    result = discover(session, query)
+                except TypeError:
+                    result = discover(query)
+            finally:
+                sys.setprofile(old_profile)
+
+            queue.put({
+                "ok": True,
+                "discover_name": name,
+                "signature": str(inspect.signature(discover)),
+                "source": _source(discover),
+                "returned_type": type(result).__name__,
+                "returned_count": len(result) if isinstance(result, (list, tuple, set, dict)) else None,
+                "returned": _short(result, 15000),
+                "profile_events": events,
+                "elapsed_ms": round((time.monotonic() - started) * 1000),
+            })
+        finally:
+            session.close()
+
+    except Exception as exc:
+        queue.put({
+            "ok": False,
+            "stage": "discover_execution",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+        })
+
+
+@router.get("/deloox-runtime-forensic")
+def deloox_runtime_forensic(
+    q: str = Query("Born in Roma", min_length=1),
+    timeout_seconds: int = Query(20, ge=5, le=60),
+):
+    started = time.monotonic()
+    query = str(q or "").strip()
+
+    try:
+        import importlib
+
+        module = importlib.import_module("scrapers.deloox.scraper")
+        fp = _fingerprint(module)
+
+        discover = getattr(module, "discover", None)
+        discover_name = "discover"
+        if not callable(discover):
+            discover = getattr(module, "_discover", None)
+            discover_name = "_discover"
+
+        helper_names = [
+            "discover",
+            "_discover",
+            "_candidate_product_urls",
+            "_candidate_contexts",
+            "_discover_from_categories",
+            "_category_product_line_links",
+            "_sitemap_product_urls",
+            "_find_catalog_filter_url",
+            "_product",
+            "product_url",
+            "relevant",
+            "matches",
+        ]
+
+        helpers = {}
+        for name in helper_names:
+            fn = getattr(module, name, None)
+            if callable(fn):
+                helpers[name] = {
+                    "signature": str(inspect.signature(fn)),
+                    "source": _source(fn),
+                }
+
+        base = str(
+            getattr(module, "BASE", None)
+            or getattr(module, "BASE_URL", None)
+            or BASE_FALLBACK
+        ).rstrip("/")
+        headers = dict(getattr(module, "HEADERS", {}) or {})
+        timeout = getattr(module, "TIMEOUT", (2.0, 5.0))
+
+        # Only ONE search page + the four known product pages here.
+        # The discovery call itself is isolated in a killable subprocess.
+        search_url = f"{base}/chercher.html?q={quote_plus(query)}"
+        raw_search = _http_probe(search_url, headers, timeout)
+
+        known = [_http_probe(u, headers, timeout) for u in KNOWN_URLS]
+
+        queue = mp.Queue()
+        proc = mp.Process(
+            target=_child_discover,
+            args=("scrapers.deloox.scraper", query, queue),
+            daemon=True,
+        )
+
+        proc_started = time.monotonic()
+        proc.start()
+        proc.join(timeout_seconds)
+
+        if proc.is_alive():
+            proc.terminate()
+            proc.join(3)
+            discovery = {
                 "ok": False,
-                "error": "NO_DISCOVER_OR__DISCOVER_IN_LOADED_MODULE",
+                "timeout": True,
+                "timeout_seconds": timeout_seconds,
+                "error": f"discover_process_exceeded_{timeout_seconds}_seconds",
+                "child_exitcode": proc.exitcode,
+                "elapsed_ms": round((time.monotonic() - proc_started) * 1000),
             }
+        else:
+            try:
+                discovery = queue.get_nowait()
+            except Exception:
+                discovery = {
+                    "ok": False,
+                    "error": "discover_process_finished_without_result",
+                    "child_exitcode": proc.exitcode,
+                    "elapsed_ms": round((time.monotonic() - proc_started) * 1000),
+                }
 
-        result["elapsed_total_ms"] = round((time.monotonic() - started) * 1000)
-
-        return result
+        return {
+            "ok": True,
+            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V2",
+            "read_only": True,
+            "query": query,
+            "runtime": fp,
+            "base_url": base,
+            "configured_timeout": repr(timeout),
+            "helpers": helpers,
+            "raw_search_page": raw_search,
+            "known_product_pages": known,
+            "discover_execution": discovery,
+            "total_elapsed_ms": round((time.monotonic() - started) * 1000),
+        }
 
     except Exception as exc:
         return {
             "ok": False,
-            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V1",
+            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V2",
             "query": query,
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
-            "elapsed_total_ms": round((time.monotonic() - started) * 1000),
+            "total_elapsed_ms": round((time.monotonic() - started) * 1000),
         }
