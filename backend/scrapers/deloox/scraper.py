@@ -1,804 +1,962 @@
+"""ScentHunter - Deloox scraper."""
 from __future__ import annotations
 
+import json
 import re
-import traceback
-from urllib.parse import quote_plus, urljoin
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Query
 
-router = APIRouter(prefix="/api/debug", tags=["debug"])
+STORE = "Deloox"
+BASE = "https://www.deloox.be"
+TIMEOUT = (2.0, 5.0)
+MAX_CANDIDATES = 40
+MAX_RESULTS = 40
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+}
 
-# ============================================================
-# TEST 1 — PURE DISCOVERY DIAGNOSTIC
-# ============================================================
-#
-# Questo file è SOLO diagnostico.
-#
-# NON modifica:
-#   - scraper.py
-#   - sitecustomize.py
-#   - ProductMatcher
-#   - family_registry
-#
-# NON esegue:
-#   - search()
-#   - parse_product()
-#   - matching finale
-#
-# Obiettivo:
-#
-#   Deloox HTML
-#        ↓
-#   RAW product URLs
-#        ↓
-#   current discover()
-#        ↓
-#   confronto
-#
-# In questo modo vediamo se il problema nasce già nella
-# DISCOVERY oppure in una fase successiva.
-# ============================================================
+SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", re.I)
+
+PRICE_RE = re.compile(
+    r"(?:€\s*)?(\d{1,4}\s*[.,]\s*\d{2})(?:\s*€)?"
+)
+
+NON_FRAGRANCE = (
+    "body mist",
+    "body spray",
+    "body lotion",
+    "body cream",
+    "deodorant",
+    "after shave",
+    "aftershave",
+    "shower gel",
+    "soap",
+    "hair mist",
+)
 
 
-BORN_IN_ROMA_VARIANTS = [
-    "Born in Roma Uomo",
-    "Born in Roma Uomo Intense",
-    "Born in Roma Uomo Extradose",
-    "Born in Roma Uomo Green Stravaganza",
-    "Born in Roma Uomo Coral Fantasy",
-    "Born in Roma Uomo Yellow Dream",
-    "Born in Roma Uomo Purple Melancholia",
-    "Born in Roma Uomo The Gold",
-    "Born in Roma Uomo Ivory",
-    "Born in Roma Donna",
-    "Born in Roma Donna Intense",
-    "Born in Roma Donna Extradose",
-    "Born in Roma Donna Green Stravaganza",
-    "Born in Roma Donna Coral Fantasy",
-    "Born in Roma Donna Yellow Dream",
-    "Born in Roma Donna Purple Melancholia",
-    "Born in Roma Donna The Gold",
-    "Born in Roma Donna Ivory",
-]
-
-
-def clean_text(value: str) -> str:
-    return " ".join(
-        str(value or "").split()
+def clean(v):
+    return re.sub(
+        r"\s+",
+        " ",
+        str(v or ""),
     ).strip()
 
 
-def norm(value: str) -> str:
-    value = clean_text(value).lower()
-
-    value = value.replace("’", "'")
-    value = value.replace("-", " ")
-    value = value.replace("_", " ")
-
-    value = re.sub(
-        r"\s+",
+def norm(v):
+    return re.sub(
+        r"[^a-z0-9]+",
         " ",
-        value,
-    )
-
-    return value.strip()
+        clean(v).lower(),
+    ).strip()
 
 
-def variant_match(text: str) -> list[str]:
-    """
-    Identifica le varianti Born in Roma presenti nel testo.
-
-    Le varianti più lunghe vengono controllate prima,
-    per evitare che:
-
-        Born in Roma Uomo Intense
-
-    venga classificato soltanto come:
-
-        Born in Roma Uomo
-    """
-
-    normalized = norm(text)
-
-    matches = []
-
-    variants = sorted(
-        BORN_IN_ROMA_VARIANTS,
-        key=lambda x: len(norm(x)),
-        reverse=True,
-    )
-
-    for variant in variants:
-        if norm(variant) in normalized:
-            matches.append(variant)
-
-    return matches
-
-
-def extract_slug(url: str) -> str:
-    value = str(url or "").split("?", 1)[0]
-    value = value.rstrip("/")
-
-    if "/" not in value:
-        return value
-
-    return value.rsplit("/", 1)[-1]
-
-
-def query_token_hits(
-    text: str,
-    query: str,
-) -> dict:
-    """
-    Mostra esattamente quali token della query vengono
-    trovati nel testo/URL.
-    """
-
-    text_norm = norm(text)
-
-    query_tokens = [
-        token
-        for token in norm(query).split()
-        if token
-    ]
-
-    hits = []
-    misses = []
-
-    for token in query_tokens:
-        if token in text_norm:
-            hits.append(token)
-        else:
-            misses.append(token)
-
+def tokens(v):
     return {
-        "query_tokens": query_tokens,
-        "hits": hits,
-        "misses": misses,
-        "hit_count": len(hits),
-        "token_count": len(query_tokens),
+        x
+        for x in norm(v).split()
+        if len(x) > 1
     }
 
 
-def collect_card_context(
-    anchor,
-    max_parents: int = 7,
-) -> tuple[str, str]:
-    """
-    Ricostruisce il contesto della card prodotto partendo
-    dal link <a>.
-    """
-
-    anchor_text = clean_text(
-        anchor.get_text(
-            " ",
-            strip=True,
+def size_ml(*values):
+    m = SIZE_RE.search(
+        " ".join(
+            clean(x)
+            for x in values
+            if x
         )
     )
 
-    best_context = anchor_text
+    if not m:
+        return None
 
-    node = anchor
-
-    price_re = re.compile(
-        r"(?:€\s*)?"
-        r"\d{1,4}"
-        r"\s*[.,]\s*"
-        r"\d{2}"
-        r"(?:\s*€)?"
+    n = float(
+        m.group(1).replace(",", ".")
     )
 
-    for _ in range(max_parents):
-        node = node.parent
+    if m.group(2).lower() == "cl":
+        n *= 10
 
-        if not node:
-            break
+    return int(n) if n.is_integer() else n
 
-        context = clean_text(
-            node.get_text(
+
+def price_num(v):
+    if isinstance(
+        v,
+        (int, float),
+    ) and not isinstance(v, bool):
+        return round(float(v), 2)
+
+    text = clean(v).replace(
+        "\xa0",
+        " ",
+    )
+
+    for raw in PRICE_RE.findall(text):
+        try:
+            n = float(
+                raw.replace(" ", "").replace(",", ".")
+            )
+        except ValueError:
+            continue
+
+        if 0 < n < 10000:
+            return round(n, 2)
+
+    return None
+
+
+def price_text(v):
+    n = price_num(v)
+
+    if n is None:
+        return None
+
+    return (
+        f"{n:.2f}".replace(".", ",")
+        + " €"
+    )
+
+
+def availability(value):
+    text = norm(value)
+
+    if any(
+        x in text
+        for x in (
+            "out of stock",
+            "outofstock",
+            "sold out",
+            "soldout",
+            "unavailable",
+            "not available",
+        )
+    ):
+        return "out_of_stock"
+
+    if any(
+        x in text
+        for x in (
+            "in stock",
+            "instock",
+            "available",
+            "add to cart",
+            "in winkelwagen",
+        )
+    ):
+        return "in_stock"
+
+    return None
+
+
+def get(session, url):
+    for attempt in range(2):
+        try:
+            r = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+
+            if (
+                r.status_code == 200
+                and r.text
+            ):
+                return r
+
+            if r.status_code not in (
+                429,
+                500,
+                502,
+                503,
+                504,
+            ):
+                return None
+
+        except requests.RequestException:
+            pass
+
+        if attempt == 0:
+            time.sleep(0.35)
+
+    return None
+
+
+def is_product_url(url):
+    try:
+        p = urlparse(url)
+    except Exception:
+        return False
+
+    host = p.netloc.lower().split(
+        ":",
+        1,
+    )[0]
+
+    if not re.fullmatch(
+        r"(?:www\.)?deloox\.be",
+        host,
+    ):
+        return False
+
+    return bool(
+        re.search(
+            r"/(?:product|produit|producto|prodotto)/\d+/",
+            p.path,
+            re.I,
+        )
+    )
+
+
+def product_url(raw):
+    url = (
+        urljoin(
+            BASE + "/",
+            clean(raw),
+        )
+        .split("#", 1)[0]
+        .split("?", 1)[0]
+    )
+
+    return (
+        url
+        if is_product_url(url)
+        else ""
+    )
+
+
+def relevant(text, query):
+    q = tokens(query)
+
+    if not q:
+        return False
+
+    hay = norm(text)
+
+    hits = sum(
+        t in hay
+        for t in q
+    )
+
+    return hits >= (
+        1
+        if len(q) == 1
+        else max(2, len(q) - 1)
+    )
+
+
+def non_fragrance(text):
+    t = norm(text)
+
+    return any(
+        norm(x) in t
+        for x in NON_FRAGRANCE
+    )
+
+
+def jsonld_products(soup):
+    out = []
+
+    for script in soup.select(
+        'script[type="application/ld+json"]'
+    ):
+        try:
+            data = json.loads(
+                script.get_text()
+            )
+        except Exception:
+            continue
+
+        stack = (
+            data
+            if isinstance(data, list)
+            else [data]
+        )
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            typ = item.get("@type")
+
+            if (
+                typ == "Product"
+                or (
+                    isinstance(typ, list)
+                    and "Product" in typ
+                )
+            ):
+                out.append(item)
+
+            if isinstance(
+                item.get("@graph"),
+                list,
+            ):
+                stack.extend(
+                    item["@graph"]
+                )
+
+    return out
+
+
+_CARD_IMAGES = {}
+
+
+def _image_url(value):
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            image = _image_url(item)
+            if image:
+                return image
+        return ""
+    if isinstance(value, dict):
+        for key in ("url", "src", "contentUrl", "image"):
+            image = _image_url(value.get(key))
+            if image:
+                return image
+        return ""
+    value = clean(value)
+    if not value or value.startswith("data:"):
+        return ""
+    if value.startswith("//"):
+        return "https:" + value
+    return urljoin(BASE, value)
+
+
+def _image_from_node(node):
+    if not node:
+        return ""
+    for candidate in node.find_all(["img", "source"]):
+        for attr in (
+            "src", "data-src", "data-lazy-src",
+            "data-original", "data-image", "content",
+        ):
+            image = _image_url(candidate.get(attr))
+            if image:
+                return image
+        for attr in ("srcset", "data-srcset"):
+            raw = candidate.get(attr)
+            if not raw:
+                continue
+            first = str(raw).split(",", 1)[0].strip().split(" ", 1)[0]
+            image = _image_url(first)
+            if image:
+                return image
+    return ""
+
+
+def _candidate_contexts(
+    html,
+    query,
+):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    q = tokens(query)
+    found = {}
+
+    for a in soup.find_all(
+        "a",
+        href=True,
+    ):
+        url = product_url(
+            a.get("href")
+        )
+
+        if not url:
+            continue
+
+        node = a
+        card_image = ""
+
+        best = clean(
+            a.get_text(
                 " ",
                 strip=True,
             )
         )
 
-        if (
-            len(context) > len(best_context)
-            and len(context) <= 1800
+        for _ in range(7):
+            node = node.parent
+
+            if not node:
+                break
+
+            text = clean(
+                node.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            if not card_image:
+                card_image = _image_from_node(node)
+
+            if (
+                len(text) > len(best)
+                and len(text) <= 1800
+            ):
+                best = text
+
+            if PRICE_RE.search(text):
+                break
+
+        if q and not relevant(
+            best + " " + url,
+            query,
         ):
-            best_context = context
+            continue
 
-        if price_re.search(context):
-            break
+        hits = sum(
+            t in norm(best + " " + url)
+            for t in q
+        )
 
-    return (
-        anchor_text,
-        best_context,
+        score = (
+            hits * 10
+            + (
+                2
+                if PRICE_RE.search(best)
+                else 0
+            )
+        )
+
+        old = found.get(url)
+
+        if (
+            old is None
+            or score > old[0]
+        ):
+            found[url] = (
+                score,
+                best,
+            )
+            if card_image:
+                _CARD_IMAGES[url] = card_image
+
+    return sorted(
+        found.items(),
+        key=lambda x: (
+            -x[1][0],
+            len(x[0]),
+            x[0],
+        ),
+    )[:MAX_CANDIDATES]
+
+
+def _row_from_card(
+    url,
+    context,
+    query,
+):
+    # The search-card context can contain neighbouring products.  The URL,
+    # however, is the identity of the actual Deloox product page.  Build the
+    # title from the URL slug and use the card only for price/availability.
+    if not relevant(
+        context + " " + url,
+        query,
+    ):
+        return None
+
+    path = urlparse(url).path
+    slug = clean(path.rstrip("/").rsplit("/", 1)[-1])
+
+    # Deloox product slugs are descriptive. Remove technical URL tokens and
+    # keep the actual perfume name so ProductMatcher receives a clean title.
+    slug = re.sub(r"^\\d+[-_]", "", slug)
+    slug = re.sub(r"[-_]+", " ", slug)
+    slug = re.sub(
+        r"\\b(?:eau|de|parfum|toilette|spray|vaporisateur|ml|cl)\\b.*$",
+        "",
+        slug,
+        flags=re.I,
     )
+    slug = clean(slug)
 
+    # Prefer the URL-derived title only when it really contains the query.
+    name = slug if relevant(slug, query) else ""
 
-def raw_search_page(
-    session: requests.Session,
-    endpoint: str,
-    query: str,
-    page_number: int,
-    headers,
-    timeout,
-    product_url,
-    relevant,
-) -> dict:
-    """
-    Analizza direttamente una pagina di ricerca Deloox.
+    # Fallback to the existing card-text extraction for unusual URLs.
+    if not name:
+        lines = [
+            clean(x)
+            for x in re.split(
+                r"\\n|(?=Delivery time\\s*:)|(?=our price\\s)|(?=onze prijs\\s)|(?=nostro prezzo\\s)",
+                context,
+            )
+            if clean(x)
+        ]
 
-    NON usa discover().
-    """
+        for line in lines:
+            candidate = line
+            if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
+                try:
+                    repaired = candidate.encode("cp1252").decode("utf-8")
+                    if repaired != candidate:
+                        candidate = repaired
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
 
-    result = {
-        "page": page_number,
-        "requested": endpoint,
+            candidate = re.sub(
+                r"\\s+(?:en stock|in stock|available|disponible|beschikbaar)\\b.*$",
+                "",
+                candidate,
+                flags=re.I,
+            )
+            candidate = re.sub(
+                r"\\s+(?:notre prix|our price|onze prijs|nostro prezzo)\\b.*$",
+                "",
+                candidate,
+                flags=re.I,
+            )
+            candidate = re.sub(
+                r"\\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\\s*:\\s*.*$",
+                "",
+                candidate,
+                flags=re.I,
+            ).strip()
+
+            if (
+                relevant(candidate, query)
+                and not non_fragrance(candidate)
+                and not re.search(
+                    r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
+                    norm(candidate),
+                )
+                and 3 <= len(candidate) <= 220
+            ):
+                name = candidate
+                break
+
+    if not name:
+        return None
+
+    n = price_num(context)
+    state = availability(context)
+
+    # A product can be present on Deloox while temporarily out of stock and
+    # therefore have no numeric card price. Keep the product in that case;
+    # downstream code can still display its availability.
+    return {
+        "store": STORE,
+        "brand": "",
+        "name": name,
+        "price": price_text(n),
+        "price_num": n,
+        "url": url,
+        "image": _CARD_IMAGES.get(url, ""),
+        "image_url": _CARD_IMAGES.get(url, ""),
+        "available": (
+            state != "out_of_stock"
+        ),
+        "availability": (
+            state or "in_stock"
+        ),
+        "size_ml": size_ml(
+            name,
+            context,
+        ),
     }
 
-    try:
-        response = session.get(
+
+def discover(
+    session,
+    query,
+):
+    encoded = quote_plus(query)
+    q = tokens(query)
+
+    candidates = {}
+    seen_pages = set()
+
+    # Deloox.be uses its native search route /chercher.html.
+    # The first page shows 12 results and the site's "Charger plus"
+    # button loads the next batch with the same URL plus &page=2.
+    # Follow subsequent pages until Deloox stops returning new candidates.
+    page = 1
+
+    while page <= 10:
+        if page == 1:
+            endpoint = f"{BASE}/chercher.html?q={encoded}"
+        else:
+            endpoint = (
+                f"{BASE}/chercher.html?q={encoded}"
+                f"&page={page}"
+            )
+
+        r = get(
+            session,
             endpoint,
-            headers=headers,
-            timeout=timeout,
-            allow_redirects=True,
         )
 
-        html = response.text or ""
+        if (
+            not r
+            or r.url in seen_pages
+        ):
+            break
 
-        result.update(
-            {
-                "status_code": response.status_code,
-                "final_url": response.url,
-                "html_length": len(html),
-            }
+        seen_pages.add(r.url)
+
+        before = len(candidates)
+
+        for url, info in _candidate_contexts(
+            r.text,
+            query,
+        ):
+            if (
+                url not in candidates
+                or info[0] > candidates[url][0]
+            ):
+                candidates[url] = info
+
+        # Stop when a subsequent Deloox page adds nothing new.
+        if len(candidates) == before:
+            break
+
+        page += 1
+
+    # ---------------------------------------------------------
+    # FIX SPECIFICO:
+    # Liquid Brun Limited Edition
+    #
+    # Deloox's normal search endpoint returns 404, while the
+    # dedicated Liquid Brun category contains the Limited Edition.
+    # ---------------------------------------------------------
+    if (
+        {"liquid", "brun"} <= q
+        and (
+            {"limited", "edition"}
+            & q
         )
+    ):
+        endpoint = (
+            f"{BASE}/en/category/"
+            "1132834/liquid-brun.html"
+        )
+
+        r = get(
+            session,
+            endpoint,
+        )
+
+        if r:
+            for url, info in _candidate_contexts(
+                r.text,
+                query,
+            ):
+                if (
+                    url not in candidates
+                    or info[0] > candidates[url][0]
+                ):
+                    candidates[url] = info
+
+    # ---------------------------------------------------------
+    # FIX: Deloox has retired the /en/search endpoints (they
+    # currently return HTTP 404).  Rasasi has a dedicated catalog
+    # page which still contains the Hawas products, so use that
+    # catalog as the discovery source for Hawas queries.
+    # ---------------------------------------------------------
+    if "hawas" in q:
+        endpoint = (
+            f"{BASE}/categorie/"
+            "1080044/rasasi-parfum.html"
+        )
+
+        r = get(
+            session,
+            endpoint,
+        )
+
+        if r:
+            for url, info in _candidate_contexts(
+                r.text,
+                query,
+            ):
+                if (
+                    url not in candidates
+                    or info[0] > candidates[url][0]
+                ):
+                    candidates[url] = info
+
+    # Existing bounded catalog fallbacks.
+    for endpoint in (
+        f"{BASE}/en/category/1103659/fragrances.html",
+        f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html",
+    ):
+        r = get(
+            session,
+            endpoint,
+        )
+
+        if not r:
+            continue
+
+        for url, info in _candidate_contexts(
+            r.text,
+            query,
+        ):
+            if (
+                url not in candidates
+                or info[0] > candidates[url][0]
+            ):
+                candidates[url] = info
+
+    return sorted(
+        candidates.items(),
+        key=lambda x: (
+            -x[1][0],
+            x[0],
+        ),
+    )[:MAX_CANDIDATES]
+
+
+def parse_product(
+    url,
+    query,
+):
+    session = requests.Session()
+
+    try:
+        r = get(
+            session,
+            url,
+        )
+
+        if not r:
+            return []
 
         soup = BeautifulSoup(
-            html,
+            r.text,
             "html.parser",
         )
 
-        all_product_urls = {}
-        relevant_product_urls = {}
-        born_in_roma_urls = {}
+        rows = []
 
-        for anchor in soup.find_all(
-            "a",
-            href=True,
-        ):
-            raw_href = str(
-                anchor.get("href") or ""
+        for p in jsonld_products(soup):
+            name = clean(
+                p.get("name")
+                or query
             )
 
-            href = urljoin(
-                response.url,
-                raw_href,
-            )
-
-            normalized_url = product_url(
-                href
-            )
-
-            if not normalized_url:
-                continue
-
-            anchor_text, context = (
-                collect_card_context(anchor)
-            )
-
-            combined = (
-                f"{anchor_text} "
-                f"{context} "
-                f"{normalized_url}"
-            )
-
-            token_info = query_token_hits(
-                combined,
-                query,
-            )
-
-            relevant_to_query = bool(
-                relevant(
-                    combined,
+            if (
+                not relevant(
+                    name,
                     query,
                 )
-            )
-
-            variants = variant_match(
-                combined
-            )
-
-            entry = {
-                "url": normalized_url,
-                "slug": extract_slug(
-                    normalized_url
-                ),
-                "anchor_text": anchor_text[:500],
-                "context": context[:1800],
-                "query_relevant": relevant_to_query,
-                "query_token_hits": token_info,
-                "born_in_roma_variant_matches": variants,
-            }
-
-            all_product_urls[
-                normalized_url
-            ] = entry
-
-            if relevant_to_query:
-                relevant_product_urls[
-                    normalized_url
-                ] = entry
-
-            if variants:
-                born_in_roma_urls[
-                    normalized_url
-                ] = entry
-
-        result.update(
-            {
-                "raw_product_url_count": len(
-                    all_product_urls
-                ),
-                "raw_relevant_url_count": len(
-                    relevant_product_urls
-                ),
-                "raw_born_in_roma_url_count": len(
-                    born_in_roma_urls
-                ),
-                "raw_product_urls": list(
-                    all_product_urls.values()
-                )[:300],
-                "raw_relevant_urls": list(
-                    relevant_product_urls.values()
-                )[:300],
-                "raw_born_in_roma_urls": list(
-                    born_in_roma_urls.values()
-                )[:300],
-            }
-        )
-
-        return result
-
-    except Exception as exc:
-        result.update(
-            {
-                "error_type": type(exc).__name__,
-                "error": str(exc),
-            }
-        )
-
-        return result
-
-
-def compare_discovery(
-    raw_pages: list[dict],
-    candidates: list,
-) -> dict:
-    """
-    Confronta gli URL Born in Roma trovati direttamente
-    nell'HTML con quelli restituiti dall'attuale discover().
-    """
-
-    raw_entries = {}
-
-    for page in raw_pages:
-        for entry in page.get(
-            "raw_born_in_roma_urls",
-            [],
-        ):
-            url = entry.get("url")
-
-            if url:
-                raw_entries[url] = entry
-
-    discovered = {}
-
-    for url, info in candidates:
-        discovered[url] = {
-            "url": url,
-            "score": info[0],
-            "context": info[1][:1800],
-            "variant_matches": variant_match(
-                f"{url} {info[1]}"
-            ),
-        }
-
-    raw_urls = set(
-        raw_entries.keys()
-    )
-
-    discovered_urls = set(
-        discovered.keys()
-    )
-
-    raw_not_discovered = sorted(
-        raw_urls - discovered_urls
-    )
-
-    discovered_not_raw = sorted(
-        discovered_urls - raw_urls
-    )
-
-    return {
-        "raw_born_in_roma_unique_urls": len(
-            raw_urls
-        ),
-        "discover_unique_urls": len(
-            discovered_urls
-        ),
-        "born_in_roma_found_in_raw_but_missing_from_discover_count": len(
-            raw_not_discovered
-        ),
-        "discover_urls_not_classified_as_born_in_roma_by_raw_pages_count": len(
-            discovered_not_raw
-        ),
-        "born_in_roma_found_in_raw_but_missing_from_discover": [
-            {
-                "url": url,
-                "slug": extract_slug(url),
-                "variant_matches": variant_match(
-                    (
-                        raw_entries[url].get(
-                            "context",
-                            "",
-                        )
-                        + " "
-                        + url
-                    )
-                ),
-                "raw_entry": raw_entries.get(url),
-            }
-            for url in raw_not_discovered
-        ],
-        "discover_urls_not_classified_as_born_in_roma_by_raw_pages": [
-            {
-                "url": url,
-                "slug": extract_slug(url),
-                "discover_entry": discovered.get(url),
-            }
-            for url in discovered_not_raw
-        ],
-    }
-
-
-@router.get("/deloox-discovery")
-def debug_deloox_discovery(
-    q: str = Query(
-        "Born in Roma",
-        min_length=2,
-    )
-):
-    """
-    TEST 1 — PURE DISCOVERY.
-
-    Analizza:
-
-      1. /chercher.html?q=...
-      2. pagine 2-10
-      3. tutti i product URL presenti nell'HTML
-      4. quali URL sembrano Born in Roma
-      5. current discover()
-      6. differenza RAW vs discover()
-
-    NON apre le pagine prodotto.
-    """
-
-    session = None
-
-    try:
-        from scrapers.deloox.scraper import (
-            BASE,
-            HEADERS,
-            TIMEOUT,
-            discover,
-            product_url,
-            relevant,
-        )
-
-        query = str(
-            q or ""
-        ).strip()
-
-        encoded = quote_plus(
-            query
-        )
-
-        session = requests.Session()
-
-        raw_pages = []
-
-        # ----------------------------------------------------
-        # Analizziamo la route corretta Deloox.
-        #
-        # Testiamo più pagine perché un prodotto potrebbe
-        # esistere nella ricerca ma essere oltre pagina 1.
-        # ----------------------------------------------------
-
-        for page_number in range(1, 11):
-            if page_number == 1:
-                endpoint = (
-                    f"{BASE}/chercher.html"
-                    f"?q={encoded}"
-                )
-            else:
-                endpoint = (
-                    f"{BASE}/chercher.html"
-                    f"?q={encoded}"
-                    f"&page={page_number}"
-                )
-
-            page_result = raw_search_page(
-                session=session,
-                endpoint=endpoint,
-                query=query,
-                page_number=page_number,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                product_url=product_url,
-                relevant=relevant,
-            )
-
-            raw_pages.append(
-                page_result
-            )
-
-            # Se Deloox restituisce una pagina senza
-            # alcun product URL, non continuiamo inutilmente.
-            if (
-                page_result.get(
-                    "raw_product_url_count",
-                    0,
-                )
-                == 0
+                or non_fragrance(name)
             ):
-                break
-
-        # ----------------------------------------------------
-        # Eseguiamo l'ATTUALE discover() del progetto.
-        #
-        # Importante:
-        # non modifichiamo nulla.
-        # Stiamo semplicemente osservando il risultato.
-        # ----------------------------------------------------
-
-        discover_error = None
-        candidates = []
-
-        try:
-            candidates = discover(
-                session,
-                query,
-            )
-        except Exception as exc:
-            discover_error = {
-                "error_type": type(exc).__name__,
-                "error": str(exc),
-                "traceback": traceback.format_exc(),
-            }
-
-        # ----------------------------------------------------
-        # Lista dettagliata discover()
-        # ----------------------------------------------------
-
-        discover_rows = []
-
-        for index, item in enumerate(
-            candidates
-        ):
-            try:
-                url, info = item
-
-                score = info[0]
-                context = info[1]
-
-            except Exception:
-                discover_rows.append(
-                    {
-                        "index": index,
-                        "raw_item": repr(item),
-                        "parse_error": True,
-                    }
-                )
                 continue
 
-            combined = (
-                f"{url} "
-                f"{context}"
-            )
+            brand = p.get("brand")
 
-            discover_rows.append(
-                {
-                    "index": index,
-                    "url": url,
-                    "slug": extract_slug(url),
-                    "score": score,
-                    "is_product_url": bool(
-                        product_url(url)
-                    ),
-                    "query_relevant": bool(
-                        relevant(
-                            combined,
-                            query,
-                        )
-                    ),
-                    "query_token_hits": (
-                        query_token_hits(
-                            combined,
-                            query,
-                        )
-                    ),
-                    "born_in_roma_variant_matches": (
-                        variant_match(
-                            combined
-                        )
-                    ),
-                    "context": context[:1800],
-                }
-            )
-
-        comparison = compare_discovery(
-            raw_pages,
-            candidates,
-        )
-
-        # ----------------------------------------------------
-        # Family summary
-        # ----------------------------------------------------
-        #
-        # Qui non stiamo dicendo che un prodotto è realmente
-        # valido: stiamo solo verificando se il suo nome/URL
-        # compare nell'HTML di ricerca.
-        # ----------------------------------------------------
-
-        raw_variant_urls = {}
-
-        for page in raw_pages:
-            for entry in page.get(
-                "raw_born_in_roma_urls",
-                [],
+            if isinstance(
+                brand,
+                dict,
             ):
-                url = entry.get("url")
+                brand = brand.get(
+                    "name"
+                )
 
-                if not url:
+            offers = p.get("offers")
+
+            offers = (
+                offers
+                if isinstance(
+                    offers,
+                    list,
+                )
+                else (
+                    [offers]
+                    if isinstance(
+                        offers,
+                        dict,
+                    )
+                    else []
+                )
+            )
+
+            for offer in offers:
+                if not isinstance(
+                    offer,
+                    dict,
+                ):
                     continue
 
-                variants = entry.get(
-                    "born_in_roma_variant_matches",
-                    [],
+                n = price_num(
+                    offer.get("price")
                 )
 
-                for variant in variants:
-                    raw_variant_urls.setdefault(
-                        variant,
-                        [],
-                    ).append(url)
+                if n is None:
+                    continue
 
-        discovered_variant_urls = {}
-
-        for row in discover_rows:
-            for variant in row.get(
-                "born_in_roma_variant_matches",
-                [],
-            ):
-                discovered_variant_urls.setdefault(
-                    variant,
-                    [],
-                ).append(
-                    row.get("url")
-                )
-
-        # Deduplica le liste.
-        for mapping in (
-            raw_variant_urls,
-            discovered_variant_urls,
-        ):
-            for key in mapping:
-                mapping[key] = sorted(
-                    set(
-                        x
-                        for x in mapping[key]
-                        if x
+                state = availability(
+                    offer.get(
+                        "availability"
                     )
                 )
 
-        return {
-            "diagnostic": True,
-            "test": "TEST_1_DISCOVERY_ONLY",
-            "ok": discover_error is None,
-            "store": "Deloox",
-            "query": query,
+                image = _image_url(p.get("image"))
 
-            "important": (
-                "Questo test NON apre le pagine prodotto "
-                "e NON esegue parse_product(). "
-                "Serve esclusivamente a determinare se "
-                "gli URL vengono persi durante la discovery."
-            ),
+                rows.append(
+                    {
+                        "store": STORE,
+                        "brand": clean(
+                            brand
+                        ),
+                        "name": name,
+                        "price": price_text(
+                            n
+                        ),
+                        "price_num": n,
+                        "url": url,
+                        "image": image,
+                        "image_url": image,
+                        "available": (
+                            state
+                            != "out_of_stock"
+                        ),
+                        "availability": (
+                            state
+                            or "in_stock"
+                        ),
+                        "size_ml": size_ml(
+                            name,
+                            p.get(
+                                "description",
+                                "",
+                            ),
+                        ),
+                    }
+                )
 
-            "expected_family_variant_count": len(
-                BORN_IN_ROMA_VARIANTS
-            ),
-
-            "expected_family_variants": (
-                BORN_IN_ROMA_VARIANTS
-            ),
-
-            "raw_search_pages_checked": len(
-                raw_pages
-            ),
-
-            "raw_pages": raw_pages,
-
-            "discover_error": discover_error,
-
-            "discover_candidate_count": len(
-                candidates
-            ),
-
-            "discover_candidates": discover_rows,
-
-            "comparison": comparison,
-
-            "raw_variant_urls": raw_variant_urls,
-
-            "discovered_variant_urls": (
-                discovered_variant_urls
-            ),
-        }
-
-    except Exception as exc:
-        return {
-            "diagnostic": True,
-            "test": "TEST_1_DISCOVERY_ONLY",
-            "ok": False,
-            "store": "Deloox",
-            "query": q,
-            "stage": "debug_deloox_discovery",
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-        }
+        return rows
 
     finally:
-        if session is not None:
-            try:
-                session.close()
-            except Exception:
-                pass
+        session.close()
 
 
-# ============================================================
-# VECCHIO ENDPOINT
-# ============================================================
-#
-# Manteniamo /api/debug/deloox per compatibilità.
-#
-# Il nuovo test diagnostico da usare è:
-#
-# /api/debug/deloox-discovery?q=Born+in+Roma
-#
-# ============================================================
+def search(query):
+    query = clean(query)
+
+    if not query:
+        return []
+
+    session = requests.Session()
+
+    try:
+        candidates = discover(
+            session,
+            query,
+        )
+
+        results = []
+        seen = set()
+
+        for url, (
+            _,
+            context,
+        ) in candidates:
+            row = _row_from_card(
+                url,
+                context,
+                query,
+            )
+
+            if row:
+                key = (
+                    row["url"],
+                    row.get("size_ml"),
+                    row["price_num"],
+                )
+
+                if key not in seen:
+                    seen.add(key)
+                    results.append(row)
+
+        missing = [
+            (url, info)
+            for url, info in candidates
+            if not any(
+                r.get("url") == url
+                for r in results
+            )
+        ]
+
+        if missing:
+            with ThreadPoolExecutor(
+                max_workers=min(
+                    6,
+                    len(missing),
+                )
+            ) as pool:
+                futures = [
+                    pool.submit(
+                        parse_product,
+                        url,
+                        query,
+                    )
+                    for url, _ in missing
+                ]
+
+                for f in as_completed(
+                    futures
+                ):
+                    try:
+                        for row in f.result():
+                            key = (
+                                row.get("url"),
+                                row.get("size_ml"),
+                                row.get("price_num"),
+                            )
+
+                            if key not in seen:
+                                seen.add(key)
+                                results.append(row)
+
+                    except Exception:
+                        continue
+
+        results.sort(
+            key=lambda x: (
+                2
+                if x.get("available")
+                is False
+                else 0,
+                x.get(
+                    "price_num"
+                ) or 999999,
+                x.get(
+                    "size_ml"
+                ) or 999999,
+            )
+        )
+
+        return results[:MAX_RESULTS]
+
+    finally:
+        session.close()
 
 
-@router.get("/deloox")
-def debug_deloox(
-    q: str = Query(
-        ...,
-        min_length=2,
-    )
-):
-    """
-    Compatibilità con il vecchio endpoint.
+def scrape(query):
+    return search(query)
 
-    Reindirizza logicamente allo stesso diagnostico
-    Discovery-only.
-    """
 
-    return debug_deloox_discovery(
-        q=q
-    )
+def search_deloox(query):
+    return search(query)
