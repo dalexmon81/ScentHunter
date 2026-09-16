@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 STORE = "Deloox"
 BASE = "https://www.deloox.be"
 TIMEOUT = (2.0, 5.0)
-MAX_CANDIDATES = 100
+MAX_CANDIDATES = 40
 MAX_RESULTS = 40
 
 HEADERS = {
@@ -466,97 +466,94 @@ def _row_from_card(
     context,
     query,
 ):
+    # The search-card context can contain neighbouring products.  The URL,
+    # however, is the identity of the actual Deloox product page.  Build the
+    # title from the URL slug and use the card only for price/availability.
     if not relevant(
         context + " " + url,
         query,
     ):
         return None
 
-    lines = [
-        clean(x)
-        for x in re.split(
-            r"\\n|(?=Delivery time\\s*:)|(?=our price\\s)|(?=onze prijs\\s)|(?=nostro prezzo\\s)",
-            context,
-        )
-        if clean(x)
-    ]
+    path = urlparse(url).path
+    slug = clean(path.rstrip("/").rsplit("/", 1)[-1])
 
-    # The search-card context can contain several neighboring products.
-    # Use the product URL slug to select the line belonging to this exact
-    # candidate instead of taking the first line that happens to match
-    # the query.
-    slug = urlparse(url).path.rsplit("/", 1)[-1]
-    slug = re.sub(r"\\.html?$", "", slug, flags=re.I)
-    url_terms = {
-        x
-        for x in norm(slug).split()
-        if len(x) > 1
-        and x not in {
-            "eau", "de", "parfum", "toilette", "ml",
-        }
-    }
+    # Deloox product slugs are descriptive. Remove technical URL tokens and
+    # keep the actual perfume name so ProductMatcher receives a clean title.
+    slug = re.sub(r"^\\d+[-_]", "", slug)
+    slug = re.sub(r"[-_]+", " ", slug)
+    slug = re.sub(
+        r"\\b(?:eau|de|parfum|toilette|spray|vaporisateur|ml|cl)\\b.*$",
+        "",
+        slug,
+        flags=re.I,
+    )
+    slug = clean(slug)
 
-    name = ""
-    best_overlap = -1
+    # Prefer the URL-derived title only when it really contains the query.
+    name = slug if relevant(slug, query) else ""
 
-    for line in lines:
-        candidate = line
-
-        if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
-            try:
-                repaired = candidate.encode("cp1252").decode("utf-8")
-                if repaired != candidate:
-                    candidate = repaired
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                pass
-
-        candidate = re.sub(
-            r"\\s+(?:en stock|in stock|available|disponible|beschikbaar)\\b.*$",
-            "",
-            candidate,
-            flags=re.I,
-        )
-        candidate = re.sub(
-            r"\\s+(?:notre prix|our price|onze prijs|nostro prezzo)\\b.*$",
-            "",
-            candidate,
-            flags=re.I,
-        )
-        candidate = re.sub(
-            r"\\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\\s*:\\s*.*$",
-            "",
-            candidate,
-            flags=re.I,
-        ).strip()
-
-        if (
-            not relevant(candidate, query)
-            or re.search(
-                r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-                norm(candidate),
+    # Fallback to the existing card-text extraction for unusual URLs.
+    if not name:
+        lines = [
+            clean(x)
+            for x in re.split(
+                r"\\n|(?=Delivery time\\s*:)|(?=our price\\s)|(?=onze prijs\\s)|(?=nostro prezzo\\s)",
+                context,
             )
-            or not (3 <= len(candidate) <= 220)
-            or non_fragrance(candidate)
-        ):
-            continue
+            if clean(x)
+        ]
 
-        candidate_terms = tokens(candidate)
-        overlap = len(url_terms & candidate_terms)
+        for line in lines:
+            candidate = line
+            if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
+                try:
+                    repaired = candidate.encode("cp1252").decode("utf-8")
+                    if repaired != candidate:
+                        candidate = repaired
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
 
-        if overlap > best_overlap:
-            best_overlap = overlap
-            name = candidate
+            candidate = re.sub(
+                r"\\s+(?:en stock|in stock|available|disponible|beschikbaar)\\b.*$",
+                "",
+                candidate,
+                flags=re.I,
+            )
+            candidate = re.sub(
+                r"\\s+(?:notre prix|our price|onze prijs|nostro prezzo)\\b.*$",
+                "",
+                candidate,
+                flags=re.I,
+            )
+            candidate = re.sub(
+                r"\\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\\s*:\\s*.*$",
+                "",
+                candidate,
+                flags=re.I,
+            ).strip()
+
+            if (
+                relevant(candidate, query)
+                and not non_fragrance(candidate)
+                and not re.search(
+                    r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
+                    norm(candidate),
+                )
+                and 3 <= len(candidate) <= 220
+            ):
+                name = candidate
+                break
 
     if not name:
         return None
 
     n = price_num(context)
-
-    if n is None:
-        return None
-
     state = availability(context)
 
+    # A product can be present on Deloox while temporarily out of stock and
+    # therefore have no numeric card price. Keep the product in that case;
+    # downstream code can still display its availability.
     return {
         "store": STORE,
         "brand": "",
