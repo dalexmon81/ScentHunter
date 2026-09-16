@@ -2539,17 +2539,12 @@ def _run_search_job(
     query: str,
 ) -> None:
     """
-    Stable async search.
+    Esegue la discovery in parallelo e alimenta progressivamente
+    il candidate pool centrale.
 
-    Store discovery runs in parallel. Each completed store is validated in
-    its own bounded batch and the validated products are accumulated internally.
-    NOTHING is published as a partial UI result.
-
-    After all stores that completed within GLOBAL_SEARCH_TIMEOUT are collected,
-    the already-validated pool is canonicalized/grouped exactly once. Therefore:
-      - no Bplatz -> Parfumzentrum -> Deloox visual flicker;
-      - no huge final re-validation pass;
-      - the job is always closed with completed=True, even on finalization errors.
+    Ogni volta che uno store termina:
+        discovery -> candidate pool -> deduplica -> pre-ranking
+        -> validazione centrale parallela -> risultati parziali.
     """
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
@@ -2569,40 +2564,54 @@ def _run_search_job(
         store: str,
         store_candidates: Any,
     ) -> None:
-        if not isinstance(store_candidates, list) or not store_candidates:
+        if not isinstance(store_candidates, list):
             return
 
+        # IMPORTANT:
+        # non ricalcolare la validazione dell'intero candidate pool ogni
+        # volta che termina uno store. I candidati già validati non cambiano
+        # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
+        # e poi lo fondiamo con i risultati già ottenuti.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+
             if job is None:
                 return
-            job["candidates"].extend(store_candidates)
 
-        # Validate only this store's batch. This is the same bounded validation
-        # mechanism that worked before the atomic-search change.
-        try:
-            new_candidates = unique_results(store_candidates)
-            ranked_candidates = _pre_rank_candidates(
-                new_candidates,
-                query,
+            job["candidates"].extend(
+                store_candidates
             )
-            new_results = _validate_candidates_parallel(
-                ranked_candidates,
-                query,
+            existing_results = list(
+                job["results"]
             )
-        except Exception as exc:
-            with SEARCH_JOBS_LOCK:
-                job = SEARCH_JOBS.get(job_id)
-                if job is not None:
-                    job["errors"][store] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-            return
+
+        new_candidates = unique_results(
+            store_candidates
+        )
+
+        ranked_candidates = _pre_rank_candidates(
+            new_candidates,
+            query,
+        )
+
+        new_results = _validate_candidates_parallel(
+            ranked_candidates,
+            query,
+        )
+
+        combined_results = _propagate_catalog_identity(
+            existing_results + new_results,
+        )
+
+        results = _group_catalog_results(
+            combined_results
+        )
 
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+
             if job is not None:
-                job["validated"].extend(new_results)
+                job["results"] = results
 
     try:
         try:
@@ -2614,102 +2623,66 @@ def _run_search_job(
 
                 try:
                     store_candidates = future.result()
+
                     process_store_candidates(
                         store,
                         store_candidates,
                     )
+
                 except Exception as exc:
                     with SEARCH_JOBS_LOCK:
                         job = SEARCH_JOBS.get(job_id)
+
                         if job is not None:
                             job["errors"][store] = (
                                 f"{type(exc).__name__}: {exc}"
                             )
 
         except TimeoutError:
-            # Only stores that actually completed before the global deadline
-            # participate in this search.
             for future, store in futures.items():
                 if future.done():
                     try:
                         store_candidates = future.result()
+
                         process_store_candidates(
                             store,
                             store_candidates,
                         )
+
                     except Exception as exc:
                         with SEARCH_JOBS_LOCK:
                             job = SEARCH_JOBS.get(job_id)
+
                             if job is not None:
                                 job["errors"][store] = (
                                     f"{type(exc).__name__}: {exc}"
                                 )
+
                 else:
                     with SEARCH_JOBS_LOCK:
                         job = SEARCH_JOBS.get(job_id)
+
                         if job is not None:
                             job["errors"][store] = (
                                 "Timeout: ricerca del negozio "
                                 "oltre il limite globale"
                             )
 
-    except Exception as exc:
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-            if job is not None:
-                job["errors"]["_search"] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
-
     finally:
-        # Do not wait for late scraper calls and do not use cancel_futures:
-        # completion of the HTTP job must never depend on a Python-version
-        # specific shutdown option.
         for future in futures:
             if not future.done():
                 future.cancel()
 
-        try:
-            executor.shutdown(wait=False)
-        except Exception:
-            pass
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
 
-        # One final canonicalization/grouping pass over ALREADY VALIDATED
-        # candidates. This is intentionally cheap compared with re-validating
-        # the complete raw candidate pool.
-        try:
-            with SEARCH_JOBS_LOCK:
-                job = SEARCH_JOBS.get(job_id)
-                validated_pool = (
-                    list(job["validated"])
-                    if job is not None
-                    else []
-                )
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
 
-            final_results = _propagate_catalog_identity(
-                validated_pool
-            )
-            final_results = _group_catalog_results(
-                final_results
-            )
-
-            with SEARCH_JOBS_LOCK:
-                job = SEARCH_JOBS.get(job_id)
-                if job is not None:
-                    job["results"] = final_results
-                    job["completed"] = True
-
-        except Exception as exc:
-            # Even a final formatting/grouping failure must terminate the job;
-            # the frontend must never remain in "Ricerca in corso..." forever.
-            with SEARCH_JOBS_LOCK:
-                job = SEARCH_JOBS.get(job_id)
-                if job is not None:
-                    job["errors"]["_finalize"] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                    job["results"] = []
-                    job["completed"] = True
+            if job is not None:
+                job["completed"] = True
 
 
 @app.get("/search-start")
@@ -2728,7 +2701,6 @@ def search_start(q: str):
         SEARCH_JOBS[job_id] = {
             "query": query,
             "candidates": [],
-            "validated": [],
             "results": [],
             "errors": {},
             "completed": False,
