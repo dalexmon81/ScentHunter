@@ -626,3 +626,103 @@ def deloox_test_store_pipeline(q: str = 'Born in Roma'):
         out['error_type'] = type(exc).__name__
         out['error'] = str(exc)
         return out
+
+# TEST 10: one Deloox search, then local clean_result only.
+@app.get('/api/debug/deloox-clean-only')
+def deloox_clean_only(q: str = 'Born in Roma'):
+    out = {
+        'ok': True,
+        'test': 'TEST_10_DELOOX_SEARCH_ONCE_CLEAN_RESULT_ONLY',
+        'query': q,
+    }
+    try:
+        module = load_scraper('deloox')
+        search = getattr(module, 'search', None)
+        if not callable(search):
+            raise RuntimeError('Deloox search(query) is not callable')
+
+        # Exactly ONE network-backed Deloox search.
+        raw = search(q)
+        raw = [] if raw is None else raw
+        if not isinstance(raw, list):
+            raw = list(raw)
+
+        raw_urls = [
+            r.get('url') for r in raw
+            if isinstance(r, dict) and r.get('url')
+        ]
+
+        cleaned = []
+        dropped = []
+
+        # Everything after this point is local processing only.
+        for i, item in enumerate(raw):
+            if not isinstance(item, dict):
+                dropped.append({
+                    'index': i,
+                    'reason': 'not_dict',
+                    'type': type(item).__name__,
+                })
+                continue
+
+            try:
+                result = clean_result(item, 'deloox', q)
+            except Exception as exc:
+                dropped.append({
+                    'index': i,
+                    'reason': 'clean_result_exception',
+                    'error_type': type(exc).__name__,
+                    'error': str(exc),
+                    'url': item.get('url'),
+                    'name': item.get('name'),
+                    'brand': item.get('brand'),
+                })
+                continue
+
+            if result is None:
+                dropped.append({
+                    'index': i,
+                    'reason': 'clean_result_none',
+                    'url': item.get('url'),
+                    'name': item.get('name'),
+                    'brand': item.get('brand'),
+                    'price': item.get('price'),
+                })
+            else:
+                cleaned.append(result)
+
+        cleaned_urls = [
+            r.get('url') for r in cleaned
+            if isinstance(r, dict) and r.get('url')
+        ]
+
+        out['runtime'] = {
+            'main_file': __file__,
+            'scraper_file': getattr(module, '__file__', ''),
+            'search_callable': True,
+        }
+        out['search'] = {
+            'raw_count': len(raw),
+            'raw_urls': raw_urls,
+            'ivory_donna': any('1400164' in u for u in raw_urls),
+            'ivory_uomo': any('1400167' in u for u in raw_urls),
+        }
+        out['clean_result'] = {
+            'cleaned_count': len(cleaned),
+            'cleaned_urls': cleaned_urls,
+            'dropped_count': len(dropped),
+            'dropped': dropped,
+            'ivory_donna': any('1400164' in u for u in cleaned_urls),
+            'ivory_uomo': any('1400167' in u for u in cleaned_urls),
+        }
+        out['comparison'] = {
+            'raw_to_clean_loss': len(raw) - len(cleaned),
+            'urls_lost_by_clean_result': sorted(set(raw_urls) - set(cleaned_urls)),
+        }
+        return out
+
+    except Exception as exc:
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        return out
