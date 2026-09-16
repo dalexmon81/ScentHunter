@@ -27,7 +27,7 @@ app = FastAPI(
     title="ScentHunter API",
     version="1.0.0",
 )
-from diagnose_liquid_brun import router as diagnose_liquid_brun_router
+from diagnose_liquid_brun_endpoint import router as diagnose_liquid_brun_router
 app.include_router(diagnose_liquid_brun_router)
 app.add_middleware(
     CORSMiddleware,
