@@ -1109,3 +1109,415 @@ def debug_deloox_pipeline(
                 session.close()
             except Exception:
                 pass
+             # ============================================================
+# TEST 4 — PRODUCT MATCHER RUNTIME ONLY
+# Does NOT modify ProductMatcher or family_registry.
+# ============================================================
+
+@router.get("/deloox-matcher")
+def debug_deloox_matcher(
+    q: str = Query("Born in Roma"),
+):
+    """
+    Runtime-only diagnostic for ProductMatcher + family_registry.
+
+    This endpoint does NOT use Deloox scraping.
+    It does NOT modify matcher/catalog/registry.
+    It checks exactly what the deployed runtime sees.
+    """
+    try:
+        import os
+        import sys
+        import main as main_module
+
+        matcher = getattr(main_module, "PRODUCT_MATCHER", None)
+
+        if matcher is None:
+            return {
+                "ok": False,
+                "test": "TEST_4_PRODUCT_MATCHER_RUNTIME",
+                "error": "PRODUCT_MATCHER_IS_NONE",
+                "python": sys.version,
+            }
+
+        query = str(q or "").strip()
+
+        # ----------------------------------------------------
+        # 1. Resolve family from the exact runtime matcher
+        # ----------------------------------------------------
+        family = None
+        family_error = None
+
+        try:
+            family = matcher._family_for_query(query)
+        except Exception as exc:
+            family_error = {
+                "type": type(exc).__name__,
+                "message": str(exc),
+            }
+
+        # ----------------------------------------------------
+        # 2. Compact family information
+        # ----------------------------------------------------
+        family_info = None
+
+        if isinstance(family, dict):
+            variants = family.get("variants") or []
+
+            family_info = {
+                "family_id": family.get("family_id"),
+                "brand": family.get("brand"),
+                "query_aliases": family.get("query_aliases"),
+                "normalized_query_aliases": list(
+                    family.get("normalized_query_aliases") or []
+                ),
+                "variant_count": len(variants),
+                "variants": [
+                    {
+                        "canonical_name": v.get("canonical_name"),
+                        "aliases": v.get("aliases"),
+                        "normalized_aliases": list(
+                            v.get("normalized_aliases") or []
+                        ),
+                    }
+                    for v in variants
+                ],
+                "excluded_products": list(
+                    family.get("excluded_products") or []
+                ),
+                "excluded_aliases": list(
+                    family.get("excluded_aliases") or []
+                ),
+            }
+
+        # ----------------------------------------------------
+        # 3. Test real Deloox-style offers against the runtime
+        # ----------------------------------------------------
+        samples = [
+            {
+                "label": "UOMO_BASE",
+                "brand": "Valentino",
+                "name": "valentino born in roma uomo",
+                "size_ml": 100,
+            },
+            {
+                "label": "DONNA_BASE",
+                "brand": "Valentino",
+                "name": "valentino born in roma donna",
+                "size_ml": 100,
+            },
+            {
+                "label": "UOMO_INTENSE",
+                "brand": "Valentino",
+                "name": "valentino born in roma intense uomo",
+                "size_ml": 50,
+            },
+            {
+                "label": "DONNA_INTENSE",
+                "brand": "Valentino",
+                "name": "valentino born in roma intense donna",
+                "size_ml": 30,
+            },
+            {
+                "label": "UOMO_EXTRADOSE",
+                "brand": "Valentino",
+                "name": "valentino born in roma extradose uomo",
+                "size_ml": 50,
+            },
+            {
+                "label": "DONNA_EXTRADOSE",
+                "brand": "Valentino",
+                "name": "valentino born in roma extradose donna",
+                "size_ml": 50,
+            },
+            {
+                "label": "UOMO_GREEN",
+                "brand": "Valentino",
+                "name": "valentino born in roma green stravaganza uomo",
+                "size_ml": 50,
+            },
+            {
+                "label": "DONNA_GREEN",
+                "brand": "Valentino",
+                "name": "valentino born in roma green stravaganza donna",
+                "size_ml": 50,
+            },
+            {
+                "label": "UOMO_CORAL",
+                "brand": "Valentino",
+                "name": "valentino born in roma coral fantasy uomo",
+                "size_ml": 50,
+            },
+            {
+                "label": "DONNA_CORAL",
+                "brand": "Valentino",
+                "name": "valentino born in roma coral fantasy donna",
+                "size_ml": 30,
+            },
+            {
+                "label": "UOMO_YELLOW",
+                "brand": "Valentino",
+                "name": "valentino born in roma yellow dream uomo",
+                "size_ml": 100,
+            },
+            {
+                "label": "DONNA_YELLOW",
+                "brand": "Valentino",
+                "name": "valentino born in roma yellow dream donna",
+                "size_ml": 100,
+            },
+            {
+                "label": "UOMO_PURPLE",
+                "brand": "Valentino",
+                "name": "valentino born in roma uomo purple melancholia",
+                "size_ml": 50,
+            },
+            {
+                "label": "DONNA_PURPLE",
+                "brand": "Valentino",
+                "name": "valentino born in roma purple melancholia donna",
+                "size_ml": 50,
+            },
+            {
+                "label": "UOMO_GOLD",
+                "brand": "Valentino",
+                "name": "valentino born in roma the gold uomo",
+                "size_ml": 100,
+            },
+            {
+                "label": "DONNA_GOLD",
+                "brand": "Valentino",
+                "name": "valentino born in roma the gold donna",
+                "size_ml": 100,
+            },
+            {
+                "label": "UOMO_IVORY",
+                "brand": "Valentino",
+                "name": "valentino born in roma ivory uomo",
+                "size_ml": 100,
+            },
+            {
+                "label": "DONNA_IVORY",
+                "brand": "Valentino",
+                "name": "valentino born in roma ivory donna",
+                "size_ml": 100,
+            },
+
+            # Negative controls
+            {
+                "label": "COFFRET_UOMO",
+                "brand": "Valentino",
+                "name": "valentino born in roma uomo coffret cadeau",
+                "size_ml": 100,
+            },
+            {
+                "label": "BODY_MIST",
+                "brand": "Valentino",
+                "name": "valentino born in roma caramel crush hair body mist",
+                "size_ml": 100,
+            },
+            {
+                "label": "WRONG_BRAND",
+                "brand": "Carolina Herrera",
+                "name": "born in roma uomo",
+                "size_ml": 100,
+            },
+        ]
+
+        results = []
+
+        for sample in samples:
+            item = dict(sample)
+            label = item.pop("label")
+
+            entry = {
+                "label": label,
+                "input": dict(item),
+            }
+
+            # Requested family
+            entry["requested_family_id"] = (
+                family.get("family_id")
+                if isinstance(family, dict)
+                else None
+            )
+
+            # Direct family variant resolution
+            if isinstance(family, dict):
+                try:
+                    variant = matcher._family_variant_for_offer(
+                        item,
+                        family,
+                    )
+
+                    if isinstance(variant, dict):
+                        entry["family_variant"] = {
+                            "canonical_name": variant.get("canonical_name"),
+                            "aliases": variant.get("aliases"),
+                        }
+
+                        try:
+                            catalog_product = (
+                                matcher._catalog_product_for_family_variant(
+                                    family,
+                                    variant,
+                                )
+                            )
+
+                            if catalog_product is not None:
+                                entry["catalog_product"] = {
+                                    "catalog_id": catalog_product.catalog_id,
+                                    "brand": catalog_product.brand,
+                                    "name": catalog_product.name,
+                                    "family_id": catalog_product.family_id,
+                                    "family_name": catalog_product.family_name,
+                                    "catalog_variant": catalog_product.catalog_variant,
+                                    "aliases": list(catalog_product.aliases),
+                                    "formats_ml": list(catalog_product.formats_ml),
+                                }
+                            else:
+                                entry["catalog_product"] = None
+
+                        except Exception as exc:
+                            entry["catalog_product_error"] = {
+                                "type": type(exc).__name__,
+                                "message": str(exc),
+                            }
+
+                    else:
+                        entry["family_variant"] = None
+
+                except Exception as exc:
+                    entry["family_variant_error"] = {
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                    }
+
+            # Actual public match() result
+            try:
+                matched = matcher.match(item, query)
+
+                if isinstance(matched, dict):
+                    entry["match"] = {
+                        "matched": True,
+                        "match_method": matched.get("match_method"),
+                        "match_score": matched.get("match_score"),
+                        "catalog_id": matched.get("catalog_id"),
+                        "family_id": matched.get("family_id"),
+                        "family_name": matched.get("family_name"),
+                        "canonical_name": matched.get("canonical_name"),
+                        "catalog_variant": matched.get("catalog_variant"),
+                        "canonical_brand": matched.get("canonical_brand"),
+                        "brand": matched.get("brand"),
+                        "name": matched.get("name"),
+                    }
+                else:
+                    entry["match"] = {
+                        "matched": False,
+                        "result_type": type(matched).__name__,
+                    }
+
+            except Exception as exc:
+                entry["match_error"] = {
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                }
+
+            results.append(entry)
+
+        # ----------------------------------------------------
+        # 4. Runtime catalog statistics
+        # ----------------------------------------------------
+        catalog = getattr(matcher, "catalog", []) or []
+
+        born_catalog = []
+
+        for product in catalog:
+            try:
+                text = " ".join(
+                    [
+                        str(getattr(product, "brand", "") or ""),
+                        str(getattr(product, "name", "") or ""),
+                        str(getattr(product, "family_name", "") or ""),
+                        str(getattr(product, "family_id", "") or ""),
+                    ]
+                ).lower()
+
+                if "born in roma" in text:
+                    born_catalog.append(
+                        {
+                            "catalog_id": getattr(
+                                product, "catalog_id", ""
+                            ),
+                            "brand": getattr(product, "brand", ""),
+                            "name": getattr(product, "name", ""),
+                            "family_id": getattr(product, "family_id", ""),
+                            "family_name": getattr(product, "family_name", ""),
+                            "catalog_variant": getattr(
+                                product,
+                                "catalog_variant",
+                                "",
+                            ),
+                            "aliases": list(
+                                getattr(product, "aliases", ()) or ()
+                            ),
+                            "formats_ml": list(
+                                getattr(product, "formats_ml", ()) or ()
+                            ),
+                        }
+                    )
+            except Exception:
+                continue
+
+        # ----------------------------------------------------
+        # 5. Runtime module/file information
+        # ----------------------------------------------------
+        try:
+            matcher_module = sys.modules.get("product_matcher")
+            matcher_file = getattr(matcher_module, "__file__", None)
+        except Exception:
+            matcher_file = None
+
+        try:
+            main_file = getattr(main_module, "__file__", None)
+        except Exception:
+            main_file = None
+
+        return {
+            "ok": True,
+            "test": "TEST_4_PRODUCT_MATCHER_RUNTIME",
+            "important": (
+                "Runtime-only diagnostic. "
+                "No scraper, ProductMatcher or family_registry "
+                "modification is performed."
+            ),
+            "query": query,
+            "runtime": {
+                "main_file": main_file,
+                "product_matcher_file": matcher_file,
+                "python": sys.version,
+                "matcher_class": type(matcher).__name__,
+            },
+            "family_resolution": {
+                "found": isinstance(family, dict),
+                "error": family_error,
+                "family": family_info,
+            },
+            "catalog": {
+                "total_products": len(catalog),
+                "born_in_roma_products": len(born_catalog),
+                "born_in_roma": born_catalog,
+            },
+            "samples": results,
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "test": "TEST_4_PRODUCT_MATCHER_RUNTIME",
+            "error": {
+                "type": type(exc).__name__,
+                "message": str(exc),
+                "traceback": traceback.format_exc(),
+            },
+        }   
