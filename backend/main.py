@@ -48,9 +48,9 @@ try:
         router as deloox_runtime_debug_router,
     )
     app.include_router(deloox_runtime_debug_router)
-from debug_deloox_ivory_debug import router as deloox_ivory_debug_router
-app.include_router(deloox_ivory_debug_router)
-    print('DELOOX RUNTIME DEBUG ROUTER: LOADED', flush=True)
+    from debug_deloox_ivory_debug import router as deloox_ivory_debug_router
+    app.include_router(deloox_ivory_debug_router)
+    print('DELOOX RUNTIME DEBUG ROUTERS: LOADED', flush=True)
 except Exception as exc:
     print(
         'DELOOX RUNTIME DEBUG ROUTER: UNAVAILABLE '
