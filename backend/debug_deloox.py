@@ -1,109 +1,79 @@
-# ScentHunter - Deloox runtime fingerprint V4
-# READ-ONLY DIAGNOSTIC.
-# Does NOT call Deloox, discover(), search(), ProductMatcher, or modify production code.
 
 from fastapi import APIRouter
-import hashlib
-import inspect
 import importlib
+import inspect
+import hashlib
 from pathlib import Path
 
 router = APIRouter(prefix="/api/debug", tags=["debug-deloox-runtime"])
 
+TARGETS = [
+    "discover",
+    "_candidate_contexts",
+    "_row_from_card",
+    "parse_product",
+    "search",
+    "search_stream",
+    "product_url",
+    "relevant",
+    "clean",
+    "norm",
+    "tokens",
+    "size_ml",
+]
 
-def _source_info(obj):
-    info = {
-        "callable": callable(obj),
-        "module": getattr(obj, "__module__", None),
-        "name": getattr(obj, "__name__", None),
-        "signature": None,
-        "source_file": None,
-        "source_start_line": None,
-    }
-    if callable(obj):
-        try:
-            info["signature"] = str(inspect.signature(obj))
-        except Exception as exc:
-            info["signature_error"] = f"{type(exc).__name__}: {exc}"
-        try:
-            source_file = inspect.getsourcefile(obj)
-            info["source_file"] = source_file
-            if source_file:
-                try:
-                    _, start = inspect.getsourcelines(obj)
-                    info["source_start_line"] = start
-                except Exception:
-                    pass
-        except Exception as exc:
-            info["source_error"] = f"{type(exc).__name__}: {exc}"
-    return info
-
-
-@router.get("/deloox-runtime-fingerprint")
-def deloox_runtime_fingerprint():
-    result = {
+@router.get("/deloox-runtime-source")
+def deloox_runtime_source():
+    out = {
         "ok": False,
-        "test": "DELOOX_RUNTIME_FINGERPRINT_V4",
+        "test": "DELOOX_RUNTIME_SOURCE_V5",
         "module": {},
         "functions": {},
         "notes": [
-            "READ-ONLY diagnostic",
-            "No Deloox HTTP request is performed",
-            "No discover/search/parse_product call is performed",
-            "No production scraper is modified",
+            "READ-ONLY",
+            "No Deloox HTTP request",
+            "No discover/search/parse_product execution",
+            "Production scraper is not modified",
         ],
     }
 
     try:
-        module = importlib.import_module("scrapers.deloox.scraper")
+        m = importlib.import_module("scrapers.deloox.scraper")
+        path = Path(inspect.getfile(m)).resolve()
+        data = path.read_bytes()
 
-        module_file = getattr(module, "__file__", None)
-        module_origin = getattr(getattr(module, "__spec__", None), "origin", None)
-
-        module_info = {
-            "file": module_file,
-            "origin": module_origin,
-            "module_name": getattr(module, "__name__", None),
+        out["module"] = {
+            "file": str(path),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "size_bytes": len(data),
+            "line_count": len(data.decode("utf-8", errors="replace").splitlines()),
         }
 
-        if module_file:
-            try:
-                path = Path(module_file).resolve()
-                data = path.read_bytes()
-                module_info.update({
-                    "resolved_file": str(path),
-                    "exists": path.exists(),
-                    "size_bytes": len(data),
-                    "sha256": hashlib.sha256(data).hexdigest(),
-                    "line_count": data.count(b"\n") + (1 if data else 0),
-                })
-            except Exception as exc:
-                module_info["file_read_error"] = f"{type(exc).__name__}: {exc}"
+        for name in TARGETS:
+            fn = getattr(m, name, None)
+            item = {
+                "callable": callable(fn),
+                "module": getattr(fn, "__module__", None),
+                "signature": None,
+                "source_start_line": None,
+                "source": None,
+            }
+            if callable(fn):
+                try:
+                    item["signature"] = str(inspect.signature(fn))
+                except Exception as exc:
+                    item["signature_error"] = f"{type(exc).__name__}: {exc}"
+                try:
+                    src, start = inspect.getsourcelines(fn)
+                    item["source_start_line"] = start
+                    item["source"] = "".join(src)
+                except Exception as exc:
+                    item["source_error"] = f"{type(exc).__name__}: {exc}"
+            out["functions"][name] = item
 
-        result["module"] = module_info
-
-        names = [
-            "discover",
-            "_discover",
-            "_candidate_contexts",
-            "_candidate_product_urls",
-            "product_url",
-            "relevant",
-            "matches",
-            "_row_from_card",
-            "parse_product",
-            "search",
-            "search_stream",
-        ]
-
-        result["functions"] = {
-            name: _source_info(getattr(module, name, None))
-            for name in names
-        }
-
-        result["ok"] = True
-        return result
+        out["ok"] = True
+        return out
 
     except Exception as exc:
-        result["error"] = f"{type(exc).__name__}: {exc}"
-        return result
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
