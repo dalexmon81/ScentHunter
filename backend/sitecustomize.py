@@ -1,9 +1,11 @@
-"""ScentHunter streaming bootstrap.
+"""
+ScentHunter streaming bootstrap.
 
 Compatibility rules:
-- The main worker calls search_stream(query, on_result).
-- Existing working scrapers are not rewritten.
-- Adapters below only use functions that exist in their corresponding module.
+- The main worker always calls search_stream(query, on_result).
+- Existing scrapers are not rewritten.
+- Each adapter uses only functions that actually exist in the corresponding
+  scraper module.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -169,6 +171,18 @@ def _install_perfumemarket():
 
 
 def _install_deloox():
+    """
+    Adapter for the CURRENT Deloox scraper.
+
+    Important: the current Deloox module exposes:
+      - discover(session, query)
+      - _row_from_card(url, context, query)
+      - parse_product(url, query)
+
+    It does NOT expose extract_candidates(). Older sitecustomize code called
+    that removed function and swallowed the resulting AttributeError, making
+    the streaming path silently empty.
+    """
     try:
         from scrapers.deloox import scraper as s
     except Exception:
@@ -197,13 +211,26 @@ def _install_deloox():
         if not candidates:
             return None
 
+        # discover() returns:
+        # [(url, (score, context)), ...]
+        #
+        # The card already contains the name/price in the normal case.
+        # Publish those rows immediately instead of throwing them away.
         missing = []
         seen = set()
 
         for item in candidates:
             try:
                 url, info = item
-                score, context = info
+                # Current discover() returns (score, context_or_title, image).
+                # Older versions returned (score, context). Accept both shapes.
+                if isinstance(info, (tuple, list)) and len(info) >= 3:
+                    score, context, image = info[0], info[1], info[2]
+                elif isinstance(info, (tuple, list)) and len(info) == 2:
+                    score, context = info
+                    image = ""
+                else:
+                    continue
             except (TypeError, ValueError):
                 continue
 
@@ -211,16 +238,28 @@ def _install_deloox():
                 continue
             seen.add(url)
 
-            try:
-                row = s._row_from_card(url, context, query)
-            except Exception:
-                row = None
+            # With the current Deloox discover(), the second field is the
+            # URL-derived title rather than the old card context. Therefore
+            # the card price may be unavailable. Try the card only when the
+            # shape provides a real context; otherwise enrich the product page.
+            row = None
+            if len(info) == 2:
+                try:
+                    row = s._row_from_card(url, context, query)
+                except Exception:
+                    row = None
+            elif len(info) >= 3 and image:
+                try:
+                    row = s._row_from_card(url, context, query, image)
+                except Exception:
+                    row = None
 
             if isinstance(row, dict):
                 _diag_emit(s, emit, row, started)
             else:
                 missing.append((url, info))
 
+        # Only product pages whose discovery card was incomplete are fetched.
         if missing:
             with ThreadPoolExecutor(
                 max_workers=min(8, len(missing))
@@ -316,6 +355,7 @@ def _install_sabina():
         s._stream_diag = {"started": started}
 
         import requests
+
         session = requests.Session()
         try:
             urls = s._discover_from_first_party(session, query)
@@ -357,6 +397,37 @@ def _install_sabina():
     s.search_stream = search_stream
 
 
+def _install_notino():
+    """
+    Compatibility adapter only.
+
+    The current Notino scraper already has its own search_stream(query)
+    generator. The main worker calls every stream as search_stream(query,
+    on_result). We wrap the existing generator without changing its search
+    logic or Playwright implementation.
+    """
+    try:
+        from scrapers.notino import scraper as s
+    except Exception:
+        return
+
+    original = getattr(s, "search_stream", None)
+    if not callable(original):
+        return
+
+    if getattr(s, "_scenthunter_stream_compat", False):
+        return
+
+    def search_stream(query, emit):
+        for row in original(query):
+            if isinstance(row, dict):
+                emit(row)
+        return None
+
+    s.search_stream = search_stream
+    s._scenthunter_stream_compat = True
+
+
 for _installer in (
     _install_bplatz,
     _install_parfumcity,
@@ -364,8 +435,10 @@ for _installer in (
     _install_deloox,
     _install_orioudh,
     _install_sabina,
+    _install_notino,
 ):
     try:
         _installer()
     except Exception:
+        # One optional scraper must never prevent the API from starting.
         pass
