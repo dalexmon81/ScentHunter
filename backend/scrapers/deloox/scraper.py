@@ -461,116 +461,130 @@ def _candidate_contexts(
     )[:MAX_CANDIDATES]
 
 
-def _row_from_card(
-    url,
-    context,
-    query,
-):
-    # The search-card context can contain neighbouring products.  The URL,
-    # however, is the identity of the actual Deloox product page.  Build the
-    # title from the URL slug and use the card only for price/availability.
-    if not relevant(
-        context + " " + url,
-        query,
-    ):
+def _row_from_card(url, context, query):
+    """
+    Build a Deloox result from the product URL + search-card data.
+
+    IMPORTANT:
+    The surrounding search-card context may contain several neighbouring
+    Born in Roma products. The URL slug is therefore the authoritative
+    product identity.
+    """
+
+    if not is_product_url(url):
         return None
 
     path = urlparse(url).path
-    slug = clean(path.rstrip("/").rsplit("/", 1)[-1])
+    slug = path.rstrip("/").rsplit("/", 1)[-1]
 
-    # Deloox product slugs are descriptive. Remove technical URL tokens and
-    # keep the actual perfume name so ProductMatcher receives a clean title.
-    slug = re.sub(r"^\\d+[-_]", "", slug)
+    # Remove technical .html suffix.
+    slug = re.sub(r"\.html?$", "", slug, flags=re.I)
+
+    # Remove leading numeric ID if present.
+    slug = re.sub(r"^\d+[-_]", "", slug)
+
+    # Convert URL separators to spaces.
     slug = re.sub(r"[-_]+", " ", slug)
-    slug = re.sub(
-        r"\\b(?:eau|de|parfum|toilette|spray|vaporisateur|ml|cl)\\b.*$",
+
+    slug = clean(slug)
+
+    # Reject obvious non-perfume products using the PRODUCT URL itself.
+    # Do NOT use the surrounding card context for this decision.
+    if non_fragrance(slug):
+        return None
+
+    # Reject gift/coffret/set products.
+    slug_norm = norm(slug)
+
+    excluded_product_terms = (
+        "coffret",
+        "cadeau",
+        "gift set",
+        "giftset",
+        "set cadeau",
+        "travel set",
+        "discovery set",
+        "duo",
+        "trio",
+        "body mist",
+        "body spray",
+        "hair mist",
+        "body lotion",
+        "body cream",
+        "shower gel",
+    )
+
+    if any(
+        norm(term) in slug_norm
+        for term in excluded_product_terms
+    ):
+        return None
+
+    # The URL itself MUST identify the requested family.
+    # This prevents a neighbouring Born in Roma product in the card
+    # context from making an unrelated product look relevant.
+    if not relevant(slug, query):
+        return None
+
+    # Extract the actual perfume name from the URL.
+    #
+    # Example:
+    # valentino-born-in-roma-uomo-eau-de-toilette-100-ml
+    #
+    # becomes:
+    # valentino born in roma uomo
+    name = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|parfum|perfume|"
+        r"toilette|spray|vaporisateur)\b.*$",
         "",
         slug,
         flags=re.I,
     )
-    slug = clean(slug)
 
-    # Prefer the URL-derived title only when it really contains the query.
-    name = slug if relevant(slug, query) else ""
+    # Remove trailing format information if the previous expression
+    # did not already remove it.
+    name = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b.*$",
+        "",
+        name,
+        flags=re.I,
+    )
 
-    # Fallback to the existing card-text extraction for unusual URLs.
-    if not name:
-        lines = [
-            clean(x)
-            for x in re.split(
-                r"\\n|(?=Delivery time\\s*:)|(?=our price\\s)|(?=onze prijs\\s)|(?=nostro prezzo\\s)",
-                context,
-            )
-            if clean(x)
-        ]
-
-        for line in lines:
-            candidate = line
-            if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
-                try:
-                    repaired = candidate.encode("cp1252").decode("utf-8")
-                    if repaired != candidate:
-                        candidate = repaired
-                except (UnicodeEncodeError, UnicodeDecodeError):
-                    pass
-
-            candidate = re.sub(
-                r"\\s+(?:en stock|in stock|available|disponible|beschikbaar)\\b.*$",
-                "",
-                candidate,
-                flags=re.I,
-            )
-            candidate = re.sub(
-                r"\\s+(?:notre prix|our price|onze prijs|nostro prezzo)\\b.*$",
-                "",
-                candidate,
-                flags=re.I,
-            )
-            candidate = re.sub(
-                r"\\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\\s*:\\s*.*$",
-                "",
-                candidate,
-                flags=re.I,
-            ).strip()
-
-            if (
-                relevant(candidate, query)
-                and not non_fragrance(candidate)
-                and not re.search(
-                    r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-                    norm(candidate),
-                )
-                and 3 <= len(candidate) <= 220
-            ):
-                name = candidate
-                break
+    name = clean(name)
 
     if not name:
         return None
 
-    n = price_num(context)
-    state = availability(context)
+    if not relevant(name, query):
+        return None
 
-    # A product can be present on Deloox while temporarily out of stock and
-    # therefore have no numeric card price. Keep the product in that case;
-    # downstream code can still display its availability.
+    if non_fragrance(name):
+        return None
+
+    # Brand can safely be recovered from the URL for Valentino.
+    brand = ""
+    if norm(slug).startswith("valentino "):
+        brand = "Valentino"
+
+    # Card context is used ONLY for commercial data.
+    card_price = price_num(context)
+    card_state = availability(context)
+
     return {
         "store": STORE,
-        "brand": "",
+        "brand": brand,
         "name": name,
-        "price": price_text(n),
-        "price_num": n,
+        "price": price_text(card_price),
+        "price_num": card_price,
         "url": url,
         "image": _CARD_IMAGES.get(url, ""),
         "image_url": _CARD_IMAGES.get(url, ""),
-        "available": (
-            state != "out_of_stock"
-        ),
-        "availability": (
-            state or "in_stock"
-        ),
+        "available": card_state != "out_of_stock",
+        "availability": card_state or "in_stock",
         "size_ml": size_ml(
-            name,
+            slug,
             context,
         ),
     }
