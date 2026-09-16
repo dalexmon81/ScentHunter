@@ -1,93 +1,109 @@
-from __future__ import annotations
+# ScentHunter - Deloox runtime fingerprint V4
+# READ-ONLY DIAGNOSTIC.
+# Does NOT call Deloox, discover(), search(), ProductMatcher, or modify production code.
 
+from fastapi import APIRouter
 import hashlib
 import inspect
-import json
-from fastapi import APIRouter, Query
+import importlib
+from pathlib import Path
 
-router = APIRouter(prefix="/api/debug", tags=["debug"])
+router = APIRouter(prefix="/api/debug", tags=["debug-deloox-runtime"])
 
 
-def _fingerprint(module):
-    path = getattr(module, "__file__", None)
-    out = {
-        "file": path,
-        "origin": getattr(getattr(module, "__spec__", None), "origin", None),
-        "sha256": None,
-        "lines": None,
-        "size_bytes": None,
+def _source_info(obj):
+    info = {
+        "callable": callable(obj),
+        "module": getattr(obj, "__module__", None),
+        "name": getattr(obj, "__name__", None),
+        "signature": None,
+        "source_file": None,
+        "source_start_line": None,
     }
-    try:
-        if path:
-            raw = open(path, "rb").read()
-            out["sha256"] = hashlib.sha256(raw).hexdigest()
-            out["lines"] = raw.count(b"\n") + 1
-            out["size_bytes"] = len(raw)
-    except Exception as e:
-        out["file_read_error"] = f"{type(e).__name__}: {e}"
-    return out
+    if callable(obj):
+        try:
+            info["signature"] = str(inspect.signature(obj))
+        except Exception as exc:
+            info["signature_error"] = f"{type(exc).__name__}: {exc}"
+        try:
+            source_file = inspect.getsourcefile(obj)
+            info["source_file"] = source_file
+            if source_file:
+                try:
+                    _, start = inspect.getsourcelines(obj)
+                    info["source_start_line"] = start
+                except Exception:
+                    pass
+        except Exception as exc:
+            info["source_error"] = f"{type(exc).__name__}: {exc}"
+    return info
 
 
-def _function_info(module, name):
-    fn = getattr(module, name, None)
-    if not callable(fn):
-        return {"exists": False}
-
-    out = {
-        "exists": True,
-        "object": repr(fn),
+@router.get("/deloox-runtime-fingerprint")
+def deloox_runtime_fingerprint():
+    result = {
+        "ok": False,
+        "test": "DELOOX_RUNTIME_FINGERPRINT_V4",
+        "module": {},
+        "functions": {},
+        "notes": [
+            "READ-ONLY diagnostic",
+            "No Deloox HTTP request is performed",
+            "No discover/search/parse_product call is performed",
+            "No production scraper is modified",
+        ],
     }
 
     try:
-        out["signature"] = str(inspect.signature(fn))
-    except Exception as e:
-        out["signature_error"] = f"{type(e).__name__}: {e}"
-
-    try:
-        src = inspect.getsource(fn)
-        out["source_head"] = src[:12000]
-        out["source_chars"] = len(src)
-    except Exception as e:
-        out["source_error"] = f"{type(e).__name__}: {e}"
-
-    return out
-
-
-@router.get("/deloox-runtime-fingerprint-v4")
-def deloox_runtime_fingerprint_v4(
-    q: str = Query("Born in Roma", min_length=1),
-):
-    try:
-        import importlib
-
         module = importlib.import_module("scrapers.deloox.scraper")
 
-        return {
-            "ok": True,
-            "diagnostic": "DELOOX_RUNTIME_FINGERPRINT_V4",
-            "read_only": True,
-            "query": q,
-            "module": _fingerprint(module),
-            "functions": {
-                name: _function_info(module, name)
-                for name in (
-                    "discover",
-                    "_discover",
-                    "_candidate_contexts",
-                    "_candidate_product_urls",
-                    "_row_from_card",
-                    "product_url",
-                    "relevant",
-                    "matches",
-                    "search",
-                    "search_stream",
-                )
-            },
+        module_file = getattr(module, "__file__", None)
+        module_origin = getattr(getattr(module, "__spec__", None), "origin", None)
+
+        module_info = {
+            "file": module_file,
+            "origin": module_origin,
+            "module_name": getattr(module, "__name__", None),
         }
 
-    except Exception as e:
-        return {
-            "ok": False,
-            "diagnostic": "DELOOX_RUNTIME_FINGERPRINT_V4",
-            "error": f"{type(e).__name__}: {e}",
+        if module_file:
+            try:
+                path = Path(module_file).resolve()
+                data = path.read_bytes()
+                module_info.update({
+                    "resolved_file": str(path),
+                    "exists": path.exists(),
+                    "size_bytes": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "line_count": data.count(b"\n") + (1 if data else 0),
+                })
+            except Exception as exc:
+                module_info["file_read_error"] = f"{type(exc).__name__}: {exc}"
+
+        result["module"] = module_info
+
+        names = [
+            "discover",
+            "_discover",
+            "_candidate_contexts",
+            "_candidate_product_urls",
+            "product_url",
+            "relevant",
+            "matches",
+            "_row_from_card",
+            "parse_product",
+            "search",
+            "search_stream",
+        ]
+
+        result["functions"] = {
+            name: _source_info(getattr(module, name, None))
+            for name in names
         }
+
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return result
