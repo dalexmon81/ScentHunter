@@ -726,3 +726,117 @@ def deloox_clean_only(q: str = 'Born in Roma'):
         out['error_type'] = type(exc).__name__
         out['error'] = str(exc)
         return out
+
+# TEST 11: isolate ProductMatcher on the two known Ivory rows.
+@app.get('/api/debug/deloox-ivory-matcher')
+def deloox_ivory_matcher():
+    out = {
+        'ok': True,
+        'test': 'TEST_11_DELOOX_IVORY_PRODUCT_MATCHER_ISOLATION',
+        'query': 'Born in Roma',
+    }
+    try:
+        # Locate the same matcher objects/functions used by clean_result,
+        # without performing another Deloox search.
+        import inspect
+        import importlib
+
+        mainmod = importlib.import_module('main')
+        scraper = importlib.import_module('scrapers.deloox.scraper')
+
+        candidates = {}
+        for name in dir(mainmod):
+            obj = getattr(mainmod, name, None)
+            lname = name.lower()
+            if 'matcher' in lname or 'family' in lname:
+                candidates[name] = {
+                    'type': type(obj).__name__,
+                    'callable': callable(obj),
+                }
+
+        # Find matcher-like globals, including imported matcher modules.
+        matcher_obj = None
+        matcher_name = None
+        for name in dir(mainmod):
+            obj = getattr(mainmod, name, None)
+            if 'matcher' in name.lower() and obj is not None:
+                if hasattr(obj, 'match') and callable(getattr(obj, 'match')):
+                    matcher_obj = obj
+                    matcher_name = name
+                    break
+
+        out['runtime'] = {
+            'main_file': getattr(mainmod, '__file__', ''),
+            'scraper_file': getattr(scraper, '__file__', ''),
+            'matcher_name': matcher_name,
+            'matcher_type': type(matcher_obj).__name__ if matcher_obj is not None else None,
+            'matcher_callable': bool(matcher_obj is not None),
+            'main_matcher_candidates': candidates,
+        }
+
+        rows = [
+            {
+                'url': 'https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html',
+                'brand': 'Valentino',
+                'name': 'Valentino Born in Roma Ivory Uomo Eau de Toilette Limited edition 100 ml',
+                'price': '100,49 €',
+                'price_num': 100.49,
+            },
+            {
+                'url': 'https://www.deloox.be/produit/1400164/valentino-donna-born-in-roma-ivory-eau-de-parfum-limited-edition-100-ml.html',
+                'brand': 'Valentino',
+                'name': 'Valentino Donna Born in Roma Ivory Eau de Parfum Limited edition 100 ml',
+                'price': '121,59 €',
+                'price_num': 121.59,
+            },
+        ]
+
+        # Inspect clean_result source so the diagnostic can report the exact
+        # identity function path without guessing.
+        clean_src = inspect.getsource(clean_result)
+        out['clean_result_source_excerpt'] = clean_src[:8000]
+
+        results = []
+        if matcher_obj is not None:
+            for row in rows:
+                try:
+                    # Try the common matcher API with keyword args first.
+                    try:
+                        r = matcher_obj.match(
+                            query='Born in Roma',
+                            brand=row['brand'],
+                            name=row['name'],
+                            price=row['price'],
+                            url=row['url'],
+                        )
+                    except TypeError:
+                        try:
+                            r = matcher_obj.match(
+                                row['name'],
+                                brand=row['brand'],
+                                query='Born in Roma',
+                            )
+                        except TypeError:
+                            r = matcher_obj.match(row['name'])
+
+                    results.append({
+                        'url': row['url'],
+                        'name': row['name'],
+                        'returned_type': type(r).__name__,
+                        'returned': r,
+                    })
+                except Exception as exc:
+                    results.append({
+                        'url': row['url'],
+                        'name': row['name'],
+                        'error_type': type(exc).__name__,
+                        'error': str(exc),
+                    })
+
+        out['matcher_direct'] = results
+        return out
+    except Exception as exc:
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        return out
