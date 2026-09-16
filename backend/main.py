@@ -840,3 +840,325 @@ def deloox_ivory_matcher():
         out['error_type'] = type(exc).__name__
         out['error'] = str(exc)
         return out
+
+# TEST 12: exact ProductMatcher signature + exact _apply_product_identity call.
+@app.get('/api/debug/deloox-ivory-matcher-exact')
+def deloox_ivory_matcher_exact():
+    out = {
+        'ok': True,
+        'test': 'TEST_12_EXACT_PRODUCT_MATCHER_AND_IDENTITY_CALL',
+    }
+    try:
+        import inspect
+        import importlib
+
+        mainmod = importlib.import_module('main')
+        matcher = getattr(mainmod, 'PRODUCT_MATCHER', None)
+        apply_identity = getattr(mainmod, '_apply_product_identity', None)
+
+        out['runtime'] = {
+            'main_file': getattr(mainmod, '__file__', ''),
+            'matcher_type': type(matcher).__name__ if matcher is not None else None,
+            'matcher_signature': str(inspect.signature(matcher.match)) if matcher is not None else None,
+            'apply_identity_signature': str(inspect.signature(apply_identity)) if callable(apply_identity) else None,
+            'apply_identity_source': inspect.getsource(apply_identity)[:12000] if callable(apply_identity) else None,
+        }
+
+        rows = [
+            {
+                'url': 'https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html',
+                'brand': 'Valentino',
+                'name': 'Valentino Born in Roma Ivory Uomo Eau de Toilette Limited edition 100 ml',
+                'price': '100,49 €',
+                'price_num': 100.49,
+            },
+            {
+                'url': 'https://www.deloox.be/produit/1400164/valentino-donna-born-in-roma-ivory-eau-de-parfum-limited-edition-100-ml.html',
+                'brand': 'Valentino',
+                'name': 'Valentino Donna Born in Roma Ivory Eau de Parfum Limited edition 100 ml',
+                'price': '121,59 €',
+                'price_num': 121.59,
+            },
+        ]
+
+        direct = []
+        for row in rows:
+            item = dict(row)
+            try:
+                # Discover the exact parameter names and call match with
+                # the actual API, rather than guessing its signature.
+                sig = inspect.signature(matcher.match)
+                kwargs = {}
+                positional = []
+                for p in sig.parameters.values():
+                    if p.name == 'self':
+                        continue
+                    if p.name == 'query':
+                        kwargs[p.name] = 'Born in Roma'
+                    elif p.name in ('brand',):
+                        kwargs[p.name] = row['brand']
+                    elif p.name in ('name', 'product_name', 'title'):
+                        kwargs[p.name] = row['name']
+                    elif p.name in ('url', 'product_url'):
+                        kwargs[p.name] = row['url']
+                    elif p.name in ('item', 'product', 'row'):
+                        kwargs[p.name] = row
+                    elif p.default is inspect._empty:
+                        # If an unknown required parameter exists, expose it
+                        # rather than inventing a value.
+                        raise RuntimeError(
+                            f"Unknown required match parameter: {p.name}"
+                        )
+                result = matcher.match(*positional, **kwargs)
+                direct.append({
+                    'url': row['url'],
+                    'returned_type': type(result).__name__,
+                    'returned': result,
+                })
+            except Exception as exc:
+                direct.append({
+                    'url': row['url'],
+                    'error_type': type(exc).__name__,
+                    'error': str(exc),
+                })
+
+        out['matcher_exact'] = direct
+
+        identity = []
+        if callable(apply_identity):
+            for row in rows:
+                try:
+                    result = apply_identity(dict(row), 'Born in Roma')
+                    identity.append({
+                        'url': row['url'],
+                        'returned_type': type(result).__name__,
+                        'returned': result,
+                    })
+                except Exception as exc:
+                    identity.append({
+                        'url': row['url'],
+                        'error_type': type(exc).__name__,
+                        'error': str(exc),
+                    })
+        out['apply_product_identity_exact'] = identity
+
+        return out
+    except Exception as exc:
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        return out
+
+
+# TEST 13: exact Deloox target trace — Purple Melancholia Donna 1391716.
+# Diagnostic only. Does NOT modify scraper/ProductMatcher/family_registry.
+@app.get('/api/debug/deloox-purple-1391716')
+def deloox_purple_1391716(q: str = 'Born in Roma'):
+    TARGET_ID = '1391716'
+    out = {
+        'ok': True,
+        'test': 'TEST_13_DELOOX_TARGET_1391716_TRACE',
+        'query': q,
+        'target_id': TARGET_ID,
+        'target_name': 'Valentino Born in Roma Purple Melancholia Donna',
+    }
+
+    try:
+        module = load_scraper('deloox')
+        search = getattr(module, 'search', None)
+        discover = getattr(module, 'discover', None)
+        parse_product = getattr(module, 'parse_product', None)
+        row_from_card = getattr(module, '_row_from_card', None)
+
+        out['runtime'] = {
+            'scraper_file': getattr(module, '__file__', ''),
+            'search_callable': callable(search),
+            'discover_callable': callable(discover),
+            'parse_product_callable': callable(parse_product),
+            'row_from_card_callable': callable(row_from_card),
+        }
+
+        if not callable(discover):
+            raise RuntimeError('Deloox discover(query) is not callable')
+
+        requests_module = getattr(module, 'requests', None)
+        if (
+            requests_module is not None
+            and hasattr(requests_module, 'Session')
+        ):
+            session = requests_module.Session()
+        else:
+            import requests
+            session = requests.Session()
+
+        # STEP 1 — exact target in discover()
+        t = time.monotonic()
+        candidates = discover(session, q) or []
+
+        target_candidates = [
+            item for item in candidates
+            if isinstance(item, (tuple, list))
+            and len(item) >= 1
+            and TARGET_ID in str(item[0])
+        ]
+
+        out['discover'] = {
+            'elapsed': round(time.monotonic() - t, 3),
+            'candidate_count': len(candidates),
+            'target_found': bool(target_candidates),
+            'target_candidates': [
+                {
+                    'url': item[0],
+                    'info_type': (
+                        type(item[1]).__name__
+                        if len(item) > 1 else None
+                    ),
+                    'info_repr': (
+                        repr(item[1])[:4000]
+                        if len(item) > 1 else None
+                    ),
+                }
+                for item in target_candidates
+            ],
+        }
+
+        # STEP 2 — exact _row_from_card() path
+        if target_candidates and callable(row_from_card):
+            url = target_candidates[0][0]
+            info = target_candidates[0][1]
+            context = ''
+            image = ''
+
+            if isinstance(info, (tuple, list)):
+                if len(info) >= 2:
+                    context = info[1]
+                if len(info) >= 3:
+                    image = info[2]
+
+            try:
+                t = time.monotonic()
+                try:
+                    card_row = row_from_card(
+                        url, context, q, image
+                    )
+                except TypeError:
+                    card_row = row_from_card(
+                        url, context, q
+                    )
+
+                out['row_from_card'] = {
+                    'elapsed': round(time.monotonic() - t, 3),
+                    'accepted': isinstance(card_row, dict),
+                    'row': card_row,
+                    'context_preview': str(context)[:3000],
+                }
+            except Exception as exc:
+                out['row_from_card'] = {
+                    'accepted': False,
+                    'exception_type': type(exc).__name__,
+                    'error': str(exc),
+                }
+        else:
+            out['row_from_card'] = {
+                'skipped': True,
+                'reason': (
+                    'target_not_in_discover'
+                    if not target_candidates
+                    else 'row_from_card_unavailable'
+                ),
+            }
+
+        # STEP 3 — exact parse_product() path
+        if target_candidates and callable(parse_product):
+            url = target_candidates[0][0]
+
+            try:
+                t = time.monotonic()
+                parsed = parse_product(url, q)
+
+                out['parse_product'] = {
+                    'elapsed': round(time.monotonic() - t, 3),
+                    'count': len(parsed or []),
+                    'rows': parsed or [],
+                    'accepted': bool(parsed),
+                }
+            except Exception as exc:
+                out['parse_product'] = {
+                    'accepted': False,
+                    'exception_type': type(exc).__name__,
+                    'error': str(exc),
+                }
+        else:
+            out['parse_product'] = {
+                'skipped': True,
+                'reason': (
+                    'target_not_in_discover'
+                    if not target_candidates
+                    else 'parse_product_unavailable'
+                ),
+            }
+
+        # STEP 4 — real production search()
+        if not callable(search):
+            raise RuntimeError(
+                'Deloox search(query) is not callable'
+            )
+
+        t = time.monotonic()
+        final_rows = search(q)
+        final_rows = [] if final_rows is None else list(final_rows)
+
+        target_final_rows = [
+            row for row in final_rows
+            if isinstance(row, dict)
+            and TARGET_ID in str(row.get('url') or '')
+        ]
+
+        out['search'] = {
+            'elapsed': round(time.monotonic() - t, 3),
+            'count': len(final_rows),
+            'target_present': bool(target_final_rows),
+            'target_rows': target_final_rows,
+        }
+
+        discovered = bool(target_candidates)
+        card_accepted = bool(
+            out.get('row_from_card', {}).get('accepted')
+        )
+        parsed = bool(
+            out.get('parse_product', {}).get('accepted')
+        )
+        final_present = bool(
+            out.get('search', {}).get('target_present')
+        )
+
+        if final_present:
+            result = 'TARGET_REACHES_FINAL_SEARCH'
+        elif not discovered:
+            result = 'LOST_IN_DISCOVER'
+        elif not card_accepted and not parsed:
+            result = (
+                'DISCOVER_HAS_TARGET_BUT_'
+                'CARD_AND_PRODUCT_PARSER_DROP_IT'
+            )
+        else:
+            result = (
+                'PARSER_HAS_TARGET_BUT_'
+                'SEARCH_DROPS_IT'
+            )
+
+        out['diagnosis'] = {
+            'discovered': discovered,
+            'card_accepted': card_accepted,
+            'product_page_parsed': parsed,
+            'final_search_present': final_present,
+            'result': result,
+        }
+
+        return out
+
+    except Exception as exc:
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        return out
