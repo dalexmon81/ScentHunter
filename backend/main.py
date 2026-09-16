@@ -24,6 +24,8 @@ for module_name, router_name, label in [
     except Exception as exc:
         print(f'{label} debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+from debug_deloox_runtime import router as deloox_runtime_debug_router
+app.include_router(deloox_runtime_debug_router)
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
