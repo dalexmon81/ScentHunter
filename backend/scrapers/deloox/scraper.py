@@ -501,36 +501,63 @@ def _candidate_contexts(html, query):
 
     q = tokens(query)
     born_query = is_born_in_roma_query(query)
-
     found = {}
 
+    # -------------------------------------------------------------
+    # Born in Roma: collect the REAL Deloox product URLs directly
+    # from the HTML first. This is deliberately independent from
+    # the surrounding search-card text, which Deloox can merge with
+    # neighbouring products.
+    # -------------------------------------------------------------
+    direct_urls = set()
+
+    if born_query:
+        for a in soup.find_all("a", href=True):
+            url = product_url(a.get("href"))
+            if url:
+                direct_urls.add(url)
+
+        # Safety net for URLs embedded in HTML/JSON attributes where
+        # BeautifulSoup does not expose them as normal anchor hrefs.
+        for raw in re.findall(
+            r"(?:https?:\\/\\/[^\"'<>\\s]+)?/produit/\\d+/[^\"'<>\\s]+",
+            html,
+            flags=re.I,
+        ):
+            raw = raw.replace("\\/", "/")
+            url = product_url(raw)
+            if url:
+                direct_urls.add(url)
+
+        # Keep ONLY Born in Roma perfume products.
+        direct_urls = {
+            url
+            for url in direct_urls
+            if born_in_roma_slug(url)
+            and not excluded_product_slug(url)
+        }
+
+    # Normal card extraction.
     for a in soup.find_all(
         "a",
         href=True,
     ):
-        url = product_url(
-            a.get("href")
-        )
+        url = product_url(a.get("href"))
 
         if not url:
             continue
 
-        # ---------------------------------------------------------
-        # BORN IN ROMA: URL identity has priority.
-        #
-        # Deloox search cards can contain text belonging to nearby
-        # products. The URL slug is the actual product identity.
-        # ---------------------------------------------------------
         if born_query:
-            if not born_in_roma_slug(url):
+            if url not in direct_urls:
                 continue
-
-            if excluded_product_slug(url):
-                continue
+        elif not relevant(
+            clean(a.get_text(" ", strip=True)) + " " + url,
+            query,
+        ):
+            continue
 
         node = a
         card_image = ""
-
         best = clean(
             a.get_text(
                 " ",
@@ -564,9 +591,6 @@ def _candidate_contexts(html, query):
                 break
 
         if born_query:
-            # For Born in Roma, URL itself establishes family
-            # relevance. We still keep the surrounding context
-            # because it contains price/availability/image.
             hits = sum(
                 t in norm(
                     best + " " + url
@@ -574,25 +598,12 @@ def _candidate_contexts(html, query):
                 for t in q
             )
 
-            # Force a strong family score so late-page valid
-            # products cannot lose to unrelated neighbouring text.
             score = (
                 max(hits, len(q)) * 10
-                + (
-                    2
-                    if PRICE_RE.search(best)
-                    else 0
-                )
+                + (2 if PRICE_RE.search(best) else 0)
                 + 20
             )
-
         else:
-            if q and not relevant(
-                best + " " + url,
-                query,
-            ):
-                continue
-
             hits = sum(
                 t in norm(best + " " + url)
                 for t in q
@@ -600,19 +611,11 @@ def _candidate_contexts(html, query):
 
             score = (
                 hits * 10
-                + (
-                    2
-                    if PRICE_RE.search(best)
-                    else 0
-                )
+                + (2 if PRICE_RE.search(best) else 0)
             )
 
         old = found.get(url)
-
-        if (
-            old is None
-            or score > old[0]
-        ):
+        if old is None or score > old[0]:
             found[url] = (
                 score,
                 best,
@@ -620,11 +623,44 @@ def _candidate_contexts(html, query):
             )
 
     # -------------------------------------------------------------
-    # IMPORTANT:
-    # Do NOT apply the final candidate limit inside the generic
-    # collector before we have filtered Born in Roma junk.
+    # IMPORTANT FALLBACK:
+    # If Deloox exposes a valid Born in Roma product URL in HTML but
+    # not as a normal <a href>, still create a candidate. The URL is
+    # enough to identify the product; product-page parsing can later
+    # supply price/image/availability when the card has no usable data.
     # -------------------------------------------------------------
     if born_query:
+        for url in direct_urls:
+            if url in found:
+                continue
+
+            # Try to locate a nearby HTML fragment for price/image.
+            context = ""
+            image = ""
+
+            marker = url.split("/produit/", 1)[-1]
+            pos = html.lower().find(marker.lower())
+
+            if pos >= 0:
+                fragment = html[max(0, pos - 6000):pos + 12000]
+                frag_soup = BeautifulSoup(
+                    fragment,
+                    "html.parser",
+                )
+                context = clean(
+                    frag_soup.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+                image = _image_from_node(frag_soup)
+
+            found[url] = (
+                40,
+                context,
+                image,
+            )
+
         ordered = sorted(
             found.items(),
             key=lambda x: (
