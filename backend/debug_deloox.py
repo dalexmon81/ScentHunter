@@ -1,99 +1,95 @@
-from fastapi import APIRouter
 import importlib
 import inspect
 import hashlib
+from fastapi import APIRouter
 
-router = APIRouter(prefix="/api/debug", tags=["debug-deloox-matcher"])
+router = APIRouter()
 
-ROWS = [
-    {
-        "url": "https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html",
-        "brand": "Valentino",
-        "name": "Valentino Born in Roma Ivory Uomo Eau de Toilette Limited edition 100 ml",
-        "price": "100,49 €",
-        "price_num": 100.49,
-        "size_ml": 100,
-        "store": "Deloox",
-    },
-    {
-        "url": "https://www.deloox.be/produit/1400164/valentino-donna-born-in-roma-ivory-eau-de-parfum-limited-edition-100-ml.html",
-        "brand": "Valentino",
-        "name": "Valentino Donna Born in Roma Ivory Eau de Parfum Limited edition 100 ml",
-        "price": "121,59 €",
-        "price_num": 121.59,
-        "size_ml": 100,
-        "store": "Deloox",
-    },
-]
-
-def _safe(fn, *args):
-    try:
-        return {"ok": True, "value": fn(*args)}
-    except Exception as exc:
-        return {"ok": False, "error_type": type(exc).__name__, "error": str(exc)}
-
-@router.get("/deloox-ivory-matcher-proof")
-def deloox_ivory_matcher_proof():
+@router.get("/deloox-ivory-key-proof")
+def deloox_ivory_key_proof(q: str = "Born in Roma"):
     out = {
         "ok": True,
-        "test": "TEST_13_DELOOX_IVORY_MATCHER_RUNTIME_PROOF",
-        "query": "Born in Roma",
+        "test": "TEST_14_DELOOX_IVORY_VARIANT_KEY_PROOF",
+        "query": q,
     }
     try:
-        main = importlib.import_module("main")
-        pm = importlib.import_module("product_matcher")
-        matcher = getattr(main, "PRODUCT_MATCHER", None)
+        pm_mod = importlib.import_module("product_matcher")
+        cls = getattr(pm_mod, "ProductMatcher")
+        matcher = getattr(__import__("main"), "PRODUCT_MATCHER", None)
 
-        pm_file = getattr(pm, "__file__", "")
-        pm_src = inspect.getsource(pm)
+        clean = getattr(pm_mod, "catalog_clean_text", None)
+        key = getattr(pm_mod, "catalog_variant_key", None)
+
         out["runtime"] = {
-            "main_file": getattr(main, "__file__", ""),
-            "product_matcher_file": pm_file,
-            "product_matcher_sha256": hashlib.sha256(pm_src.encode("utf-8")).hexdigest(),
-            "matcher_type": type(matcher).__name__ if matcher is not None else None,
-            "matcher_signature": str(inspect.signature(matcher.match)) if matcher is not None else None,
-            "has_family_registry": bool(getattr(matcher, "family_registry", None)) if matcher is not None else False,
-            "family_count": len(getattr(matcher, "family_registry", []) or []) if matcher is not None else 0,
+            "product_matcher_file": getattr(pm_mod, "__file__", ""),
+            "product_matcher_sha256": hashlib.sha256(
+                Path(getattr(pm_mod, "__file__")).read_bytes()
+            ).hexdigest() if getattr(pm_mod, "__file__", None) and Path(getattr(pm_mod, "__file__")).exists() else "",
+            "catalog_clean_text_source": inspect.getsource(clean) if clean else None,
+            "catalog_variant_key_source": inspect.getsource(key) if key else None,
+            "matcher_type": type(matcher).__name__ if matcher else None,
         }
 
-        cleaner = getattr(matcher, "_remove_brand", None) if matcher is not None else None
-        family_query = getattr(matcher, "_family_for_query", None) if matcher is not None else None
-        family_variant = getattr(matcher, "_family_variant_for_offer", None) if matcher is not None else None
-        clean_text = getattr(pm, "catalog_clean_text", None)
+        samples = [
+            ("UOMO_Deloox", "Valentino Born in Roma Ivory Uomo Eau de Toilette Limited edition 100 ml"),
+            ("DONNA_Deloox", "Valentino Donna Born in Roma Ivory Eau de Parfum Limited edition 100 ml"),
+            ("UOMO_canonical", "Born in Roma Uomo Ivory"),
+            ("UOMO_alias", "Born in Roma Ivory Uomo"),
+            ("DONNA_canonical", "Born in Roma Donna Ivory"),
+            ("DONNA_alias", "Born in Roma Ivory Donna"),
+            ("DONNA_alias_edp", "Born in Roma Ivory Eau de Parfum Donna"),
+        ]
 
-        out["helpers"] = {
-            "catalog_clean_text_source": inspect.getsource(clean_text) if callable(clean_text) else None,
-            "catalog_clean_text_ivory_uomo": _safe(clean_text, ROWS[0]["name"]) if callable(clean_text) else None,
-            "catalog_clean_text_ivory_donna": _safe(clean_text, ROWS[1]["name"]) if callable(clean_text) else None,
-            "family_for_query": _safe(family_query, "Born in Roma") if callable(family_query) else None,
-        }
+        out["keys"] = []
+        for label, value in samples:
+            item = {"label": label, "input": value}
+            try:
+                item["clean"] = clean(value) if clean else None
+            except Exception as exc:
+                item["clean_error"] = f"{type(exc).__name__}: {exc}"
+            try:
+                item["variant_key"] = key(value) if key else None
+            except Exception as exc:
+                item["key_error"] = f"{type(exc).__name__}: {exc}"
+            out["keys"].append(item)
 
-        exact = []
-        for row in ROWS:
-            item = dict(row)
-            trace = {"url": row["url"], "name": row["name"]}
-            if callable(family_query):
-                family = _safe(family_query, "Born in Roma")
-                trace["family"] = family
-                if family.get("ok") and callable(family_variant):
-                    trace["family_variant"] = _safe(family_variant, item, family["value"])
-            if matcher is not None:
-                trace["match"] = _safe(matcher.match, item, "Born in Roma")
-            exact.append(trace)
+        # Re-run the exact family offer resolution with the live matcher.
+        family = None
+        if matcher is not None and hasattr(matcher, "_family_for_query"):
+            family = matcher._family_for_query(q)
+        out["family_id"] = family.get("family_id") if isinstance(family, dict) else None
 
-        out["ivory_results"] = exact
-
-        apply_identity = getattr(main, "_apply_product_identity", None)
-        if callable(apply_identity):
-            out["apply_product_identity"] = [
-                {
-                    "url": row["url"],
-                    "result": _safe(apply_identity, dict(row), "Born in Roma"),
+        out["variant_resolution"] = []
+        if isinstance(family, dict) and hasattr(matcher, "_family_variant_for_offer"):
+            for label, value in samples[:2]:
+                offer = {
+                    "brand": "Valentino",
+                    "name": value,
+                    "store": "Deloox",
+                    "url": (
+                        "https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html"
+                        if label == "UOMO_Deloox"
+                        else "https://www.deloox.be/produit/1400164/valentino-donna-born-in-roma-ivory-eau-de-parfum-limited-edition-100-ml.html"
+                    ),
+                    "price": "100,49 €" if label == "UOMO_Deloox" else "121,59 €",
+                    "price_num": 100.49 if label == "UOMO_Deloox" else 121.59,
+                    "size_ml": 100.0,
                 }
-                for row in ROWS
-            ]
+                try:
+                    resolved = matcher._family_variant_for_offer(offer, family)
+                    out["variant_resolution"].append({
+                        "label": label,
+                        "resolved": resolved,
+                    })
+                except Exception as exc:
+                    out["variant_resolution"].append({
+                        "label": label,
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    })
 
         return out
+
     except Exception as exc:
         out["ok"] = False
         out["error_type"] = type(exc).__name__
