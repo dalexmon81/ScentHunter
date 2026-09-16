@@ -499,3 +499,15 @@ def suggest(q:str):
 def frontend():
     if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
     return {'error':'frontend/index.html not found'}
+
+# Deloox stream diagnostic router is OPTIONAL.
+try:
+    from debug_deloox_stream_probe import router as deloox_stream_probe_router
+    app.include_router(deloox_stream_probe_router)
+    print('DELOOX STREAM DEBUG ROUTER: LOADED', flush=True)
+except Exception as exc:
+    print(
+        'DELOOX STREAM DEBUG ROUTER: UNAVAILABLE '
+        f'{type(exc).__name__}: {exc}',
+        flush=True,
+    )
