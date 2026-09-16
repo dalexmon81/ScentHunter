@@ -9,7 +9,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-APP_VERSION = '3.0-streaming-deloox-enrichment-fix'
+APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 for module_name, router_name, label in [
     ('debug_easycosmetic', 'debug_easycosmetic_router', 'Easycosmetic'),
@@ -110,65 +110,58 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 def _apply_product_identity(result, query=''):
-    """
-    Enrich a retailer offer through the central ProductMatcher.
+    """Normalize a retailer offer through ProductMatcher, fail-closed for family queries."""
+    if PRODUCT_MATCHER is None or not isinstance(result, dict): return result
+    raw_name = str(result.get('name') or result.get('title') or '').strip()
+    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
-    IMPORTANT:
-    - The scraper is responsible for deciding whether a retailer listing is
-      a valid candidate.
-    - ProductMatcher enriches that candidate with canonical identity when it
-      can resolve it.
-    - A matcher rejection must NOT delete an already-valid retailer offer.
-      This prevents valid Deloox Born in Roma offers from disappearing merely
-      because the catalog/family identity layer cannot resolve one spelling.
-    """
-    if PRODUCT_MATCHER is None or not isinstance(result, dict):
-        return result
-
-    raw_name = str(
-        result.get('name') or result.get('title') or ''
-    ).strip()
-    raw_brand = str(
-        result.get('brand') or result.get('manufacturer') or ''
-    ).strip()
+    requested_family = None
+    try:
+        resolver = getattr(PRODUCT_MATCHER, '_family_for_query', None)
+        if callable(resolver):
+            requested_family = resolver(query)
+    except Exception as exc:
+        print(f'PRODUCT_MATCHER_FAMILY_RESOLVE_ERROR: {type(exc).__name__}: {exc}', flush=True)
 
     try:
         matched = PRODUCT_MATCHER.match(result, query)
     except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return result
-
-    # Enrichment only: never discard a scraper result here.
-    if not isinstance(matched, dict):
-        return result
-
+        print(f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return None if requested_family is not None else result
+    if matched is None: return None
+    if not isinstance(matched, dict): return None if requested_family is not None else result
     normalized = dict(matched)
 
-    # Keep the original retailer fields for diagnostics/provenance.
-    if raw_name:
-        normalized.setdefault('_source_name', raw_name)
-    if raw_brand:
-        normalized.setdefault('_source_brand', raw_brand)
+    if requested_family is not None:
+        requested_family_id = str(requested_family.get('family_id') or '').strip()
+        matched_family_id = str(normalized.get('family_id') or '').strip()
+        if not requested_family_id or matched_family_id != requested_family_id:
+            print(f'PRODUCT_MATCHER_FAMILY_REJECT: query={query!r} requested_family={requested_family_id!r} matched_family={matched_family_id!r} name={raw_name!r} brand={raw_brand!r}', flush=True)
+            return None
+        requested_family_brand = str(requested_family.get('brand') or '').strip()
+        matched_brand = str(normalized.get('canonical_brand') or normalized.get('brand') or '').strip()
+        if requested_family_brand and matched_brand:
+            normalise = getattr(PRODUCT_MATCHER, '_norm', None)
+            try:
+                if callable(normalise):
+                    family_brand_key = normalise(requested_family_brand)
+                    matched_brand_key = normalise(matched_brand)
+                else:
+                    family_brand_key = requested_family_brand.casefold()
+                    matched_brand_key = matched_brand.casefold()
+            except Exception:
+                family_brand_key = requested_family_brand.casefold()
+                matched_brand_key = matched_brand.casefold()
+            if family_brand_key != matched_brand_key:
+                print(f'PRODUCT_MATCHER_BRAND_REJECT: query={query!r} requested_brand={requested_family_brand!r} matched_brand={matched_brand!r} family={requested_family_id!r} name={raw_name!r}', flush=True)
+                return None
 
-    canonical_name = str(
-        normalized.get('canonical_name')
-        or normalized.get('catalog_variant')
-        or raw_name
-    ).strip()
-    canonical_brand = str(
-        normalized.get('canonical_brand')
-        or normalized.get('brand')
-        or raw_brand
-    ).strip()
-
-    if canonical_name:
-        normalized['name'] = canonical_name
-    if canonical_brand:
-        normalized['brand'] = canonical_brand
-
+    if raw_name: normalized.setdefault('_source_name', raw_name)
+    if raw_brand: normalized.setdefault('_source_brand', raw_brand)
+    canonical_name = str(normalized.get('canonical_name') or normalized.get('catalog_variant') or raw_name).strip()
+    canonical_brand = str(normalized.get('canonical_brand') or normalized.get('brand') or raw_brand).strip()
+    if canonical_name: normalized['name'] = canonical_name
+    if canonical_brand: normalized['brand'] = canonical_brand
     return normalized
 
 def clean_result(item, store, query=''):
