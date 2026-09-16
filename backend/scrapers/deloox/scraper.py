@@ -886,6 +886,13 @@ def discover(
     session,
     query,
 ):
+    """Discover Deloox product URLs.
+
+    Born in Roma is handled directly from the search-page HTML.
+    Deloox search cards contain merged/neighbouring product text, so
+    card-based relevance is not reliable for this family. The actual
+    /produit/<id>/<slug>.html URL is the authoritative product identity.
+    """
     encoded = quote_plus(query)
     q = tokens(query)
     born_query = is_born_in_roma_query(query)
@@ -893,167 +900,125 @@ def discover(
     candidates = {}
     seen_pages = set()
 
-    # Deloox.be uses its native search route /chercher.html.
-    # The first page shows the first batch and subsequent pages are
-    # loaded with the same URL plus &page=N.
-    page = 1
-
-    while page <= 10:
+    for page in range(1, 11):
         if page == 1:
-            endpoint = (
-                f"{BASE}/chercher.html?q={encoded}"
-            )
+            endpoint = f"{BASE}/chercher.html?q={encoded}"
         else:
-            endpoint = (
-                f"{BASE}/chercher.html?q={encoded}"
-                f"&page={page}"
-            )
+            endpoint = f"{BASE}/chercher.html?q={encoded}&page={page}"
 
-        r = get(
-            session,
-            endpoint,
-        )
-
-        if (
-            not r
-            or r.url in seen_pages
-        ):
+        r = get(session, endpoint)
+        if not r or r.url in seen_pages:
             break
-
         seen_pages.add(r.url)
 
-        before = len(candidates)
+        html = r.text or ""
 
-        # IMPORTANT:
-        # _candidate_contexts performs Born-in-Roma URL-level
-        # filtering before candidates are capped.
-        page_candidates = _candidate_contexts(
-            r.text,
-            query,
-        )
+        if born_query:
+            # Direct URL extraction. Do NOT depend on <a> structure,
+            # card text, price presence, or neighbouring DOM nodes.
+            raw_urls = re.findall(
+                r"(?:https?:\\?/\\?/[^\"'<>\s]+)?/produit/\d+/[^\"'<>\s?#]+",
+                html,
+                flags=re.I,
+            )
 
-        for url, info in page_candidates:
-            if (
-                url not in candidates
-                or info[0] > candidates[url][0]
-            ):
-                candidates[url] = info
+            for raw in raw_urls:
+                raw = raw.replace("\\/", "/")
+                if raw.startswith("/"):
+                    url = urljoin(BASE + "/", raw)
+                elif raw.startswith("http"):
+                    url = raw
+                else:
+                    continue
 
-        # Stop when a subsequent page adds nothing new.
-        if len(candidates) == before:
-            break
+                url = url.split("#", 1)[0].split("?", 1)[0]
+                if not is_product_url(url):
+                    continue
+                if not born_in_roma_slug(url):
+                    continue
+                if excluded_product_slug(url):
+                    continue
 
-        page += 1
+                # Fixed high score: this candidate was identified by its
+                # real product URL, not by surrounding search-card text.
+                candidates[url] = (
+                    100,
+                    url_slug(url),
+                    "",
+                )
 
-    # ---------------------------------------------------------
-    # Liquid Brun Limited Edition
-    # ---------------------------------------------------------
-    if (
-        {"liquid", "brun"} <= q
-        and (
-            {"limited", "edition"} & q
-        )
-    ):
-        endpoint = (
-            f"{BASE}/en/category/"
-            "1132834/liquid-brun.html"
-        )
+            # Also inspect ordinary anchors as a second, independent
+            # extraction path. This catches HTML-encoded/attribute URLs
+            # that regex may not see.
+            soup = BeautifulSoup(html, "html.parser")
+            for a in soup.find_all("a", href=True):
+                url = product_url(a.get("href"))
+                if not url:
+                    continue
+                if not born_in_roma_slug(url):
+                    continue
+                if excluded_product_slug(url):
+                    continue
 
-        r = get(
-            session,
-            endpoint,
-        )
+                text = clean(a.get_text(" ", strip=True))
+                old = candidates.get(url)
+                if old is None:
+                    candidates[url] = (100, text or url_slug(url), "")
+                elif text and len(text) > len(old[1]):
+                    candidates[url] = (100, text, old[2])
 
-        if r:
-            for url, info in _candidate_contexts(
-                r.text,
-                query,
-            ):
-                if (
-                    url not in candidates
-                    or info[0] > candidates[url][0]
-                ):
-                    candidates[url] = info
-
-    # ---------------------------------------------------------
-    # Hawas catalog fallback
-    # ---------------------------------------------------------
-    if "hawas" in q:
-        endpoint = (
-            f"{BASE}/categorie/"
-            "1080044/rasasi-parfum.html"
-        )
-
-        r = get(
-            session,
-            endpoint,
-        )
-
-        if r:
-            for url, info in _candidate_contexts(
-                r.text,
-                query,
-            ):
-                if (
-                    url not in candidates
-                    or info[0] > candidates[url][0]
-                ):
-                    candidates[url] = info
-
-    # ---------------------------------------------------------
-    # Existing bounded catalog fallbacks.
-    # ---------------------------------------------------------
-    for endpoint in (
-        f"{BASE}/en/category/"
-        "1103659/fragrances.html",
-
-        f"{BASE}/en/category/"
-        "1121334/french-avenue-mens-fragrances.html",
-    ):
-        r = get(
-            session,
-            endpoint,
-        )
-
-        if not r:
             continue
 
-        for url, info in _candidate_contexts(
-            r.text,
-            query,
-        ):
-            if (
-                url not in candidates
-                or info[0] > candidates[url][0]
-            ):
+        # Historical generic discovery path.
+        page_candidates = _candidate_contexts(html, query)
+        for url, info in page_candidates:
+            if url not in candidates or info[0] > candidates[url][0]:
                 candidates[url] = info
 
-    # ---------------------------------------------------------
-    # FINAL ORDERING / LIMIT
-    #
-    # For Born in Roma, valid perfume URLs have already had coffrets
-    # and body products removed. We can therefore safely use the
-    # small 50-candidate margin.
-    #
-    # For every other query the historical 40 limit remains.
-    # ---------------------------------------------------------
+        # Existing special fallbacks remain available below.
+
+    # Existing bounded catalog fallbacks for non-Born queries.
+    if not born_query:
+        if {"liquid", "brun"} <= q and ({"limited", "edition"} & q):
+            r = get(
+                session,
+                f"{BASE}/en/category/1132834/liquid-brun.html",
+            )
+            if r:
+                for url, info in _candidate_contexts(r.text, query):
+                    if url not in candidates or info[0] > candidates[url][0]:
+                        candidates[url] = info
+
+        if "hawas" in q:
+            r = get(
+                session,
+                f"{BASE}/categorie/1080044/rasasi-parfum.html",
+            )
+            if r:
+                for url, info in _candidate_contexts(r.text, query):
+                    if url not in candidates or info[0] > candidates[url][0]:
+                        candidates[url] = info
+
+        for endpoint in (
+            f"{BASE}/en/category/1103659/fragrances.html",
+            f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html",
+        ):
+            r = get(session, endpoint)
+            if not r:
+                continue
+            for url, info in _candidate_contexts(r.text, query):
+                if url not in candidates or info[0] > candidates[url][0]:
+                    candidates[url] = info
+
     ordered = sorted(
         candidates.items(),
-        key=lambda x: (
-            -x[1][0],
-            x[0],
-        ),
+        key=lambda x: (-x[1][0], x[0]),
     )
 
     if born_query:
-        return ordered[
-            :BORN_IN_ROMA_MAX_CANDIDATES
-        ]
+        return ordered[:BORN_IN_ROMA_MAX_CANDIDATES]
 
-    return ordered[
-        :MAX_CANDIDATES
-    ]
-
+    return ordered[:MAX_CANDIDATES]
 
 def parse_product(
     url,
