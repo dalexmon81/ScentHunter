@@ -56,6 +56,18 @@ except Exception as exc:
         flush=True,
     )
 
+# Deloox V7 full diagnostic router. Read-only: does not modify scraper/runtime state.
+try:
+    from debug_deloox_runtime_full_v7 import router as deloox_runtime_full_v7_router
+    app.include_router(deloox_runtime_full_v7_router)
+    print('DELOOX RUNTIME FULL DEBUG V7: LOADED', flush=True)
+except Exception as exc:
+    print(
+        'DELOOX RUNTIME FULL DEBUG V7: UNAVAILABLE '
+        f'{type(exc).__name__}: {exc}',
+        flush=True,
+    )
+
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
 BASE_DIR = Path(__file__).resolve().parent
