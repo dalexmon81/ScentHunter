@@ -1674,51 +1674,9 @@ async function fetchFormatComparisons(g, sizes){
 function getMasterFormats(g){
   try{
     if(typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
-
-    // 1) Se il backend ha già fornito l'id canonico, è la fonte più sicura.
-    let master=(g?.catalog_id?MASTER_CATALOG.find(x=>x.id===g.catalog_id):null)||null;
-
-    // 2) Prova il resolver esistente sul nome originale.
-    if(!master){
-      master=resolveMasterProduct(g?.brand||"",g?.name||"");
-    }
-
-    // 3) FALLBACK CRITICO: il backend può restituire il titolo già formattato
-    //    (es. "Fleur De Lait Eau de Parfum"). In quel caso il resolver
-    //    storico può non riconoscerlo perché la concentrazione è stata
-    //    aggiunta al nome. Cerchiamo quindi la referenza master eliminando
-    //    SOLO brand + concentrazione/formato, senza usare fuzzy matching.
-    if(!master){
-      const brandN=norm(g?.brand||"");
-      const cleanForMaster=(value)=>{
-        let n=norm(value||"");
-        if(brandN){
-          n=n.replace(new RegExp("^\\s*"+brandN.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*[-–—:]?\\s*","i"),"").trim();
-        }
-        n=n.replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b/gi," ");
-        n=n.replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau fraiche|extrait de parfum|parfum intense|edp|edt|edc|parfum|perfume|spray)\b/gi," ");
-        return n.replace(/\s+/g," ").trim();
-      };
-
-      const target=cleanForMaster(g?.name||"");
-      if(target){
-        const hits=MASTER_CATALOG.filter(p=>{
-          if(brandN&&norm(p.brand||"")!==brandN)return false;
-          const forms=[p.name,...(Array.isArray(p.aliases)?p.aliases:[])];
-          return forms.some(form=>cleanForMaster(form)===target);
-        });
-        if(hits.length===1)master=hits[0];
-      }
-    }
-
-    return [...new Set((master?.formats_ml||[])
-      .map(x=>String(x))
-      .filter(x=>/^\d+(?:\.\d+)?$/.test(x)))]
-      .sort((a,b)=>Number(a)-Number(b));
-  }catch(e){
-    console.warn("getMasterFormats",e);
-    return [];
-  }
+    const master=(g?.catalog_id?MASTER_CATALOG.find(x=>x.id===g.catalog_id):null)||resolveMasterProduct(g?.brand||"",g?.name||"");
+    return [...new Set((master?.formats_ml||[]).map(x=>String(x)).filter(x=>/^\d+(?:\.\d+)?$/.test(x)))].sort((a,b)=>Number(a)-Number(b));
+  }catch(e){return []}
 }
 
 function formatComparisonFor(g,sizeKey){
@@ -1767,18 +1725,6 @@ async function openProduct(i){
   const saved=getWishlist();
   statusBox.textContent="";
 
-  // Nessun formato identificabile: non mostrare mai una scheda vuota.
-  // Manteniamo il comportamento storico mostrando direttamente le offerte.
-  if(sizes.length===0){
-    const offers=(g.offers||[]).slice().sort((a,b)=>{
-      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
-      if(ao!==bo)return ao?1:-1;
-      return shNum(a)-shNum(b);
-    });
-    renderSingleFormatComparison(g,img,offers,"",saved);
-    return;
-  }
-
   // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
   if(sizes.length===1){
     const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
@@ -1787,23 +1733,22 @@ async function openProduct(i){
     return;
   }
 
-  // DUE O TRE FORMATI: la seconda scheda compare SUBITO.
-  // Il confronto completo dei negozi viene aggiornato in background.
-  const localFallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-  window._formatComparisonsByProduct[currentOpenProductKey]=localFallback;
-  renderFormatChoiceCard(i,g,localFallback,sizes);
+  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 
-  const productKeyAtRequest=currentOpenProductKey;
-  fetchFormatComparisons(g,sizes).then(comparisons=>{
-    if(productKeyAtRequest!==currentOpenProductKey)return;
-    const merged=Array.isArray(comparisons)&&comparisons.length?comparisons:localFallback;
+  try{
+    const comparisons=await fetchFormatComparisons(g,sizes);
     window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[productKeyAtRequest]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
-  }).catch(error=>{
+    window._formatComparisonsByProduct[currentOpenProductKey]=comparisons;
+    renderFormatChoiceCard(i,g,comparisons,sizes);
+  }catch(error){
     console.warn("Confronto formati",error);
-  });
+    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
+    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
+    renderFormatChoiceCard(i,g,fallback,sizes);
+  }
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
@@ -1941,7 +1886,6 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
-  // ATOMIC-SEARCH-FIX: never render the initial empty /search-start snapshot.
   // Ricerca asincrona reale: /search-start avvia il job e /search-status
   // restituisce i risultati progressivi mentre le coppie di negozi terminano.
   const query=String(term||"").trim();
@@ -2002,116 +1946,295 @@ async function searchStoresProgressive(term,onPartial){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();
- if(!q){
-  statusBox.textContent="Cerca un profumo per confrontare i prezzi.";
-  resultsBox.innerHTML="";
-  errorsBox.innerHTML="";
-  return;
- }
- searchButton.disabled=true;searchButton.classList.add("searching");
- let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
- updateSearchButton();
- const dotsTimer=setInterval(updateSearchButton,500);
- // ATOMIC-SEARCH-FIX: explicit searching state; empty results are not final.
- statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";
- clearOpenProduct();
- try{
-  let data;
-  const renderData=(partialData,final=false)=>{
-   let groups=shGroupData(partialData||{});
-
-   
-
-   currentProductGroups=groups;
-
-   if(currentOpenProductKey){
-
-    const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
-
-    if(gi>=0){
-
-     if(currentOpenSizeKey!==null){
-
-      const sg=getSizeGroups(groups[gi]).find(x=>x.size===currentOpenSizeKey);
-
-      if(sg) openSize(gi,currentOpenSizeKey,false);
-
-      else openProduct(gi);
-
-     }else{
-
-      openProduct(gi);
-
-     }
-
-    }
-
-   }else{
-
-    // Durante la ricerca progressiva non mostrare un falso "Nessun profumo trovato".
-    // Quel messaggio è valido solo quando il job è realmente terminato.
-    if(groups.length || final){
-
-     showProducts(groups);
-
-    }
-
-   }
-
-   updateBestPricesFromGroups(groups);
-   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-
-   // I timeout delle singole fonti non devono comparire nella pagina e non devono
-   // trasformare una ricerca con risultati validi in una ricerca "fallita".
-   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-   errorsBox.innerHTML="";
-   if(final){
-    const hasGroups=Array.isArray(groups)&&groups.length>0;
-    statusBox.textContent=hasGroups?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
-   }
-  };
-
-  // Tutte le ricerche passano dalla stessa pipeline progressiva.
-  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
-  data=await searchStoresProgressive(q,renderData);
-
-  // Regola generale di recupero: se la query esatta non produce nulla,
-  // usa automaticamente le referenze del catalogo master per provare il
-  // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
-  // evitare una seconda raffica simultanea di richieste.
-  let groups=shGroupData(data||{});
-  if(!groups.length){
-   const fallbackQueries=buildCatalogFallbackQueries(q);
-   for(let i=0;i<fallbackQueries.length;i++){
-    const term=fallbackQueries[i];
+  const q=queryInput.value.trim();
+  if(!q){
     statusBox.textContent="";
-    try{
-     const fallbackData=await searchStoresProgressive(term,null);
-     if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
-     if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
-     if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
-      if(!data.errors[store])data.errors[store]=error;
-     });
-     groups=shGroupData(data||{});
-     renderData(data,i===fallbackQueries.length-1||groups.length>0);
-     if(groups.length)break;
-    }catch(e){
-     console.warn("Fallback ricerca",term,e);
-    }
-   }
+    resultsBox.innerHTML="";
+    errorsBox.innerHTML="";
+    return;
   }
 
-  renderData(data,true);
- }catch(e){
-  console.error(e);
-  statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
- }
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+  searchButton.disabled=true;
+  searchButton.classList.add("searching");
+
+  let dots=0;
+  const updateSearchButton=()=>{
+    dots=(dots+1)%4;
+    searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>';
+  };
+  updateSearchButton();
+
+  const dotsTimer=setInterval(updateSearchButton,500);
+  statusBox.textContent="";
+  resultsBox.innerHTML="";
+  errorsBox.innerHTML="";
+  clearOpenProduct();
+
+  try{
+    let data;
+
+    // Il backend restituisce snapshot cumulativi. Manteniamo quindi
+    // un accumulatore locale per non perdere nessun aggiornamento.
+    let progressiveData={
+      query:q,
+      results:[],
+      comparisons:[],
+      errors:{},
+      completed:false
+    };
+
+    const offerIdentity=(o)=>[
+      String(o?.store||"").trim().toLowerCase(),
+      String(o?.url||"").split("?")[0].trim().toLowerCase(),
+      String(o?.name||"").trim().toLowerCase(),
+      String(o?.size_ml||o?.size||"").trim().toLowerCase()
+    ].join("|");
+
+    const mergeProgressiveArray=(target,incoming)=>{
+      if(!Array.isArray(incoming))return;
+      const seen=new Set(target.map(offerIdentity));
+      incoming.forEach(o=>{
+        const id=offerIdentity(o);
+        if(!id||id==="|||"){
+          target.push(o);
+        }else if(!seen.has(id)){
+          seen.add(id);
+          target.push(o);
+        }
+      });
+    };
+
+    const groupIdentity=(g)=>[
+      String(g?.brand||"").trim().toLowerCase(),
+      normalizePerfumeName(g?.name||"").trim().toLowerCase(),
+      String(g?.concentration||"").trim().toLowerCase()
+    ].join("|");
+
+    const mergeProgressiveComparisons=(target,incoming)=>{
+      if(!Array.isArray(incoming))return;
+
+      incoming.forEach(g=>{
+        if(!g)return;
+
+        const key=groupIdentity(g);
+        let dest=target.find(x=>groupIdentity(x)===key);
+
+        if(!dest){
+          dest={...g,offers:[]};
+          target.push(dest);
+        }
+
+        if(!dest.image){
+          dest.image=
+            g.image||
+            g.image_url||
+            g.thumbnail||
+            g.source?.image||
+            "";
+        }
+
+        const existing=new Set(
+          (Array.isArray(dest.offers)?dest.offers:[]).map(offerIdentity)
+        );
+
+        (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
+          const id=offerIdentity(o);
+          if(!id||id==="|||"){
+            dest.offers.push({...o});
+          }else if(!existing.has(id)){
+            existing.add(id);
+            dest.offers.push({...o});
+          }
+
+          if(!dest.image){
+            dest.image=
+              o.image||
+              o.image_url||
+              o.thumbnail||
+              o.source?.image||
+              "";
+          }
+        });
+      });
+    };
+
+    const mergeProgressiveData=(partialData)=>{
+      const d=partialData||{};
+
+      if(d.query)progressiveData.query=d.query;
+
+      mergeProgressiveArray(progressiveData.results,d.results);
+      mergeProgressiveComparisons(progressiveData.comparisons,d.comparisons);
+
+      if(d.errors&&typeof d.errors==="object"){
+        progressiveData.errors={
+          ...progressiveData.errors,
+          ...d.errors
+        };
+      }
+
+      progressiveData.completed=Boolean(d.completed);
+    };
+
+    const mergeGroups=(base,incoming)=>{
+      const merged=base.map(g=>({
+        ...g,
+        offers:Array.isArray(g.offers)
+          ?g.offers.map(o=>({...o}))
+          :[]
+      }));
+
+      incoming.forEach(g=>{
+        if(!g)return;
+
+        const key=groupIdentity(g);
+        let dest=merged.find(x=>groupIdentity(x)===key);
+
+        if(!dest){
+          dest={...g,offers:[]};
+          merged.push(dest);
+        }
+
+        if(!dest.image){
+          dest.image=
+            g.image||
+            g.image_url||
+            g.thumbnail||
+            g.source?.image||
+            "";
+        }
+
+        const existing=new Set(dest.offers.map(offerIdentity));
+
+        (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
+          const id=offerIdentity(o);
+
+          if(!id||id==="|||"){
+            dest.offers.push({...o});
+          }else if(!existing.has(id)){
+            existing.add(id);
+            dest.offers.push({...o});
+          }
+
+          if(!dest.image){
+            dest.image=
+              o.image||
+              o.image_url||
+              o.thumbnail||
+              o.source?.image||
+              "";
+          }
+        });
+      });
+
+      merged.forEach(g=>{
+        if(g.image)return;
+
+        const withImage=(Array.isArray(g.offers)?g.offers:[]).find(o=>
+          o.image||
+          o.image_url||
+          o.thumbnail||
+          o.source?.image||
+          o.source?.featured_image
+        );
+
+        if(withImage){
+          g.image=
+            withImage.image||
+            withImage.image_url||
+            withImage.thumbnail||
+            withImage.source?.image||
+            withImage.source?.featured_image||
+            "";
+        }
+      });
+
+      return merged;
+    };
+
+    const renderData=(partialData,final=false)=>{
+      mergeProgressiveData(partialData);
+
+      let groups=shGroupData(progressiveData);
+
+      // Protezione contro eventuali variazioni di nome tra snapshot.
+      if(Array.isArray(currentProductGroups)&&currentProductGroups.length){
+        groups=mergeGroups(currentProductGroups,groups);
+      }
+
+      const productDetailOpen=resultsBox.querySelector(".comparison")!==null;
+
+      currentProductGroups=groups;
+      updateBestPricesFromGroups(groups);
+
+      if(!productDetailOpen){
+        // Durante la ricerca uno snapshot iniziale può avere zero risultati.
+        // NON mostrare "nessun profumo trovato" finché il job non è concluso.
+        if(groups.length){
+          showProducts(groups);
+        }else if(final || progressiveData.completed){
+          showProducts(groups);
+        }else{
+          resultsBox.innerHTML="";
+          statusBox.textContent="Ricerca in corso...";
+        }
+      }
+
+      refreshWishlistFromResults(
+        groups.flatMap(g=>g.offers.map(o=>({
+          name:g.name||"",
+          brand:g.brand||"",
+          price:shPrice(o),
+          price_value:o.price_value,
+          store:o.store||"",
+          url:o.url||"",
+          pic:g.image||
+              o.image||
+              o.image_url||
+              o.thumbnail||
+              o.source?.image||
+              "🧴"
+        })))
+      );
+
+      // I timeout dei singoli negozi non cancellano risultati validi.
+      errorsBox.innerHTML="";
+
+      if(final){
+        statusBox.textContent=groups.length
+          ?`Ricerca completata: ${groups.length} prodotti trovati.`
+          :"Nessun risultato trovato.";
+      }
+    };
+
+    // Ricerca atomica: il backend /search restituisce SOLO il risultato finale.
+    // Non usiamo /search-start + polling nel frontend: lo snapshot iniziale
+    // contiene volutamente 0 risultati e può produrre falsi "Nessun risultato".
+    // Il backend atomic mantiene comunque stabile il risultato finale e impedisce
+    // il cambio della migliore offerta mentre gli store stanno terminando.
+    statusBox.textContent="Ricerca in corso...";
+    data=await fetchJSONWithTimeout(
+      backend()+"/search?q="+encodeURIComponent(q),
+      180000
+    );
+    renderData(data,true);
+
+  }catch(e){
+    console.error(e);
+    statusBox.textContent=String(
+      e?.message||"Impossibile completare la ricerca."
+    );
+  }finally{
+    clearInterval(dotsTimer);
+    searchButton.disabled=false;
+    searchButton.classList.remove("searching");
+    searchButton.textContent="INIZIA LA RICERCA";
+  }
 }
 
-searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
+searchButton.addEventListener("click",searchPerfume);
+
+queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
 renderWishlist();syncHearts();
 </script>
 </body></html>
