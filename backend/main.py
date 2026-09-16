@@ -48,22 +48,12 @@ try:
         router as deloox_runtime_debug_router,
     )
     app.include_router(deloox_runtime_debug_router)
+from debug_deloox_ivory_debug import router as deloox_ivory_debug_router
+app.include_router(deloox_ivory_debug_router)
     print('DELOOX RUNTIME DEBUG ROUTER: LOADED', flush=True)
 except Exception as exc:
     print(
         'DELOOX RUNTIME DEBUG ROUTER: UNAVAILABLE '
-        f'{type(exc).__name__}: {exc}',
-        flush=True,
-    )
-
-# Deloox V7 full diagnostic router. Read-only: does not modify scraper/runtime state.
-try:
-    from debug_deloox_runtime_full_v7 import router as deloox_runtime_full_v7_router
-    app.include_router(deloox_runtime_full_v7_router)
-    print('DELOOX RUNTIME FULL DEBUG V7: LOADED', flush=True)
-except Exception as exc:
-    print(
-        'DELOOX RUNTIME FULL DEBUG V7: UNAVAILABLE '
         f'{type(exc).__name__}: {exc}',
         flush=True,
     )
