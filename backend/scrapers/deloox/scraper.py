@@ -525,15 +525,13 @@ def _row_from_card(
         ).strip()
 
         if (
-            relevant(
-                candidate,
-                query,
-            )
-            and not re.search(
-                r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-                norm(candidate),
-            )
-            and 3 <= len(candidate) <= 220
+           relevant(candidate, query)
+           and not non_fragrance(candidate)
+           and not re.search(
+               r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
+               norm(candidate),
+           )
+           and 3 <= len(candidate) <= 220
         ):
             name = candidate
             break
