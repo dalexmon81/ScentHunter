@@ -1337,3 +1337,262 @@ def deloox_born_audit(q: str = 'Born in Roma'):
         out['error_type'] = type(exc).__name__
         out['error'] = str(exc)
         return out
+
+
+# TEST 15: definitive single-run trace of the REAL /test-store Deloox pipeline.
+# Diagnostic only. It monkeypatches functions in-memory for this request and
+# performs exactly ONE run_store('deloox', q). No production file is changed.
+@app.get('/api/debug/deloox-final-trace')
+def deloox_final_trace(q: str = 'Born in Roma'):
+    TARGET_ID = '1391716'
+    out = {
+        'ok': True,
+        'test': 'TEST_15_DELOOX_DEFINITIVE_SINGLE_RUN_TRACE',
+        'query': q,
+        'target_id': TARGET_ID,
+        'note': (
+            'One real run_store(deloox) only. In-memory wrappers record '
+            'discover, card, parse_product, scraper.search and final clean_result. '
+            'No bulk diagnostic product-page loop.'
+        ),
+    }
+
+    import threading
+    import traceback
+
+    try:
+        module = load_scraper('deloox')
+        original_search = getattr(module, 'search', None)
+        original_discover = getattr(module, 'discover', None)
+        original_row = getattr(module, '_row_from_card', None)
+        original_parse = getattr(module, 'parse_product', None)
+
+        if not callable(original_search):
+            raise RuntimeError('Deloox search() unavailable')
+        if not callable(original_discover):
+            raise RuntimeError('Deloox discover() unavailable')
+
+        lock = threading.Lock()
+        trace = {
+            'discover_calls': 0,
+            'discover_candidates': [],
+            'card_calls': [],
+            'parse_calls': [],
+            'search_calls': 0,
+            'search_raw_rows': [],
+        }
+
+        def _id_from_url(value):
+            text = str(value or '')
+            if '/produit/' in text:
+                return text.split('/produit/', 1)[1].split('/', 1)[0]
+            return ''
+
+        def wrapped_discover(session, query):
+            try:
+                result = original_discover(session, query) or []
+                ids = []
+                for item in result:
+                    if isinstance(item, (tuple, list)) and item:
+                        ids.append(_id_from_url(item[0]))
+                with lock:
+                    trace['discover_calls'] += 1
+                    trace['discover_candidates'] = ids
+                return result
+            except Exception as exc:
+                with lock:
+                    trace['discover_calls'] += 1
+                    trace['discover_candidates_error'] = (
+                        f'{type(exc).__name__}: {exc}'
+                    )
+                raise
+
+        def wrapped_row(*args, **kwargs):
+            url = args[0] if args else kwargs.get('url', '')
+            uid = _id_from_url(url)
+            try:
+                if callable(original_row):
+                    result = original_row(*args, **kwargs)
+                else:
+                    result = None
+                if uid == TARGET_ID:
+                    with lock:
+                        trace['card_calls'].append({
+                            'id': uid,
+                            'accepted': isinstance(result, dict),
+                            'row': result,
+                        })
+                return result
+            except Exception as exc:
+                if uid == TARGET_ID:
+                    with lock:
+                        trace['card_calls'].append({
+                            'id': uid,
+                            'accepted': False,
+                            'exception': f'{type(exc).__name__}: {exc}',
+                        })
+                raise
+
+        def wrapped_parse(*args, **kwargs):
+            url = args[0] if args else kwargs.get('url', '')
+            uid = _id_from_url(url)
+            # Record only the target to keep the diagnostic response small.
+            if uid != TARGET_ID:
+                return original_parse(*args, **kwargs)
+            started = time.monotonic()
+            try:
+                result = original_parse(*args, **kwargs)
+                with lock:
+                    trace['parse_calls'].append({
+                        'id': uid,
+                        'elapsed': round(time.monotonic() - started, 3),
+                        'count': len(result or []),
+                        'rows': result or [],
+                    })
+                return result
+            except Exception as exc:
+                with lock:
+                    trace['parse_calls'].append({
+                        'id': uid,
+                        'elapsed': round(time.monotonic() - started, 3),
+                        'count': 0,
+                        'exception': f'{type(exc).__name__}: {exc}',
+                    })
+                raise
+
+        def wrapped_search(query, *args, **kwargs):
+            started = time.monotonic()
+            with lock:
+                trace['search_calls'] += 1
+            result = original_search(query, *args, **kwargs) or []
+            result = list(result)
+            with lock:
+                trace['search_raw_rows'] = result
+                trace['search_elapsed'] = round(time.monotonic() - started, 3)
+            return result
+
+        # Patch only the in-memory module object for this one request.
+        module.discover = wrapped_discover
+        if callable(original_row):
+            module._row_from_card = wrapped_row
+        if callable(original_parse):
+            module.parse_product = wrapped_parse
+        module.search = wrapped_search
+
+        started_total = time.monotonic()
+        try:
+            final_rows = run_store('deloox', q)
+            final_rows = list(final_rows or [])
+        finally:
+            # Always restore the real functions, even if run_store raises.
+            module.search = original_search
+            module.discover = original_discover
+            if callable(original_row):
+                module._row_from_card = original_row
+            if callable(original_parse):
+                module.parse_product = original_parse
+
+        total_elapsed = round(time.monotonic() - started_total, 3)
+
+        raw_rows = trace.get('search_raw_rows', [])
+        raw_target_rows = [
+            r for r in raw_rows
+            if isinstance(r, dict) and TARGET_ID in str(r.get('url') or '')
+        ]
+        final_target_rows = [
+            r for r in final_rows
+            if isinstance(r, dict) and TARGET_ID in str(r.get('url') or '')
+        ]
+
+        candidate_ids = trace.get('discover_candidates', [])
+        target_discovered = TARGET_ID in candidate_ids
+        target_card_calls = trace.get('card_calls', [])
+        target_parse_calls = trace.get('parse_calls', [])
+
+        # Explain exactly where the target disappeared, if it disappeared.
+        if not target_discovered:
+            diagnosis = 'LOST_IN_DISCOVER'
+        elif not target_card_calls:
+            diagnosis = 'DISCOVERED_BUT_CARD_NOT_EVALUATED'
+        elif all(not c.get('accepted') for c in target_card_calls):
+            if not target_parse_calls:
+                diagnosis = 'CARD_REJECTED_BUT_PARSE_PRODUCT_NOT_CALLED'
+            elif all(c.get('count', 0) == 0 for c in target_parse_calls):
+                diagnosis = 'PARSE_PRODUCT_CALLED_BUT_RETURNED_NO_ROW'
+            elif not raw_target_rows:
+                diagnosis = 'PARSE_PRODUCT_RETURNED_ROW_BUT_SEARCH_DROPPED_TARGET'
+            elif not final_target_rows:
+                diagnosis = 'SEARCH_RETURNED_TARGET_BUT_CLEAN_RESULT_DROPPED_TARGET'
+            else:
+                diagnosis = 'TARGET_REACHES_FINAL_TEST_STORE'
+        elif not raw_target_rows:
+            diagnosis = 'CARD_ACCEPTED_BUT_SEARCH_DROPPED_TARGET'
+        elif not final_target_rows:
+            diagnosis = 'SEARCH_RETURNED_TARGET_BUT_CLEAN_RESULT_DROPPED_TARGET'
+        else:
+            diagnosis = 'TARGET_REACHES_FINAL_TEST_STORE'
+
+        out['runtime'] = {
+            'scraper_file': getattr(module, '__file__', ''),
+            'BORN_IN_ROMA_MAX_CANDIDATES': getattr(
+                module, 'BORN_IN_ROMA_MAX_CANDIDATES', None
+            ),
+            'MAX_CANDIDATES': getattr(module, 'MAX_CANDIDATES', None),
+            'MAX_RESULTS': getattr(module, 'MAX_RESULTS', None),
+        }
+        out['trace'] = {
+            'total_elapsed': total_elapsed,
+            'discover_calls': trace.get('discover_calls', 0),
+            'candidate_count': len(candidate_ids),
+            'candidate_ids': candidate_ids,
+            'target_discovered': target_discovered,
+            'target_card_calls': target_card_calls,
+            'target_parse_calls': target_parse_calls,
+            'search_calls': trace.get('search_calls', 0),
+            'search_elapsed': trace.get('search_elapsed'),
+            'search_raw_count': len(raw_rows),
+            'search_raw_target_rows': raw_target_rows,
+            'search_raw_ids': [
+                _id_from_url(r.get('url'))
+                for r in raw_rows
+                if isinstance(r, dict)
+            ],
+            'final_test_store_count': len(final_rows),
+            'final_target_rows': final_target_rows,
+            'final_ids': [
+                _id_from_url(r.get('url'))
+                for r in final_rows
+                if isinstance(r, dict)
+            ],
+        }
+        out['diagnosis'] = {
+            'result': diagnosis,
+            'target_in_discover': target_discovered,
+            'target_card_evaluated': bool(target_card_calls),
+            'target_parse_called': bool(target_parse_calls),
+            'target_parse_returned_row': any(
+                c.get('count', 0) > 0 for c in target_parse_calls
+            ),
+            'target_in_raw_search': bool(raw_target_rows),
+            'target_in_final_test_store': bool(final_target_rows),
+        }
+        return out
+
+    except Exception as exc:
+        # Best-effort restoration if an exception occurred before the normal
+        # finally block. The normal path already restores everything.
+        try:
+            if 'module' in locals():
+                module.search = original_search
+                module.discover = original_discover
+                if callable(original_row):
+                    module._row_from_card = original_row
+                if callable(original_parse):
+                    module.parse_product = original_parse
+        except Exception:
+            pass
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        out['traceback_tail'] = traceback.format_exc().splitlines()[-8:]
+        return out
