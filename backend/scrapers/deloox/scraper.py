@@ -525,13 +525,15 @@ def _row_from_card(
         ).strip()
 
         if (
-           relevant(candidate, query)
-           and not non_fragrance(candidate)
-           and not re.search(
-               r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
-               norm(candidate),
-           )
-           and 3 <= len(candidate) <= 220
+            relevant(
+                candidate,
+                query,
+            )
+            and not re.search(
+                r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
+                norm(candidate),
+            )
+            and 3 <= len(candidate) <= 220
         ):
             name = candidate
             break
@@ -864,13 +866,15 @@ def search(query):
             _,
             context,
         ) in candidates:
-            row = _row_from_card(
+            # Deloox search contexts can contain several neighboring
+            # products. Prefer the product page JSON-LD for identity
+            # and price instead of deriving a row from that mixed card.
+            rows = parse_product(
                 url,
-                context,
                 query,
             )
 
-            if row:
+            for row in rows:
                 key = (
                     row["url"],
                     row.get("size_ml"),
