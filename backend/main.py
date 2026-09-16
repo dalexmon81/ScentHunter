@@ -2572,6 +2572,23 @@ def _run_search_job(
         # volta che termina uno store. I candidati già validati non cambiano
         # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
         # e poi lo fondiamo con i risultati già ottenuti.
+        #
+        # CRITICAL RACE FIX:
+        # NON leggere job["results"] prima della validazione.
+        #
+        # Due store possono terminare quasi contemporaneamente:
+        #
+        #   A legge risultati=[Bplatz]
+        #   B legge risultati=[Bplatz]
+        #   A scrive [Bplatz,A]
+        #   B scrive [Bplatz,B]
+        #
+        # In questo caso A "sparisce". È esattamente il comportamento
+        # osservato dall'utente: 2 negozi -> 1 -> 2 durante la ricerca.
+        #
+        # La soluzione è leggere il pool corrente SOLO DOPO la validazione,
+        # dentro il lock, e fare il merge con lo stato più recente.
+
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
@@ -2580,9 +2597,6 @@ def _run_search_job(
 
             job["candidates"].extend(
                 store_candidates
-            )
-            existing_results = list(
-                job["results"]
             )
 
         new_candidates = unique_results(
@@ -2599,19 +2613,28 @@ def _run_search_job(
             query,
         )
 
-        combined_results = _propagate_catalog_identity(
-            existing_results + new_results,
-        )
-
-        results = _group_catalog_results(
-            combined_results
-        )
-
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
-            if job is not None:
-                job["results"] = results
+            if job is None:
+                return
+
+            # Read the CURRENT result set here, not before validation.
+            # This prevents one concurrently finishing store from
+            # overwriting another store's freshly published results.
+            existing_results = list(
+                job["results"]
+            )
+
+            combined_results = _propagate_catalog_identity(
+                existing_results + new_results,
+            )
+
+            results = _group_catalog_results(
+                combined_results
+            )
+
+            job["results"] = results
 
     try:
         try:
