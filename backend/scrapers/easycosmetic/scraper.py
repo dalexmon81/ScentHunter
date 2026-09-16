@@ -74,7 +74,6 @@ def _normalise_url(url: str) -> str:
     if not path.startswith("/"):
         path = "/" + path
 
-    # Product URLs on Easycosmetic are stable without query/fragment.
     return f"{BASE_URL}{path}".rstrip("/")
 
 
@@ -124,14 +123,6 @@ def _candidate_score(query: str, text: str, url: str) -> int:
 
 
 def _request_html(url: str) -> str:
-    """
-    Primary HTTP path.
-
-    If Easycosmetic rejects the requests client (403/429/5xx) or the
-    connection fails, fall back to a real Chromium page. This keeps the
-    scraper generic and avoids making the whole store fail just because
-    the retailer treats Render's HTTP client differently from a browser.
-    """
     request_error: Optional[Exception] = None
 
     try:
@@ -149,8 +140,6 @@ def _request_html(url: str) -> str:
             f"HTTP {response.status_code} for {url}"
         )
 
-        # A browser fallback is particularly useful for bot/rate-limit
-        # responses. Do not silently accept an error page as HTML.
         if response.status_code not in {403, 429, 500, 502, 503, 504}:
             response.raise_for_status()
 
@@ -240,10 +229,6 @@ def _find_product_json(soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
 
 
 def _extract_image_url(value: Any) -> str:
-    """
-    Normalize Schema.org/HTML image values without ever converting an
-    ImageObject dict into a URL string representation.
-    """
     if isinstance(value, str):
         value = value.strip()
         if value:
@@ -270,11 +255,6 @@ def _extract_page_image(
     soup: BeautifulSoup,
     product_name: str = "",
 ) -> str:
-    """
-    Fallback image extraction from the product page.
-
-    Prefer the actual product image over brand/logo images.
-    """
     selectors = (
         'meta[property="og:image"]',
         'meta[property="og:image:url"]',
@@ -491,11 +471,9 @@ def _extract_candidate_links(
         if current is None or score > current["_score"]:
             candidates[url] = row
 
-    # Normal search-result anchors.
     for link in soup.find_all("a", href=True):
         add(link.get("href", ""), link.get_text(" ", strip=True))
 
-    # Some Easycosmetic pages expose product URLs in structured data.
     for item in _extract_json_ld(soup):
         for node in _walk_json_ld(item):
             if _clean(node.get("@type")) != "Product":
@@ -560,20 +538,26 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     availability = ""
     image = ""
 
+    # Proven fix:
+    # Easycosmetic's visible H1 is the authoritative product identity.
+    # JSON-LD is still used for brand/offer/image data and is used as
+    # a fallback name only when no H1 is available.
+    h1 = soup.find("h1")
+    if h1:
+        name = _clean(h1.get_text(" ", strip=True))
+
     if product_json:
-        name = _clean(product_json.get("name"))
+        jsonld_name = _clean(product_json.get("name"))
+
+        if not name:
+            name = jsonld_name
+
         brand = _extract_brand(product_json)
         price, currency, availability = _extract_offer_data(product_json)
-
         image = _extract_image_url(product_json.get("image"))
 
     if not image:
         image = _extract_page_image(soup, name)
-
-    if not name:
-        h1 = soup.find("h1")
-        if h1:
-            name = _clean(h1.get_text(" ", strip=True))
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
