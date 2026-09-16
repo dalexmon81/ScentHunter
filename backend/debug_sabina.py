@@ -1,37 +1,33 @@
 from __future__ import annotations
 
 """
-ScentHunter — Sabina / Born in Roma FORENSIC DIAGNOSTIC v2
+ScentHunter — Sabina Born in Roma forensic diagnostic v3.
 
-IMPORTANT:
-- Diagnostic only. Does NOT modify scraper.py, ProductMatcher or family_registry.
-- Designed to NEVER leave the HTTP request hanging indefinitely.
-- Every potentially blocking operation runs in a child process and is
-  hard-killed when its timeout expires.
-- The endpoint returns a finite JSON report even when a stage times out.
+This diagnostic deliberately runs INSIDE the same Python process as the
+FastAPI application. It does not create a second scraper implementation and
+does not use multiprocessing.
 
-REGISTER ONLY THIS FILE IF YOU WANT THE ENDPOINT:
-    from debug_sabina_born_in_roma_v2 import router
-    app.include_router(router)
+It observes the REAL Sabina search_stream path by temporarily wrapping:
+  - _discover_from_first_party
+  - _extract_product_page
 
-TEST:
-    /diagnose-sabina-born-in-roma-v2?q=Born%20in%20Roma
+The wrappers only record inputs/outputs/errors and immediately delegate to the
+real functions. ProductMatcher, family_registry and the production scraper
+are never modified on disk.
 
-The report traces:
-    DISCOVERY -> EXTRACTION -> VALIDATION -> MATCHING -> DEDUP
-and separately compares DIRECT SEARCH with SEARCH_STREAM.
+Endpoint:
+  GET /diagnose-sabina-born-in-roma-v3?q=Born%20in%20Roma
 
-No production behavior is changed by this module.
+This module must be included by the existing debug router or imported by
+main.py before the endpoint can be reached.
 """
 
 import importlib
 import json
-import multiprocessing as mp
 import re
 import time
-import traceback
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Query
 
@@ -58,493 +54,433 @@ EXPECTED = [
     "Born in Roma Donna Ivory",
 ]
 
-# Hard limits. The endpoint itself also has a global safety deadline.
-DISCOVERY_TIMEOUT = 20
-EXTRACTION_TIMEOUT = 12
-SEARCH_TIMEOUT = 35
-STREAM_TIMEOUT = 35
-GLOBAL_TIMEOUT = 75
+GLOBAL_DEADLINE_SECONDS = 65
 
 
 def _norm(v: Any) -> str:
     s = str(v or "").casefold().strip()
-    s = re.sub(r"[^a-z0-9à-ÿ]+", " ", s)
+    s = re.sub(r"[^a-z0-9à-ÿäöüß]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _jsonable(v: Any) -> Any:
+def _safe(v: Any) -> Any:
     try:
         return json.loads(json.dumps(v, ensure_ascii=False, default=str))
     except Exception:
         return str(v)
 
 
-def _row_name(row: Dict[str, Any]) -> str:
-    for key in ("canonical_name", "name", "title", "catalog_variant"):
-        if row.get(key):
-            return str(row[key])
+def _evidence(row: Any) -> dict:
+    if not isinstance(row, dict):
+        return {"value": _safe(row)}
+
     source = row.get("source")
-    if isinstance(source, dict) and source.get("source_name"):
-        return str(source["source_name"])
-    return ""
+    if not isinstance(source, dict):
+        source = {}
 
-
-def _row_evidence(row: Dict[str, Any]) -> Dict[str, Any]:
-    source = row.get("source") if isinstance(row.get("source"), dict) else {}
     return {
         "name": row.get("name"),
         "canonical_name": row.get("canonical_name"),
         "catalog_variant": row.get("catalog_variant"),
         "source_name": source.get("source_name"),
-        "brand": row.get("brand"),
+        "brand": row.get("brand") or source.get("source_brand"),
         "url": row.get("url") or source.get("url"),
         "size_ml": row.get("size_ml"),
         "price_num": row.get("price_num"),
         "availability": row.get("availability"),
         "store_product_id": row.get("store_product_id"),
         "sku": row.get("sku"),
+        "match_method": row.get("match_method"),
+        "match_score": row.get("match_score"),
     }
 
 
-def _match_variant(row: Dict[str, Any], expected: str) -> bool:
-    target = _norm(expected)
-    names = [
-        row.get("name"),
-        row.get("canonical_name"),
-        row.get("title"),
-        row.get("catalog_variant"),
-    ]
+def _names(row: Any) -> list[str]:
+    if not isinstance(row, dict):
+        return []
+
+    out = []
+    for key in ("name", "title", "canonical_name", "catalog_variant"):
+        if row.get(key):
+            out.append(str(row[key]))
+
     source = row.get("source")
-    if isinstance(source, dict):
-        names.append(source.get("source_name"))
+    if isinstance(source, dict) and source.get("source_name"):
+        out.append(str(source["source_name"]))
 
-    normalized = [_norm(x) for x in names if x]
-    if target in normalized:
-        return True
-
-    # Diagnostic-only alias/order tolerance, not ProductMatcher logic.
-    target_tokens = set(target.split())
-    for name in normalized:
-        tokens = set(name.split())
-        if target_tokens and len(tokens & target_tokens) / len(target_tokens) >= 0.80:
-            return True
-    return False
-
-
-def _variant_presence(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    out = {}
-    for expected in EXPECTED:
-        out[expected] = [
-            _row_evidence(r) for r in rows
-            if isinstance(r, dict) and _match_variant(r, expected)
-        ]
     return out
 
 
-def _child_worker(kind: str, query: str, url: str | None, conn) -> None:
-    """Run one risky operation in a killable child process."""
-    try:
-        sabina = importlib.import_module("scrapers.sabina.scraper")
+def _matches(row: Any, expected: str) -> bool:
+    target = _norm(expected)
+    vals = [_norm(x) for x in _names(row) if x]
 
-        if kind == "discovery":
-            requests = getattr(sabina, "requests", None)
-            fn = getattr(sabina, "_discover_from_first_party", None)
-            if requests is None or not callable(fn):
-                raise RuntimeError("Sabina discovery dependencies unavailable")
-            session = requests.Session()
-            try:
-                headers = getattr(sabina, "HEADERS", None)
-                if isinstance(headers, dict):
-                    session.headers.update(headers)
-                result = fn(session, query)
-            finally:
-                session.close()
-            conn.send({"ok": True, "value": list(result or [])})
+    if target in vals:
+        return True
 
-        elif kind == "extract":
-            fn = getattr(sabina, "_extract_product_page", None)
-            if not callable(fn):
-                raise RuntimeError("_extract_product_page unavailable")
-            result = fn(url, query)
-            conn.send({"ok": True, "value": _jsonable(list(result or []))})
+    target_tokens = set(target.split())
+    for val in vals:
+        tokens = set(val.split())
+        if target_tokens and len(tokens & target_tokens) / len(target_tokens) >= 0.80:
+            return True
 
-        elif kind == "search":
-            fn = getattr(sabina, "search", None)
-            if not callable(fn):
-                raise RuntimeError("search unavailable")
-            result = fn(query)
-            conn.send({"ok": True, "value": _jsonable(list(result or []))})
-
-        elif kind == "stream":
-            fn = getattr(sabina, "search_stream", None)
-            if not callable(fn):
-                conn.send({"ok": True, "value": [], "note": "search_stream unavailable"})
-                return
-            emitted = []
-
-            def emit(row):
-                if isinstance(row, dict):
-                    emitted.append(_jsonable(row))
-
-            result = fn(query, emit)
-            if result is not None:
-                try:
-                    for row in result:
-                        if isinstance(row, dict):
-                            emitted.append(_jsonable(row))
-                except TypeError:
-                    pass
-            conn.send({"ok": True, "value": emitted})
-
-        else:
-            raise RuntimeError(f"unknown diagnostic operation: {kind}")
-
-    except BaseException as exc:
-        conn.send({
-            "ok": False,
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-        })
-    finally:
-        conn.close()
+    return False
 
 
-def _run_hard(kind: str, query: str, timeout: float, url: str | None = None) -> Dict[str, Any]:
-    ctx = mp.get_context("fork") if "fork" in mp.get_all_start_methods() else mp.get_context()
-    parent, child = ctx.Pipe(False)
-    proc = ctx.Process(target=_child_worker, args=(kind, query, url, child), daemon=True)
-    started = time.monotonic()
-    proc.start()
-    child.close()
-
-    payload = None
-    try:
-        if parent.poll(timeout):
-            try:
-                payload = parent.recv()
-            except EOFError:
-                payload = {"ok": False, "error": "child exited without a result"}
-        else:
-            payload = {
-                "ok": False,
-                "timeout": True,
-                "error": f"{kind} exceeded hard timeout of {timeout}s",
-            }
-    finally:
-        if proc.is_alive():
-            proc.terminate()
-            proc.join(timeout=2)
-            if proc.is_alive():
-                proc.kill()
-                proc.join(timeout=1)
-        else:
-            proc.join(timeout=0.2)
-        parent.close()
-
-    elapsed = round(time.monotonic() - started, 3)
-    payload = payload or {"ok": False, "error": "no diagnostic result"}
-    payload["elapsed"] = elapsed
-    payload["operation"] = kind
-    return payload
-
-
-def _load_main():
-    try:
-        return importlib.import_module("main")
-    except Exception:
-        return None
-
-
-def _main_clean(rows: List[Dict[str, Any]], query: str) -> Dict[str, Any]:
-    main = _load_main()
-    fn = getattr(main, "clean_result", None) if main else None
-    if not callable(fn):
-        return {"available": False, "passed": [], "rejected": []}
-
-    passed, rejected = [], []
-    for row in rows:
-        try:
-            clean = fn(deepcopy(row), "sabina", query)
-            if clean is None:
-                rejected.append(_row_evidence(row))
-            else:
-                passed.append(_jsonable(clean))
-        except Exception as exc:
-            rejected.append({
-                **_row_evidence(row),
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-    return {"available": True, "passed": passed, "rejected": rejected}
-
-
-def _main_match(rows: List[Dict[str, Any]], query: str) -> Dict[str, Any]:
-    main = _load_main()
-    matcher = getattr(main, "PRODUCT_MATCHER", None) if main else None
-    fn = getattr(matcher, "match", None) if matcher else None
-    if not callable(fn):
-        return {"available": False, "passed": [], "rejected": []}
-
-    passed, rejected = [], []
-    for row in rows:
-        try:
-            result = fn(deepcopy(row), query)
-            if result is None:
-                rejected.append(_row_evidence(row))
-            else:
-                passed.append(_jsonable(result))
-        except Exception as exc:
-            rejected.append({
-                **_row_evidence(row),
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-    return {"available": True, "passed": passed, "rejected": rejected}
-
-
-def _main_dedupe(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
-    main = _load_main()
-    fn = getattr(main, "dedupe_results", None) if main else None
-    if not callable(fn):
-        return {"available": False, "kept": rows, "dropped": []}
-
-    try:
-        # Use deep copies so we can compare stable serialized representations.
-        source = deepcopy(rows)
-        kept = fn(source)
-        kept_json = {_stable(r) for r in kept}
-        dropped = [r for r in source if _stable(r) not in kept_json]
-        return {
-            "available": True,
-            "kept": _jsonable(kept),
-            "dropped": _jsonable(dropped),
-        }
-    except Exception as exc:
-        return {
-            "available": True,
-            "error": f"{type(exc).__name__}: {exc}",
-            "kept": rows,
-            "dropped": [],
-        }
-
-
-def _stable(v: Any) -> str:
-    return json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)
-
-
-def _matrix(
-    discovery_urls: List[str],
-    extraction_by_url: List[Dict[str, Any]],
-    direct_rows: List[Dict[str, Any]],
-    stream_rows: List[Dict[str, Any]],
-) -> Dict[str, Any]:
-    matrix = {}
-    extracted = []
-    for item in extraction_by_url:
-        extracted.extend(
-            r for r in item.get("rows", [])
-            if isinstance(r, dict)
-        )
-
-    for expected in EXPECTED:
-        def hits(rows):
-            return [_row_evidence(r) for r in rows if _match_variant(r, expected)]
-
-        discovery_hits = [
-            u for u in discovery_urls
-            if _match_variant({"url": u, "name": u}, expected)
+def _variant_rows(rows: list[dict]) -> dict[str, list[dict]]:
+    return {
+        expected: [
+            _evidence(row)
+            for row in rows
+            if _matches(row, expected)
         ]
-
-        # URL/name discovery often uses a slug not identical to canonical name.
-        # Also search extracted/direct/stream evidence against the URL itself.
-        all_url_evidence = []
-        for u in discovery_urls:
-            if expected.lower().replace(" ", "-") in u.lower():
-                all_url_evidence.append(u)
-
-        ext_hits = hits(extracted)
-        direct_hits = hits(direct_rows)
-        stream_hits = hits(stream_rows)
-
-        matrix[expected] = {
-            "discovery": {
-                "found": bool(discovery_hits or all_url_evidence or ext_hits or direct_hits),
-                "candidate_urls": discovery_hits or all_url_evidence,
-            },
-            "extraction": {
-                "success": bool(ext_hits),
-                "rows": ext_hits,
-            },
-            "direct_search": {
-                "found": bool(direct_hits),
-                "rows": direct_hits,
-            },
-            "stream_search": {
-                "found": bool(stream_hits),
-                "rows": stream_hits,
-            },
-        }
-    return matrix
+        for expected in EXPECTED
+    }
 
 
-@router.get("/diagnose-sabina-born-in-roma-v2")
-def diagnose_sabina_born_in_roma_v2(
+def _url_hint(url: str, expected: str) -> bool:
+    """
+    Diagnostic-only URL heuristic. It catches common Sabina slug ordering
+    without pretending this is the scraper's matching algorithm.
+    """
+    u = _norm(url).replace(" ", "-")
+    t = _norm(expected).replace(" ", "-")
+    if t in u:
+        return True
+
+    # Uomo Ivory -> ivory-uomo and similar reordered slugs.
+    parts = [p for p in t.split("-") if p]
+    return len(parts) >= 3 and all(p in u for p in parts)
+
+
+def _downstream(main, rows: list[dict], query: str) -> dict:
+    result = {
+        "clean_result": {
+            "available": False,
+            "passed": [],
+            "rejected": [],
+        },
+        "product_matcher": {
+            "available": False,
+            "passed": [],
+            "rejected": [],
+        },
+        "dedupe": {
+            "available": False,
+            "kept": [],
+            "dropped": [],
+        },
+    }
+
+    clean = getattr(main, "clean_result", None)
+    if callable(clean):
+        result["clean_result"]["available"] = True
+        for row in rows:
+            try:
+                x = clean(deepcopy(row), "sabina", query)
+                if x is None:
+                    result["clean_result"]["rejected"].append(_evidence(row))
+                else:
+                    result["clean_result"]["passed"].append(_safe(x))
+            except Exception as exc:
+                result["clean_result"]["rejected"].append({
+                    **_evidence(row),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+    matcher = getattr(main, "PRODUCT_MATCHER", None)
+    match = getattr(matcher, "match", None) if matcher else None
+    if callable(match):
+        result["product_matcher"]["available"] = True
+        for row in rows:
+            try:
+                x = match(deepcopy(row), query)
+                if x is None:
+                    result["product_matcher"]["rejected"].append(_evidence(row))
+                else:
+                    result["product_matcher"]["passed"].append(_safe(x))
+            except Exception as exc:
+                result["product_matcher"]["rejected"].append({
+                    **_evidence(row),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+    dedupe = getattr(main, "dedupe_results", None)
+    if callable(dedupe):
+        result["dedupe"]["available"] = True
+        source = deepcopy(rows)
+        try:
+            kept = dedupe(source)
+            # Compare serialized row values, not object identity.
+            kept_keys = {
+                json.dumps(x, ensure_ascii=False, sort_keys=True, default=str)
+                for x in kept
+            }
+            dropped = [
+                x for x in source
+                if json.dumps(x, ensure_ascii=False, sort_keys=True, default=str)
+                not in kept_keys
+            ]
+            result["dedupe"]["kept"] = _safe(kept)
+            result["dedupe"]["dropped"] = [
+                _evidence(x) for x in dropped
+            ]
+        except Exception as exc:
+            result["dedupe"]["error"] = f"{type(exc).__name__}: {exc}"
+
+    return result
+
+
+@router.get("/diagnose-sabina-born-in-roma-v3")
+def diagnose_sabina_born_in_roma_v3(
     q: str = Query("Born in Roma", min_length=1, max_length=120)
 ):
     started = time.monotonic()
+    sabina = importlib.import_module("scrapers.sabina.scraper")
+    main = importlib.import_module("main")
 
-    # 1. Discovery — hard kill.
-    discovery = _run_hard("discovery", q, DISCOVERY_TIMEOUT)
-    urls = discovery.get("value", []) if discovery.get("ok") else []
-    urls = [str(u) for u in urls if u]
+    # We observe the exact functions used by the live Sabina stream adapter.
+    original_discover = getattr(sabina, "_discover_from_first_party", None)
+    original_extract = getattr(sabina, "_extract_product_page", None)
+    stream = getattr(sabina, "search_stream", None)
 
-    # Keep discovery diagnostic bounded. We do not launch hundreds of requests.
-    urls = list(dict.fromkeys(urls))[:40]
+    if not callable(original_discover):
+        return {
+            "ok": False,
+            "error": "_discover_from_first_party is not available",
+        }
 
-    # 2. Extraction — each URL independently hard-timed.
-    extraction = []
-    for url in urls:
-        if time.monotonic() - started >= GLOBAL_TIMEOUT:
-            extraction.append({
-                "url": url,
-                "status": "NOT_RUN_GLOBAL_DEADLINE",
-                "rows": [],
-            })
-            continue
+    if not callable(original_extract):
+        return {
+            "ok": False,
+            "error": "_extract_product_page is not available",
+        }
 
-        result = _run_hard("extract", q, EXTRACTION_TIMEOUT, url=url)
-        extraction.append({
+    if not callable(stream):
+        return {
+            "ok": False,
+            "error": "search_stream is not available in the live runtime",
+        }
+
+    trace = {
+        "discovery": {
+            "called": False,
+            "elapsed": None,
+            "urls": [],
+            "error": None,
+        },
+        "extraction": [],
+        "stream_emissions": [],
+    }
+
+    def traced_discover(session, query):
+        trace["discovery"]["called"] = True
+        t = time.monotonic()
+        try:
+            urls = original_discover(session, query)
+            urls = list(urls or [])
+            trace["discovery"]["elapsed"] = round(time.monotonic() - t, 3)
+            trace["discovery"]["urls"] = urls
+            return urls
+        except Exception as exc:
+            trace["discovery"]["elapsed"] = round(time.monotonic() - t, 3)
+            trace["discovery"]["error"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+            raise
+
+    def traced_extract(url, query):
+        t = time.monotonic()
+        item = {
             "url": url,
-            "status": (
-                "SUCCESS" if result.get("ok") and result.get("value")
-                else "FAILED_TIMEOUT" if result.get("timeout")
-                else "FAILED_EXCEPTION" if not result.get("ok")
-                else "FAILED_EMPTY"
-            ),
-            "elapsed": result.get("elapsed"),
-            "error": result.get("error"),
-            "rows": result.get("value", []) if result.get("ok") else [],
-        })
+            "elapsed": None,
+            "status": None,
+            "rows": [],
+            "error": None,
+        }
+        try:
+            rows = original_extract(url, query)
+            rows = [] if rows is None else list(rows)
+            item["elapsed"] = round(time.monotonic() - t, 3)
+            item["rows"] = [_evidence(x) for x in rows if isinstance(x, dict)]
+            item["status"] = "SUCCESS" if item["rows"] else "EMPTY"
+            return rows
+        except Exception as exc:
+            item["elapsed"] = round(time.monotonic() - t, 3)
+            item["status"] = "EXCEPTION"
+            item["error"] = f"{type(exc).__name__}: {exc}"
+            return []
+        finally:
+            trace["extraction"].append(item)
 
-    # 3. Direct search and 4. stream search.
-    direct = _run_hard("search", q, SEARCH_TIMEOUT)
-    stream = _run_hard("stream", q, STREAM_TIMEOUT)
+    # Temporarily replace references used by the existing stream closure.
+    # Always restore them before returning.
+    setattr(sabina, "_discover_from_first_party", traced_discover)
+    setattr(sabina, "_extract_product_page", traced_extract)
 
-    direct_rows = direct.get("value", []) if direct.get("ok") else []
-    stream_rows = stream.get("value", []) if stream.get("ok") else []
+    emitted: list[dict] = []
 
-    # 5. Downstream observation only.
-    # Do not alter the production pipeline; apply current functions to copies.
-    clean = _main_clean(stream_rows, q)
-    matching = _main_match(stream_rows, q)
-    dedup = _main_dedupe(stream_rows)
+    def emit(row):
+        if isinstance(row, dict):
+            item = deepcopy(row)
+            emitted.append(item)
+            trace["stream_emissions"].append(_evidence(item))
 
-    matrix = _matrix(urls, extraction, direct_rows, stream_rows)
+    stream_error = None
+    stream_started = time.monotonic()
 
-    found_direct = [v for v in EXPECTED if matrix[v]["direct_search"]["found"]]
-    found_stream = [v for v in EXPECTED if matrix[v]["stream_search"]["found"]]
-    found_extraction = [v for v in EXPECTED if matrix[v]["extraction"]["success"]]
+    try:
+        # This is the REAL existing stream function, not a reimplementation.
+        stream(q, emit)
+    except Exception as exc:
+        stream_error = f"{type(exc).__name__}: {exc}"
+    finally:
+        setattr(sabina, "_discover_from_first_party", original_discover)
+        setattr(sabina, "_extract_product_page", original_extract)
 
-    missing_stream = [v for v in EXPECTED if v not in found_stream]
-    missing_direct = [v for v in EXPECTED if v not in found_direct]
+    stream_elapsed = round(time.monotonic() - stream_started, 3)
 
-    if len(missing_stream) == 4:
-        headline = "STREAM_MISSING_4"
-    elif not missing_stream:
-        headline = "STREAM_HAS_ALL_18"
-    else:
-        headline = f"STREAM_MISSING_{len(missing_stream)}"
+    extracted_rows = []
+    for item in trace["extraction"]:
+        # Extraction trace stores only evidence; use emitted rows for the
+        # authoritative stream-stage data.
+        pass
+
+    stream_variants = _variant_rows(emitted)
+    discovered_urls = trace["discovery"]["urls"]
+
+    # Direct search is intentionally NOT executed. That was the mistake in
+    # the previous diagnostic: it doubled the work and obscured the real
+    # streaming path.
+    direct = {
+        "executed": False,
+        "reason": "Not executed: diagnostic observes the real stream path only.",
+    }
+
+    downstream = _downstream(main, emitted, q)
+
+    clean_rows = downstream["clean_result"]["passed"]
+    match_rows = downstream["product_matcher"]["passed"]
+    dedup_rows = downstream["dedupe"]["kept"]
+
+    matrix = {}
+    for expected in EXPECTED:
+        discovery_url_hits = [
+            u for u in discovered_urls
+            if _url_hint(u, expected)
+        ]
+        extraction_hits = [
+            x for x in trace["extraction"]
+            if any(
+                _matches(r, expected)
+                for r in x.get("rows", [])
+            )
+        ]
+        stream_hits = stream_variants[expected]
+
+        clean_hits = [
+            r for r in clean_rows
+            if isinstance(r, dict) and _matches(r, expected)
+        ]
+        match_hits = [
+            r for r in match_rows
+            if isinstance(r, dict) and _matches(r, expected)
+        ]
+        dedup_hits = [
+            r for r in dedup_rows
+            if isinstance(r, dict) and _matches(r, expected)
+        ]
+
+        matrix[expected] = {
+            "discovery": {
+                "found": bool(discovery_url_hits),
+                "candidate_urls": discovery_url_hits,
+            },
+            "extraction": {
+                "found": bool(extraction_hits),
+                "candidates": extraction_hits,
+            },
+            "stream": {
+                "found": bool(stream_hits),
+                "rows": stream_hits,
+            },
+            "validation": {
+                "found": bool(clean_hits),
+                "rows": [_safe(x) for x in clean_hits],
+            },
+            "matching": {
+                "found": bool(match_hits),
+                "rows": [_safe(x) for x in match_hits],
+            },
+            "dedup": {
+                "found": bool(dedup_hits),
+                "rows": [_safe(x) for x in dedup_hits],
+            },
+        }
+
+    found_stream = [
+        x for x in EXPECTED
+        if matrix[x]["stream"]["found"]
+    ]
+    missing_stream = [
+        x for x in EXPECTED
+        if x not in found_stream
+    ]
+
+    # Determine a loss label from actual observed stages.
+    loss = {}
+    for expected in EXPECTED:
+        m = matrix[expected]
+        if not m["discovery"]["found"]:
+            loss[expected] = "NOT_DISCOVERED_BY_FIRST_PARTY"
+        elif not m["extraction"]["found"]:
+            loss[expected] = "DISCOVERED_BUT_EXTRACTION_FAILED"
+        elif not m["stream"]["found"]:
+            loss[expected] = "EXTRACTED_BUT_NOT_EMITTED_BY_STREAM"
+        elif not m["validation"]["found"]:
+            loss[expected] = "STREAM_EMITTED_BUT_CLEAN_RESULT_REJECTED"
+        elif not m["matching"]["found"]:
+            loss[expected] = "CLEANED_BUT_PRODUCT_MATCHER_REJECTED"
+        elif not m["dedup"]["found"]:
+            loss[expected] = "MATCHED_BUT_DEDUP_DROPPED"
+        else:
+            loss[expected] = "SURVIVED_ALL_OBSERVED_STAGES"
 
     return {
         "ok": True,
-        "diagnostic_version": "2-hard-timeout",
-        "architecture": "forensic; no production mutation",
+        "diagnostic_version": "3-live-path-single-run",
+        "architecture": "forensic; same-process observation; no production mutation",
         "query": q,
         "elapsed": round(time.monotonic() - started, 3),
-        "deadline_seconds": GLOBAL_TIMEOUT,
-        "headline": headline,
+        "global_deadline_note": (
+            f"This endpoint performs one live stream run only. "
+            f"Observed runtime was {stream_elapsed}s. "
+            f"No second direct search is executed."
+        ),
         "expected_count": len(EXPECTED),
         "expected": EXPECTED,
+        "headline": (
+            "STREAM_HAS_ALL_18"
+            if not missing_stream
+            else f"STREAM_MISSING_{len(missing_stream)}"
+        ),
         "summary": {
-            "discovery_url_count": len(urls),
-            "extraction_success_count": sum(
-                1 for x in extraction if x["status"] == "SUCCESS"
-            ),
-            "direct_search_count": len(direct_rows),
-            "stream_search_count": len(stream_rows),
-            "missing_direct": missing_direct,
+            "discovery_url_count": len(discovered_urls),
+            "extraction_attempt_count": len(trace["extraction"]),
+            "stream_emission_count": len(emitted),
+            "stream_found_count": len(found_stream),
             "missing_stream": missing_stream,
-            "missing_extraction": [
-                v for v in EXPECTED if v not in found_extraction
-            ],
+            "loss_by_variant": loss,
         },
+        "live_path": {
+            "stream_called": True,
+            "stream_elapsed": stream_elapsed,
+            "stream_error": stream_error,
+        },
+        "direct_search": direct,
+        "discovery": trace["discovery"],
+        "extraction": trace["extraction"],
+        "stream_emissions": trace["stream_emissions"],
         "loss_point_matrix": matrix,
-        "discovery": {
-            "status": "SUCCESS" if discovery.get("ok") else (
-                "TIMEOUT" if discovery.get("timeout") else "FAILED"
-            ),
-            "elapsed": discovery.get("elapsed"),
-            "url_count": len(urls),
-            "urls": urls,
-            "error": discovery.get("error"),
-        },
-        "extraction": extraction,
-        "direct_search": {
-            "status": "SUCCESS" if direct.get("ok") else (
-                "TIMEOUT" if direct.get("timeout") else "FAILED"
-            ),
-            "elapsed": direct.get("elapsed"),
-            "count": len(direct_rows),
-            "rows": [_row_evidence(r) for r in direct_rows if isinstance(r, dict)],
-            "error": direct.get("error"),
-        },
-        "stream_search": {
-            "status": "SUCCESS" if stream.get("ok") else (
-                "TIMEOUT" if stream.get("timeout") else "FAILED"
-            ),
-            "elapsed": stream.get("elapsed"),
-            "count": len(stream_rows),
-            "rows": [_row_evidence(r) for r in stream_rows if isinstance(r, dict)],
-            "error": stream.get("error"),
-        },
-        "downstream_observation": {
-            "clean_result": {
-                "available": clean.get("available"),
-                "input_count": len(stream_rows),
-                "passed_count": len(clean.get("passed", [])),
-                "rejected_count": len(clean.get("rejected", [])),
-                "rejected": clean.get("rejected", []),
-            },
-            "product_matcher": {
-                "available": matching.get("available"),
-                "input_count": len(stream_rows),
-                "passed_count": len(matching.get("passed", [])),
-                "rejected_count": len(matching.get("rejected", [])),
-                "rejected": matching.get("rejected", []),
-            },
-            "dedupe": {
-                "available": dedup.get("available"),
-                "input_count": len(stream_rows),
-                "kept_count": len(dedup.get("kept", [])),
-                "dropped_count": len(dedup.get("dropped", [])),
-                "dropped": [
-                    _row_evidence(r)
-                    for r in dedup.get("dropped", [])
-                    if isinstance(r, dict)
-                ],
-                "error": dedup.get("error"),
-            },
-        },
-        "interpretation": {
-            "rule": (
-                "A variant is considered discovered when its canonical evidence "
-                "appears in discovered URLs or later extracted/direct evidence. "
-                "Extraction is successful when at least one extracted row matches. "
-                "Downstream sections are observational and never modify production data."
-            ),
-            "next_step": (
-                "If a missing variant appears in direct_search but not stream_search, "
-                "the loss is in the streaming path. If it appears in extraction but "
-                "not direct/stream, inspect search/validation. If it appears in stream "
-                "but is absent after clean/matching/dedupe, the loss is downstream."
-            ),
-        },
+        "downstream_observation": downstream,
     }
