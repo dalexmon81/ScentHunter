@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import hashlib
+import inspect
+import json
 import re
+import sys
+import time
 import traceback
-from urllib.parse import quote_plus, urljoin
+from collections import Counter
+from types import ModuleType
+from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -10,3124 +17,624 @@ from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
-DELOOX_BASE = "https://www.deloox.be"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,"
-        "application/xml;q=0.9,*/*;q=0.8"
-    ),
-    "Accept-Language": "en-US,en;q=0.9,nl;q=0.8,fr;q=0.7",
-}
-
-TIMEOUT = (5.0, 15.0)
-
-
-# ============================================================
-# BORN IN ROMA — 18 VARIANTI ATTESE
-# ============================================================
-
-BORN_IN_ROMA_VARIANTS = [
-    "Born in Roma Uomo",
-    "Born in Roma Uomo Intense",
-    "Born in Roma Uomo Extradose",
-    "Born in Roma Uomo Green Stravaganza",
-    "Born in Roma Uomo Coral Fantasy",
-    "Born in Roma Uomo Yellow Dream",
-    "Born in Roma Uomo Purple Melancholia",
-    "Born in Roma Uomo The Gold",
-    "Born in Roma Uomo Ivory",
-    "Born in Roma Donna",
-    "Born in Roma Donna Intense",
-    "Born in Roma Donna Extradose",
-    "Born in Roma Donna Green Stravaganza",
-    "Born in Roma Donna Coral Fantasy",
-    "Born in Roma Donna Yellow Dream",
-    "Born in Roma Donna Purple Melancholia",
-    "Born in Roma Donna The Gold",
-    "Born in Roma Donna Ivory",
+DLOOX_BASE = "https://www.deloox.be"
+KNOWN_URLS = [
+    "https://www.deloox.be/produit/1214441/valentino-born-in-roma-uomo-eau-de-toilette-100-ml.html",
+    "https://www.deloox.be/produit/1400167/valentino-born-in-roma-ivory-uomo-eau-de-toilette-limited-edition-100-ml.html",
+    "https://www.deloox.be/produit/1359237/valentino-born-in-roma-the-gold-uomo-eau-de-toilette-100-ml.html",
+    "https://www.deloox.be/produit/1359240/valentino-born-in-roma-the-gold-donna-eau-de-parfum-100-ml.html",
 ]
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
-def clean_text(value: str) -> str:
-    return " ".join(str(value or "").split()).strip()
-
-
-def norm(value: str) -> str:
-    value = clean_text(value).lower()
-    value = value.replace("’", "'")
-    value = value.replace("-", " ")
-    value = value.replace("_", " ")
-    value = re.sub(r"\s+", " ", value)
-    return value.strip()
-
-
-def variant_match(text: str) -> list[str]:
-    normalized = norm(text)
-    matches = []
-
-    for variant in sorted(
-        BORN_IN_ROMA_VARIANTS,
-        key=lambda x: len(norm(x)),
-        reverse=True,
-    ):
-        if norm(variant) in normalized:
-            matches.append(variant)
-
-    return matches
+def _short(value, limit=1200):
+    try:
+        if isinstance(value, str):
+            return value[:limit]
+        if isinstance(value, (list, tuple, set)):
+            data = list(value)
+            return {
+                "type": type(value).__name__,
+                "count": len(data),
+                "items": [_short(x, 500) for x in data[:20]],
+            }
+        if isinstance(value, dict):
+            return {
+                "type": "dict",
+                "keys": list(value.keys())[:80],
+                "sample": {str(k): _short(v, 500) for k, v in list(value.items())[:20]},
+            }
+        return repr(value)[:limit]
+    except Exception as exc:
+        return f"<summary_error:{type(exc).__name__}:{exc}>"
 
 
-def extract_slug(url: str) -> str:
-    value = str(url or "").split("?", 1)[0].rstrip("/")
-
-    return (
-        value.rsplit("/", 1)[-1]
-        if "/" in value
-        else value
-    )
+def _source(obj):
+    try:
+        return inspect.getsource(obj)
+    except Exception as exc:
+        return f"<SOURCE_ERROR {type(exc).__name__}: {exc}>"
 
 
-def query_token_hits(text: str, query: str) -> dict:
-    text_norm = norm(text)
-    query_tokens = [
-        x
-        for x in norm(query).split()
-        if x
-    ]
+def _module_fingerprint(module: ModuleType):
+    path = getattr(module, "__file__", None)
+    origin = getattr(getattr(module, "__spec__", None), "origin", None)
+    source = ""
+    source_error = None
 
-    hits = [
-        token
-        for token in query_tokens
-        if token in text_norm
-    ]
-
-    misses = [
-        token
-        for token in query_tokens
-        if token not in text_norm
-    ]
+    if path:
+        try:
+            with open(path, "rb") as fh:
+                raw = fh.read()
+            source = raw.decode("utf-8", errors="replace")
+            sha = hashlib.sha256(raw).hexdigest()
+            lines = source.count("\n") + 1
+        except Exception as exc:
+            sha = None
+            lines = None
+            source_error = f"{type(exc).__name__}: {exc}"
+    else:
+        sha = None
+        lines = None
+        source_error = "module_has_no___file__"
 
     return {
-        "query_tokens": query_tokens,
-        "hits": hits,
-        "misses": misses,
-        "hit_count": len(hits),
-        "token_count": len(query_tokens),
+        "module_name": module.__name__,
+        "module_file": path,
+        "module_origin": origin,
+        "module_source_sha256": sha,
+        "module_source_lines": lines,
+        "module_source_error": source_error,
+        "module_source_text": source,
     }
 
 
-def collect_card_context(
-    anchor,
-    max_parents: int = 7,
-) -> tuple[str, str]:
-
-    anchor_text = clean_text(
-        anchor.get_text(
-            " ",
-            strip=True,
-        )
-    )
-
-    best_context = anchor_text
-    node = anchor
-
-    price_re = re.compile(
-        r"(?:€\s*)?\d{1,4}\s*[.,]\s*\d{2}(?:\s*€)?"
-    )
-
-    for _ in range(max_parents):
-
-        node = node.parent
-
-        if not node:
-            break
-
-        context = clean_text(
-            node.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        if (
-            len(context) > len(best_context)
-            and len(context) <= 1800
-        ):
-            best_context = context
-
-        if price_re.search(context):
-            break
-
-    return anchor_text, best_context
-
-
-# ============================================================
-# RAW SEARCH PAGE
-# ============================================================
-
-def raw_search_page(
-    session: requests.Session,
-    endpoint: str,
-    query: str,
-    page_number: int,
-    product_url,
-    relevant,
-) -> dict:
-
-    result = {
-        "page": page_number,
-        "requested": endpoint,
-    }
-
-    try:
-
-        response = session.get(
-            endpoint,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        html = response.text or ""
-
-        result.update(
-            {
-                "status_code":
-                    response.status_code,
-
-                "final_url":
-                    response.url,
-
-                "html_length":
-                    len(html),
-            }
-        )
-
-        soup = BeautifulSoup(
-            html,
-            "html.parser",
-        )
-
-        all_product_urls = {}
-        relevant_product_urls = {}
-        born_in_roma_urls = {}
-
-        for anchor in soup.find_all(
-            "a",
-            href=True,
-        ):
-
-            href = urljoin(
-                response.url,
-                str(anchor.get("href") or ""),
-            )
-
-            normalized_url = product_url(
-                href
-            )
-
-            if not normalized_url:
-                continue
-
-            anchor_text, context = (
-                collect_card_context(anchor)
-            )
-
-            combined = (
-                f"{anchor_text} "
-                f"{context} "
-                f"{normalized_url}"
-            )
-
-            entry = {
-                "url":
-                    normalized_url,
-
-                "slug":
-                    extract_slug(
-                        normalized_url
-                    ),
-
-                "anchor_text":
-                    anchor_text[:500],
-
-                "context":
-                    context[:1800],
-
-                "query_relevant":
-                    bool(
-                        relevant(
-                            combined,
-                            query,
-                        )
-                    ),
-
-                "query_token_hits":
-                    query_token_hits(
-                        combined,
-                        query,
-                    ),
-
-                "born_in_roma_variant_matches":
-                    variant_match(
-                        combined
-                    ),
-            }
-
-            all_product_urls[
-                normalized_url
-            ] = entry
-
-            if entry[
-                "query_relevant"
-            ]:
-
-                relevant_product_urls[
-                    normalized_url
-                ] = entry
-
-            if entry[
-                "born_in_roma_variant_matches"
-            ]:
-
-                born_in_roma_urls[
-                    normalized_url
-                ] = entry
-
-        result.update(
-            {
-                "raw_product_url_count":
-                    len(
-                        all_product_urls
-                    ),
-
-                "raw_relevant_url_count":
-                    len(
-                        relevant_product_urls
-                    ),
-
-                "raw_born_in_roma_url_count":
-                    len(
-                        born_in_roma_urls
-                    ),
-
-                "raw_product_urls":
-                    list(
-                        all_product_urls.values()
-                    )[:300],
-
-                "raw_relevant_urls":
-                    list(
-                        relevant_product_urls.values()
-                    )[:300],
-
-                "raw_born_in_roma_urls":
-                    list(
-                        born_in_roma_urls.values()
-                    )[:300],
-            }
-        )
-
-        return result
-
-    except Exception as exc:
-
-        result.update(
-            {
-                "error_type":
-                    type(exc).__name__,
-
-                "error":
-                    str(exc),
-
-                "traceback":
-                    traceback.format_exc(),
-            }
-        )
-
-        return result
-
-
-# ============================================================
-# COMPARE DISCOVERY
-# ============================================================
-
-def compare_discovery(
-    raw_pages: list[dict],
-    candidates: list,
-) -> dict:
-
-    raw_entries = {}
-
-    for page in raw_pages:
-
-        for entry in page.get(
-            "raw_born_in_roma_urls",
-            [],
-        ):
-
-            url = entry.get("url")
-
-            if url:
-                raw_entries[url] = entry
-
-    discovered = {}
-
-    for item in candidates:
-
+def _module_functions(module):
+    names = []
+    for name in dir(module):
         try:
+            value = getattr(module, name)
+        except Exception:
+            continue
+        if callable(value) and (
+            name == "discover"
+            or name == "_discover"
+            or "candidate" in name.lower()
+            or "product" in name.lower()
+            or "search" in name.lower()
+            or "category" in name.lower()
+            or "sitemap" in name.lower()
+        ):
+            names.append(name)
+    return sorted(set(names))
 
-            url, info = item
 
-            discovered[url] = {
-                "url":
-                    url,
+def _is_deloox_product_url(url):
+    try:
+        p = urlparse(str(url))
+        host = p.netloc.lower()
+        path = p.path.lower()
+        return (
+            host in {"deloox.be", "www.deloox.be"}
+            and re.search(r"/(?:produit|product|products?)/\d+/", path) is not None
+        )
+    except Exception:
+        return False
 
-                "score":
-                    info[0],
 
-                "context":
-                    info[1][:1800],
+def _generic_raw_urls(html, base_url):
+    soup = BeautifulSoup(html or "", "html.parser")
+    found = set()
 
-                "variant_matches":
-                    variant_match(
-                        f"{url} {info[1]}"
-                    ),
-            }
+    for a in soup.find_all("a", href=True):
+        href = str(a.get("href") or "").strip()
+        if not href:
+            continue
+        u = urljoin(base_url, href).split("#", 1)[0].split("?", 1)[0]
+        if _is_deloox_product_url(u):
+            found.add(u)
 
+    patterns = [
+        r'https?://(?:www\.)?deloox\.be/[^"\'<>\s]+/(?:produit|product|products?)/\d+/[^"\'<>\s]+',
+        r'["\']((?:/)?(?:en/|fr/|nl/|it/)?(?:produit|product|products?)/\d+/[^"\']+)["\']',
+    ]
+
+    for pattern in patterns:
+        for raw in re.findall(pattern, html or "", re.I):
+            u = urljoin(base_url, raw).split("#", 1)[0].split("?", 1)[0]
+            if _is_deloox_product_url(u):
+                found.add(u)
+
+    return sorted(found)
+
+
+def _born_urls(urls):
+    out = []
+    for u in urls:
+        low = u.casefold()
+        if "born-in-roma" in low or "born%20in%20roma" in low:
+            out.append(u)
+    return sorted(set(out))
+
+
+def _jsonld_products(html):
+    soup = BeautifulSoup(html or "", "html.parser")
+    products = []
+
+    for script in soup.find_all("script", type=re.compile(r"ld\+json", re.I)):
+        raw = script.string or script.get_text("", strip=True)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
         except Exception:
             continue
 
-    raw_urls = set(
-        raw_entries
-    )
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop(0)
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
 
-    discovered_urls = set(
-        discovered
-    )
+            typ = item.get("@type")
+            is_product = typ == "Product" or (
+                isinstance(typ, list) and "Product" in typ
+            )
+            if is_product:
+                products.append({
+                    "name": item.get("name"),
+                    "brand": item.get("brand"),
+                    "sku": item.get("sku"),
+                    "gtin": item.get("gtin13") or item.get("gtin"),
+                    "url": item.get("url"),
+                    "offers": _short(item.get("offers"), 1000),
+                })
 
-    raw_not_discovered = sorted(
-        raw_urls - discovered_urls
-    )
+            for value in item.values():
+                if isinstance(value, (dict, list)):
+                    stack.append(value)
 
-    discovered_not_raw = sorted(
-        discovered_urls - raw_urls
-    )
-
-    return {
-        "raw_born_in_roma_unique_urls":
-            len(raw_urls),
-
-        "discover_unique_urls":
-            len(discovered_urls),
-
-        "born_in_roma_found_in_raw_but_missing_from_discover_count":
-            len(raw_not_discovered),
-
-        "discover_urls_not_classified_as_born_in_roma_by_raw_pages_count":
-            len(discovered_not_raw),
-
-        "born_in_roma_found_in_raw_but_missing_from_discover":
-            [
-                {
-                    "url":
-                        url,
-
-                    "slug":
-                        extract_slug(url),
-
-                    "variant_matches":
-                        raw_entries[url].get(
-                            "born_in_roma_variant_matches",
-                            [],
-                        ),
-
-                    "raw_entry":
-                        raw_entries[url],
-                }
-                for url in raw_not_discovered
-            ],
-
-        "discover_urls_not_classified_as_born_in_roma_by_raw_pages":
-            [
-                {
-                    "url":
-                        url,
-
-                    "slug":
-                        extract_slug(url),
-
-                    "discover_entry":
-                        discovered[url],
-                }
-                for url in discovered_not_raw
-            ],
-    }
+    return products[:50]
 
 
-# ============================================================
-# TEST 1 — DISCOVERY ONLY
-# ============================================================
+class LoggedSession(requests.Session):
+    def __init__(self):
+        super().__init__()
+        self.calls = []
 
-@router.get("/deloox-discovery")
-def debug_deloox_discovery(
-    q: str = Query(
-        "Born in Roma",
-        min_length=2,
-    ),
-):
+    def get(self, url, **kwargs):
+        started = time.monotonic()
+        try:
+            response = super().get(url, **kwargs)
+            self.calls.append({
+                "url": str(url),
+                "final_url": str(getattr(response, "url", "") or ""),
+                "status": response.status_code,
+                "bytes": len(response.content or b""),
+                "content_type": response.headers.get("content-type"),
+                "elapsed_ms": round((time.monotonic() - started) * 1000),
+            })
+            return response
+        except Exception as exc:
+            self.calls.append({
+                "url": str(url),
+                "status": None,
+                "bytes": 0,
+                "elapsed_ms": round((time.monotonic() - started) * 1000),
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            raise
 
-    session = None
+
+def _traceable_function_names(module, discover):
+    wanted = set()
 
     try:
+        for name in discover.__code__.co_names:
+            value = getattr(module, name, None)
+            if callable(value):
+                wanted.add(name)
+    except Exception:
+        pass
 
-        from scrapers.deloox.scraper import (
-            discover,
-            product_url,
-            relevant,
-        )
+    for name in (
+        "_candidate_product_urls",
+        "_candidate_contexts",
+        "_discover_from_categories",
+        "_category_product_line_links",
+        "_sitemap_product_urls",
+        "_find_catalog_filter_url",
+        "_product",
+        "product_url",
+        "relevant",
+        "matches",
+    ):
+        if callable(getattr(module, name, None)):
+            wanted.add(name)
 
-        query = str(q or "").strip()
+    return sorted(wanted)
 
-        encoded = quote_plus(
-            query
-        )
 
-        session = requests.Session()
+def _profile_discover(module, discover, query, headers, timeout):
+    """
+    Runs the loaded discovery function in-memory only.
 
-        raw_pages = []
+    The profiler records Python function entry/return values for functions
+    belonging to the loaded Deloox module. This is deliberately read-only:
+    no source file is edited and no production function is replaced.
+    """
+    events = []
+    session = LoggedSession()
+    if headers:
+        session.headers.update(headers)
 
-        for page_number in range(1, 11):
+    function_names = set(_traceable_function_names(module, discover))
+    previous_profile = sys.getprofile()
 
-            if page_number == 1:
+    started = time.monotonic()
 
-                endpoint = (
-                    f"{DELOOX_BASE}/chercher.html"
-                    f"?q={encoded}"
-                )
+    def profile(frame, event, arg):
+        if event not in {"call", "return", "exception"}:
+            return profile
 
-            else:
+        if frame.f_globals is not getattr(module, "__dict__", {}):
+            return profile
 
-                endpoint = (
-                    f"{DELOOX_BASE}/chercher.html"
-                    f"?q={encoded}"
-                    f"&page={page_number}"
-                )
+        name = frame.f_code.co_name
+        if name not in function_names and name not in {
+            getattr(discover, "__name__", ""),
+            "discover",
+            "_discover",
+        }:
+            return profile
 
-            page_result = raw_search_page(
-                session=session,
-                endpoint=endpoint,
-                query=query,
-                page_number=page_number,
-                product_url=product_url,
-                relevant=relevant,
-            )
+        if len(events) >= 300:
+            return profile
 
-            raw_pages.append(
-                page_result
-            )
+        if event == "call":
+            events.append({
+                "event": "call",
+                "function": name,
+                "line": frame.f_lineno,
+            })
+        elif event == "return":
+            events.append({
+                "event": "return",
+                "function": name,
+                "line": frame.f_lineno,
+                "value": _short(arg, 1600),
+            })
+        elif event == "exception":
+            exc_type, exc_value, _tb = arg
+            events.append({
+                "event": "exception",
+                "function": name,
+                "line": frame.f_lineno,
+                "exception": f"{getattr(exc_type, '__name__', str(exc_type))}: {exc_value}",
+            })
 
-            if (
-                page_result.get(
-                    "raw_product_url_count",
-                    0,
-                )
-                == 0
-            ):
-                break
+        return profile
 
-        candidates = []
-        discover_error = None
+    # If the discovery function explicitly receives a Session, use our logged
+    # session. If it creates its own Session, patch only the module's requests
+    # object for the duration of this one diagnostic call.
+    requests_obj = getattr(module, "requests", None)
+    original_session_factory = getattr(requests_obj, "Session", None) if requests_obj else None
+
+    try:
+        if requests_obj is not None and original_session_factory is not None:
+            requests_obj.Session = lambda: session
+
+        sys.setprofile(profile)
 
         try:
-
-            candidates = discover(
-                session,
-                query,
-            )
-
-        except Exception as exc:
-
-            discover_error = {
-                "error_type":
-                    type(exc).__name__,
-
-                "error":
-                    str(exc),
-
-                "traceback":
-                    traceback.format_exc(),
-            }
-
-        discover_rows = []
-
-        for index, item in enumerate(
-            candidates
-        ):
-
-            try:
-
-                url, info = item
-                score, context = info
-
-            except Exception as exc:
-
-                discover_rows.append(
-                    {
-                        "index":
-                            index,
-
-                        "parse_error":
-                            True,
-
-                        "error_type":
-                            type(exc).__name__,
-
-                        "error":
-                            str(exc),
-
-                        "raw_item":
-                            repr(item),
-                    }
-                )
-
-                continue
-
-            combined = (
-                f"{url} {context}"
-            )
-
-            discover_rows.append(
-                {
-                    "index":
-                        index,
-
-                    "url":
-                        url,
-
-                    "slug":
-                        extract_slug(url),
-
-                    "score":
-                        score,
-
-                    "query_relevant":
-                        bool(
-                            relevant(
-                                combined,
-                                query,
-                            )
-                        ),
-
-                    "query_token_hits":
-                        query_token_hits(
-                            combined,
-                            query,
-                        ),
-
-                    "born_in_roma_variant_matches":
-                        variant_match(
-                            combined
-                        ),
-
-                    "context":
-                        str(
-                            context or ""
-                        )[:1800],
-                }
-            )
-
-        comparison = compare_discovery(
-            raw_pages,
-            candidates,
-        )
-
-        raw_variant_urls = {}
-
-        for page in raw_pages:
-
-            for entry in page.get(
-                "raw_born_in_roma_urls",
-                [],
-            ):
-
-                url = entry.get(
-                    "url"
-                )
-
-                if not url:
-                    continue
-
-                for variant in entry.get(
-                    "born_in_roma_variant_matches",
-                    [],
-                ):
-
-                    raw_variant_urls.setdefault(
-                        variant,
-                        [],
-                    ).append(
-                        url
-                    )
-
-        discovered_variant_urls = {}
-
-        for row in discover_rows:
-
-            url = row.get(
-                "url"
-            )
-
-            if not url:
-                continue
-
-            for variant in row.get(
-                "born_in_roma_variant_matches",
-                [],
-            ):
-
-                discovered_variant_urls.setdefault(
-                    variant,
-                    [],
-                ).append(
-                    url
-                )
-
-        for mapping in (
-            raw_variant_urls,
-            discovered_variant_urls,
-        ):
-
-            for key in mapping:
-
-                mapping[key] = sorted(
-                    set(
-                        mapping[key]
-                    )
-                )
+            result = discover(session, query)
+        except TypeError:
+            # Some deployed variants expose discover(query) instead.
+            result = discover(query)
 
         return {
-            "diagnostic":
-                True,
-
-            "test":
-                "TEST_1_DISCOVERY_ONLY",
-
-            "ok":
-                discover_error is None,
-
-            "store":
-                "Deloox",
-
-            "query":
-                query,
-
-            "important":
-                (
-                    "Discovery-only diagnostic. "
-                    "Product pages and matching "
-                    "are NOT inspected."
-                ),
-
-            "expected_family_variant_count":
-                len(
-                    BORN_IN_ROMA_VARIANTS
-                ),
-
-            "expected_family_variants":
-                BORN_IN_ROMA_VARIANTS,
-
-            "raw_search_pages_checked":
-                len(raw_pages),
-
-            "raw_pages":
-                raw_pages,
-
-            "discover_error":
-                discover_error,
-
-            "discover_candidate_count":
-                len(candidates),
-
-            "discover_candidates":
-                discover_rows,
-
-            "comparison":
-                comparison,
-
-            "raw_variant_urls":
-                raw_variant_urls,
-
-            "discovered_variant_urls":
-                discovered_variant_urls,
+            "ok": True,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "returned_type": type(result).__name__,
+            "returned": _short(result, 8000),
+            "returned_count": len(result) if isinstance(result, (list, tuple, set, dict)) else None,
+            "profile_events": events,
+            "http_calls": session.calls,
         }
 
     except Exception as exc:
-
         return {
-            "diagnostic":
-                True,
-
-            "test":
-                "TEST_1_DISCOVERY_ONLY",
-
-            "ok":
-                False,
-
-            "store":
-                "Deloox",
-
-            "query":
-                str(q or "").strip(),
-
-            "stage":
-                "debug_deloox_discovery",
-
-            "error_type":
-                type(exc).__name__,
-
-            "error":
-                str(exc),
-
-            "traceback":
-                traceback.format_exc(),
+            "ok": False,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+            "profile_events": events,
+            "http_calls": session.calls,
         }
 
     finally:
-
-        if session is not None:
-
-            try:
-                session.close()
-            except Exception:
-                pass
+        sys.setprofile(previous_profile)
+        if requests_obj is not None and original_session_factory is not None:
+            requests_obj.Session = original_session_factory
+        session.close()
 
 
-# ============================================================
-# LEGACY ENDPOINT
-# ============================================================
+def _call_candidate_extractor(module, html, query):
+    fn = getattr(module, "_candidate_product_urls", None)
+    if not callable(fn):
+        fn = getattr(module, "candidate_product_urls", None)
 
-@router.get("/deloox")
-def debug_deloox_legacy(
-    q: str = Query(
-        "Born in Roma",
-        min_length=2,
-    ),
-):
-    return debug_deloox_discovery(
-        q=q
-    )
-
-
-# ============================================================
-# TEST 2 — PIPELINE
-# ============================================================
-
-@router.get("/deloox-pipeline")
-def debug_deloox_pipeline(
-    q: str = Query(
-        "Born in Roma",
-        min_length=2,
-    ),
-):
-
-    session = None
+    if not callable(fn):
+        return {
+            "available": False,
+            "reason": "candidate_extractor_not_found",
+        }
 
     try:
-
-        from scrapers.deloox.scraper import (
-            discover,
-            _row_from_card,
-            parse_product,
-        )
-
-        query = str(q or "").strip()
-
-        session = requests.Session()
-
-        candidates = []
-        discover_error = None
-
-        try:
-
-            candidates = discover(
-                session,
-                query,
-            )
-
-        except Exception as exc:
-
-            discover_error = {
-                "error_type":
-                    type(exc).__name__,
-
-                "error":
-                    str(exc),
-
-                "traceback":
-                    traceback.format_exc(),
-            }
-
-        if discover_error:
-
-            return {
-                "diagnostic":
-                    True,
-
-                "test":
-                    "TEST_2_PIPELINE",
-
-                "ok":
-                    False,
-
-                "store":
-                    "Deloox",
-
-                "query":
-                    query,
-
-                "stage":
-                    "discover",
-
-                "discover_error":
-                    discover_error,
-            }
-
-        card_accepted = []
-        card_rejected = []
-        product_page_results = []
-        discovered_rows = []
-
-        seen = set()
-
-        for index, item in enumerate(
-            candidates
-        ):
-
-            try:
-
-                url, info = item
-                score, context = info
-
-            except Exception as exc:
-
-                discovered_rows.append(
-                    {
-                        "index":
-                            index,
-
-                        "stage":
-                            "DISCOVERED_PARSE_ERROR",
-
-                        "error_type":
-                            type(exc).__name__,
-
-                        "error":
-                            str(exc),
-
-                        "raw_item":
-                            repr(item),
-                    }
-                )
-
-                continue
-
-            if url in seen:
-                continue
-
-            seen.add(url)
-
-            base = {
-                "index":
-                    index,
-
-                "url":
-                    url,
-
-                "slug":
-                    extract_slug(url),
-
-                "score":
-                    score,
-
-                "context":
-                    str(
-                        context or ""
-                    )[:1800],
-            }
-
-            card_result = None
-            card_error = None
-
-            try:
-
-                card_result = _row_from_card(
-                    url,
-                    context,
-                    query,
-                )
-
-            except Exception as exc:
-
-                card_error = {
-                    "error_type":
-                        type(exc).__name__,
-
-                    "error":
-                        str(exc),
-
-                    "traceback":
-                        traceback.format_exc(),
-                }
-
-            if isinstance(
-                card_result,
-                dict,
-            ):
-
-                row = dict(base)
-
-                row.update(
-                    {
-                        "stage":
-                            "CARD_ACCEPTED",
-
-                        "card_row":
-                            card_result,
-
-                        "card_name":
-                            card_result.get(
-                                "name"
-                            ),
-
-                        "card_brand":
-                            card_result.get(
-                                "brand"
-                            ),
-
-                        "card_price":
-                            card_result.get(
-                                "price"
-                            ),
-
-                        "card_price_num":
-                            card_result.get(
-                                "price_num"
-                            ),
-
-                        "card_available":
-                            card_result.get(
-                                "available"
-                            ),
-
-                        "card_availability":
-                            card_result.get(
-                                "availability"
-                            ),
-
-                        "card_size_ml":
-                            card_result.get(
-                                "size_ml"
-                            ),
-
-                        "born_in_roma_variant_matches":
-                            variant_match(
-                                " ".join(
-                                    [
-                                        url,
-                                        str(
-                                            context
-                                            or ""
-                                        ),
-                                        str(
-                                            card_result.get(
-                                                "name"
-                                            )
-                                            or ""
-                                        ),
-                                    ]
-                                )
-                            ),
-                    }
-                )
-
-                card_accepted.append(
-                    row
-                )
-
-                discovered_rows.append(
-                    row
-                )
-
-                continue
-
-            row = dict(base)
-
-            row.update(
-                {
-                    "stage":
-                        "CARD_REJECTED",
-
-                    "card_error":
-                        card_error,
-
-                    "card_return_type":
-                        (
-                            type(
-                                card_result
-                            ).__name__
-                            if card_result is not None
-                            else "None"
-                        ),
-
-                    "drop_reason":
-                        (
-                            "CARD_EXCEPTION"
-                            if card_error
-                            else
-                            "CARD_RETURNED_NONE"
-                        ),
-
-                    "born_in_roma_variant_matches":
-                        variant_match(
-                            f"{url} {context}"
-                        ),
-                }
-            )
-
-            card_rejected.append(
-                row
-            )
-
-            discovered_rows.append(
-                row
-            )
-
-            # --------------------------------------------
-            # PRODUCT PAGE FALLBACK
-            # --------------------------------------------
-
-            try:
-
-                rows = parse_product(
-                    session,
-                    url,
-                    query,
-                ) or []
-
-                if rows:
-
-                    product_page_results.append(
-                        {
-                            "index":
-                                index,
-
-                            "url":
-                                url,
-
-                            "slug":
-                                extract_slug(
-                                    url
-                                ),
-
-                            "stage":
-                                "PRODUCT_PAGE_OK",
-
-                            "row_count":
-                                len(rows),
-
-                            "rows":
-                                rows,
-
-                            "drop_reason":
-                                None,
-
-                            "born_in_roma_variant_matches":
-                                variant_match(
-                                    f"{url} {context} "
-                                    + " ".join(
-                                        str(
-                                            r.get(
-                                                "name"
-                                            )
-                                            or ""
-                                        )
-                                        for r in rows
-                                        if isinstance(
-                                            r,
-                                            dict,
-                                        )
-                                    )
-                                ),
-                        }
-                    )
-
-                else:
-
-                    product_page_results.append(
-                        {
-                            "index":
-                                index,
-
-                            "url":
-                                url,
-
-                            "slug":
-                                extract_slug(
-                                    url
-                                ),
-
-                            "stage":
-                                "PRODUCT_PAGE_REJECTED",
-
-                            "row_count":
-                                0,
-
-                            "rows":
-                                [],
-
-                            "drop_reason":
-                                "PARSE_PRODUCT_RETURNED_EMPTY",
-
-                            "born_in_roma_variant_matches":
-                                variant_match(
-                                    f"{url} {context}"
-                                ),
-                        }
-                    )
-
-            except Exception as exc:
-
-                product_page_results.append(
-                    {
-                        "index":
-                            index,
-
-                        "url":
-                            url,
-
-                        "slug":
-                            extract_slug(
-                                url
-                            ),
-
-                        "stage":
-                            "PRODUCT_PAGE_EXCEPTION",
-
-                        "row_count":
-                            0,
-
-                        "rows":
-                            [],
-
-                        "drop_reason":
-                            "PARSE_PRODUCT_EXCEPTION",
-
-                        "error_type":
-                            type(exc).__name__,
-
-                        "error":
-                            str(exc),
-
-                        "traceback":
-                            traceback.format_exc(),
-
-                        "born_in_roma_variant_matches":
-                            variant_match(
-                                f"{url} {context}"
-                            ),
-                    }
-                )
-
-        # ----------------------------------------------------
-        # FINAL ROWS
-        # ----------------------------------------------------
-
-        final_rows = []
-
-        for item in card_accepted:
-
-            final_rows.append(
-                {
-                    "index":
-                        item["index"],
-
-                    "url":
-                        item["url"],
-
-                    "slug":
-                        item["slug"],
-
-                    "stage":
-                        "FINAL_CARD_ACCEPTED",
-
-                    "name":
-                        item.get(
-                            "card_name"
-                        ),
-
-                    "brand":
-                        item.get(
-                            "card_brand"
-                        ),
-
-                    "price":
-                        item.get(
-                            "card_price"
-                        ),
-
-                    "price_num":
-                        item.get(
-                            "card_price_num"
-                        ),
-
-                    "available":
-                        item.get(
-                            "card_available"
-                        ),
-
-                    "availability":
-                        item.get(
-                            "card_availability"
-                        ),
-
-                    "size_ml":
-                        item.get(
-                            "card_size_ml"
-                        ),
-
-                    "born_in_roma_variant_matches":
-                        item.get(
-                            "born_in_roma_variant_matches",
-                            [],
-                        ),
-                }
-            )
-
-        for item in product_page_results:
-
-            if (
-                item.get("stage")
-                != "PRODUCT_PAGE_OK"
-            ):
-                continue
-
-            for row in item.get(
-                "rows",
-                [],
-            ):
-
-                if not isinstance(
-                    row,
-                    dict,
-                ):
-                    continue
-
-                final_rows.append(
-                    {
-                        "index":
-                            item["index"],
-
-                        "url":
-                            item["url"],
-
-                        "slug":
-                            item["slug"],
-
-                        "stage":
-                            "FINAL_PRODUCT_ACCEPTED",
-
-                        "name":
-                            row.get(
-                                "name"
-                            ),
-
-                        "brand":
-                            row.get(
-                                "brand"
-                            ),
-
-                        "price":
-                            row.get(
-                                "price"
-                            ),
-
-                        "price_num":
-                            row.get(
-                                "price_num"
-                            ),
-
-                        "available":
-                            row.get(
-                                "available"
-                            ),
-
-                        "availability":
-                            row.get(
-                                "availability"
-                            ),
-
-                        "size_ml":
-                            row.get(
-                                "size_ml"
-                            ),
-
-                        "born_in_roma_variant_matches":
-                            variant_match(
-                                " ".join(
-                                    [
-                                        item[
-                                            "url"
-                                        ],
-
-                                        str(
-                                            row.get(
-                                                "name"
-                                            )
-                                            or ""
-                                        ),
-
-                                        str(
-                                            row.get(
-                                                "brand"
-                                            )
-                                            or ""
-                                        ),
-                                    ]
-                                )
-                            ),
-                    }
-                )
+        sig = inspect.signature(fn)
+        kwargs = {}
+        args = []
+
+        params = list(sig.parameters.values())
+
+        # Most deployed versions use:
+        #   (html, query)
+        # or:
+        #   (html, query, discovery_query=None, accept_all_products=False)
+        # Handle these without guessing beyond the signature.
+        if len(params) >= 1:
+            args.append(html)
+        if len(params) >= 2:
+            args.append(query)
+
+        if "discovery_query" in sig.parameters:
+            kwargs["discovery_query"] = query
+
+        if "accept_all_products" in sig.parameters:
+            kwargs["accept_all_products"] = True
+
+        result = fn(*args, **kwargs)
 
         return {
-            "diagnostic":
-                True,
-
-            "test":
-                "TEST_2_PIPELINE",
-
-            "ok":
-                True,
-
-            "store":
-                "Deloox",
-
-            "query":
-                query,
-
-            "important":
-                (
-                    "Pipeline diagnostic only. "
-                    "ProductMatcher and "
-                    "family_registry are NOT executed."
-                ),
-
-            "counts":
-                {
-                    "discover_candidates":
-                        len(candidates),
-
-                    "unique_discovered":
-                        len(seen),
-
-                    "card_accepted":
-                        len(card_accepted),
-
-                    "card_rejected":
-                        len(card_rejected),
-
-                    "product_page_tested":
-                        len(
-                            product_page_results
-                        ),
-
-                    "product_page_ok":
-                        sum(
-                            1
-                            for x in product_page_results
-                            if x.get("stage")
-                            == "PRODUCT_PAGE_OK"
-                        ),
-
-                    "product_page_rejected":
-                        sum(
-                            1
-                            for x in product_page_results
-                            if x.get("stage")
-                            == "PRODUCT_PAGE_REJECTED"
-                        ),
-
-                    "product_page_exception":
-                        sum(
-                            1
-                            for x in product_page_results
-                            if x.get("stage")
-                            == "PRODUCT_PAGE_EXCEPTION"
-                        ),
-
-                    "final_rows":
-                        len(final_rows),
-                },
-
-            "discover_candidates":
-                discovered_rows,
-
-            "card_rejected":
-                card_rejected,
-
-            "product_page_results":
-                product_page_results,
-
-            "final_rows":
-                final_rows,
+            "available": True,
+            "function": fn.__name__,
+            "signature": str(sig),
+            "returned_type": type(result).__name__,
+            "returned_count": len(result) if isinstance(result, (list, tuple, set, dict)) else None,
+            "returned": _short(result, 12000),
         }
 
     except Exception as exc:
-
         return {
-            "diagnostic":
-                True,
-
-            "test":
-                "TEST_2_PIPELINE",
-
-            "ok":
-                False,
-
-            "store":
-                "Deloox",
-
-            "query":
-                str(q or "").strip(),
-
-            "stage":
-                "diagnostic_exception",
-
-            "error_type":
-                type(exc).__name__,
-
-            "error":
-                str(exc),
-
-            "traceback":
-                traceback.format_exc(),
+            "available": True,
+            "function": getattr(fn, "__name__", repr(fn)),
+            "signature": str(inspect.signature(fn)),
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
         }
 
-    finally:
 
-        if session is not None:
-
-            try:
-                session.close()
-            except Exception:
-                pass
-
-
-# ============================================================
-# TEST 4 — PRODUCT MATCHER RUNTIME ONLY
-# ============================================================
-
-@router.get("/deloox-matcher")
-def debug_deloox_matcher(
-    q: str = Query(
-        "Born in Roma"
-    ),
-):
-
-    """
-    Runtime-only diagnostic for
-    ProductMatcher + family_registry.
-
-    Does NOT modify anything.
-    """
-
-    try:
-
-        import sys
-        import main as main_module
-
-        matcher = getattr(
-            main_module,
-            "PRODUCT_MATCHER",
-            None,
-        )
-
-        if matcher is None:
-
-            return {
-                "ok":
-                    False,
-
-                "test":
-                    "TEST_4_PRODUCT_MATCHER_RUNTIME",
-
-                "error":
-                    "PRODUCT_MATCHER_IS_NONE",
-
-                "python":
-                    sys.version,
-            }
-
-        query = str(
-            q or ""
-        ).strip()
-
-        # ----------------------------------------------------
-        # FAMILY RESOLUTION
-        # ----------------------------------------------------
-
-        family = None
-        family_error = None
-
-        try:
-
-            family = matcher._family_for_query(
-                query
-            )
-
-        except Exception as exc:
-
-            family_error = {
-                "type":
-                    type(exc).__name__,
-
-                "message":
-                    str(exc),
-            }
-
-        family_info = None
-
-        if isinstance(
-            family,
-            dict,
-        ):
-
-            variants = (
-                family.get(
-                    "variants"
-                )
-                or []
-            )
-
-            family_info = {
-                "family_id":
-                    family.get(
-                        "family_id"
-                    ),
-
-                "brand":
-                    family.get(
-                        "brand"
-                    ),
-
-                "query_aliases":
-                    family.get(
-                        "query_aliases"
-                    ),
-
-                "normalized_query_aliases":
-                    list(
-                        family.get(
-                            "normalized_query_aliases"
-                        )
-                        or []
-                    ),
-
-                "variant_count":
-                    len(variants),
-
-                "variants":
-                    [
-                        {
-                            "canonical_name":
-                                v.get(
-                                    "canonical_name"
-                                ),
-
-                            "aliases":
-                                v.get(
-                                    "aliases"
-                                ),
-
-                            "normalized_aliases":
-                                list(
-                                    v.get(
-                                        "normalized_aliases"
-                                    )
-                                    or []
-                                ),
-                        }
-                        for v in variants
-                    ],
-
-                "excluded_products":
-                    list(
-                        family.get(
-                            "excluded_products"
-                        )
-                        or []
-                    ),
-
-                "excluded_aliases":
-                    list(
-                        family.get(
-                            "excluded_aliases"
-                        )
-                        or []
-                    ),
-            }
-
-        # ----------------------------------------------------
-        # MATCHER SAMPLES
-        # ----------------------------------------------------
-
-        samples = [
-            {
-                "label":
-                    "UOMO_BASE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma uomo",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "DONNA_BASE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma donna",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "UOMO_INTENSE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma intense uomo",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "DONNA_INTENSE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma intense donna",
-
-                "size_ml":
-                    30,
-            },
-
-            {
-                "label":
-                    "UOMO_EXTRADOSE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma extradose uomo",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "DONNA_EXTRADOSE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma extradose donna",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "UOMO_GREEN",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma green stravaganza uomo",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "DONNA_GREEN",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma green stravaganza donna",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "UOMO_CORAL",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma coral fantasy uomo",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "DONNA_CORAL",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma coral fantasy donna",
-
-                "size_ml":
-                    30,
-            },
-
-            {
-                "label":
-                    "UOMO_YELLOW",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma yellow dream uomo",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "DONNA_YELLOW",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma yellow dream donna",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "UOMO_PURPLE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma uomo purple melancholia",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "DONNA_PURPLE",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma purple melancholia donna",
-
-                "size_ml":
-                    50,
-            },
-
-            {
-                "label":
-                    "UOMO_GOLD",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma the gold uomo",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "DONNA_GOLD",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma the gold donna",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "UOMO_IVORY",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma ivory uomo",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "DONNA_IVORY",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma ivory donna",
-
-                "size_ml":
-                    100,
-            },
-
-            # ------------------------------------------------
-            # NEGATIVE CONTROLS
-            # ------------------------------------------------
-
-            {
-                "label":
-                    "COFFRET_UOMO",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma uomo coffret cadeau",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "BODY_MIST",
-
-                "brand":
-                    "Valentino",
-
-                "name":
-                    "valentino born in roma caramel crush hair body mist",
-
-                "size_ml":
-                    100,
-            },
-
-            {
-                "label":
-                    "WRONG_BRAND",
-
-                "brand":
-                    "Carolina Herrera",
-
-                "name":
-                    "born in roma uomo",
-
-                "size_ml":
-                    100,
-            },
+def _direct_pages(module, query):
+    base = str(
+        getattr(module, "BASE", None)
+        or getattr(module, "BASE_URL", None)
+        or DLOOX_BASE
+    ).rstrip("/")
+
+    headers = dict(getattr(module, "HEADERS", {}) or {})
+    timeout = getattr(module, "TIMEOUT", (4, 8))
+
+    pages = []
+    session = requests.Session()
+    if headers:
+        session.headers.update(headers)
+
+    for page_number in range(1, 5):
+        candidates = [
+            f"{base}/chercher.html?q={quote_plus(query)}&page={page_number}",
         ]
 
-        results = []
-
-        for sample in samples:
-
-            item = dict(
-                sample
-            )
-
-            label = item.pop(
-                "label"
-            )
-
-            entry = {
-                "label":
-                    label,
-
-                "input":
-                    dict(item),
-            }
-
-            entry[
-                "requested_family_id"
-            ] = (
-                family.get(
-                    "family_id"
-                )
-                if isinstance(
-                    family,
-                    dict,
-                )
-                else None
-            )
-
-            # --------------------------------------------
-            # DIRECT FAMILY VARIANT
-            # --------------------------------------------
-
-            if isinstance(
-                family,
-                dict,
-            ):
-
-                try:
-
-                    variant = (
-                        matcher
-                        ._family_variant_for_offer(
-                            item,
-                            family,
-                        )
-                    )
-
-                    if isinstance(
-                        variant,
-                        dict,
-                    ):
-
-                        entry[
-                            "family_variant"
-                        ] = {
-                            "canonical_name":
-                                variant.get(
-                                    "canonical_name"
-                                ),
-
-                            "aliases":
-                                variant.get(
-                                    "aliases"
-                                ),
-                        }
-
-                        try:
-
-                            catalog_product = (
-                                matcher
-                                ._catalog_product_for_family_variant(
-                                    family,
-                                    variant,
-                                )
-                            )
-
-                            if (
-                                catalog_product
-                                is not None
-                            ):
-
-                                entry[
-                                    "catalog_product"
-                                ] = {
-                                    "catalog_id":
-                                        catalog_product.catalog_id,
-
-                                    "brand":
-                                        catalog_product.brand,
-
-                                    "name":
-                                        catalog_product.name,
-
-                                    "family_id":
-                                        catalog_product.family_id,
-
-                                    "family_name":
-                                        catalog_product.family_name,
-
-                                    "catalog_variant":
-                                        catalog_product.catalog_variant,
-
-                                    "aliases":
-                                        list(
-                                            catalog_product.aliases
-                                        ),
-
-                                    "formats_ml":
-                                        list(
-                                            catalog_product.formats_ml
-                                        ),
-                                }
-
-                            else:
-
-                                entry[
-                                    "catalog_product"
-                                ] = None
-
-                        except Exception as exc:
-
-                            entry[
-                                "catalog_product_error"
-                            ] = {
-                                "type":
-                                    type(
-                                        exc
-                                    ).__name__,
-
-                                "message":
-                                    str(exc),
-                            }
-
-                    else:
-
-                        entry[
-                            "family_variant"
-                        ] = None
-
-                except Exception as exc:
-
-                    entry[
-                        "family_variant_error"
-                    ] = {
-                        "type":
-                            type(
-                                exc
-                            ).__name__,
-
-                        "message":
-                            str(exc),
-                    }
-
-            # --------------------------------------------
-            # PUBLIC match()
-            # --------------------------------------------
-
-            try:
-
-                matched = matcher.match(
-                    item,
-                    query,
-                )
-
-                if isinstance(
-                    matched,
-                    dict,
-                ):
-
-                    entry[
-                        "match"
-                    ] = {
-                        "matched":
-                            True,
-
-                        "match_method":
-                            matched.get(
-                                "match_method"
-                            ),
-
-                        "match_score":
-                            matched.get(
-                                "match_score"
-                            ),
-
-                        "catalog_id":
-                            matched.get(
-                                "catalog_id"
-                            ),
-
-                        "family_id":
-                            matched.get(
-                                "family_id"
-                            ),
-
-                        "family_name":
-                            matched.get(
-                                "family_name"
-                            ),
-
-                        "canonical_name":
-                            matched.get(
-                                "canonical_name"
-                            ),
-
-                        "catalog_variant":
-                            matched.get(
-                                "catalog_variant"
-                            ),
-
-                        "canonical_brand":
-                            matched.get(
-                                "canonical_brand"
-                            ),
-
-                        "brand":
-                            matched.get(
-                                "brand"
-                            ),
-
-                        "name":
-                            matched.get(
-                                "name"
-                            ),
-                    }
-
-                else:
-
-                    entry[
-                        "match"
-                    ] = {
-                        "matched":
-                            False,
-
-                        "result_type":
-                            type(
-                                matched
-                            ).__name__,
-                    }
-
-            except Exception as exc:
-
-                entry[
-                    "match_error"
-                ] = {
-                    "type":
-                        type(
-                            exc
-                        ).__name__,
-
-                    "message":
-                        str(exc),
-                }
-
-            results.append(
-                entry
-            )
-
-        # ----------------------------------------------------
-        # RUNTIME CATALOG
-        # ----------------------------------------------------
-
-        catalog = getattr(
-            matcher,
-            "catalog",
-            [],
-        ) or []
-
-        born_catalog = []
-
-        for product in catalog:
-
-            try:
-
-                text = " ".join(
-                    [
-                        str(
-                            getattr(
-                                product,
-                                "brand",
-                                "",
-                            )
-                            or ""
-                        ),
-
-                        str(
-                            getattr(
-                                product,
-                                "name",
-                                "",
-                            )
-                            or ""
-                        ),
-
-                        str(
-                            getattr(
-                                product,
-                                "family_name",
-                                "",
-                            )
-                            or ""
-                        ),
-
-                        str(
-                            getattr(
-                                product,
-                                "family_id",
-                                "",
-                            )
-                            or ""
-                        ),
-                    ]
-                ).lower()
-
-                if "born in roma" in text:
-
-                    born_catalog.append(
-                        {
-                            "catalog_id":
-                                getattr(
-                                    product,
-                                    "catalog_id",
-                                    "",
-                                ),
-
-                            "brand":
-                                getattr(
-                                    product,
-                                    "brand",
-                                    "",
-                                ),
-
-                            "name":
-                                getattr(
-                                    product,
-                                    "name",
-                                    "",
-                                ),
-
-                            "family_id":
-                                getattr(
-                                    product,
-                                    "family_id",
-                                    "",
-                                ),
-
-                            "family_name":
-                                getattr(
-                                    product,
-                                    "family_name",
-                                    "",
-                                ),
-
-                            "catalog_variant":
-                                getattr(
-                                    product,
-                                    "catalog_variant",
-                                    "",
-                                ),
-
-                            "aliases":
-                                list(
-                                    getattr(
-                                        product,
-                                        "aliases",
-                                        (),
-                                    )
-                                    or ()
-                                ),
-
-                            "formats_ml":
-                                list(
-                                    getattr(
-                                        product,
-                                        "formats_ml",
-                                        (),
-                                    )
-                                    or ()
-                                ),
-                        }
-                    )
-
-            except Exception:
-                continue
-
-        # ----------------------------------------------------
-        # MODULE FILES
-        # ----------------------------------------------------
-
-        try:
-
-            matcher_module = sys.modules.get(
-                "product_matcher"
-            )
-
-            matcher_file = getattr(
-                matcher_module,
-                "__file__",
-                None,
-            )
-
-        except Exception:
-
-            matcher_file = None
-
-        try:
-
-            main_file = getattr(
-                main_module,
-                "__file__",
-                None,
-            )
-
-        except Exception:
-
-            main_file = None
-
-        return {
-            "ok":
-                True,
-
-            "test":
-                "TEST_4_PRODUCT_MATCHER_RUNTIME",
-
-            "important":
-                (
-                    "Runtime-only diagnostic. "
-                    "No scraper, ProductMatcher or "
-                    "family_registry modification is performed."
-                ),
-
-            "query":
-                query,
-
-            "runtime":
-                {
-                    "main_file":
-                        main_file,
-
-                    "product_matcher_file":
-                        matcher_file,
-
-                    "python":
-                        sys.version,
-
-                    "matcher_class":
-                        type(
-                            matcher
-                        ).__name__,
-                },
-
-            "family_resolution":
-                {
-                    "found":
-                        isinstance(
-                            family,
-                            dict,
-                        ),
-
-                    "error":
-                        family_error,
-
-                    "family":
-                        family_info,
-                },
-
-            "catalog":
-                {
-                    "total_products":
-                        len(catalog),
-
-                    "born_in_roma_products":
-                        len(
-                            born_catalog
-                        ),
-
-                    "born_in_roma":
-                        born_catalog,
-                },
-
-            "samples":
-                results,
+        if page_number == 1:
+            candidates.append(f"{base}/chercher.html?q={quote_plus(query)}")
+
+        report = {
+            "page": page_number,
+            "requested": candidates[0],
         }
 
-    except Exception as exc:
-
-        return {
-            "ok":
-                False,
-
-            "test":
-                "TEST_4_PRODUCT_MATCHER_RUNTIME",
-
-            "error":
-                {
-                    "type":
-                        type(
-                            exc
-                        ).__name__,
-
-                    "message":
-                        str(exc),
-
-                    "traceback":
-                        traceback.format_exc(),
-                },
-        }
-
-
-# ============================================================
-# TEST 5 — DELOOX DISCOVERY COMPLETENESS
-# ============================================================
-
-@router.get("/deloox-completeness")
-def debug_deloox_completeness(
-    q: str = Query(
-        "Born in Roma",
-        min_length=2,
-    ),
-):
-
-    """
-    Confronta:
-
-        RAW Deloox HTML
-              ↓
-        discover()
-
-    NON usa ProductMatcher.
-    NON usa family_registry.
-    NON modifica nulla.
-
-    La classificazione dei prodotti Born in Roma
-    viene fatta esclusivamente sullo slug dell'URL.
-    """
-
-    session = None
-
-    try:
-
-        from scrapers.deloox.scraper import (
-            discover,
-            product_url,
-        )
-
-        query = str(
-            q or ""
-        ).strip()
-
-        encoded = quote_plus(
-            query
-        )
-
-        session = requests.Session()
-
-        raw_by_url = {}
-        raw_pages = []
-
-        # ====================================================
-        # 1. RAW DELOOX HTML
-        # ====================================================
-
-        for page_number in range(
-            1,
-            11,
-        ):
-
-            if page_number == 1:
-
-                endpoint = (
-                    f"{DELOOX_BASE}/chercher.html"
-                    f"?q={encoded}"
-                )
-
-            else:
-
-                endpoint = (
-                    f"{DELOOX_BASE}/chercher.html"
-                    f"?q={encoded}"
-                    f"&page={page_number}"
-                )
-
-            try:
-
+        response = None
+        try:
+            for url in candidates:
                 response = session.get(
-                    endpoint,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
+                    url,
+                    headers=headers or None,
+                    timeout=timeout,
                     allow_redirects=True,
                 )
-
-                html = response.text or ""
-
-                soup = BeautifulSoup(
-                    html,
-                    "html.parser",
-                )
-
-                page_urls = []
-
-                for anchor in soup.find_all(
-                    "a",
-                    href=True,
-                ):
-
-                    href = urljoin(
-                        response.url,
-                        str(
-                            anchor.get(
-                                "href"
-                            )
-                            or ""
-                        ),
-                    )
-
-                    normalized_url = (
-                        product_url(
-                            href
-                        )
-                    )
-
-                    if not normalized_url:
-                        continue
-
-                    slug = extract_slug(
-                        normalized_url
-                    )
-
-                    # IMPORTANT:
-                    # Solo lo slug URL.
-                    # Nessun card context.
-                    slug_norm = norm(
-                        slug
-                    )
-
-                    if (
-                        "born in roma"
-                        not in slug_norm
-                    ):
-                        continue
-
-                    entry = {
-                        "url":
-                            normalized_url,
-
-                        "slug":
-                            slug,
-
-                        "page":
-                            page_number,
-
-                        "variant_matches":
-                            variant_match(
-                                slug
-                            ),
-
-                        "anchor_text":
-                            clean_text(
-                                anchor.get_text(
-                                    " ",
-                                    strip=True,
-                                )
-                            )[:500],
-                    }
-
-                    raw_by_url[
-                        normalized_url
-                    ] = entry
-
-                    page_urls.append(
-                        normalized_url
-                    )
-
-                raw_pages.append(
-                    {
-                        "page":
-                            page_number,
-
-                        "status_code":
-                            response.status_code,
-
-                        "final_url":
-                            response.url,
-
-                        "html_length":
-                            len(html),
-
-                        "born_in_roma_url_count":
-                            len(
-                                set(
-                                    page_urls
-                                )
-                            ),
-                    }
-                )
-
-                # Se una pagina non contiene più
-                # Born in Roma, interrompiamo.
-                if not page_urls:
+                report["attempts"] = report.get("attempts", []) + [{
+                    "url": url,
+                    "status": response.status_code,
+                    "final_url": response.url,
+                    "bytes": len(response.content or b""),
+                }]
+                if response.status_code < 400 and response.text:
                     break
 
-            except Exception as exc:
+            if response is None:
+                raise RuntimeError("no_response")
 
-                raw_pages.append(
-                    {
-                        "page":
-                            page_number,
+            html = response.text or ""
+            raw_urls = _generic_raw_urls(html, response.url)
+            born = _born_urls(raw_urls)
 
-                        "error_type":
-                            type(
-                                exc
-                            ).__name__,
+            report.update({
+                "status": response.status_code,
+                "final_url": response.url,
+                "html_length": len(html),
+                "generic_product_url_count": len(raw_urls),
+                "born_in_roma_url_count": len(born),
+                "born_in_roma_urls": born[:100],
+                "candidate_extractor": _call_candidate_extractor(
+                    module,
+                    html,
+                    query,
+                ),
+            })
 
-                        "error":
-                            str(exc),
+        except Exception as exc:
+            report.update({
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
+            })
 
-                        "traceback":
-                            traceback.format_exc(),
-                    }
-                )
+        pages.append(report)
 
-        # ====================================================
-        # 2. CURRENT discover()
-        # ====================================================
+    session.close()
+    return pages
 
-        candidates = discover(
-            session,
-            query,
-        )
 
-        discovered_by_url = {}
+def _known_url_probe(module, query):
+    headers = dict(getattr(module, "HEADERS", {}) or {})
+    timeout = getattr(module, "TIMEOUT", (4, 8))
 
-        for index, item in enumerate(
-            candidates
-        ):
+    rows = []
+    session = requests.Session()
+    if headers:
+        session.headers.update(headers)
 
-            try:
-
-                url, info = item
-
-                score, context = info
-
-                discovered_by_url[
-                    url
-                ] = {
-                    "index":
-                        index,
-
-                    "url":
-                        url,
-
-                    "slug":
-                        extract_slug(url),
-
-                    "score":
-                        score,
-
-                    "variant_matches":
-                        variant_match(
-                            extract_slug(
-                                url
-                            )
-                        ),
-
-                    "context":
-                        str(
-                            context or ""
-                        )[:1800],
-                }
-
-            except Exception as exc:
-
-                discovered_by_url[
-                    f"ERROR_{index}"
-                ] = {
-                    "index":
-                        index,
-
-                    "error_type":
-                        type(
-                            exc
-                        ).__name__,
-
-                    "error":
-                        str(exc),
-
-                    "raw":
-                        repr(item),
-                }
-
-        # ====================================================
-        # 3. RAW vs DISCOVER
-        # ====================================================
-
-        raw_urls = set(
-            raw_by_url.keys()
-        )
-
-        discovered_urls = {
-            url
-            for url in discovered_by_url
-            if url.startswith(
-                "http"
-            )
+    for url in KNOWN_URLS:
+        item = {
+            "url": url,
+            "is_generic_product_url": _is_deloox_product_url(url),
         }
 
-        missing = sorted(
-            raw_urls
-            - discovered_urls
-        )
-
-        discovered_extra = sorted(
-            discovered_urls
-            - raw_urls
-        )
-
-        # ====================================================
-        # 4. PER-VARIANT ANALYSIS
-        # ====================================================
-
-        variants = {}
-
-        for variant in (
-            BORN_IN_ROMA_VARIANTS
-        ):
-
-            variant_norm = norm(
-                variant
+        try:
+            response = session.get(
+                url,
+                headers=headers or None,
+                timeout=timeout,
+                allow_redirects=True,
             )
+            html = response.text or ""
 
-            raw_variant_urls = []
-            discover_variant_urls = []
+            item.update({
+                "status": response.status_code,
+                "final_url": response.url,
+                "bytes": len(response.content or b""),
+                "html_length": len(html),
+                "contains_born_in_roma": "born in roma" in html.casefold(),
+                "contains_ivoory": "ivory" in html.casefold(),
+                "jsonld_products": _jsonld_products(html),
+            })
 
-            for url in raw_urls:
+        except Exception as exc:
+            item.update({
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
+            })
 
-                slug_norm = norm(
-                    extract_slug(url)
-                )
+    session.close()
+    return rows
 
-                if (
-                    variant_norm
-                    in slug_norm
-                ):
 
-                    raw_variant_urls.append(
-                        url
-                    )
+@router.get("/deloox-runtime-forensic")
+def deloox_runtime_forensic(
+    q: str = Query("Born in Roma", min_length=1),
+):
+    query = str(q or "").strip()
+    started = time.monotonic()
 
-            for url in discovered_urls:
+    try:
+        import importlib
 
-                slug_norm = norm(
-                    extract_slug(url)
-                )
+        module = importlib.import_module("scrapers.deloox.scraper")
 
-                if (
-                    variant_norm
-                    in slug_norm
-                ):
+        fingerprint = _module_fingerprint(module)
+        source_text = fingerprint.pop("module_source_text")
 
-                    discover_variant_urls.append(
-                        url
-                    )
+        public_functions = _module_functions(module)
 
-            variants[variant] = {
-                "raw_count":
-                    len(
-                        raw_variant_urls
-                    ),
+        discover = getattr(module, "discover", None)
+        discover_name = "discover"
 
-                "discover_count":
-                    len(
-                        discover_variant_urls
-                    ),
+        if not callable(discover):
+            discover = getattr(module, "_discover", None)
+            discover_name = "_discover"
 
-                "raw_urls":
-                    sorted(
-                        raw_variant_urls
-                    ),
+        if not callable(discover):
+            discover = None
+            discover_name = None
 
-                "discover_urls":
-                    sorted(
-                        discover_variant_urls
-                    ),
+        result = {
+            "ok": True,
+            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V1",
+            "query": query,
+            "warning": "READ-ONLY DIAGNOSTIC. NO PRODUCTION FILE IS MODIFIED.",
+            "runtime": fingerprint,
+            "available_relevant_functions": public_functions,
+            "discover": {
+                "name": discover_name,
+                "exists": callable(discover),
+                "signature": str(inspect.signature(discover)) if callable(discover) else None,
+                "source": _source(discover) if callable(discover) else None,
+            },
+            "helper_sources": {},
+        }
 
-                "missing_from_discover":
-                    sorted(
-                        set(
-                            raw_variant_urls
-                        )
-                        - set(
-                            discover_variant_urls
-                        )
-                    ),
-            }
+        for name in public_functions:
+            if name in {
+                "discover",
+                "_discover",
+                "_candidate_product_urls",
+                "_candidate_contexts",
+                "_discover_from_categories",
+                "_category_product_line_links",
+                "_sitemap_product_urls",
+                "_find_catalog_filter_url",
+                "_product",
+                "product_url",
+                "relevant",
+                "matches",
+            }:
+                value = getattr(module, name, None)
+                if callable(value):
+                    result["helper_sources"][name] = {
+                        "signature": str(inspect.signature(value)),
+                        "source": _source(value),
+                    }
 
-        # ====================================================
-        # 5. SPECIFIC GOLD / IVORY
-        # ====================================================
+        result["direct_html"] = _direct_pages(module, query)
+        result["known_product_pages"] = _known_url_probe(module, query)
 
-        gold_ivory = {}
-
-        for keyword in (
-            "the gold",
-            "ivory",
-        ):
-
-            raw = []
-            discovered = []
-
-            for url in raw_urls:
-
-                slug = norm(
-                    extract_slug(url)
-                )
-
-                if keyword in slug:
-
-                    raw.append(
-                        {
-                            "url":
-                                url,
-
-                            "slug":
-                                extract_slug(
-                                    url
-                                ),
-
-                            "page":
-                                raw_by_url[
-                                    url
-                                ][
-                                    "page"
-                                ],
-
-                            "variant_matches":
-                                raw_by_url[
-                                    url
-                                ][
-                                    "variant_matches"
-                                ],
-                        }
-                    )
-
-            for url in discovered_urls:
-
-                slug = norm(
-                    extract_slug(url)
-                )
-
-                if keyword in slug:
-
-                    discovered.append(
-                        discovered_by_url[
-                            url
-                        ]
-                    )
-
-            gold_ivory[
-                keyword
-            ] = {
-                "raw":
-                    sorted(
-                        raw,
-                        key=lambda x:
-                            x["url"],
-                    ),
-
-                "discover":
-                    sorted(
-                        discovered,
-                        key=lambda x:
-                            x["url"],
-                    ),
-            }
-
-        # ====================================================
-        # 6. RETURN
-        # ====================================================
-
-        return {
-            "ok":
-                True,
-
-            "test":
-                "TEST_5_DELOOX_DISCOVERY_COMPLETENESS",
-
-            "important":
-                (
-                    "URL-SLUG ONLY diagnostic. "
-                    "ProductMatcher and family_registry "
-                    "are NOT executed."
-                ),
-
-            "query":
+        if callable(discover):
+            headers = dict(getattr(module, "HEADERS", {}) or {})
+            timeout = getattr(module, "TIMEOUT", (4, 8))
+            result["discover_execution"] = _profile_discover(
+                module,
+                discover,
                 query,
+                headers,
+                timeout,
+            )
+        else:
+            result["discover_execution"] = {
+                "ok": False,
+                "error": "NO_DISCOVER_OR__DISCOVER_IN_LOADED_MODULE",
+            }
 
-            "expected_variant_count":
-                len(
-                    BORN_IN_ROMA_VARIANTS
-                ),
+        result["elapsed_total_ms"] = round((time.monotonic() - started) * 1000)
 
-            "expected_variants":
-                BORN_IN_ROMA_VARIANTS,
-
-            "counts":
-                {
-                    "raw_born_in_roma_unique_urls":
-                        len(
-                            raw_urls
-                        ),
-
-                    "discover_unique_urls":
-                        len(
-                            discovered_urls
-                        ),
-
-                    "missing_from_discover":
-                        len(
-                            missing
-                        ),
-
-                    "discover_extra_urls":
-                        len(
-                            discovered_extra
-                        ),
-                },
-
-            "raw_pages":
-                raw_pages,
-
-            "missing_from_discover":
-                [
-                    {
-                        "url":
-                            url,
-
-                        "slug":
-                            extract_slug(
-                                url
-                            ),
-
-                        "page":
-                            raw_by_url[
-                                url
-                            ][
-                                "page"
-                            ],
-
-                        "variant_matches":
-                            raw_by_url[
-                                url
-                            ][
-                                "variant_matches"
-                            ],
-                    }
-                    for url in missing
-                ],
-
-            "discover_extra_urls":
-                [
-                    {
-                        "url":
-                            url,
-
-                        "slug":
-                            extract_slug(
-                                url
-                            ),
-
-                        "index":
-                            discovered_by_url[
-                                url
-                            ][
-                                "index"
-                            ],
-
-                        "variant_matches":
-                            discovered_by_url[
-                                url
-                            ][
-                                "variant_matches"
-                            ],
-                    }
-                    for url in discovered_extra
-                ],
-
-            "variants":
-                variants,
-
-            "gold_ivory":
-                gold_ivory,
-
-            "discover_candidates":
-                [
-                    discovered_by_url[url]
-                    for url in sorted(
-                        discovered_urls,
-                        key=lambda x:
-                            discovered_by_url[
-                                x
-                            ][
-                                "index"
-                            ],
-                    )
-                ],
-        }
+        return result
 
     except Exception as exc:
-
         return {
-            "ok":
-                False,
-
-            "test":
-                "TEST_5_DELOOX_DISCOVERY_COMPLETENESS",
-
-            "error_type":
-                type(
-                    exc
-                ).__name__,
-
-            "error":
-                str(exc),
-
-            "traceback":
-                traceback.format_exc(),
+            "ok": False,
+            "diagnostic": "DELOOX_RUNTIME_FORENSIC_V1",
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+            "elapsed_total_ms": round((time.monotonic() - started) * 1000),
         }
-
-    finally:
-
-        if session is not None:
-
-            try:
-                session.close()
-            except Exception:
-                pass
