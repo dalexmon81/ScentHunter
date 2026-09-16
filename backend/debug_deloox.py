@@ -792,3 +792,254 @@ def debug_deloox_pipeline(
                 session.close()
             except Exception:
                 pass
+
+        # ============================================================
+# TEST 3 — Deloox: analisi profonda della pagina prodotto
+# ============================================================
+
+from urllib.parse import urlparse
+import json
+import re
+
+@app.get("/api/debug/deloox-product")
+def debug_deloox_product(q: str = "Born in Roma"):
+    from backend.scrapers.deloox.scraper import (
+        clean,
+        norm,
+        discover,
+        product_url,
+        relevant,
+        non_fragrance,
+        _row_from_card,
+        parse_product,
+    )
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    result = {
+        "ok": True,
+        "test": "TEST_3_PRODUCT_PAGE_DEEP",
+        "query": q,
+        "products": [],
+        "summary": {}
+    }
+
+    try:
+        candidates = discover(session, q)
+
+        # Prendiamo solo candidati il cui URL sembra realmente Born in Roma.
+        born_candidates = []
+
+        for item in candidates:
+            try:
+                url, context = item
+            except Exception:
+                continue
+
+            slug = extract_slug(url).lower()
+
+            if "born-in-roma" in slug or "born-in-roma" in norm(context).replace(" ", "-"):
+                born_candidates.append((url, context))
+
+        # Se il filtro fosse troppo restrittivo, prendiamo comunque
+        # i primi candidati per non perdere il problema.
+        if not born_candidates:
+            born_candidates = candidates[:10]
+
+        for url, context in born_candidates[:20]:
+
+            item = {
+                "url": url,
+                "slug": extract_slug(url),
+                "context": clean(context)[:1200],
+            }
+
+            # ------------------------------------------------
+            # A. _row_from_card
+            # ------------------------------------------------
+            try:
+                card_row = _row_from_card(url, context, q)
+
+                if isinstance(card_row, dict):
+                    item["card"] = {
+                        "status": "ACCEPTED",
+                        "row": card_row
+                    }
+                else:
+                    item["card"] = {
+                        "status": "REJECTED",
+                        "reason": "row_from_card returned non-dict",
+                        "type": str(type(card_row))
+                    }
+
+            except Exception as e:
+                item["card"] = {
+                    "status": "EXCEPTION",
+                    "error": repr(e)
+                }
+
+            # ------------------------------------------------
+            # B. PAGINA PRODOTTO RAW
+            # ------------------------------------------------
+            try:
+                r = session.get(url, timeout=TIMEOUT)
+
+                item["product_page"] = {
+                    "http_status": r.status_code,
+                    "html_length": len(r.text),
+                    "content_type": r.headers.get("content-type")
+                }
+
+                soup = BeautifulSoup(r.text, "html.parser")
+
+                # JSON-LD
+                jsonld_nodes = []
+
+                for script in soup.find_all(
+                    "script",
+                    attrs={"type": re.compile(r"application/ld\+json", re.I)}
+                ):
+                    raw = script.string or script.get_text()
+
+                    if not raw:
+                        continue
+
+                    try:
+                        data = json.loads(raw)
+
+                        if isinstance(data, list):
+                            jsonld_nodes.extend(data)
+                        else:
+                            jsonld_nodes.append(data)
+
+                    except Exception as e:
+                        jsonld_nodes.append({
+                            "_json_parse_error": repr(e),
+                            "_raw_preview": clean(raw)[:500]
+                        })
+
+                item["jsonld_count"] = len(jsonld_nodes)
+
+                products = []
+
+                for node in jsonld_nodes:
+                    if not isinstance(node, dict):
+                        continue
+
+                    node_type = node.get("@type")
+
+                    types = node_type if isinstance(node_type, list) else [node_type]
+
+                    if (
+                        "Product" in types
+                        or "ProductGroup" in types
+                        or node.get("name")
+                        or node.get("offers")
+                    ):
+                        products.append({
+                            "@type": node_type,
+                            "name": node.get("name"),
+                            "brand": node.get("brand"),
+                            "sku": node.get("sku"),
+                            "gtin": (
+                                node.get("gtin")
+                                or node.get("gtin13")
+                                or node.get("gtin12")
+                                or node.get("gtin14")
+                            ),
+                            "offers": node.get("offers"),
+                            "availability": node.get("availability"),
+                            "url": node.get("url")
+                        })
+
+                item["jsonld_products"] = products[:10]
+
+                # ------------------------------------------------
+                # C. TEST DELLE FUNZIONI DI FILTRO
+                # ------------------------------------------------
+                names = []
+
+                for p in products:
+                    name = p.get("name")
+                    if name:
+                        names.append(name)
+
+                item["name_tests"] = []
+
+                for name in names:
+                    item["name_tests"].append({
+                        "name": name,
+                        "relevant": relevant(name, q),
+                        "non_fragrance": non_fragrance(name),
+                        "norm": norm(name)
+                    })
+
+                # ------------------------------------------------
+                # D. parse_product REALE
+                # ------------------------------------------------
+                try:
+                    parsed = parse_product(session, url, q)
+
+                    item["parse_product"] = {
+                        "status": "ACCEPTED" if parsed else "REJECTED",
+                        "count": len(parsed) if parsed else 0,
+                        "rows": parsed or []
+                    }
+
+                except Exception as e:
+                    item["parse_product"] = {
+                        "status": "EXCEPTION",
+                        "error": repr(e)
+                    }
+
+            except Exception as e:
+                item["product_page"] = {
+                    "status": "EXCEPTION",
+                    "error": repr(e)
+                }
+
+            result["products"].append(item)
+
+        # ----------------------------------------------------
+        # SUMMARY
+        # ----------------------------------------------------
+        result["summary"] = {
+            "discover_candidates": len(candidates),
+            "born_candidates_tested": len(result["products"]),
+            "card_accepted": sum(
+                1 for x in result["products"]
+                if x.get("card", {}).get("status") == "ACCEPTED"
+            ),
+            "card_rejected": sum(
+                1 for x in result["products"]
+                if x.get("card", {}).get("status") == "REJECTED"
+            ),
+            "card_exception": sum(
+                1 for x in result["products"]
+                if x.get("card", {}).get("status") == "EXCEPTION"
+            ),
+            "parse_accepted": sum(
+                1 for x in result["products"]
+                if x.get("parse_product", {}).get("status") == "ACCEPTED"
+            ),
+            "parse_rejected": sum(
+                1 for x in result["products"]
+                if x.get("parse_product", {}).get("status") == "REJECTED"
+            ),
+            "parse_exception": sum(
+                1 for x in result["products"]
+                if x.get("parse_product", {}).get("status") == "EXCEPTION"
+            )
+        }
+
+        return result
+
+    except Exception as e:
+        return {
+            "ok": False,
+            "test": "TEST_3_PRODUCT_PAGE_DEEP",
+            "query": q,
+            "error": repr(e)
+        }
+ 
