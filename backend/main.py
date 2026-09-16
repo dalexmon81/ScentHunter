@@ -511,3 +511,16 @@ except Exception as exc:
         f'{type(exc).__name__}: {exc}',
         flush=True,
     )
+
+
+# Deloox stream diagnostic v2 router is OPTIONAL.
+try:
+    from debug_deloox_stream_probe_v2 import router as deloox_stream_probe_v2_router
+    app.include_router(deloox_stream_probe_v2_router)
+    print("DELOOX STREAM DEBUG V2 ROUTER: LOADED", flush=True)
+except Exception as exc:
+    print(
+        "DELOOX STREAM DEBUG V2 ROUTER: UNAVAILABLE "
+        f"{type(exc).__name__}: {exc}",
+        flush=True,
+    )
