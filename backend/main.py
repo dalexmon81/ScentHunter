@@ -524,3 +524,105 @@ except Exception as exc:
         f"{type(exc).__name__}: {exc}",
         flush=True,
     )
+
+# TEST 9: exact /test-store pipeline probe.
+
+# TEST 9: exact /test-store pipeline probe.
+@app.get('/api/debug/deloox-test-store-pipeline')
+def deloox_test_store_pipeline(q: str = 'Born in Roma'):
+    out = {
+        'ok': True,
+        'test': 'TEST_9_DELOOX_EXACT_TEST_STORE_PIPELINE',
+        'query': q,
+    }
+    try:
+        module = load_scraper('deloox')
+        search = getattr(module, 'search', None)
+        if not callable(search):
+            raise RuntimeError('deloox scraper search(query) is not callable')
+
+        raw = search(q)
+        raw_rows = [] if raw is None else list(raw) if not isinstance(raw, list) else raw
+
+        cleaned_rows = []
+        dropped = []
+        for idx, item in enumerate(raw_rows):
+            if not isinstance(item, dict):
+                dropped.append({
+                    'index': idx,
+                    'reason': 'not_dict',
+                    'type': type(item).__name__,
+                })
+                continue
+            try:
+                cleaned = clean_result(item, 'deloox', q)
+                if cleaned is None:
+                    dropped.append({
+                        'index': idx,
+                        'reason': 'clean_result_returned_none',
+                        'url': item.get('url'),
+                        'name': item.get('name'),
+                        'brand': item.get('brand'),
+                    })
+                else:
+                    cleaned_rows.append(cleaned)
+            except Exception as exc:
+                dropped.append({
+                    'index': idx,
+                    'reason': 'clean_result_exception',
+                    'type': type(exc).__name__,
+                    'error': str(exc),
+                    'url': item.get('url'),
+                    'name': item.get('name'),
+                    'brand': item.get('brand'),
+                })
+
+        def urls(rows):
+            return [
+                r.get('url')
+                for r in rows
+                if isinstance(r, dict) and r.get('url')
+            ]
+
+        raw_urls = urls(raw_rows)
+        clean_urls = urls(cleaned_rows)
+
+        # Reproduce run_store() exactly, but expose intermediate stages.
+        report = run_store('deloox', q)
+
+        out['runtime'] = {
+            'scraper_file': getattr(module, '__file__', ''),
+            'search_callable': callable(search),
+        }
+        out['direct_search'] = {
+            'raw_count': len(raw_rows),
+            'cleaned_count': len(cleaned_rows),
+            'raw_urls': raw_urls,
+            'cleaned_urls': clean_urls,
+            'dropped_count': len(dropped),
+            'dropped': dropped,
+        }
+        out['test_store_equivalent'] = {
+            'status': report.get('status'),
+            'count': report.get('count'),
+            'urls': urls(report.get('results') or []),
+            'error': report.get('error'),
+        }
+
+        for label, rowset in (
+            ('raw', raw_rows),
+            ('cleaned', cleaned_rows),
+            ('test_store', report.get('results') or []),
+        ):
+            u = urls(rowset)
+            out[label + '_ivory'] = {
+                'donna_1400164': any('1400164' in x for x in u),
+                'uomo_1400167': any('1400167' in x for x in u),
+            }
+
+        return out
+    except Exception as exc:
+        out['ok'] = False
+        out['error_type'] = type(exc).__name__
+        out['error'] = str(exc)
+        return out
