@@ -1164,14 +1164,18 @@ def deloox_purple_1391716(q: str = 'Born in Roma'):
         return out
 
 
-# TEST 14: Deloox Born in Roma candidate/result audit.
-# Diagnostic only. Does NOT modify scraper/ProductMatcher/family_registry.
+# TEST 14: lightweight Deloox Born in Roma audit.
+# Diagnostic only. Parses ONLY target 1391716, never every rejected candidate.
 @app.get('/api/debug/deloox-born-audit')
 def deloox_born_audit(q: str = 'Born in Roma'):
+    TARGET_ID = '1391716'
+
     out = {
         'ok': True,
-        'test': 'TEST_14_DELOOX_BORN_IN_ROMA_CANDIDATE_RESULT_AUDIT',
+        'test': 'TEST_14_DELOOX_BORN_IN_ROMA_LIGHT_AUDIT',
         'query': q,
+        'target_id': TARGET_ID,
+        'note': 'Only target 1391716 is parsed; no bulk product-page loop.',
     }
 
     try:
@@ -1186,137 +1190,6 @@ def deloox_born_audit(q: str = 'Born in Roma'):
         if not callable(search):
             raise RuntimeError('Deloox search() unavailable')
 
-        import requests
-        session = requests.Session()
-
-        # DISCOVERY
-        t = time.monotonic()
-        candidates = discover(session, q) or []
-        discover_elapsed = round(time.monotonic() - t, 3)
-
-        def candidate_url(item):
-            try:
-                return str(item[0])
-            except Exception:
-                return ''
-
-        target_ids = [
-            '1214438','1214441','1254088',
-            '1294084','1391716','1392142','1393411',
-            '1359237','1359240','1400164','1400167'
-        ]
-
-        candidate_audit = []
-
-        for idx, item in enumerate(candidates):
-            url = candidate_url(item)
-            info = item[1] if len(item) > 1 else None
-
-            context = ''
-            image = ''
-
-            if isinstance(info, (tuple, list)):
-                if len(info) >= 2:
-                    context = info[1]
-                if len(info) >= 3:
-                    image = info[2]
-
-            entry = {
-                'index': idx,
-                'url': url,
-                'product_id': next(
-                    (pid for pid in target_ids if pid in url),
-                    None
-                ),
-                'info_repr': repr(info)[:1500],
-                'context_preview': str(context)[:1200],
-            }
-
-            if callable(row_from_card):
-                try:
-                    try:
-                        card = row_from_card(
-                            url, context, q, image
-                        )
-                    except TypeError:
-                        card = row_from_card(
-                            url, context, q
-                        )
-
-                    entry['card'] = {
-                        'accepted': isinstance(card, dict),
-                        'row': card,
-                    }
-                except Exception as exc:
-                    entry['card'] = {
-                        'accepted': False,
-                        'exception': f'{type(exc).__name__}: {exc}',
-                    }
-
-            if callable(parse_product):
-                try:
-                    # Only parse candidates that the card rejected.
-                    if not entry.get('card', {}).get('accepted'):
-                        t2 = time.monotonic()
-                        parsed = parse_product(url, q)
-                        entry['product_page'] = {
-                            'elapsed': round(
-                                time.monotonic() - t2, 3
-                            ),
-                            'count': len(parsed or []),
-                            'rows': parsed or [],
-                        }
-                except Exception as exc:
-                    entry['product_page'] = {
-                        'exception': f'{type(exc).__name__}: {exc}',
-                    }
-
-            candidate_audit.append(entry)
-
-        # ONE REAL SEARCH
-        t = time.monotonic()
-        rows = search(q) or []
-        rows = list(rows)
-        search_elapsed = round(time.monotonic() - t, 3)
-
-        result_audit = []
-        for idx, row in enumerate(rows):
-            if not isinstance(row, dict):
-                continue
-
-            url = str(row.get('url') or '')
-            name = str(row.get('name') or '')
-            result_audit.append({
-                'index': idx,
-                'url': url,
-                'name': name,
-                'price_num': row.get('price_num'),
-                'available': row.get('available'),
-                'size_ml': row.get('size_ml'),
-                'product_id': next(
-                    (pid for pid in target_ids if pid in url),
-                    None
-                ),
-            })
-
-        candidate_urls = {
-            e['url'] for e in candidate_audit if e['url']
-        }
-        result_urls = {
-            e['url'] for e in result_audit if e['url']
-        }
-
-        # Extract Born-related candidate/result names using URL identity,
-        # not neighbouring card text.
-        born_candidates = [
-            e for e in candidate_audit
-            if 'born-in-roma' in e['url'].lower()
-        ]
-        born_results = [
-            e for e in result_audit
-            if 'born-in-roma' in e['url'].lower()
-        ]
-
         out['runtime'] = {
             'scraper_file': getattr(module, '__file__', ''),
             'BORN_IN_ROMA_MAX_CANDIDATES': getattr(
@@ -1330,45 +1203,130 @@ def deloox_born_audit(q: str = 'Born in Roma'):
             ),
         }
 
+        import requests
+        session = requests.Session()
+
+        # 1. Discover once.
+        t = time.monotonic()
+        candidates = discover(session, q) or []
+        discover_elapsed = round(time.monotonic() - t, 3)
+
+        target = None
+        for item in candidates:
+            if (
+                isinstance(item, (tuple, list))
+                and len(item) >= 1
+                and TARGET_ID in str(item[0])
+            ):
+                target = item
+                break
+
         out['discover'] = {
             'elapsed': discover_elapsed,
             'candidate_count': len(candidates),
-            'born_candidate_count': len(born_candidates),
-            'born_candidates': born_candidates,
+            'target_found': bool(target),
+            'candidate_ids': [
+                str(item[0]).split('/produit/', 1)[-1].split('/', 1)[0]
+                for item in candidates
+                if isinstance(item, (tuple, list)) and len(item) >= 1
+                and '/produit/' in str(item[0])
+            ],
         }
+
+        # 2. Inspect target card only.
+        if target and callable(row_from_card):
+            url = str(target[0])
+            info = target[1] if len(target) > 1 else None
+            context = ''
+            image = ''
+
+            if isinstance(info, (tuple, list)):
+                if len(info) >= 2:
+                    context = info[1]
+                if len(info) >= 3:
+                    image = info[2]
+
+            try:
+                try:
+                    card = row_from_card(url, context, q, image)
+                except TypeError:
+                    card = row_from_card(url, context, q)
+
+                out['target_card'] = {
+                    'accepted': isinstance(card, dict),
+                    'row': card,
+                    'context': str(context)[:2000],
+                }
+            except Exception as exc:
+                out['target_card'] = {
+                    'accepted': False,
+                    'exception': f'{type(exc).__name__}: {exc}',
+                }
+
+            # 3. Parse target page only.
+            if callable(parse_product):
+                try:
+                    t = time.monotonic()
+                    parsed = parse_product(url, q)
+                    out['target_product_page'] = {
+                        'elapsed': round(time.monotonic() - t, 3),
+                        'count': len(parsed or []),
+                        'rows': parsed or [],
+                    }
+                except Exception as exc:
+                    out['target_product_page'] = {
+                        'count': 0,
+                        'exception': f'{type(exc).__name__}: {exc}',
+                    }
+        else:
+            out['target_card'] = {
+                'skipped': True,
+                'reason': 'target_not_in_discover'
+            }
+            out['target_product_page'] = {
+                'skipped': True,
+                'reason': 'target_not_in_discover'
+            }
+
+        # 4. One real production search.
+        t = time.monotonic()
+        rows = search(q) or []
+        rows = list(rows)
+
+        target_rows = [
+            r for r in rows
+            if isinstance(r, dict)
+            and TARGET_ID in str(r.get('url') or '')
+        ]
 
         out['search'] = {
-            'elapsed': search_elapsed,
-            'result_count': len(rows),
-            'born_result_count': len(born_results),
-            'born_results': born_results,
+            'elapsed': round(time.monotonic() - t, 3),
+            'count': len(rows),
+            'target_present': bool(target_rows),
+            'target_rows': target_rows,
+            'result_ids': [
+                str(r.get('url') or '').split('/produit/', 1)[-1].split('/', 1)[0]
+                for r in rows
+                if isinstance(r, dict)
+                and '/produit/' in str(r.get('url') or '')
+            ],
         }
 
-        out['comparison'] = {
-            'born_candidates_not_in_final_search': sorted(
-                {
-                    e['url'] for e in born_candidates
-                    if e['url'] not in result_urls
-                }
+        out['diagnosis'] = {
+            'target_discovered': bool(target),
+            'target_card_accepted': bool(
+                out.get('target_card', {}).get('accepted')
             ),
-            'final_results_not_in_discover': sorted(
-                {
-                    e['url'] for e in born_results
-                    if e['url'] not in candidate_urls
-                }
+            'target_product_page_parsed': (
+                out.get('target_product_page', {}).get('count', 0) > 0
             ),
-        }
-
-        out['summary'] = {
-            'discover_count': len(candidates),
-            'search_count': len(rows),
-            'born_candidates': len(born_candidates),
-            'born_final_results': len(born_results),
-            'candidate_urls_lost_before_final': len(
-                {
-                    e['url'] for e in born_candidates
-                    if e['url'] not in result_urls
-                }
+            'target_reaches_search': bool(target_rows),
+            'result': (
+                'TARGET_REACHES_FINAL_SEARCH'
+                if target_rows
+                else 'TARGET_LOST_AFTER_DISCOVERY'
+                if target
+                else 'TARGET_LOST_IN_DISCOVER'
             ),
         }
 
