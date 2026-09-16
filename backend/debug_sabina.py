@@ -17,7 +17,7 @@ This file is diagnostic-only:
 
 ENDPOINT
 --------
-GET /diagnose-sabina-born-in-roma?q=Born%20in%20Roma
+GET /diagnose-sabina?q=Born%20in%20Roma
 
 INSTALL
 -------
@@ -317,7 +317,7 @@ def url_might_identify(url: str, expected: str) -> bool:
     return bool(parts) and all(part in u for part in parts)
 
 
-@router.get("/diagnose-sabina-born-in-roma")
+@router.get("/diagnose-sabina")
 def diagnose_sabina_born_in_roma(
     q: str = Query("Born in Roma", min_length=1, max_length=120),
 ):
