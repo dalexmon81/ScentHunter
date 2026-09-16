@@ -2567,51 +2567,20 @@ def _run_search_job(
         if not isinstance(store_candidates, list):
             return
 
-        # IMPORTANT:
-        # non ricalcolare la validazione dell'intero candidate pool ogni
-        # volta che termina uno store. I candidati già validati non cambiano
-        # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
-        # e poi lo fondiamo con i risultati già ottenuti.
+        # IMPORTANT: during a multi-store search we keep ONLY the raw
+        # candidate pool here. We deliberately do not validate/group a
+        # partial result set. Grouping chooses a primary offer (normally the
+        # cheapest), so doing it store-by-store makes the visible card jump
+        # from Bplatz -> Parfumzentrum -> Deloox as cheaper offers arrive.
+        # The user must receive one stable final snapshot after all stores
+        # have completed.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
             if job is None:
                 return
 
-            job["candidates"].extend(
-                store_candidates
-            )
-            existing_results = list(
-                job["results"]
-            )
-
-        new_candidates = unique_results(
-            store_candidates
-        )
-
-        ranked_candidates = _pre_rank_candidates(
-            new_candidates,
-            query,
-        )
-
-        new_results = _validate_candidates_parallel(
-            ranked_candidates,
-            query,
-        )
-
-        combined_results = _propagate_catalog_identity(
-            existing_results + new_results,
-        )
-
-        results = _group_catalog_results(
-            combined_results
-        )
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is not None:
-                job["results"] = results
+            job["candidates"].extend(store_candidates)
 
     try:
         try:
@@ -2678,11 +2647,30 @@ def _run_search_job(
             cancel_futures=True,
         )
 
+        # Final, atomic validation/grouping. All stores that completed within
+        # the global timeout participate in the same pass, so the primary
+        # offer cannot change underneath the UI while the search is running.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+            all_candidates = list(job["candidates"]) if job is not None else []
 
-            if job is not None:
-                job["completed"] = True
+        if job is not None:
+            ranked_candidates = _pre_rank_candidates(
+                unique_results(all_candidates),
+                query,
+            )
+            final_validated = _validate_candidates_parallel(
+                ranked_candidates,
+                query,
+            )
+            final_validated = _propagate_catalog_identity(final_validated)
+            final_results = _group_catalog_results(final_validated)
+
+            with SEARCH_JOBS_LOCK:
+                job = SEARCH_JOBS.get(job_id)
+                if job is not None:
+                    job["results"] = final_results
+                    job["completed"] = True
 
 
 @app.get("/search-start")
