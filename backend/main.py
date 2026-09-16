@@ -20,12 +20,41 @@ for module_name, router_name, label in [
 ]:
     try:
         module = importlib.import_module(module_name)
-        app.include_router(getattr(module, 'router'))
+        router = getattr(
+            module,
+            router_name,
+            getattr(module, 'router', None),
+        )
+        if router is None:
+            raise AttributeError(
+                f'{module_name} does not expose '
+                f'{router_name} or router'
+            )
+        app.include_router(router)
     except Exception as exc:
         print(f'{label} debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
-from debug_deloox_runtime import router as deloox_runtime_debug_router
-app.include_router(deloox_runtime_debug_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
+
+# Deloox runtime diagnostic router is OPTIONAL.
+# A diagnostic failure must NEVER crash the production API.
+try:
+    from debug_deloox_runtime import (
+        router as deloox_runtime_debug_router,
+    )
+    app.include_router(deloox_runtime_debug_router)
+    print('DELOOX RUNTIME DEBUG ROUTER: LOADED', flush=True)
+except Exception as exc:
+    print(
+        'DELOOX RUNTIME DEBUG ROUTER: UNAVAILABLE '
+        f'{type(exc).__name__}: {exc}',
+        flush=True,
+    )
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
