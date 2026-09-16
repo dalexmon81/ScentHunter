@@ -1,4 +1,5 @@
 """ScentHunter - Deloox scraper."""
+
 from __future__ import annotations
 
 import json
@@ -10,23 +11,48 @@ from urllib.parse import quote_plus, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+
 STORE = "Deloox"
 BASE = "https://www.deloox.be"
+
 TIMEOUT = (2.0, 5.0)
+
+# IMPORTANT:
+# Keep the normal candidate limit unchanged.
 MAX_CANDIDATES = 40
+
+# Born in Roma has several real variants/sizes on Deloox.
+# After filtering obvious non-fragrance products, allow a small
+# additional margin so late-page products such as Ivory are not cut.
+BORN_IN_ROMA_MAX_CANDIDATES = 50
+
 MAX_RESULTS = 40
 
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,"
+        "application/json;q=0.9,*/*;q=0.8"
+    ),
     "Accept-Language": "en-GB,en;q=0.9",
 }
 
-SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", re.I)
+
+SIZE_RE = re.compile(
+    r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+    re.I,
+)
+
 
 PRICE_RE = re.compile(
     r"(?:€\s*)?(\d{1,4}\s*[.,]\s*\d{2})(?:\s*€)?"
 )
+
 
 NON_FRAGRANCE = (
     "body mist",
@@ -39,6 +65,18 @@ NON_FRAGRANCE = (
     "shower gel",
     "soap",
     "hair mist",
+)
+
+
+# Products that may contain the family name in their URL/card,
+# but are NOT the perfume itself.
+NON_PRODUCT_PACKAGING = (
+    "coffret",
+    "cadeau",
+    "gift set",
+    "giftset",
+    "set cadeau",
+    "geschenkset",
 )
 
 
@@ -234,6 +272,63 @@ def product_url(raw):
     )
 
 
+def url_slug(url):
+    try:
+        return clean(
+            urlparse(url).path.rsplit("/", 1)[-1]
+        )
+    except Exception:
+        return ""
+
+
+def is_born_in_roma_query(query):
+    q = tokens(query)
+
+    return (
+        "born" in q
+        and "roma" in q
+    )
+
+
+def born_in_roma_slug(url):
+    """
+    True only when the actual Deloox product URL identifies
+    the Born in Roma family.
+
+    This is intentionally based on the URL slug, not the large
+    surrounding search-card text. The latter can contain text
+    from neighbouring products.
+    """
+    slug = norm(url_slug(url))
+
+    return (
+        "born" in slug
+        and "roma" in slug
+    )
+
+
+def excluded_product_slug(url):
+    """
+    Reject obvious non-product packaging/body products from the
+    Born in Roma candidate pool before MAX_CANDIDATES is applied.
+    """
+    slug = norm(url_slug(url))
+
+    if any(
+        norm(term) in slug
+        for term in NON_PRODUCT_PACKAGING
+    ):
+        return True
+
+    if any(
+        norm(term) in slug
+        for term in NON_FRAGRANCE
+    ):
+        return True
+
+    return False
+
+
 def relevant(text, query):
     q = tokens(query)
 
@@ -314,62 +409,99 @@ def jsonld_products(soup):
     return out
 
 
-_CARD_IMAGES = {}
-
-
 def _image_url(value):
     if isinstance(value, (list, tuple)):
         for item in value:
             image = _image_url(item)
             if image:
                 return image
+
         return ""
+
     if isinstance(value, dict):
-        for key in ("url", "src", "contentUrl", "image"):
-            image = _image_url(value.get(key))
+        for key in (
+            "url",
+            "src",
+            "contentUrl",
+            "image",
+        ):
+            image = _image_url(
+                value.get(key)
+            )
+
             if image:
                 return image
+
         return ""
+
     value = clean(value)
+
     if not value or value.startswith("data:"):
         return ""
+
     if value.startswith("//"):
         return "https:" + value
+
     return urljoin(BASE, value)
 
 
 def _image_from_node(node):
     if not node:
         return ""
-    for candidate in node.find_all(["img", "source"]):
+
+    # Read the product-card image from the HTML already downloaded
+    # for search. This avoids an extra HTTP request for every result.
+    for candidate in node.find_all(
+        ["img", "source"]
+    ):
         for attr in (
-            "src", "data-src", "data-lazy-src",
-            "data-original", "data-image", "content",
+            "src",
+            "data-src",
+            "data-lazy-src",
+            "data-original",
+            "data-image",
+            "content",
         ):
-            image = _image_url(candidate.get(attr))
+            image = _image_url(
+                candidate.get(attr)
+            )
+
             if image:
                 return image
-        for attr in ("srcset", "data-srcset"):
+
+        for attr in (
+            "srcset",
+            "data-srcset",
+        ):
             raw = candidate.get(attr)
+
             if not raw:
                 continue
-            first = str(raw).split(",", 1)[0].strip().split(" ", 1)[0]
+
+            first = (
+                str(raw)
+                .split(",", 1)[0]
+                .strip()
+                .split(" ", 1)[0]
+            )
+
             image = _image_url(first)
+
             if image:
                 return image
+
     return ""
 
 
-def _candidate_contexts(
-    html,
-    query,
-):
+def _candidate_contexts(html, query):
     soup = BeautifulSoup(
         html,
         "html.parser",
     )
 
     q = tokens(query)
+    born_query = is_born_in_roma_query(query)
+
     found = {}
 
     for a in soup.find_all(
@@ -382,6 +514,19 @@ def _candidate_contexts(
 
         if not url:
             continue
+
+        # ---------------------------------------------------------
+        # BORN IN ROMA: URL identity has priority.
+        #
+        # Deloox search cards can contain text belonging to nearby
+        # products. The URL slug is the actual product identity.
+        # ---------------------------------------------------------
+        if born_query:
+            if not born_in_roma_slug(url):
+                continue
+
+            if excluded_product_slug(url):
+                continue
 
         node = a
         card_image = ""
@@ -418,25 +563,49 @@ def _candidate_contexts(
             if PRICE_RE.search(text):
                 break
 
-        if q and not relevant(
-            best + " " + url,
-            query,
-        ):
-            continue
-
-        hits = sum(
-            t in norm(best + " " + url)
-            for t in q
-        )
-
-        score = (
-            hits * 10
-            + (
-                2
-                if PRICE_RE.search(best)
-                else 0
+        if born_query:
+            # For Born in Roma, URL itself establishes family
+            # relevance. We still keep the surrounding context
+            # because it contains price/availability/image.
+            hits = sum(
+                t in norm(
+                    best + " " + url
+                )
+                for t in q
             )
-        )
+
+            # Force a strong family score so late-page valid
+            # products cannot lose to unrelated neighbouring text.
+            score = (
+                max(hits, len(q)) * 10
+                + (
+                    2
+                    if PRICE_RE.search(best)
+                    else 0
+                )
+                + 20
+            )
+
+        else:
+            if q and not relevant(
+                best + " " + url,
+                query,
+            ):
+                continue
+
+            hits = sum(
+                t in norm(best + " " + url)
+                for t in q
+            )
+
+            score = (
+                hits * 10
+                + (
+                    2
+                    if PRICE_RE.search(best)
+                    else 0
+                )
+            )
 
         old = found.get(url)
 
@@ -447,9 +616,24 @@ def _candidate_contexts(
             found[url] = (
                 score,
                 best,
+                card_image,
             )
-            if card_image:
-                _CARD_IMAGES[url] = card_image
+
+    # -------------------------------------------------------------
+    # IMPORTANT:
+    # Do NOT apply the final candidate limit inside the generic
+    # collector before we have filtered Born in Roma junk.
+    # -------------------------------------------------------------
+    if born_query:
+        ordered = sorted(
+            found.items(),
+            key=lambda x: (
+                -x[1][0],
+                x[0],
+            ),
+        )
+
+        return ordered[:BORN_IN_ROMA_MAX_CANDIDATES]
 
     return sorted(
         found.items(),
@@ -461,130 +645,202 @@ def _candidate_contexts(
     )[:MAX_CANDIDATES]
 
 
-def _row_from_card(url, context, query):
-    """
-    Build a Deloox result from the product URL + search-card data.
+def _row_from_card(
+    url,
+    context,
+    query,
+    image="",
+):
+    # For Born in Roma, verify the URL itself rather than relying
+    # exclusively on the surrounding card text.
+    if is_born_in_roma_query(query):
+        if not born_in_roma_slug(url):
+            return None
 
-    IMPORTANT:
-    The surrounding search-card context may contain several neighbouring
-    Born in Roma products. The URL slug is therefore the authoritative
-    product identity.
-    """
+        if excluded_product_slug(url):
+            return None
 
-    if not is_product_url(url):
-        return None
-
-    path = urlparse(url).path
-    slug = path.rstrip("/").rsplit("/", 1)[-1]
-
-    # Remove technical .html suffix.
-    slug = re.sub(r"\.html?$", "", slug, flags=re.I)
-
-    # Remove leading numeric ID if present.
-    slug = re.sub(r"^\d+[-_]", "", slug)
-
-    # Convert URL separators to spaces.
-    slug = re.sub(r"[-_]+", " ", slug)
-
-    slug = clean(slug)
-
-    # Reject obvious non-perfume products using the PRODUCT URL itself.
-    # Do NOT use the surrounding card context for this decision.
-    if non_fragrance(slug):
-        return None
-
-    # Reject gift/coffret/set products.
-    slug_norm = norm(slug)
-
-    excluded_product_terms = (
-        "coffret",
-        "cadeau",
-        "gift set",
-        "giftset",
-        "set cadeau",
-        "travel set",
-        "discovery set",
-        "duo",
-        "trio",
-        "body mist",
-        "body spray",
-        "hair mist",
-        "body lotion",
-        "body cream",
-        "shower gel",
-    )
-
-    if any(
-        norm(term) in slug_norm
-        for term in excluded_product_terms
+    elif not relevant(
+        context + " " + url,
+        query,
     ):
         return None
 
-    # The URL itself MUST identify the requested family.
-    # This prevents a neighbouring Born in Roma product in the card
-    # context from making an unrelated product look relevant.
-    if not relevant(slug, query):
-        return None
+    if non_fragrance(context):
+        # A surrounding card may contain text from another product.
+        # For Born in Roma we already have URL-level exclusion above,
+        # so do not reject a valid product merely because the parent
+        # container contains neighbouring body-product text.
+        if not is_born_in_roma_query(query):
+            return None
 
-    # Extract the actual perfume name from the URL.
+    lines = [
+        clean(x)
+        for x in re.split(
+            r"\n|(?=Delivery time\s*:)|(?=our price\s)|"
+            r"(?=onze prijs\s)|(?=nostro prezzo\s)",
+            context,
+        )
+        if clean(x)
+    ]
+
+    name = ""
+
+    for line in lines:
+        candidate = line
+
+        # Repair obvious mojibake.
+        if any(
+            marker in candidate
+            for marker in (
+                "Ã",
+                "Â",
+                "â€",
+                "ðŸ",
+            )
+        ):
+            try:
+                repaired = (
+                    candidate
+                    .encode("cp1252")
+                    .decode("utf-8")
+                )
+
+                if repaired != candidate:
+                    candidate = repaired
+
+            except (
+                UnicodeEncodeError,
+                UnicodeDecodeError,
+            ):
+                pass
+
+        # Remove retailer presentation metadata.
+        candidate = re.sub(
+            r"\s+(?:en stock|in stock|available|"
+            r"disponible|beschikbaar)\b.*$",
+            "",
+            candidate,
+            flags=re.I,
+        )
+
+        candidate = re.sub(
+            r"\s+(?:notre prix|our price|onze prijs|"
+            r"nostro prezzo)\b.*$",
+            "",
+            candidate,
+            flags=re.I,
+        )
+
+        candidate = re.sub(
+            r"\s+(?:d[ée]lai de livraison|delivery time|"
+            r"levertijd|tempi di consegna)\s*:\s*.*$",
+            "",
+            candidate,
+            flags=re.I,
+        ).strip()
+
+        if (
+            relevant(
+                candidate,
+                query,
+            )
+            and not re.search(
+                r"delivery time|besteld|prijs|price|"
+                r"cart|winkelwagen|in stock|available",
+                norm(candidate),
+            )
+            and 3 <= len(candidate) <= 220
+        ):
+            name = candidate
+            break
+
+    # -------------------------------------------------------------
+    # If Deloox's parent card is polluted by neighbouring products,
+    # derive the actual title from the product URL.
     #
-    # Example:
-    # valentino-born-in-roma-uomo-eau-de-toilette-100-ml
-    #
-    # becomes:
-    # valentino born in roma uomo
-    name = re.sub(
-        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
-        r"eau\s+de\s+cologne|eau\s+fraiche|"
-        r"extrait\s+de\s+parfum|parfum|perfume|"
-        r"toilette|spray|vaporisateur)\b.*$",
-        "",
-        slug,
-        flags=re.I,
-    )
+    # This is particularly important for:
+    #   - Ivory Uomo
+    #   - Ivory Donna
+    #   - The Gold Uomo
+    #   - The Gold Donna
+    # -------------------------------------------------------------
+    if is_born_in_roma_query(query):
+        slug = url_slug(url)
 
-    # Remove trailing format information if the previous expression
-    # did not already remove it.
-    name = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b.*$",
-        "",
-        name,
-        flags=re.I,
-    )
+        title = re.sub(
+            r"^\d+[-_]",
+            "",
+            slug,
+            flags=re.I,
+        )
 
-    name = clean(name)
+        title = re.sub(
+            r"[-_]+",
+            " ",
+            title,
+        )
 
-    if not name:
+        # Remove the Valentino prefix.
+        title = re.sub(
+            r"^valentino\s+",
+            "",
+            title,
+            flags=re.I,
+        )
+
+        # Keep the product title before size/concentration tail.
+        title = re.split(
+            r"\b(?:eau|parfum|toilette|spray|vaporisateur)\b",
+            title,
+            maxsplit=1,
+            flags=re.I,
+        )[0]
+
+        title = re.sub(
+            r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b.*$",
+            "",
+            title,
+            flags=re.I,
+        )
+
+        title = clean(title)
+
+        if (
+            born_in_roma_slug(url)
+            and title
+            and len(title) >= 5
+        ):
+            # Reconstruct readable capitalization without trying
+            # to editorially rename the product.
+            name = title.title()
+
+    name = name or query
+
+    n = price_num(context)
+
+    if n is None:
         return None
 
-    if not relevant(name, query):
-        return None
-
-    if non_fragrance(name):
-        return None
-
-    # Brand can safely be recovered from the URL for Valentino.
-    brand = ""
-    if norm(slug).startswith("valentino "):
-        brand = "Valentino"
-
-    # Card context is used ONLY for commercial data.
-    card_price = price_num(context)
-    card_state = availability(context)
+    state = availability(context)
 
     return {
         "store": STORE,
-        "brand": brand,
+        "brand": "",
         "name": name,
-        "price": price_text(card_price),
-        "price_num": card_price,
+        "price": price_text(n),
+        "price_num": n,
         "url": url,
-        "image": _CARD_IMAGES.get(url, ""),
-        "image_url": _CARD_IMAGES.get(url, ""),
-        "available": card_state != "out_of_stock",
-        "availability": card_state or "in_stock",
+        "image": image or "",
+        "image_url": image or "",
+        "available": (
+            state != "out_of_stock"
+        ),
+        "availability": (
+            state or "in_stock"
+        ),
         "size_ml": size_ml(
-            slug,
+            name,
             context,
         ),
     }
@@ -596,19 +852,21 @@ def discover(
 ):
     encoded = quote_plus(query)
     q = tokens(query)
+    born_query = is_born_in_roma_query(query)
 
     candidates = {}
     seen_pages = set()
 
     # Deloox.be uses its native search route /chercher.html.
-    # The first page shows 12 results and the site's "Charger plus"
-    # button loads the next batch with the same URL plus &page=2.
-    # Follow subsequent pages until Deloox stops returning new candidates.
+    # The first page shows the first batch and subsequent pages are
+    # loaded with the same URL plus &page=N.
     page = 1
 
     while page <= 10:
         if page == 1:
-            endpoint = f"{BASE}/chercher.html?q={encoded}"
+            endpoint = (
+                f"{BASE}/chercher.html?q={encoded}"
+            )
         else:
             endpoint = (
                 f"{BASE}/chercher.html?q={encoded}"
@@ -630,34 +888,34 @@ def discover(
 
         before = len(candidates)
 
-        for url, info in _candidate_contexts(
+        # IMPORTANT:
+        # _candidate_contexts performs Born-in-Roma URL-level
+        # filtering before candidates are capped.
+        page_candidates = _candidate_contexts(
             r.text,
             query,
-        ):
+        )
+
+        for url, info in page_candidates:
             if (
                 url not in candidates
                 or info[0] > candidates[url][0]
             ):
                 candidates[url] = info
 
-        # Stop when a subsequent Deloox page adds nothing new.
+        # Stop when a subsequent page adds nothing new.
         if len(candidates) == before:
             break
 
         page += 1
 
     # ---------------------------------------------------------
-    # FIX SPECIFICO:
     # Liquid Brun Limited Edition
-    #
-    # Deloox's normal search endpoint returns 404, while the
-    # dedicated Liquid Brun category contains the Limited Edition.
     # ---------------------------------------------------------
     if (
         {"liquid", "brun"} <= q
         and (
-            {"limited", "edition"}
-            & q
+            {"limited", "edition"} & q
         )
     ):
         endpoint = (
@@ -682,10 +940,7 @@ def discover(
                     candidates[url] = info
 
     # ---------------------------------------------------------
-    # FIX: Deloox has retired the /en/search endpoints (they
-    # currently return HTTP 404).  Rasasi has a dedicated catalog
-    # page which still contains the Hawas products, so use that
-    # catalog as the discovery source for Hawas queries.
+    # Hawas catalog fallback
     # ---------------------------------------------------------
     if "hawas" in q:
         endpoint = (
@@ -709,10 +964,15 @@ def discover(
                 ):
                     candidates[url] = info
 
+    # ---------------------------------------------------------
     # Existing bounded catalog fallbacks.
+    # ---------------------------------------------------------
     for endpoint in (
-        f"{BASE}/en/category/1103659/fragrances.html",
-        f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html",
+        f"{BASE}/en/category/"
+        "1103659/fragrances.html",
+
+        f"{BASE}/en/category/"
+        "1121334/french-avenue-mens-fragrances.html",
     ):
         r = get(
             session,
@@ -732,19 +992,45 @@ def discover(
             ):
                 candidates[url] = info
 
-    return sorted(
+    # ---------------------------------------------------------
+    # FINAL ORDERING / LIMIT
+    #
+    # For Born in Roma, valid perfume URLs have already had coffrets
+    # and body products removed. We can therefore safely use the
+    # small 50-candidate margin.
+    #
+    # For every other query the historical 40 limit remains.
+    # ---------------------------------------------------------
+    ordered = sorted(
         candidates.items(),
         key=lambda x: (
             -x[1][0],
             x[0],
         ),
-    )[:MAX_CANDIDATES]
+    )
+
+    if born_query:
+        return ordered[
+            :BORN_IN_ROMA_MAX_CANDIDATES
+        ]
+
+    return ordered[
+        :MAX_CANDIDATES
+    ]
 
 
 def parse_product(
     url,
     query,
 ):
+    # Extra safety: never parse an excluded Born in Roma URL.
+    if is_born_in_roma_query(query):
+        if not born_in_roma_slug(url):
+            return []
+
+        if excluded_product_slug(url):
+            return []
+
     session = requests.Session()
 
     try:
@@ -826,7 +1112,9 @@ def parse_product(
                     )
                 )
 
-                image = _image_url(p.get("image"))
+                image = _image_url(
+                    p.get("image")
+                )
 
                 rows.append(
                     {
@@ -835,9 +1123,7 @@ def parse_product(
                             brand
                         ),
                         "name": name,
-                        "price": price_text(
-                            n
-                        ),
+                        "price": price_text(n),
                         "price_num": n,
                         "url": url,
                         "image": image,
@@ -886,11 +1172,14 @@ def search(query):
         for url, (
             _,
             context,
+            image,
         ) in candidates:
+
             row = _row_from_card(
                 url,
                 context,
                 query,
+                image,
             )
 
             if row:
@@ -904,6 +1193,8 @@ def search(query):
                     seen.add(key)
                     results.append(row)
 
+        # Product pages are fetched only for cards that did not
+        # produce a usable price/row.
         missing = [
             (url, info)
             for url, info in candidates
@@ -920,6 +1211,7 @@ def search(query):
                     len(missing),
                 )
             ) as pool:
+
                 futures = [
                     pool.submit(
                         parse_product,
