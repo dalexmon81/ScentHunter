@@ -39,7 +39,10 @@
         },
         {
           "canonical_name": "Hawas Kobra",
-          "aliases": ["Hawas Kobra", "Hawas Cobra", "Rasasi Kobra For Him", "Kobra For Him"]
+          "aliases": [
+            "Hawas Kobra",
+            "Hawas Cobra"
+          ]
         },
         {
           "canonical_name": "Hawas Fire",
@@ -135,12 +138,6 @@
           ]
         },
         {
-          "canonical_name": "Hawas Overdose",
-          "aliases": [
-            "Hawas Overdose"
-          ]
-        },
-        {
           "canonical_name": "Hawas Thunder",
           "aliases": [
             "Hawas Thunder"
@@ -153,7 +150,7 @@
           ]
         },
         {
-          "canonical_name": "Hawas Éclat",
+          "canonical_name": "Hawas For Her Éclat",
           "aliases": [
             "Hawas For Her Éclat",
             "Hawas Eclat",
@@ -198,187 +195,153 @@
       ]
     },
     {
-  "family_id": "valentino_born_in_roma",
-  "brand": "Valentino",
-  "query_aliases": [
-    "Born in Roma",
-    "Valentino Born in Roma"
-  ],
-  "products": [
-    {
-      "canonical_name": "Born in Roma Uomo",
-      "aliases": [
-        "Born in Roma Uomo",
-        "Born In Roma For Him",
-        "Born in Roma Uomo Eau de Toilette",
-        "Born in Roma Eau de Toilette Uomo"
+      "family_id": "valentino_born_in_roma",
+      "brand": "Valentino",
+      "query_aliases": [
+        "Born in Roma",
+        "Valentino Born in Roma"
+      ],
+      "products": [
+        {
+          "canonical_name": "Born in Roma Uomo",
+          "aliases": [
+            "Born in Roma Uomo",
+            "Born In Roma For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Intense",
+          "aliases": [
+            "Born in Roma Uomo Intense",
+            "Born in Roma Intense Uomo",
+            "Born in Roma Uomo Eau de Parfum Intense",
+            "Born In Roma Intense For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Extradose",
+          "aliases": [
+            "Born in Roma Uomo Extradose",
+            "Born in Roma Extradose Uomo",
+            "Born In Roma Extradose For Him",
+            "Born In Roma Extradose"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Green Stravaganza",
+          "aliases": [
+            "Born in Roma Uomo Green Stravaganza",
+            "Born in Roma Green Stravaganza Uomo",
+            "Born In Roma Green Stravaganza For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Coral Fantasy",
+          "aliases": [
+            "Born in Roma Uomo Coral Fantasy",
+            "Born in Roma Coral Fantasy Uomo",
+            "Born In Roma Coral Fantasy For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Yellow Dream",
+          "aliases": [
+            "Born in Roma Uomo Yellow Dream",
+            "Born in Roma Yellow Dream Uomo",
+            "Born In Roma Yellow Dream For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Purple Melancholia",
+          "aliases": [
+            "Born in Roma Uomo Purple Melancholia"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo The Gold",
+          "aliases": [
+            "Born in Roma Uomo The Gold",
+            "Born In Roma The Gold Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Ivory",
+          "aliases": [
+            "Born in Roma Uomo Ivory",
+            "Born In Roma Ivory Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna",
+          "aliases": [
+            "Born in Roma Donna",
+            "Born In Roma For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Intense",
+          "aliases": [
+            "Born in Roma Donna Intense",
+            "Born in Roma Intense Donna",
+            "Born in Roma Donna Eau de Parfum Intense",
+            "Born In Roma Intense For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Extradose",
+          "aliases": [
+            "Born in Roma Donna Extradose",
+            "Born in Roma Extradose Donna",
+            "Born In Roma Extradose For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Green Stravaganza",
+          "aliases": [
+            "Born in Roma Donna Green Stravaganza",
+            "Born in Roma Green Stravaganza Donna",
+            "Born In Roma Green Stravaganza For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Coral Fantasy",
+          "aliases": [
+            "Born in Roma Donna Coral Fantasy",
+            "Born in Roma Coral Fantasy Donna",
+            "Born In Roma Coral Fantasy For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Yellow Dream",
+          "aliases": [
+            "Born in Roma Donna Yellow Dream",
+            "Born in Roma Yellow Dream Donna",
+            "Born In Roma Yellow Dream For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Purple Melancholia",
+          "aliases": [
+            "Born in Roma Donna Purple Melancholia"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna The Gold",
+          "aliases": [
+            "Born in Roma Donna The Gold",
+            "Born In Roma The Gold Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Ivory",
+          "aliases": [
+            "Donna Born in Roma Ivory",
+            "Born in Roma Donna Ivory",
+            "Born In Roma Ivory Donna"
+          ]
+        }
       ]
     },
-    {
-      "canonical_name": "Born in Roma Uomo Intense",
-      "aliases": [
-        "Born in Roma Uomo Intense",
-        "Born in Roma Uomo Eau de Parfum Intense",
-        "Born in Roma Intense Uomo",
-        "Born in Roma Intense Eau de Parfum Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Extradose",
-      "aliases": [
-        "Born in Roma Uomo Extradose",
-        "Born In Roma Extradose",
-        "Born in Roma Extradose Uomo",
-        "Born in Roma Extradose Eau de Parfum Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Green Stravaganza",
-      "aliases": [
-        "Born in Roma Uomo Green Stravaganza",
-        "Born in Roma Green Stravaganza Uomo",
-        "Born in Roma Green Stravaganza Eau de Toilette Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Coral Fantasy",
-      "aliases": [
-        "Born in Roma Uomo Coral Fantasy",
-        "Born In Roma Coral Fantasy For Him",
-        "Born in Roma Coral Fantasy Uomo",
-        "Born in Roma Coral Fantasy Eau de Toilette Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Yellow Dream",
-      "aliases": [
-        "Born in Roma Uomo Yellow Dream",
-        "Born In Roma Yellow Dream For Him",
-        "Born in Roma Yellow Dream Uomo",
-        "Born in Roma Yellow Dream Eau de Toilette Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Purple Melancholia",
-      "aliases": [
-        "Born in Roma Uomo Purple Melancholia",
-        "Born in Roma Purple Melancholia Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo The Gold",
-      "aliases": [
-        "Born in Roma Uomo The Gold",
-        "Born in Roma The Gold Uomo",
-        "Born in Roma The Gold Eau de Toilette Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Uomo Ivory",
-      "aliases": [
-        "Born in Roma Uomo Ivory",
-        "Born in Roma Ivory Uomo",
-        "Born in Roma Ivory Eau de Toilette Uomo"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna",
-      "aliases": [
-        "Born in Roma Donna",
-        "Born In Roma For Her",
-        "Born in Roma Donna Eau de Parfum"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Intense",
-      "aliases": [
-        "Born in Roma Donna Intense",
-        "Born in Roma Donna Eau de Parfum Intense",
-        "Born in Roma Intense Donna",
-        "Born in Roma Intense Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Extradose",
-      "aliases": [
-        "Born in Roma Donna Extradose",
-        "Born In Roma Extradose For Her",
-        "Born in Roma Extradose Donna",
-        "Born in Roma Extradose Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Green Stravaganza",
-      "aliases": [
-        "Born in Roma Donna Green Stravaganza",
-        "Born in Roma Green Stravaganza Donna",
-        "Born in Roma Green Stravaganza Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Coral Fantasy",
-      "aliases": [
-        "Born in Roma Donna Coral Fantasy",
-        "Born In Roma Coral Fantasy For Her",
-        "Born in Roma Coral Fantasy Donna",
-        "Born in Roma Coral Fantasy Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Yellow Dream",
-      "aliases": [
-        "Born in Roma Donna Yellow Dream",
-        "Born In Roma Yellow Dream For Her",
-        "Born in Roma Yellow Dream Donna",
-        "Born in Roma Yellow Dream Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Purple Melancholia",
-      "aliases": [
-        "Born in Roma Donna Purple Melancholia",
-        "Born in Roma Purple Melancholia Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna The Gold",
-      "aliases": [
-        "Born in Roma Donna The Gold",
-        "Born in Roma The Gold Donna",
-        "Born in Roma The Gold Eau de Parfum Donna"
-      ]
-    },
-    {
-      "canonical_name": "Born in Roma Donna Ivory",
-      "aliases": [
-        "Born in Roma Donna Ivory",
-        "Born in Roma Ivory Donna",
-        "Born in Roma Ivory Eau de Parfum Donna"
-      ]
-    }
-  ],
-  "excluded_products": [
-    "Born in Roma Uomo Coffret",
-    "Born in Roma Donna Coffret",
-    "Born in Roma Coffret",
-    "Born in Roma Gift Set",
-    "Born in Roma Giftset",
-    "Born in Roma Body Mist",
-    "Born in Roma Body Spray",
-    "Born in Roma Hair Body Mist"
-  ],
-  "excluded_aliases": [
-    "Born in Roma Uomo Coffret Cadeau",
-    "Born in Roma Donna Coffret Cadeau",
-    "Born in Roma Coffret Cadeau",
-    "Born in Roma Uomo Gift Set",
-    "Born in Roma Donna Gift Set",
-    "Born in Roma Caramel Crush Hair Body Mist",
-    "Born in Roma Vanilla Bliss Brume pour le Corps",
-    "Born in Roma Golden Coconut Brume pour le Corps",
-    "Born in Roma Salty Pistachio Brume pour le Corps"
-  ]
-},
     {
       "family_id": "versace_eros",
       "brand": "Versace",
