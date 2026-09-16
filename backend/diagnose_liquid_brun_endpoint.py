@@ -78,7 +78,7 @@ def _matches_source(main):
         }
 
 
-def _trace_matches(main, product, query):
+def _trace_matches(main, product, query, source_info=None):
     """
     Call the real main.matches() unchanged, but trace its return line.
 
@@ -95,7 +95,8 @@ def _trace_matches(main, product, query):
         "executed_lines": [],
     }
 
-    source_info = _matches_source(main)
+    if source_info is None:
+        source_info = _matches_source(main)
     source_by_abs_line = {}
 
     if source_info.get("available"):
@@ -243,6 +244,14 @@ def _run_one(store: str, query: str):
 
         row["unique"] = len(candidates)
 
+        # Cache the source lookup once. Tracing is enabled only for
+        # Easycosmetic, the store already proven to have 132->0 loss.
+        matches_source_info = (
+            _matches_source(main)
+            if store == "easycosmetic"
+            else None
+        )
+
         # The detailed trace is especially important for Easycosmetic,
         # because the previous diagnostic proved discovery succeeds there
         # (132 unique) but central validation returned zero.
@@ -253,7 +262,21 @@ def _run_one(store: str, query: str):
 
         for index, product in enumerate(candidates):
             try:
-                trace = _trace_matches(main, product, query)
+                if store == "easycosmetic":
+                    trace = _trace_matches(
+                        main,
+                        product,
+                        query,
+                        source_info=matches_source_info,
+                    )
+                else:
+                    trace = {
+                        "result": bool(main.matches(product, query)),
+                        "return_line": None,
+                        "return_source": "",
+                        "locals_at_return": {},
+                        "executed_lines": [],
+                    }
 
                 if not trace["result"]:
                     return_line = trace.get("return_line")
@@ -469,7 +492,7 @@ def diagnose_liquid_brun(
 
     return {
         "diagnostic": True,
-        "version": "v2_matches_trace",
+        "version": "v3_easycosmetic_only_trace",
         "query": query,
         "elapsed_sec": round(
             time.monotonic() - started,
@@ -483,8 +506,8 @@ def diagnose_liquid_brun(
                 "and 0 passed main.matches()"
             ),
             "new_evidence": (
-                "v2 traces the real deployed main.matches() return "
-                "line and locals for rejected Easycosmetic candidates"
+                "v3 traces only Easycosmetic candidates and caches the "
+                "matches() source lookup; other stores use normal validation"
             ),
             "easycosmetic_rejection_summary": (
                 easycosmetic.get("rejection_summary", {})
