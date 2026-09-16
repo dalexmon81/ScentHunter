@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 STORE = "Deloox"
 BASE = "https://www.deloox.be"
 TIMEOUT = (2.0, 5.0)
-MAX_CANDIDATES = 40
+MAX_CANDIDATES = 100
 MAX_RESULTS = 40
 
 HEADERS = {
@@ -475,23 +475,33 @@ def _row_from_card(
     lines = [
         clean(x)
         for x in re.split(
-            r"\n|(?=Delivery time\s*:)|(?=our price\s)|(?=onze prijs\s)|(?=nostro prezzo\s)",
+            r"\\n|(?=Delivery time\\s*:)|(?=our price\\s)|(?=onze prijs\\s)|(?=nostro prezzo\\s)",
             context,
         )
         if clean(x)
     ]
 
+    # The search-card context can contain several neighboring products.
+    # Use the product URL slug to select the line belonging to this exact
+    # candidate instead of taking the first line that happens to match
+    # the query.
+    slug = urlparse(url).path.rsplit("/", 1)[-1]
+    slug = re.sub(r"\\.html?$", "", slug, flags=re.I)
+    url_terms = {
+        x
+        for x in norm(slug).split()
+        if len(x) > 1
+        and x not in {
+            "eau", "de", "parfum", "toilette", "ml",
+        }
+    }
+
     name = ""
+    best_overlap = -1
 
     for line in lines:
-        # Deloox search cards append retailer status/price text to the
-        # product title (e.g. "Hawas Black En stock notre prix 24,79").
-        # That suffix is presentation metadata, not part of the fragrance
-        # identity. Remove it before ProductMatcher sees the offer.
         candidate = line
 
-        # Deloox can expose UTF-8 text decoded once too many times
-        # (e.g. "Ã‰clat"). Repair only obvious mojibake sequences.
         if any(marker in candidate for marker in ("Ã", "Â", "â€", "ðŸ")):
             try:
                 repaired = candidate.encode("cp1252").decode("utf-8")
@@ -500,42 +510,45 @@ def _row_from_card(
             except (UnicodeEncodeError, UnicodeDecodeError):
                 pass
 
-        # Remove retailer presentation metadata from the product title.
-        # This also handles Deloox's delivery-time suffix directly.
         candidate = re.sub(
-            r"\s+(?:en stock|in stock|available|disponible|beschikbaar)\b.*$",
+            r"\\s+(?:en stock|in stock|available|disponible|beschikbaar)\\b.*$",
             "",
             candidate,
             flags=re.I,
         )
         candidate = re.sub(
-            r"\s+(?:notre prix|our price|onze prijs|nostro prezzo)\b.*$",
+            r"\\s+(?:notre prix|our price|onze prijs|nostro prezzo)\\b.*$",
             "",
             candidate,
             flags=re.I,
         )
         candidate = re.sub(
-            r"\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\s*:\s*.*$",
+            r"\\s+(?:d[ée]lai de livraison|delivery time|levertijd|tempi di consegna)\\s*:\\s*.*$",
             "",
             candidate,
             flags=re.I,
         ).strip()
 
         if (
-            relevant(
-                candidate,
-                query,
-            )
-            and not re.search(
+            not relevant(candidate, query)
+            or re.search(
                 r"delivery time|besteld|prijs|price|cart|winkelwagen|in stock|available",
                 norm(candidate),
             )
-            and 3 <= len(candidate) <= 220
+            or not (3 <= len(candidate) <= 220)
+            or non_fragrance(candidate)
         ):
-            name = candidate
-            break
+            continue
 
-    name = name or query
+        candidate_terms = tokens(candidate)
+        overlap = len(url_terms & candidate_terms)
+
+        if overlap > best_overlap:
+            best_overlap = overlap
+            name = candidate
+
+    if not name:
+        return None
 
     n = price_num(context)
 
@@ -863,15 +876,13 @@ def search(query):
             _,
             context,
         ) in candidates:
-            # Deloox search contexts can contain several neighboring
-            # products. Prefer the product page JSON-LD for identity
-            # and price instead of deriving a row from that mixed card.
-            rows = parse_product(
+            row = _row_from_card(
                 url,
+                context,
                 query,
             )
 
-            for row in rows:
+            if row:
                 key = (
                     row["url"],
                     row.get("size_ml"),
