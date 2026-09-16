@@ -466,12 +466,9 @@ def _row_from_card(
     context,
     query,
 ):
-    if (
-        not relevant(
-            context + " " + url,
-            query,
-        )
-        or non_fragrance(context)
+    if not relevant(
+        context + " " + url,
+        query,
     ):
         return None
 
