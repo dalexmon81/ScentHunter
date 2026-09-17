@@ -92,7 +92,7 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _apply_product_identity(result):
+def _apply_product_identity(result, query=""):
     """
     Normalize a retailer offer through the existing central ProductMatcher.
 
@@ -131,7 +131,7 @@ def _apply_product_identity(result):
             matcher_input['name'] = 'Afnan - 9 PM'
 
     try:
-        matched = PRODUCT_MATCHER.match(matcher_input)
+        matched = PRODUCT_MATCHER.match(matcher_input, query)
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
@@ -174,7 +174,7 @@ def _apply_product_identity(result):
     return normalized
 
 
-def clean_result(item, store):
+def clean_result(item, store, query=""):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
@@ -190,7 +190,7 @@ def clean_result(item, store):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result)
+    return _apply_product_identity(result, query)
 
 def result_key(item):
     store = _normalise_store(item.get('store') or item.get('shop'), '')
@@ -228,7 +228,7 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store)] if cleaned is not None]
+        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -309,7 +309,7 @@ def _run_store_subprocess(store, query, on_result=None):
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store)
+                row=clean_result(event['row'],store,query)
                 if row is None:
                     continue
                 rows.append(row)
@@ -386,7 +386,9 @@ def _publish_result(job_id,row):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        clean=clean_result(row,row.get('store') or row.get('shop') or '')
+        query=job.get('query','')
+        clean=clean_result(row,row.get('store') or row.get('shop') or '',query)
+        if clean is None: return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
@@ -485,20 +487,20 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
         except Exception as exc:
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
             except Exception as exc:
