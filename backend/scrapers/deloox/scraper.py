@@ -1240,6 +1240,42 @@ def search(query):
                     except Exception:
                         continue
 
+        # ---------------------------------------------------------
+        # SURGICAL HAWAS FOR HER FALLBACK
+        #
+        # Deloox exposes Hawas For Her as a distinct product page.
+        # It can be absent from the generic Rasasi/Hawas discovery
+        # results, so fetch this one known product directly.
+        #
+        # This runs ONLY for Hawas queries and is deliberately placed
+        # after normal discovery/parsing so it cannot consume one of
+        # the MAX_CANDIDATES slots or change discovery for other
+        # perfumes.
+        # ---------------------------------------------------------
+        if "hawas" in tokens(query):
+            hawas_for_her_url = (
+                f"{BASE}/product/1228604/"
+                "rasasi-hawas-for-her-eau-de-parfum-100-ml.html"
+            )
+
+            try:
+                for row in parse_product(
+                    hawas_for_her_url,
+                    query,
+                ):
+                    key = (
+                        row.get("url"),
+                        row.get("size_ml"),
+                        row.get("price_num"),
+                    )
+
+                    if key not in seen:
+                        seen.add(key)
+                        results.append(row)
+
+            except Exception:
+                pass
+
         results.sort(
             key=lambda x: (
                 2
