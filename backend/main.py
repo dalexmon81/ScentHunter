@@ -182,14 +182,6 @@ def clean_result(item, store):
         if isinstance(source, dict) and source.get('image'):
             result['image'] = source.get('image')
 
-    # P5: exact display-name corrections for Afnan 9 PM variants.
-    # No matching/grouping logic is changed.
-    current_name = str(result.get('name') or result.get('title') or '').strip()
-    if current_name == 'Afnan - 9 PM - Pour Femme':
-        result['name'] = 'Afnan - 9 PM pour femme'
-    elif current_name == 'Afnan - 9 PM Night Out':
-        result['name'] = 'Afnan - Nightout'
-
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
@@ -203,7 +195,17 @@ def clean_result(item, store):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result)
+    # P5: exact display-name corrections for Afnan 9 PM variants.
+    # Apply AFTER the existing identity layer, because the matcher can
+    # restore its canonical display name. Matching/grouping logic is untouched.
+    final = _apply_product_identity(result)
+    if isinstance(final, dict):
+        current_name = str(final.get('name') or final.get('title') or '').strip()
+        if current_name == 'Afnan - 9 PM - Pour Femme':
+            final['name'] = 'Afnan - 9 PM pour femme'
+        elif current_name == 'Afnan - 9 PM Night Out':
+            final['name'] = 'Afnan - Nightout'
+    return final
 
 def _is_hawas_query(query):
     return 'hawas' in str(query or '').strip().lower()
