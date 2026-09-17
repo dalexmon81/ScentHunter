@@ -182,6 +182,14 @@ def clean_result(item, store):
         if isinstance(source, dict) and source.get('image'):
             result['image'] = source.get('image')
 
+    # P5: exact display-name corrections for Afnan 9 PM variants.
+    # No matching/grouping logic is changed.
+    current_name = str(result.get('name') or result.get('title') or '').strip()
+    if current_name == 'Afnan - 9 PM - Pour Femme':
+        result['name'] = 'Afnan - 9 PM pour femme'
+    elif current_name == 'Afnan - 9 PM Night Out':
+        result['name'] = 'Afnan - Nightout'
+
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
