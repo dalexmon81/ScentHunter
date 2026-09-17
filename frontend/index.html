@@ -1758,54 +1758,50 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-async function openProduct(i){
-  const g=currentProductGroups[i];
-  if(!g)return;
-  currentOpenProductKey=productGroupKey(g);
-  currentOpenSizeKey=null;
-  const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
-  const masterFormats=getMasterFormats(g);
-  const sizes=[...new Set(masterFormats.length?masterFormats:detected)].sort((a,b)=>Number(a)-Number(b));
-  const img=g.image||"";
-  const saved=getWishlist();
-  statusBox.textContent="";
+async function openProduct(i) {
+  const g = currentProductGroups[i];
+  if (!g) return;
+  currentOpenProductKey = productGroupKey(g);
+  currentOpenSizeKey = null;
 
-  // Nessun formato identificabile: non mostrare mai una scheda vuota.
-  // Manteniamo il comportamento storico mostrando direttamente le offerte.
-  if(sizes.length===0){
-    const offers=(g.offers||[]).slice().sort((a,b)=>{
-      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
-      if(ao!==bo)return ao?1:-1;
-      return shNum(a)-shNum(b);
-    });
-    renderSingleFormatComparison(g,img,offers,"",saved);
+  const detected = getSizeGroups(g).map(s => s.size).filter(Boolean);
+  const masterFormats = getMasterFormats(g);
+  const sizes = [...new Set(masterFormats.length ? masterFormats : detected)].sort((a, b) => Number(a) - Number(b));
+
+  const img = g.image;
+  const saved = getWishlist();
+
+  statusBox.textContent = 'Nessun formato identificabile';
+
+  // UN SOLO FORMATO resta il comportamento storico, terza scheda evitata.
+  if (sizes.length <= 1) {
+    const selected = getSizeGroups(g).find(s => s.size === sizes[0]);
+    const offers = selected?.offers;
+    renderSingleFormatComparison(g, img, offers, sizes[0], saved);
     return;
   }
 
-  // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
-  if(sizes.length===1){
-    const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
-    const offers=selected?.offers||[];
-    renderSingleFormatComparison(g,img,offers,sizes[0],saved);
-    return;
-  }
+  // DUE O TRE FORMATI: la seconda scheda compare SUBITO. Il confronto completo dei negozi viene aggiornato in background.
+  const localFallback = getSizeGroups(g).filter(s => s.size).map(s => ({
+    sizeml: s.size,
+    size: s.size,
+    best: s.best,
+    offers: s.offers
+  }));
+  window.formatComparisonsByProduct = window.formatComparisonsByProduct || {};
+  window.formatComparisonsByProduct[currentOpenProductKey] = localFallback;
 
-  // DUE O TRE FORMATI: la seconda scheda compare SUBITO.
-  // Il confronto completo dei negozi viene aggiornato in background.
-  const localFallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-  window._formatComparisonsByProduct[currentOpenProductKey]=localFallback;
-  renderFormatChoiceCard(i,g,localFallback,sizes);
+  renderFormatChoiceCard(i, g, localFallback, sizes);
 
-  const productKeyAtRequest=currentOpenProductKey;
-  fetchFormatComparisons(g,sizes).then(comparisons=>{
-    if(productKeyAtRequest!==currentOpenProductKey)return;
-    const merged=Array.isArray(comparisons)&&comparisons.length?comparisons:localFallback;
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[productKeyAtRequest]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
-  }).catch(error=>{
-    console.warn("Confronto formati",error);
+  const productKeyAtRequest = currentOpenProductKey;
+  fetchFormatComparisons(g, sizes).then(comparisons => {
+    if (productKeyAtRequest !== currentOpenProductKey) return;
+    const merged = Array.isArray(comparisons) && comparisons.length ? comparisons : localFallback;
+    window.formatComparisonsByProduct = window.formatComparisonsByProduct || {};
+    window.formatComparisonsByProduct[productKeyAtRequest] = merged;
+    renderFormatChoiceCard(i, g, merged, sizes);
+  }).catch(error => {
+    console.warn('Confronto formati', error);
   });
 }
 
