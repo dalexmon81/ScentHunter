@@ -154,6 +154,15 @@ def _apply_product_identity(result):
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
+
+    # HAWAS — PROBLEMA 1 SOLTANTO:
+    # ParfumCity restituisce alcuni sample come se fossero normali prodotti.
+    # Per la ricerca Hawas questi articoli non devono mai arrivare al frontend.
+    # Regola volutamente stretta: solo ParfumCity + nome Hawas + "sample".
+    raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
+    if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
+        return None
+
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
