@@ -173,6 +173,15 @@ def clean_result(item, store):
         if result_name:
             result['name'] = result_name
 
+    # P4: ParfumCity keeps its product image inside source.image instead of
+    # exposing it at the top level. The frontend reads the top-level image
+    # field when selecting the group's representative image. Promote ONLY
+    # ParfumCity's existing source.image; never invent or fetch a new image.
+    if machine_store == 'parfumcity' and not result.get('image'):
+        source = result.get('source')
+        if isinstance(source, dict) and source.get('image'):
+            result['image'] = source.get('image')
+
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
