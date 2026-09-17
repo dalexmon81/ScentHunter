@@ -78,6 +78,26 @@ def _filter_hawas_results(results, query):
         if isinstance(item, dict) and not _is_hawas_daarej_result(item)
     ]
 
+
+def _normalise_hawas_name(result, machine_store):
+    """Canonicalize only known PerfumeMarket Hawas naming noise."""
+    if machine_store != 'perfumemarket' or not isinstance(result, dict):
+        return result
+
+    name = str(result.get('name') or result.get('title') or '').strip()
+    if not name or 'hawas' not in name.lower():
+        return result
+
+    # PerfumeMarket uses E'clat / E’clat / E`clat variants for the same
+    # Hawas Eclat product. Normalize only this Hawas family label.
+    normalized = re.sub(r"e[`'’‘´]clat", 'Eclat', name, flags=re.IGNORECASE)
+
+    if normalized != name:
+        result = dict(result)
+        result['name'] = normalized
+
+    return result
+
 def _load_product_matcher():
     if ProductMatcher is None:
         return None
@@ -205,6 +225,9 @@ def clean_result(item, store):
         parts = raw_name.rsplit(' ', 1)
         if len(parts) == 2 and parts[1].strip().lower() in ('dames', 'heren'):
             result['name'] = parts[0].strip()
+
+    # Normalize Hawas Eclat punctuation after the Dames/Heren cleanup.
+    result = _normalise_hawas_name(result, machine_store)
 
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
@@ -465,13 +488,32 @@ def _run_job(job_id,query):
                 for x in JOBS.get(job_id,{}).get('results',[])
                 if isinstance(x,dict)
             ]
+
         if not any('hawas for her' in n for n in current_names):
-            fallback_reports=collect_store_reports_isolated(
+            # PerfumeMarket's normal Hawas search can omit the women's
+            # product. Try only narrow equivalent queries, stopping as soon
+            # as a real Hawas-for-Her result is found.
+            for fallback_query in (
                 'Hawas for Her',
-                ['perfumemarket'],
-                on_report=lambda r:_publish_store(job_id,r),
-                on_result=lambda row:_publish_result(job_id,row),
-            )
+                'Rasasi Hawas Women',
+                'Hawas Women',
+            ):
+                fallback_reports=collect_store_reports_isolated(
+                    fallback_query,
+                    ['perfumemarket'],
+                    on_report=lambda r:_publish_store(job_id,r),
+                    on_result=lambda row:_publish_result(job_id,row),
+                )
+
+                with JOBS_LOCK:
+                    current_names=[
+                        str(x.get('name') or '').strip().lower()
+                        for x in JOBS.get(job_id,{}).get('results',[])
+                        if isinstance(x,dict)
+                    ]
+
+                if any('hawas for her' in n for n in current_names):
+                    break
 
     with JOBS_LOCK:
         job=JOBS.get(job_id)
@@ -514,9 +556,19 @@ def search_perfume(q:str):
         'hawas for her' in str(x.get('name') or '').strip().lower()
         for x in all_results if isinstance(x,dict)
     ):
-        fallback_reports=collect_store_reports_isolated('Hawas for Her',['perfumemarket'])
-        for report in fallback_reports:
-            all_results.extend(_filter_hawas_results(report['results'],query))
+        for fallback_query in ('Hawas for Her', 'Rasasi Hawas Women', 'Hawas Women'):
+            fallback_reports=collect_store_reports_isolated(
+                fallback_query,
+                ['perfumemarket'],
+            )
+            for report in fallback_reports:
+                all_results.extend(_filter_hawas_results(report['results'],query))
+
+            if any(
+                'hawas for her' in str(x.get('name') or '').strip().lower()
+                for x in all_results if isinstance(x,dict)
+            ):
+                break
 
     results=sort_results(dedupe_results(all_results))
     return {'query':query,'count':len(results),'results':results,'errors':{r['store']:r['error'] for r in reports if r.get('error')},'stores':{r['store']:{'status':r['status'],'count':r['count'],'elapsed':r['elapsed']} for r in reports}}
