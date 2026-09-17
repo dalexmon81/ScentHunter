@@ -2211,6 +2211,9 @@ def _discover_from_first_party(
                     "html.parser",
                 )
 
+                found_kobra = False
+                found_eclat = False
+
                 for node in soup.find_all(
                     attrs={"data-product": True},
                 ):
@@ -2223,9 +2226,44 @@ def _discover_from_first_party(
                     except (TypeError, ValueError):
                         continue
 
-                    if str(
+                    product_id = str(
                         product_data.get("id_product") or ""
-                    ).strip() != "56286":
+                    ).strip()
+
+                    product_name = _norm(
+                        " ".join(
+                            str(
+                                product_data.get(key) or ""
+                            )
+                            for key in (
+                                "name",
+                                "name_product",
+                                "product_name",
+                                "link_rewrite",
+                            )
+                        )
+                    )
+
+                    node_text = _norm(
+                        node.get_text(
+                            " ",
+                            strip=True,
+                        )
+                    )
+
+                    is_kobra = (
+                        product_id == "56286"
+                    )
+
+                    is_eclat = (
+                        "hawas e clat" in product_name
+                        or "hawas e clat" in node_text
+                    )
+
+                    if not (
+                        is_kobra
+                        or is_eclat
+                    ):
                         continue
 
                     candidates = []
@@ -2281,16 +2319,28 @@ def _discover_from_first_party(
                             continue
 
                         seen.add(link)
-                        urls.append(link)
+
+                        # E'Clat is the surgical missing Sabina result:
+                        # prioritize it so the MAX_CANDIDATES cap cannot
+                        # discard it behind the normal Hawas results.
+                        if is_eclat:
+                            urls.insert(0, link)
+                            found_eclat = True
+                        else:
+                            urls.append(link)
+                            found_kobra = True
+
                         break
 
-                    if len(urls) >= MAX_CANDIDATES:
-                        return urls[:MAX_CANDIDATES]
+                    if (
+                        found_kobra
+                        and found_eclat
+                    ):
+                        break
 
-                if any(
-                    "56286" in link
-                    or "kobra-for-him" in link.casefold()
-                    for link in urls
+                if (
+                    found_kobra
+                    and found_eclat
                 ):
                     break
 
