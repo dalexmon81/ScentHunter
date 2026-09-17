@@ -104,23 +104,34 @@ def _apply_product_identity(result):
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
 
-    # On repeated cleaning passes, preserve the original retailer name for
-    # the identity matcher. This is important for retailer-specific aliases.
-    raw_name = str(
-        result.get('_source_name')
-        or result.get('name')
-        or result.get('title')
-        or ''
-    ).strip()
-    raw_brand = str(
-        result.get('_source_brand')
-        or result.get('brand')
-        or result.get('manufacturer')
-        or ''
-    ).strip()
+    raw_name = str(result.get('name') or result.get('title') or '').strip()
+    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+
+    # Easycosmetic uses "9 Collection 9 Pm" as the retailer label for the
+    # standard Afnan 9 PM. Normalize ONLY this exact product label BEFORE the
+    # identity matcher, so it can resolve to the existing 9 PM catalog entry.
+    # 9 PM Pour Femme / Rebel are intentionally untouched.
+    matcher_input = result
+    machine_store = _normalise_store(
+        result.get('store') or result.get('shop'),
+        '',
+    )
+    if machine_store == 'easycosmetic':
+        normalized_source_name = re.sub(
+            r'\s+',
+            ' ',
+            raw_name,
+        ).strip()
+        if re.fullmatch(
+            r'(?:afnan\s*[-–—:]\s*)?9\s+collection\s+9\s*(?:p\.?\s*m\.?)',
+            normalized_source_name,
+            flags=re.IGNORECASE,
+        ):
+            matcher_input = dict(result)
+            matcher_input['name'] = 'Afnan - 9 PM'
 
     try:
-        matched = PRODUCT_MATCHER.match(result)
+        matched = PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
@@ -159,30 +170,6 @@ def _apply_product_identity(result):
         normalized['name'] = canonical_name
     if canonical_brand:
         normalized['brand'] = canonical_brand
-
-    # Easycosmetic has one retailer-specific label for standard 9 PM.
-    # Normalize it only after identity matching, so the original source name
-    # remains available on any subsequent clean_result() pass.
-    if _normalise_store(
-        normalized.get('store') or normalized.get('shop') or '',
-        ''
-    ) == 'easycosmetic':
-        display_name = str(
-            normalized.get('name')
-            or normalized.get('title')
-            or ''
-        ).strip()
-        if re.search(
-            r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
-            display_name,
-            flags=re.IGNORECASE,
-        ):
-            normalized['name'] = re.sub(
-                r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
-                '9 PM',
-                display_name,
-                flags=re.IGNORECASE,
-            )
 
     return normalized
 
