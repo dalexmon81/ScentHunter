@@ -371,7 +371,9 @@ function normalizePerfumeName(v){
     // NON eliminare "parfum": può essere parte del nome/variante
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
+    .replace(/\b(hawas\s+e)['’‘`´]clat\b/gi,"$1clat")
     .replace(/\b\d+\s*ml\b/g," ")
+    .replace(/\b\d+(?:[.,]\d+)?\s*fl\s*oz\.?\b/gi," ")
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
@@ -1049,6 +1051,7 @@ function shGroupData(data){
   function cleanProductName(o,brand){
     let n=cleanBrandText(o.name||"Profumo")
       .replace(/\b\d{1,4}\s*ml\b/gi," ")
+      .replace(/\b\d+(?:[.,]\d+)?\s*fl\s*oz\.?\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
