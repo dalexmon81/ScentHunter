@@ -2603,7 +2603,7 @@ def search(query):
         if response is not None:
             response.close()
 
-                candidate_urls = (
+        candidate_urls = (
             _discover_from_first_party(
                 session,
                 query,
@@ -2619,17 +2619,6 @@ def search(query):
                     query,
                 )
             )
-
-        # Surgical fallback for Hawas E’Clat.
-        if _norm(query) == "hawas":
-            eclat_urls = _discover_from_first_party(
-                session,
-                "Hawas E’Clat",
-            )
-
-            for url in eclat_urls:
-                if url not in candidate_urls:
-                    candidate_urls.append(url)
 
         candidate_urls = list(
             dict.fromkeys(
