@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
+import importlib, json, os, re, signal, subprocess, sys, threading, time, traceback, uuid
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -155,16 +155,13 @@ def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
 
-    # HAWAS P1: ParfumCity incorrectly exposes Hawas samples as products.
-    # Only this exact store/family combination is filtered.
+    # HAWAS P1: remove ParfumCity Hawas samples only.
     raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
     if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
         return None
 
-    # HAWAS P3: some stores append gender words to the same Hawas variant
-    # (Dames/Heren/Damen/Herren). For Hawas searches these are the same
-    # product identity as the base variant, so remove ONLY a trailing gender
-    # suffix. No other family is affected.
+    # HAWAS P3: retailer gender suffixes are naming noise for the same
+    # Hawas variant. Normalize only a trailing Dames/Heren/Damen/Herren.
     if 'hawas' in raw_name:
         result_name = str(result.get('name') or result.get('title') or '').strip()
         result_name = re.sub(
