@@ -108,24 +108,10 @@ def _apply_product_identity(result):
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
     try:
-        # Central category gate only.
-        # IMPORTANT: do not force generic ProductMatcher.match() here:
-        # the current matcher requires the search query and doing so can
-        # discard valid Born in Roma variants. We therefore preserve the
-        # proven existing result flow and only remove explicit non-fragrance
-        # categories using the matcher-owned generic marker list.
-        if PRODUCT_MATCHER._is_non_fragrance_offer(result):
-            print(
-                f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
-                f'name={raw_name!r} brand={raw_brand!r}',
-                flush=True,
-            )
-            return None
-
-        return result
+        matched = PRODUCT_MATCHER.match(result)
     except Exception as exc:
         print(
-            f'PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: {type(exc).__name__}: {exc}',
+            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
             flush=True,
         )
         return result
@@ -168,6 +154,21 @@ def _apply_product_identity(result):
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
+
+    # EASY COSMETIC: reject account/login pages that can be returned by the
+    # search page as if they were product links. These are not products and
+    # their cards cannot be opened as product pages.
+    if machine_store == 'easycosmetic':
+        page_name = str(result.get('name') or result.get('title') or '').strip()
+        page_name_normalized = re.sub(r'\\s+', ' ', page_name).strip().lower()
+        if page_name_normalized in {
+            'anmelden',
+            'login',
+            'einloggen',
+            'registrieren',
+            'anmelden / registrieren',
+        }:
+            return None
 
     # HAWAS P1: remove ParfumCity Hawas samples only.
     raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
