@@ -1176,7 +1176,15 @@ function shGroupData(data){
     let identityBrand=rawBrand;
     let identityName=rawName;
     if(identityStore==="easycosmetic"){
-      const ec9=norm(rawName).replace(/[-–—]+/g," ").replace(/\s+/g," ").trim();
+      // Easycosmetic restituisce il brand dentro il titolo:
+      // "Afnan - 9 Collection 9 Pm".
+      // Togliamo SOLO il prefisso Afnan per confrontare il titolo
+      // con la mappa delle referenze Easycosmetic.
+      const ec9=norm(rawName)
+        .replace(/^afnan\\s*[-–—:]?\\s*/i,"")
+        .replace(/[-–—]+/g," ")
+        .replace(/\\s+/g," ")
+        .trim();
       const ec9Map={
         "9 collection 9 pm":"9 PM",
         "9 collection 9 pm pour femme":"9 PM Pour Femme",
