@@ -169,6 +169,17 @@ def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
 
+    # EASY COSMETIC ONLY:
+    # Easycosmetic sometimes returns its account/login entry "Anmelden"
+    # as a result card. It is not a product and its card cannot be opened.
+    # Deliberately match ONLY this exact entry and ONLY this store.
+    if machine_store == 'easycosmetic':
+        easycosmetic_name = str(
+            result.get('name') or result.get('title') or ''
+        ).strip().lower()
+        if easycosmetic_name == 'anmelden':
+            return None
+
     # HAWAS P1: remove ParfumCity Hawas samples only.
     raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
     if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
