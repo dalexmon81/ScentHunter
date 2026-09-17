@@ -47,8 +47,7 @@ def catalog_clean_text(value: Any) -> str:
     text = re.sub(
         r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
         r"eau\s+de\s+cologne|eau\s+fraiche|"
-        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray|"
-        r"limited\s+edition|edition\s+limitee|edicion\s+limitada)\b",
+        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray)\b",
         " ",
         text,
         flags=re.I,
@@ -457,6 +456,18 @@ class ProductMatcher:
         value = first_value(source, ("source_name", "name", "title"))
         return normalize(value) if value else ""
 
+    NON_FRAGRANCE_MARKERS = (
+        "body mist", "body spray", "hair mist", "hair body mist",
+        "hair and body mist", "body hair mist", "body lotion",
+        "body cream", "body creme", "body shimmer", "body butter",
+        "body milk", "body wash", "shower gel", "shower cream",
+        "shower foam", "shower oil", "shampoo", "conditioner",
+        "deodorant", "antiperspirant", "after shave", "aftershave",
+        "hand cream", "hand lotion", "face cream", "face lotion",
+        "face mist", "soap", "shower", "bath gel", "bath oil",
+        "bagnoschiuma", "gel doccia", "gel douche", "duschgel",
+    )
+
     @staticmethod
     def _offer_text(offer: Dict[str, Any]) -> str:
         values = [
@@ -464,12 +475,30 @@ class ProductMatcher:
             offer.get("title"),
             offer.get("product_name"),
             offer.get("brand"),
+            offer.get("url"),
         ]
         source = _nested_source(offer)
         values.extend(
-            [source.get("source_name"), source.get("name"), source.get("brand")]
+            [
+                source.get("source_name"),
+                source.get("name"),
+                source.get("title"),
+                source.get("brand"),
+                source.get("url"),
+                source.get("product_line"),
+            ]
         )
         return " ".join(str(value or "") for value in values)
+
+    @classmethod
+    def _is_non_fragrance_offer(cls, offer: Dict[str, Any]) -> bool:
+        haystack = catalog_norm(cls._offer_text(offer))
+        if not haystack:
+            return False
+        return any(
+            re.search(rf"\b{re.escape(marker)}\b", haystack, flags=re.I)
+            for marker in cls.NON_FRAGRANCE_MARKERS
+        )
 
     @staticmethod
     def _brand_matches(offer_brand: str, family_brand: str) -> bool:
@@ -523,6 +552,12 @@ class ProductMatcher:
         offer: Dict[str, Any],
         family: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
+        # Family searches are fragrance searches. Reject explicit non-fragrance
+        # categories centrally, before variant resolution, so no retailer
+        # scraper needs store-specific product filters.
+        if self._is_non_fragrance_offer(offer):
+            return None
+
         offer_brand = self._offer_brand(offer)
         if not self._brand_matches(offer_brand, family.get("brand", "")):
             return None
@@ -547,6 +582,42 @@ class ProductMatcher:
         for variant in family["variants"]:
             if candidate_key in variant["normalized_aliases"]:
                 return variant
+
+        # Retailers may append or insert audience/editorial labels around the
+        # actual variant name (for example "Hawas Kobra for Men - Heren",
+        # "Hawas Men Black - Heren", or "Hawas Women Eclat - Dames").
+        # These labels are not part of the Hawas variant identity. Preserve
+        # exact alias matching above first, then try a generic normalization
+        # that removes only explicit audience labels and Dutch storefront
+        # gender labels. This keeps "Hawas for Her" and "Hawas for Him"
+        # distinct because their exact aliases win before this fallback.
+        editorial_tokens = {
+            "men", "women", "man", "woman", "heren", "dames",
+        }
+        stripped_tokens = [
+            token for token in candidate_key.split()
+            if token not in editorial_tokens
+        ]
+        stripped_key = " ".join(stripped_tokens).strip()
+        if stripped_key != candidate_key:
+            for variant in family["variants"]:
+                if stripped_key in variant["normalized_aliases"]:
+                    return variant
+
+        # "for men" / "for women" can survive as two tokens after the first
+        # pass; remove the complete phrase only when it produces an exact
+        # known alias.
+        stripped_for_tokens = re.sub(
+            r"\bfor\s+(?:men|women|him|her)\b",
+            " ",
+            candidate_key,
+            flags=re.I,
+        )
+        stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
+        if stripped_for_tokens != candidate_key:
+            for variant in family["variants"]:
+                if stripped_for_tokens in variant["normalized_aliases"]:
+                    return variant
         return None
 
     def _catalog_product_for_family_variant(
@@ -643,6 +714,26 @@ class ProductMatcher:
         raw_name = str(
             offer.get("name") or offer.get("title") or offer.get("product_name") or ""
         )
+
+        # Never treat samples/decants/testers as full-size fragrance offers.
+        # This guard runs before family and generic matching, so removing bottle
+        # size from identity normalization can never turn a sample into a product.
+        identity_text = " ".join(
+            str(offer.get(key) or "")
+            for key in ("name", "title", "product_name")
+        )
+        if re.search(
+            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
+            identity_text,
+            flags=re.I,
+        ):
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                "method=sample_or_tester",
+                flush=True,
+            )
+            return None
 
         family = self._family_for_query(query)
         if family is not None:
