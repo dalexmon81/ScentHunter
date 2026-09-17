@@ -311,6 +311,35 @@ body{position:relative}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
 </style>
+
+<style id="scenthunter-native-scroll-fix">
+/* SCENTHUNTER — NATIVE DOCUMENT SCROLL
+   iOS/Safari: do not trap the page inside .app.
+   The document/body becomes the only vertical scroll container. */
+html{
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  scroll-behavior:auto!important;
+}
+body{
+  position:static!important;
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+.app{
+  height:auto!important;
+  min-height:100dvh!important;
+  max-height:none!important;
+  overflow:visible!important;
+  overflow-x:visible!important;
+  overflow-y:visible!important;
+  -webkit-overflow-scrolling:auto!important;
+}
+</style>
 </head>
 <body>
 <main class="app">
