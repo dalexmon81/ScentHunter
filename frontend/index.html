@@ -1175,6 +1175,65 @@ function shGroupData(data){
       .trim();
     const hint=concentrationHint(o);
 
+    /*
+     * BORN IN ROMA — consolidamento mirato delle offerte Valentino.
+     *
+     * Alcuni risultati arrivano senza un brand affidabile oppure con l'ordine
+     * delle parole/gender cambiato (es. "Born in Roma Coral Fantasy Donna"),
+     * quindi resolveMasterProduct() può lasciare la stessa variante su due
+     * chiavi diverse. Per Born in Roma usiamo invece l'alias del catalogo come
+     * identità assoluta, ma SOLO per referenze Valentino Born in Roma.
+     *
+     * Non tocchiamo nessun altro brand o famiglia.
+     */
+    const bornInRomaMasterFromName=(candidateName)=>{
+      const bornSignature=(value)=>{
+        let n=norm(value);
+        if(!n || !/\bborn\s+in\s+roma\b/.test(n))return '';
+        n=n
+          .replace(/^valentino\s+/,'')
+          .replace(/\b\d+(?:\.\d+)?\s*ml\b/g,' ')
+          .replace(/\b(?:eau\s+de\s+(?:parfum|toilette|cologne)|extrait(?:\s+de\s+parfum)?|edp|edt|edc)\b/g,' ')
+          .replace(/\bdames\b/g,'donna')
+          .replace(/\bheren\b/g,'uomo')
+          .replace(/\bfor\s+her\b/g,'donna')
+          .replace(/\bfor\s+him\b/g,'uomo')
+          .replace(/\s+/g,' ')
+          .trim();
+
+        let gender='';
+        n=n.replace(/\b(uomo|donna)\b/g,m=>{
+          if(!gender)gender=m;
+          return ' ';
+        }).replace(/\s+/g,' ').trim();
+
+        return gender ? (n+' '+gender).trim() : n;
+      };
+
+      const signature=bornSignature(candidateName);
+      if(!signature)return null;
+
+      const bornMasters=MASTER_CATALOG.filter(p=>
+        norm(p.brand||'')==='valentino' && /\bborn\s+in\s+roma\b/.test(norm(p.name||''))
+      );
+
+      const matches=bornMasters.filter(p=>{
+        const names=[p.name,...(Array.isArray(p.aliases)?p.aliases:[])];
+        return names.some(name=>bornSignature(name)===signature);
+      });
+      return matches.length===1?matches[0]:null;
+    };
+
+    const bornDirectMaster=bornInRomaMasterFromName(identityName);
+    if(bornDirectMaster){
+      return {
+        brand:bornDirectMaster.brand||rawBrand,
+        name:bornDirectMaster.name||rawName,
+        key:norm(bornDirectMaster.brand||rawBrand)+'|'+norm(bornDirectMaster.name||rawName),
+        catalog_id:bornDirectMaster.id||''
+      };
+    }
+
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
     // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
