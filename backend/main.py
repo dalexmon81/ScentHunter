@@ -92,79 +92,63 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _normalise_easycosmetic_9pm_name(result, machine_store):
+def _apply_product_identity(result):
     """
-    Easycosmetic uses a retailer-specific "9 Collection 9 Pm ..." label for
-    the Afnan 9 PM line.
+    Normalize a retailer offer through the existing central ProductMatcher.
 
-    This is ONLY a source-name normalization. It deliberately does not invoke
-    ProductMatcher and does not alter any other store/product. The original
-    retailer name is retained in _source_name for diagnostics.
+    This enriches valid retailer offers through the central ProductMatcher.
+    A matcher exception is non-fatal, but an explicit matcher rejection (None)
+    must remove the offer from the result set. This is required for samples,
+    testers, sets excluded by policy, and other non-identity listings.
     """
-    if machine_store != 'easycosmetic' or not isinstance(result, dict):
+    if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
 
-    raw_name = str(
-        result.get('name')
-        or result.get('title')
-        or result.get('product_name')
-        or ''
+    raw_name = str(result.get('name') or result.get('title') or '').strip()
+    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+
+    try:
+        matched = PRODUCT_MATCHER.match(result)
+    except Exception as exc:
+        print(
+            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        return result
+
+    if matched is None:
+        return None
+    if not isinstance(matched, dict):
+        return result
+
+    normalized = dict(matched)
+
+    # Keep the original retailer fields for diagnostics/provenance.
+    if raw_name:
+        normalized.setdefault('_source_name', raw_name)
+    if raw_brand:
+        normalized.setdefault('_source_brand', raw_brand)
+
+    canonical_name = str(
+        normalized.get('canonical_name')
+        or normalized.get('catalog_variant')
+        or raw_name
+    ).strip()
+    canonical_brand = str(
+        normalized.get('canonical_brand')
+        or normalized.get('brand')
+        or raw_brand
     ).strip()
 
-    if not raw_name:
-        return result
+    if canonical_name:
+        # The frontend groups offers by the normalized name. Keep the raw
+        # retailer name separately so the identity layer can normalize it
+        # without changing price, URL, store, availability or image data.
+        normalized['name'] = canonical_name
+    if canonical_brand:
+        normalized['brand'] = canonical_brand
 
-    normalized_source_name = re.sub(r'\s+', ' ', raw_name).strip()
-
-    match = re.fullmatch(
-        r'(?:afnan\s*[-–—:]\s*)?'
-        r'9\s+collection\s+9\s*(?:p\.?\s*m\.?)'
-        r'(?:\s+(pour\s+femme|elixir(?:\s+parfum\s+intense)?|night\s+out|rebel))?'
-        r'(?:\s+\d+(?:[.,]\d+)?\s*(?:ml|cl))?',
-        normalized_source_name,
-        flags=re.IGNORECASE,
-    )
-
-    if not match:
-        return result
-
-    variant = re.sub(r'\s+', ' ', (match.group(1) or '')).strip().lower()
-
-    canonical = 'Afnan - 9 PM'
-    if variant == 'pour femme':
-        canonical = 'Afnan - 9 PM Pour Femme'
-    elif variant.startswith('elixir'):
-        canonical = 'Afnan - 9 PM Elixir'
-    elif variant == 'night out':
-        canonical = 'Afnan - 9 PM Night Out'
-    elif variant == 'rebel':
-        canonical = 'Afnan - 9 PM Rebel'
-
-    normalized = dict(result)
-    normalized.setdefault('_source_name', raw_name)
-    normalized['name'] = canonical
-    normalized.setdefault('brand', 'Afnan')
     return normalized
-
-
-def _apply_product_identity(result, query=""):
-    """
-    Compatibility wrapper kept at the existing call site.
-
-    IMPORTANT: do not activate ProductMatcher here. The central matcher has
-    duplicate canonical 9 PM catalog entries and Easycosmetic's "Collection"
-    labels are retailer aliases, not catalog identities. Identity matching at
-    this point was the regression that removed three of the five 9 PM
-    variants. This boundary performs only the narrow Easycosmetic rename.
-    """
-    if not isinstance(result, dict):
-        return result
-
-    machine_store = _normalise_store(
-        result.get('store') or result.get('shop'),
-        '',
-    )
-    return _normalise_easycosmetic_9pm_name(result, machine_store)
 
 
 def clean_result(item, store):
