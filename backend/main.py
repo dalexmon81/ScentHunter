@@ -104,8 +104,20 @@ def _apply_product_identity(result):
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
 
-    raw_name = str(result.get('name') or result.get('title') or '').strip()
-    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+    # On repeated cleaning passes, preserve the original retailer name for
+    # the identity matcher. This is important for retailer-specific aliases.
+    raw_name = str(
+        result.get('_source_name')
+        or result.get('name')
+        or result.get('title')
+        or ''
+    ).strip()
+    raw_brand = str(
+        result.get('_source_brand')
+        or result.get('brand')
+        or result.get('manufacturer')
+        or ''
+    ).strip()
 
     try:
         matched = PRODUCT_MATCHER.match(result)
@@ -148,20 +160,31 @@ def _apply_product_identity(result):
     if canonical_brand:
         normalized['brand'] = canonical_brand
 
+    # Easycosmetic has one retailer-specific label for standard 9 PM.
+    # Normalize it only after identity matching, so the original source name
+    # remains available on any subsequent clean_result() pass.
+    if _normalise_store(
+        normalized.get('store') or normalized.get('shop') or '',
+        ''
+    ) == 'easycosmetic':
+        display_name = str(
+            normalized.get('name')
+            or normalized.get('title')
+            or ''
+        ).strip()
+        if re.search(
+            r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
+            display_name,
+            flags=re.IGNORECASE,
+        ):
+            normalized['name'] = re.sub(
+                r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
+                '9 PM',
+                display_name,
+                flags=re.IGNORECASE,
+            )
+
     return normalized
-
-
-def _normalise_easycosmetic_name(name):
-    """Normalize Easycosmetic's retailer-specific 9 PM label only."""
-    text = str(name or '').strip()
-    if not text:
-        return text
-    return re.sub(
-        r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
-        '9 PM',
-        text,
-        flags=re.IGNORECASE,
-    )
 
 
 def clean_result(item, store):
@@ -169,14 +192,6 @@ def clean_result(item, store):
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
-
-    # Easycosmetic can expose the standard 9 PM as "9 Collection 9 Pm".
-    # Normalize only that retailer-specific label for frontend grouping.
-    if machine_store == 'easycosmetic':
-        result['name'] = _normalise_easycosmetic_name(
-            result.get('name') or result.get('title') or ''
-        )
-
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
     if result.get('size_ml') in (None, ''):
         for key in ('volume_ml','format_ml','size'):
