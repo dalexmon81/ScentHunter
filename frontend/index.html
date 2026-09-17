@@ -1167,14 +1167,37 @@ function shGroupData(data){
     const rawName=cleanBrandText(o.name);
     const hint=concentrationHint(o);
 
+    // FIX CHIRURGICO EASYCO COSMETIC / AFNAN 9 PM:
+    // Easycosmetic usa "9 Collection 9 Pm" al posto di "9 PM".
+    // Normalizziamo SOLO questa famiglia e SOLO per Easycosmetic,
+    // esclusivamente per la risoluzione dell'identità di raggruppamento.
+    // Il nome originale dell'offerta non viene modificato.
+    const identityStore=norm(String((o&&((o.store||o.shop)||""))||""));
+    let identityBrand=rawBrand;
+    let identityName=rawName;
+    if(identityStore==="easycosmetic"){
+      const ec9=norm(rawName).replace(/[-–—]+/g," ").replace(/\\s+/g," ").trim();
+      const ec9Map={
+        "9 collection 9 pm":"9 PM",
+        "9 collection 9 pm pour femme":"9 PM Pour Femme",
+        "9 collection 9 pm elixir":"9 PM Elixir",
+        "9 collection 9 pm night out":"9 PM Night Out",
+        "9 collection 9 pm rebel":"9 PM Rebel"
+      };
+      if(ec9Map[ec9]){
+        identityBrand=rawBrand || "Afnan";
+        identityName=ec9Map[ec9];
+      }
+    }
+
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
     // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
     // dopo la pulizia commerciale del nome.
     let directMaster=null;
     if(hint){
-      const rb=norm(rawBrand);
-      const rn=norm(rawName);
+      const rb=norm(identityBrand);
+      const rn=norm(identityName);
       const candidates=MASTER_CATALOG.filter(p=>{
         if(norm(p.concentration||"")!==norm(hint))return false;
         if(rb && norm(p.brand||"")!==rb)return false;
@@ -1183,7 +1206,7 @@ function shGroupData(data){
       });
       if(candidates.length===1)directMaster=candidates[0];
     }
-    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
+    if(!directMaster)directMaster=resolveMasterProduct(identityBrand,identityName);
     if(directMaster){
       return {
         brand:directMaster.brand||rawBrand,
@@ -2019,129 +2042,10 @@ async function searchPerfume(){
  clearOpenProduct();
  try{
   let data;
-  // ACCUMULATORE LOCALE DELLA RICERCA:
-  // /search-status può restituire snapshot diversi mentre i negozi terminano.
-  // Uno snapshot nuovo NON deve mai sostituire ciò che abbiamo già ricevuto.
-  let progressiveData={
-   query:q,
-   results:[],
-   comparisons:[],
-   errors:{},
-   completed:false
-  };
-
-  const offerIdentity=(o)=>{
-   const store=String(o?.store||"").trim().toLowerCase();
-   const url=String(o?.url||"").split("?")[0].trim().toLowerCase();
-   const name=String(o?.name||"").trim().toLowerCase();
-   const size=String(o?.size_ml??o?.size??"").trim().toLowerCase();
-   return [store,url,name,size].join("|");
-  };
-
-  const groupIdentity=(g)=>[
-   String(g?.brand||"").trim().toLowerCase(),
-   String(g?.name||"").trim().toLowerCase(),
-   String(g?.concentration||"").trim().toLowerCase()
-  ].join("|");
-
-  const cloneOffer=o=>({...o});
-
-  const mergeSnapshot=(snapshot)=>{
-   const d=snapshot||{};
-   if(d.query)progressiveData.query=d.query;
-
-   // Risultati piatti: aggiungi, non sostituire.
-   if(Array.isArray(d.results)){
-    const seen=new Set(progressiveData.results.map(offerIdentity));
-    d.results.forEach(o=>{
-     if(!o)return;
-     const id=offerIdentity(o);
-     if(!seen.has(id)){
-      seen.add(id);
-      progressiveData.results.push(cloneOffer(o));
-     }
-    });
-   }
-
-   // Confronti/gruppi: aggiungi i gruppi mancanti e le offerte mancanti.
-   if(Array.isArray(d.comparisons)){
-    d.comparisons.forEach(g=>{
-     if(!g)return;
-
-     const key=groupIdentity(g);
-     let dest=progressiveData.comparisons.find(x=>groupIdentity(x)===key);
-
-     if(!dest){
-      dest={...g,offers:[]};
-      progressiveData.comparisons.push(dest);
-     }
-
-     if(!dest.image){
-      dest.image=
-       g.image||
-       g.image_url||
-       g.thumbnail||
-       g.source?.image||
-       "";
-     }
-
-     if(Array.isArray(g.offers)){
-      const seenOffers=new Set(
-       (Array.isArray(dest.offers)?dest.offers:[]).map(offerIdentity)
-      );
-
-      g.offers.forEach(o=>{
-       if(!o)return;
-       const id=offerIdentity(o);
-       if(!seenOffers.has(id)){
-        seenOffers.add(id);
-        dest.offers.push(cloneOffer(o));
-       }
-      });
-     }
-    });
-   }
-
-   if(d.errors&&typeof d.errors==="object"){
-    progressiveData.errors={
-     ...progressiveData.errors,
-     ...d.errors
-    };
-   }
-
-   // Uno snapshot vuoto/intermedio non può azzerare la ricerca.
-   if(d.completed===true || d.status==="completed"){
-    progressiveData.completed=true;
-   }
-  };
-
   const renderData=(partialData,final=false)=>{
-   mergeSnapshot(partialData);
+   let groups=shGroupData(partialData||{});
 
-   let groups=shGroupData(progressiveData);
-
-   // Difesa finale contro qualsiasi riduzione accidentale dello snapshot.
-   if(
-    !final &&
-    Array.isArray(currentProductGroups) &&
-    currentProductGroups.length
-   ){
-    const previous=currentProductGroups;
-    const previousKeys=new Set(previous.map(groupIdentity));
-    const currentKeys=new Set(groups.map(groupIdentity));
-
-    // Se un gruppo precedente non è nello snapshot corrente, lo reinseriamo.
-    previous.forEach(g=>{
-     if(!currentKeys.has(groupIdentity(g))){
-      groups.push({
-       ...g,
-       offers:Array.isArray(g.offers)
-        ?g.offers.map(cloneOffer)
-        :[]
-      });
-     }
-    });
-   }
+   
 
    currentProductGroups=groups;
 
@@ -2170,7 +2074,7 @@ async function searchPerfume(){
    }else{
 
     // Durante la ricerca progressiva non mostrare un falso "Nessun profumo trovato".
-    // I risultati già ricevuti rimangono visibili mentre arrivano gli altri negozi.
+    // Quel messaggio è valido solo quando il job è realmente terminato.
     if(groups.length || final){
 
      showProducts(groups);
@@ -2180,25 +2084,15 @@ async function searchPerfume(){
    }
 
    updateBestPricesFromGroups(groups);
-   refreshWishlistFromResults(
-    groups.flatMap(g=>g.offers.map(o=>({
-     name:g.name||"",
-     brand:g.brand||"",
-     price:shPrice(o),
-     price_value:o.price_value,
-     store:o.store||"",
-     url:o.url||""
-    })))
-   );
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
 
-   // Gli errori dei singoli store restano interni.
+   // I timeout delle singole fonti non devono comparire nella pagina e non devono
+   // trasformare una ricerca con risultati validi in una ricerca "fallita".
+   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
    errorsBox.innerHTML="";
-
    if(final){
     const hasGroups=Array.isArray(groups)&&groups.length>0;
-    statusBox.textContent=hasGroups
-     ?`Ricerca completata: ${groups.length} prodotti trovati.`
-     :"Nessun risultato trovato.";
+    statusBox.textContent=hasGroups?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
    }
   };
 
