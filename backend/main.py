@@ -108,10 +108,24 @@ def _apply_product_identity(result):
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
     try:
-        matched = PRODUCT_MATCHER.match(result)
+        # Central category gate only.
+        # IMPORTANT: do not force generic ProductMatcher.match() here:
+        # the current matcher requires the search query and doing so can
+        # discard valid Born in Roma variants. We therefore preserve the
+        # proven existing result flow and only remove explicit non-fragrance
+        # categories using the matcher-owned generic marker list.
+        if PRODUCT_MATCHER._is_non_fragrance_offer(result):
+            print(
+                f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
+                f'name={raw_name!r} brand={raw_brand!r}',
+                flush=True,
+            )
+            return None
+
+        return result
     except Exception as exc:
         print(
-            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
+            f'PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: {type(exc).__name__}: {exc}',
             flush=True,
         )
         return result
