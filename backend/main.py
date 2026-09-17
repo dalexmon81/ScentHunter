@@ -80,16 +80,17 @@ def _filter_hawas_results(results, query):
 
 
 def _normalise_hawas_name(result, machine_store):
-    """Canonicalize only known PerfumeMarket Hawas naming noise."""
-    if machine_store != 'perfumemarket' or not isinstance(result, dict):
+    """Canonicalize only Hawas Eclat punctuation noise across stores."""
+    if not isinstance(result, dict):
         return result
 
     name = str(result.get('name') or result.get('title') or '').strip()
     if not name or 'hawas' not in name.lower():
         return result
 
-    # PerfumeMarket uses E'clat / E’clat / E`clat variants for the same
-    # Hawas Eclat product. Normalize only this Hawas family label.
+    # Some retailers use E'clat / E’clat / E`clat for the same Hawas Eclat
+    # reference. This is a punctuation-only normalization and is deliberately
+    # restricted to Hawas, so unrelated product names are untouched.
     normalized = re.sub(r"e[`'’‘´]clat", 'Eclat', name, flags=re.IGNORECASE)
 
     if normalized != name:
