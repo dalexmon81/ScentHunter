@@ -92,89 +92,82 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _apply_product_identity(result, query=""):
+def _normalise_easycosmetic_9pm_name(result, machine_store):
     """
-    Normalize a retailer offer through the existing central ProductMatcher.
+    Easycosmetic uses a retailer-specific "9 Collection 9 Pm ..." label for
+    the Afnan 9 PM line.
 
-    This enriches valid retailer offers through the central ProductMatcher.
-    A matcher exception is non-fatal, but an explicit matcher rejection (None)
-    must remove the offer from the result set. This is required for samples,
-    testers, sets excluded by policy, and other non-identity listings.
+    This is ONLY a source-name normalization. It deliberately does not invoke
+    ProductMatcher and does not alter any other store/product. The original
+    retailer name is retained in _source_name for diagnostics.
     """
-    if PRODUCT_MATCHER is None or not isinstance(result, dict):
+    if machine_store != 'easycosmetic' or not isinstance(result, dict):
         return result
 
-    raw_name = str(result.get('name') or result.get('title') or '').strip()
-    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+    raw_name = str(
+        result.get('name')
+        or result.get('title')
+        or result.get('product_name')
+        or ''
+    ).strip()
 
-    # Easycosmetic uses "9 Collection 9 Pm" as the retailer label for the
-    # standard Afnan 9 PM. Normalize ONLY this exact product label BEFORE the
-    # identity matcher, so it can resolve to the existing 9 PM catalog entry.
-    # 9 PM Pour Femme / Rebel are intentionally untouched.
-    matcher_input = result
+    if not raw_name:
+        return result
+
+    normalized_source_name = re.sub(r'\s+', ' ', raw_name).strip()
+
+    match = re.fullmatch(
+        r'(?:afnan\s*[-–—:]\s*)?'
+        r'9\s+collection\s+9\s*(?:p\.?\s*m\.?)'
+        r'(?:\s+(pour\s+femme|elixir(?:\s+parfum\s+intense)?|night\s+out|rebel))?'
+        r'(?:\s+\d+(?:[.,]\d+)?\s*(?:ml|cl))?',
+        normalized_source_name,
+        flags=re.IGNORECASE,
+    )
+
+    if not match:
+        return result
+
+    variant = re.sub(r'\s+', ' ', (match.group(1) or '')).strip().lower()
+
+    canonical = 'Afnan - 9 PM'
+    if variant == 'pour femme':
+        canonical = 'Afnan - 9 PM Pour Femme'
+    elif variant.startswith('elixir'):
+        canonical = 'Afnan - 9 PM Elixir'
+    elif variant == 'night out':
+        canonical = 'Afnan - 9 PM Night Out'
+    elif variant == 'rebel':
+        canonical = 'Afnan - 9 PM Rebel'
+
+    normalized = dict(result)
+    normalized.setdefault('_source_name', raw_name)
+    normalized['name'] = canonical
+    normalized.setdefault('brand', 'Afnan')
+    return normalized
+
+
+def _apply_product_identity(result, query=""):
+    """
+    Compatibility wrapper kept at the existing call site.
+
+    IMPORTANT: do not activate ProductMatcher here. The central matcher has
+    duplicate canonical 9 PM catalog entries and Easycosmetic's "Collection"
+    labels are retailer aliases, not catalog identities. Identity matching at
+    this point was the regression that removed three of the five 9 PM
+    variants. This boundary performs only the narrow Easycosmetic rename.
+    """
+    if not isinstance(result, dict):
+        return result
+
     machine_store = _normalise_store(
         result.get('store') or result.get('shop'),
         '',
     )
-    if machine_store == 'easycosmetic':
-        normalized_source_name = re.sub(
-            r'\s+',
-            ' ',
-            raw_name,
-        ).strip()
-        if re.fullmatch(
-            r'(?:afnan\s*[-–—:]\s*)?9\s+collection\s+9\s*(?:p\.?\s*m\.?)',
-            normalized_source_name,
-            flags=re.IGNORECASE,
-        ):
-            matcher_input = dict(result)
-            matcher_input['name'] = 'Afnan - 9 PM'
-
-    try:
-        matched = PRODUCT_MATCHER.match(matcher_input, query)
-    except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
-            flush=True,
-        )
-        return result
-
-    if matched is None:
-        return None
-    if not isinstance(matched, dict):
-        return result
-
-    normalized = dict(matched)
-
-    # Keep the original retailer fields for diagnostics/provenance.
-    if raw_name:
-        normalized.setdefault('_source_name', raw_name)
-    if raw_brand:
-        normalized.setdefault('_source_brand', raw_brand)
-
-    canonical_name = str(
-        normalized.get('canonical_name')
-        or normalized.get('catalog_variant')
-        or raw_name
-    ).strip()
-    canonical_brand = str(
-        normalized.get('canonical_brand')
-        or normalized.get('brand')
-        or raw_brand
-    ).strip()
-
-    if canonical_name:
-        # The frontend groups offers by the normalized name. Keep the raw
-        # retailer name separately so the identity layer can normalize it
-        # without changing price, URL, store, availability or image data.
-        normalized['name'] = canonical_name
-    if canonical_brand:
-        normalized['brand'] = canonical_brand
-
-    return normalized
+    return _normalise_easycosmetic_9pm_name(result, machine_store)
 
 
-def clean_result(item, store, query=""):
+def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
@@ -190,7 +183,7 @@ def clean_result(item, store, query=""):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result, query)
+    return _apply_product_identity(result)
 
 def result_key(item):
     store = _normalise_store(item.get('store') or item.get('shop'), '')
@@ -228,7 +221,7 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
+        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -309,7 +302,7 @@ def _run_store_subprocess(store, query, on_result=None):
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store,query)
+                row=clean_result(event['row'],store)
                 if row is None:
                     continue
                 rows.append(row)
@@ -386,9 +379,7 @@ def _publish_result(job_id,row):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        query=job.get('query','')
-        clean=clean_result(row,row.get('store') or row.get('shop') or '',query)
-        if clean is None: return
+        clean=clean_result(row,row.get('store') or row.get('shop') or '')
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
@@ -487,20 +478,20 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
         except Exception as exc:
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
             except Exception as exc:
