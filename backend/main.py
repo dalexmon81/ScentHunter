@@ -154,15 +154,6 @@ def _apply_product_identity(result):
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
-
-    # HAWAS — PROBLEMA 1 SOLTANTO:
-    # ParfumCity restituisce alcuni sample come se fossero normali prodotti.
-    # Per la ricerca Hawas questi articoli non devono mai arrivare al frontend.
-    # Regola volutamente stretta: solo ParfumCity + nome Hawas + "sample".
-    raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
-    if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
-        return None
-
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
@@ -177,6 +168,21 @@ def clean_result(item, store):
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
     return _apply_product_identity(result)
+
+def _is_hawas_query(query):
+    return 'hawas' in str(query or '').strip().lower()
+
+def _is_hawas_daarej_result(item):
+    if not isinstance(item, dict):
+        return False
+    name = str(item.get('name') or item.get('title') or '').strip().lower()
+    return 'daarej' in name
+
+def _keep_hawas_result(item, query):
+    # Only affects a Hawas search. A direct "Daarej" search remains untouched.
+    if not _is_hawas_query(query):
+        return True
+    return not _is_hawas_daarej_result(item)
 
 def result_key(item):
     store = _normalise_store(item.get('store') or item.get('shop'), '')
@@ -373,6 +379,8 @@ def _publish_result(job_id,row):
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
         clean=clean_result(row,row.get('store') or row.get('shop') or '')
+        if clean is None or not _keep_hawas_result(clean, job.get('query')):
+            return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
@@ -382,7 +390,11 @@ def _publish_store(job_id,report):
         if not job or job.get('completed'): return
         store=report['store']; job['stores'][store]={'status':report['status'],'elapsed':report['elapsed'],'count':report['count']}
         if report.get('error'): job['errors'][store]=report['error']
-        if report.get('results'): job['results'].extend(report['results'])
+        if report.get('results'):
+            job['results'].extend(
+                x for x in report['results']
+                if _keep_hawas_result(x, job.get('query'))
+            )
         job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH job={job_id} store={store} count={report.get('count')} total={total}",flush=True)
 
