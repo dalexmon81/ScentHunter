@@ -151,11 +151,32 @@ def _apply_product_identity(result):
     return normalized
 
 
+def _normalise_easycosmetic_name(name):
+    """Normalize Easycosmetic's retailer-specific 9 PM label only."""
+    text = str(name or '').strip()
+    if not text:
+        return text
+    return re.sub(
+        r'\b9\s+collection\s+9\s*(?:p\.?\s*m\.?)\b',
+        '9 PM',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
+
+    # Easycosmetic can expose the standard 9 PM as "9 Collection 9 Pm".
+    # Normalize only that retailer-specific label for frontend grouping.
+    if machine_store == 'easycosmetic':
+        result['name'] = _normalise_easycosmetic_name(
+            result.get('name') or result.get('title') or ''
+        )
+
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
     if result.get('size_ml') in (None, ''):
         for key in ('volume_ml','format_ml','size'):
