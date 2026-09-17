@@ -31,6 +31,7 @@ from diagnose_liquid_brun_endpoint import router as diagnose_liquid_brun_router
 app.include_router(diagnose_liquid_brun_router)
 from diagnose_easycosmetic_endpoint import router as diagnose_easycosmetic_router
 app.include_router(diagnose_easycosmetic_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https?://.*",
@@ -99,12 +100,7 @@ NON_PERFUME = {
     "aftershave",
     "after shave",
     "body spray",
-    "body mist",
-    "hair & body mist",
     "hair mist",
-    "body shimmer",
-    "body oil",
-    "body scrub",
     "makeup",
     "cosmetics",
     "cosmetic",
@@ -1385,25 +1381,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     )
     add(compact)
 
-    # 4) Fallback di discovery sui token realmente identificativi.
-    #    Questo è volutamente solo DISCOVERY: la validazione finale usa ancora
-    #    matches() e quindi un token largo come "Hawas" non può far passare
-    #    un prodotto che non contiene la query richiesta.
-    stop_tokens = {
-        "the", "and", "with", "for", "de", "da", "del", "della",
-        "du", "des", "di", "by", "in", "la", "le", "un", "una",
-    }
-    meaningful = [
-        token for token in normalized.split()
-        if token not in stop_tokens and (len(token) >= 3 or token.isdigit())
-    ]
-    for token in sorted(dict.fromkeys(meaningful), key=lambda x: (-len(x), x)):
-        add(token)
-
-    # Keep discovery bounded: the first four forms plus at most two useful
-    # token fallbacks are enough to recover weak retailer search endpoints
-    # without multiplying traffic indefinitely.
-    return attempts[:6]
+    return attempts
 
 
 # ============================================================
@@ -1931,16 +1909,14 @@ def _validate_candidate(
     if catalog_product is not None:
         return catalog_product
 
-    # The Family Registry is authoritative for variants and exclusions it
-    # actually knows, but it is NOT a closed-world catalogue. Retailers can
-    # expose a legitimate sibling variant before the registry is updated.
-    # Known variants are canonicalized above; explicit exclusions stay blocked;
-    # an otherwise valid unregistered candidate uses the same generic matcher.
+    # Once a query resolves to an authoritative Family Registry family,
+    # generic matching is not allowed to invent/merge variants that the
+    # registry does not recognize. This is what prevents:
+    #   - Hawas Al Wisam / Daarej from appearing under "Hawas"
+    #   - bare "Hawas Eau de Parfum" from becoming both Him and Her.
     family = _catalog_family_for_query(query)
     if family is not None:
-        if _catalog_product_is_excluded(product, family):
-            return None
-        return _apply_generic_display_name(product, query)
+        return None
 
     return _apply_generic_display_name(
         product,
@@ -2570,28 +2546,9 @@ def _run_search_job(
         if not isinstance(store_candidates, list):
             return
 
-        # IMPORTANT:
-        # non ricalcolare la validazione dell'intero candidate pool ogni
-        # volta che termina uno store. I candidati già validati non cambiano
-        # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
-        # e poi lo fondiamo con i risultati già ottenuti.
-        #
-        # CRITICAL RACE FIX:
-        # NON leggere job["results"] prima della validazione.
-        #
-        # Due store possono terminare quasi contemporaneamente:
-        #
-        #   A legge risultati=[Bplatz]
-        #   B legge risultati=[Bplatz]
-        #   A scrive [Bplatz,A]
-        #   B scrive [Bplatz,B]
-        #
-        # In questo caso A "sparisce". È esattamente il comportamento
-        # osservato dall'utente: 2 negozi -> 1 -> 2 durante la ricerca.
-        #
-        # La soluzione è leggere il pool corrente SOLO DOPO la validazione,
-        # dentro il lock, e fare il merge con lo stato più recente.
-
+        # Keep the raw candidate pool for diagnostics/state, but validate only
+        # the newly completed store batch. The validated pool is the canonical
+        # flat source for every progressive publication.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
@@ -2616,28 +2573,35 @@ def _run_search_job(
             query,
         )
 
+        # CRITICAL: job["results"] is already grouped and contains nested
+        # `offers`. It must NEVER be reused as the next grouping input.
+        # Store validated offers in a separate flat pool instead.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
             if job is None:
                 return
 
-            # Read the CURRENT result set here, not before validation.
-            # This prevents one concurrently finishing store from
-            # overwriting another store's freshly published results.
-            existing_results = list(
-                job["results"]
+            job["validated"].extend(
+                new_results
+            )
+            validated_pool = list(
+                job["validated"]
             )
 
-            combined_results = _propagate_catalog_identity(
-                existing_results + new_results,
-            )
+        propagated = _propagate_catalog_identity(
+            validated_pool,
+        )
 
-            results = _group_catalog_results(
-                combined_results
-            )
+        results = _group_catalog_results(
+            propagated
+        )
 
-            job["results"] = results
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["results"] = results
 
     try:
         try:
@@ -2727,6 +2691,7 @@ def search_start(q: str):
         SEARCH_JOBS[job_id] = {
             "query": query,
             "candidates": [],
+            "validated": [],
             "results": [],
             "errors": {},
             "completed": False,
