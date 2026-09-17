@@ -61,23 +61,6 @@ def _normalise_store(value, fallback):
     text = str(value or fallback).strip().lower()
     return {'bplatz.de':'bplatz','parfum city':'parfumcity','parfum zentrum':'parfumzentrum','parfum-zentrum':'parfumzentrum','perfume market':'perfumemarket','orioudh.com':'orioudh'}.get(text, text)
 
-def _is_hawas_query(query):
-    text = str(query or '').strip().lower()
-    return 'hawas' in text
-
-def _is_hawas_daarej_result(item):
-    name = str(item.get('name') or item.get('title') or '').strip().lower()
-    brand = str(item.get('brand') or item.get('manufacturer') or '').strip().lower()
-    return 'daarej' in name and (not brand or 'rasasi' in brand)
-
-def _filter_hawas_results(results, query):
-    if not _is_hawas_query(query):
-        return list(results or [])
-    return [
-        item for item in (results or [])
-        if isinstance(item, dict) and not _is_hawas_daarej_result(item)
-    ]
-
 def _load_product_matcher():
     if ProductMatcher is None:
         return None
@@ -109,103 +92,68 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _normalise_easycosmetic_9pm_name(result, machine_store):
+def _apply_product_identity(result):
     """
-    Easycosmetic uses a retailer-specific "9 Collection 9 Pm ..." label for
-    the Afnan 9 PM line.
+    Normalize a retailer offer through the existing central ProductMatcher.
 
-    This is ONLY a source-name normalization. It deliberately does not invoke
-    ProductMatcher and does not alter any other store/product. The original
-    retailer name is retained in _source_name for diagnostics.
+    This enriches valid retailer offers through the central ProductMatcher.
+    A matcher exception is non-fatal, but an explicit matcher rejection (None)
+    must remove the offer from the result set. This is required for samples,
+    testers, sets excluded by policy, and other non-identity listings.
     """
-    if machine_store != 'easycosmetic' or not isinstance(result, dict):
+    if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
 
-    raw_name = str(
-        result.get('name')
-        or result.get('title')
-        or result.get('product_name')
-        or ''
+    raw_name = str(result.get('name') or result.get('title') or '').strip()
+    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
+
+    try:
+        matched = PRODUCT_MATCHER.match(result)
+    except Exception as exc:
+        print(
+            f'PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        return result
+
+    if matched is None:
+        return None
+    if not isinstance(matched, dict):
+        return result
+
+    normalized = dict(matched)
+
+    # Keep the original retailer fields for diagnostics/provenance.
+    if raw_name:
+        normalized.setdefault('_source_name', raw_name)
+    if raw_brand:
+        normalized.setdefault('_source_brand', raw_brand)
+
+    canonical_name = str(
+        normalized.get('canonical_name')
+        or normalized.get('catalog_variant')
+        or raw_name
+    ).strip()
+    canonical_brand = str(
+        normalized.get('canonical_brand')
+        or normalized.get('brand')
+        or raw_brand
     ).strip()
 
-    if not raw_name:
-        return result
+    if canonical_name:
+        # The frontend groups offers by the normalized name. Keep the raw
+        # retailer name separately so the identity layer can normalize it
+        # without changing price, URL, store, availability or image data.
+        normalized['name'] = canonical_name
+    if canonical_brand:
+        normalized['brand'] = canonical_brand
 
-    normalized_source_name = re.sub(r'\s+', ' ', raw_name).strip()
-
-    match = re.fullmatch(
-        r'(?:afnan\s*[-–—:]\s*)?'
-        r'9\s+collection\s+9\s*(?:p\.?\s*m\.?)'
-        r'(?:\s+(pour\s+femme|elixir(?:\s+parfum\s+intense)?|night\s+out|rebel))?'
-        r'(?:\s+\d+(?:[.,]\d+)?\s*(?:ml|cl))?',
-        normalized_source_name,
-        flags=re.IGNORECASE,
-    )
-
-    if not match:
-        return result
-
-    variant = re.sub(r'\s+', ' ', (match.group(1) or '')).strip().lower()
-
-    canonical = 'Afnan - 9 PM'
-    if variant == 'pour femme':
-        canonical = 'Afnan - 9 PM Pour Femme'
-    elif variant.startswith('elixir'):
-        canonical = 'Afnan - 9 PM Elixir'
-    elif variant == 'night out':
-        canonical = 'Afnan - 9 PM Night Out'
-    elif variant == 'rebel':
-        canonical = 'Afnan - 9 PM Rebel'
-
-    normalized = dict(result)
-    normalized.setdefault('_source_name', raw_name)
-    normalized['name'] = canonical
-    normalized.setdefault('brand', 'Afnan')
     return normalized
-
-
-def _apply_product_identity(result, query=""):
-    """
-    Compatibility wrapper kept at the existing call site.
-
-    IMPORTANT: do not activate ProductMatcher here. The central matcher has
-    duplicate canonical 9 PM catalog entries and Easycosmetic's "Collection"
-    labels are retailer aliases, not catalog identities. Identity matching at
-    this point was the regression that removed three of the five 9 PM
-    variants. This boundary performs only the narrow Easycosmetic rename.
-    """
-    if not isinstance(result, dict):
-        return result
-
-    machine_store = _normalise_store(
-        result.get('store') or result.get('shop'),
-        '',
-    )
-    return _normalise_easycosmetic_9pm_name(result, machine_store)
 
 
 def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
-
-    raw_name = str(result.get('name') or result.get('title') or '').strip()
-
-    # CHIRURGICO HAWAS:
-    # ParfumCity is returning sample listings as normal perfume offers.
-    # They are not clickable product offers and must never reach the UI.
-    if machine_store == 'parfumcity' and 'sample' in raw_name.lower():
-        return None
-
-    # CHIRURGICO HAWAS / PERFUMEMARKET:
-    # PerfumeMarket appends the localized gender word "Dames"/"Heren"
-    # to Hawas titles. Keep the original source name separately, but expose
-    # the canonical Hawas name so the frontend groups it with the real card.
-    # This is deliberately limited to Hawas + PerfumeMarket.
-    if machine_store == 'perfumemarket' and 'hawas' in raw_name.lower():
-        parts = raw_name.rsplit(' ', 1)
-        if len(parts) == 2 and parts[1].strip().lower() in ('dames', 'heren'):
-            result['name'] = parts[0].strip()
-
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
@@ -415,12 +363,7 @@ def _publish_result(job_id,row):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        query=job.get('query','')
-        if _is_hawas_query(query) and _is_hawas_daarej_result(row):
-            return
         clean=clean_result(row,row.get('store') or row.get('shop') or '')
-        if clean is None:
-            return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
@@ -430,9 +373,7 @@ def _publish_store(job_id,report):
         if not job or job.get('completed'): return
         store=report['store']; job['stores'][store]={'status':report['status'],'elapsed':report['elapsed'],'count':report['count']}
         if report.get('error'): job['errors'][store]=report['error']
-        if report.get('results'):
-            filtered=_filter_hawas_results(report['results'],job.get('query',''))
-            job['results'].extend(filtered)
+        if report.get('results'): job['results'].extend(report['results'])
         job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH job={job_id} store={store} count={report.get('count')} total={total}",flush=True)
 
@@ -452,27 +393,6 @@ def _collect_streaming_for_job(job_id,query,stores):
 def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
     collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
-
-    # CHIRURGICO HAWAS:
-    # PerfumeMarket has a real "Hawas for Her" product, but its normal
-    # "Hawas" search can omit it. Only for an exact Hawas-family search,
-    # perform one bounded fallback against PerfumeMarket. No global matcher
-    # or other retailer search logic is changed.
-    if _is_hawas_query(query):
-        with JOBS_LOCK:
-            current_names=[
-                str(x.get('name') or '').strip().lower()
-                for x in JOBS.get(job_id,{}).get('results',[])
-                if isinstance(x,dict)
-            ]
-        if not any('hawas for her' in n for n in current_names):
-            fallback_reports=collect_store_reports_isolated(
-                'Hawas for Her',
-                ['perfumemarket'],
-                on_report=lambda r:_publish_store(job_id,r),
-                on_result=lambda row:_publish_result(job_id,row),
-            )
-
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if job:
@@ -507,17 +427,7 @@ def search_perfume(q:str):
     query=str(q or '').strip()
     if not query: return {'query':'','count':0,'results':[],'errors':{},'stores':{}}
     reports=collect_store_reports_isolated(query,STORES); all_results=[]
-    for report in reports:
-        all_results.extend(_filter_hawas_results(report['results'],query))
-
-    if _is_hawas_query(query) and not any(
-        'hawas for her' in str(x.get('name') or '').strip().lower()
-        for x in all_results if isinstance(x,dict)
-    ):
-        fallback_reports=collect_store_reports_isolated('Hawas for Her',['perfumemarket'])
-        for report in fallback_reports:
-            all_results.extend(_filter_hawas_results(report['results'],query))
-
+    for report in reports: all_results.extend(report['results'])
     results=sort_results(dedupe_results(all_results))
     return {'query':query,'count':len(results),'results':results,'errors':{r['store']:r['error'] for r in reports if r.get('error')},'stores':{r['store']:{'status':r['status'],'count':r['count'],'elapsed':r['elapsed']} for r in reports}}
 
