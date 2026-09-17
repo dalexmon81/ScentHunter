@@ -1807,8 +1807,10 @@ async function openProduct(i) {
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // Rimosso scroll automatico
+  // document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
+
 
 function renderOffersHtml(g,img,offers,saved){
   return (offers||[]).map((o,n)=>{
