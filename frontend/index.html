@@ -368,6 +368,7 @@ function normalizePerfumeName(v){
     // accentate e non accentate: "Rosée" = "Rosee".
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\b(hawas\s+e)['’‘`´]clat\b/gi,"$1clat")
     // NON eliminare "parfum": può essere parte del nome/variante
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
