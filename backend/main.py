@@ -161,6 +161,21 @@ def clean_result(item, store):
     if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
         return None
 
+    # HAWAS P3: some stores append gender words to the same Hawas variant
+    # (Dames/Heren/Damen/Herren). For Hawas searches these are the same
+    # product identity as the base variant, so remove ONLY a trailing gender
+    # suffix. No other family is affected.
+    if 'hawas' in raw_name:
+        result_name = str(result.get('name') or result.get('title') or '').strip()
+        result_name = re.sub(
+            r'\s+(?:dames|heren|damen|herren)$',
+            '',
+            result_name,
+            flags=re.IGNORECASE,
+        )
+        if result_name:
+            result['name'] = result_name
+
     result['store'] = STORE_LABELS.get(machine_store, machine_store)
     result['shop'] = STORE_LABELS.get(machine_store, machine_store)
     if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
