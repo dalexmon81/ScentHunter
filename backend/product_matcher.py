@@ -466,6 +466,13 @@ class ProductMatcher:
         "hand cream", "hand lotion", "face cream", "face lotion",
         "face mist", "soap", "shower", "bath gel", "bath oil",
         "bagnoschiuma", "gel doccia", "gel douche", "duschgel",
+        # Generic non-fragrance packaging/product markers.
+        "coffret", "coffrets", "gift set", "giftset", "set regalo",
+        "geschenkset", "duftset", "discovery set", "fragrance set",
+        "perfume set", "parfum set", "travel set", "bundle",
+        "pack", "kit", "duo", "trio", "gift box", "giftbox",
+        # Common retailer abbreviations for deodorant / shower products.
+        "deo", "deostick", "deo stick", "deodorant stick", "dst", "sg",
     )
 
     @staticmethod
@@ -495,6 +502,12 @@ class ProductMatcher:
         haystack = catalog_norm(cls._offer_text(offer))
         if not haystack:
             return False
+
+        # Generic multi-pack notation (e.g. "2 x", "3x", "x2")
+        # is not a single perfume identity.
+        if re.search(r"\b\d+\s*x\b|\bx\s*\d+\b", haystack, flags=re.I):
+            return True
+
         return any(
             re.search(rf"\b{re.escape(marker)}\b", haystack, flags=re.I)
             for marker in cls.NON_FRAGRANCE_MARKERS
