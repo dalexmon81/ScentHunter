@@ -2354,22 +2354,22 @@ def _discover_from_first_party(
             ):
                 break
 
-    # Public-index discovery is normally skipped when first-party search is
-    # healthy, but a small bounded pass is important for newly launched
-    # products that Sabina exposes to search engines before its internal
-    # search index catches up.
-    external_urls = _discover_from_external_search(
-        session,
-        query,
-    )
+    # Public-index discovery is a true fallback only. If first-party
+    # discovery already found candidates, do not spend several seconds
+    # querying external search engines before product extraction starts.
+    if not urls:
+        external_urls = _discover_from_external_search(
+            session,
+            query,
+        )
 
-    for link in external_urls:
-        if link in seen:
-            continue
-        seen.add(link)
-        urls.append(link)
-        if len(urls) >= MAX_CANDIDATES:
-            return urls[:MAX_CANDIDATES]
+        for link in external_urls:
+            if link in seen:
+                continue
+            seen.add(link)
+            urls.append(link)
+            if len(urls) >= MAX_CANDIDATES:
+                return urls[:MAX_CANDIDATES]
 
     # AJAX discovery is fallback only when the combined first-party/public
     # discovery returned no query-relevant product URL.
