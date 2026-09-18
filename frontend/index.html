@@ -741,6 +741,7 @@ function shNum(o){
 }
 function shGroupData(data){
   const raw=[];
+  console.log("[DEBUG] shGroupData input:", data);
 
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
     (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
