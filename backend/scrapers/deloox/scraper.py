@@ -1072,12 +1072,37 @@ def parse_product(
                 or query
             )
 
+            description = clean(
+                p.get("description")
+                or ""
+            )
+            image = _image_url(
+                p.get("image")
+            )
+
+            # The JSON-LD name alone is not sufficient to determine
+            # the product type. Deloox can expose a cosmetic product
+            # with a fragrance-family name (for example a lotion with
+            # the same family name as the perfume). Apply the generic
+            # category gate to the complete product-page evidence.
+            product_evidence = (
+                name
+                + " "
+                + description
+                + " "
+                + url
+                + " "
+                + image
+            )
+
             if (
                 not relevant(
                     name,
                     query,
                 )
-                or non_fragrance(name)
+                or non_fragrance(
+                    product_evidence
+                )
             ):
                 continue
 
@@ -1127,10 +1152,6 @@ def parse_product(
                     offer.get(
                         "availability"
                     )
-                )
-
-                image = _image_url(
-                    p.get("image")
                 )
 
                 rows.append(
