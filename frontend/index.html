@@ -777,10 +777,10 @@ function shGroupData(data){
   });
 
   /*
-   * La classificazione profumo/non-profumo viene fatta dalla funzione
-   * globale isNonPerfumeProduct() qui sotto, dopo il raggruppamento.
-   * I prodotti chiaramente non-profumo vengono esclusi dalla lista.
-   * I set/cofanetti che contengono esplicitamente un profumo restano validi.
+   * La classificazione profumo/non-profumo viene fatta una sola volta
+   * dalla funzione globale isNonPerfumeProduct() qui sotto.
+   * I risultati NON vengono eliminati: quelli non-profumo vengono ordinati
+   * alla fine della lista.
    */
 
   function sizeOf(o){
@@ -1532,7 +1532,12 @@ function shGroupData(data){
   // - i prodotti chiaramente non-fragrance vengono esclusi;
   // - i set/cofanetti che contengono esplicitamente un profumo vengono
   //   mantenuti dalla stessa funzione globale.
-  groups=groups.filter(g=>!isNonPerfumeProduct(g));
+  //
+  // groups è dichiarato const: modifichiamo quindi l'array in-place
+  // invece di riassegnare la variabile, evitando l'errore Safari
+  // "Attempted to assign to readonly property."
+  const perfumeGroups=groups.filter(g=>!isNonPerfumeProduct(g));
+  groups.splice(0,groups.length,...perfumeGroups);
 
   // Ordine dei risultati visualizzati: brand + nome canonico.
   groups.sort((a,b)=>{
