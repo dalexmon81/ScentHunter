@@ -473,6 +473,14 @@ class ProductMatcher:
         "pack", "kit", "duo", "trio", "gift box", "giftbox",
         # Common retailer abbreviations for deodorant / shower products.
         "deo", "deostick", "deo stick", "deodorant stick", "dst", "sg",
+        # Generic multilingual after-shave / shaving / cosmetic markers.
+        "apres rasage", "apres-rasage", "after shave", "aftershave",
+        "rasage", "shaving", "barber", "balsam rasage",
+        "duschgel", "dusch gel", "dusche", "body gel",
+        "body wash", "body cleanser", "hand wash",
+        # Common cosmetic/category labels used by European retailers.
+        "lotion", "creme", "cream", "gel douche", "gel doccia",
+        "pflege", "kosmetik", "cosmetique", "cosmetica",
     )
 
     @staticmethod
@@ -483,6 +491,10 @@ class ProductMatcher:
             offer.get("product_name"),
             offer.get("brand"),
             offer.get("url"),
+            offer.get("image"),
+            offer.get("image_url"),
+            offer.get("image_alt"),
+            offer.get("alt"),
         ]
         source = _nested_source(offer)
         values.extend(
