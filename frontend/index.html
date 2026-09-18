@@ -742,6 +742,8 @@ function shNum(o){
 function shGroupData(data){
   const raw=[];
   console.log("[DEBUG] shGroupData input:", data);
+  window.__scDebugData = data;
+  setTimeout(()=>shShowDebugPanel(data),0);
 
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
     (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
@@ -783,6 +785,70 @@ function shGroupData(data){
    * I risultati NON vengono eliminati: quelli non-profumo vengono ordinati
    * alla fine della lista.
    */
+  function shShowDebugPanel(data){
+  let panel=document.getElementById("sc-debug-panel");
+
+  if(!panel){
+    panel=document.createElement("pre");
+    panel.id="sc-debug-panel";
+    panel.style.cssText=[
+      "position:fixed",
+      "z-index:999999",
+      "left:8px",
+      "right:8px",
+      "top:8px",
+      "max-height:80vh",
+      "overflow:auto",
+      "padding:12px",
+      "background:#111",
+      "color:#fff",
+      "border:2px solid #e7b83f",
+      "border-radius:12px",
+      "font:12px monospace",
+      "white-space:pre-wrap",
+      "word-break:break-word"
+    ].join(";");
+
+    document.body.appendChild(panel);
+  }
+
+  const sourceArrays=[];
+
+  if(Array.isArray(data?.results)){
+    data.results.forEach(g=>{
+      if(Array.isArray(g?.offers)){
+        g.offers.forEach(o=>sourceArrays.push(o));
+      }else{
+        sourceArrays.push(g);
+      }
+    });
+  }
+
+  if(Array.isArray(data?.comparisons)){
+    data.comparisons.forEach(g=>{
+      if(Array.isArray(g?.offers)){
+        g.offers.forEach(o=>sourceArrays.push(o));
+      }else{
+        sourceArrays.push(g);
+      }
+    });
+  }
+
+  const selected=sourceArrays.filter(o=>{
+    const text=JSON.stringify(o).toLowerCase();
+    return /beyond|absolu|striking lavender|lotion|cream|dispenser|shower|body/.test(text);
+  });
+
+  panel.textContent=[
+    "SCENTHUNTER DIAGNOSTICA",
+    "",
+    "results: "+(Array.isArray(data?.results)?data.results.length:0),
+    "comparisons: "+(Array.isArray(data?.comparisons)?data.comparisons.length:0),
+    "records sospetti: "+selected.length,
+    "",
+    JSON.stringify(selected,null,2)
+  ].join("\n");
+}
 
   function sizeOf(o){
     const explicit=String(o.size_ml||o.size||"").match(/(\d{1,4})/);
