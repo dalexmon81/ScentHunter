@@ -1524,7 +1524,6 @@ function shGroupData(data){
       if(/(?:no[_-]?image|placeholder|default[_-]?image|image[_-]?not[_-]?found|spacer\.gif|transparent\.gif)/i.test(n))return "";
       return u;
     };
-    const groupNameNorm=norm(g.name||"");
     const groupCatalog=String(g.catalog_id||"").trim();
     const matchingImages=(g.offers||[]).filter(o=>{
       const image=usableImage(o.image||o.image_url||o.thumbnail);
@@ -1533,13 +1532,6 @@ function shGroupData(data){
       const offerCatalog=String(o.catalog_id||"").trim();
       if(groupCatalog && offerCatalog && groupCatalog!==offerCatalog)return false;
 
-      const sourceName=norm(o._source_name||o.name||"");
-      if(groupNameNorm && sourceName && sourceName!==groupNameNorm){
-        // Se il nome sorgente contiene la stessa identità normalizzata con
-        // etichette commerciali aggiuntive, non lo scartiamo automaticamente.
-        // Il catalog_id compatibile resta la prova principale.
-        if(!(groupCatalog && offerCatalog===groupCatalog))return false;
-      }
       return true;
     }).map(o=>usableImage(o.image||o.image_url||o.thumbnail)).filter(Boolean);
 
