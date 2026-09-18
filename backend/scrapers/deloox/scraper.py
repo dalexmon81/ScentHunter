@@ -493,6 +493,42 @@ def _image_from_node(node):
     return ""
 
 
+def _image_metadata_from_node(node):
+    """Return semantic image/card metadata without changing the image URL."""
+    if not node:
+        return ""
+
+    values = []
+    for candidate in node.find_all(["img", "source"]):
+        for attr in (
+            "alt",
+            "title",
+            "aria-label",
+            "data-alt",
+            "data-title",
+            "data-product-type",
+            "data-category",
+        ):
+            value = clean(candidate.get(attr))
+            if value:
+                values.append(value)
+
+    # Also inspect semantic metadata on the card/container itself.
+    for attr in (
+        "title",
+        "aria-label",
+        "data-product-type",
+        "data-category",
+        "data-subcategory",
+    ):
+        value = clean(node.get(attr))
+        if value:
+            values.append(value)
+
+    # Preserve order while removing repeats.
+    return " ".join(dict.fromkeys(values))
+
+
 def _candidate_contexts(html, query):
     soup = BeautifulSoup(
         html,
@@ -558,6 +594,7 @@ def _candidate_contexts(html, query):
 
         node = a
         card_image = ""
+        card_metadata = ""
         best = clean(
             a.get_text(
                 " ",
@@ -580,6 +617,9 @@ def _candidate_contexts(html, query):
 
             if not card_image:
                 card_image = _image_from_node(node)
+
+            if not card_metadata:
+                card_metadata = _image_metadata_from_node(node)
 
             if (
                 len(text) > len(best)
@@ -618,7 +658,7 @@ def _candidate_contexts(html, query):
         if old is None or score > old[0]:
             found[url] = (
                 score,
-                best,
+                f"{best} {card_metadata}".strip(),
                 card_image,
             )
 
