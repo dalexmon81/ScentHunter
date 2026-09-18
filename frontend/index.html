@@ -1710,13 +1710,38 @@ function clearOpenProduct(){
 }
 
 function showProducts(groups){
-  currentProductGroups=groups;
+  // Ordinamento generale alfabetico dei risultati visualizzati.
+  // Usa il nome mostrato all'utente, ignora eventuali simboli iniziali
+  // e non modifica il raggruppamento o le offerte.
+  const alphabeticalGroups=[...(Array.isArray(groups)?groups:[])].sort((a,b)=>{
+    const displayA=String(
+      a?.display_name ||
+      (a?.brand ? `${a.brand} - ${displayPerfumeName(a.name,a.brand)}` : displayPerfumeName(a?.name||"",a?.brand||""))
+    )
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/^[^\p{L}\p{N}\s]+/u,"")
+      .trim();
+
+    const displayB=String(
+      b?.display_name ||
+      (b?.brand ? `${b.brand} - ${displayPerfumeName(b.name,b.brand)}` : displayPerfumeName(b?.name||"",b?.brand||""))
+    )
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/^[^\p{L}\p{N}\s]+/u,"")
+      .trim();
+
+    return displayA.localeCompare(displayB,"it",{sensitivity:"base",numeric:true});
+  });
+
+  currentProductGroups=alphabeticalGroups;
   clearOpenProduct();
-  statusBox.textContent=groups.length
-    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
+  statusBox.textContent=alphabeticalGroups.length
+    ?alphabeticalGroups.length+(alphabeticalGroups.length===1?" profumo trovato.":" profumi trovati.")
     :"Nessun profumo trovato.";
 
-  resultsBox.innerHTML=groups.map((g,i)=>{
+  resultsBox.innerHTML=alphabeticalGroups.map((g,i)=>{
     const sizes=getSizeGroups(g);
     const img=g.image||"";
 
