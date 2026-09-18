@@ -1367,6 +1367,29 @@ function shGroupData(data){
     g.offers=cleanOffers;
 
     /*
+     * LIQUID BRUN — correzione chirurgica Sabina.
+     *
+     * Sabina può restituire due offerte della stessa referenza Liquid Brun
+     * che puntano alla stessa pagina prodotto ma con prezzi differenti.
+     * Per Liquid Brun canonico (SH-0030) manteniamo una sola offerta Sabina:
+     * quella con il prezzo più basso. Nessun'altra referenza, negozio o
+     * famiglia viene toccata.
+     */
+    if(g.catalog_id==="SH-0030"){
+      const sabinaOffers=g.offers.filter(o=>
+        String(o.store||"").trim().toLowerCase()==="sabina"
+      );
+      if(sabinaOffers.length>1){
+        const bestSabina=sabinaOffers.reduce((best,current)=>
+          shNum(current)<shNum(best)?current:best
+        );
+        g.offers=g.offers.filter(o=>
+          String(o.store||"").trim().toLowerCase()!=="sabina" || o===bestSabina
+        );
+      }
+    }
+
+    /*
      * LE BEAU — controllo stretto delle offerte.
      *
      * Gli scraper possono restituire una pagina/prodotto sbagliato sotto una
