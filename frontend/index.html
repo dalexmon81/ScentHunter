@@ -1713,7 +1713,40 @@ function showProducts(groups){
   // Ordinamento generale alfabetico dei risultati visualizzati.
   // Usa il nome mostrato all'utente, ignora eventuali simboli iniziali
   // e non modifica il raggruppamento o le offerte.
-  const alphabeticalGroups=[...(Array.isArray(groups)?groups:[])].sort((a,b)=>{
+  const sortGroups=[...(Array.isArray(groups)?groups:[])];
+
+  // Ordina alfabeticamente la parte variabile del nome, rimuovendo
+  // automaticamente il prefisso comune a tutti i risultati della ricerca.
+  // È una regola generale: non contiene nomi di profumi, marche o famiglie.
+  const sortNames=sortGroups.map(g=>String(
+    g?.display_name ||
+    (g?.brand ? `${g.brand} - ${displayPerfumeName(g.name,g.brand)}` : displayPerfumeName(g?.name||"",g?.brand||""))
+  )
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/^[^\p{L}\p{N}\s]+/u,"")
+    .trim());
+
+  let sharedWords=null;
+  for(let i=0;i<sortNames.length;i++){
+    const words=sortNames[i].split(/\s+/).filter(Boolean);
+    if(sharedWords===null){
+      sharedWords=words;
+    }else{
+      let k=0;
+      while(k<sharedWords.length && k<words.length &&
+            sharedWords[k].localeCompare(words[k],"it",{sensitivity:"base"})===0)k++;
+      sharedWords=sharedWords.slice(0,k);
+    }
+    if(!sharedWords.length)break;
+  }
+
+  const sharedPrefix=sharedWords?.length
+    ?new RegExp("^"+sharedWords.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+")+"\\s*","i")
+    :null;
+
+  const alphabeticalGroups=sortGroups.sort((a,b)=>{
+
     const displayA=String(
       a?.display_name ||
       (a?.brand ? `${a.brand} - ${displayPerfumeName(a.name,a.brand)}` : displayPerfumeName(a?.name||"",a?.brand||""))
@@ -1732,7 +1765,21 @@ function showProducts(groups){
       .replace(/^[^\p{L}\p{N}\s]+/u,"")
       .trim();
 
-    return displayA.localeCompare(displayB,"it",{sensitivity:"base",numeric:true});
+    const variantA=String(
+      displayPerfumeName(a?.name||"",a?.brand||"")
+    )
+      .replace(/^[^\p{L}\p{N}]+/u,"")
+      .replace(sharedPrefix||/^/,"")
+      .trim();
+
+    const variantB=String(
+      displayPerfumeName(b?.name||"",b?.brand||"")
+    )
+      .replace(/^[^\p{L}\p{N}]+/u,"")
+      .replace(sharedPrefix||/^/,"")
+      .trim();
+
+    return variantA.localeCompare(variantB,"it",{sensitivity:"base",numeric:true});
   });
 
   currentProductGroups=alphabeticalGroups;
