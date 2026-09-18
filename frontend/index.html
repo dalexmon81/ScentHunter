@@ -1372,44 +1372,18 @@ function shGroupData(data){
     .trim();
 
   const identitySignature=(g)=>{
+    const brand=normalizePerfumeName(g?.brand||"");
     const visible=displayPerfumeName(g?.name||"",g?.brand||"");
-    return normalizePerfumeName(duplicateWordClean(visible));
-  };
-
-  /*
-   * Confronto secondario generale: alcuni retailer inseriscono la
-   * concentrazione nel nome commerciale mentre altri la espongono nel
-   * campo concentration. Non eliminiamo mai "parfum" alla cieca:
-   * lo facciamo solo quando coincide con la concentrazione dichiarata.
-   * In questo modo due nomi equivalenti possono essere riconciliati,
-   * senza fondere una versione Eau de Toilette con una Parfum.
-   */
-  const identityCoreSignature=(g)=>{
-    let s=identitySignature(g);
-    const c=norm(g?.concentration||"");
-    if(!s || !c)return s;
-
-    const aliases={
-      "eau de parfum":["eau de parfum","edp"],
-      "eau de toilette":["eau de toilette","edt"],
-      "eau de cologne":["eau de cologne","edc"],
-      "extrait de parfum":["extrait de parfum","extrait"],
-      "parfum":["parfum","perfume"],
-      "parfum intense":["parfum intense"],
-      "extrait":["extrait"]
-    };
-
-    for(const alias of (aliases[c]||[])){
-      const a=normalizePerfumeName(alias);
-      if(!a)continue;
-      const escaped=a.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-      const re=new RegExp("\\s*"+escaped+"\\s*$","i");
-      if(re.test(s)){
-        s=s.replace(re,"").trim();
-        break;
-      }
-    }
-    return s;
+    // Il brand può comparire nel nome commerciale solo in forma parziale.
+    // Per la firma di identità rimuoviamo quindi i singoli token del brand
+    // dal nome visualizzato, senza rimuovere altre parole del prodotto.
+    // Esempio generale: "Hugo Boss - Boss Bottled" e "Hugo Boss - Bottled"
+    // diventano entrambi "bottled". Varianti come "Bottled Elixir" restano
+    // distinte perché conservano il token aggiuntivo.
+    const brandTokens=new Set(brand.split(/\s+/).filter(Boolean));
+    const productTokens=normalizePerfumeName(duplicateWordClean(visible)).split(/\s+/).filter(Boolean);
+    const stripped=productTokens.filter(t=>!brandTokens.has(t)).join(" ");
+    return stripped||normalizePerfumeName(duplicateWordClean(visible));
   };
 
   const equivalentGroups=(a,b)=>{
@@ -1421,13 +1395,7 @@ function shGroupData(data){
     if(ac && bc && ac!==bc)return false;
 
     const as=identitySignature(a), bs=identitySignature(b);
-    if(as && as===bs)return true;
-
-    const ca=norm(a?.concentration||""), cb=norm(b?.concentration||"");
-    if(!ca || !cb || ca!==cb)return false;
-
-    const acore=identityCoreSignature(a), bcore=identityCoreSignature(b);
-    return !!acore && acore===bcore;
+    return !!as && as===bs;
   };
 
   for(let i=0;i<groups.length;i++){
