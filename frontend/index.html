@@ -1560,12 +1560,26 @@ function isNonPerfumeProduct(g){
     .replace(/\s+/g," ")
     .trim();
 
+  /*
+   * IMPORTANTE: il nome visuale del gruppo può essere già stato
+   * normalizzato/canonicalizzato (es. "Boss Bottled Beyond"), mentre
+   * l'offerta conserva il nome originale dello scraper in _source_name.
+   * Lo stesso vale per URL e immagini: possono contenere l'informazione
+   * "body lotion", "shower gel", ecc. anche quando il nome visualizzato
+   * non la contiene più.
+   *
+   * Usiamo quindi TUTTA l'evidenza disponibile dell'offerta, senza
+   * introdurre regole legate a una marca o a un profumo specifico.
+   */
   const text=[
     g.brand,g.name,g.concentration,
     g.category,g.type,g.product_type,g.productType,g.sub_category,g.subcategory,
     ...(g.offers||[]).map(o=>[
-      o?.brand,o?.name,o?.category,o?.type,o?.product_type,o?.productType,
-      o?.sub_category,o?.subcategory
+      o?.brand,o?.name,o?._source_brand,o?._source_name,
+      o?.category,o?.type,o?.product_type,o?.productType,
+      o?.sub_category,o?.subcategory,
+      o?.url,o?._source_url,
+      o?.image,o?.image_url,o?.thumbnail,o?.image_alt,o?.alt
     ].filter(Boolean).join(" "))
   ].map(clean).filter(Boolean).join(" ");
 
