@@ -1036,49 +1036,6 @@ def discover(
 
     return ordered[:MAX_CANDIDATES]
 
-def product_page_non_fragrance(
-    url,
-):
-    """Return True only when the product page itself exposes a non-fragrance type.
-
-    Search-card text is not authoritative on Deloox: neighbouring cards can
-    contaminate the same container. The product page is the authoritative
-    boundary, so inspect its own metadata, breadcrumbs and structured data.
-    This remains generic and never depends on a perfume-family name.
-    """
-    session = requests.Session()
-
-    try:
-        r = get(session, url)
-        if not r:
-            return False
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        evidence = []
-
-        for tag in soup.find_all(["title", "meta", "a", "span", "li"]):
-            if tag.name == "meta":
-                for attr in ("content", "name", "property"):
-                    value = tag.get(attr)
-                    if value:
-                        evidence.append(clean(value))
-            else:
-                text = clean(tag.get_text(" ", strip=True))
-                if text:
-                    evidence.append(text)
-
-        for script in soup.select('script[type="application/ld+json"]'):
-            raw = clean(script.get_text())
-            if raw:
-                evidence.append(raw)
-
-        return non_fragrance(" ".join(evidence))
-    except Exception:
-        return False
-    finally:
-        session.close()
-
-
 def parse_product(
     url,
     query,
@@ -1115,37 +1072,12 @@ def parse_product(
                 or query
             )
 
-            description = clean(
-                p.get("description")
-                or ""
-            )
-            image = _image_url(
-                p.get("image")
-            )
-
-            # The JSON-LD name alone is not sufficient to determine
-            # the product type. Deloox can expose a cosmetic product
-            # with a fragrance-family name (for example a lotion with
-            # the same family name as the perfume). Apply the generic
-            # category gate to the complete product-page evidence.
-            product_evidence = (
-                name
-                + " "
-                + description
-                + " "
-                + url
-                + " "
-                + image
-            )
-
             if (
                 not relevant(
                     name,
                     query,
                 )
-                or non_fragrance(
-                    product_evidence
-                )
+                or non_fragrance(name)
             ):
                 continue
 
@@ -1195,6 +1127,10 @@ def parse_product(
                     offer.get(
                         "availability"
                     )
+                )
+
+                image = _image_url(
+                    p.get("image")
                 )
 
                 rows.append(
@@ -1256,17 +1192,6 @@ def search(query):
             image,
         ) in candidates:
 
-            # Final Deloox category gate.
-            # Use the complete candidate evidence (card context + URL
-            # + image URL) before accepting a card. This is deliberately
-            # generic: it removes non-fragrance products identified by
-            # their product-type metadata without blacklisting perfume
-            # family names such as Beyond, Absolu or Striking Lavender.
-            if non_fragrance(
-                context + " " + url + " " + image
-            ):
-                continue
-
             row = _row_from_card(
                 url,
                 context,
@@ -1285,36 +1210,12 @@ def search(query):
                     seen.add(key)
                     results.append(row)
 
-        # Product pages are fetched only for candidates that were
-        # not rejected by the final category gate above.
-        # A rejected candidate must NEVER be resurrected by the
-        # product-page fallback.
-        # Card rows are provisional. Deloox can return a cosmetic card
-        # with a perfume-family name, so every non-Born candidate that
-        # survived card filtering is validated against its own product
-        # page before it is allowed into the final result set.
-        if not is_born_in_roma_query(query):
-            validated = []
-            for row in results:
-                if not product_page_non_fragrance(row.get("url") or ""):
-                    validated.append(row)
-            results = validated
-            seen = {
-                (
-                    row.get("url"),
-                    row.get("size_ml"),
-                    row.get("price_num"),
-                )
-                for row in results
-            }
-
+        # Product pages are fetched only for cards that did not
+        # produce a usable price/row.
         missing = [
             (url, info)
             for url, info in candidates
-            if not non_fragrance(
-                info[1] + " " + url + " " + info[2]
-            )
-            and not any(
+            if not any(
                 r.get("url") == url
                 for r in results
             )
