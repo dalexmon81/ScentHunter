@@ -383,6 +383,10 @@ function normalizePerfumeName(v){
 function displayPerfumeName(name,brand){
   const b=normalizePerfumeName(brand||"");
   let n=String(name||"").replace(/\s+/g," ").trim();
+  // Le indicazioni Dames/Heren/Damen/Herren sono rumore commerciale
+  // anche nel nome visualizzato: la normalizzazione della chiave da sola
+  // non basta, perché la prima offerta può diventare il titolo della scheda.
+  n=n.replace(/\b(?:dames|heren|damen|herren)\b/gi," ").replace(/\s+/g," ").trim();
   if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
 
   let gender="";
