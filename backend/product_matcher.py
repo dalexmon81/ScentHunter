@@ -520,24 +520,10 @@ class ProductMatcher:
         if re.search(r"\b\d+\s*x\b|\bx\s*\d+\b", haystack, flags=re.I):
             return True
 
-        if any(
+        return any(
             re.search(rf"\b{re.escape(marker)}\b", haystack, flags=re.I)
             for marker in cls.NON_FRAGRANCE_MARKERS
-        ):
-            return True
-
-        # Some retailers/CDNs concatenate category words in slugs or image
-        # metadata (e.g. "bodylotion", "aftershave", "showergel"). Compare a
-        # compact form as a generic fallback; never depend on a perfume name.
-        compact_haystack = haystack.replace(" ", "")
-        compact_markers = (
-            "bodylotion", "bodycream", "bodymist", "bodyspray",
-            "deodorant", "aftershave", "showergel", "showercream",
-            "handcream", "facelotion", "facecream", "gel douche",
-            "gelfdoccia", "duschgel", "giftset", "travelset",
-            "geschenkset", "setregalo", "parfumset", "fragranceset",
         )
-        return any(marker.replace(" ", "") in compact_haystack for marker in compact_markers)
 
     @staticmethod
     def _brand_matches(offer_brand: str, family_brand: str) -> bool:
