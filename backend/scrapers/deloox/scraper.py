@@ -56,15 +56,27 @@ PRICE_RE = re.compile(
 
 NON_FRAGRANCE = (
     "body mist",
+    "bodymist",
     "body spray",
+    "bodyspray",
     "body lotion",
+    "bodylotion",
     "body cream",
+    "bodycream",
     "deodorant",
+    "dÃ©odorant",
     "after shave",
     "aftershave",
+    "apres rasage",
+    "aprÃ¨s rasage",
     "shower gel",
+    "showergel",
+    "gel douche",
+    "douchegel",
+    "gel doccia",
     "soap",
     "hair mist",
+    "hairmist",
 )
 
 
@@ -493,42 +505,6 @@ def _image_from_node(node):
     return ""
 
 
-def _image_metadata_from_node(node):
-    """Return semantic image/card metadata without changing the image URL."""
-    if not node:
-        return ""
-
-    values = []
-    for candidate in node.find_all(["img", "source"]):
-        for attr in (
-            "alt",
-            "title",
-            "aria-label",
-            "data-alt",
-            "data-title",
-            "data-product-type",
-            "data-category",
-        ):
-            value = clean(candidate.get(attr))
-            if value:
-                values.append(value)
-
-    # Also inspect semantic metadata on the card/container itself.
-    for attr in (
-        "title",
-        "aria-label",
-        "data-product-type",
-        "data-category",
-        "data-subcategory",
-    ):
-        value = clean(node.get(attr))
-        if value:
-            values.append(value)
-
-    # Preserve order while removing repeats.
-    return " ".join(dict.fromkeys(values))
-
-
 def _candidate_contexts(html, query):
     soup = BeautifulSoup(
         html,
@@ -594,7 +570,6 @@ def _candidate_contexts(html, query):
 
         node = a
         card_image = ""
-        card_metadata = ""
         best = clean(
             a.get_text(
                 " ",
@@ -617,9 +592,6 @@ def _candidate_contexts(html, query):
 
             if not card_image:
                 card_image = _image_from_node(node)
-
-            if not card_metadata:
-                card_metadata = _image_metadata_from_node(node)
 
             if (
                 len(text) > len(best)
@@ -658,7 +630,7 @@ def _candidate_contexts(html, query):
         if old is None or score > old[0]:
             found[url] = (
                 score,
-                f"{best} {card_metadata}".strip(),
+                best,
                 card_image,
             )
 
@@ -742,8 +714,12 @@ def _row_from_card(
     ):
         return None
 
-    if non_fragrance(context):
+    if non_fragrance(
+        context + " " + image
+    ):
         # A surrounding card may contain text from another product.
+        # The image URL is also checked because some Deloox cards
+        # expose the cosmetic type only in the product image path.
         # For Born in Roma we already have URL-level exclusion above,
         # so do not reject a valid product merely because the parent
         # container contains neighbouring body-product text.
@@ -1279,42 +1255,6 @@ def search(query):
 
                     except Exception:
                         continue
-
-        # ---------------------------------------------------------
-        # SURGICAL HAWAS FOR HER FALLBACK
-        #
-        # Deloox exposes Hawas For Her as a distinct product page.
-        # It can be absent from the generic Rasasi/Hawas discovery
-        # results, so fetch this one known product directly.
-        #
-        # This runs ONLY for Hawas queries and is deliberately placed
-        # after normal discovery/parsing so it cannot consume one of
-        # the MAX_CANDIDATES slots or change discovery for other
-        # perfumes.
-        # ---------------------------------------------------------
-        if "hawas" in tokens(query):
-            hawas_for_her_url = (
-                f"{BASE}/product/1228604/"
-                "rasasi-hawas-for-her-eau-de-parfum-100-ml.html"
-            )
-
-            try:
-                for row in parse_product(
-                    hawas_for_her_url,
-                    query,
-                ):
-                    key = (
-                        row.get("url"),
-                        row.get("size_ml"),
-                        row.get("price_num"),
-                    )
-
-                    if key not in seen:
-                        seen.add(key)
-                        results.append(row)
-
-            except Exception:
-                pass
 
         results.sort(
             key=lambda x: (
