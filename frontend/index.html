@@ -387,6 +387,9 @@ function displayPerfumeName(name,brand){
   // anche nel nome visualizzato: la normalizzazione della chiave da sola
   // non basta, perché la prima offerta può diventare il titolo della scheda.
   n=n.replace(/\b(?:dames|heren|damen|herren)\b/gi," ").replace(/\s+/g," ").trim();
+  // Rumore tipico degli scraper: la stessa parola può essere ripetuta
+  // consecutivamente. È una regola generale, non legata a un prodotto.
+  n=n.replace(/\b(\S+)(?:\s+\1\b)+/gi,"$1").replace(/\s+/g," ").trim();
   if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
 
   let gender="";
@@ -1347,6 +1350,58 @@ function shGroupData(data){
   });
 
   const groups=[...map.values()];
+
+  /*
+   * RICONCILIAZIONE GENERALE DEI GRUPPI EQUIVALENTI.
+   *
+   * Uno stesso prodotto può arrivare dagli scraper con:
+   * - ordine diverso delle parole;
+   * - una parola ripetuta accidentalmente;
+   * - un nome canonico da una fonte e un nome commerciale equivalente da un'altra.
+   *
+   * In questi casi le offerte devono finire nella stessa scheda.
+   * Non usiamo nomi, marche, negozi o profumi specifici.
+   *
+   * Un catalog_id diverso è una prova di referenze diverse e quindi impedisce
+   * l'unione. Se uno solo dei due gruppi ha catalog_id, l'unione è ammessa
+   * solo quando la firma visuale normalizzata coincide.
+   */
+  const duplicateWordClean=(v)=>String(v||"")
+    .replace(/\b(\S+)(?:\s+\1\b)+/gi,"$1")
+    .replace(/\s+/g," ")
+    .trim();
+
+  const identitySignature=(g)=>{
+    const visible=displayPerfumeName(g?.name||"",g?.brand||"");
+    return normalizePerfumeName(duplicateWordClean(visible));
+  };
+
+  const equivalentGroups=(a,b)=>{
+    const ab=norm(a?.brand||""), bb=norm(b?.brand||"");
+    if(ab && bb && ab!==bb)return false;
+
+    const ac=String(a?.catalog_id||"").trim();
+    const bc=String(b?.catalog_id||"").trim();
+    if(ac && bc && ac!==bc)return false;
+
+    const as=identitySignature(a), bs=identitySignature(b);
+    return !!as && as===bs;
+  };
+
+  for(let i=0;i<groups.length;i++){
+    for(let j=i+1;j<groups.length;j++){
+      if(!equivalentGroups(groups[i],groups[j]))continue;
+
+      const target=groups[i], source=groups[j];
+      if(!target.brand && source.brand)target.brand=source.brand;
+      if(!target.catalog_id && source.catalog_id)target.catalog_id=source.catalog_id;
+      if(!target.image && source.image)target.image=source.image;
+      if(!target.concentration && source.concentration)target.concentration=source.concentration;
+      target.offers.push(...(source.offers||[]));
+      groups.splice(j,1);
+      j--;
+    }
+  }
 
   groups.forEach(g=>{
     const bySize=new Map();
