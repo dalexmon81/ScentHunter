@@ -1765,21 +1765,11 @@ function showProducts(groups){
       .replace(/^[^\p{L}\p{N}\s]+/u,"")
       .trim();
 
-    const variantA=String(
-      displayPerfumeName(a?.name||"",a?.brand||"")
-    )
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/^[^\p{L}\p{N}\s]+/u,"")
+    const variantA=displayA
       .replace(sharedPrefix||/^/,"")
       .trim();
 
-    const variantB=String(
-      displayPerfumeName(b?.name||"",b?.brand||"")
-    )
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/^[^\p{L}\p{N}\s]+/u,"")
+    const variantB=displayB
       .replace(sharedPrefix||/^/,"")
       .trim();
 
