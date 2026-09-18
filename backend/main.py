@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, re, signal, subprocess, sys, threading, time, traceback, uuid
+import requests
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
