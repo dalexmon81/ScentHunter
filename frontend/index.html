@@ -777,10 +777,10 @@ function shGroupData(data){
   });
 
   /*
-   * La classificazione profumo/non-profumo viene fatta una sola volta
-   * dalla funzione globale isNonPerfumeProduct() qui sotto.
-   * I risultati NON vengono eliminati: quelli non-profumo vengono ordinati
-   * alla fine della lista.
+   * La classificazione profumo/non-profumo viene fatta dalla funzione
+   * globale isNonPerfumeProduct() qui sotto, dopo il raggruppamento.
+   * I prodotti chiaramente non-profumo vengono esclusi dalla lista.
+   * I set/cofanetti che contengono esplicitamente un profumo restano validi.
    */
 
   function sizeOf(o){
@@ -1523,22 +1523,25 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
-  // Ordine dei risultati visualizzati:
-  // 1) prima i veri profumi, ordinati per brand + nome canonico
-  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
-  //    body lotion, mystery box, ecc.).
-  // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
-  groups.sort((a,b)=>{
-    const aNonPerfume=isNonPerfumeProduct(a);
-    const bNonPerfume=isNonPerfumeProduct(b);
-    if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
+  // FILTRO FINALE DI IDENTITÀ PRODOTTO.
+  // A questo punto tutte le offerte sono già state normalizzate e
+  // raggruppate, quindi la classificazione può usare anche i dati
+  // presenti nelle singole offerte.
+  //
+  // IMPORTANTE:
+  // - i prodotti chiaramente non-fragrance vengono esclusi;
+  // - i set/cofanetti che contengono esplicitamente un profumo vengono
+  //   mantenuti dalla stessa funzione globale.
+  groups=groups.filter(g=>!isNonPerfumeProduct(g));
 
+  // Ordine dei risultati visualizzati: brand + nome canonico.
+  groups.sort((a,b)=>{
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
-  return groups.filter(g=>g.offers.length && !isNonPerfumeProduct(g));
+  return groups.filter(g=>g.offers.length);
 }
 
 function isNonPerfumeProduct(g){
@@ -1561,18 +1564,7 @@ function isNonPerfumeProduct(g){
     ].filter(Boolean).join(" "))
   ].map(clean).filter(Boolean).join(" ");
 
-  const imageText=[
-    g.image,g.image_url,g.image_alt,g.alt,
-    ...(g.offers||[]).map(o=>[
-      o?.image,o?.image_url,o?.image_alt,o?.alt
-    ].filter(Boolean).join(" "))
-  ].map(clean).filter(Boolean).join(" ");
-
-  // Le immagini possono identificare il tipo reale quando il retailer
-  // restituisce un nome da profumo anche per una lozione/deodorante.
-  // Usiamo qui solo indicatori espliciti del packaging/prodotto non-profumo.
-  const nonPerfumeImage=/(?:\bbody\s+(?:lotion|cream|creme|milk|butter|mist|spray)\b|\blotion\b|\bcream\b|\bcreme\b|\bdispenser\b|\bpump\b|\bdeodorant(?:e|s)?\b|\bdeostick\b|\bafter\s*shave\b|\baftershave\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bduschgel\b|\bshowergel\b|\bbody\s+(?:wash|gel|cleanser)\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b)/.test(imageText);
-  if(!text)return !!nonPerfumeImage;
+  if(!text)return false;
 
   // Mystery/Gift Box generiche NON sono il profumo stesso: sempre in fondo.
   // Questo vale anche quando il nome contiene una referenza reale, es.
@@ -1589,10 +1581,10 @@ function isNonPerfumeProduct(g){
   if(isSet){
     const explicitPerfume=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\beau\s+fraiche\b|\bextrait\s+de\s+parfum\b|\bparfum\b|\bperfume\b|\bfragrance\b)/.test(text);
     if(explicitPerfume)return false;
-    return nonPerfume || nonPerfumeImage;
+    return nonPerfume;
   }
 
-  return nonPerfume || nonPerfumeImage;
+  return nonPerfume;
 }
 
 function isOfferOutOfStock(o){
