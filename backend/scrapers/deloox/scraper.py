@@ -1077,7 +1077,9 @@ def parse_product(
                     name,
                     query,
                 )
-                or non_fragrance(name)
+                or non_fragrance(
+                    name + " " + url
+                )
             ):
                 continue
 
