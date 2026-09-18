@@ -1036,6 +1036,49 @@ def discover(
 
     return ordered[:MAX_CANDIDATES]
 
+def product_page_non_fragrance(
+    url,
+):
+    """Return True only when the product page itself exposes a non-fragrance type.
+
+    Search-card text is not authoritative on Deloox: neighbouring cards can
+    contaminate the same container. The product page is the authoritative
+    boundary, so inspect its own metadata, breadcrumbs and structured data.
+    This remains generic and never depends on a perfume-family name.
+    """
+    session = requests.Session()
+
+    try:
+        r = get(session, url)
+        if not r:
+            return False
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        evidence = []
+
+        for tag in soup.find_all(["title", "meta", "a", "span", "li"]):
+            if tag.name == "meta":
+                for attr in ("content", "name", "property"):
+                    value = tag.get(attr)
+                    if value:
+                        evidence.append(clean(value))
+            else:
+                text = clean(tag.get_text(" ", strip=True))
+                if text:
+                    evidence.append(text)
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            raw = clean(script.get_text())
+            if raw:
+                evidence.append(raw)
+
+        return non_fragrance(" ".join(evidence))
+    except Exception:
+        return False
+    finally:
+        session.close()
+
+
 def parse_product(
     url,
     query,
@@ -1246,6 +1289,25 @@ def search(query):
         # not rejected by the final category gate above.
         # A rejected candidate must NEVER be resurrected by the
         # product-page fallback.
+        # Card rows are provisional. Deloox can return a cosmetic card
+        # with a perfume-family name, so every non-Born candidate that
+        # survived card filtering is validated against its own product
+        # page before it is allowed into the final result set.
+        if not is_born_in_roma_query(query):
+            validated = []
+            for row in results:
+                if not product_page_non_fragrance(row.get("url") or ""):
+                    validated.append(row)
+            results = validated
+            seen = {
+                (
+                    row.get("url"),
+                    row.get("size_ml"),
+                    row.get("price_num"),
+                )
+                for row in results
+            }
+
         missing = [
             (url, info)
             for url, info in candidates
