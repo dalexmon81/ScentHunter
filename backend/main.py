@@ -21,6 +21,90 @@ try:
 except Exception as exc:
     print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+
+@app.get('/api/debug/deloox-runtime')
+def debug_deloox_runtime(q:str='Boss Bottled'):
+    """Read-only Deloox runtime trace for one query."""
+    query = str(q or '').strip()
+    report = {
+        'ok': True,
+        'architecture': APP_VERSION,
+        'query': query,
+        'module': {},
+        'candidate_count': 0,
+        'candidates': [],
+        'errors': [],
+    }
+    if not query:
+        report['ok'] = False
+        report['error'] = 'empty_query'
+        return report
+
+    started = time.monotonic()
+    try:
+        module = load_scraper('deloox')
+        report['module'] = {
+            'file': getattr(module, '__file__', None),
+            'search': callable(getattr(module, 'search', None)),
+            'discover': callable(getattr(module, 'discover', None)),
+            '_candidate_contexts': callable(getattr(module, '_candidate_contexts', None)),
+            '_row_from_card': callable(getattr(module, '_row_from_card', None)),
+            'parse_product': callable(getattr(module, 'parse_product', None)),
+            'NON_FRAGRANCE': list(getattr(module, 'NON_FRAGRANCE', ()) or ()),
+        }
+
+        session = requests.Session()
+        try:
+            candidates = module.discover(session, query)
+        finally:
+            session.close()
+
+        report['candidate_count'] = len(candidates)
+
+        for url, info in candidates:
+            score = info[0] if len(info) > 0 else None
+            context = info[1] if len(info) > 1 else ''
+            image = info[2] if len(info) > 2 else ''
+            item = {
+                'url': url,
+                'score': score,
+                'context': context,
+                'image': image,
+                'non_fragrance_context': bool(
+                    getattr(module, 'non_fragrance', lambda x: False)(context)
+                ),
+                'card_row': None,
+                'parsed_rows': [],
+            }
+
+            try:
+                row = module._row_from_card(
+                    url, context, query, image
+                )
+                item['card_row'] = row
+            except Exception as exc:
+                item['card_row_error'] = f'{type(exc).__name__}: {exc}'
+
+            # If the card itself does not yield a row, trace the exact
+            # product-page parser too. This is still read-only.
+            if not item['card_row']:
+                try:
+                    parsed = module.parse_product(url, query)
+                    item['parsed_rows'] = parsed[:10] if isinstance(parsed, list) else []
+                except Exception as exc:
+                    item['parse_error'] = f'{type(exc).__name__}: {exc}'
+
+            report['candidates'].append(item)
+
+        report['elapsed'] = round(time.monotonic() - started, 3)
+        return report
+
+    except Exception as exc:
+        report['ok'] = False
+        report['error'] = f'{type(exc).__name__}: {exc}'
+        report['elapsed'] = round(time.monotonic() - started, 3)
+        return report
+
 try:
     from debug_bplatz import router as debug_bplatz_router
     app.include_router(debug_bplatz_router)
@@ -31,18 +115,6 @@ try:
     app.include_router(debug_sabina_router)
 except Exception as exc:
     print(f'Sabina debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
-
-# Deloox runtime fingerprint diagnostic — READ-ONLY.
-# Does not call Deloox and does not modify production scraper state.
-try:
-    from debug_deloox_runtime_fingerprint import router as deloox_runtime_fingerprint_router
-    app.include_router(deloox_runtime_fingerprint_router)
-    print('DELOOX RUNTIME FINGERPRINT: LOADED', flush=True)
-except Exception as exc:
-    print(
-        f'Deloox runtime fingerprint unavailable: {type(exc).__name__}: {exc}',
-        flush=True,
-    )
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
