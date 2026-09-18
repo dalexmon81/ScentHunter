@@ -1077,9 +1077,7 @@ def parse_product(
                     name,
                     query,
                 )
-                or non_fragrance(
-                    name + " " + url
-                )
+                or non_fragrance(name)
             ):
                 continue
 
@@ -1193,6 +1191,17 @@ def search(query):
             context,
             image,
         ) in candidates:
+
+            # Final Deloox category gate.
+            # Use the complete candidate evidence (card context + URL
+            # + image URL) before accepting a card. This is deliberately
+            # generic: it removes non-fragrance products identified by
+            # their product-type metadata without blacklisting perfume
+            # family names such as Beyond, Absolu or Striking Lavender.
+            if non_fragrance(
+                context + " " + url + " " + image
+            ):
+                continue
 
             row = _row_from_card(
                 url,
