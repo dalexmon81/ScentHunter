@@ -1221,12 +1221,17 @@ def search(query):
                     seen.add(key)
                     results.append(row)
 
-        # Product pages are fetched only for cards that did not
-        # produce a usable price/row.
+        # Product pages are fetched only for candidates that were
+        # not rejected by the final category gate above.
+        # A rejected candidate must NEVER be resurrected by the
+        # product-page fallback.
         missing = [
             (url, info)
             for url, info in candidates
-            if not any(
+            if not non_fragrance(
+                info[1] + " " + url + " " + info[2]
+            )
+            and not any(
                 r.get("url") == url
                 for r in results
             )
