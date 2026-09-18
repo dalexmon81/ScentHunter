@@ -32,6 +32,18 @@ try:
 except Exception as exc:
     print(f'Sabina debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 
+# Deloox runtime fingerprint diagnostic — READ-ONLY.
+# Does not call Deloox and does not modify production scraper state.
+try:
+    from debug_deloox_runtime_fingerprint import router as deloox_runtime_fingerprint_router
+    app.include_router(deloox_runtime_fingerprint_router)
+    print('DELOOX RUNTIME FINGERPRINT: LOADED', flush=True)
+except Exception as exc:
+    print(
+        f'Deloox runtime fingerprint unavailable: {type(exc).__name__}: {exc}',
+        flush=True,
+    )
+
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
 BASE_DIR = Path(__file__).resolve().parent
