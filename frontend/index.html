@@ -1372,8 +1372,18 @@ function shGroupData(data){
     .trim();
 
   const identitySignature=(g)=>{
+    const brand=normalizePerfumeName(g?.brand||"");
     const visible=displayPerfumeName(g?.name||"",g?.brand||"");
-    return normalizePerfumeName(duplicateWordClean(visible));
+    // Il brand può comparire nel nome commerciale solo in forma parziale.
+    // Per la firma di identità rimuoviamo quindi i singoli token del brand
+    // dal nome visualizzato, senza rimuovere altre parole del prodotto.
+    // Esempio generale: "Hugo Boss - Boss Bottled" e "Hugo Boss - Bottled"
+    // diventano entrambi "bottled". Varianti come "Bottled Elixir" restano
+    // distinte perché conservano il token aggiuntivo.
+    const brandTokens=new Set(brand.split(/\s+/).filter(Boolean));
+    const productTokens=normalizePerfumeName(duplicateWordClean(visible)).split(/\s+/).filter(Boolean);
+    const stripped=productTokens.filter(t=>!brandTokens.has(t)).join(" ");
+    return stripped||normalizePerfumeName(duplicateWordClean(visible));
   };
 
   const equivalentGroups=(a,b)=>{
@@ -1507,36 +1517,6 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    /*
-     * IMMAGINE PRINCIPALE: deve provenire da un'offerta dello STESSO gruppo.
-     * Non riutilizziamo g.image ereditata da un gruppo precedente durante
-     * la riconciliazione. Questo evita che un'immagine rimasta sul contenitore
-     * venga mostrata con un'identità diversa.
-     *
-     * Priorità: offerta con catalog_id compatibile e nome sorgente compatibile.
-     * Se il gruppo non ha catalog_id, usiamo il nome sorgente normalizzato.
-     * Placeholder/noimage/default non sono immagini valide.
-     */
-    const usableImage=(v)=>{
-      const u=String(v||"").trim();
-      if(!u)return "";
-      const n=u.toLowerCase();
-      if(/(?:no[_-]?image|placeholder|default[_-]?image|image[_-]?not[_-]?found|spacer\.gif|transparent\.gif)/i.test(n))return "";
-      return u;
-    };
-    const groupCatalog=String(g.catalog_id||"").trim();
-    const matchingImages=(g.offers||[]).filter(o=>{
-      const image=usableImage(o.image||o.image_url||o.thumbnail);
-      if(!image)return false;
-
-      const offerCatalog=String(o.catalog_id||"").trim();
-      if(groupCatalog && offerCatalog && groupCatalog!==offerCatalog)return false;
-
-      return true;
-    }).map(o=>usableImage(o.image||o.image_url||o.thumbnail)).filter(Boolean);
-
-    g.image=matchingImages[0]||"";
-
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
 
@@ -1553,24 +1533,16 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
-  // FILTRO FINALE DI IDENTITÀ PRODOTTO.
-  // A questo punto tutte le offerte sono già state normalizzate e
-  // raggruppate, quindi la classificazione può usare anche i dati
-  // presenti nelle singole offerte.
-  //
-  // IMPORTANTE:
-  // - i prodotti chiaramente non-fragrance vengono esclusi;
-  // - i set/cofanetti che contengono esplicitamente un profumo vengono
-  //   mantenuti dalla stessa funzione globale.
-  //
-  // groups è dichiarato const: modifichiamo quindi l'array in-place
-  // invece di riassegnare la variabile, evitando l'errore Safari
-  // "Attempted to assign to readonly property."
-  const perfumeGroups=groups.filter(g=>!isNonPerfumeProduct(g));
-  groups.splice(0,groups.length,...perfumeGroups);
-
-  // Ordine dei risultati visualizzati: brand + nome canonico.
+  // Ordine dei risultati visualizzati:
+  // 1) prima i veri profumi, ordinati per brand + nome canonico
+  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
+  //    body lotion, mystery box, ecc.).
+  // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
   groups.sort((a,b)=>{
+    const aNonPerfume=isNonPerfumeProduct(a);
+    const bNonPerfume=isNonPerfumeProduct(b);
+    if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
+
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
@@ -1590,26 +1562,12 @@ function isNonPerfumeProduct(g){
     .replace(/\s+/g," ")
     .trim();
 
-  /*
-   * IMPORTANTE: il nome visuale del gruppo può essere già stato
-   * normalizzato/canonicalizzato (es. "Boss Bottled Beyond"), mentre
-   * l'offerta conserva il nome originale dello scraper in _source_name.
-   * Lo stesso vale per URL e immagini: possono contenere l'informazione
-   * "body lotion", "shower gel", ecc. anche quando il nome visualizzato
-   * non la contiene più.
-   *
-   * Usiamo quindi TUTTA l'evidenza disponibile dell'offerta, senza
-   * introdurre regole legate a una marca o a un profumo specifico.
-   */
   const text=[
     g.brand,g.name,g.concentration,
     g.category,g.type,g.product_type,g.productType,g.sub_category,g.subcategory,
     ...(g.offers||[]).map(o=>[
-      o?.brand,o?.name,o?._source_brand,o?._source_name,
-      o?.category,o?.type,o?.product_type,o?.productType,
-      o?.sub_category,o?.subcategory,
-      o?.url,o?._source_url,
-      o?.image,o?.image_url,o?.thumbnail,o?.image_alt,o?.alt
+      o?.brand,o?.name,o?.category,o?.type,o?.product_type,o?.productType,
+      o?.sub_category,o?.subcategory
     ].filter(Boolean).join(" "))
   ].map(clean).filter(Boolean).join(" ");
 
@@ -1817,11 +1775,17 @@ function showProducts(groups){
       .replace(/^[^\p{L}\p{N}\s]+/u,"")
       .trim();
 
-    const variantA=displayA
+    const variantA=String(
+      displayPerfumeName(a?.name||"",a?.brand||"")
+    )
+      .replace(/^[^\p{L}\p{N}]+/u,"")
       .replace(sharedPrefix||/^/,"")
       .trim();
 
-    const variantB=displayB
+    const variantB=String(
+      displayPerfumeName(b?.name||"",b?.brand||"")
+    )
+      .replace(/^[^\p{L}\p{N}]+/u,"")
       .replace(sharedPrefix||/^/,"")
       .trim();
 
@@ -1974,6 +1938,7 @@ async function openProduct(i) {
   const img = g.image;
   const saved = getWishlist();
 
+  statusBox.textContent = 'Nessun formato identificabile';
 
   // UN SOLO FORMATO resta il comportamento storico, terza scheda evitata.
   if (sizes.length <= 1) {
