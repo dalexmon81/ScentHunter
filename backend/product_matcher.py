@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import time
+from collections import Counter
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -852,6 +853,148 @@ class ProductMatcher:
         }
 
     @staticmethod
+    def _offer_url_identity_texts(offer: Dict[str, Any]) -> Tuple[str, ...]:
+        """Return generic identity text derived from offer URLs.
+
+        URLs are used only as a secondary identity signal when the retailer
+        name is too generic.  The matcher never requires a particular retailer
+        or a product-specific URL rule.
+        """
+        values: List[str] = []
+        source = _nested_source(offer)
+        for value in (
+            offer.get("url"),
+            offer.get("product_url"),
+            source.get("url"),
+            source.get("product_url"),
+        ):
+            text = str(value or "").strip()
+            if not text:
+                continue
+            path = re.sub(r"[?#].*$", "", text)
+            path = re.sub(r"^https?://", "", path, flags=re.I)
+            path = re.sub(r"[^a-z0-9/]+", " ", path.lower())
+            path = re.sub(r"\s*/\s*", "/", path)
+            path = re.sub(r"\s+", " ", path).strip(" /")
+            if path and path not in values:
+                values.append(path)
+        return tuple(values)
+
+    @staticmethod
+    def _url_identity_text(value: str) -> str:
+        """Normalize a URL path while retaining variant-bearing words."""
+        text = normalize(value)
+        text = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz|fl oz)\b", " ", text)
+        text = re.sub(
+            r"\beau\s+de\s+parfum\b",
+            " parfum ",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            r"\b(?:eau\s+de\s+toilette|eau\s+de\s+cologne|eau\s+fraiche|"
+            r"extrait\s+de\s+parfum|edp|edt|edc|spray|vapo|vaporisateur|refillable|refill)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(r"\b(?:man|men|woman|women|unisex)\b.*$", " ", text)
+        text = re.sub(r"\bz\d+\b.*$", " ", text)
+        return re.sub(r"\s+", " ", text).strip()
+
+    @staticmethod
+    def _url_catalog_identity_text(value: Any) -> str:
+        """Normalize a catalog identity for URL comparison without erasing variant words."""
+        text = normalize(value)
+        text = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz|fl oz)\b", " ", text)
+        text = re.sub(
+            r"\b(?:eau\s+de\s+toilette|eau\s+de\s+cologne|eau\s+fraiche|"
+            r"eau\s+de\s+parfum|extrait\s+de\s+parfum|edp|edt|edc|spray)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        return re.sub(r"\s+", " ", text).strip()
+
+    @classmethod
+    def _url_candidate_score(
+        cls,
+        offer: Dict[str, Any],
+        product: CatalogProduct,
+    ) -> Tuple[float, str]:
+        best = 0.0
+        matched_alias = ""
+
+        for raw_url in cls._offer_url_identity_texts(offer):
+            # Ignore the host.  The path/slug is the identity-bearing part.
+            path = raw_url.split("/", 1)[1] if "/" in raw_url else raw_url
+            segments = [segment for segment in path.split("/") if segment]
+            if not segments:
+                segments = [path]
+
+            # Compare the complete product slug first.
+            for raw_variant in segments[-1:] + [path]:
+                url_name = cls._url_identity_text(raw_variant)
+                if not url_name:
+                    continue
+                url_tokens_list = url_name.split()
+                if not url_tokens_list:
+                    continue
+
+                brand_tokens = ProductMatcher._offer_brand(offer).split()
+
+                for alias in (product.name, *product.aliases):
+                    candidate = cls._url_catalog_identity_text(alias)
+                    if not candidate:
+                        continue
+                    c_tokens = set(candidate.split())
+
+                    # Remove URL/domain boilerplate and brand tokens that are
+                    # not part of this catalog identity.  This keeps the
+                    # comparison generic while preserving overlapping words
+                    # such as "Boss" when they are actually part of the name.
+                    candidate_url_tokens = list(url_tokens_list)
+                    generic_url_tokens = {
+                        "www", "http", "https", "produit", "product",
+                        "products", "prodotto", "producto", "html", "aspx",
+                    }
+                    candidate_url_tokens = [
+                        token for token in candidate_url_tokens
+                        if token not in generic_url_tokens and not token.isdigit()
+                    ]
+                    counts = Counter(candidate_url_tokens)
+                    for token in brand_tokens:
+                        if token not in c_tokens:
+                            counts.pop(token, None)
+                        elif counts[token] > 1:
+                            counts[token] -= 1
+                    candidate_url_tokens = [
+                        token for token in candidate_url_tokens
+                        if counts[token] > 0
+                    ]
+                    n_tokens = set(candidate_url_tokens)
+                    if not n_tokens:
+                        continue
+
+                    inter = len(n_tokens & c_tokens)
+                    if not inter:
+                        continue
+                    recall = inter / len(c_tokens)
+                    precision = inter / len(n_tokens)
+                    score = (
+                        2 * recall * precision / (recall + precision)
+                        if recall + precision
+                        else 0.0
+                    )
+                    if n_tokens == c_tokens:
+                        score = 1.0
+                    if score > best:
+                        best = score
+                        matched_alias = alias
+
+        return best, matched_alias
+
+    @staticmethod
     def _query_candidate_score(offer_name: str, product: CatalogProduct) -> Tuple[float, str]:
         name = catalog_variant_key(offer_name)
         best = 0.0
@@ -875,51 +1018,6 @@ class ProductMatcher:
                 matched_alias = alias
         return best, matched_alias
 
-    def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
-        """Return canonical identities relevant to the current query."""
-        scope: List[Dict[str, Any]] = []
-        seen: set[str] = set()
-
-        def add(catalog_id, brand, canonical_name, aliases=(), family="", variant=""):
-            cid = str(catalog_id or "").strip()
-            name = str(canonical_name or "").strip()
-            if not cid or not name or cid in seen:
-                return
-            seen.add(cid)
-            scope.append({
-                "catalog_id": cid,
-                "brand": str(brand or "").strip(),
-                "canonical_name": name,
-                "aliases": [str(v).strip() for v in aliases if str(v or "").strip()],
-                "family": str(family or "").strip(),
-                "variant": str(variant or name).strip(),
-            })
-
-        query_scope = self.build_query_scope(query)
-        for product in query_scope.get("candidates") or []:
-            add(product.catalog_id, product.brand, product.name,
-                product.aliases, product.family_name,
-                product.catalog_variant or product.name)
-
-        family = self._family_for_query(query)
-        if family is not None:
-            for variant in family.get("variants") or []:
-                canonical = str(variant.get("canonical_name") or variant.get("name") or "").strip()
-                if not canonical:
-                    continue
-                product = self._catalog_product_for_family_variant(family, variant)
-                if product is not None:
-                    add(product.catalog_id, product.brand or family.get("brand", ""),
-                        product.name, product.aliases,
-                        product.family_name or family.get("family_id", ""),
-                        product.catalog_variant or product.name)
-                else:
-                    add(stable_family_id(family.get("family_id", ""), canonical),
-                        family.get("brand", ""), canonical,
-                        variant.get("aliases") or (), family.get("family_id", ""),
-                        canonical)
-        return scope
-
     def match_offer(
         self,
         offer: Dict[str, Any],
@@ -934,22 +1032,6 @@ class ProductMatcher:
         if self._is_non_fragrance_offer(offer):
             return {"status": "rejected", "reject_reason": "non_fragrance"}
 
-        query = str(query_scope.get("query") or "").strip()
-        family = self._family_for_query(query)
-        if family is not None:
-            family_result = self._match_family(offer, query, family)
-            if family_result is not None:
-                return {
-                    "status": "matched",
-                    "catalog_id": family_result.get("catalog_id"),
-                    "brand": family_result.get("canonical_brand"),
-                    "family": family_result.get("family_name"),
-                    "variant": family_result.get("catalog_variant"),
-                    "canonical_name": family_result.get("canonical_name"),
-                    "confidence": family_result.get("match_score", 1.0),
-                    "matched_alias": family_result.get("canonical_name"),
-                }
-
         candidates = list(query_scope.get("candidates") or [])
         offer_name = self._offer_name(offer)
         offer_brand = self._offer_brand(offer)
@@ -960,12 +1042,39 @@ class ProductMatcher:
         best_score = 0.0
         best_alias = ""
 
+        eligible: List[CatalogProduct] = []
         for product in candidates:
             if offer_brand and product.normalized_brand:
                 brand = normalize(product.brand)
                 if offer_brand != brand and offer_brand not in brand and brand not in offer_brand:
                     continue
-            score, alias = self._query_candidate_score(offer_name, product)
+            eligible.append(product)
+
+        # First establish whether the URL contains a sufficiently specific
+        # catalog identity.  If it does, use URL scores consistently across
+        # all candidates so an exact generic name (e.g. "Boss Bottled") cannot
+        # defeat a more specific variant found in the URL.
+        url_matches = [
+            (product, *self._url_candidate_score(offer, product))
+            for product in eligible
+        ]
+        best_url_product = None
+        best_url_score = 0.0
+        best_url_alias = ""
+        for product, url_score, url_alias in url_matches:
+            if url_score > best_url_score:
+                best_url_product = product
+                best_url_score = url_score
+                best_url_alias = url_alias
+
+        use_url_identity = best_url_product is not None and best_url_score >= 0.70
+
+        for product, url_score, url_alias in url_matches:
+            if use_url_identity:
+                score, alias = url_score, url_alias
+            else:
+                score, alias = self._query_candidate_score(offer_name, product)
+
             if score > best_score:
                 best_product = product
                 best_score = score
