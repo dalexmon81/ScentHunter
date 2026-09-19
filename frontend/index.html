@@ -776,6 +776,18 @@ function shGroupData(data){
     }
   });
 
+  (Array.isArray(data.unresolved_offers)?data.unresolved_offers:[]).forEach(o=>{
+    if(!o||typeof o!=="object")return;
+    raw.push({
+      ...o,
+      _backend_unresolved:true,
+      _source_name:o.name||o.raw_name||"",
+      _source_brand:o.brand||o.raw_brand||"",
+      _source_url:o.url||"",
+      _source_store:o.store||""
+    });
+  });
+
   /*
    * La classificazione profumo/non-profumo viene fatta una sola volta
    * dalla funzione globale isNonPerfumeProduct() qui sotto.
@@ -1172,7 +1184,45 @@ function shGroupData(data){
     return "";
   }
 
-  function productIdentity(o){
+  function backendScopeIdentity(o,scope){
+    if(!Array.isArray(scope)||!scope.length||!o)return null;
+    const rawBrand=norm(o.brand||o.raw_brand||o._source_brand||"");
+    const rawName=norm(o.name||o.raw_name||o._source_name||"");
+    if(!rawName)return null;
+    let best=null,bestScore=0;
+    scope.forEach(p=>{
+      const names=[p.canonical_name,p.variant,...(Array.isArray(p.aliases)?p.aliases:[])]
+        .filter(Boolean).map(norm);
+      const brand=norm(p.brand||"");
+      if(rawBrand&&brand&&rawBrand!==brand)return;
+      let score=0;
+      names.forEach(n=>{
+        if(rawName===n) score=Math.max(score,1);
+        else if(n.length>=6&&(rawName.includes(n)||n.includes(rawName))) score=Math.max(score,.90);
+        else{
+          const a=new Set(rawName.split(/\s+/).filter(Boolean));
+          const b=new Set(n.split(/\s+/).filter(Boolean));
+          const inter=[...a].filter(x=>b.has(x)).length;
+          if(inter){
+            const recall=inter/Math.max(1,b.size);
+            const precision=inter/Math.max(1,a.size);
+            const f=recall+precision?2*recall*precision/(recall+precision):0;
+            score=Math.max(score,f);
+          }
+        }
+      });
+      if(score>bestScore){bestScore=score;best=p;}
+    });
+    if(!best||bestScore<.72)return null;
+    return {
+      brand:best.brand||"",
+      name:best.canonical_name||best.variant||"",
+      key:"catalog|"+String(best.catalog_id||""),
+      catalog_id:String(best.catalog_id||"")
+    };
+  }
+
+  function productIdentity(o,identityScope){
     /*
      * IDENTITA BACKEND — PRIORITA ASSOLUTA.
      *
@@ -1193,6 +1243,11 @@ function shGroupData(data){
         key:"catalog|"+backendCatalogId,
         catalog_id:backendCatalogId
       };
+    }
+
+    const scopedIdentity=backendScopeIdentity(o,identityScope);
+    if(scopedIdentity){
+      return scopedIdentity;
     }
 
     // Fallback: solo le offerte che il backend non ha potuto identificare
@@ -1264,7 +1319,8 @@ function shGroupData(data){
     return {brand,name,key};
   }
 
-  const identities=raw.map(o=>productIdentity(o));
+  const identityScope=Array.isArray(data.identity_scope)?data.identity_scope:[];
+  const identities=raw.map(o=>productIdentity(o,identityScope));
 
   /*
    * Se una riga arriva senza brand, ma un'altra offerta della stessa
@@ -2140,7 +2196,7 @@ async function searchStoresProgressive(term,onPartial){
   // Ricerca asincrona reale: /search-start avvia il job e /search-status
   // restituisce i risultati progressivi mentre le coppie di negozi terminano.
   const query=String(term||"").trim();
-  const empty={query,comparisons:[],results:[],errors:{}};
+  const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{}};
   if(!query)return empty;
 
   try{
@@ -2167,6 +2223,8 @@ async function searchStoresProgressive(term,onPartial){
           query:status?.query||query,
           count:Number(status?.count||0),
           results:Array.isArray(status?.results)?status.results:[],
+          unresolved_offers:Array.isArray(status?.unresolved_offers)?status.unresolved_offers:[],
+          identity_scope:Array.isArray(status?.identity_scope)?status.identity_scope:[],
           comparisons:Array.isArray(status?.comparisons)?status.comparisons:[],
           errors:status?.errors&&typeof status.errors==="object"?status.errors:{},
           phase:status?.phase||"searching",
@@ -2190,7 +2248,7 @@ async function searchStoresProgressive(term,onPartial){
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   }catch(error){
     const message=String(error?.message||error||"Errore ricerca");
-    const failed={query,comparisons:[],results:[],errors:{_search:message},completed:true,status:"error"};
+    const failed={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{_search:message},completed:true,status:"error"};
     if(typeof onPartial==="function")onPartial(failed,true);
     return failed;
   }
