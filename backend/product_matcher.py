@@ -47,7 +47,7 @@ def catalog_clean_text(value: Any) -> str:
     text = re.sub(
         r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
         r"eau\s+de\s+cologne|eau\s+fraiche|"
-        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray)\b",
+        r"extrait\s+de\s+parfum|edp|edt|edc|spray)\b",
         " ",
         text,
         flags=re.I,
@@ -350,7 +350,7 @@ class ProductMatcher:
             if product.catalog_id:
                 self._by_catalog_id[normalize(product.catalog_id)] = product
             identity_key = (
-                normalize(product.family_id),
+                normalize(product.family_id or product.family_name),
                 catalog_variant_key(product.name),
             )
             if identity_key[0] and identity_key[1]:
@@ -359,91 +359,25 @@ class ProductMatcher:
                 self._by_gtin.setdefault(value, []).append(product)
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
-                self._build_catalog_identity_indexes()
 
-        def _build_catalog_identity_indexes(self) -> None:
-        """
-        Build identity indexes exclusively from product_catalog.json.
-
-        family_registry is intentionally not used as an identity source.
-        """
-        self.products_by_id = {}
-        self.alias_index = {}
-        self.brand_index = {}
-        self.family_index = {}
-
-        for product in getattr(self, "catalog_products", []):
-            if not isinstance(product, dict):
-                continue
-
-            catalog_id = str(
-                product.get("catalog_id")
-                or product.get("id")
-                or product.get("product_id")
-                or ""
-            ).strip()
-
-            if not catalog_id:
-                continue
-
-            self.products_by_id[catalog_id] = product
-
-            brand = self._normalize_text(
-                product.get("brand")
-                or product.get("brand_name")
-                or ""
-            )
-
-            family = self._normalize_text(
-                product.get("family")
-                or product.get("line")
-                or ""
-            )
-
-            if brand:
-                self.brand_index.setdefault(
-                    brand,
-                    set(),
-                ).add(catalog_id)
-
-            if family:
-                self.family_index.setdefault(
-                    family,
-                    set(),
-                ).add(catalog_id)
-
-            aliases = []
-
-            canonical_name = product.get(
-                "canonical_name"
-            )
-
-            if canonical_name:
-                aliases.append(canonical_name)
-
-            raw_aliases = (
-                product.get("aliases")
-                or product.get("alias")
-                or []
-            )
-
-            if isinstance(raw_aliases, str):
-                raw_aliases = [raw_aliases]
-
-            aliases.extend(raw_aliases)
-
+        # Catalog-driven indexes.  These are built once from the same
+        # CatalogProduct objects used by the matcher; there is no second
+        # catalog representation and no dependency on family_registry.
+        self._alias_index: Dict[str, List[CatalogProduct]] = {}
+        self._brand_index: Dict[str, List[CatalogProduct]] = {}
+        for product in self.catalog:
+            aliases = [product.name, *product.aliases]
             for alias in aliases:
-                alias_text = self._normalize_text(
-                    alias
-                )
-
-                if not alias_text:
-                    continue
-
-                self.alias_index.setdefault(
-                    alias_text,
-                    set(),
-                ).add(catalog_id)
+                key = catalog_variant_key(alias)
+                if key:
+                    bucket = self._alias_index.setdefault(key, [])
+                    if product not in bucket:
+                        bucket.append(product)
+            brand_key = catalog_norm(product.brand)
+            if brand_key:
+                bucket = self._brand_index.setdefault(brand_key, [])
+                if product not in bucket:
+                    bucket.append(product)
 
     @staticmethod
     def _normalize_family_registry(
@@ -642,6 +576,157 @@ class ProductMatcher:
                 flags=re.I,
             )
         return re.sub(r"\s+", " ", cleaned).strip()
+
+    @staticmethod
+    def _strip_catalog_brand(text: str, brand: str) -> str:
+        text_key = catalog_variant_key(text)
+        brand_key = catalog_variant_key(brand)
+        if not brand_key:
+            return text_key
+        return re.sub(rf"\b{re.escape(brand_key)}\b", " ", text_key, flags=re.I).strip()
+
+    def build_query_scope(self, query: str) -> Dict[str, Any]:
+        """Build the candidate product scope from product_catalog.json only."""
+        raw_query = str(query or "").strip()
+        query_key = catalog_variant_key(raw_query)
+        if not query_key:
+            return {"query": raw_query, "query_key": "", "products": []}
+
+        candidates: List[CatalogProduct] = []
+        seen: set[str] = set()
+
+        for product in self.catalog:
+            brand_key = catalog_norm(product.brand)
+            query_product_key = self._strip_catalog_brand(query_key, brand_key)
+            if not query_product_key:
+                query_product_key = query_key
+            query_tokens = set(query_product_key.split())
+            if not query_tokens:
+                continue
+
+            for alias in (product.name, *product.aliases):
+                alias_key = catalog_variant_key(alias)
+                alias_product_key = self._strip_catalog_brand(alias_key, brand_key)
+                alias_tokens = set(alias_product_key.split())
+                if query_product_key == alias_product_key or query_tokens.issubset(alias_tokens):
+                    pid = product.catalog_id or product.name
+                    if pid not in seen:
+                        candidates.append(product)
+                        seen.add(pid)
+                    break
+
+        return {
+            "query": raw_query,
+            "query_key": query_key,
+            "products": candidates,
+        }
+
+    def _offer_alias_match(
+        self,
+        offer_name: str,
+        product: CatalogProduct,
+    ) -> Tuple[bool, str, float]:
+        candidate = catalog_variant_key(offer_name)
+        if not candidate:
+            return False, "", 0.0
+
+        best_alias = ""
+        best_score = 0.0
+        for alias in (product.name, *product.aliases):
+            alias_key = catalog_variant_key(alias)
+            if not alias_key:
+                continue
+            if candidate == alias_key:
+                return True, alias, 1.0
+
+            ct = set(candidate.split())
+            at = set(alias_key.split())
+            if not ct or not at:
+                continue
+            inter = len(ct & at)
+            precision = inter / len(ct)
+            recall = inter / len(at)
+            score = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+            if alias_key in candidate or candidate in alias_key:
+                score = max(score, 0.92)
+            if score > best_score:
+                best_score = score
+                best_alias = alias
+
+        return best_score >= 0.94, best_alias, best_score
+
+    def match_offer(
+        self,
+        offer: Dict[str, Any],
+        query_scope: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Resolve one RAW offer strictly inside the catalog-derived query scope."""
+        if not isinstance(offer, dict):
+            return {"status": "rejected", "reject_reason": "invalid_offer"}
+
+        products = list(query_scope.get("products") or [])
+        if not products:
+            return {"status": "rejected", "reject_reason": "empty_catalog_scope"}
+
+        offer_brand = self._offer_brand(offer)
+        offer_name_raw = first_value(offer, self.NAME_KEYS)
+        if not offer_name_raw:
+            source = _nested_source(offer)
+            offer_name_raw = first_value(source, ("source_name", "name", "title"))
+
+        if not offer_name_raw:
+            return {"status": "unresolved", "reason": "missing_name"}
+
+        scored: List[Tuple[float, CatalogProduct, str]] = []
+        brand_conflict = False
+        for product in products:
+            if offer_brand and product.brand:
+                if catalog_norm(offer_brand) != catalog_norm(product.brand):
+                    brand_conflict = True
+                    continue
+            matched, alias, score = self._offer_alias_match(offer_name_raw, product)
+            if matched:
+                scored.append((score, product, alias))
+
+        if not scored:
+            if offer_brand and brand_conflict:
+                return {"status": "rejected", "reject_reason": "brand_outside_query_scope"}
+
+            # If the retailer omitted its brand field but the product name
+            # explicitly contains another catalog brand, reject it rather
+            # than leaking an unrelated product into the query results.
+            name_key = catalog_variant_key(offer_name_raw)
+            scope_brands = {catalog_norm(p.brand) for p in products if p.brand}
+            for other_brand in self._brand_index:
+                if not other_brand or other_brand in scope_brands:
+                    continue
+                if re.search(rf"\b{re.escape(other_brand)}\b", name_key):
+                    return {"status": "rejected", "reject_reason": "brand_name_outside_query_scope"}
+
+            return {"status": "unresolved", "reason": "no_catalog_alias_match"}
+
+        scored.sort(key=lambda row: (-row[0], len(catalog_variant_key(row[1].name))))
+        best_score, product, matched_alias = scored[0]
+
+        # Do not accept an ambiguous fuzzy match. Exact aliases are already
+        # returned at 1.0 above.
+        if len(scored) > 1 and abs(best_score - scored[1][0]) < 0.03:
+            return {"status": "unresolved", "reason": "ambiguous_catalog_match"}
+
+        resolved_size = size_ml(offer)
+        return {
+            "status": "matched",
+            "catalog_id": product.catalog_id,
+            "brand": product.brand,
+            "family": product.family_name or product.name,
+            "variant": product.name,
+            "canonical_name": product.name,
+            "canonical_brand": product.brand,
+            "confidence": round(best_score, 4),
+            "matched_alias": matched_alias,
+            "size_ml": resolved_size,
+            "variant_id": f"{product.catalog_id}:{resolved_size:g}" if resolved_size is not None else product.catalog_id,
+        }
 
     def _family_for_query(self, query: str) -> Optional[Dict[str, Any]]:
         query_key = catalog_variant_key(query)
