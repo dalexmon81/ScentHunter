@@ -70,11 +70,11 @@ def _load_product_matcher():
             payload = json.load(handle)
 
         if isinstance(payload, dict):
-            catalog = payload.get('products') or []
-        elif isinstance(payload, list):
             catalog = payload
+        elif isinstance(payload, list):
+            catalog = {"products": payload, "variants": []}
         else:
-            catalog = []
+            catalog = {"products": [], "variants": []}
 
         if not catalog:
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
@@ -455,48 +455,47 @@ def _empty_report(store, status='error', elapsed=0.0, error=None):
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
 def run_store(store, query):
-    started=time.monotonic()
+    started = time.monotonic()
     try:
-        search=getattr(load_scraper(store),'search',None)
-        if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
-        raw=search(query)
-        if store=='parfumzentrum' and not raw:
-            time.sleep(.25); raw=search(query)
-        rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
+        search = getattr(load_scraper(store), 'search', None)
+        if not callable(search):
+            raise RuntimeError(f'scraper {store} non espone search(query)')
+        raw = search(query)
+        if store == 'parfumzentrum' and not raw:
+            time.sleep(.25)
+            raw = search(query)
+        rows = [] if raw is None else list(raw) if not isinstance(raw, list) else raw
         cleaned = []
 
-for item in rows:
-    if not isinstance(item, dict):
-        continue
+        for item in rows:
+            if not isinstance(item, dict):
+                continue
+            prepared = clean_result(item, store)
+            if prepared is None:
+                continue
+            resolved = _resolve_offer_identity(prepared, query)
+            if resolved is None:
+                continue
+            cleaned.append(resolved)
 
-    prepared = clean_result(item, store)
-
-    if prepared is None:
-        continue
-
-    resolved = _resolve_offer_identity(
-        prepared,
-        query,
-    )
-
-    if resolved is None:
-        continue
-
-    cleaned.append(resolved)
-
-        return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
-    except Exception as exc:
-        traceback.print_exc()
-        err = str(exc)
-        status = 'error'
-        code = 'runtime_error'
         return {
             'store': store,
-            'status': status,
-            'error': err,
-            'error_code': code,
+            'status': 'ok' if cleaned else 'empty',
+            'elapsed': round(time.monotonic() - started, 3),
+            'count': len(cleaned),
+            'results': cleaned,
+            'error': None,
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        return {
+            'store': store,
+            'status': 'error',
+            'error': str(exc),
+            'error_code': 'runtime_error',
             'elapsed_ms': int((time.monotonic() - started) * 1000),
             'results': [],
+            'count': 0,
         }
 
 WORKER_CODE = r'''
@@ -547,63 +546,72 @@ def _kill_process_tree(process):
         except Exception: pass
 
 def _run_store_subprocess(store, query, on_result=None):
-    started=time.monotonic(); timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
-    env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
-    process=None; rows=[]; worker_error=None
+    started = time.monotonic()
+    timeout = STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS)
+    env = os.environ.copy()
+    current = env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
+    process = None
+    rows = []
+    worker_error = None
     try:
-        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',bufsize=1,start_new_session=(os.name!='nt'))
-        deadline=time.monotonic()+timeout
+        process = subprocess.Popen(
+            [sys.executable, '-u', '-c', WORKER_CODE, store, query],
+            cwd=str(BASE_DIR), env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
+            errors='replace', bufsize=1, start_new_session=(os.name != 'nt'),
+        )
+        deadline = time.monotonic() + timeout
         while True:
-            if time.monotonic() >= deadline: raise subprocess.TimeoutExpired(process.args,timeout)
-            line=process.stdout.readline() if process.stdout is not None else ''
+            if time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired(process.args, timeout)
+            line = process.stdout.readline() if process.stdout is not None else ''
             if not line:
-                if process.poll() is not None: break
-                time.sleep(0.01); continue
-            try: event=json.loads(line.strip())
-            except json.JSONDecodeError: continue
-            if not isinstance(event,dict): continue
-            kind=event.get('event')
-            if kind == "result" and isinstance(
-    event.get("row"),
-    dict,
-):
-    prepared = clean_result(
-        event["row"],
-        store,
-    )
+                if process.poll() is not None:
+                    break
+                time.sleep(0.01)
+                continue
+            try:
+                event = json.loads(line.strip())
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict):
+                continue
+            kind = event.get('event')
+            if kind == 'result' and isinstance(event.get('row'), dict):
+                prepared = clean_result(event['row'], store)
+                if prepared is None:
+                    continue
+                resolved = _resolve_offer_identity(prepared, query)
+                if resolved is None:
+                    continue
+                rows.append(resolved)
+                if callable(on_result):
+                    on_result(resolved)
+            elif kind == 'error':
+                worker_error = str(event.get('error') or 'worker_error')
 
-    if prepared is None:
-        continue
-
-    resolved = _resolve_offer_identity(
-        prepared,
-        query,
-    )
-
-    if resolved is None:
-        continue
-
-    rows.append(resolved)
-
-    if callable(on_result):
-        on_result(resolved)
-
-            elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
-        rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
-        if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
-        return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
+        rc = process.wait(timeout=1)
+        elapsed = round(time.monotonic() - started, 3)
+        if rc != 0 or worker_error:
+            return {'store': store, 'status': 'error', 'elapsed': elapsed, 'count': len(rows), 'results': rows, 'error': worker_error or f'worker_exit_{rc}'}
+        return {'store': store, 'status': 'ok' if rows else 'empty', 'elapsed': elapsed, 'count': len(rows), 'results': rows, 'error': None}
     except subprocess.TimeoutExpired:
         if process is not None:
             _kill_process_tree(process)
-            try: process.communicate(timeout=2)
-            except Exception: pass
-        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s')
+            try:
+                process.communicate(timeout=2)
+            except Exception:
+                pass
+        return _empty_report(store, elapsed=round(time.monotonic() - started, 3), error=f'store_timeout_{timeout:.0f}s')
     except Exception as exc:
         if process is not None:
             _kill_process_tree(process)
-            try: process.communicate(timeout=1)
-            except Exception: pass
-        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
+            try:
+                process.communicate(timeout=1)
+            except Exception:
+                pass
+        return _empty_report(store, elapsed=round(time.monotonic() - started, 3), error=f'{type(exc).__name__}: {exc}')
 
 def _run_controlled_store(store,query,on_report,on_result=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
@@ -833,42 +841,29 @@ def _collect_streaming_for_job(job_id,query,stores):
     for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
     return [reports[s] for s in stores if s in reports]
 
-def _run_job(job_id,query):
-    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
+def _run_job(job_id, query):
+    started = time.monotonic()
+    print(f'SEARCH START job={job_id} query={query!r}', flush=True)
+    collect_store_reports_isolated(
+        query, STORES,
+        on_report=lambda r: _publish_store(job_id, r),
+        on_result=lambda row: _publish_result(job_id, row),
+    )
     with JOBS_LOCK:
-    job = JOBS.get(job_id)
-
-    if job:
-        job["offers"] = dedupe_results(
-            job.get("offers", [])
-        )
-
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
-
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-        job["completed"] = True
-        job["elapsed"] = round(
-            time.monotonic() - started,
-            3,
-        )
-
-        elapsed = job["elapsed"]
-        total = len(job["results"])
-    else:
-        elapsed = round(
-            time.monotonic() - started,
-            3,
-        )
-        total = 0
-
-        else: elapsed=round(time.monotonic()-started,3); total=0
-    print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
+        job = JOBS.get(job_id)
+        if job:
+            job['offers'] = dedupe_results(job.get('offers', []))
+            grouped, unresolved = _aggregate_identity_results(job['offers'])
+            job['results'] = grouped
+            job['unresolved_offers'] = unresolved
+            job['completed'] = True
+            job['elapsed'] = round(time.monotonic() - started, 3)
+            elapsed = job['elapsed']
+            total = len(job['results'])
+        else:
+            elapsed = round(time.monotonic() - started, 3)
+            total = 0
+    print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}', flush=True)
 
 @app.get('/',include_in_schema=False)
 def root():
