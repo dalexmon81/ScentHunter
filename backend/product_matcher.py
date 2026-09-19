@@ -1127,6 +1127,26 @@ class ProductMatcher:
         if self._is_non_fragrance_offer(offer):
             return {"status": "rejected", "reject_reason": "non_fragrance"}
 
+        # Family registry is the canonical family/variant knowledge layer.
+        # Reuse the same resolver used by match() so family variants that are
+        # known in family_registry.json are not incorrectly returned unresolved
+        # merely because they are not yet materialized as catalog products.
+        query = str(query_scope.get("query") or "").strip()
+        family = self._family_for_query(query)
+        if family is not None:
+            family_result = self._match_family(offer, query, family)
+            if family_result is not None:
+                return {
+                    "status": "matched",
+                    "catalog_id": family_result.get("catalog_id"),
+                    "brand": family_result.get("canonical_brand"),
+                    "family": family_result.get("family_name"),
+                    "variant": family_result.get("catalog_variant"),
+                    "canonical_name": family_result.get("canonical_name"),
+                    "confidence": family_result.get("match_score", 1.0),
+                    "matched_alias": family_result.get("canonical_name"),
+                }
+
         candidates = list(query_scope.get("candidates") or [])
         offer_name = self._offer_name(offer)
         offer_brand = self._offer_brand(offer)
