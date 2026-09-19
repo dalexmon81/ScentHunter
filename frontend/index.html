@@ -1186,8 +1186,15 @@ function shGroupData(data){
 
   function backendScopeIdentity(o,scope){
     if(!Array.isArray(scope)||!scope.length||!o)return null;
-    const rawBrand=norm(o.brand||o.raw_brand||o._source_brand||"");
-    const rawName=norm(o.name||o.raw_name||o._source_name||"");
+    /*
+     * Per le offerte non ancora canonizzate, il nome RAW dello scraper è
+     * più informativo del campo "name" eventualmente già ripulito dal
+     * backend. Se "name" è già stato accorciato a "Boss Bottled", ma
+     * _source_name contiene "Boss Bottled Bold Citrus", dobbiamo usare
+     * quest'ultimo per riconoscere la variante corretta.
+     */
+    const rawBrand=norm(o._source_brand||o.raw_brand||o.brand||"");
+    const rawName=norm(o._source_name||o.raw_name||o.name||"");
     if(!rawName)return null;
     let best=null,bestScore=0;
     scope.forEach(p=>{
