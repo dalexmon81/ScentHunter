@@ -757,6 +757,23 @@ function shGroupData(data){
       });
     });
   });
+  // Il backend può conservare offerte commerciali non ancora identificabili.
+  // Non le scartiamo: restano RAW e vengono mostrate senza inventare una variante.
+  (Array.isArray(data.unresolved_offers)?data.unresolved_offers:[]).forEach(o=>{
+    raw.push({...o,
+      _backend_unresolved:true,
+      brand:o.brand||o.raw_brand||"",
+      name:o.name||o.raw_name||"Profumo",
+      size_ml:o.size_ml||o.size||"",
+      concentration:o.concentration||"",
+      image:o.image||o.image_url||o.thumbnail||"",
+      _source_name:o.raw_name||o.name||"",
+      _source_brand:o.raw_brand||o.brand||"",
+      _source_url:o.url||"",
+      _source_store:o.store||""
+    });
+  });
+
   (Array.isArray(data.results)?data.results:[]).forEach(g=>{
     const nested=Array.isArray(g.offers)?g.offers:[];
     if(nested.length){
@@ -1173,6 +1190,32 @@ function shGroupData(data){
   }
 
   function productIdentity(o){
+    // IDENTITÀ DEL BACKEND = FONTE AUTORITATIVA.
+    // Se ProductMatcher ha già risolto l'offerta, il frontend non deve
+    // reinterpretarla con il vecchio MASTER_CATALOG locale.
+    if(o && o.catalog_id && o.canonical_name){
+      return {
+        brand:o.brand||"",
+        name:o.canonical_name,
+        key:"catalog|"+String(o.catalog_id),
+        catalog_id:String(o.catalog_id)
+      };
+    }
+
+    // Un'offerta che il backend ha lasciato unresolved resta RAW.
+    // Non la facciamo passare dal vecchio resolver, altrimenti il frontend
+    // può trasformare una variante reale in un'altra identità.
+    if(o && o._backend_unresolved){
+      const rawBrand=cleanBrandText(o.brand||o.raw_brand||"");
+      const rawName=cleanBrandText(o.name||o.raw_name||"Profumo");
+      return {
+        brand:rawBrand,
+        name:rawName,
+        key:"raw|"+norm(rawBrand)+"|"+norm(rawName),
+        catalog_id:""
+      };
+    }
+
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
@@ -2115,7 +2158,7 @@ async function searchStoresProgressive(term,onPartial){
   // Ricerca asincrona reale: /search-start avvia il job e /search-status
   // restituisce i risultati progressivi mentre le coppie di negozi terminano.
   const query=String(term||"").trim();
-  const empty={query,comparisons:[],results:[],errors:{}};
+  const empty={query,comparisons:[],results:[],unresolved_offers:[],errors:{}};
   if(!query)return empty;
 
   try{
@@ -2143,6 +2186,7 @@ async function searchStoresProgressive(term,onPartial){
           count:Number(status?.count||0),
           results:Array.isArray(status?.results)?status.results:[],
           comparisons:Array.isArray(status?.comparisons)?status.comparisons:[],
+          unresolved_offers:Array.isArray(status?.unresolved_offers)?status.unresolved_offers:[],
           errors:status?.errors&&typeof status.errors==="object"?status.errors:{},
           phase:status?.phase||"searching",
           completed:Boolean(status?.completed),
@@ -2261,6 +2305,10 @@ async function searchPerfume(){
      const fallbackData=await searchStoresProgressive(term,null);
      if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
      if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
+     if(Array.isArray(fallbackData?.unresolved_offers)){
+       data.unresolved_offers=Array.isArray(data.unresolved_offers)?data.unresolved_offers:[];
+       data.unresolved_offers.push(...fallbackData.unresolved_offers);
+     }
      if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
       if(!data.errors[store])data.errors[store]=error;
      });
