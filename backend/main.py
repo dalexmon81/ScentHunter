@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, re, signal, subprocess, sys, threading, time, traceback, uuid, unicodedata
+import importlib, json, os, re, signal, subprocess, sys, threading, time, traceback, uuid
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -92,364 +92,15 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-class _CatalogIdentityResolver:
+def _apply_product_identity(result):
     """
-    Generic catalog-only identity resolver.
+    Normalize a retailer offer through the existing central ProductMatcher.
 
-    IMPORTANT: this layer resolves an offer to ONE catalog product before the
-    frontend is allowed to group it.  It never contains product/variant names.
-    Exact catalog aliases always beat fuzzy matching.  Fuzzy matching is only
-    a conservative fallback for retailer formatting noise.
+    This enriches valid retailer offers through the central ProductMatcher.
+    A matcher exception is non-fatal, but an explicit matcher rejection (None)
+    must remove the offer from the result set. This is required for samples,
+    testers, sets excluded by policy, and other non-identity listings.
     """
-    COMMERCIAL_NOISE = {
-        'refill', 'refillable', 'refilled', 'nachfullbar', 'nachfullung',
-        'nachfuellbar', 'nachfuellung', 'nachfullen', 'nachfuellen',
-        'rechargeable', 'recharge', 'wiederbefullbar', 'wiederbefuellbar',
-        'new', 'neu',
-    }
-    RELAXED_CONCENTRATION = {
-        'eau', 'de', 'toilette', 'parfum', 'cologne', 'fraiche',
-        'extrait', 'edp', 'edt', 'edc', 'perfume', 'spray',
-    }
-
-    def __init__(self, matcher):
-        self.matcher = matcher
-        self.catalog = list(getattr(matcher, 'catalog', []) or [])
-        self.brands = sorted(
-            {self._norm(getattr(p, 'brand', '')) for p in self.catalog if self._norm(getattr(p, 'brand', ''))},
-            key=lambda x: (-len(x.split()), -len(x)),
-        )
-
-        # Alias indexes are built once from the catalog.  This is the critical
-        # distinction from fuzzy-only matching: "Bottled Infinite" can only
-        # resolve to a catalog product whose alias actually says that.
-        self._strict_aliases = {}
-        self._relaxed_aliases = {}
-        for product in self.catalog:
-            for form in self._forms(product):
-                strict = self._identity_key(form, getattr(product, 'brand', ''), relaxed=False)
-                relaxed = self._identity_key(form, getattr(product, 'brand', ''), relaxed=True)
-                if strict:
-                    self._strict_aliases.setdefault(strict, []).append(product)
-                if relaxed:
-                    self._relaxed_aliases.setdefault(relaxed, []).append(product)
-
-    @staticmethod
-    def _norm(value):
-        text = str(value or '').strip().lower()
-        text = unicodedata.normalize('NFKD', text)
-        text = ''.join(ch for ch in text if not unicodedata.combining(ch))
-        text = re.sub(r'[^a-z0-9]+', ' ', text)
-        return re.sub(r'\s+', ' ', text).strip()
-
-    @classmethod
-    def _tokens(cls, value, remove_noise=True):
-        text = cls._norm(value)
-        text = re.sub(r'\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b', ' ', text)
-        tokens = text.split()
-        if remove_noise:
-            tokens = [t for t in tokens if t not in cls.COMMERCIAL_NOISE]
-        return tokens
-
-    @classmethod
-    def _forms(cls, product):
-        values = [getattr(product, 'name', ''), getattr(product, 'family_name', '')]
-        values.extend(getattr(product, 'aliases', ()) or ())
-        return [str(v).strip() for v in values if str(v or '').strip()]
-
-    @classmethod
-    def _remove_brand_tokens(cls, tokens, brand):
-        result = list(tokens)
-        for token in cls._norm(brand).split():
-            try:
-                result.remove(token)
-            except ValueError:
-                pass
-        return result
-
-    @classmethod
-    def _identity_key(cls, value, brand='', relaxed=False):
-        tokens = cls._tokens(value, remove_noise=True)
-        tokens = cls._remove_brand_tokens(tokens, brand)
-        if relaxed:
-            # Remove only multi-word concentration descriptors and common
-            # retailer concentration abbreviations.  Bare "parfum" is kept:
-            # it can be a real variant name (e.g. Boss Bottled Parfum).
-            text = ' '.join(tokens)
-            text = re.sub(
-                r'\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|'
-                r'eau\s+de\s+cologne|eau\s+fraiche|'
-                r'extrait\s+de\s+parfum|edp|edt|edc|perfume|spray)\b',
-                ' ', text, flags=re.I,
-            )
-            tokens = [t for t in cls._norm(text).split() if t not in cls.COMMERCIAL_NOISE]
-        return ' '.join(tokens).strip()
-
-    @staticmethod
-    def _subsequence(container, sequence):
-        if not sequence:
-            return True
-        pos = 0
-        for token in container:
-            if token == sequence[pos]:
-                pos += 1
-                if pos == len(sequence):
-                    return True
-        return False
-
-    @staticmethod
-    def _f_score(left, right):
-        a, b = set(left), set(right)
-        if not a or not b:
-            return 0.0
-        hit = len(a & b)
-        precision = hit / len(a)
-        recall = hit / len(b)
-        return (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
-
-    @classmethod
-    def _conservative_score(cls, offer_tokens, candidate_tokens):
-        if not offer_tokens or not candidate_tokens:
-            return 0.0
-        if offer_tokens == candidate_tokens:
-            return 1.0
-
-        # The only tolerated structural difference is an omitted duplicated
-        # brand token.  We do NOT let a partial overlap promote a different
-        # variant.  This is what previously allowed Infinite/Tonic/etc. to
-        # leak into the base Bottled card.
-        if cls._subsequence(candidate_tokens, offer_tokens):
-            unmatched = [t for t in candidate_tokens if t not in offer_tokens]
-            if all(t in {'boss', 'hugo'} for t in unmatched):
-                return 0.94
-
-        f = cls._f_score(offer_tokens, candidate_tokens)
-        if f >= 0.90:
-            return 0.90 + 0.05 * f
-        return 0.0
-
-    def _query_scope(self, query):
-        query_tokens = self._tokens(query)
-        if not query_tokens:
-            return list(self.catalog)
-
-        query_set = set(query_tokens)
-        query_brand = ''
-        for brand in self.brands:
-            bt = brand.split()
-            if bt and set(bt).issubset(query_set):
-                query_brand = brand
-                break
-        query_core = self._remove_brand_tokens(query_tokens, query_brand)
-
-        scoped = []
-        for product in self.catalog:
-            product_brand = self._norm(getattr(product, 'brand', ''))
-            if query_brand and product_brand != query_brand:
-                continue
-            if not query_core:
-                scoped.append(product)
-                continue
-            for form in self._forms(product):
-                form_tokens = self._remove_brand_tokens(self._tokens(form), product_brand)
-                if set(query_core).issubset(set(form_tokens)):
-                    scoped.append(product)
-                    break
-        return scoped
-
-    @staticmethod
-    def _offer_forms(result):
-        forms = [
-            str(result.get('name') or ''),
-            str(result.get('title') or ''),
-            str(result.get('product_name') or ''),
-        ]
-        source = result.get('source')
-        if isinstance(source, dict):
-            forms.extend([
-                str(source.get('source_name') or ''),
-                str(source.get('name') or ''),
-                str(source.get('title') or ''),
-            ])
-        return [x for x in forms if x.strip()]
-
-    def _exact_catalog_match(self, offer_forms, offer_brand, scope):
-        strict_hits = []
-        relaxed_hits = []
-        for form in offer_forms:
-            strict_key = self._identity_key(form, offer_brand, relaxed=False)
-            relaxed_key = self._identity_key(form, offer_brand, relaxed=True)
-            if strict_key:
-                strict_hits.extend(self._strict_aliases.get(strict_key, []))
-            if relaxed_key:
-                relaxed_hits.extend(self._relaxed_aliases.get(relaxed_key, []))
-
-        scope_ids = {id(p) for p in scope}
-        strict_unique = []
-        for product in strict_hits:
-            if id(product) in scope_ids and product not in strict_unique:
-                strict_unique.append(product)
-        if len(strict_unique) == 1:
-            return strict_unique[0], 'catalog_alias_exact', 1.0
-        if len(strict_unique) > 1:
-            # Ambiguous aliases are never resolved by guessing.
-            return None, 'ambiguous', 0.0
-
-        relaxed_unique = []
-        for product in relaxed_hits:
-            if id(product) in scope_ids and product not in relaxed_unique:
-                relaxed_unique.append(product)
-        if len(relaxed_unique) == 1:
-            return relaxed_unique[0], 'catalog_alias_relaxed', 0.97
-        return None, 'none', 0.0
-
-    def _url_identity_conflict(self, result, matched):
-        """Reject a link only when its URL clearly names another catalog variant.
-
-        Generic protection against the exact failure mode where a retailer
-        card is labelled as one variant but its href points to another.
-        Numeric/product-id URLs and URLs without a recognizable product name
-        are left untouched.
-        """
-        urls = []
-        # Both the destination URL and the image URL are identity-bearing
-        # retailer data when they contain a readable product slug/name.
-        # Generic CDN hashes are ignored naturally because they do not match
-        # any catalog identity signature.
-        for key in ('url', 'product_url', 'link', 'image', 'image_url', 'thumbnail'):
-            value = result.get(key)
-            if value:
-                urls.append(str(value))
-        source = result.get('source')
-        if isinstance(source, dict):
-            for key in ('url', 'product_url', 'link', 'image', 'image_url', 'thumbnail'):
-                value = source.get(key)
-                if value:
-                    urls.append(str(value))
-        if not urls:
-            return False
-
-        matched_id = str(getattr(matched, 'catalog_id', '') or '')
-        matched_brand = self._norm(getattr(matched, 'brand', ''))
-        conflicts = []
-
-        for raw_url in urls:
-            url_key = self._norm(raw_url)
-            if not url_key or len(url_key.split()) < 2:
-                continue
-            url_tokens = url_key.split()
-            for product in self.catalog:
-                pid = str(getattr(product, 'catalog_id', '') or '')
-                if pid and matched_id and pid == matched_id:
-                    continue
-                if matched_brand and self._norm(getattr(product, 'brand', '')) != matched_brand:
-                    continue
-                for form in self._forms(product):
-                    core = self._identity_key(form, getattr(product, 'brand', ''), relaxed=True)
-                    if not core:
-                        continue
-                    core_tokens = core.split()
-                    # Require at least two identity tokens so a generic word
-                    # such as "bottled" cannot flag an unrelated URL.
-                    if len(core_tokens) < 2:
-                        continue
-                    if self._subsequence(url_tokens, core_tokens):
-                        conflicts.append(product)
-                        break
-                if conflicts and conflicts[-1] is product:
-                    break
-
-        unique = {str(getattr(p, 'catalog_id', '') or id(p)) for p in conflicts}
-        return bool(unique) and any(
-            str(getattr(p, 'catalog_id', '') or '') != matched_id
-            for p in conflicts
-        )
-
-    def resolve(self, result, query):
-        if not isinstance(result, dict) or not query or not self.catalog:
-            return None
-
-        raw_name = str(result.get('name') or result.get('title') or result.get('product_name') or '').strip()
-        raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
-        if not raw_name:
-            return None
-
-        scope = self._query_scope(query)
-        if not scope:
-            return None
-
-        offer_brand = self._norm(raw_brand)
-        offer_forms = self._offer_forms(result)
-
-        # 1) Exact catalog alias.  This is the normal path.
-        exact, method, score = self._exact_catalog_match(offer_forms, offer_brand, scope)
-        if exact is not None:
-            if self._url_identity_conflict(result, exact):
-                return {'_identity_conflict': True}
-            return self._build(result, exact, method, score)
-        if method == 'ambiguous':
-            return None
-
-        # 2) Conservative fallback.  No partial-overlap promotion of a
-        # different variant is allowed.  If we cannot establish identity,
-        # leave the retailer result untouched rather than mislabelling it.
-        best = None
-        best_score = 0.0
-        for product in scope:
-            product_brand = self._norm(getattr(product, 'brand', ''))
-            if offer_brand and product_brand and offer_brand != product_brand:
-                continue
-            candidate_tokens = []
-            for form in self._forms(product):
-                candidate_tokens.extend(self._remove_brand_tokens(self._tokens(form), product_brand))
-            candidate_tokens = list(dict.fromkeys(candidate_tokens))
-            for form in offer_forms:
-                offer_tokens = self._remove_brand_tokens(self._tokens(form), product_brand)
-                score_here = self._conservative_score(offer_tokens, candidate_tokens)
-                if score_here > best_score:
-                    best = product
-                    best_score = score_here
-
-        if best is None or best_score < 0.90:
-            return None
-        if self._url_identity_conflict(result, best):
-            return {'_identity_conflict': True}
-        return self._build(result, best, 'catalog_variant_conservative', best_score)
-
-    @staticmethod
-    def _build(result, product, method, score):
-        normalized = dict(result)
-        canonical_name = str(getattr(product, 'name', '') or '').strip()
-        canonical_brand = str(getattr(product, 'brand', '') or '').strip()
-        normalized.update({
-            'catalog_id': getattr(product, 'catalog_id', '') or '',
-            'family_id': getattr(product, 'family_id', '') or '',
-            'family_name': getattr(product, 'family_name', '') or canonical_name,
-            'canonical_name': canonical_name,
-            'canonical_brand': canonical_brand,
-            'catalog_variant': canonical_name,
-            'match_method': method,
-            'match_score': round(score, 4),
-            'product_identity': getattr(product, 'catalog_id', '') or '',
-        })
-        raw_name = str(result.get('name') or result.get('title') or result.get('product_name') or '').strip()
-        raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
-        if raw_name:
-            normalized['_source_name'] = raw_name
-        if raw_brand:
-            normalized['_source_brand'] = raw_brand
-        if canonical_name:
-            normalized['name'] = canonical_name
-        if canonical_brand:
-            normalized['brand'] = canonical_brand
-        return normalized
-
-
-CATALOG_IDENTITY_RESOLVER = _CatalogIdentityResolver(PRODUCT_MATCHER) if PRODUCT_MATCHER is not None else None
-
-
-def _apply_product_identity(result, query=''):
-    """Apply the generic catalog identity layer without product-specific rules."""
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
 
@@ -457,28 +108,21 @@ def _apply_product_identity(result, query=''):
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
     try:
+        # Central category gate only.
+        # IMPORTANT: do not force generic ProductMatcher.match() here:
+        # the current matcher requires the search query and doing so can
+        # discard valid Born in Roma variants. We therefore preserve the
+        # proven existing result flow and only remove explicit non-fragrance
+        # categories using the matcher-owned generic marker list.
         if PRODUCT_MATCHER._is_non_fragrance_offer(result):
             print(
-                f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: name={raw_name!r} brand={raw_brand!r}',
+                f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
+                f'name={raw_name!r} brand={raw_brand!r}',
                 flush=True,
             )
             return None
 
-        if not query or CATALOG_IDENTITY_RESOLVER is None:
-            return result
-
-        matched = CATALOG_IDENTITY_RESOLVER.resolve(result, query)
-        if isinstance(matched, dict) and matched.get('_identity_conflict'):
-            print(
-                f'PRODUCT_MATCHER_IDENTITY_CONFLICT_REJECT: name={raw_name!r} url={result.get("url")!r}',
-                flush=True,
-            )
-            return None
-        if matched is None:
-            # Never delete a legitimate retailer result merely because the
-            # catalog has no identity for it yet.
-            return result
-        return matched
+        return result
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: {type(exc).__name__}: {exc}',
@@ -486,8 +130,42 @@ def _apply_product_identity(result, query=''):
         )
         return result
 
+    if matched is None:
+        return None
+    if not isinstance(matched, dict):
+        return result
 
-def clean_result(item, store, query=''):
+    normalized = dict(matched)
+
+    # Keep the original retailer fields for diagnostics/provenance.
+    if raw_name:
+        normalized.setdefault('_source_name', raw_name)
+    if raw_brand:
+        normalized.setdefault('_source_brand', raw_brand)
+
+    canonical_name = str(
+        normalized.get('canonical_name')
+        or normalized.get('catalog_variant')
+        or raw_name
+    ).strip()
+    canonical_brand = str(
+        normalized.get('canonical_brand')
+        or normalized.get('brand')
+        or raw_brand
+    ).strip()
+
+    if canonical_name:
+        # The frontend groups offers by the normalized name. Keep the raw
+        # retailer name separately so the identity layer can normalize it
+        # without changing price, URL, store, availability or image data.
+        normalized['name'] = canonical_name
+    if canonical_brand:
+        normalized['brand'] = canonical_brand
+
+    return normalized
+
+
+def clean_result(item, store):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
 
@@ -542,7 +220,7 @@ def clean_result(item, store, query=''):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result, query)
+    return _apply_product_identity(result)
 
 def _is_hawas_query(query):
     return 'hawas' in str(query or '').strip().lower()
@@ -594,7 +272,7 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
+        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -675,7 +353,7 @@ def _run_store_subprocess(store, query, on_result=None):
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store,query)
+                row=clean_result(event['row'],store)
                 if row is None:
                     continue
                 rows.append(row)
@@ -752,7 +430,7 @@ def _publish_result(job_id,row):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        clean=clean_result(row,row.get('store') or row.get('shop') or '',job.get('query') or '')
+        clean=clean_result(row,row.get('store') or row.get('shop') or '')
         if clean is None or not _keep_hawas_result(clean, job.get('query')):
             return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
@@ -857,20 +535,20 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
         except Exception as exc:
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
             except Exception as exc:
