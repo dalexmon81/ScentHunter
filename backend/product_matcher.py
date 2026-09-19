@@ -1166,8 +1166,21 @@ class ProductMatcher:
 
     @staticmethod
     def _product_concentration(product: CatalogProduct) -> str:
-        """Resolve concentration from structured catalog data, then canonical name."""
-        return normalize_concentration(product.concentration) or normalize_concentration(product.name)
+        """Resolve a concentration descriptor that is safe to compare with an offer URL.
+
+        Some catalog identities use a concentration word as part of the
+        canonical variant name (for example, ``Boss Bottled Elixir``). In
+        those cases the structured ``concentration`` value is identity
+        metadata, not evidence that an URL's EDP/EDT descriptor must match
+        ``Elixir``. Returning an empty comparison token preserves the variant
+        identity score and lets the URL concentration remain descriptive.
+        """
+        concentration = normalize_concentration(product.concentration)
+        if concentration == "elixir":
+            name_text = catalog_norm(product.name)
+            if re.search(r"\belixir\b", name_text, flags=re.I):
+                return ""
+        return concentration or normalize_concentration(product.name)
 
     @classmethod
     def _url_candidate_score(
