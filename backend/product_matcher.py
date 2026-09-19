@@ -825,8 +825,22 @@ class ProductMatcher:
                 score = 2 * recall * precision / (recall + precision) if recall + precision else 0.0
                 if q == candidate:
                     score = 1.0
-                elif q and (q in candidate or candidate in q):
+                elif q and (
+                    candidate.startswith(q + " ")
+                    or candidate.endswith(" " + q)
+                    or (" " + q + " ") in (" " + candidate + " ")
+                ):
+                    # Phrase containment is useful for family/variant queries
+                    # (e.g. "Boss Bottled" -> "Boss Bottled Elixir"), but
+                    # never use arbitrary substring containment.  Otherwise a
+                    # short catalog name such as "Le" can become a candidate
+                    # for an unrelated query simply because "le" occurs inside
+                    # another word.
                     score = max(score, 0.90)
+                elif len(q.split()) == 1 and q in c_tokens:
+                    # Single-token family queries such as "Hawas" should keep
+                    # the variants "Hawas Ice", "Hawas Kobra", etc.
+                    score = max(score, 0.75)
                 best = max(best, score)
             if best >= 0.55:
                 candidates.append(product)
