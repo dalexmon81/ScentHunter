@@ -178,6 +178,48 @@
           "aliases": [
             "Hawas Majestic"
           ]
+        },
+        {
+          "canonical_name": "Hawas Addiction",
+          "aliases": [
+            "Hawas Addiction"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Alpha For Him",
+          "aliases": [
+            "Hawas Alpha For Him"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Dreams",
+          "aliases": [
+            "Hawas Dreams"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Glitz",
+          "aliases": [
+            "Hawas Glitz"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Love",
+          "aliases": [
+            "Hawas Love"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Exotic",
+          "aliases": [
+            "Hawas Exotic"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Overdose",
+          "aliases": [
+            "Hawas Overdose"
+          ]
         }
       ],
       "excluded_products": [
@@ -339,6 +381,20 @@
             "Donna Born in Roma Ivory",
             "Born in Roma Donna Ivory",
             "Born In Roma Ivory Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Pink PP",
+          "aliases": [
+            "Born in Roma Pink PP",
+            "Valentino Donna Born In Roma Pink PP"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Rockstud Noir",
+          "aliases": [
+            "Born in Roma Rockstud Noir",
+            "Valentino Uomo Born In Roma Rockstud Noir"
           ]
         }
       ]
