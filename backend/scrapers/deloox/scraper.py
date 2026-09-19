@@ -714,17 +714,20 @@ def _row_from_card(
     ):
         return None
 
-    if non_fragrance(
-        context + " " + image
-    ):
-        # A surrounding card may contain text from another product.
-        # The image URL is also checked because some Deloox cards
-        # expose the cosmetic type only in the product image path.
-        # For Born in Roma we already have URL-level exclusion above,
-        # so do not reject a valid product merely because the parent
-        # container contains neighbouring body-product text.
-        if not is_born_in_roma_query(query):
-            return None
+    # The surrounding card context can contain neighbouring products.
+    # Therefore category filtering must use only the candidate's own
+    # resolved product identity, not the polluted parent container.
+    candidate_identity_text = " ".join(
+        value
+        for value in (
+            name,
+            url,
+        )
+        if value
+    )
+
+    if non_fragrance(candidate_identity_text):
+        return None
 
     lines = [
         clean(x)
