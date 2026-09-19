@@ -1190,11 +1190,20 @@ class ProductMatcher:
         identity score and lets the URL concentration remain descriptive.
         """
         concentration = normalize_concentration(product.concentration)
-        if concentration == "elixir":
-            name_text = catalog_norm(product.name)
-            if re.search(r"\belixir\b", name_text, flags=re.I):
-                return ""
-        return concentration or normalize_concentration(product.name)
+        name_text = catalog_norm(product.name)
+
+        # A concentration word embedded in the canonical identity (for example
+        # ``Elixir`` in Boss Bottled Elixir or ``Parfum`` in Boss Bottled Parfum)
+        # is an identity token, not reliable evidence that the retailer URL's
+        # concentration descriptor must agree with it.  Keep it in the lexical
+        # identity score and remove it from the separate concentration penalty.
+        if concentration and re.search(rf"\b{re.escape(concentration)}\b", name_text, flags=re.I):
+            return ""
+
+        inferred = normalize_concentration(product.name)
+        if inferred and re.search(rf"\b{re.escape(inferred)}\b", name_text, flags=re.I):
+            return ""
+        return concentration or inferred
 
     @classmethod
     def _url_candidate_score(
@@ -1396,12 +1405,34 @@ class ProductMatcher:
         best_alias = ""
 
         eligible: List[CatalogProduct] = []
+        eligible_ids: set[str] = set()
         for product in candidates:
             if offer_brand and product.normalized_brand:
                 brand = normalize(product.brand)
                 if offer_brand != brand and offer_brand not in brand and brand not in offer_brand:
                     continue
             eligible.append(product)
+            eligible_ids.add(product.catalog_id)
+
+        # Query scope is deliberately compact, but a retailer URL can contain
+        # a more specific identity than the scraped/display name.  In that
+        # situation the URL must be allowed to discover the stronger catalog
+        # identity even when it was not present in the initial query scope.
+        # This is catalog-wide and brand-bounded: it is not a retailer rule and
+        # cannot pull an unrelated brand into the match.
+        if offer_brand:
+            for product in self.catalog:
+                if product.catalog_id in eligible_ids:
+                    continue
+                if not product.normalized_brand:
+                    continue
+                brand = normalize(product.brand)
+                if offer_brand != brand and offer_brand not in brand and brand not in offer_brand:
+                    continue
+                url_score, _ = self._url_candidate_score(offer, product)
+                if url_score >= 0.72:
+                    eligible.append(product)
+                    eligible_ids.add(product.catalog_id)
 
         # First establish whether the URL contains a sufficiently specific
         # catalog identity.  If it does, use URL scores consistently across
