@@ -80,7 +80,10 @@ def _load_product_matcher():
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
             return None
 
-        return ProductMatcher(catalog=catalog)
+        # The complete catalog payload is the single source of truth for
+        # product identity. Passing the full payload (not only products)
+        # also gives the central matcher access to variant aliases and sizes.
+        return ProductMatcher(catalog=payload)
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
@@ -92,14 +95,17 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _apply_product_identity(result):
+def _apply_product_identity(result, query=''):
     """
-    Normalize a retailer offer through the existing central ProductMatcher.
+    Resolve a retailer offer through the central ProductMatcher.
 
-    This enriches valid retailer offers through the central ProductMatcher.
-    A matcher exception is non-fatal, but an explicit matcher rejection (None)
-    must remove the offer from the result set. This is required for samples,
-    testers, sets excluded by policy, and other non-identity listings.
+    PRODUCT CATALOG -> canonical identity -> CENTRAL MATCHER -> FRONTEND
+
+    The matcher is the only component allowed to choose the canonical
+    product identity. If an offer cannot be resolved, the raw offer is
+    preserved so identity resolution can never reduce a valid retailer
+    result set. Non-fragrance listings are still rejected by the central
+    category gate.
     """
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
@@ -108,12 +114,6 @@ def _apply_product_identity(result):
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
     try:
-        # Central category gate only.
-        # IMPORTANT: do not force generic ProductMatcher.match() here:
-        # the current matcher requires the search query and doing so can
-        # discard valid Born in Roma variants. We therefore preserve the
-        # proven existing result flow and only remove explicit non-fragrance
-        # categories using the matcher-owned generic marker list.
         if PRODUCT_MATCHER._is_non_fragrance_offer(result):
             print(
                 f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
@@ -122,50 +122,61 @@ def _apply_product_identity(result):
             )
             return None
 
-        return result
+        matched = PRODUCT_MATCHER.match(result, str(query or '').strip())
+
+        # Never discard a valid scraper offer only because the catalog has
+        # not learned that retailer naming yet. The matcher decides identity;
+        # unresolved offers remain raw rather than disappearing.
+        if matched is None:
+            print(
+                f'PRODUCT_MATCHER_UNRESOLVED_PRESERVED: '
+                f'query={query!r} name={raw_name!r} brand={raw_brand!r}',
+                flush=True,
+            )
+            return result
+
+        if not isinstance(matched, dict):
+            return result
+
+        normalized = dict(matched)
+
+        # Keep the original retailer fields for diagnostics/provenance.
+        if raw_name:
+            normalized['_source_name'] = raw_name
+        if raw_brand:
+            normalized['_source_brand'] = raw_brand
+
+        canonical_name = str(
+            normalized.get('canonical_name')
+            or normalized.get('catalog_variant')
+            or raw_name
+        ).strip()
+        canonical_brand = str(
+            normalized.get('canonical_brand')
+            or normalized.get('brand')
+            or raw_brand
+        ).strip()
+
+        if canonical_name:
+            # Frontend grouping must use the catalog identity, never the
+            # retailer's spelling. Example:
+            # "Bottled Infinite" -> "Boss Bottled Infinite".
+            normalized['name'] = canonical_name
+        if canonical_brand:
+            normalized['brand'] = canonical_brand
+
+        return normalized
+
     except Exception as exc:
         print(
-            f'PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: {type(exc).__name__}: {exc}',
+            f'PRODUCT_MATCHER_IDENTITY_ERROR: '
+            f'{type(exc).__name__}: {exc} '
+            f'query={query!r} name={raw_name!r}',
             flush=True,
         )
         return result
 
-    if matched is None:
-        return None
-    if not isinstance(matched, dict):
-        return result
-
-    normalized = dict(matched)
-
-    # Keep the original retailer fields for diagnostics/provenance.
-    if raw_name:
-        normalized.setdefault('_source_name', raw_name)
-    if raw_brand:
-        normalized.setdefault('_source_brand', raw_brand)
-
-    canonical_name = str(
-        normalized.get('canonical_name')
-        or normalized.get('catalog_variant')
-        or raw_name
-    ).strip()
-    canonical_brand = str(
-        normalized.get('canonical_brand')
-        or normalized.get('brand')
-        or raw_brand
-    ).strip()
-
-    if canonical_name:
-        # The frontend groups offers by the normalized name. Keep the raw
-        # retailer name separately so the identity layer can normalize it
-        # without changing price, URL, store, availability or image data.
-        normalized['name'] = canonical_name
-    if canonical_brand:
-        normalized['brand'] = canonical_brand
-
-    return normalized
-
-
-def clean_result(item, store):
+def clean_result(item, store, query=''):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
 
@@ -220,7 +231,7 @@ def clean_result(item, store):
     if 'price_num' not in result:
         parsed = _safe_float(result.get('price'))
         if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result)
+    return _apply_product_identity(result, query)
 
 def _is_hawas_query(query):
     return 'hawas' in str(query or '').strip().lower()
@@ -272,7 +283,7 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store)] if cleaned is not None]
+        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -353,7 +364,7 @@ def _run_store_subprocess(store, query, on_result=None):
             if not isinstance(event,dict): continue
             kind=event.get('event')
             if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store)
+                row=clean_result(event['row'],store,query)
                 if row is None:
                     continue
                 rows.append(row)
@@ -430,7 +441,7 @@ def _publish_result(job_id,row):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        clean=clean_result(row,row.get('store') or row.get('shop') or '')
+        clean=clean_result(row,row.get('store') or row.get('shop') or '',job.get('query') if isinstance(job, dict) else '')
         if clean is None or not _keep_hawas_result(clean, job.get('query')):
             return
         job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
@@ -535,20 +546,20 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
         except Exception as exc:
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
             except Exception as exc:
