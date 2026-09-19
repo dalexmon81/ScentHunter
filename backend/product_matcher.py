@@ -34,6 +34,33 @@ def catalog_norm(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def normalize_concentration(value: Any) -> str:
+    """Return a canonical concentration token without losing variant identity."""
+    text = catalog_norm(value)
+    if not text:
+        return ""
+
+    patterns = (
+        ("eau de parfum intense", "edp_intense"),
+        ("eau de toilette intense", "edt_intense"),
+        ("parfum intense", "parfum_intense"),
+        ("eau de parfum", "edp"),
+        ("eau de toilette", "edt"),
+        ("eau de cologne", "edc"),
+        ("eau fraiche", "eau_fraiche"),
+        ("extrait de parfum", "extrait"),
+        ("edp", "edp"),
+        ("edt", "edt"),
+        ("edc", "edc"),
+        ("parfum", "parfum"),
+        ("elixir", "elixir"),
+    )
+    for phrase, token in patterns:
+        if re.search(rf"\b{re.escape(phrase)}\b", text, flags=re.I):
+            return token
+    return ""
+
+
 def catalog_clean_text(value: Any) -> str:
     """Remove only commercial descriptors, never gender/variant markers."""
     text = catalog_norm(value)
@@ -175,6 +202,7 @@ class CatalogProduct:
     family_id: str = ""
     family_name: str = ""
     catalog_variant: str = ""
+    concentration: str = ""
 
     @classmethod
     def from_dict(
@@ -258,6 +286,7 @@ class CatalogProduct:
             family_id=family_id,
             family_name=family_name,
             catalog_variant=canonical_name,
+            concentration=str(data.get("concentration") or "").strip(),
         )
 
     @property
@@ -977,18 +1006,29 @@ class ProductMatcher:
 
     @staticmethod
     def _url_identity_text(value: str) -> str:
-        """Normalize a URL path while retaining variant-bearing words."""
+        """Normalize a URL path while retaining variant and concentration words."""
         text = normalize(value)
         text = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz|fl oz)\b", " ", text)
-        text = re.sub(
-            r"\beau\s+de\s+parfum\b",
-            " parfum ",
-            text,
-            flags=re.I,
+
+        # Preserve concentration as a distinct token.  Collapsing
+        # ``eau de parfum`` to plain ``parfum`` makes an EDP URL look identical
+        # to a true Parfum variant, which is exactly the ambiguity this matcher
+        # must avoid.
+        concentration_replacements = (
+            ("eau de parfum intense", "edp_intense"),
+            ("eau de toilette intense", "edt_intense"),
+            ("parfum intense", "parfum_intense"),
+            ("eau de parfum", "edp"),
+            ("eau de toilette", "edt"),
+            ("eau de cologne", "edc"),
+            ("eau fraiche", "eau_fraiche"),
+            ("extrait de parfum", "extrait"),
         )
+        for phrase, token in concentration_replacements:
+            text = re.sub(rf"\b{re.escape(phrase)}\b", f" {token} ", text, flags=re.I)
+
         text = re.sub(
-            r"\b(?:eau\s+de\s+toilette|eau\s+de\s+cologne|eau\s+fraiche|"
-            r"extrait\s+de\s+parfum|edp|edt|edc|spray|vapo|vaporisateur|refillable|refill)\b",
+            r"\b(?:spray|vapo|vaporisateur|refillable|refill)\b",
             " ",
             text,
             flags=re.I,
@@ -999,17 +1039,13 @@ class ProductMatcher:
 
     @staticmethod
     def _url_catalog_identity_text(value: Any) -> str:
-        """Normalize a catalog identity for URL comparison without erasing variant words."""
-        text = normalize(value)
-        text = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz|fl oz)\b", " ", text)
-        text = re.sub(
-            r"\b(?:eau\s+de\s+toilette|eau\s+de\s+cologne|eau\s+fraiche|"
-            r"eau\s+de\s+parfum|extrait\s+de\s+parfum|edp|edt|edc|spray)\b",
-            " ",
-            text,
-            flags=re.I,
-        )
-        return re.sub(r"\s+", " ", text).strip()
+        """Normalize a catalog identity while preserving concentration evidence."""
+        return ProductMatcher._url_identity_text(str(value or ""))
+
+    @staticmethod
+    def _product_concentration(product: CatalogProduct) -> str:
+        """Resolve concentration from structured catalog data, then canonical name."""
+        return normalize_concentration(product.concentration) or normalize_concentration(product.name)
 
     @classmethod
     def _url_candidate_score(
@@ -1018,6 +1054,7 @@ class ProductMatcher:
         product: CatalogProduct,
     ) -> Tuple[float, str]:
         best = 0.0
+        best_specificity = -1
         matched_alias = ""
 
         for raw_url in cls._offer_url_identity_texts(offer):
@@ -1043,6 +1080,22 @@ class ProductMatcher:
                     if not candidate:
                         continue
                     c_tokens = set(candidate.split())
+                    url_concentration = normalize_concentration(raw_variant)
+                    product_concentration = cls._product_concentration(product)
+
+                    # Concentration is scored separately from the core identity.
+                    # This keeps a real variant token such as ``Infinite`` more
+                    # important than an appended EDP/EDT descriptor.
+                    identity_candidate = candidate
+                    concentration_tokens = {
+                        "edp", "edt", "edc", "eau_fraiche",
+                        "extrait", "parfum", "parfum_intense",
+                        "edp_intense", "edt_intense",
+                    }
+                    identity_candidate = " ".join(
+                        token for token in identity_candidate.split()
+                        if token not in concentration_tokens
+                    )
 
                     # Remove URL/domain boilerplate and brand tokens that are
                     # not part of this catalog identity.  This keeps the
@@ -1070,21 +1123,57 @@ class ProductMatcher:
                     n_tokens = set(candidate_url_tokens)
                     if not n_tokens:
                         continue
+                    identity_url = " ".join(
+                        token for token in candidate_url_tokens
+                        if token not in concentration_tokens
+                    )
 
-                    inter = len(n_tokens & c_tokens)
+                    # Recompute the lexical score on core identity tokens first.
+                    # Concentration descriptors are then used only as a secondary
+                    # discriminator, so a specific variant token cannot be drowned
+                    # out by an EDP/EDT phrase.
+                    identity_c_tokens = set(identity_candidate.split())
+                    identity_url_tokens = set(identity_url.split())
+                    for token in brand_tokens:
+                        identity_c_tokens.discard(token)
+                        identity_url_tokens.discard(token)
+                    if not identity_c_tokens or not identity_url_tokens:
+                        continue
+
+                    inter = len(identity_url_tokens & identity_c_tokens)
                     if not inter:
                         continue
-                    recall = inter / len(c_tokens)
-                    precision = inter / len(n_tokens)
+                    recall = inter / len(identity_c_tokens)
+                    precision = inter / len(identity_url_tokens)
                     score = (
                         2 * recall * precision / (recall + precision)
                         if recall + precision
                         else 0.0
                     )
-                    if n_tokens == c_tokens:
+                    if identity_url_tokens == identity_c_tokens:
                         score = 1.0
-                    if score > best:
+
+                    # Explicit concentration agreement is a small positive signal;
+                    # explicit disagreement is a strong negative signal.  Empty
+                    # catalog concentration remains neutral because some verified
+                    # catalog rows intentionally omit it.
+                    if url_concentration and product_concentration:
+                        if url_concentration == product_concentration:
+                            score += 0.03
+                        else:
+                            score *= 0.65
+
+                    # When two candidates have the same core score, prefer the one
+                    # whose non-concentration identity is more specific.  This is
+                    # generic: ``Infinite`` beats the shorter ``Boss Bottled``
+                    # identity when the URL explicitly contains ``Infinite``.
+                    specificity = len(identity_c_tokens)
+                    if (
+                        score > best
+                        or (abs(score - best) < 0.03 and specificity > best_specificity)
+                    ):
                         best = score
+                        best_specificity = specificity
                         matched_alias = alias
 
         return best, matched_alias
@@ -1205,7 +1294,7 @@ class ProductMatcher:
             "family": best_product.family_name or best_product.name,
             "variant": best_product.catalog_variant or best_product.name,
             "canonical_name": best_product.name,
-            "confidence": round(best_score, 4),
+            "confidence": round(min(1.0, best_score), 4),
             "matched_alias": best_alias,
         }
 
