@@ -875,6 +875,51 @@ class ProductMatcher:
                 matched_alias = alias
         return best, matched_alias
 
+    def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
+        """Return canonical identities relevant to the current query."""
+        scope: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+
+        def add(catalog_id, brand, canonical_name, aliases=(), family="", variant=""):
+            cid = str(catalog_id or "").strip()
+            name = str(canonical_name or "").strip()
+            if not cid or not name or cid in seen:
+                return
+            seen.add(cid)
+            scope.append({
+                "catalog_id": cid,
+                "brand": str(brand or "").strip(),
+                "canonical_name": name,
+                "aliases": [str(v).strip() for v in aliases if str(v or "").strip()],
+                "family": str(family or "").strip(),
+                "variant": str(variant or name).strip(),
+            })
+
+        query_scope = self.build_query_scope(query)
+        for product in query_scope.get("candidates") or []:
+            add(product.catalog_id, product.brand, product.name,
+                product.aliases, product.family_name,
+                product.catalog_variant or product.name)
+
+        family = self._family_for_query(query)
+        if family is not None:
+            for variant in family.get("variants") or []:
+                canonical = str(variant.get("canonical_name") or variant.get("name") or "").strip()
+                if not canonical:
+                    continue
+                product = self._catalog_product_for_family_variant(family, variant)
+                if product is not None:
+                    add(product.catalog_id, product.brand or family.get("brand", ""),
+                        product.name, product.aliases,
+                        product.family_name or family.get("family_id", ""),
+                        product.catalog_variant or product.name)
+                else:
+                    add(stable_family_id(family.get("family_id", ""), canonical),
+                        family.get("brand", ""), canonical,
+                        variant.get("aliases") or (), family.get("family_id", ""),
+                        canonical)
+        return scope
+
     def match_offer(
         self,
         offer: Dict[str, Any],
@@ -888,6 +933,22 @@ class ProductMatcher:
         """
         if self._is_non_fragrance_offer(offer):
             return {"status": "rejected", "reject_reason": "non_fragrance"}
+
+        query = str(query_scope.get("query") or "").strip()
+        family = self._family_for_query(query)
+        if family is not None:
+            family_result = self._match_family(offer, query, family)
+            if family_result is not None:
+                return {
+                    "status": "matched",
+                    "catalog_id": family_result.get("catalog_id"),
+                    "brand": family_result.get("canonical_brand"),
+                    "family": family_result.get("family_name"),
+                    "variant": family_result.get("catalog_variant"),
+                    "canonical_name": family_result.get("canonical_name"),
+                    "confidence": family_result.get("match_score", 1.0),
+                    "matched_alias": family_result.get("canonical_name"),
+                }
 
         candidates = list(query_scope.get("candidates") or [])
         offer_name = self._offer_name(offer)
