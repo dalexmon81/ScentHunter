@@ -1064,6 +1064,64 @@ def parse_product(
             "html.parser",
         )
 
+        # Deloox search/category cards can contain text from neighbouring
+        # products. The product page JSON-LD Product.name is the
+        # authoritative identity and must override the polluted card name.
+        authoritative_name = ""
+        for script in soup.find_all(
+            "script",
+            type="application/ld+json",
+        ):
+            try:
+                data = json.loads(
+                    script.string or script.get_text()
+                )
+            except (
+                json.JSONDecodeError,
+                TypeError,
+            ):
+                continue
+
+            queue = (
+                list(data)
+                if isinstance(data, list)
+                else [data]
+            )
+
+            while queue:
+                item = queue.pop(0)
+
+                if isinstance(item, list):
+                    queue.extend(item)
+                    continue
+
+                if not isinstance(item, dict):
+                    continue
+
+                typ = item.get("@type")
+                is_product = (
+                    typ == "Product"
+                    or (
+                        isinstance(typ, list)
+                        and "Product" in typ
+                    )
+                )
+
+                if is_product:
+                    candidate_name = clean(item.get("name"))
+                    if candidate_name:
+                        authoritative_name = candidate_name
+                        break
+
+                graph = item.get("@graph")
+                if isinstance(graph, list):
+                    queue.extend(graph)
+
+            if authoritative_name:
+                break
+
+        effective_query = authoritative_name or query
+
         rows = []
 
         for p in jsonld_products(soup):
@@ -1075,7 +1133,7 @@ def parse_product(
             if (
                 not relevant(
                     name,
-                    query,
+                    effective_query,
                 )
                 or non_fragrance(name)
             ):
