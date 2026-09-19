@@ -619,46 +619,141 @@ class ProductMatcher:
         if candidate_key in excluded:
             return None
 
+        name_variant: Optional[Dict[str, Any]] = None
+
         for variant in family["variants"]:
             if candidate_key in variant["normalized_aliases"]:
-                return variant
+                name_variant = variant
+                break
 
         # Retailers may append or insert audience/editorial labels around the
-        # actual variant name (for example "Hawas Kobra for Men - Heren",
-        # "Hawas Men Black - Heren", or "Hawas Women Eclat - Dames").
-        # These labels are not part of the Hawas variant identity. Preserve
-        # exact alias matching above first, then try a generic normalization
-        # that removes only explicit audience labels and Dutch storefront
-        # gender labels. This keeps "Hawas for Her" and "Hawas for Him"
-        # distinct because their exact aliases win before this fallback.
-        editorial_tokens = {
-            "men", "women", "man", "woman", "heren", "dames",
-        }
-        stripped_tokens = [
-            token for token in candidate_key.split()
-            if token not in editorial_tokens
-        ]
-        stripped_key = " ".join(stripped_tokens).strip()
-        if stripped_key != candidate_key:
-            for variant in family["variants"]:
-                if stripped_key in variant["normalized_aliases"]:
-                    return variant
+        # actual variant name. These labels are not part of the variant identity.
+        if name_variant is None:
+            editorial_tokens = {
+                "men", "women", "man", "woman", "heren", "dames",
+            }
+            stripped_tokens = [
+                token for token in candidate_key.split()
+                if token not in editorial_tokens
+            ]
+            stripped_key = " ".join(stripped_tokens).strip()
+            if stripped_key != candidate_key:
+                for variant in family["variants"]:
+                    if stripped_key in variant["normalized_aliases"]:
+                        name_variant = variant
+                        break
 
         # "for men" / "for women" can survive as two tokens after the first
-        # pass; remove the complete phrase only when it produces an exact
-        # known alias.
-        stripped_for_tokens = re.sub(
-            r"\bfor\s+(?:men|women|him|her)\b",
-            " ",
-            candidate_key,
-            flags=re.I,
-        )
-        stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
-        if stripped_for_tokens != candidate_key:
-            for variant in family["variants"]:
-                if stripped_for_tokens in variant["normalized_aliases"]:
-                    return variant
-        return None
+        # pass; remove the complete phrase only when it produces an exact alias.
+        if name_variant is None:
+            stripped_for_tokens = re.sub(
+                r"\bfor\s+(?:men|women|him|her)\b",
+                " ",
+                candidate_key,
+                flags=re.I,
+            )
+            stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
+            if stripped_for_tokens != candidate_key:
+                for variant in family["variants"]:
+                    if stripped_for_tokens in variant["normalized_aliases"]:
+                        name_variant = variant
+                        break
+
+        # The retailer name can be generic while the URL still contains the
+        # actual variant. Resolve URL evidence generically against the family
+        # registry aliases. No retailer-specific or perfume-specific rule is used.
+        url_best: Optional[Dict[str, Any]] = None
+        url_best_score = 0.0
+        url_best_specificity = -1
+
+        for raw_url in self._offer_url_identity_texts(offer):
+            # Prefer the final URL slug, but also retain the full path as a
+            # fallback because some retailers place identity terms in folders.
+            url_parts = [part for part in raw_url.split("/") if part]
+            url_candidates = []
+            if url_parts:
+                url_candidates.append(url_parts[-1])
+            url_candidates.append(raw_url)
+
+            seen_url_keys = set()
+            for raw_url_part in url_candidates:
+                url_key = self._url_identity_text(raw_url_part)
+                if not url_key or url_key in seen_url_keys:
+                    continue
+                seen_url_keys.add(url_key)
+
+                url_key = self._remove_brand(url_key, family.get("brand", ""))
+                url_tokens = set(url_key.split())
+                if not url_tokens:
+                    continue
+
+                for variant in family["variants"]:
+                    best_variant_score = 0.0
+
+                    for alias in variant.get("aliases", ()):
+                        alias_key = self._url_catalog_identity_text(alias)
+                        if not alias_key:
+                            continue
+
+                        alias_tokens = set(alias_key.split())
+                        if not alias_tokens:
+                            continue
+
+                        intersection = len(alias_tokens & url_tokens)
+                        if not intersection:
+                            continue
+
+                        recall = intersection / len(alias_tokens)
+                        precision = intersection / len(url_tokens)
+                        f_score = (
+                            2 * recall * precision / (recall + precision)
+                            if recall + precision
+                            else 0.0
+                        )
+
+                        # Token F1 deliberately rewards the most specific alias
+                        # present in the slug. A short family name must not receive
+                        # an artificial boost merely because it is a contiguous
+                        # substring of a longer variant URL.
+                        best_variant_score = max(best_variant_score, f_score)
+
+                    if best_variant_score < 0.72:
+                        continue
+
+                    canonical_key = self._url_catalog_identity_text(
+                        variant.get("canonical_name", "")
+                    )
+                    specificity = len(set(canonical_key.split()))
+
+                    if (
+                        best_variant_score > url_best_score
+                        or (
+                            abs(best_variant_score - url_best_score) < 0.03
+                            and specificity > url_best_specificity
+                        )
+                    ):
+                        url_best = variant
+                        url_best_score = best_variant_score
+                        url_best_specificity = specificity
+
+        if url_best is not None:
+            # URL evidence may refine a generic name, but must not downgrade a
+            # name that is already more specific. Compare identity-token
+            # specificity rather than raw confidence.
+            name_specificity = -1
+            if name_variant is not None:
+                name_key = self._url_catalog_identity_text(
+                    name_variant.get("canonical_name", "")
+                )
+                name_specificity = len(set(name_key.split()))
+
+            if name_variant is None or (
+                url_best_specificity > name_specificity
+                and url_best_score >= 0.72
+            ):
+                return url_best
+
+        return name_variant
 
     def _catalog_product_for_family_variant(
         self,
