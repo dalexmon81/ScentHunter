@@ -440,8 +440,8 @@ class ProductMatcher:
                         "canonical_name": canonical,
                         "aliases": valid_aliases,
                         "normalized_aliases": tuple(
-                            catalog_variant_key(value) for value in valid_aliases
-                            if catalog_variant_key(value)
+                            ProductMatcher._url_catalog_identity_text(value) for value in valid_aliases
+                            if ProductMatcher._url_catalog_identity_text(value)
                         ),
                     }
                 )
@@ -617,7 +617,9 @@ class ProductMatcher:
         family: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
         query_key = self._remove_brand(query, family.get("brand", ""))
-        query_key = catalog_variant_key(query_key)
+        # Preserve EDP/EDT/Parfum tokens here; otherwise distinct registry
+        # variants such as Eros EDP and Eros EDT collapse to the same key.
+        query_key = self._url_catalog_identity_text(query_key)
         for variant in family["variants"]:
             if query_key in variant["normalized_aliases"]:
                 return variant
@@ -838,7 +840,11 @@ class ProductMatcher:
         variant: Dict[str, Any],
     ) -> Optional[CatalogProduct]:
         family_id = normalize(family.get("family_id", ""))
-        canonical_key = catalog_variant_key(variant.get("canonical_name", ""))
+        # Family-variant lookup must preserve concentration tokens.
+        # `catalog_variant_key()` intentionally strips EDP/EDT/Parfum because
+        # it is used for broad catalog normalization; using it here collapses
+        # identities such as `Eros`, `Eros Eau de Parfum` and `Eros Parfum`.
+        canonical_key = self._url_catalog_identity_text(variant.get("canonical_name", ""))
 
         product = self._by_identity.get((family_id, canonical_key))
         if product is not None:
@@ -856,17 +862,17 @@ class ProductMatcher:
             str(variant.get("canonical_name") or ""),
             *(str(value or "") for value in (variant.get("aliases") or ())),
         ]
-        variant_keys = {catalog_variant_key(value) for value in variant_values if value}
+        variant_keys = {self._url_catalog_identity_text(value) for value in variant_values if value}
         variant_keys.discard("")
 
         for candidate in self.catalog:
             if family_id and normalize(candidate.family_id) == family_id:
-                if catalog_variant_key(candidate.name) == canonical_key:
+                if self._url_catalog_identity_text(candidate.name) == canonical_key:
                     return candidate
                 candidate_keys = {
-                    catalog_variant_key(candidate.name),
-                    catalog_variant_key(candidate.family_name),
-                    *(catalog_variant_key(value) for value in candidate.aliases),
+                    self._url_catalog_identity_text(candidate.name),
+                    self._url_catalog_identity_text(candidate.family_name),
+                    *(self._url_catalog_identity_text(value) for value in candidate.aliases),
                 }
                 candidate_keys.discard("")
                 overlap = variant_keys & candidate_keys
@@ -888,9 +894,9 @@ class ProductMatcher:
             if family_brand and catalog_norm(candidate.brand) != family_brand:
                 continue
             candidate_keys = {
-                catalog_variant_key(candidate.name),
-                catalog_variant_key(candidate.family_name),
-                *(catalog_variant_key(value) for value in candidate.aliases),
+                self._url_catalog_identity_text(candidate.name),
+                self._url_catalog_identity_text(candidate.family_name),
+                *(self._url_catalog_identity_text(value) for value in candidate.aliases),
             }
             candidate_keys.discard("")
             overlap = variant_keys & candidate_keys
