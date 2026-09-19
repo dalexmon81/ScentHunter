@@ -744,7 +744,20 @@ class ProductMatcher:
                     continue
                 seen_url_keys.add(url_key)
 
-                url_key = self._remove_brand(url_key, family.get("brand", ""))
+                # ``_remove_brand`` intentionally strips commercial
+                # concentration descriptors for catalog/query normalization.
+                # URL family matching cannot use that helper because EDP/EDT/
+                # Parfum may be part of the variant identity itself. Remove
+                # only the family brand while preserving the URL identity tokens.
+                brand_key = catalog_norm(family.get("brand", ""))
+                if brand_key:
+                    url_key = re.sub(
+                        rf"\b{re.escape(brand_key)}\b",
+                        " ",
+                        url_key,
+                        flags=re.I,
+                    )
+                    url_key = re.sub(r"\s+", " ", url_key).strip()
                 url_tokens = set(url_key.split())
                 if not url_tokens:
                     continue
@@ -831,12 +844,65 @@ class ProductMatcher:
         if product is not None:
             return product
 
+        # Legacy catalog rows can store the family/variant name in
+        # ``family_name`` or aliases while ``canonical_name`` is only the
+        # shorter collection name (e.g. Valentino Born in Roma Uomo).  The
+        # family registry is the canonical variant vocabulary, so resolve the
+        # corresponding catalog record by exact canonical/alias identity before
+        # falling back to a deterministic family ID.
+        best_alias_product: Optional[CatalogProduct] = None
+        best_alias_score = 0
+        variant_values = [
+            str(variant.get("canonical_name") or ""),
+            *(str(value or "") for value in (variant.get("aliases") or ())),
+        ]
+        variant_keys = {catalog_variant_key(value) for value in variant_values if value}
+        variant_keys.discard("")
+
         for candidate in self.catalog:
-            if family_id and normalize(candidate.family_id) != family_id:
+            if family_id and normalize(candidate.family_id) == family_id:
+                if catalog_variant_key(candidate.name) == canonical_key:
+                    return candidate
+                candidate_keys = {
+                    catalog_variant_key(candidate.name),
+                    catalog_variant_key(candidate.family_name),
+                    *(catalog_variant_key(value) for value in candidate.aliases),
+                }
+                candidate_keys.discard("")
+                overlap = variant_keys & candidate_keys
+                if overlap:
+                    score = max(len(key.split()) for key in overlap)
+                    if score > best_alias_score:
+                        best_alias_product = candidate
+                        best_alias_score = score
+
+        if best_alias_product is not None:
+            return best_alias_product
+
+        # Some verified legacy catalog rows predate the family_id field.  If an
+        # alias exactly identifies the registry variant, it is still safer to
+        # reuse that existing catalog identity than to mint a second ID.  Brand
+        # matching keeps this generic and prevents cross-brand alias collisions.
+        family_brand = catalog_norm(family.get("brand", ""))
+        for candidate in self.catalog:
+            if family_brand and catalog_norm(candidate.brand) != family_brand:
                 continue
-            if catalog_variant_key(candidate.name) == canonical_key:
-                return candidate
-        return None
+            candidate_keys = {
+                catalog_variant_key(candidate.name),
+                catalog_variant_key(candidate.family_name),
+                *(catalog_variant_key(value) for value in candidate.aliases),
+            }
+            candidate_keys.discard("")
+            overlap = variant_keys & candidate_keys
+            if not overlap:
+                continue
+            # Prefer an exact multi-token identity over a generic family token.
+            score = max(len(key.split()) for key in overlap)
+            if score > best_alias_score:
+                best_alias_product = candidate
+                best_alias_score = score
+
+        return best_alias_product
 
     def _build_family_result(
         self,
@@ -1029,8 +1095,7 @@ class ProductMatcher:
                 if best < 0.55:
                     continue
                 catalog_id = ""
-                identity_key = (normalize(family_id), catalog_variant_key(canonical))
-                product = self._by_identity.get(identity_key)
+                product = self._catalog_product_for_family_variant(family, variant)
                 if product is not None:
                     catalog_id = product.catalog_id
                 key = catalog_id or f"{family_id}::{canonical}"
@@ -1250,9 +1315,21 @@ class ProductMatcher:
                         "extrait", "parfum", "parfum_intense",
                         "edp_intense", "edt_intense",
                     }
+                    # A concentration token can itself be part of the
+                    # canonical product identity (e.g. Boss Bottled Parfum,
+                    # Boss Bottled Eau de Parfum, or Boss Bottled Elixir).
+                    # Remove concentration descriptors only when they are
+                    # NOT identity-bearing in the catalog name.  Otherwise a
+                    # specific catalog identity collapses to the generic
+                    # family and loses the specificity tie-break.
+                    catalog_identity_tokens = set(
+                        cls._url_catalog_identity_text(product.name).split()
+                    )
                     identity_candidate = " ".join(
-                        token for token in identity_candidate.split()
+                        token
+                        for token in identity_candidate.split()
                         if token not in concentration_tokens
+                        or token in catalog_identity_tokens
                     )
 
                     # Remove URL/domain boilerplate and brand tokens that are
@@ -1281,9 +1358,16 @@ class ProductMatcher:
                     n_tokens = set(candidate_url_tokens)
                     if not n_tokens:
                         continue
+                    # Keep a concentration token in the URL when the
+                    # candidate product uses that token as part of its own
+                    # identity.  For a generic product (e.g. Boss Bottled),
+                    # the same URL token remains descriptive and is removed.
+                    identity_candidate_token_set = set(identity_candidate.split())
                     identity_url = " ".join(
-                        token for token in candidate_url_tokens
+                        token
+                        for token in candidate_url_tokens
                         if token not in concentration_tokens
+                        or token in identity_candidate_token_set
                     )
 
                     # Recompute the lexical score on core identity tokens first.
@@ -1402,6 +1486,7 @@ class ProductMatcher:
 
         best_product = None
         best_score = 0.0
+        best_specificity = -1
         best_alias = ""
 
         eligible: List[CatalogProduct] = []
@@ -1444,11 +1529,23 @@ class ProductMatcher:
         ]
         best_url_product = None
         best_url_score = 0.0
+        best_url_specificity = -1
         best_url_alias = ""
         for product, url_score, url_alias in url_matches:
-            if url_score > best_url_score:
+            specificity_key = self._variant_specificity_key(
+                product.name, product.brand
+            )
+            specificity = len(set(specificity_key.split()))
+            if (
+                url_score > best_url_score
+                or (
+                    abs(url_score - best_url_score) < 0.03
+                    and specificity > best_url_specificity
+                )
+            ):
                 best_url_product = product
                 best_url_score = url_score
+                best_url_specificity = specificity
                 best_url_alias = url_alias
 
         use_url_identity = best_url_product is not None and best_url_score >= 0.70
@@ -1459,9 +1556,20 @@ class ProductMatcher:
             else:
                 score, alias = self._query_candidate_score(offer_name, product)
 
-            if score > best_score:
+            specificity_key = self._variant_specificity_key(
+                product.name, product.brand
+            )
+            specificity = len(set(specificity_key.split()))
+            if (
+                score > best_score
+                or (
+                    abs(score - best_score) < 0.03
+                    and specificity > best_specificity
+                )
+            ):
                 best_product = product
                 best_score = score
+                best_specificity = specificity
                 best_alias = alias
 
         if best_product is None or best_score < 0.72:
