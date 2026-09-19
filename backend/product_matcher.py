@@ -924,6 +924,100 @@ class ProductMatcher:
 
         return self._match_generic(offer, query, started)
 
+    def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
+        """Return compact, JSON-safe identity candidates for diagnostics.
+
+        This is telemetry only: it uses the same central catalog/family data as
+        the matcher and does not change matching decisions.
+        """
+        query = str(query or "").strip()
+        if not query:
+            return []
+
+        normalized_query = catalog_variant_key(query)
+        if not normalized_query:
+            return []
+
+        rows: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+
+        # Catalog candidates use the same lexical scorer as query matching.
+        for product in self.catalog:
+            score, alias = self._query_candidate_score(query, product)
+            if score < 0.55:
+                continue
+            key = product.catalog_id or f"{product.brand}::{product.name}"
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(
+                {
+                    "catalog_id": product.catalog_id,
+                    "brand": product.brand,
+                    "family": product.family_name or product.name,
+                    "variant": product.catalog_variant or product.name,
+                    "canonical_name": product.name,
+                    "confidence": round(min(1.0, score), 4),
+                    "matched_alias": alias or product.name,
+                    "source": "catalog",
+                }
+            )
+
+        # Family-registry candidates are included when the query resolves to a
+        # known family. They are identity knowledge, not a retailer-specific rule.
+        family = self._family_for_query(query)
+        if family is not None:
+            family_name = str(family.get("family_name") or family.get("brand") or "").strip()
+            brand = str(family.get("brand") or "").strip()
+            family_id = str(family.get("family_id") or "").strip()
+            for variant in family.get("variants") or []:
+                canonical = str(variant.get("canonical_name") or "").strip()
+                aliases = variant.get("aliases") or []
+                values = [canonical, *aliases]
+                best = 0.0
+                best_alias = canonical
+                q_tokens = set(normalized_query.split())
+                for value in values:
+                    candidate = catalog_variant_key(value)
+                    if not candidate:
+                        continue
+                    c_tokens = set(candidate.split())
+                    inter = len(q_tokens & c_tokens)
+                    recall = inter / len(c_tokens) if c_tokens else 0.0
+                    precision = inter / len(q_tokens) if q_tokens else 0.0
+                    score = 2 * recall * precision / (recall + precision) if recall + precision else 0.0
+                    if normalized_query == candidate:
+                        score = 1.0
+                    if score > best:
+                        best = score
+                        best_alias = value
+                if best < 0.55:
+                    continue
+                catalog_id = ""
+                identity_key = (normalize(family_id), catalog_variant_key(canonical))
+                product = self._by_identity.get(identity_key)
+                if product is not None:
+                    catalog_id = product.catalog_id
+                key = catalog_id or f"{family_id}::{canonical}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(
+                    {
+                        "catalog_id": catalog_id,
+                        "brand": brand,
+                        "family": family_name,
+                        "variant": canonical,
+                        "canonical_name": canonical,
+                        "confidence": round(min(1.0, best), 4),
+                        "matched_alias": best_alias,
+                        "source": "family_registry",
+                    }
+                )
+
+        rows.sort(key=lambda item: (-float(item.get("confidence") or 0.0), str(item.get("canonical_name") or "")))
+        return rows[:20]
+
     def build_query_scope(self, query: str) -> Dict[str, Any]:
         """Build a catalog-derived scope for the current retailer query.
 
