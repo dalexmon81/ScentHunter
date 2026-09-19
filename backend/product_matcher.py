@@ -616,6 +616,32 @@ class ProductMatcher:
                 return variant
         return None
 
+    @staticmethod
+    def _variant_specificity_key(value: Any, family_brand: Any = "") -> str:
+        """Return identity-bearing variant tokens for specificity comparisons.
+
+        Audience/editorial labels such as "for him", "for her", "men" and
+        "women" describe merchandising context, not the fragrance variant.
+        The family brand is also excluded so a generic family name cannot win
+        a specificity tie merely because it contains the brand token.
+        """
+        text = ProductMatcher._url_catalog_identity_text(value)
+        text = re.sub(
+            r"\b(?:for\s+(?:him|her)|men|women|man|woman|unisex|"
+            r"homme|femme|herren|damen|heren|dames)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        brand_key = catalog_variant_key(family_brand)
+        if brand_key:
+            brand_tokens = set(brand_key.split())
+            text = " ".join(
+                token for token in text.split()
+                if token not in brand_tokens
+            )
+        return re.sub(r"\s+", " ", text).strip()
+
     def _family_variant_for_offer(
         self,
         offer: Dict[str, Any],
@@ -749,10 +775,11 @@ class ProductMatcher:
                     if best_variant_score < 0.72:
                         continue
 
-                    canonical_key = self._url_catalog_identity_text(
-                        variant.get("canonical_name", "")
+                    specificity_key = self._variant_specificity_key(
+                        variant.get("canonical_name", ""),
+                        family.get("brand", ""),
                     )
-                    specificity = len(set(canonical_key.split()))
+                    specificity = len(set(specificity_key.split()))
 
                     if (
                         best_variant_score > url_best_score
@@ -771,8 +798,9 @@ class ProductMatcher:
             # specificity rather than raw confidence.
             name_specificity = -1
             if name_variant is not None:
-                name_key = self._url_catalog_identity_text(
-                    name_variant.get("canonical_name", "")
+                name_key = self._variant_specificity_key(
+                    name_variant.get("canonical_name", ""),
+                    family.get("brand", ""),
                 )
                 name_specificity = len(set(name_key.split()))
 
