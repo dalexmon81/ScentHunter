@@ -1712,7 +1712,9 @@ function renderSearchDiagnostic(){
   lines.push(`PIPELINE: raw ${p.raw_offers} → identity ${p.unique_identity_keys} → pre-merge ${p.groups_before_merge} → post-merge ${p.groups_after_merge} → FINAL ${p.final_groups}`);
   lines.push("");
   lines.push("BOSS / BORN / HAWAS — OFFERTA → IDENTITÀ:");
-  d.relevant.forEach((r,n)=>lines.push(`${n+1}. ${r.raw_name||"?"} | ${r.raw_brand||"?"} | catalog=${r.catalog_id||"—"} | ID=${r.identity_name||"—"} | key=${r.key||"—"} | ${r.store||"?"}`));
+  d.relevant.forEach((r,n)=>lines.push(`${n+1}. ${r.raw_name||"?"} | ${r.raw_brand||"?"} | catalog=${r.catalog_id||"—"} | ID=${r.identity_name||"—"} | key=${r.key||"—"} | ${r.store||"?"} | URL=${r.url||"—"}`));
+  lines.push("");
+  lines.push("LETTURA URL: le URL sopra servono solo a capire se una variante è presente nella sorgente ma ha perso il nome; nessuna logica di ricerca usa questa diagnostica.");
   lines.push("");
   lines.push("GRUPPI PRIMA DEL MERGE:");
   d.groups_before_merge.forEach(g=>lines.push(`- ${g.name} | ${g.catalog_id||"—"} | offerte=${g.offers}`));
