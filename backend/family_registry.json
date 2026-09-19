@@ -128,7 +128,8 @@
         {
           "canonical_name": "Hawas Chrome",
           "aliases": [
-            "Hawas Chrome"
+            "Hawas Chrome",
+            "Hawas for Him Chrome"
           ]
         },
         {
@@ -176,24 +177,6 @@
           "canonical_name": "Hawas Majestic",
           "aliases": [
             "Hawas Majestic"
-          ]
-        },
-        {
-          "canonical_name": "Hawas Overdose",
-          "aliases": [
-            "Hawas Overdose"
-          ]
-        },
-        {
-          "canonical_name": "Hawas Exotic",
-          "aliases": [
-            "Hawas Exotic"
-          ]
-        },
-        {
-          "canonical_name": "Hawas La Mer",
-          "aliases": [
-            "Hawas La Mer"
           ]
         }
       ],
