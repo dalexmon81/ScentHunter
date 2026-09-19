@@ -714,20 +714,17 @@ def _row_from_card(
     ):
         return None
 
-    # The surrounding card context can contain neighbouring products.
-    # Therefore category filtering must use only the candidate's own
-    # resolved product identity, not the polluted parent container.
-    candidate_identity_text = " ".join(
-        value
-        for value in (
-            name,
-            url,
-        )
-        if value
-    )
-
-    if non_fragrance(candidate_identity_text):
-        return None
+    if non_fragrance(
+        context + " " + image
+    ):
+        # A surrounding card may contain text from another product.
+        # The image URL is also checked because some Deloox cards
+        # expose the cosmetic type only in the product image path.
+        # For Born in Roma we already have URL-level exclusion above,
+        # so do not reject a valid product merely because the parent
+        # container contains neighbouring body-product text.
+        if not is_born_in_roma_query(query):
+            return None
 
     lines = [
         clean(x)
@@ -931,6 +928,46 @@ def discover(
         seen_pages.add(r.url)
 
         html = r.text or ""
+
+        # Generic direct-product discovery: Deloox search cards can merge
+        # neighbouring products, so card text is not the only discovery
+        # signal. Collect real /product|produit|producto|prodotto/<id>/ URLs
+        # from the page and use the URL slug itself as a catalog-neutral
+        # relevance signal. This applies to every query, not to one perfume
+        # family. Product-page parsing below supplies the authoritative title,
+        # price, image and availability when the card has no usable data.
+        raw_product_urls = re.findall(
+            r"(?:https?:\\/\\/[^\"'<>\s]+)?/(?:product|produit|producto|prodotto)/\d+/[^\"'<>\s?#]+",
+            html,
+            flags=re.I,
+        )
+
+        for raw in raw_product_urls:
+            raw = raw.replace("\\/", "/")
+            if raw.startswith("/"):
+                url = urljoin(BASE + "/", raw)
+            elif raw.startswith("http"):
+                url = raw
+            else:
+                continue
+
+            url = url.split("#", 1)[0].split("?", 1)[0]
+            if not is_product_url(url):
+                continue
+
+            slug_text = url_slug(url)
+            if not relevant(slug_text, query):
+                continue
+            if excluded_product_slug(url):
+                continue
+
+            # High score because this candidate comes from a real Deloox
+            # product URL, not from polluted surrounding card text.
+            candidates[url] = (
+                max(candidates.get(url, (0, "", ""))[0], 100),
+                slug_text,
+                candidates.get(url, (0, "", ""))[2],
+            )
 
         if born_query:
             # Direct URL extraction. Do NOT depend on <a> structure,
