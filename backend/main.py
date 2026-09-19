@@ -971,7 +971,15 @@ def diagnose_stores(q:str='Liquid Brun'):
     query=str(q or '').strip()
     if not query: return {'ok':False,'query':'','stores':[],'total_count':0,'architecture':APP_VERSION}
     reports=collect_store_reports_isolated(query,STORES); by_store={r['store']:r for r in reports}; ordered=[by_store[s] for s in STORES if s in by_store]
-    return {'ok':True,'architecture':APP_VERSION,'query':query,'stores':ordered,'total_count':sum(r.get('count',0) for r in ordered)}
+    return {'ok':True,'architecture':APP_VERSION,'query':query,'stores':ordered,"total_count": sum(
+    r.get("count", 0)
+    for r in ordered
+),
+"offer_count": sum(
+    r.get("count", 0)
+    for r in ordered
+),
+}
 
 @app.get('/diagnose-sabina')
 def diagnose_sabina(q:str='Liquid Brun'):
