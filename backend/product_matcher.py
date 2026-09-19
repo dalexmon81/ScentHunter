@@ -42,8 +42,15 @@ def normalize_concentration(value: Any) -> str:
 
     patterns = (
         ("eau de parfum intense", "edp_intense"),
+        ("intense eau de parfum", "edp_intense"),
         ("eau de toilette intense", "edt_intense"),
+        ("intense eau de toilette", "edt_intense"),
+        ("edp intense", "edp_intense"),
+        ("intense edp", "edp_intense"),
+        ("edt intense", "edt_intense"),
+        ("intense edt", "edt_intense"),
         ("parfum intense", "parfum_intense"),
+        ("intense parfum", "parfum_intense"),
         ("eau de parfum", "edp"),
         ("eau de toilette", "edt"),
         ("eau de cologne", "edc"),
@@ -1138,8 +1145,15 @@ class ProductMatcher:
         # must avoid.
         concentration_replacements = (
             ("eau de parfum intense", "edp_intense"),
+            ("intense eau de parfum", "edp_intense"),
             ("eau de toilette intense", "edt_intense"),
+            ("intense eau de toilette", "edt_intense"),
+            ("edp intense", "edp_intense"),
+            ("intense edp", "edp_intense"),
+            ("edt intense", "edt_intense"),
+            ("intense edt", "edt_intense"),
             ("parfum intense", "parfum_intense"),
+            ("intense parfum", "parfum_intense"),
             ("eau de parfum", "edp"),
             ("eau de toilette", "edt"),
             ("eau de cologne", "edc"),
