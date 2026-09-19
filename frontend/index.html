@@ -741,6 +741,7 @@ function shNum(o){
 }
 function shGroupData(data){
   const raw=[];
+  const diagEnabled=new URLSearchParams(window.location.search).get("diag")==="1";
 
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
     (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
@@ -1328,6 +1329,16 @@ function shGroupData(data){
 
   const identityScope=Array.isArray(data.identity_scope)?data.identity_scope:[];
   const identities=raw.map(o=>productIdentity(o,identityScope));
+  const diagIdentityRows=diagEnabled?raw.map((o,i)=>({
+    raw_name:String(o?._source_name||o?.raw_name||o?.name||"").trim(),
+    raw_brand:String(o?._source_brand||o?.raw_brand||o?.brand||"").trim(),
+    catalog_id:String(identities[i]?.catalog_id||o?.catalog_id||"").trim(),
+    identity_name:String(identities[i]?.name||"").trim(),
+    identity_brand:String(identities[i]?.brand||"").trim(),
+    key:String(identities[i]?.key||"").trim(),
+    store:String(o?.store||o?._source_store||"").trim(),
+    url:String(o?.url||o?._source_url||"").trim()
+  })):[];
 
   /*
    * Se una riga arriva senza brand, ma un'altra offerta della stessa
@@ -1438,6 +1449,13 @@ function shGroupData(data){
   });
 
   const groups=[...map.values()];
+  const diagGroupsBeforeMerge=diagEnabled?groups.map(g=>({
+    key:productGroupKey(g),
+    catalog_id:String(g.catalog_id||"").trim(),
+    brand:String(g.brand||"").trim(),
+    name:String(g.name||"").trim(),
+    offers:Number(Array.isArray(g.offers)?g.offers.length:0)
+  })):[];
 
   /*
    * RICONCILIAZIONE GENERALE DEI GRUPPI EQUIVALENTI.
@@ -1500,6 +1518,14 @@ function shGroupData(data){
       j--;
     }
   }
+
+  const diagGroupsAfterMerge=diagEnabled?groups.map(g=>({
+    key:productGroupKey(g),
+    catalog_id:String(g.catalog_id||"").trim(),
+    brand:String(g.brand||"").trim(),
+    name:String(g.name||"").trim(),
+    offers:Number(Array.isArray(g.offers)?g.offers.length:0)
+  })):[];
 
   groups.forEach(g=>{
     const bySize=new Map();
@@ -1636,7 +1662,65 @@ function shGroupData(data){
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
-  return groups.filter(g=>g.offers.length);
+  const finalGroups=groups.filter(g=>g.offers.length);
+  if(diagEnabled){
+    const finalKeys=new Set(finalGroups.map(g=>productGroupKey(g)));
+    const relevant=/boss\s+bottled|born\s+in\s+roma|hawas/i;
+    const relevantRows=diagIdentityRows.filter(r=>relevant.test(`${r.raw_brand} ${r.raw_name} ${r.identity_name}`));
+    window.__SH_DIAG_LAST={
+      input:{
+        comparison_groups:Array.isArray(data.comparisons)?data.comparisons.length:0,
+        comparison_offers:Array.isArray(data.comparisons)?data.comparisons.reduce((n,g)=>n+(Array.isArray(g?.offers)?g.offers.length:0),0):0,
+        result_groups:Array.isArray(data.results)?data.results.length:0,
+        result_offers:Array.isArray(data.results)?data.results.reduce((n,g)=>n+(Array.isArray(g?.offers)?g.offers.length:0),0):0,
+        unresolved_offers:Array.isArray(data.unresolved_offers)?data.unresolved_offers.length:0,
+        identity_scope:identityScope.length
+      },
+      pipeline:{
+        raw_offers:raw.length,
+        unique_identity_keys:new Set(identities.map(x=>x?.key).filter(Boolean)).size,
+        groups_before_merge:diagGroupsBeforeMerge.length,
+        groups_after_merge:diagGroupsAfterMerge.length,
+        final_groups:finalGroups.length
+      },
+      relevant:relevantRows,
+      groups_before_merge:diagGroupsBeforeMerge.filter(g=>relevant.test(`${g.brand} ${g.name}`)),
+      groups_after_merge:diagGroupsAfterMerge.filter(g=>relevant.test(`${g.brand} ${g.name}`)),
+      final_groups:finalGroups.filter(g=>relevant.test(`${g.brand} ${g.name}`)).map(g=>({
+        key:productGroupKey(g),catalog_id:String(g.catalog_id||"").trim(),brand:String(g.brand||"").trim(),name:String(g.name||"").trim(),offers:g.offers.length
+      }))
+    };
+  }
+  return finalGroups;
+}
+
+function renderSearchDiagnostic(){
+  if(new URLSearchParams(window.location.search).get("diag")!=="1")return;
+  const d=window.__SH_DIAG_LAST;
+  if(!d)return;
+  let box=document.getElementById("shDiagBox");
+  if(!box){
+    box=document.createElement("pre");
+    box.id="shDiagBox";
+    box.style.cssText="position:fixed;z-index:99999;left:8px;right:8px;bottom:76px;max-height:48vh;overflow:auto;background:#111;color:#fff;border:2px solid #e0aa20;border-radius:12px;padding:10px;font:12px/1.35 monospace;white-space:pre-wrap;box-shadow:0 8px 30px #000";
+    document.body.appendChild(box);
+  }
+  const i=d.input,p=d.pipeline;
+  const lines=[];
+  lines.push("SCENTHUNTER DIAGNOSTICA — SOLO LETTURA");
+  lines.push(`INPUT: comparisons ${i.comparison_groups} gruppi / ${i.comparison_offers} offerte | results ${i.result_groups} gruppi / ${i.result_offers} offerte | unresolved ${i.unresolved_offers} | identity_scope ${i.identity_scope}`);
+  lines.push(`PIPELINE: raw ${p.raw_offers} → identity ${p.unique_identity_keys} → pre-merge ${p.groups_before_merge} → post-merge ${p.groups_after_merge} → FINAL ${p.final_groups}`);
+  lines.push("");
+  lines.push("BOSS / BORN / HAWAS — OFFERTA → IDENTITÀ:");
+  d.relevant.forEach((r,n)=>lines.push(`${n+1}. ${r.raw_name||"?"} | ${r.raw_brand||"?"} | catalog=${r.catalog_id||"—"} | ID=${r.identity_name||"—"} | key=${r.key||"—"} | ${r.store||"?"}`));
+  lines.push("");
+  lines.push("GRUPPI PRIMA DEL MERGE:");
+  d.groups_before_merge.forEach(g=>lines.push(`- ${g.name} | ${g.catalog_id||"—"} | offerte=${g.offers}`));
+  lines.push("GRUPPI DOPO IL MERGE:");
+  d.groups_after_merge.forEach(g=>lines.push(`- ${g.name} | ${g.catalog_id||"—"} | offerte=${g.offers}`));
+  lines.push("FINAL:");
+  d.final_groups.forEach(g=>lines.push(`- ${g.name} | ${g.catalog_id||"—"} | offerte=${g.offers}`));
+  box.textContent=lines.join("\n");
 }
 
 function isNonPerfumeProduct(g){
@@ -2281,6 +2365,7 @@ async function searchPerfume(){
   let data;
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
+   renderSearchDiagnostic();
 
    
 
