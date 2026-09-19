@@ -70,16 +70,23 @@ def _load_product_matcher():
             payload = json.load(handle)
 
         if isinstance(payload, dict):
-            catalog = payload.get('products') or []
+            catalog = payload
+            product_count = len(payload.get("products") or [])
         elif isinstance(payload, list):
             catalog = payload
+            product_count = len(payload)
         else:
             catalog = []
+            product_count = 0
 
-        if not catalog:
+        if not product_count:
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
             return None
 
+        # Pass the complete catalog payload, not only products.  The central
+        # matcher needs the catalog variants as part of the identity source of
+        # truth so aliases/sizes defined under product_catalog.json are not
+        # silently discarded.
         return ProductMatcher(catalog=catalog)
     except Exception as exc:
         print(
@@ -365,7 +372,19 @@ def _public_offer(item):
     """
     Return only commercial retailer data.
     """
+    canonical_name = item.get("canonical_name") or item.get("name") or item.get("title")
+    canonical_brand = item.get("brand") or item.get("canonical_brand") or item.get("manufacturer")
+
     return {
+        # Canonical identity is deliberately repeated on every public offer.
+        # The frontend can therefore flatten offers without losing the product
+        # identity that the central matcher already resolved.
+        "catalog_id": item.get("catalog_id"),
+        "brand": canonical_brand,
+        "name": canonical_name,
+        "canonical_name": item.get("canonical_name") or canonical_name,
+        "family": item.get("family"),
+        "variant": item.get("variant"),
         "store": item.get("store"),
         "shop": item.get("shop"),
         "price": item.get("price"),
@@ -411,11 +430,13 @@ def _aggregate_identity_results(offers):
                 groups[catalog_id] = {
                     "catalog_id": catalog_id,
                     "brand": offer.get("brand"),
+                    "name": offer.get("canonical_name") or offer.get("name"),
                     "family": offer.get("family"),
                     "variant": offer.get("variant"),
                     "canonical_name": offer.get(
                         "canonical_name"
                     ),
+                    "image": offer.get("image") or offer.get("image_url"),
                     "offers": [],
                 }
 
