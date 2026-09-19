@@ -359,6 +359,91 @@ class ProductMatcher:
                 self._by_gtin.setdefault(value, []).append(product)
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
+                self._build_catalog_identity_indexes()
+
+        def _build_catalog_identity_indexes(self) -> None:
+        """
+        Build identity indexes exclusively from product_catalog.json.
+
+        family_registry is intentionally not used as an identity source.
+        """
+        self.products_by_id = {}
+        self.alias_index = {}
+        self.brand_index = {}
+        self.family_index = {}
+
+        for product in getattr(self, "catalog_products", []):
+            if not isinstance(product, dict):
+                continue
+
+            catalog_id = str(
+                product.get("catalog_id")
+                or product.get("id")
+                or product.get("product_id")
+                or ""
+            ).strip()
+
+            if not catalog_id:
+                continue
+
+            self.products_by_id[catalog_id] = product
+
+            brand = self._normalize_text(
+                product.get("brand")
+                or product.get("brand_name")
+                or ""
+            )
+
+            family = self._normalize_text(
+                product.get("family")
+                or product.get("line")
+                or ""
+            )
+
+            if brand:
+                self.brand_index.setdefault(
+                    brand,
+                    set(),
+                ).add(catalog_id)
+
+            if family:
+                self.family_index.setdefault(
+                    family,
+                    set(),
+                ).add(catalog_id)
+
+            aliases = []
+
+            canonical_name = product.get(
+                "canonical_name"
+            )
+
+            if canonical_name:
+                aliases.append(canonical_name)
+
+            raw_aliases = (
+                product.get("aliases")
+                or product.get("alias")
+                or []
+            )
+
+            if isinstance(raw_aliases, str):
+                raw_aliases = [raw_aliases]
+
+            aliases.extend(raw_aliases)
+
+            for alias in aliases:
+                alias_text = self._normalize_text(
+                    alias
+                )
+
+                if not alias_text:
+                    continue
+
+                self.alias_index.setdefault(
+                    alias_text,
+                    set(),
+                ).add(catalog_id)
 
     @staticmethod
     def _normalize_family_registry(
