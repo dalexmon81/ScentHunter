@@ -764,6 +764,22 @@ class ProductMatcher:
                 if not url_tokens:
                     continue
 
+                # Retailer URL slugs frequently append non-identity commerce
+                # tokens such as size, spray and copy markers. Keep the raw
+                # token set for strict identity matching, but also evaluate a
+                # noise-reduced set so an exact variant is not penalized by
+                # ``...-100-ml-copy`` style URL suffixes.
+                url_identity_tokens = {
+                    token
+                    for token in url_tokens
+                    if token not in {
+                        "ml", "cl", "spray", "copy", "refill",
+                    }
+                    and not token.isdigit()
+                }
+                if not url_identity_tokens:
+                    url_identity_tokens = url_tokens
+
                 for variant in family["variants"]:
                     best_variant_score = 0.0
 
@@ -776,23 +792,32 @@ class ProductMatcher:
                         if not alias_tokens:
                             continue
 
-                        intersection = len(alias_tokens & url_tokens)
-                        if not intersection:
-                            continue
+                        # Score both the raw URL and the noise-reduced URL.
+                        # The latter handles normal retailer URL suffixes without
+                        # introducing any retailer-specific rule.
+                        best_alias_score = 0.0
+                        for candidate_url_tokens in (url_tokens, url_identity_tokens):
+                            intersection = len(alias_tokens & candidate_url_tokens)
+                            if not intersection:
+                                continue
 
-                        recall = intersection / len(alias_tokens)
-                        precision = intersection / len(url_tokens)
-                        f_score = (
-                            2 * recall * precision / (recall + precision)
-                            if recall + precision
-                            else 0.0
-                        )
+                            recall = intersection / len(alias_tokens)
+                            precision = intersection / len(candidate_url_tokens)
+                            f_score = (
+                                2 * recall * precision / (recall + precision)
+                                if recall + precision
+                                else 0.0
+                            )
+                            best_alias_score = max(best_alias_score, f_score)
+
+                        if not best_alias_score:
+                            continue
 
                         # Token F1 deliberately rewards the most specific alias
                         # present in the slug. A short family name must not receive
                         # an artificial boost merely because it is a contiguous
                         # substring of a longer variant URL.
-                        best_variant_score = max(best_variant_score, f_score)
+                        best_variant_score = max(best_variant_score, best_alias_score)
 
                     if best_variant_score < 0.72:
                         continue
@@ -819,6 +844,7 @@ class ProductMatcher:
             # name that is already more specific. Compare identity-token
             # specificity rather than raw confidence.
             name_specificity = -1
+            name_url_score = 0.0
             if name_variant is not None:
                 name_key = self._variant_specificity_key(
                     name_variant.get("canonical_name", ""),
@@ -826,7 +852,55 @@ class ProductMatcher:
                 )
                 name_specificity = len(set(name_key.split()))
 
+                # Measure how well the URL actually supports the variant
+                # selected from the display name. This lets strong URL evidence
+                # replace a contaminated retailer title without hard-coding a
+                # retailer or product.
+                for raw_url in self._offer_url_identity_texts(offer):
+                    url_parts = [part for part in raw_url.split("/") if part]
+                    for raw_url_part in ([url_parts[-1]] if url_parts else []) + [raw_url]:
+                        url_key = self._url_identity_text(raw_url_part)
+                        if not url_key:
+                            continue
+                        brand_key = catalog_norm(family.get("brand", ""))
+                        if brand_key:
+                            url_key = re.sub(
+                                rf"\b{re.escape(brand_key)}\b", " ", url_key, flags=re.I
+                            )
+                            url_key = re.sub(r"\s+", " ", url_key).strip()
+                        raw_tokens = set(url_key.split())
+                        identity_tokens = {
+                            token for token in raw_tokens
+                            if token not in {"ml", "cl", "spray", "copy", "refill"}
+                            and not token.isdigit()
+                        } or raw_tokens
+                        for alias in name_variant.get("aliases", ()):
+                            alias_tokens = set(self._url_catalog_identity_text(alias).split())
+                            if not alias_tokens:
+                                continue
+                            for candidate_tokens in (raw_tokens, identity_tokens):
+                                inter = len(alias_tokens & candidate_tokens)
+                                if not inter:
+                                    continue
+                                rec = inter / len(alias_tokens)
+                                prec = inter / len(candidate_tokens)
+                                if rec + prec:
+                                    name_url_score = max(name_url_score, 2 * rec * prec / (rec + prec))
+
+            # A retailer can expose a generic/wrong display name while the
+            # canonical product URL contains the exact variant.  When URL
+            # evidence is very strong, it must be allowed to override an
+            # equally-specific name variant; otherwise cases such as
+            # ``Hawas for Him`` + a ``hawas-malibu`` URL remain contaminated.
+            # This is generic family-level logic: no retailer or product is
+            # hard-coded here.
             if name_variant is None or (
+                url_best_score >= 0.72
+                and url_best_score - name_url_score >= 0.20
+            ) or (
+                url_best_score >= 0.90
+                and url_best_specificity >= name_specificity
+            ) or (
                 url_best_specificity > name_specificity
                 and url_best_score >= 0.72
             ):
@@ -1593,6 +1667,14 @@ class ProductMatcher:
         }
 
     def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
+        """Resolve a generic offer with identifiers, name evidence and URL identity.
+
+        Retailer display names are not authoritative: a product card can carry a
+        shortened or neighbouring-product name while the product URL contains the
+        exact variant. URL evidence is therefore used generically across the
+        catalog, with specificity tie-breaking, before accepting a weaker text
+        match. No retailer- or product-specific rule is used here.
+        """
         gtin = identifier(offer, self.GTIN_KEYS)
         if gtin in self._by_gtin and len(self._by_gtin[gtin]) == 1:
             return self._by_gtin[gtin][0], "gtin", 1.0
@@ -1610,20 +1692,77 @@ class ProductMatcher:
         if not name:
             return None, "none", 0.0
 
-        best_product: Optional[CatalogProduct] = None
-        best_score = 0.0
-        best_method = "none"
-
+        eligible = []
+        normalized_brand = normalize(brand)
         for product in self.catalog:
-            score = self._text_score(brand, name, product)
-            if score > best_score:
-                best_product = product
-                best_score = score
-                best_method = "exact_name" if score >= 0.94 else "token_score"
+            if normalized_brand and product.normalized_brand:
+                product_brand = normalize(product.brand)
+                if (
+                    normalized_brand != product_brand
+                    and normalized_brand not in product_brand
+                    and product_brand not in normalized_brand
+                ):
+                    continue
+            eligible.append(product)
 
-        if best_product is None or best_score < 0.86:
-            return None, "none", best_score
-        return best_product, best_method, best_score
+        # First resolve the strongest textual candidate for the fallback path.
+        best_text_product: Optional[CatalogProduct] = None
+        best_text_score = 0.0
+        best_text_specificity = -1
+        for product in eligible:
+            score = self._text_score(brand, name, product)
+            specificity = len(
+                set(self._variant_specificity_key(product.name, product.brand).split())
+            )
+            if (
+                score > best_text_score
+                or (
+                    abs(score - best_text_score) < 0.03
+                    and specificity > best_text_specificity
+                )
+            ):
+                best_text_product = product
+                best_text_score = score
+                best_text_specificity = specificity
+
+        # URL evidence is independent of retailer and can discover a stronger
+        # catalog identity than the scraped name. This is what prevents a
+        # generic ``Boss Bottled`` display name from defeating a
+        # ``bottled-beyond-intense`` URL.
+        best_url_product: Optional[CatalogProduct] = None
+        best_url_score = 0.0
+        best_url_specificity = -1
+        for product in eligible:
+            score, _alias = self._url_candidate_score(offer, product)
+            specificity = len(
+                set(self._variant_specificity_key(product.name, product.brand).split())
+            )
+            if (
+                score > best_url_score
+                or (
+                    abs(score - best_url_score) < 0.03
+                    and specificity > best_url_specificity
+                )
+            ):
+                best_url_product = product
+                best_url_score = score
+                best_url_specificity = specificity
+
+        if best_url_product is not None and best_url_score >= 0.72:
+            # Strong URL identity wins when it is more specific than the text
+            # candidate, or when the URL itself is materially stronger.
+            if (
+                best_text_product is None
+                or best_url_specificity > best_text_specificity
+                or best_url_score - best_text_score >= 0.12
+            ):
+                return best_url_product, "url_identity", best_url_score
+
+        if best_text_product is None or best_text_score < 0.86:
+            return None, "none", best_text_score
+        return best_text_product, (
+            "exact_name" if best_text_score >= 0.94 else "token_score"
+        ), best_text_score
 
     @staticmethod
     def _text_score(
