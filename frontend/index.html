@@ -1531,6 +1531,56 @@ function shGroupData(data){
     }
 
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
+
+    // Provenienza immagine: l'immagine deve appartenere a un'offerta la cui
+    // identità sorgente è compatibile con il gruppo. Gli scraper possono
+    // occasionalmente associare la thumbnail di una scheda vicina a un nome
+    // diverso; in quel caso non propaghiamo l'immagine sbagliata al gruppo.
+    // Il controllo è generale e non dipende da marca/prodotto specifici.
+    const imageCandidates=(g.offers||[]).filter(o=>{
+      const image=o?.image||o?.image_url||o?.thumbnail||"";
+      if(!image)return false;
+
+      const sourceBrand=normalizePerfumeName(o?._source_brand||o?.brand||"");
+      const sourceName=normalizePerfumeName(o?._source_name||o?.name||"");
+      const groupBrand=normalizePerfumeName(g.brand||"");
+      const groupName=normalizePerfumeName(g.name||"");
+
+      const brandOk=!sourceBrand||!groupBrand||sourceBrand===groupBrand;
+      const nameOk=!sourceName||!groupName||samePerfume(
+        {name:sourceName},
+        {name:groupName}
+      );
+
+      return brandOk&&nameOk;
+    });
+
+    g.image=imageCandidates.length
+      ? (imageCandidates[0].image||imageCandidates[0].image_url||imageCandidates[0].thumbnail||"")
+      : "";
+  });
+
+  // Dopo le fusioni di gruppi equivalenti ricalcoliamo sempre l'immagine
+  // dalla provenienza verificata delle offerte finali. Evita che una
+  // thumbnail rimasta dal gruppo sorgente venga ereditata dal gruppo target.
+  groups.forEach(g=>{
+    const candidates=(g.offers||[]).filter(o=>{
+      const image=o?.image||o?.image_url||o?.thumbnail||"";
+      if(!image)return false;
+      const sourceBrand=normalizePerfumeName(o?._source_brand||o?.brand||"");
+      const sourceName=normalizePerfumeName(o?._source_name||o?.name||"");
+      const groupBrand=normalizePerfumeName(g.brand||"");
+      const groupName=normalizePerfumeName(g.name||"");
+      const brandOk=!sourceBrand||!groupBrand||sourceBrand===groupBrand;
+      const nameOk=!sourceName||!groupName||samePerfume(
+        {name:sourceName},
+        {name:groupName}
+      );
+      return brandOk&&nameOk;
+    });
+    g.image=candidates.length
+      ? (candidates[0].image||candidates[0].image_url||candidates[0].thumbnail||"")
+      : "";
   });
 
   // Ordine dei risultati visualizzati:
