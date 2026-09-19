@@ -80,10 +80,7 @@ def _load_product_matcher():
             print('PRODUCT_MATCHER: catalog empty; identity matching disabled', flush=True)
             return None
 
-        # The complete catalog payload is the single source of truth for
-        # product identity. Passing the full payload (not only products)
-        # also gives the central matcher access to variant aliases and sizes.
-        return ProductMatcher(catalog=payload)
+        return ProductMatcher(catalog=catalog)
     except Exception as exc:
         print(
             f'PRODUCT_MATCHER_INIT_ERROR: {type(exc).__name__}: {exc}',
@@ -95,143 +92,238 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _apply_product_identity(result, query=''):
+def _prepare_raw_offer(result):
     """
-    Resolve a retailer offer through the central ProductMatcher.
+    Normalize only technical/commercial retailer fields.
 
-    PRODUCT CATALOG -> canonical identity -> CENTRAL MATCHER -> FRONTEND
-
-    The matcher is the only component allowed to choose the canonical
-    product identity. If an offer cannot be resolved, the raw offer is
-    preserved so identity resolution can never reduce a valid retailer
-    result set. Non-fragrance listings are still rejected by the central
-    category gate.
+    This function must not assign catalog identity.
+    The retailer name remains RAW in _raw_name.
     """
-    if PRODUCT_MATCHER is None or not isinstance(result, dict):
-        return result
-
-    raw_name = str(result.get('name') or result.get('title') or '').strip()
-    raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
-
-    try:
-        if PRODUCT_MATCHER._is_non_fragrance_offer(result):
-            print(
-                f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
-                f'name={raw_name!r} brand={raw_brand!r}',
-                flush=True,
-            )
-            return None
-
-        matched = PRODUCT_MATCHER.match(result, str(query or '').strip())
-
-        # Never discard a valid scraper offer only because the catalog has
-        # not learned that retailer naming yet. The matcher decides identity;
-        # unresolved offers remain raw rather than disappearing.
-        if matched is None:
-            print(
-                f'PRODUCT_MATCHER_UNRESOLVED_PRESERVED: '
-                f'query={query!r} name={raw_name!r} brand={raw_brand!r}',
-                flush=True,
-            )
-            return result
-
-        if not isinstance(matched, dict):
-            return result
-
-        normalized = dict(matched)
-
-        # Keep the original retailer fields for diagnostics/provenance.
-        if raw_name:
-            normalized['_source_name'] = raw_name
-        if raw_brand:
-            normalized['_source_brand'] = raw_brand
-
-        canonical_name = str(
-            normalized.get('canonical_name')
-            or normalized.get('catalog_variant')
-            or raw_name
-        ).strip()
-        canonical_brand = str(
-            normalized.get('canonical_brand')
-            or normalized.get('brand')
-            or raw_brand
-        ).strip()
-
-        if canonical_name:
-            # Frontend grouping must use the catalog identity, never the
-            # retailer's spelling. Example:
-            # "Bottled Infinite" -> "Boss Bottled Infinite".
-            normalized['name'] = canonical_name
-        if canonical_brand:
-            normalized['brand'] = canonical_brand
-
-        return normalized
-
-    except Exception as exc:
-        print(
-            f'PRODUCT_MATCHER_IDENTITY_ERROR: '
-            f'{type(exc).__name__}: {exc} '
-            f'query={query!r} name={raw_name!r}',
-            flush=True,
-        )
-        return result
-
-def clean_result(item, store, query=''):
-    result = dict(item)
-    machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
-
-    # EASY COSMETIC ONLY:
-    # Easycosmetic sometimes returns its account/login entry "Anmelden"
-    # as a result card. It is not a product and its card cannot be opened.
-    # Deliberately match ONLY this exact entry and ONLY this store.
-    if machine_store == 'easycosmetic':
-        easycosmetic_name = str(
-            result.get('name') or result.get('title') or ''
-        ).strip().lower()
-        if easycosmetic_name == 'anmelden':
-            return None
-
-    # HAWAS P1: remove ParfumCity Hawas samples only.
-    raw_name = str(result.get('name') or result.get('title') or '').strip().lower()
-    if machine_store == 'parfumcity' and 'hawas' in raw_name and 'sample' in raw_name:
+    if not isinstance(result, dict):
         return None
 
-    # HAWAS P3: retailer gender suffixes are naming noise for the same
-    # Hawas variant. Normalize only a trailing Dames/Heren/Damen/Herren.
-    if 'hawas' in raw_name:
-        result_name = str(result.get('name') or result.get('title') or '').strip()
-        result_name = re.sub(
-            r'\s+(?:dames|heren|damen|herren)$',
-            '',
-            result_name,
-            flags=re.IGNORECASE,
+    output = dict(result)
+
+    raw_name = str(
+        output.get("name")
+        or output.get("title")
+        or ""
+    ).strip()
+
+    raw_brand = str(
+        output.get("brand")
+        or output.get("manufacturer")
+        or ""
+    ).strip()
+
+    output["_raw_name"] = raw_name
+    output["_raw_brand"] = raw_brand
+
+    return output
+
+
+def _resolve_offer_identity(result, query):
+    """
+    Resolve one RAW retailer offer through the central ProductMatcher.
+
+    Possible outcomes:
+    - matched: catalog identity assigned;
+    - rejected: definitely not relevant;
+    - unresolved: preserve the commercial offer without inventing identity.
+    """
+    if not isinstance(result, dict):
+        return None
+
+    output = dict(result)
+
+    if PRODUCT_MATCHER is None:
+        output["_match_status"] = "unresolved"
+        output["catalog_id"] = None
+        output["canonical_name"] = None
+        return output
+
+    try:
+        if PRODUCT_MATCHER._is_non_fragrance_offer(output):
+            print(
+                "PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: "
+                f"name={output.get('_raw_name', '')!r} "
+                f"brand={output.get('_raw_brand', '')!r}",
+                flush=True,
+            )
+            return None
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
         )
-        if result_name:
-            result['name'] = result_name
 
-    # P4: ParfumCity keeps its product image inside source.image instead of
-    # exposing it at the top level. The frontend reads the top-level image
-    # field when selecting the group's representative image. Promote ONLY
-    # ParfumCity's existing source.image; never invent or fetch a new image.
-    if machine_store == 'parfumcity' and not result.get('image'):
-        source = result.get('source')
-        if isinstance(source, dict) and source.get('image'):
-            result['image'] = source.get('image')
+    try:
+        query_scope = PRODUCT_MATCHER.build_query_scope(query)
 
-    result['store'] = STORE_LABELS.get(machine_store, machine_store)
-    result['shop'] = STORE_LABELS.get(machine_store, machine_store)
-    if 'available' not in result and 'in_stock' in result: result['available'] = bool(result.get('in_stock'))
-    if result.get('size_ml') in (None, ''):
-        for key in ('volume_ml','format_ml','size'):
+        match = PRODUCT_MATCHER.match_offer(
+            offer=output,
+            query_scope=query_scope,
+        )
+    except AttributeError:
+        # Temporary compatibility fallback while product_matcher.py
+        # is being migrated to the new interface.
+        output["_match_status"] = "unresolved"
+        output["catalog_id"] = None
+        output["canonical_name"] = None
+        output["_match_error"] = "new_matcher_interface_missing"
+        return output
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_MATCH_ERROR: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        output["_match_status"] = "unresolved"
+        output["catalog_id"] = None
+        output["canonical_name"] = None
+        output["_match_error"] = f"{type(exc).__name__}: {exc}"
+        return output
+
+    if not isinstance(match, dict):
+        output["_match_status"] = "unresolved"
+        output["catalog_id"] = None
+        output["canonical_name"] = None
+        return output
+
+    status = str(
+        match.get("status") or "unresolved"
+    ).strip().lower()
+
+    if status == "rejected":
+        print(
+            "PRODUCT_MATCHER_REJECT: "
+            f"name={output.get('_raw_name', '')!r} "
+            f"reason={match.get('reject_reason')!r}",
+            flush=True,
+        )
+        return None
+
+    output["_match_status"] = status
+
+    if status == "matched":
+        output["catalog_id"] = match.get("catalog_id")
+        output["brand"] = match.get("brand")
+        output["family"] = match.get("family")
+        output["variant"] = match.get("variant")
+        output["canonical_name"] = match.get("canonical_name")
+        output["match_confidence"] = match.get("confidence")
+        output["matched_alias"] = match.get("matched_alias")
+    else:
+        output["catalog_id"] = None
+        output["brand"] = None
+        output["family"] = None
+        output["variant"] = None
+        output["canonical_name"] = None
+
+    return output
+
+def clean_result(item, store):
+    """
+    Normalize retailer/commercial data only.
+
+    No catalog identity is assigned here.
+    """
+    if not isinstance(item, dict):
+        return None
+
+    result = dict(item)
+
+    machine_store = _normalise_store(
+        result.get("store") or result.get("shop"),
+        store,
+    )
+
+    raw_name = str(
+        result.get("name")
+        or result.get("title")
+        or ""
+    ).strip()
+
+    raw_brand = str(
+        result.get("brand")
+        or result.get("manufacturer")
+        or ""
+    ).strip()
+
+    # Preserve retailer values before any harmless technical cleanup.
+    result["_raw_name"] = raw_name
+    result["_raw_brand"] = raw_brand
+
+    # Easycosmetic login entry is not a product.
+    if machine_store == "easycosmetic":
+        if raw_name.lower() == "anmelden":
+            return None
+
+    # Keep the existing narrow Hawas sample exclusion.
+    if (
+        machine_store == "parfumcity"
+        and "hawas" in raw_name.lower()
+        and "sample" in raw_name.lower()
+    ):
+        return None
+
+    # Keep retailer naming cleanup only as RAW-name cleanup.
+    # It does not create canonical identity.
+    cleaned_name = raw_name
+
+    if "hawas" in cleaned_name.lower():
+        cleaned_name = re.sub(
+            r"\s+(?:dames|heren|damen|herren)$",
+            "",
+            cleaned_name,
+            flags=re.IGNORECASE,
+        ).strip()
+
+    if cleaned_name:
+        result["name"] = cleaned_name
+
+    # Preserve the original source image behavior.
+    if machine_store == "parfumcity" and not result.get("image"):
+        source = result.get("source")
+        if isinstance(source, dict) and source.get("image"):
+            result["image"] = source.get("image")
+
+    result["store"] = STORE_LABELS.get(
+        machine_store,
+        machine_store,
+    )
+    result["shop"] = STORE_LABELS.get(
+        machine_store,
+        machine_store,
+    )
+
+    if "available" not in result and "in_stock" in result:
+        result["available"] = bool(result.get("in_stock"))
+
+    if result.get("size_ml") in (None, ""):
+        for key in ("volume_ml", "format_ml", "size"):
             value = result.get(key)
-            if value not in (None, ''):
-                parsed = _safe_float(value)
-                if parsed is not None:
-                    result['size_ml'] = parsed; break
-    if 'price_num' not in result:
-        parsed = _safe_float(result.get('price'))
-        if parsed is not None: result['price_num'] = parsed
-    return _apply_product_identity(result, query)
+
+            if value in (None, ""):
+                continue
+
+            parsed = _safe_float(value)
+
+            if parsed is not None:
+                result["size_ml"] = parsed
+                break
+
+    if "price_num" not in result:
+        parsed = _safe_float(result.get("price"))
+
+        if parsed is not None:
+            result["price_num"] = parsed
+
+    result = _prepare_raw_offer(result)
+
+    return result
+
 
 def _is_hawas_query(query):
     return 'hawas' in str(query or '').strip().lower()
@@ -269,6 +361,94 @@ def sort_results(results):
         return rank, price if price is not None else 999999.0
     return sorted(results, key=key)
 
+def _public_offer(item):
+    """
+    Return only commercial retailer data.
+    """
+    return {
+        "store": item.get("store"),
+        "shop": item.get("shop"),
+        "price": item.get("price"),
+        "price_num": item.get("price_num"),
+        "format": item.get("format"),
+        "size_ml": item.get("size_ml"),
+        "url": item.get("url") or item.get("product_url"),
+        "image": item.get("image") or item.get("image_url"),
+        "available": item.get("available"),
+        "raw_name": item.get("_raw_name")
+            or item.get("name")
+            or item.get("title"),
+        "raw_brand": item.get("_raw_brand")
+            or item.get("brand")
+            or item.get("manufacturer"),
+    }
+
+
+def _aggregate_identity_results(offers):
+    """
+    Group matched offers by catalog_id.
+
+    Unresolved offers are preserved separately.
+    """
+    groups = {}
+    unresolved = []
+
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+
+        status = str(
+            offer.get("_match_status")
+            or "unresolved"
+        ).lower()
+
+        if status == "matched" and offer.get("catalog_id"):
+            catalog_id = str(
+                offer.get("catalog_id")
+            ).strip()
+
+            if catalog_id not in groups:
+                groups[catalog_id] = {
+                    "catalog_id": catalog_id,
+                    "brand": offer.get("brand"),
+                    "family": offer.get("family"),
+                    "variant": offer.get("variant"),
+                    "canonical_name": offer.get(
+                        "canonical_name"
+                    ),
+                    "offers": [],
+                }
+
+            groups[catalog_id]["offers"].append(
+                _public_offer(offer)
+            )
+
+        elif status == "unresolved":
+            unresolved.append(
+                _public_offer(offer)
+            )
+
+    result = list(groups.values())
+
+    for group in result:
+        group["offers"] = sorted(
+            group["offers"],
+            key=lambda item: (
+                item.get("price_num")
+                if item.get("price_num") is not None
+                else 999999.0
+            ),
+        )
+
+    result.sort(
+        key=lambda group: (
+            group.get("canonical_name")
+            or ""
+        ).lower()
+    )
+
+    return result, unresolved
+
 def _empty_report(store, status='error', elapsed=0.0, error=None):
     return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error}
 
@@ -283,7 +463,27 @@ def run_store(store, query):
         if store=='parfumzentrum' and not raw:
             time.sleep(.25); raw=search(query)
         rows=[] if raw is None else list(raw) if not isinstance(raw, list) else raw
-        cleaned=[cleaned for x in rows if isinstance(x,dict) for cleaned in [clean_result(x,store,query)] if cleaned is not None]
+        cleaned = []
+
+for item in rows:
+    if not isinstance(item, dict):
+        continue
+
+    prepared = clean_result(item, store)
+
+    if prepared is None:
+        continue
+
+    resolved = _resolve_offer_identity(
+        prepared,
+        query,
+    )
+
+    if resolved is None:
+        continue
+
+    cleaned.append(resolved)
+
         return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':round(time.monotonic()-started,3),'count':len(cleaned),'results':cleaned,'error':None}
     except Exception as exc:
         traceback.print_exc()
@@ -363,12 +563,31 @@ def _run_store_subprocess(store, query, on_result=None):
             except json.JSONDecodeError: continue
             if not isinstance(event,dict): continue
             kind=event.get('event')
-            if kind=='result' and isinstance(event.get('row'),dict):
-                row=clean_result(event['row'],store,query)
-                if row is None:
-                    continue
-                rows.append(row)
-                if callable(on_result): on_result(row)
+            if kind == "result" and isinstance(
+    event.get("row"),
+    dict,
+):
+    prepared = clean_result(
+        event["row"],
+        store,
+    )
+
+    if prepared is None:
+        continue
+
+    resolved = _resolve_offer_identity(
+        prepared,
+        query,
+    )
+
+    if resolved is None:
+        continue
+
+    rows.append(resolved)
+
+    if callable(on_result):
+        on_result(resolved)
+
             elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
         rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
         if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
@@ -428,38 +647,178 @@ JOBS={}; JOBS_LOCK=threading.Lock()
 
 def _new_job(query):
     job_id=uuid.uuid4().hex
-    with JOBS_LOCK: JOBS[job_id]={'job_id':job_id,'query':query,'started_at':time.time(),'completed':False,'results':[],'comparisons':[],'errors':{},'stores':{}}
+    with JOBS_LOCK: JOBS[job_id] = {
+    "job_id": job_id,
+    "query": query,
+    "started_at": time.time(),
+    "completed": False,
+
+    # Individual deduplicated commercial offers.
+    "offers": [],
+
+    # Canonical grouped products exposed by the API.
+    "results": [],
+
+    # Offers that were not identifiable with enough certainty.
+    "unresolved_offers": [],
+
+    "comparisons": [],
+    "errors": {},
+    "stores": {},
+}
+
     return job_id
 
 def _snapshot(job_id):
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job: return {'job_id':job_id,'query':'','completed':True,'status':'completed','count':0,'results':[],'comparisons':[],'errors':{'job':'job_not_found'},'stores':{}}
-        return {'job_id':job['job_id'],'query':job['query'],'completed':job['completed'],'status':'completed' if job['completed'] else 'searching','count':len(job['results']),'results':list(job['results']),'comparisons':list(job['comparisons']),'errors':dict(job['errors']),'stores':dict(job['stores'])}
+        job = JOBS.get(job_id)
 
-def _publish_result(job_id,row):
+        if not job:
+            return {
+                "job_id": job_id,
+                "query": "",
+                "completed": True,
+                "status": "completed",
+                "count": 0,
+                "offer_count": 0,
+                "results": [],
+                "unresolved_offers": [],
+                "comparisons": [],
+                "errors": {
+                    "job": "job_not_found"
+                },
+                "stores": {},
+            }
+
+        results = list(
+            job.get("results", [])
+        )
+
+        offers = list(
+            job.get("offers", [])
+        )
+
+        return {
+            "job_id": job["job_id"],
+            "query": job["query"],
+            "completed": job["completed"],
+            "status": (
+                "completed"
+                if job["completed"]
+                else "searching"
+            ),
+            "count": len(results),
+            "offer_count": len(offers),
+            "results": results,
+            "unresolved_offers": list(
+                job.get("unresolved_offers", [])
+            ),
+            "comparisons": list(
+                job.get("comparisons", [])
+            ),
+            "errors": dict(
+                job.get("errors", {})
+            ),
+            "stores": dict(
+                job.get("stores", {})
+            ),
+        }
+
+
+def _publish_result(job_id, row):
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job or job.get('completed'): return
-        clean=clean_result(row,row.get('store') or row.get('shop') or '',job.get('query') if isinstance(job, dict) else '')
-        if clean is None or not _keep_hawas_result(clean, job.get('query')):
+        job = JOBS.get(job_id)
+
+        if not job or job.get("completed"):
             return
-        job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
-    print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
-def _publish_store(job_id,report):
-    with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job or job.get('completed'): return
-        store=report['store']; job['stores'][store]={'status':report['status'],'elapsed':report['elapsed'],'count':report['count']}
-        if report.get('error'): job['errors'][store]=report['error']
-        if report.get('results'):
-            job['results'].extend(
-                x for x in report['results']
-                if _keep_hawas_result(x, job.get('query'))
+        if not isinstance(row, dict):
+            return
+
+        if not _keep_hawas_result(
+            row,
+            job.get("query"),
+        ):
+            return
+
+        job.setdefault("offers", [])
+        job["offers"].append(row)
+        job["offers"] = dedupe_results(
+            job["offers"]
+        )
+
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
             )
-        job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
-    print(f"SEARCH PUBLISH job={job_id} store={store} count={report.get('count')} total={total}",flush=True)
+        )
+
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+
+        print(
+            "SEARCH PUBLISH RESULT "
+            f"job={job_id} "
+            f"store={row.get('store')} "
+            f"groups={len(grouped)} "
+            f"offers={len(job['offers'])}",
+            flush=True,
+        )
+
+
+def _publish_store(job_id, report):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+
+        if not job or job.get("completed"):
+            return
+
+        store = report["store"]
+
+        job["stores"][store] = {
+            "status": report["status"],
+            "elapsed": report["elapsed"],
+            "count": report["count"],
+        }
+
+        if report.get("error"):
+            job["errors"][store] = report["error"]
+
+        for item in report.get("results", []):
+            if not isinstance(item, dict):
+                continue
+
+            if not _keep_hawas_result(
+                item,
+                job.get("query"),
+            ):
+                continue
+
+            job.setdefault("offers", [])
+            job["offers"].append(item)
+
+        job["offers"] = dedupe_results(
+            job.get("offers", [])
+        )
+
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
+            )
+        )
+
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+
+        print(
+            "SEARCH PUBLISH "
+            f"job={job_id} "
+            f"store={store} "
+            f"groups={len(grouped)} "
+            f"offers={len(job['offers'])}",
+            flush=True,
+        )
+
 
 def _collect_streaming_for_job(job_id,query,stores):
     reports={}; lock=threading.Lock(); threads=[]
@@ -478,9 +837,36 @@ def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
     collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if job:
-            job['results']=sort_results(dedupe_results(job['results'])); job['completed']=True; job['elapsed']=round(time.monotonic()-started,3); elapsed=job['elapsed']; total=len(job['results'])
+    job = JOBS.get(job_id)
+
+    if job:
+        job["offers"] = dedupe_results(
+            job.get("offers", [])
+        )
+
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
+            )
+        )
+
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+        job["completed"] = True
+        job["elapsed"] = round(
+            time.monotonic() - started,
+            3,
+        )
+
+        elapsed = job["elapsed"]
+        total = len(job["results"])
+    else:
+        elapsed = round(
+            time.monotonic() - started,
+            3,
+        )
+        total = 0
+
         else: elapsed=round(time.monotonic()-started,3); total=0
     print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
 
@@ -506,14 +892,73 @@ def search_status_path(job_id:str): return _snapshot(job_id)
 @app.get('/search-status')
 def search_status_query(job_id:str): return _snapshot(job_id)
 
-@app.get('/search')
-def search_perfume(q:str):
-    query=str(q or '').strip()
-    if not query: return {'query':'','count':0,'results':[],'errors':{},'stores':{}}
-    reports=collect_store_reports_isolated(query,STORES); all_results=[]
-    for report in reports: all_results.extend(report['results'])
-    results=sort_results(dedupe_results(all_results))
-    return {'query':query,'count':len(results),'results':results,'errors':{r['store']:r['error'] for r in reports if r.get('error')},'stores':{r['store']:{'status':r['status'],'count':r['count'],'elapsed':r['elapsed']} for r in reports}}
+@app.get("/search")
+def search_perfume(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "offer_count": 0,
+            "results": [],
+            "unresolved_offers": [],
+            "errors": {},
+            "stores": {},
+        }
+
+    reports = collect_store_reports_isolated(
+        query,
+        STORES,
+    )
+
+    all_offers = []
+
+    for report in reports:
+        for item in report.get(
+            "results",
+            [],
+        ):
+            if not isinstance(item, dict):
+                continue
+
+            if not _keep_hawas_result(
+                item,
+                query,
+            ):
+                continue
+
+            all_offers.append(item)
+
+    all_offers = dedupe_results(all_offers)
+
+    grouped, unresolved = (
+        _aggregate_identity_results(
+            all_offers
+        )
+    )
+
+    return {
+        "query": query,
+        "count": len(grouped),
+        "offer_count": len(all_offers),
+        "results": grouped,
+        "unresolved_offers": unresolved,
+        "errors": {
+            report["store"]: report["error"]
+            for report in reports
+            if report.get("error")
+        },
+        "stores": {
+            report["store"]: {
+                "status": report["status"],
+                "count": report["count"],
+                "elapsed": report["elapsed"],
+            }
+            for report in reports
+        },
+    }
+
 
 @app.get('/test-store')
 def test_store(store:str,q:str):
@@ -546,20 +991,20 @@ def diagnose_sabina(q:str='Liquid Brun'):
         report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
         try:
             t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
-            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina',query) for x in rows if isinstance(x,dict)]}
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
         except Exception as exc:
             report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
         stream=getattr(module,'search_stream',None)
         if callable(stream):
             stream_rows=[]; t=time.monotonic()
             def collect(row):
-                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
             try:
                 returned=stream(query,collect)
                 if returned is not None:
                     try:
                         for row in returned:
-                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina',query))
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
                     except TypeError: pass
                 report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
             except Exception as exc:
