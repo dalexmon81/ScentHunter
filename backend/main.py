@@ -92,14 +92,16 @@ def _load_product_matcher():
 PRODUCT_MATCHER = _load_product_matcher()
 
 
-def _apply_product_identity(result, query=''):
+def _apply_product_identity(result, query=""):
     """
-    Normalize a retailer offer through the existing central ProductMatcher.
+    Enrich a valid retailer offer through the central ProductMatcher.
 
-    This enriches valid retailer offers through the central ProductMatcher.
-    A matcher exception is non-fatal, but an explicit matcher rejection (None)
-    must remove the offer from the result set. This is required for samples,
-    testers, sets excluded by policy, and other non-identity listings.
+    The category gate remains authoritative for explicit non-fragrance offers.
+    When a search query is available, the matcher is then used only as an
+    identity enrichment step: a successful match replaces the commercial
+    name/brand with the catalog canonical identity; an unresolved match keeps
+    the original offer untouched. This prevents valid offers from disappearing
+    merely because the matcher cannot resolve a particular retailer title.
     """
     if PRODUCT_MATCHER is None or not isinstance(result, dict):
         return result
@@ -108,8 +110,7 @@ def _apply_product_identity(result, query=''):
     raw_brand = str(result.get('brand') or result.get('manufacturer') or '').strip()
 
     try:
-        # Central category gate first. Never allow a non-fragrance listing
-        # into the identity layer.
+        # Central category gate only.
         if PRODUCT_MATCHER._is_non_fragrance_offer(result):
             print(
                 f'PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: '
@@ -118,117 +119,53 @@ def _apply_product_identity(result, query=''):
             )
             return None
 
-        # The catalog is the single source of truth for identity. Resolve
-        # through the central matcher only when the original search query is
-        # available. Never copy catalog data into the frontend.
-        if query:
-            matched = PRODUCT_MATCHER.match(result, query)
-            if matched is not None:
-                canonical_name = str(
-                    matched.get('canonical_name') or ''
-                ).strip()
-                canonical_brand = str(
-                    matched.get('canonical_brand')
-                    or matched.get('brand')
-                    or raw_brand
-                ).strip()
+        # Identity enrichment is deliberately non-destructive. The matcher
+        # receives the actual search query so family/variant aliases can be
+        # resolved (e.g. retailer "Bottled Infinite" -> catalog canonical
+        # "Boss Bottled Infinite"). If it cannot resolve the offer, retain the
+        # original result exactly as before.
+        search_query = str(query or '').strip()
+        if not search_query:
+            return result
 
-                # Do not let a canonical catalog name erase a meaningful
-                # gender marker from a retailer variant. This is a general
-                # safeguard for families such as Born in Roma; it is not
-                # product-specific.
-                gender_markers = (
-                    'uomo', 'donna', 'men', 'women', 'man', 'woman',
-                    'for him', 'for her', 'heren', 'dames', 'herren',
-                    'damen', 'homme', 'femme',
-                )
-                raw_lower = raw_name.lower()
-                canonical_lower = canonical_name.lower()
-                preserves_gender = not any(
-                    marker in raw_lower and marker not in canonical_lower
-                    for marker in gender_markers
-                )
+        matched = PRODUCT_MATCHER.match(result, search_query)
+        if not isinstance(matched, dict):
+            return result
 
-                if canonical_name and preserves_gender:
-                    result.update({
-                        'catalog_id': matched.get('catalog_id'),
-                        'family_id': matched.get('family_id'),
-                        'family_name': matched.get('family_name'),
-                        'canonical_name': canonical_name,
-                        'canonical_brand': canonical_brand,
-                        'catalog_variant': matched.get('catalog_variant') or canonical_name,
-                        'match_method': matched.get('match_method'),
-                        'match_score': matched.get('match_score'),
-                        'product_identity': matched.get('product_identity') or matched.get('catalog_id'),
-                    })
-                    if matched.get('variant_id'):
-                        result['variant_id'] = matched['variant_id']
-                    # The matcher may normalize the size from the offer.
-                    if matched.get('size_ml') not in (None, ''):
-                        result['size_ml'] = matched['size_ml']
+        normalized = dict(matched)
 
-                    # Canonical display name is safe only after the generic
-                    # identity-preservation guard above.
-                    result['name'] = canonical_name
-                    if canonical_brand:
-                        result['brand'] = canonical_brand
-                else:
-                    print(
-                        f'PRODUCT_MATCHER_IDENTITY_PRESERVED_RAW: '
-                        f'name={raw_name!r} canonical={canonical_name!r}',
-                        flush=True,
-                    )
-            else:
-                print(
-                    f'PRODUCT_MATCHER_UNRESOLVED_PRESERVED_RAW: '
-                    f'name={raw_name!r} query={query!r}',
-                    flush=True,
-                )
+        # Keep the original retailer fields for diagnostics/provenance.
+        if raw_name:
+            normalized.setdefault('_source_name', raw_name)
+        if raw_brand:
+            normalized.setdefault('_source_brand', raw_brand)
 
-        return result
+        canonical_name = str(
+            normalized.get('canonical_name')
+            or normalized.get('catalog_variant')
+            or raw_name
+        ).strip()
+        canonical_brand = str(
+            normalized.get('canonical_brand')
+            or normalized.get('brand')
+            or raw_brand
+        ).strip()
+
+        if canonical_name:
+            normalized['name'] = canonical_name
+        if canonical_brand:
+            normalized['brand'] = canonical_brand
+
+        return normalized
     except Exception as exc:
         print(
-            f'PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: {type(exc).__name__}: {exc}',
+            f'PRODUCT_MATCHER_IDENTITY_ERROR: {type(exc).__name__}: {exc}',
             flush=True,
         )
         return result
 
-    if matched is None:
-        return None
-    if not isinstance(matched, dict):
-        return result
 
-    normalized = dict(matched)
-
-    # Keep the original retailer fields for diagnostics/provenance.
-    if raw_name:
-        normalized.setdefault('_source_name', raw_name)
-    if raw_brand:
-        normalized.setdefault('_source_brand', raw_brand)
-
-    canonical_name = str(
-        normalized.get('canonical_name')
-        or normalized.get('catalog_variant')
-        or raw_name
-    ).strip()
-    canonical_brand = str(
-        normalized.get('canonical_brand')
-        or normalized.get('brand')
-        or raw_brand
-    ).strip()
-
-    if canonical_name:
-        # The frontend groups offers by the normalized name. Keep the raw
-        # retailer name separately so the identity layer can normalize it
-        # without changing price, URL, store, availability or image data.
-        normalized['name'] = canonical_name
-    if canonical_brand:
-        normalized['brand'] = canonical_brand
-
-    return normalized
-
-
-def clean_result(item, store, query=''):
+def clean_result(item, store, query=""):
     result = dict(item)
     machine_store = _normalise_store(result.get('store') or result.get('shop'), store)
 
@@ -490,20 +427,14 @@ def _snapshot(job_id):
         return {'job_id':job['job_id'],'query':job['query'],'completed':job['completed'],'status':'completed' if job['completed'] else 'searching','count':len(job['results']),'results':list(job['results']),'comparisons':list(job['comparisons']),'errors':dict(job['errors']),'stores':dict(job['stores'])}
 
 def _publish_result(job_id,row):
-    # Rows from _run_store_subprocess() have already passed clean_result(),
-    # including the central catalog identity layer. Do not run the matcher a
-    # second time on the same offer.
-    if not isinstance(row, dict):
-        return
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
-        if not _keep_hawas_result(row, job.get('query')):
+        clean=clean_result(row,row.get('store') or row.get('shop') or '', job.get('query', ''))
+        if clean is None or not _keep_hawas_result(clean, job.get('query')):
             return
-        job['results'].append(row)
-        job['results']=sort_results(dedupe_results(job['results']))
-        total=len(job['results'])
-    print(f"SEARCH PUBLISH RESULT job={job_id} store={row.get('store')} total={total}",flush=True)
+        job['results'].append(clean); job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
+    print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
 
 def _publish_store(job_id,report):
     with JOBS_LOCK:
