@@ -8086,7 +8086,9 @@
       "aliases": [
         "Hugo Boss - Boss Bottled",
         "Hugo Boss Boss Bottled",
-        "Boss Bottled"
+        "Boss Bottled",
+        "Bottled",
+        "Bottled Classic"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8105,7 +8107,10 @@
       "aliases": [
         "Hugo Boss - Boss Bottled Elixir",
         "Hugo Boss Boss Bottled Elixir",
-        "Boss Bottled Elixir"
+        "Boss Bottled Elixir",
+        "Bottled Elixir",
+        "Boss Bottled Elixir Parfum",
+        "Bottled Elixir Parfum Intense"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8124,7 +8129,8 @@
       "aliases": [
         "Hugo Boss - Boss Bottled Intense",
         "Hugo Boss Boss Bottled Intense",
-        "Boss Bottled Intense"
+        "Boss Bottled Intense",
+        "Bottled Intense"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8143,7 +8149,8 @@
       "aliases": [
         "Hugo Boss - Boss Bottled Night",
         "Hugo Boss Boss Bottled Night",
-        "Boss Bottled Night"
+        "Boss Bottled Night",
+        "Bottled Night"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8162,7 +8169,8 @@
       "aliases": [
         "Hugo Boss - Boss Bottled Oud",
         "Hugo Boss Boss Bottled Oud",
-        "Boss Bottled Oud"
+        "Boss Bottled Oud",
+        "Bottled Oud"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8181,7 +8189,8 @@
       "aliases": [
         "Hugo Boss - Boss Bottled Parfum",
         "Hugo Boss Boss Bottled Parfum",
-        "Boss Bottled Parfum"
+        "Boss Bottled Parfum",
+        "Bottled Parfum"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -8199,8 +8208,9 @@
       "gender": null,
       "aliases": [
         "Hugo Boss - Boss Bottled Unlimited",
-        "Hugo Boss Boss Bottled Unlimited",
-        "Boss Bottled Unlimited"
+        "Boss Bottled Unlimited",
+        "Bottled Unlimited",
+        "Hugo Boss Unlimited"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance della maison/database specialistico.",
@@ -19788,6 +19798,446 @@
       "source_notes": "Referenza Miu Miu Fleur De Lait; formati 30/50/100 ml verificati nel flusso ScentHunter.",
       "verification_sources": [],
       "canonical_name": "Fleur De Lait"
+    },
+    {
+      "product_id": "SH-AUTO-0933",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled 20th Anniversary Edition",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled 20th Anniversary Edition",
+        "Boss Bottled 20th Anniversary Edition"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled 20th Anniversary Edition"
+    },
+    {
+      "product_id": "SH-AUTO-0934",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Absolute",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Absolute",
+        "Boss Bottled Absolute",
+        "Bottled Absolute"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Absolute"
+    },
+    {
+      "product_id": "SH-AUTO-0935",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Beyond",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Beyond",
+        "Boss Bottled Beyond",
+        "Bottled Beyond",
+        "Bottled Beyond for Him"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Beyond"
+    },
+    {
+      "product_id": "SH-AUTO-0936",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Beyond Eau de Toilette Intense",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Beyond Eau de Toilette Intense",
+        "Boss Bottled Beyond Eau de Toilette Intense",
+        "Boss Bottled Beyond Intense",
+        "Bottled Beyond Intense"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Beyond Eau de Toilette Intense"
+    },
+    {
+      "product_id": "SH-AUTO-0937",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Beyond for Her",
+      "concentration": "",
+      "gender": "Donna",
+      "aliases": [
+        "Hugo Boss - Boss Bottled Beyond for Her",
+        "Boss Bottled Beyond for Her"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Beyond for Her"
+    },
+    {
+      "product_id": "SH-AUTO-0938",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Bold Citrus",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Bold Citrus",
+        "Boss Bottled Bold Citrus",
+        "Bottled Bold Citrus"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Bold Citrus"
+    },
+    {
+      "product_id": "SH-AUTO-0939",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Collector Eau de Parfum",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Collector Eau de Parfum",
+        "Boss Bottled Collector Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Collector Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AUTO-0940",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Collector's Edition",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Collector's Edition",
+        "Boss Bottled Collector's Edition"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Collector's Edition"
+    },
+    {
+      "product_id": "SH-AUTO-0941",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Eau de Parfum",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Eau de Parfum",
+        "Boss Bottled Eau de Parfum",
+        "Bottled Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AUTO-0942",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Infinite",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Infinite",
+        "Hugo Boss Boss Bottled Infinite",
+        "Boss Bottled Infinite",
+        "Bottled Infinite"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Infinite"
+    },
+    {
+      "product_id": "SH-AUTO-0943",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Intense Eau de Parfum",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Intense Eau de Parfum",
+        "Boss Bottled Intense Eau de Parfum",
+        "Bottled Intense Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Intense Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AUTO-0944",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Marine",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Marine",
+        "Boss Bottled Marine",
+        "Bottled Marine"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Marine"
+    },
+    {
+      "product_id": "SH-AUTO-0945",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Oud Aromatic",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Oud Aromatic",
+        "Boss Bottled Oud Aromatic",
+        "Bottled Oud Aromatic"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Oud Aromatic"
+    },
+    {
+      "product_id": "SH-AUTO-0946",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Oud Saffron",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Oud Saffron",
+        "Boss Bottled Oud Saffron",
+        "Bottled Oud Saffron"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Oud Saffron"
+    },
+    {
+      "product_id": "SH-AUTO-0947",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Pacific",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Pacific",
+        "Boss Bottled Pacific",
+        "Bottled Pacific"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Pacific"
+    },
+    {
+      "product_id": "SH-AUTO-0948",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Sport",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Sport",
+        "Boss Bottled Sport",
+        "Bottled Sport"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Sport"
+    },
+    {
+      "product_id": "SH-AUTO-0949",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Striking Lavender",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Striking Lavender",
+        "Boss Bottled Striking Lavender",
+        "Bottled Striking Lavender"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Striking Lavender"
+    },
+    {
+      "product_id": "SH-AUTO-0950",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Tonic",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Tonic",
+        "Boss Bottled Tonic",
+        "Bottled Tonic",
+        "Bottled Tonic Classic"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Tonic"
+    },
+    {
+      "product_id": "SH-AUTO-0951",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Triumph Elixir",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Triumph Elixir",
+        "Boss Bottled Triumph Elixir",
+        "Bottled Triumph Elixir",
+        "Bottled Triumph Elixir Parfum Intense",
+        "Boss Bottled Triumph Elixir Parfum Intense"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Triumph Elixir"
+    },
+    {
+      "product_id": "SH-AUTO-0952",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled United",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled United",
+        "Boss Bottled United",
+        "Bottled United"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled United"
+    },
+    {
+      "product_id": "SH-AUTO-0953",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled United Eau de Parfum",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled United Eau de Parfum",
+        "Boss Bottled United Eau de Parfum",
+        "Bottled United Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled United Eau de Parfum"
+    },
+    {
+      "product_id": "SH-AUTO-0954",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Unlimited Mats Hummels Edition",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Unlimited Mats Hummels Edition",
+        "Boss Bottled Unlimited Mats Hummels Edition"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Unlimited Mats Hummels Edition"
+    },
+    {
+      "product_id": "SH-AUTO-0955",
+      "brand_id": "BR-fd73822643d2",
+      "brand_name": "Hugo Boss",
+      "family_name": "Boss Bottled Absolu",
+      "concentration": "",
+      "gender": null,
+      "aliases": [
+        "Hugo Boss - Boss Bottled Absolu",
+        "Hugo Boss Boss Bottled Absolu",
+        "Boss Bottled Absolu",
+        "Bottled Absolu",
+        "Boss Bottled Absolu Parfum Intense"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Boss Bottled e coprire le varianti/alias di ricerca già verificati.",
+      "verification_sources": [
+        "https://www.fragrantica.com/designers/Hugo-Boss.html"
+      ],
+      "canonical_name": "Boss Bottled Absolu"
     }
   ],
   "variants": [
