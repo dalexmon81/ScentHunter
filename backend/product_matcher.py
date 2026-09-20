@@ -794,6 +794,9 @@ class ProductMatcher:
                     if token not in {
                         "ml", "cl", "spray", "copy", "refill",
                         "limited", "edition",
+                        "for", "him", "her", "men", "women",
+                        "man", "woman", "unisex", "homme", "femme",
+                        "herren", "damen", "heren", "dames",
                     }
                     and not token.isdigit()
                 }
@@ -808,6 +811,20 @@ class ProductMatcher:
                         if not alias_key:
                             continue
 
+                        # For URL identity, merchandising/audience labels such
+                        # as "for him", "for her", "men" and "women" are not
+                        # variant-bearing tokens.  Use the same generic
+                        # specificity vocabulary used elsewhere in the family
+                        # matcher.  This prevents a URL such as
+                        # ``hawas-for-him-chrome`` from scoring the generic
+                        # ``Hawas for Him`` alias above the more specific
+                        # ``Hawas Chrome`` identity.
+                        alias_key = self._variant_specificity_key(
+                            alias,
+                            family.get("brand", ""),
+                        )
+                        if not alias_key:
+                            continue
                         alias_tokens = set(alias_key.split())
                         if not alias_tokens:
                             continue
