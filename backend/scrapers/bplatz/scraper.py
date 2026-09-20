@@ -18,6 +18,7 @@ HEADERS = {
 SEARCH_TIMEOUT = (1.5, 4.0)
 PRODUCT_TIMEOUT = (1.5, 4.0)
 MAX_CANDIDATES = 12
+HAWAS_MAX_CANDIDATES = 50
 
 NON_PERFUME_MARKERS = {
     "gift set", "set regalo", "discovery set", "fragrance set", "perfume set",
@@ -176,7 +177,7 @@ def _decode_embedded_shopify_text(text):
     return value
 
 
-def embedded_search_products(session, query):
+def embedded_search_products(session, query, max_candidates=MAX_CANDIDATES):
     """
     Recover products omitted by Bplatz's predictive endpoint.
 
@@ -232,7 +233,7 @@ def embedded_search_products(session, query):
             },
         )
 
-        if len(candidates) >= MAX_CANDIDATES:
+        if len(candidates) >= max_candidates:
             break
 
     return candidates
@@ -241,13 +242,15 @@ def embedded_search_products(session, query):
 def predictive_products(session, query):
     candidates = []
     seen = set()
+    hawas_query = "hawas" in set(norm(query).split())
+    candidate_limit = HAWAS_MAX_CANDIDATES if hawas_query else MAX_CANDIDATES
 
     # PRIMARY discovery: the existing Shopify predictive endpoint.
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
         "resources[type]": "product",
-        "resources[limit]": "20",
+        "resources[limit]": str(candidate_limit),
         "resources[options][unavailable_products]": "show",
     }
 
@@ -271,7 +274,7 @@ def predictive_products(session, query):
 
         _append_candidate.query = query
         for product in products:
-            if len(candidates) >= MAX_CANDIDATES:
+            if len(candidates) >= candidate_limit:
                 break
             _append_candidate(candidates, seen, product)
 
@@ -280,11 +283,15 @@ def predictive_products(session, query):
     # The localized search HTML contains their embedded Shopify objects.
     # Use that page only for the confirmed Hawas case and only when the
     # predictive discovery did not fill the normal candidate budget.
-    if norm(query) == "hawas" and len(candidates) < MAX_CANDIDATES:
-        embedded_candidates = embedded_search_products(session, query)
+    if hawas_query and len(candidates) < candidate_limit:
+        embedded_candidates = embedded_search_products(
+            session,
+            query,
+            max_candidates=candidate_limit,
+        )
 
         for candidate in embedded_candidates:
-            if len(candidates) >= MAX_CANDIDATES:
+            if len(candidates) >= candidate_limit:
                 break
 
             _append_candidate.query = query
