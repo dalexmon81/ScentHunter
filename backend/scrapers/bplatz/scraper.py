@@ -31,6 +31,14 @@ def _is_hawas_query(query):
 def _match(text, query):
     words = _norm(query).split()
     hay = _norm(text)
+
+    # Hawas is a family query. Bplatz product titles are not guaranteed
+    # to include the manufacturer ("Rasasi"), while the family name
+    # "Hawas" is the reliable discovery token. Once an offer is found,
+    # ProductMatcher resolves the exact Hawas variant centrally.
+    if _is_hawas_query(query):
+        return "hawas" in hay.split()
+
     return bool(words) and all(w in hay for w in words)
 
 
