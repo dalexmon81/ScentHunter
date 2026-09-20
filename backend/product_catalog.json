@@ -17907,6 +17907,28 @@
       "canonical_name": "Hawas Kobra"
     },
     {
+      "product_id": "SH-FAMILY-be780310ae0c",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Lava Gold",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Rasasi - Hawas Lava Gold",
+        "Rasasi Hawas Lava Gold",
+        "Hawas Lava Gold",
+        "Hawas Lava Gold 100 ML",
+        "Hawas Lava Gold Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare la famiglia Rasasi Hawas; identificata dall'offerta Hawas Lava Gold 100 ml.",
+      "verification_sources": [
+        "https://www.parfumcity.nl/en/products/hawas-lava-gold-rasasi"
+      ],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Lava Gold"
+    },
+    {
       "product_id": "SH-AUTO-0733",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
@@ -23819,6 +23841,22 @@
       "store_mappings": []
     },
     {
+      "variant_id": "VAR-c046bd617c14912e",
+      "product_id": "SH-FAMILY-be780310ae0c",
+      "size_ml": 100,
+      "gtins": [
+        "0614514575352"
+      ],
+      "mpns": [],
+      "aliases": [
+        "Hawas Lava Gold",
+        "Hawas Lava Gold 100 ML",
+        "Hawas Lava Gold Eau de Parfum",
+        "Rasasi Hawas Lava Gold"
+      ],
+      "store_mappings": []
+    },
+    {
       "variant_id": "VAR-e2cc3951b1445b9f",
       "product_id": "SH-0066",
       "size_ml": 100,
@@ -25697,10 +25735,10 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1148,
+    "product_count": 1167,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 238,
+    "variant_count": 239,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
