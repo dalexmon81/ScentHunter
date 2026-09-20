@@ -2156,7 +2156,17 @@ def _discover_from_first_party(
     # Keep a small discovery reserve for external index results. Some Sabina
     # products (notably newly launched variants) are indexed publicly but do
     # not appear in the normal first-party search response.
-    first_party_limit = max(1, MAX_CANDIDATES - 4)
+    # Born in Roma has a larger variant family in the catalog. Keep the
+    # normal four-slot reserve for every other query, but allow the full
+    # discovery cap for Born in Roma so the first-party route can expose all
+    # family variants before extraction.
+    query_norm = " ".join(str(query or "").casefold().split())
+    is_born_in_roma = "born" in query_norm and "roma" in query_norm
+    first_party_limit = (
+        MAX_CANDIDATES
+        if is_born_in_roma
+        else max(1, MAX_CANDIDATES - 4)
+    )
 
     for url in search_urls:
         response = _get(session, url)
