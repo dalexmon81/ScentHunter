@@ -21717,6 +21717,74 @@
       "canonical_name": "Boss Bottled Triumph Elixir"
     },
     {
+  "product_id": "SH-AUTO-0933",
+  "brand_id": "BR-fd73822643d2",
+  "brand_name": "Hugo Boss",
+  "family_name": "Boss Bottled Infinite",
+  "concentration": "Eau de Parfum",
+  "gender": null,
+  "aliases": [
+    "Hugo Boss - Boss Bottled Infinite",
+    "Hugo Boss Boss Bottled Infinite",
+    "Boss Bottled Infinite"
+  ],
+  "source_status": "verificato_nome_canonico",
+  "source_notes": "Referenza confermata nei risultati RAW dei retailer ScentHunter; aggiunta come identità distinta per evitare il collasso sulla famiglia Boss Bottled.",
+  "verification_sources": [],
+  "canonical_name": "Boss Bottled Infinite"
+},
+{
+  "product_id": "SH-AUTO-0934",
+  "brand_id": "BR-fd73822643d2",
+  "brand_name": "Hugo Boss",
+  "family_name": "Boss Bottled Tonic",
+  "concentration": "Eau de Toilette",
+  "gender": null,
+  "aliases": [
+    "Hugo Boss - Boss Bottled Tonic",
+    "Hugo Boss Boss Bottled Tonic",
+    "Boss Bottled Tonic"
+  ],
+  "source_status": "verificato_nome_canonico",
+  "source_notes": "Referenza confermata nei risultati RAW dei retailer ScentHunter; aggiunta come identità distinta per evitare il collasso sulla famiglia Boss Bottled.",
+  "verification_sources": [],
+  "canonical_name": "Boss Bottled Tonic"
+},
+{
+  "product_id": "SH-AUTO-0935",
+  "brand_id": "BR-fd73822643d2",
+  "brand_name": "Hugo Boss",
+  "family_name": "Boss Bottled Absolu",
+  "concentration": "Parfum Intense",
+  "gender": null,
+  "aliases": [
+    "Hugo Boss - Boss Bottled Absolu",
+    "Hugo Boss Boss Bottled Absolu",
+    "Boss Bottled Absolu"
+  ],
+  "source_status": "verificato_nome_canonico",
+  "source_notes": "Referenza confermata nei risultati RAW dei retailer ScentHunter; aggiunta come identità distinta per evitare il collasso sulla famiglia Boss Bottled.",
+  "verification_sources": [],
+  "canonical_name": "Boss Bottled Absolu"
+},
+{
+  "product_id": "SH-AUTO-0936",
+  "brand_id": "BR-fd73822643d2",
+  "brand_name": "Hugo Boss",
+  "family_name": "Boss Bottled Bold Citrus",
+  "concentration": "Eau de Parfum",
+  "gender": null,
+  "aliases": [
+    "Hugo Boss - Boss Bottled Bold Citrus",
+    "Hugo Boss Boss Bottled Bold Citrus",
+    "Boss Bottled Bold Citrus"
+  ],
+  "source_status": "verificato_nome_canonico",
+  "source_notes": "Referenza confermata nei risultati RAW dei retailer ScentHunter; aggiunta come identità distinta per evitare il collasso sulla famiglia Boss Bottled.",
+  "verification_sources": [],
+  "canonical_name": "Boss Bottled Bold Citrus"
+}
+    {
       "product_id": "SH-WEB-DAEF60934002",
       "brand_id": "BR-72e2e772f7d5",
       "brand_name": "Burberry",
