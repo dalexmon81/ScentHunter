@@ -20,6 +20,11 @@ try:
     app.include_router(debug_deloox_router)
 except Exception as exc:
     print(f'Deloox debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
+try:
+    from debug_deloox_born4 import router as debug_deloox_born4_router
+    app.include_router(debug_deloox_born4_router)
+except Exception as exc:
+    print(f'Deloox Born4 debug router unavailable: {type(exc).__name__}: {exc}', flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 try:
     from debug_bplatz import router as debug_bplatz_router
