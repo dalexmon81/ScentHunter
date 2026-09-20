@@ -1043,8 +1043,31 @@ def search_perfume(q: str):
 @app.get('/test-store')
 def test_store(store:str,q:str):
     store=str(store or '').strip().lower(); query=str(q or '').strip()
-    if store not in STORES: return {'ok':False,'store':store,'query':query,'error':'unknown_store','stores':STORES}
-    report=run_store(store,query); return {'ok':report['status']!='error','store':store,'query':query,**report}
+    if store not in STORES:
+        return {'ok':False,'store':store,'query':query,'error':'unknown_store','stores':STORES}
+
+    # Diagnostic endpoint: use the same isolated subprocess path as production.
+    report_holder=[]
+    done=threading.Event()
+
+    def publish(report):
+        report_holder.append(report)
+        done.set()
+
+    t=threading.Thread(
+        target=_run_controlled_store,
+        args=(store,query,publish),
+        daemon=True,
+        name=f'test-store-{store}',
+    )
+    t.start()
+    done.wait(timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)+5)
+
+    report=report_holder[0] if report_holder else _empty_report(
+        store,
+        error='diagnostic_timeout',
+    )
+    return {'ok':report['status']!='error','store':store,'query':query,**report}
 
 @app.get('/diagnose-stores')
 def diagnose_stores(q:str='Liquid Brun'):
