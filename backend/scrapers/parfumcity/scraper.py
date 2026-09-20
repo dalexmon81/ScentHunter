@@ -19,11 +19,24 @@ STOPWORDS = {
     "ml","cl","men","man","women","woman","male","female","homme","femme","herren","damen",
 }
 
+
 def clean(v):
     return re.sub(r"\s+"," ",str(v or "")).strip()
 
+
+def clean_brand(v):
+    """Return a usable retailer brand, treating placeholder values as missing."""
+    value = clean(v)
+    if not value:
+        return None
+    if value.lower() in {"?", "unknown", "n/a", "na", "none", "null", "-", "—"}:
+        return None
+    return value
+
+
 def norm(v):
     return re.sub(r"\s+"," ",re.sub(r"[^a-z0-9]+"," ",clean(v).lower())).strip()
+
 
 def query_tokens(q):
     out=[]
@@ -33,10 +46,12 @@ def query_tokens(q):
         out.append(token)
     return out
 
+
 def matches(text,q):
     hay=set(norm(text).split())
     toks=query_tokens(q)
     return bool(toks) and all(t in hay for t in toks)
+
 
 def size_ml(*values):
     m=re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b"," ".join(clean(x) for x in values),re.I)
@@ -45,12 +60,14 @@ def size_ml(*values):
     if m.group(2).lower()=="cl": n*=10
     return int(n) if n.is_integer() else n
 
+
 def concentration(*values):
     t=norm(" ".join(clean(x) for x in values))
     if re.search(r"\beau de toilette\b|\bedt\b",t): return "Eau de Toilette"
     if re.search(r"\bextrait(?: de parfum)?\b",t): return "Extrait de Parfum"
     if re.search(r"\beau de parfum\b|\bedp\b",t): return "Eau de Parfum"
     return None
+
 
 def price(v):
     if v in (None,""): return None
@@ -69,12 +86,14 @@ def price(v):
     except ValueError:
         return None
 
+
 def _get(session,url,params=None):
     try:
         r=session.get(url,params=params,headers=HEADERS,timeout=TIMEOUT)
         return r if r.ok else None
     except requests.RequestException:
         return None
+
 
 def _discover(session,q):
     """
@@ -152,6 +171,7 @@ def _discover(session,q):
 
     return urls[:20]
 
+
 def _product_json(session,url):
     r=_get(session,url.rstrip("/")+".js")
     if not r: return None
@@ -162,6 +182,7 @@ def _product_json(session,url):
         return None
     finally:
         r.close()
+
 
 def _extract_image_url(value):
     if isinstance(value, str):
@@ -178,6 +199,7 @@ def _extract_image_url(value):
             if result:
                 return result
     return None
+
 
 def _page_image(session, url):
     try:
@@ -199,6 +221,7 @@ def _page_image(session, url):
     except requests.RequestException:
         return None
 
+
 def _item(product,variant,url,session=None):
     name=clean(product.get("title"))
     vname=clean(variant.get("title"))
@@ -218,9 +241,16 @@ def _item(product,variant,url,session=None):
         image=_extract_image_url(product.get("images"))
     if not image and session is not None:
         image=_page_image(session,url)
+
+    # ParfumCity's Shopify product JSON can expose a placeholder vendor ("?")
+    # instead of the real manufacturer. A placeholder must never reach the
+    # central matcher as a real brand, because it causes a false brand mismatch
+    # and makes otherwise resolvable Hawas offers unresolved.
+    source_brand=clean_brand(product.get("vendor"))
+
     return {
         "store":STORE,
-        "source":{"source_name":source_name,"source_brand":clean(product.get("vendor")) or None,
+        "source":{"source_name":source_name,"source_brand":source_brand,
                   "url":url,"image":urljoin(BASE_URL,str(image)) if image else None},
         "identity":{"gtin":None,"mpn":None,
                     "sku":({"value":str(variant.get("sku")),"source":"shopify_variant"} if variant.get("sku") else None),
