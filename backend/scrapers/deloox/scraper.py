@@ -33,6 +33,12 @@ MAX_RESULTS = 40
 # all discovered Deloox variants can reach the central matcher.
 BORN_IN_ROMA_MAX_RESULTS = 100
 
+# Boss Bottled has a wider Deloox category footprint than the generic
+# search endpoint exposes. Use the Hugo Boss fragrance category as a
+# bounded discovery fallback for this family only.
+BOSS_BOTTLED_CATEGORY_MAX_PAGES = 8
+BOSS_BOTTLED_MAX_CANDIDATES = 80
+
 
 HEADERS = {
     "User-Agent": (
@@ -299,6 +305,200 @@ def is_born_in_roma_query(query):
         "born" in q
         and "roma" in q
     )
+
+
+def is_boss_bottled_query(query):
+    q = tokens(query)
+
+    return (
+        "boss" in q
+        and "bottled" in q
+    )
+
+
+def boss_bottled_slug(url):
+    """True when the Deloox product URL belongs to Boss Bottled."""
+    slug = norm(url_slug(url))
+
+    return (
+        "boss" in slug
+        and "bottled" in slug
+    )
+
+
+def boss_bottled_excluded_slug(url):
+    """Exclude obvious non-fragrance/packaging URLs."""
+    slug = norm(url_slug(url))
+
+    if any(
+        norm(term) in slug
+        for term in NON_PRODUCT_PACKAGING
+    ):
+        return True
+
+    if any(
+        norm(term) in slug
+        for term in NON_FRAGRANCE
+    ):
+        return True
+
+    return False
+
+
+def boss_bottled_category_urls():
+    """Return bounded Hugo Boss fragrance category pages on Deloox."""
+    return tuple(
+        f"{BASE}/categorie/1074499/hugo-boss-parfum.html?page={page}"
+        for page in range(
+            1,
+            BOSS_BOTTLED_CATEGORY_MAX_PAGES + 1,
+        )
+    )
+
+
+def discover_boss_bottled_category(session):
+    """
+    Discover Boss Bottled product URLs from Deloox's Hugo Boss category.
+
+    The generic /chercher.html?q=Boss Bottled surface is incomplete:
+    several real Boss Bottled variants are present in the Hugo Boss
+    category but absent from that search surface.
+    """
+    candidates = {}
+
+    for endpoint in boss_bottled_category_urls():
+        r = get(session, endpoint)
+
+        if not r:
+            continue
+
+        html = r.text or ""
+        soup = BeautifulSoup(
+            html,
+            "html.parser",
+        )
+
+        for a in soup.find_all(
+            "a",
+            href=True,
+        ):
+            url = product_url(a.get("href"))
+
+            if not url:
+                continue
+
+            if not boss_bottled_slug(url):
+                continue
+
+            if boss_bottled_excluded_slug(url):
+                continue
+
+            text = clean(
+                a.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            node = a
+            best = text
+            image = ""
+
+            for _ in range(7):
+                node = node.parent
+
+                if not node:
+                    break
+
+                block = clean(
+                    node.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+
+                if not image:
+                    image = _image_from_node(node)
+
+                if (
+                    len(block) > len(best)
+                    and len(block) <= 1800
+                ):
+                    best = block
+
+                if PRICE_RE.search(block):
+                    break
+
+            score = 120
+
+            if PRICE_RE.search(best):
+                score += 5
+
+            old = candidates.get(url)
+
+            if (
+                old is None
+                or score > old[0]
+            ):
+                candidates[url] = (
+                    score,
+                    best,
+                    image,
+                )
+
+        # Safety net for product URLs embedded outside normal anchors.
+        raw_urls = re.findall(
+            r'(?:https?:\\/\\/[^"\'<>\s]+)?/'
+            r'(?:produit|product)/\d+/[^"\'<>\s?#]+',
+            html,
+            flags=re.I,
+        )
+
+        for raw in raw_urls:
+            raw = raw.replace(
+                "\\/",
+                "/",
+            )
+
+            if raw.startswith("/"):
+                url = urljoin(
+                    BASE + "/",
+                    raw,
+                )
+            elif raw.startswith("http"):
+                url = raw
+            else:
+                continue
+
+            url = (
+                url
+                .split("#", 1)[0]
+                .split("?", 1)[0]
+            )
+
+            if not is_product_url(url):
+                continue
+
+            if not boss_bottled_slug(url):
+                continue
+
+            if boss_bottled_excluded_slug(url):
+                continue
+
+            if url not in candidates:
+                candidates[url] = (
+                    110,
+                    url_slug(url),
+                    "",
+                )
+
+    return sorted(
+        candidates.items(),
+        key=lambda x: (
+            -x[1][0],
+            x[0],
+        ),
+    )[:BOSS_BOTTLED_MAX_CANDIDATES]
 
 
 def born_in_roma_slug(url):
@@ -1077,6 +1277,24 @@ def discover(
                     clean(a.get_text(" ", strip=True)) or url_slug(url),
                     "",
                 )
+
+    # -------------------------------------------------------------
+    # BOSS BOTTLED — CATEGORY DISCOVERY FALLBACK
+    #
+    # Deloox's generic Boss Bottled search does not expose the complete
+    # family. The Hugo Boss fragrance category does. Merge those URLs
+    # into the same candidate pool; parsing and matching remain unchanged.
+    # -------------------------------------------------------------
+    if (
+        is_boss_bottled_query(query)
+        and not born_query
+    ):
+        for url, info in discover_boss_bottled_category(session):
+            if (
+                url not in candidates
+                or info[0] > candidates[url][0]
+            ):
+                candidates[url] = info
 
     # Existing bounded catalog fallbacks for non-Born queries.
     if not born_query:
