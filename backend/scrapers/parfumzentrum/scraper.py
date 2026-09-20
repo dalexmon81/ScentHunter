@@ -32,6 +32,19 @@ BASE_URL = "https://www.parfum-zentrum.de"
 SEARCH_URL = BASE_URL + "/suchen/"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 
+# Verified first-party Rasasi catalogue pages.
+# These are discovery sources only: the actual product page is still parsed
+# by _extract_product() before an offer can be returned.
+HAWAS_RASASI_CATEGORY_URLS = (
+    BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
+    BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
+    BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
+    BASE_URL + "/oriental-court/f/rasasi/?page=3",
+)
+
+HAWAS_MAJESTIC_QUERY = "Rasasi Hawas Majestic"
+
+
 CONNECT_TIMEOUT = 2.0
 READ_TIMEOUT = 4.5
 PRODUCT_TIMEOUT = (2.0, 4.5)
@@ -1369,6 +1382,61 @@ def _get_sitemap_urls():
         return list(_sitemap_cache)
 
 
+def _hawas_majestic_discovery(query):
+    """
+    Targeted additive discovery for Hawas Majestic.
+
+    Parfum-Zentrum currently lists Hawas Majestic on its first-party Rasasi
+    catalogue pages, while the live internal search can return no usable
+    product URL for the same query. This function therefore reads only those
+    first-party catalogue pages and returns the real product URLs found there.
+
+    No URL, price or offer is fabricated here. _extract_product() remains the
+    final authority and must successfully parse the live product page.
+    """
+    query_tokens = {
+        token
+        for token in _tokens(query)
+        if token not in STOPWORDS
+    }
+
+    if not {"hawas", "majestic"}.issubset(query_tokens):
+        return []
+
+    candidates = []
+    seen = set()
+
+    for category_url in HAWAS_RASASI_CATEGORY_URLS:
+        try:
+            response = _session().get(
+                category_url,
+                timeout=PRODUCT_TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        try:
+            if response.status_code != 200 or not response.text:
+                continue
+
+            discovered = _candidate_urls_from_html(
+                response.text,
+                HAWAS_MAJESTIC_QUERY,
+            )
+
+            for url in discovered:
+                if url in seen:
+                    continue
+
+                seen.add(url)
+                candidates.append(url)
+        finally:
+            response.close()
+
+    return candidates
+
+
 def _sitemap_discovery(query):
     urls = _get_sitemap_urls()
 
@@ -1709,6 +1777,26 @@ def search(query):
     candidates, authoritative_zero = _search_discovery(
         query
     )
+
+    # ADDITIVE FIX: Hawas Majestic is visibly present on Parfum-Zentrum's
+    # first-party Rasasi catalogue, but the store's internal search can fail
+    # to expose its product URL. Run the exact catalogue discovery regardless
+    # of whether the generic Hawas search already returned other candidates,
+    # so Majestic cannot be pushed out by the generic MAX_CANDIDATES limit.
+    if (
+        "hawas" in _tokens(query)
+        and "majestic" in _tokens(query)
+    ) or (
+        "hawas" in _tokens(query)
+        and "majestic" not in _tokens(query)
+    ):
+        for url in _hawas_majestic_discovery(
+            query
+            if "majestic" in _tokens(query)
+            else HAWAS_MAJESTIC_QUERY
+        ):
+            if url not in candidates:
+                candidates.append(url)
 
     # FALLBACK 1: Parfum-Zentrum's live search is known to return
     # "Produkte (0)" for products that are visibly present in its own
