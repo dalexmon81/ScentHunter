@@ -1527,116 +1527,30 @@ function shGroupData(data){
     offers:Number(Array.isArray(g.offers)?g.offers.length:0)
   })):[];
 
-  const diagOfferDrops=[];
-
-groups.forEach(g=>{
-  const bySize=new Map();
-
-  g.offers.forEach(o=>{
-    const size=sizeOf(o)||"unknown";
-    if(!bySize.has(size))
-      bySize.set(size,[]);
-    bySize.get(size).push(o);
-  });
-
-  const cleanOffers=[];
-
-  bySize.forEach((list,size)=>{
-    const byStore=new Map();
-
-    list.forEach(o=>{
-      const store=String(o.store||"").trim().toLowerCase();
-
-      if(!store){
-        byStore.set(`__empty_${byStore.size}`,o);
-        return;
-      }
-
-      const prev=byStore.get(store);
-
-      if(!prev){
-        byStore.set(store,o);
-        return;
-      }
-
-      const currentPrice=shNum(o);
-      const previousPrice=shNum(prev);
-
-      const offerDetails={
-        group:g.name||g.title||g.identity||g.product_name||"",
-        store:o.store||"",
-        size:size,
-        price:o.price??o.current_price??o.sale_price??"",
-        url:o.url||o.link||o.product_url||"",
-        product_id:o.product_id||o.productId||o.sku||o.id||"",
-        key:`${store} + ${size}`,
-        reason:"",
-        dropped_offer:o,
-        kept_offer:null
-      };
-
-      if(currentPrice<previousPrice){
-        offerDetails.reason=
-          "DROP: stesso store + formato; l'offerta precedente aveva un prezzo più alto";
-
-        offerDetails.kept_offer=o;
-        diagOfferDrops.push({
-          ...offerDetails,
-          dropped_offer:prev,
-          kept_offer:o
-        });
-
-        byStore.set(store,o);
-      }else{
-        offerDetails.reason=
-          "DROP: stesso store + formato; offerta mantenuta con prezzo più basso";
-
-        offerDetails.kept_offer=prev;
-        diagOfferDrops.push(offerDetails);
-      }
+  groups.forEach(g=>{
+    const bySize=new Map();
+    g.offers.forEach(o=>{
+      const size=sizeOf(o)||"unknown";
+      if(!bySize.has(size))bySize.set(size,[]);
+      bySize.get(size).push(o);
     });
 
-    cleanOffers.push(...byStore.values());
-  });
+    const cleanOffers=[];
+    bySize.forEach(list=>{
+      const byStore=new Map();
+      list.forEach(o=>{
+        const store=String(o.store||"").trim().toLowerCase();
+        if(!store){
+          byStore.set(`__empty_${byStore.size}`,o);
+          return;
+        }
+        const prev=byStore.get(store);
+        if(!prev||shNum(o)<shNum(prev))byStore.set(store,o);
+      });
+      cleanOffers.push(...byStore.values());
+    });
 
-  g.offers=cleanOffers;
-});
-
-window.__scentHunterDedupeReport={
-  dropped:diagOfferDrops,
-  totalDropped:diagOfferDrops.length
-};
-
-console.log(
-  "SCENTHUNTER DEDUPE:",
-  diagOfferDrops.length,
-  "offerte eliminate"
-);
-
-console.table(
-  diagOfferDrops.map(d=>({
-    gruppo:d.group,
-    negozio:d.store,
-    formato:d.size,
-    prezzo_eliminato:d.price,
-    url_eliminato:d.url,
-    product_id_eliminato:d.product_id,
-    chiave:d.key,
-    motivo:d.reason,
-    prezzo_mantenuto:d.kept_offer?.price??"",
-    url_mantenuto:d.kept_offer?.url||
-      d.kept_offer?.link||
-      d.kept_offer?.product_url||
-      "",
-    product_id_mantenuto:
-      d.kept_offer?.product_id||
-      d.kept_offer?.productId||
-      d.kept_offer?.sku||
-      d.kept_offer?.id||
-      ""
-  }))
-);
-
+    g.offers=cleanOffers;
 
     /*
      * LIQUID BRUN — correzione chirurgica Sabina.
