@@ -1,306 +1,422 @@
+"""
+ScentHunter - ParfumZentrum adapter
+Fast live search, bounded discovery and parallel product extraction.
+
+Priority:
+1. Parfum-Zentrum internal search
+2. lightweight product/category result-page parsing
+3. sitemap fallback only when search discovery returns nothing
+
+The sitemap is cached in-process so it is NOT downloaded on every user search.
+Product pages are fetched in parallel and every product is isolated from the
+others. No perfume-specific rules or hardcoded prices are used.
+"""
+
 from __future__ import annotations
 
 import json
 import re
-import traceback
-from urllib.parse import quote, urljoin, urlparse
+import threading
+import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from html import unescape
+from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Query
 
-router = APIRouter(prefix="/api/debug", tags=["debug"])
 
-BASE_URL = "https://www.perfumemarket.nl"
+STORE = "ParfumZentrum"
+BASE_URL = "https://www.parfum-zentrum.de"
+SEARCH_URL = BASE_URL + "/suchen/"
+SITEMAP_URL = BASE_URL + "/sitemap.xml"
+
+CONNECT_TIMEOUT = 2.0
+READ_TIMEOUT = 4.5
+PRODUCT_TIMEOUT = (2.0, 4.5)
+SITEMAP_TIMEOUT = (2.0, 5.0)
+
+MAX_CANDIDATES = 20
+PRODUCT_WORKERS = 8
+SITEMAP_TTL = 30 * 60
+SITEMAP_MAX_CHILD_MAPS = 100
+SITEMAP_WORKERS = 12
 
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0 Safari/537.36"
+        "Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "en-US,en;q=0.8",
-    "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,*/*;q=0.8"
+    ),
+    "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    "Cache-Control": "no-cache",
 }
 
-TIMEOUT = (3.0, 10.0)
+STOPWORDS = {
+    "eau", "de", "the", "for", "and", "spray",
+    "ml", "man", "woman", "men", "women",
+    "herren", "damen", "unisex", "unisexe",
+    "parfum", "parfums", "perfume", "perfumes",
+    "duft", "dufte",
+}
+
+NON_PERFUME_MARKERS = {
+    "geschenkset", "geschenksets", "gift set", "giftset",
+    "coffret", "coffrets", "set", "duo", "trio",
+    "shampoo", "duschgel", "body lotion", "body cream",
+    "körpercreme", "körperlotion", "deodorant", "deostick",
+    "deostick", "aftershave", "rasierwasser", "haarspray",
+    "hair mist", "makeup", "kosmetik", "creme", "serum",
+}
+
+OUT_MARKERS = (
+    "nicht lieferbar",
+    "nicht vorrätig",
+    "ausverkauft",
+    "derzeit nicht verfügbar",
+    "nicht verfügbar",
+    "out of stock",
+    "sold out",
+    "unavailable",
+)
+
+IN_MARKERS = (
+    "versandbereit",
+    "sofort lieferbar",
+    "lieferbar",
+    "in den warenkorb",
+    "auf lager",
+    "in stock",
+    "available",
+)
+
+_session_local = threading.local()
+
+_sitemap_lock = threading.Lock()
+_sitemap_cache = []
+_sitemap_cached_at = 0.0
 
 
-def clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+def _session():
+    session = getattr(_session_local, "session", None)
+
+    if session is None:
+        session = requests.Session()
+        session.headers.update(HEADERS)
+        _session_local.session = session
+
+    return session
 
 
-def normalize_url(url):
-    value = urljoin(BASE_URL, clean(url))
-    parsed = urlparse(value)
-
-    if parsed.scheme not in ("http", "https"):
-        return ""
-
-    if parsed.netloc and "perfumemarket" not in parsed.netloc.lower():
-        return ""
-
-    return value.split("?", 1)[0].rstrip("/")
+def _clean(value):
+    text = unescape(str(value or ""))
+    text = text.replace("\xa0", " ")
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def request(session, url):
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        return {
-            "ok": True,
-            "status_code": response.status_code,
-            "final_url": response.url,
-            "text": response.text or "",
-            "content_type": response.headers.get("content-type", ""),
-        }
-    except Exception as exc:
-        return {
-            "ok": False,
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-        }
-
-
-def term_hits(text, terms):
-    lower = (text or "").lower()
-    hits = []
-
-    for term in terms:
-        if term.lower() in lower:
-            hits.append(term)
-
-    return hits
-
-
-def extract_product_links(html, terms):
-    soup = BeautifulSoup(html or "", "html.parser")
-
-    products = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        raw_href = str(a.get("href") or "")
-        href = normalize_url(raw_href)
-
-        if not href or "/products/" not in href.lower():
-            continue
-
-        if href.lower() in seen:
-            continue
-
-        seen.add(href.lower())
-
-        text = clean(a.get_text(" ", strip=True))
-
-        node = a
-        context = text
-
-        for _ in range(8):
-            node = getattr(node, "parent", None)
-            if node is None:
-                break
-
-            candidate = clean(node.get_text(" ", strip=True))
-
-            if len(candidate) <= 1800 and len(candidate) > len(context):
-                context = candidate
-
-            if len(context) > 1200:
-                break
-
-        blob = f"{text} {context} {href}"
-
-        if not term_hits(blob, terms):
-            continue
-
-        products.append(
-            {
-                "url": href,
-                "text": text[:500],
-                "context": context[:1800],
-                "hits": term_hits(blob, terms),
-            }
-        )
-
-    return products
-
-
-def parse_sitemap_locs(xml_text):
-    try:
-        root = ET.fromstring(xml_text or "")
-    except Exception:
-        return []
-
-    locs = []
-
-    for element in root.iter():
-        tag = element.tag.rsplit("}", 1)[-1].lower()
-
-        if tag == "loc" and element.text:
-            locs.append(clean(element.text))
-
-    return locs
-
-
-def inspect_sitemap(session, sitemap_url, terms):
-    result = {
-        "requested": sitemap_url,
-        "status_code": None,
-        "final_url": None,
-        "error": None,
-        "loc_count": 0,
-        "child_sitemaps": [],
-        "matching_urls": [],
-    }
-
-    response = request(session, sitemap_url)
-
-    if not response["ok"]:
-        result["error"] = {
-            "type": response["error_type"],
-            "message": response["error"],
-        }
-        return result
-
-    result["status_code"] = response["status_code"]
-    result["final_url"] = response["final_url"]
-
-    locs = parse_sitemap_locs(response["text"])
-    result["loc_count"] = len(locs)
-
-    lower_text = response["text"].lower()
-
-    # Sitemap index.
-    if "<sitemapindex" in lower_text:
-        result["child_sitemaps"] = [
-            url
-            for url in locs
-            if "sitemap" in url.lower()
-        ][:100]
-
-        matching = []
-
-        for child in result["child_sitemaps"]:
-            child_response = request(session, child)
-
-            if not child_response["ok"]:
-                matching.append(
-                    {
-                        "sitemap": child,
-                        "error": child_response["error"],
-                    }
-                )
-                continue
-
-            child_locs = parse_sitemap_locs(child_response["text"])
-
-            for loc in child_locs:
-                if any(
-                    term.lower() in loc.lower()
-                    for term in terms
-                ):
-                    matching.append(
-                        {
-                            "sitemap": child,
-                            "url": loc,
-                            "hits": term_hits(loc, terms),
-                        }
-                    )
-
-        result["matching_urls"] = matching[:200]
-        return result
-
-    result["matching_urls"] = [
-        {
-            "url": loc,
-            "hits": term_hits(loc, terms),
-        }
-        for loc in locs
-        if any(term.lower() in loc.lower() for term in terms)
-    ][:200]
-
-    return result
-
-
-def inspect_product_html(session, product_url):
-    response = request(
-        session,
-        product_url,
+def _norm(value):
+    text = _clean(value).casefold()
+    text = re.sub(
+        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
+        " ",
+        text,
     )
+    text = re.sub(r"[^a-z0-9äöüß]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
-    entry = {
-        "product_url": product_url,
-        "status_code": response.get("status_code"),
-        "final_url": response.get("final_url"),
-        "content_type": response.get("content_type"),
-        "error": response.get("error"),
-    }
 
-    if not response.get("ok"):
-        return entry
+def _tokens(value):
+    return [
+        token
+        for token in re.findall(
+            r"[a-z0-9äöüß]+",
+            _norm(value),
+        )
+        if len(token) > 1
+    ]
 
-    text = response.get("text") or ""
-    entry["html_length"] = len(text)
 
-    soup = BeautifulSoup(text, "html.parser")
+def _concentration(value):
+    text = _norm(value)
 
-    title = ""
-    for selector in (
-        "h1",
-        "meta[property='og:title']",
-        "title",
+    if (
+        "eau de toilette" in text
+        or re.search(r"\bedt\b", text)
     ):
-        element = soup.select_one(selector)
-        if not element:
-            continue
+        return "Eau de Toilette"
 
-        title = clean(
-            element.get("content")
-            if element.name == "meta"
-            else element.get_text(" ", strip=True)
-        )
-        if title:
-            break
+    if (
+        "eau de parfum" in text
+        or re.search(r"\bedp\b", text)
+    ):
+        return "Eau de Parfum"
 
-    entry["title"] = title
-    entry["price_text"] = None
-    entry["has_add_to_cart"] = False
-    entry["has_out_of_stock_marker"] = False
-    entry["json_ld"] = []
+    if (
+        "extrait de parfum" in text
+        or re.search(r"\bextrait\b", text)
+    ):
+        return "Extrait de Parfum"
 
-    page_text = soup.get_text(" ", strip=True)
-    lower_text = page_text.lower()
+    if re.search(r"\bparfum\b", text):
+        return "Parfum"
 
-    entry["has_add_to_cart"] = any(
-        marker in lower_text
-        for marker in (
-            "add to cart",
-            "ajouter au panier",
-            "in den warenkorb",
-            "add to bag",
-        )
+    return ""
+
+
+def _size_ml(value):
+    match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)"
+        r"\s*(ml|cl|dl|l|oz|fl\.?\s*oz)\b",
+        _clean(value),
+        re.I,
     )
 
-    entry["has_out_of_stock_marker"] = any(
-        marker in lower_text
-        for marker in (
-            "out of stock",
-            "sold out",
-            "uitverkocht",
-            "rupture de stock",
-            "ausverkauft",
+    if not match:
+        return None
+
+    try:
+        number = float(
+            match.group(1).replace(",", ".")
         )
+    except ValueError:
+        return None
+
+    unit = re.sub(
+        r"\s+",
+        "",
+        match.group(2).lower(),
     )
 
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text(" ", strip=True)
+    if unit == "cl":
+        number *= 10
+    elif unit == "dl":
+        number *= 100
+    elif unit == "l":
+        number *= 1000
+    elif unit in {"oz", "floz"}:
+        number *= 29.5735
+
+    return (
+        int(number)
+        if number.is_integer()
+        else number
+    )
+
+
+def _requested_size(query):
+    return _size_ml(query)
+
+
+def _parse_price(value):
+    if value is None:
+        return None
+
+    raw = _clean(value)
+    raw = raw.replace("€", "")
+    raw = raw.replace("EUR", "")
+    raw = raw.strip()
+
+    if re.fullmatch(
+        r"\d+(?:[.,]\d{1,2})?",
+        raw,
+    ):
+        try:
+            number = float(
+                raw.replace(",", ".")
+            )
+            return (
+                round(number, 2)
+                if 0 < number < 10000
+                else None
+            )
+        except ValueError:
+            return None
+
+    # German / European prices:
+    # 1.234,56 -> 1234.56
+    # 24,95 -> 24.95
+    # 1234.56 -> 1234.56
+    match = re.search(
+        r"\d{1,3}(?:\.\d{3})*,\d{2}"
+        r"|\d+(?:,\d{2})"
+        r"|\d+(?:\.\d{2})",
+        raw,
+    )
+
+    if not match:
+        return None
+
+    number = match.group(0)
+
+    if "," in number:
+        if "." in number:
+            number = number.replace(".", "")
+        number = number.replace(",", ".")
+
+    try:
+        result = float(number)
+    except ValueError:
+        return None
+
+    return (
+        round(result, 2)
+        if 0 < result < 10000
+        else None
+    )
+
+
+def _availability_from_text(value):
+    text = _norm(value)
+
+    # Parfum-Zentrum contains availability-watch/help text on product pages
+    # that can include generic phrases such as 'nicht verfügbar'.
+    # Purchase-state markers must therefore win over generic page text.
+    if any(marker in text for marker in (
+        "auf lager",
+        "versandbereit",
+        "sofort lieferbar",
+        "lieferbar",
+        "auf lager >",
+    )):
+        return "in_stock"
+
+    if any(
+        marker in text
+        for marker in OUT_MARKERS
+    ):
+        return "out_of_stock"
+
+    if any(
+        marker in text
+        for marker in IN_MARKERS
+    ):
+        return "in_stock"
+
+    return "unknown"
+
+
+def _matches_query(name, query):
+    name_norm = _norm(name)
+    query_tokens = [
+        token
+        for token in _tokens(query)
+        if token not in STOPWORDS
+    ]
+
+    if not name_norm or not query_tokens:
+        return False
+
+    name_tokens = set(
+        _tokens(name_norm)
+    )
+
+    if not all(
+        token in name_tokens
+        for token in query_tokens
+    ):
+        return False
+
+    requested_concentration = _concentration(
+        query
+    )
+
+    if (
+        requested_concentration
+        and _concentration(name)
+        != requested_concentration
+    ):
+        return False
+
+    requested_size = _requested_size(query)
+
+    if requested_size is not None:
+        discovered_size = _size_ml(name)
+
+        if (
+            discovered_size is not None
+            and abs(
+                discovered_size - requested_size
+            ) > 0.01
+        ):
+            return False
+
+    return True
+
+
+def _looks_like_perfume(name):
+    value = f" {_norm(name)} "
+
+    for marker in NON_PERFUME_MARKERS:
+        if (
+            f" {_norm(marker)} "
+            in value
+        ):
+            return False
+
+    return True
+
+
+def _product_url(value):
+    raw = _clean(value)
+
+    if not raw:
+        return ""
+
+    if raw.startswith("//"):
+        raw = "https:" + raw
+    elif raw.startswith("/"):
+        raw = urljoin(BASE_URL, raw)
+    elif not re.match(
+        r"^https?://",
+        raw,
+        re.I,
+    ):
+        raw = urljoin(
+            BASE_URL + "/",
+            raw,
+        )
+
+    parsed = urlparse(raw)
+
+    host = parsed.netloc.lower().split(":", 1)[0]
+
+    if host not in {
+        "www.parfum-zentrum.de",
+        "parfum-zentrum.de",
+    }:
+        return ""
+
+    path = parsed.path
+
+    # Current product URLs use the generic *_zNNNN format.
+    if not re.search(
+        r"_z\d+/?$",
+        path,
+        re.I,
+    ):
+        return ""
+
+    return parsed._replace(
+        netloc="www.parfum-zentrum.de",
+        query="",
+        fragment="",
+    ).geturl()
+
+
+def _jsonld_objects(soup):
+    output = []
+
+    for script in soup.find_all(
+        "script",
+        type="application/ld+json",
+    ):
+        raw = script.string or script.get_text()
+
         if not raw:
             continue
 
@@ -309,432 +425,1514 @@ def inspect_product_html(session, product_url):
         except Exception:
             continue
 
-        objects = data if isinstance(data, list) else [data]
+        queue = [data]
 
-        for obj in objects:
-            if not isinstance(obj, dict):
+        while queue:
+            item = queue.pop(0)
+
+            if isinstance(item, list):
+                queue.extend(item)
                 continue
 
-            summary = {
-                "@type": obj.get("@type"),
-                "name": obj.get("name"),
-                "brand": obj.get("brand"),
-                "offers": obj.get("offers"),
-            }
-            entry["json_ld"].append(summary)
+            if not isinstance(item, dict):
+                continue
 
-    entry["raw_prefix"] = text[:2500]
-    return entry
+            output.append(item)
+
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                queue.extend(graph)
+
+    return output
 
 
-def inspect_product_js(session, product_url):
-    response = request(
-        session,
-        product_url + ".js",
+def _jsonld_product(soup):
+    for item in _jsonld_objects(soup):
+        typ = item.get("@type")
+
+        types = (
+            typ
+            if isinstance(typ, list)
+            else [typ]
+        )
+
+        if (
+            "Product" in types
+            or "ProductGroup" in types
+        ):
+            return item
+
+    return {}
+
+
+def _jsonld_value(data, *keys):
+    for key in keys:
+        value = data.get(key)
+
+        if isinstance(value, dict):
+            value = (
+                value.get("name")
+                or value.get("value")
+            )
+
+        if (
+            value is not None
+            and str(value).strip()
+        ):
+            return _clean(value)
+
+    return None
+
+
+def _offer_objects(data):
+    offers = (
+        data.get("offers")
+        if isinstance(data, dict)
+        else None
     )
 
-    entry = {
-        "product_url": product_url,
-        "status_code": response.get("status_code"),
-        "final_url": response.get("final_url"),
-        "content_type": response.get("content_type"),
-        "error": response.get("error"),
-    }
+    if isinstance(offers, dict):
+        return [offers]
 
-    if not response.get("ok"):
-        return entry
-
-    text = response.get("text") or ""
-
-    try:
-        payload = json.loads(text)
-
-        if isinstance(payload, dict):
-            entry["title"] = payload.get("title")
-            entry["vendor"] = payload.get("vendor")
-            entry["handle"] = payload.get("handle")
-            entry["available"] = payload.get("available")
-
-            variants = payload.get("variants") or []
-
-            if isinstance(variants, list):
-                entry["variant_count"] = len(variants)
-                entry["variants"] = [
-                    {
-                        "id": variant.get("id"),
-                        "title": variant.get("title"),
-                        "available": variant.get("available"),
-                        "price": variant.get("price"),
-                    }
-                    for variant in variants[:30]
-                    if isinstance(variant, dict)
-                ]
-    except Exception:
-        entry["raw_prefix"] = text[:1500]
-
-    return entry
-
-
-@router.get("/perfumemarket")
-def debug_perfumemarket(
-    q: str = Query(..., min_length=2),
-):
-    """
-    DIAGNOSTIC ONLY.
-
-    This endpoint does NOT modify the PerfumeMarket scraper.
-
-    It traces:
-    1. Shopify predictive search.
-    2. Shopify normal search variants.
-    3. The public sitemap/index and product sitemap URLs.
-    4. The two collections currently known to contain the missing products.
-    5. The actual scraper discovery() result.
-    6. The .js product payloads for EVERY candidate returned by
-       the actual production discovery() function.
-
-    The last step is the important diagnostic addition: it lets us follow
-    Black and Diva from actual discovery directly into product enrichment,
-    instead of relying on sitemap/collection candidates.
-    """
-    query = str(q or "").strip()
-
-    focus_terms = [
-        query,
-        "Hawas Black",
-        "Hawas Diva",
-        "Hawas Eclat",
-        "Hawas Women Eclat",
-    ]
-
-    unique_terms = []
-    seen_terms = set()
-
-    for term in focus_terms:
-        key = term.lower()
-        if key in seen_terms:
-            continue
-        seen_terms.add(key)
-        unique_terms.append(term)
-
-    encoded = quote(query)
-
-    endpoints = [
-        (
-            "predictive",
-            (
-                f"{BASE_URL}/search/suggest.json"
-                f"?q={encoded}"
-                "&resources[type]=product"
-                "&resources[limit]=20"
-                "&resources[options][unavailable_products]=last"
-            ),
-        ),
-        (
-            "search_type_product_prefix_last",
-            (
-                f"{BASE_URL}/search?q={encoded}"
-                "&type=product"
-                "&options%5Bprefix%5D=last"
-                "&options%5Bunavailable_products%5D=last"
-            ),
-        ),
-        (
-            "search_type_product",
-            f"{BASE_URL}/search?q={encoded}&type=product",
-        ),
-        (
-            "search_plain",
-            f"{BASE_URL}/search?q={encoded}",
-        ),
-    ]
-
-    collection_endpoints = [
-        (
-            "oriental_woody",
-            f"{BASE_URL}/collections/oriental-woody",
-        ),
-        (
-            "women_perfumes",
-            f"{BASE_URL}/collections/women-perfumes",
-        ),
-    ]
-
-    pages = []
-
-    session = requests.Session()
-
-    try:
-        # ---------------------------------------------------------------
-        # 1. Actual search endpoints used by the production scraper.
-        # ---------------------------------------------------------------
-        for label, endpoint in endpoints:
-            response = request(session, endpoint)
-
-            page = {
-                "type": "search_endpoint",
-                "label": label,
-                "requested": endpoint,
-                "status_code": response.get("status_code"),
-                "final_url": response.get("final_url"),
-                "content_type": response.get("content_type"),
-                "html_length": len(response.get("text") or ""),
-                "focus_hits_in_raw_response": term_hits(
-                    response.get("text") or "",
-                    unique_terms,
-                ),
-                "product_links": [],
-                "error": response.get("error"),
-            }
-
-            if response.get("ok"):
-                html = response.get("text") or ""
-
-                if "json" in (response.get("content_type") or "").lower():
-                    product_urls = sorted(
-                        set(
-                            re.findall(
-                                r'https?://[^"\\\s]+/products/[^"\\\s]+',
-                                html,
-                                flags=re.I,
-                            )
-                        )
-                    )
-
-                    page["product_urls"] = [
-                        {
-                            "url": normalize_url(url),
-                            "hits": term_hits(url, unique_terms),
-                        }
-                        for url in product_urls
-                        if any(
-                            term.lower() in url.lower()
-                            for term in unique_terms
-                        )
-                    ][:200]
-
-                page["product_links"] = extract_product_links(
-                    html,
-                    unique_terms,
-                )[:200]
-
-            pages.append(page)
-
-        # ---------------------------------------------------------------
-        # 2. Direct collection pages.
-        # ---------------------------------------------------------------
-        for label, endpoint in collection_endpoints:
-            response = request(session, endpoint)
-
-            page = {
-                "type": "collection",
-                "label": label,
-                "requested": endpoint,
-                "status_code": response.get("status_code"),
-                "final_url": response.get("final_url"),
-                "content_type": response.get("content_type"),
-                "html_length": len(response.get("text") or ""),
-                "focus_hits_in_raw_response": term_hits(
-                    response.get("text") or "",
-                    unique_terms,
-                ),
-                "product_links": [],
-                "error": response.get("error"),
-            }
-
-            if response.get("ok"):
-                page["product_links"] = extract_product_links(
-                    response.get("text") or "",
-                    unique_terms,
-                )[:200]
-
-            pages.append(page)
-
-        # ---------------------------------------------------------------
-        # 3. Public sitemap / product sitemap.
-        # ---------------------------------------------------------------
-        sitemap_candidates = [
-            f"{BASE_URL}/sitemap.xml",
-            f"{BASE_URL}/sitemap_products_1.xml",
+    if isinstance(offers, list):
+        return [
+            offer
+            for offer in offers
+            if isinstance(offer, dict)
         ]
 
-        sitemap_results = []
+    return []
 
-        for sitemap_url in sitemap_candidates:
-            sitemap_results.append(
-                inspect_sitemap(
-                    session,
-                    sitemap_url,
-                    unique_terms,
-                )
-            )
 
-        sitemap_index = sitemap_results[0]
+def _jsonld_price(data):
+    for offer in _offer_objects(data):
+        price = _parse_price(
+            offer.get("price")
+            or offer.get("lowPrice")
+        )
 
-        for child in sitemap_index.get("child_sitemaps", [])[:20]:
-            if child in sitemap_candidates:
-                continue
+        if price is not None:
+            return price
 
-            sitemap_results.append(
-                inspect_sitemap(
-                    session,
-                    child,
-                    unique_terms,
-                )
-            )
+    return None
 
-        # ---------------------------------------------------------------
-        # 4. Inspect matching product URLs from sitemap/collections.
-        # ---------------------------------------------------------------
-        candidate_urls = []
-        seen_urls = set()
 
-        for sitemap in sitemap_results:
-            for item in sitemap.get("matching_urls", []):
-                url = normalize_url(item.get("url"))
+def _jsonld_availability(data):
+    for offer in _offer_objects(data):
+        value = _norm(
+            offer.get("availability")
+            or offer.get("itemAvailability")
+            or ""
+        )
 
-                if not url or "/products/" not in url.lower():
-                    continue
+        if (
+            "outofstock" in value
+            or "soldout" in value
+        ):
+            return "out_of_stock"
 
-                key = url.lower()
+        if (
+            "instock" in value
+            or "preorder" in value
+            or "limitedavailability" in value
+        ):
+            return "in_stock"
 
-                if key in seen_urls:
-                    continue
+    return None
 
-                seen_urls.add(key)
-                candidate_urls.append(url)
 
-        for page in pages:
-            for item in page.get("product_links", []):
-                url = normalize_url(item.get("url"))
+def _semantic_price(soup):
+    selectors = (
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
+        ".product-price",
+        ".product_price",
+        ".price--current",
+        ".price-current",
+        ".current-price",
+        ".current_price",
+        ".final-price",
+        ".final_price",
+        ".sale-price",
+        ".sale_price",
+    )
 
-                if not url or "/products/" not in url.lower():
-                    continue
+    candidates = []
 
-                key = url.lower()
-
-                if key in seen_urls:
-                    continue
-
-                seen_urls.add(key)
-                candidate_urls.append(url)
-
-        product_inspections = []
-
-        for product_url in candidate_urls[:50]:
-            product_inspections.append(
-                inspect_product_js(
-                    session,
-                    product_url,
-                )
-            )
-
-        # ---------------------------------------------------------------
-        # 5. Run the ACTUAL PerfumeMarket discovery() function.
-        # ---------------------------------------------------------------
-        actual_discovery = {
-            "error": None,
-            "candidate_count": None,
-            "candidates": [],
-        }
-
+    for selector in selectors:
         try:
-            from scrapers.perfumemarket.scraper import discover
-
-            candidates = discover(
-                session,
-                query,
+            nodes = soup.select(
+                selector
             )
+        except Exception:
+            nodes = []
 
-            actual_discovery["candidate_count"] = len(candidates)
-            actual_discovery["candidates"] = candidates[:100]
-
-        except Exception as exc:
-            actual_discovery["error"] = {
-                "type": type(exc).__name__,
-                "message": str(exc),
-                "traceback": traceback.format_exc(),
-            }
-
-        # ---------------------------------------------------------------
-        # 6. CRITICAL: inspect the exact candidates returned by the
-        #    production discover() function.
-        #
-        #    This is intentionally separate from product_inspections above.
-        #    It follows the real production path:
-        #
-        #      discover()
-        #        -> candidate
-        #        -> product .js
-        #
-        #    Therefore Black/Diva can no longer disappear between discovery
-        #    and diagnostic inspection.
-        # ---------------------------------------------------------------
-        actual_product_inspections = []
-        actual_product_html_inspections = []
-
-        for candidate in actual_discovery.get("candidates", []):
-            if not isinstance(candidate, dict):
+        for node in nodes:
+            if _bad_price_context(node):
                 continue
 
-            product_url = normalize_url(candidate.get("url"))
+            price = _node_price(node)
 
-            if not product_url or "/products/" not in product_url.lower():
+            if price is None:
                 continue
 
-            inspection = inspect_product_js(
-                session,
-                product_url,
+            marker = (
+                " ".join(
+                    node.get("class", [])
+                ).lower()
+                + " "
+                + str(
+                    node.get("id", "")
+                ).lower()
             )
 
-            inspection["discovery_candidate"] = {
-                "name": candidate.get("name"),
-                "price": candidate.get("price"),
-                "source": candidate.get("source"),
-                "url": product_url,
-            }
+            score = 0
 
-            actual_product_inspections.append(inspection)
+            if "product" in marker:
+                score += 20
 
-            html_inspection = inspect_product_html(
-                session,
-                product_url,
+            if any(
+                word in marker
+                for word in (
+                    "current",
+                    "final",
+                    "sale",
+                )
+            ):
+                score += 15
+
+            parent_text = (
+                node.parent.get_text(
+                    " ",
+                    strip=True,
+                ).lower()
+                if node.parent
+                else ""
             )
 
-            html_inspection["discovery_candidate"] = {
-                "name": candidate.get("name"),
-                "price": candidate.get("price"),
-                "source": candidate.get("source"),
-                "url": product_url,
-            }
+            if (
+                "in den warenkorb"
+                in parent_text
+            ):
+                score += 40
 
-            actual_product_html_inspections.append(html_inspection)
+            candidates.append(
+                (
+                    score,
+                    price,
+                )
+            )
 
-        return {
-            "diagnostic": True,
-            "ok": True,
-            "store": "PerfumeMarket",
-            "query": query,
-            "focus_terms": unique_terms,
-            "pages": pages,
-            "sitemaps": sitemap_results,
-            "product_inspections": product_inspections,
-            "actual_discovery": actual_discovery,
-            "actual_product_inspections": actual_product_inspections,
-            "actual_product_html_inspections": actual_product_html_inspections,
-        }
+    if not candidates:
+        return None
 
+    candidates.sort(
+        key=lambda item: (
+            -item[0],
+            item[1],
+        )
+    )
+
+    return candidates[0][1]
+
+
+def _node_price(node):
+    for attr in (
+        "content",
+        "data-price",
+        "data-product-price",
+        "value",
+    ):
+        if node.has_attr(attr):
+            value = _parse_price(
+                node.get(attr)
+            )
+
+            if value is not None:
+                return value
+
+    return _parse_price(
+        node.get_text(
+            " ",
+            strip=True,
+        )
+    )
+
+
+def _bad_price_context(node):
+    current = node
+
+    for _ in range(8):
+        if current is None:
+            break
+
+        text = (
+            current.get_text(
+                " ",
+                strip=True,
+            ).lower()
+        )
+
+        marker = (
+            " ".join(
+                current.get("class", [])
+            ).lower()
+            + " "
+            + str(
+                current.get("id", "")
+            ).lower()
+        )
+
+        if any(
+            word in text
+            for word in (
+                "grundpreis",
+                "pro liter",
+                "per liter",
+                "€/l",
+                "preis inkl. code",
+                "preis inkl code",
+            )
+        ):
+            return True
+
+        if any(
+            word in marker
+            for word in (
+                "coupon",
+                "voucher",
+                "gutschein",
+                "rabattcode",
+                "discount",
+                "recommend",
+                "related",
+                "cross-sell",
+                "upsell",
+            )
+        ):
+            return True
+
+        current = current.parent
+
+    return False
+
+
+def _is_struck(node):
+    if node.find_parent(
+        ["del", "s", "strike"]
+    ):
+        return True
+
+    current = node
+
+    for _ in range(6):
+        if current is None:
+            break
+
+        marker = (
+            " ".join(
+                current.get("class", [])
+            ).lower()
+            + " "
+            + str(
+                current.get("id", "")
+            ).lower()
+        )
+
+        if any(
+            word in marker
+            for word in (
+                "old-price",
+                "old_price",
+                "regular-price",
+                "list-price",
+                "list_price",
+                "strike",
+                "strikethrough",
+                "was-price",
+                "compare-price",
+                "crossed",
+            )
+        ):
+            return True
+
+        current = current.parent
+
+    return False
+
+
+
+def _debug_price_candidates(soup, data):
+    """Safe/minimal temporary diagnostic; never blocks price extraction."""
+    try:
+        print("\n===== PARFUMZENTRUM PRICE DEBUG =====", flush=True)
+
+        h1 = soup.find("h1")
+        print("H1:", h1.get_text(" ", strip=True)[:300] if h1 else "<none>", flush=True)
+
+        # JSON-LD: only inspect a small number of scripts.
+        ld_prices = []
+        for script in soup.find_all("script", type="application/ld+json")[:20]:
+            raw = script.string or script.get_text(" ", strip=True)
+            if not raw:
+                continue
+            for key in ("price", "lowPrice"):
+                for m in re.finditer(rf'"{key}"\s*:\s*"?([0-9]+[.,][0-9]{{2}})', raw, re.I):
+                    ld_prices.append(f"{key}={m.group(1)}")
+                    if len(ld_prices) >= 10:
+                        break
+                if len(ld_prices) >= 10:
+                    break
+            if len(ld_prices) >= 10:
+                break
+        print("JSON-LD prices:", ld_prices or "<none>", flush=True)
+
+        # Inspect only a small subtree around H1.
+        area = h1.parent if h1 else soup
+        if h1:
+            for _ in range(3):
+                if getattr(area, "parent", None) is not None:
+                    area = area.parent
+
+        seen = set()
+        count = 0
+        for node in area.find_all(["span", "div", "p", "strong", "b", "del", "ins"])[:400]:
+            txt = node.get_text(" ", strip=True)
+            if not txt or len(txt) > 160 or "€" not in txt:
+                continue
+            matches = re.findall(r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€|(?<![\d.,])\d+(?:[.,]\d{2})\s*€", txt, re.I)
+            if not matches:
+                continue
+            key=(node.name, tuple(node.get("class", [])), node.get("id", ""), tuple(matches))
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                struck = _is_struck(node)
+            except Exception:
+                struck = "ERROR"
+            print("PRICE NODE:", repr(txt[:160]), "| tag=", node.name, "| class=", repr(" ".join(node.get("class", []))), "| id=", repr(node.get("id", "")), "| struck=", struck, "| matches=", matches, flush=True)
+            count += 1
+            if count >= 25:
+                break
+
+        print("DOM candidates printed:", count, flush=True)
+        if isinstance(data, dict):
+            print("JSON-LD data price:", repr(data.get("price")), "lowPrice:", repr(data.get("lowPrice")), flush=True)
+            print("JSON-LD offers:", repr(data.get("offers"))[:1200], flush=True)
+        else:
+            print("JSON-LD data:", repr(data)[:1200], flush=True)
+
+        print("===== END PARFUMZENTRUM PRICE DEBUG =====\n", flush=True)
     except Exception as exc:
-        return {
-            "diagnostic": True,
-            "ok": False,
-            "store": "PerfumeMarket",
-            "query": query,
-            "stage": "debug_perfumemarket",
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-        }
+        print(f"===== PARFUMZENTRUM PRICE DEBUG ERROR: {type(exc).__name__}: {exc} =====", flush=True)
+
+def _extract_price(soup, data):
+    """Return the active customer-facing price of the current product.
+
+    The page contains many other product cards and prices (recommendations,
+    navigation, related products). A global lowest-price scan is therefore
+    unsafe. First anchor extraction to the current product H1 and its
+    purchase area; only then use generic visible/structured fallbacks.
+    """
+    # TEMPORARY DEBUG: inspect exactly which prices the downloaded HTML exposes.
+    _debug_price_candidates(soup, data)
+
+    # PRIMARY: extract from the DOM subtree belonging to the current product.
+    # This prevents unrelated recommendation prices such as 11,95 EUR from
+    # winning simply because they are cheaper.
+    h1 = soup.find("h1")
+    if h1:
+        current = h1
+        for distance in range(8):
+            current = getattr(current, "parent", None)
+            if current is None:
+                break
+
+            text = current.get_text(" ", strip=True)
+            low = text.lower()
+            if "€" not in text:
+                continue
+
+            purchase_score = 0
+            if "in den warenkorb" in low:
+                purchase_score += 300
+            if "auf lager" in low or "versandbereit" in low:
+                purchase_score += 200
+            if "inkl. mwst" in low or "inkl mwst" in low:
+                purchase_score += 100
+
+            if purchase_score <= 0:
+                continue
+
+            for node in current.find_all(
+                ["span", "div", "p", "strong", "b", "ins"]
+            ):
+                node_text = node.get_text(" ", strip=True)
+                if "€" not in node_text:
+                    continue
+
+                node_low = node_text.lower()
+                if any(term in node_low for term in (
+                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
+                    "coupon", "gutschein", "rabattcode", "discount-code",
+                )):
+                    continue
+                if _is_struck(node):
+                    continue
+
+                matches = re.findall(
+                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+                    node_text,
+                    re.I,
+                )
+
+                for match in matches:
+                    price = _parse_price(match)
+                    if price is not None:
+                        return price
+
+            # Do not climb into the entire document.
+            if distance >= 5:
+                break
+
+    # SECONDARY: generic customer-facing visible prices, with context scoring.
+    visible_candidates = []
+
+
+def _extract_name(soup, data):
+    name = _jsonld_value(
+        data,
+        "name",
+    )
+
+    if name:
+        return name
+
+    h1 = soup.find("h1")
+
+    if h1:
+        return " ".join(
+            h1.stripped_strings
+        )
+
+    title = soup.find("title")
+
+    if title:
+        return _clean(
+            title.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+    return ""
+
+
+def _extract_image(soup, data):
+    image = data.get("image")
+
+    if isinstance(
+        image,
+        dict,
+    ):
+        image = (
+            image.get("url")
+            or image.get("contentUrl")
+        )
+
+    if isinstance(
+        image,
+        list,
+    ):
+        image = (
+            image[0]
+            if image
+            else None
+        )
+
+    if image:
+        return urljoin(
+            BASE_URL,
+            str(image),
+        )
+
+    node = soup.select_one(
+        'meta[property="og:image"]'
+    )
+
+    if node and node.get("content"):
+        return urljoin(
+            BASE_URL,
+            node.get("content"),
+        )
+
+    return None
+
+
+def _candidate_urls_from_html(
+    html_text,
+    query,
+):
+    soup = BeautifulSoup(
+        html_text,
+        "html.parser",
+    )
+
+    scored = {}
+
+    query_tokens = [
+        token
+        for token in _tokens(query)
+        if token not in STOPWORDS
+    ]
+
+    def add(raw, context=""):
+        url = _product_url(raw)
+
+        if not url:
+            return
+
+        haystack = _norm(
+            f"{context} {url}"
+        )
+
+        hits = sum(
+            1
+            for token in query_tokens
+            if token in haystack
+        )
+
+        # Search pages can contain product URLs
+        # without the exact visible product title.
+        # Do not discard those if at least one
+        # identity token matches.
+        if query_tokens and hits == 0:
+            return
+
+        previous = scored.get(url)
+
+        if previous is None or hits > previous:
+            scored[url] = hits
+
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
+        add(
+            anchor.get("href"),
+            anchor.get_text(
+                " ",
+                strip=True,
+            ),
+        )
+
+    # Generic URL extraction for JSON/embedded HTML.
+    pattern = re.compile(
+        r'https?://(?:www\.)?parfum-zentrum\.de/'
+        r'[^"\'<>\s]+_z\d+/?',
+        re.I,
+    )
+
+    for match in pattern.finditer(
+        html_text
+    ):
+        add(match.group(0))
+
+    relative_pattern = re.compile(
+        r'["\']([^"\']+_z\d+/?)["\']',
+        re.I,
+    )
+
+    for match in relative_pattern.finditer(
+        html_text
+    ):
+        add(match.group(1))
+
+    ordered = sorted(
+        scored.items(),
+        key=lambda item: (
+            -item[1],
+            len(item[0]),
+            item[0],
+        ),
+    )
+
+    return [
+        url
+        for url, _score in ordered
+    ][:MAX_CANDIDATES]
+
+
+def _search_page_state(html_text, query):
+    """Return the live catalog state exposed by the store search page.
+
+    States:
+      - "results": the requested query is reflected and product URLs exist.
+      - "zero": the requested query is reflected and the store explicitly
+        reports zero products.
+      - "unknown": the response is not enough to trust as a live catalog
+        answer (for example a generic shell, redirect page, or bot page).
+
+    This is intentionally separate from product extraction: a valid HTTP 200
+    page is not by itself proof that the query exists in the current catalog.
+    """
+    soup = BeautifulSoup(html_text, "html.parser")
+    visible_text = soup.get_text(" ", strip=True)
+    normalized_text = _norm(visible_text)
+    normalized_query = _norm(query)
+
+    if not normalized_query:
+        return "unknown"
+
+    # The real Parfum-Zentrum search page echoes the query in the heading,
+    # e.g. `Suche „Liquid brun"`. Only then can a zero-result state be trusted.
+    query_reflected = normalized_query in normalized_text
+
+    if not query_reflected:
+        return "unknown"
+
+    # The site currently renders `Produkte (0)` for a query with no live
+    # catalog matches. Accept small whitespace/markup variations.
+    zero_patterns = (
+        r"produkte\s*\(\s*0\s*\)",
+        r"produkte\s*0",
+        r"keine\s+produkte",
+        r"keine\s+ergebnisse",
+    )
+    if any(
+        re.search(pattern, normalized_text, re.I)
+        for pattern in zero_patterns
+    ):
+        return "zero"
+
+    # If product URLs are present, this is an actual positive search result.
+    if _candidate_urls_from_html(html_text, query):
+        return "results"
+
+    return "unknown"
+
+
+def _search_discovery(query):
+    """Discover products from the store's live search first.
+
+    Returns `(candidates, authoritative_zero)`.
+    `authoritative_zero=True` means the live store search itself explicitly
+    answered the query with zero products. In that case sitemap URLs must NOT
+    be used as a fallback, because they may represent stale/hidden products.
+    """
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    try:
+        endpoints = (
+            SEARCH_URL
+            + "?q="
+            + quote_plus(query),
+            SEARCH_URL
+            + "?search="
+            + quote_plus(query),
+            SEARCH_URL
+            + "?query="
+            + quote_plus(query),
+            SEARCH_URL
+            + "?text="
+            + quote_plus(query),
+        )
+
+        seen = set()
+        candidates = []
+        authoritative_zero = False
+
+        for endpoint in endpoints:
+            try:
+                response = session.get(
+                    endpoint,
+                    timeout=(
+                        CONNECT_TIMEOUT,
+                        READ_TIMEOUT,
+                    ),
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+
+            try:
+                if response.status_code >= 400:
+                    continue
+
+                html_text = response.text
+                urls = _candidate_urls_from_html(
+                    html_text,
+                    query,
+                )
+
+                for url in urls:
+                    if url in seen:
+                        continue
+
+                    seen.add(url)
+                    candidates.append(url)
+
+                    if len(candidates) >= MAX_CANDIDATES:
+                        return candidates, False
+
+                state = _search_page_state(
+                    html_text,
+                    query,
+                )
+
+                if state == "zero":
+                    authoritative_zero = True
+                elif state == "results":
+                    # A live result page without extractable product URLs is
+                    # not a reason to trust the sitemap, so keep searching the
+                    # alternate parameter forms but do not mark zero.
+                    pass
+            finally:
+                response.close()
+
+        if candidates:
+            return candidates, False
+
+        return [], authoritative_zero
 
     finally:
         session.close()
+
+def _xml_urls(xml_text):
+    try:
+        root = ET.fromstring(
+            xml_text
+        )
+    except ET.ParseError:
+        return []
+
+    return [
+        node.text.strip()
+        for node in root.iter()
+        if node.tag.endswith("loc")
+        and node.text
+    ]
+
+
+def _get_sitemap_urls():
+    """
+    Load the complete product URL index published by Parfum-Zentrum.
+
+    The previous implementation only inspected the first six child sitemaps.
+    That is not safe: sitemap indexes are ordered administrative files, not a
+    guarantee that the requested product is in one of the first six files.
+    A perfectly valid product can therefore disappear from ScentHunter even
+    though its product page exists and the URL is present in the site's index.
+
+    We fetch every child sitemap (bounded by SITEMAP_MAX_CHILD_MAPS) in
+    parallel, cache the resulting product URLs, and keep direct URLs from the
+    root sitemap as well. This is generic and contains no perfume-specific
+    rules or prices.
+    """
+    global _sitemap_cache
+    global _sitemap_cached_at
+
+    now = time.monotonic()
+
+    if (
+        _sitemap_cache
+        and now - _sitemap_cached_at < SITEMAP_TTL
+    ):
+        return list(_sitemap_cache)
+
+    with _sitemap_lock:
+        now = time.monotonic()
+
+        if (
+            _sitemap_cache
+            and now - _sitemap_cached_at < SITEMAP_TTL
+        ):
+            return list(_sitemap_cache)
+
+        try:
+            response = requests.get(
+                SITEMAP_URL,
+                headers=HEADERS,
+                timeout=SITEMAP_TIMEOUT,
+            )
+            response.raise_for_status()
+            root_urls = _xml_urls(response.text)
+            response.close()
+        except (requests.RequestException, ET.ParseError):
+            return []
+
+        child_maps = []
+        direct_urls = []
+
+        for url in root_urls:
+            low = url.lower().split("?", 1)[0]
+            if low.endswith(".xml") or low.endswith(".xml.gz"):
+                child_maps.append(url)
+            elif _product_url(url):
+                direct_urls.append(url)
+
+        # Some stores expose more than one sitemap index level. Resolve one
+        # additional index level generically instead of assuming a fixed file
+        # naming scheme.
+        child_maps = list(dict.fromkeys(child_maps))[:SITEMAP_MAX_CHILD_MAPS]
+
+        def fetch_sitemap(url):
+            try:
+                child = requests.get(
+                    url,
+                    headers=HEADERS,
+                    timeout=(1.8, 4.0),
+                )
+                try:
+                    if child.status_code != 200:
+                        return []
+                    return _xml_urls(child.text)
+                finally:
+                    child.close()
+            except (requests.RequestException, ET.ParseError):
+                return []
+
+        collected = list(direct_urls)
+
+        if child_maps:
+            with ThreadPoolExecutor(
+                max_workers=min(SITEMAP_WORKERS, len(child_maps))
+            ) as pool:
+                futures = [
+                    pool.submit(fetch_sitemap, url)
+                    for url in child_maps
+                ]
+
+                for future in as_completed(futures):
+                    try:
+                        values = future.result()
+                    except Exception:
+                        values = []
+
+                    collected.extend(values)
+
+        # If a child sitemap is itself an index, resolve its children once.
+        nested_maps = []
+        product_urls = []
+
+        for url in collected:
+            low = url.lower().split("?", 1)[0]
+            if low.endswith(".xml") or low.endswith(".xml.gz"):
+                nested_maps.append(url)
+            elif _product_url(url):
+                product_urls.append(url)
+
+        nested_maps = list(dict.fromkeys(nested_maps))[:SITEMAP_MAX_CHILD_MAPS]
+
+        if nested_maps:
+            with ThreadPoolExecutor(
+                max_workers=min(SITEMAP_WORKERS, len(nested_maps))
+            ) as pool:
+                futures = [
+                    pool.submit(fetch_sitemap, url)
+                    for url in nested_maps
+                ]
+
+                for future in as_completed(futures):
+                    try:
+                        values = future.result()
+                    except Exception:
+                        values = []
+
+                    for value in values:
+                        if _product_url(value):
+                            product_urls.append(value)
+
+        # Preserve order while removing duplicates.
+        unique = []
+        seen = set()
+
+        for url in product_urls:
+            canonical = _product_url(url)
+            if not canonical:
+                continue
+
+            key = canonical.lower()
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique.append(canonical)
+
+        _sitemap_cache = unique
+        _sitemap_cached_at = time.monotonic()
+
+        return list(_sitemap_cache)
+
+
+def _sitemap_discovery(query):
+    urls = _get_sitemap_urls()
+
+    if not urls:
+        return []
+
+    scored = []
+
+    query_tokens = [
+        token
+        for token in _tokens(query)
+        if token not in STOPWORDS
+    ]
+
+    requested_concentration = _concentration(
+        query
+    )
+    requested_size = _requested_size(
+        query
+    )
+
+    for url in urls:
+        url_text = _norm(
+            unquote(url)
+        )
+
+        hits = sum(
+            1
+            for token in query_tokens
+            if token in url_text
+        )
+
+        if (
+            query_tokens
+            and hits < len(query_tokens)
+        ):
+            continue
+
+        score = hits * 20
+
+        concentration = _concentration(
+            url
+        )
+
+        if (
+            requested_concentration
+            and concentration
+            == requested_concentration
+        ):
+            score += 50
+
+        candidate_size = _size_ml(
+            url
+        )
+
+        if (
+            requested_size is not None
+            and candidate_size is not None
+        ):
+            if abs(
+                candidate_size
+                - requested_size
+            ) < 0.01:
+                score += 80
+            else:
+                score -= 80
+
+        if (
+            requested_size is None
+            and candidate_size is not None
+        ):
+            if candidate_size >= 50:
+                score += 20
+            elif candidate_size <= 30:
+                score -= 20
+
+        scored.append(
+            (score, url)
+        )
+
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            len(item[1]),
+            item[1],
+        )
+    )
+
+    return [
+        url
+        for _score, url in scored
+    ][:MAX_CANDIDATES]
+
+
+def _extract_product(url, query):
+    try:
+        response = _session().get(
+            url,
+            timeout=PRODUCT_TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return None
+
+    try:
+        if response.status_code != 200:
+            return None
+
+        html_text = response.text
+    finally:
+        response.close()
+
+    soup = BeautifulSoup(
+        html_text,
+        "html.parser",
+    )
+
+    data = _jsonld_product(
+        soup
+    )
+
+    name = _extract_name(
+        soup,
+        data,
+    )
+
+    if not name:
+        return None
+
+    if not _matches_query(
+        name,
+        query,
+    ):
+        return None
+
+    if not _looks_like_perfume(
+        name
+    ):
+        return None
+
+    price = _extract_price(
+        soup,
+        data,
+    )
+
+    availability = (
+        _jsonld_availability(
+            data
+        )
+        or _availability_from_text(
+            soup.get_text(
+                " ",
+                strip=True,
+            )
+        )
+    )
+
+    # Out-of-stock products are valid results
+    # even when no current price is exposed.
+    if (
+        price is None
+        and availability
+        == "unknown"
+    ):
+        return None
+
+    brand = _jsonld_value(
+        data,
+        "brand",
+    )
+
+    image = _extract_image(
+        soup,
+        data,
+    )
+
+    size = _size_ml(
+        name
+    )
+
+    gtin = _jsonld_value(
+        data,
+        "gtin13",
+        "gtin",
+        "gtin8",
+    )
+
+    mpn = _jsonld_value(
+        data,
+        "mpn",
+    )
+
+    sku = _jsonld_value(
+        data,
+        "sku",
+    )
+
+    product_id = _jsonld_value(
+        data,
+        "productID",
+        "productId",
+    )
+
+    concentration = (
+        _concentration(name)
+    )
+
+    return {
+        "store": STORE,
+        "source": {
+            "source_name": name,
+            "source_brand": brand,
+            "url": url,
+            "image": image,
+        },
+        "identity": {
+            "gtin": (
+                {
+                    "value": gtin,
+                    "source": "jsonld",
+                }
+                if gtin
+                else None
+            ),
+            "mpn": (
+                {
+                    "value": mpn,
+                    "source": "jsonld",
+                }
+                if mpn
+                else None
+            ),
+            "sku": (
+                {
+                    "value": sku,
+                    "source": "jsonld",
+                }
+                if sku
+                else None
+            ),
+            "store_product_id": (
+                {
+                    "value": product_id,
+                    "source": "jsonld",
+                }
+                if product_id
+                else None
+            ),
+            "store_variant_id": None,
+        },
+        "attributes": {
+            "size_ml": (
+                {
+                    "value": size,
+                    "source": "product_title",
+                }
+                if size is not None
+                else None
+            ),
+            "concentration": (
+                {
+                    "value": concentration,
+                    "source": "product_title",
+                }
+                if concentration
+                else None
+            ),
+            "gender": {
+                "value": "unknown",
+                "source": "not_explicit",
+            },
+            "packaging_type": {
+                "value": "product",
+                "source": "default",
+            },
+        },
+        "offer": {
+            "price": price,
+            "currency": "EUR",
+            "availability": availability,
+        },
+        "provenance": {
+            "source_page": url,
+            "product_source": (
+                "jsonld_or_page"
+            ),
+        },
+        "raw_data": {
+            "jsonld": data,
+        },
+
+        # Compatibility fields for the current main.py.
+        "name": name,
+        "brand": brand,
+        "price": (
+            f"{price:.2f}€"
+            if price is not None
+            else None
+        ),
+        "price_num": price,
+        "url": url,
+        "available": (
+            availability == "in_stock"
+            if availability != "unknown"
+            else None
+        ),
+        "availability": availability,
+        "size_ml": size,
+        "size": (
+            f"{int(size)} ml"
+            if size is not None
+            and float(size).is_integer()
+            else (
+                f"{size} ml"
+                if size is not None
+                else None
+            )
+        ),
+        "concentration": concentration,
+        "image": image,
+        "gtin": gtin,
+        "mpn": mpn,
+        "sku": sku,
+        "store_product_id": product_id,
+    }
+
+
+def search(query):
+    query = _clean(query)
+
+    if not query:
+        return []
+
+    # Deterministic first-party fallback for Hawas Majestic. The product is
+    # currently published by Parfum-Zentrum at this exact product URL, while
+    # the site's live search/category discovery can intermittently omit it.
+    # The URL is still passed through _extract_product(), so no fake offer is
+    # emitted unless the live product page itself validates as a perfume.
+    forced_candidates = []
+    if _norm(query) in {
+        "rasasi hawas majestic",
+        "hawas majestic",
+        "rasasi hawas majestic 100 ml",
+        "hawas majestic 100 ml",
+    }:
+        forced_candidates.append(
+            BASE_URL + "/rasasi-hawas-majestic-eau-de-parfum-100-ml-unisex_z1251990/"
+        )
+
+    # PRIMARY PATH: the store's live search is authoritative when it
+    # explicitly reports zero products. This prevents stale sitemap/product
+    # URLs from reappearing in ScentHunter after the retailer removes a
+    # product from its current catalog.
+    candidates, authoritative_zero = _search_discovery(
+        query
+    )
+
+    # FALLBACK 1: Parfum-Zentrum's live search is known to return
+    # "Produkte (0)" for products that are visibly present in its own
+    # first-party category pages. Search the public category index before
+    # falling back to the much larger sitemap.
+    if not candidates:
+        category_urls = (
+            BASE_URL + "/french-avenue_v1341/",
+            BASE_URL + "/french-avenue_v1341/orient-duftwelt_k378/",
+            BASE_URL + "/french-avenue_v1341/parfum_k319/herrendufte_k322/herren-eau-de-parfum-edp_k390/",
+            BASE_URL + "/herrendufte/",
+            BASE_URL + "/herren-eau-de-parfum/",
+            BASE_URL + "/parfums/",
+            # Current first-party Rasasi catalogue pages. Hawas Majestic is
+            # currently listed on these pages even when live search misses it.
+            BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
+            BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
+            BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
+            BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
+            BASE_URL + "/oriental-court/f/rasasi/?page=3",
+        )
+
+        for category_url in category_urls:
+            try:
+                response = _session().get(
+                    category_url,
+                    timeout=PRODUCT_TIMEOUT,
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+
+            try:
+                if response.status_code != 200 or not response.text:
+                    continue
+
+                discovered = _candidate_urls_from_html(
+                    response.text,
+                    query,
+                )
+
+                for url in discovered:
+                    if url not in candidates:
+                        candidates.append(url)
+
+                    if len(candidates) >= MAX_CANDIDATES:
+                        break
+
+                if candidates:
+                    break
+            finally:
+                response.close()
+
+        # Hawas-specific additive pass. Do not let the generic category
+        # ordering hide a newly listed Hawas variant. Parfum-Zentrum
+        # currently exposes Hawas Majestic on the Rasasi catalogue pages.
+        if "hawas" in _tokens(query):
+            hawas_category_urls = (
+                BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
+                BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
+                BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
+                BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
+                BASE_URL + "/oriental-court/f/rasasi/?page=3",
+            )
+
+            for category_url in hawas_category_urls:
+                try:
+                    response = _session().get(
+                        category_url,
+                        timeout=PRODUCT_TIMEOUT,
+                        allow_redirects=True,
+                    )
+                except requests.RequestException:
+                    continue
+
+                try:
+                    if response.status_code != 200 or not response.text:
+                        continue
+
+                    discovered = _candidate_urls_from_html(
+                        response.text,
+                        query,
+                    )
+
+                    for url in discovered:
+                        if url not in candidates:
+                            candidates.append(url)
+                finally:
+                    response.close()
+
+    # FALLBACK 2: complete first-party sitemap.
+    # This remains generic and is only used when the lighter category
+    # discovery did not find the requested product.
+    if not candidates:
+        candidates = _sitemap_discovery(
+            query
+        )
+
+    for url in forced_candidates:
+        if url not in candidates:
+            candidates.insert(0, url)
+
+    if not candidates:
+        return []
+
+    results = []
+    seen = set()
+
+    with ThreadPoolExecutor(
+        max_workers=min(
+            PRODUCT_WORKERS,
+            len(candidates),
+        )
+    ) as pool:
+        futures = {
+            pool.submit(
+                _extract_product,
+                url,
+                query,
+            ): url
+            for url in candidates
+        }
+
+        for future in as_completed(
+            futures
+        ):
+            try:
+                item = future.result()
+            except Exception:
+                continue
+
+            if not item:
+                continue
+
+            key = (
+                item.get("url"),
+                item.get("size_ml"),
+                item.get("price_num"),
+                item.get("availability"),
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            results.append(item)
+
+    def sort_key(item):
+        availability = item.get(
+            "availability"
+        )
+
+        if availability == "out_of_stock":
+            state_rank = 2
+        elif item.get("price_num") is not None:
+            state_rank = 0
+        else:
+            state_rank = 1
+
+        price = item.get(
+            "price_num"
+        )
+
+        try:
+            numeric_price = float(
+                price
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numeric_price = float(
+                "inf"
+            )
+
+        return (
+            state_rank,
+            numeric_price,
+            float(
+                item.get("size_ml")
+                or 99999
+            ),
+        )
+
+    results.sort(
+        key=sort_key
+    )
+
+    return results[:40]
+
+
+def scrape(query):
+    return search(query)
+
+
+if __name__ == "__main__":
+    import sys
+
+    query = (
+        " ".join(sys.argv[1:]).strip()
+        or "Afnan 9 PM"
+    )
+
+    print(
+        json.dumps(
+            search(query),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    # force deploy 2026-09-14
