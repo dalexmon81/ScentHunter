@@ -479,11 +479,10 @@ class ProductMatcher:
     def _offer_brand(offer: Dict[str, Any]) -> str:
         """Return a usable retailer brand, treating placeholders as missing.
 
-        Retailers sometimes expose a literal placeholder such as ``?`` when
-        the brand is unknown.  That value is not a real brand and must not
-        block a family-registry match.  The central matcher is the correct
-        place to normalize this because it protects the identity layer even
-        when an older scraper still emits the placeholder.
+        Retailers sometimes expose literal placeholders such as ``?`` when
+        the brand is unknown.  That is not a real brand and must not block a
+        family-registry identity match.  Normalize it centrally so the identity
+        layer remains robust even when an older scraper emits the placeholder.
         """
         def usable(value: Any) -> str:
             value = str(value or "").strip()
