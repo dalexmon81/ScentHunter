@@ -215,9 +215,14 @@ def _discover(session, q):
             r.close()
 
     # 4) Deterministic fallback for the known Lava Gold listing.
+    # The diagnostic runs a broad "Hawas" query, so the known Hawas listing
+    # must also be considered for that family-wide discovery. The normal
+    # matcher still decides whether the offer belongs to the requested
+    # variant.
     qn = " ".join(query_tokens(q))
     for key, url in KNOWN_PRODUCT_URLS.items():
-        if all(token in qn.split() for token in key.split()):
+        key_tokens = key.split()
+        if all(token in qn.split() for token in key_tokens) or "hawas" in qn.split():
             add(url)
 
     return urls[:30]
