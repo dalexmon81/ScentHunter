@@ -1527,10 +1527,7 @@ function shGroupData(data){
     offers:Number(Array.isArray(g.offers)?g.offers.length:0)
   })):[];
 
-  const diagOfferDrops=[];
   groups.forEach(g=>{
-    const diagGroupRelevant=/boss\s+bottled|born\s+in\s+roma|hawas/i.test(`${g.brand||""} ${g.name||""}`);
-    const diagOffersBeforeCleanup=diagEnabled&&diagGroupRelevant?[...(g.offers||[])]:[];
     const bySize=new Map();
     g.offers.forEach(o=>{
       const size=sizeOf(o)||"unknown";
@@ -1554,47 +1551,6 @@ function shGroupData(data){
     });
 
     g.offers=cleanOffers;
-
-    if(diagEnabled&&diagGroupRelevant){
-      const keptSet=new Set(g.offers);
-      diagOffersBeforeCleanup.forEach(drop=>{
-        if(keptSet.has(drop))return;
-        const size=sizeOf(drop)||"unknown";
-        const store=String(drop.store||"").trim().toLowerCase();
-        const sameBucket=g.offers.find(keep=>
-          (sizeOf(keep)||"unknown")===size &&
-          String(keep.store||"").trim().toLowerCase()===store
-        );
-        if(sameBucket){
-          diagOfferDrops.push({
-            reason:"same_store_same_size_keep_cheapest",
-            group_key:productGroupKey(g),
-            catalog_id:String(g.catalog_id||"").trim(),
-            brand:String(g.brand||"").trim(),
-            name:String(g.name||"").trim(),
-            dedupe_key:[store,size],
-            dropped:{
-              store:String(drop.store||""),
-              size_ml:drop.size_ml??drop.size??sizeOf(drop)||null,
-              price:drop.price??drop.price_num??drop.price_eur??null,
-              product_id:drop.product_id??drop.store_product_id??null,
-              sku:drop.sku??null,
-              name:String(drop.name||""),
-              url:String(drop.url||"")
-            },
-            kept:{
-              store:String(sameBucket.store||""),
-              size_ml:sameBucket.size_ml??sameBucket.size??sizeOf(sameBucket)||null,
-              price:sameBucket.price??sameBucket.price_num??sameBucket.price_eur??null,
-              product_id:sameBucket.product_id??sameBucket.store_product_id??null,
-              sku:sameBucket.sku??null,
-              name:String(sameBucket.name||""),
-              url:String(sameBucket.url||"")
-            }
-          });
-        }
-      });
-    }
 
     /*
      * LIQUID BRUN — correzione chirurgica Sabina.
@@ -1732,8 +1688,7 @@ function shGroupData(data){
       groups_after_merge:diagGroupsAfterMerge.filter(g=>relevant.test(`${g.brand} ${g.name}`)),
       final_groups:finalGroups.filter(g=>relevant.test(`${g.brand} ${g.name}`)).map(g=>({
         key:productGroupKey(g),catalog_id:String(g.catalog_id||"").trim(),brand:String(g.brand||"").trim(),name:String(g.name||"").trim(),offers:g.offers.length
-      })),
-      dedupe_diagnostics:diagOfferDrops
+      }))
     };
   }
   return finalGroups;
@@ -1751,23 +1706,10 @@ function renderSearchDiagnostic(){
     document.body.appendChild(box);
   }
   const i=d.input,p=d.pipeline;
-  const dd=Array.isArray(d.dedupe_diagnostics)?d.dedupe_diagnostics:[];
   const lines=[];
   lines.push("SCENTHUNTER DIAGNOSTICA — SOLO LETTURA");
   lines.push(`INPUT: comparisons ${i.comparison_groups} gruppi / ${i.comparison_offers} offerte | results ${i.result_groups} gruppi / ${i.result_offers} offerte | unresolved ${i.unresolved_offers} | identity_scope ${i.identity_scope}`);
   lines.push(`PIPELINE: raw ${p.raw_offers} → identity ${p.unique_identity_keys} → pre-merge ${p.groups_before_merge} → post-merge ${p.groups_after_merge} → FINAL ${p.final_groups}`);
-  lines.push(`DEDUPE: ${dd.length} DROP`);
-  if(dd.length){
-    lines.push("");
-    lines.push("OFFERTE ELIMINATE DAL DEDUPE:");
-    dd.forEach((x,n)=>{
-      const d=x.dropped||{},k=x.kept||{};
-      lines.push(`${n+1}. DROP | ${x.name||"?"} | ${d.store||"?"} | size=${d.size_ml??"—"} | price=${d.price??"—"} | URL=${d.url||"—"}`);
-      lines.push(`   KEY=${JSON.stringify(x.dedupe_key||[])}`);
-      lines.push(`   TENUTA | ${k.store||"?"} | size=${k.size_ml??"—"} | price=${k.price??"—"} | URL=${k.url||"—"}`);
-      lines.push(`   DROP_ID=${d.product_id||d.sku||"—"} | KEEP_ID=${k.product_id||k.sku||"—"}`);
-    });
-  }
   lines.push("");
   lines.push("BOSS / BORN / HAWAS — OFFERTA → IDENTITÀ:");
   d.relevant.forEach((r,n)=>lines.push(`${n+1}. ${r.raw_name||"?"} | ${r.raw_brand||"?"} | catalog=${r.catalog_id||"—"} | ID=${r.identity_name||"—"} | key=${r.key||"—"} | ${r.store||"?"} | URL=${r.url||"—"}`));
