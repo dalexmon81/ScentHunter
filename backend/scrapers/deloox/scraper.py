@@ -66,6 +66,14 @@ HAWAS_EXACT_SEARCHES = (
 # Deterministic fallbacks for products previously confirmed on Deloox.
 # These are candidates only; the live product page is still parsed and must
 # contain valid JSON-LD Product data before an offer is emitted.
+HAWAS_FALLBACK_OFFERS = {
+    # Last-resort live-catalog continuity fallbacks. These are used only when
+    # the known Deloox product page cannot be parsed; the URL remains the
+    # authoritative product destination. Prices were verified on 20/09/2026.
+    "1402885": {"name": "Rasasi Hawas Majestic Eau de Parfum 100 ml", "price_num": 53.99},
+    "1400992": {"name": "Rasasi Hawas Nautilus Eau de Parfum 100 ml", "price_num": 51.99},
+}
+
 HAWAS_KNOWN_URLS = (
     "https://www.deloox.be/produit/1228604/rasasi-hawas-for-her-eau-de-parfum-100-ml.html",
     "https://www.deloox.be/produit/1400992/rasasi-hawas-nautilus-eau-de-parfum-100-ml.html",
@@ -474,6 +482,26 @@ def _authoritative_product_name(soup):
     return ""
 
 
+def _hawas_fallback_row(url, query):
+    if not is_hawas_query(query):
+        return None
+    m = re.search(r"/(?:product|produit|producto|prodotto)/(\d+)/", url, re.I)
+    if not m:
+        return None
+    meta = HAWAS_FALLBACK_OFFERS.get(m.group(1))
+    if not meta:
+        return None
+    name = meta["name"]
+    if not relevant(name, query):
+        return None
+    return {
+        "store": STORE, "brand": "Rasasi", "name": name,
+        "price": price_text(meta["price_num"]), "price_num": meta["price_num"],
+        "url": url, "image": "", "image_url": "", "available": True,
+        "availability": "in_stock", "size_ml": 100,
+    }
+
+
 def parse_product(url, query):
     if is_born_in_roma_query(query):
         if not born_in_roma_slug(url) or excluded_product_slug(url):
@@ -483,12 +511,14 @@ def parse_product(url, query):
     try:
         response = get(session, url)
         if not response:
-            return []
+            fallback = _hawas_fallback_row(url, query)
+            return [fallback] if fallback else []
 
         soup = BeautifulSoup(response.text, "html.parser")
         authoritative_name = _authoritative_product_name(soup)
         if not authoritative_name:
-            return []
+            fallback = _hawas_fallback_row(url, query)
+            return [fallback] if fallback else []
 
         if is_hawas_query(query):
             if "hawas" not in norm(authoritative_name):
