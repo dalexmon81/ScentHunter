@@ -157,73 +157,280 @@ def _fetch_hawas_page(page):
         return []
 
 
-def search(query):
-    query = str(query or "").strip()
-    if not query:
+
+def _absolute_product_url(value):
+    value = str(value or '').strip()
+    if not value:
+        return ''
+    return urljoin(BASE + '/', value).split('#')[0]
+
+
+def _product_js_url(product_url):
+    parsed = product_url.rstrip('/')
+    if parsed.endswith('.js'):
+        return parsed
+    return parsed + '.js'
+
+
+def _shopify_price(value):
+    if value in (None, ''):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    # Shopify product.js normally returns prices in cents.
+    if number >= 100:
+        number /= 100.0
+    if number <= 0:
+        return None
+    return f'{number:.2f}'.replace('.', ',') + ' €'
+
+
+def predictive_products(session, query):
+    """Return Shopify predictive-search product candidates.
+
+    This function intentionally exists because backend/sitecustomize.py used
+    to install a Bplatz streaming adapter that calls it. Defining the
+    production-compatible function here makes the scraper self-contained and
+    prevents the old adapter from replacing this implementation.
+    """
+    endpoint = BASE + '/search/suggest.json'
+    params = {
+        'q': query,
+        'resources[type]': 'product',
+        'resources[limit]': '50',
+        'resources[options][unavailable_products]': 'show',
+    }
+    try:
+        response = session.get(
+            endpoint,
+            params=params,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.status_code != 200:
+            return []
+        payload = response.json()
+    except (requests.RequestException, ValueError):
         return []
 
-    hawas_query = _is_hawas_query(query)
+    products = (
+        payload.get('resources', {})
+        .get('results', {})
+        .get('products', [])
+    )
+    if not isinstance(products, list):
+        return []
 
-    # Hawas is special on Bplatz: the products are spread through the
-    # paginated "All products" collection (for example, current catalogue
-    # pages around the H section contain multiple Hawas variants).
-    # Do not rely on the generic /collections/produkte page or on a
-    # "page=N" parameter attached to that collection: Bplatz's pagination
-    # can switch collection paths between pages.
-    if hawas_query:
-        results = []
-        seen_urls = set()
-        with ThreadPoolExecutor(max_workers=HAWAS_WORKERS) as pool:
-            futures = [pool.submit(_fetch_hawas_page, page) for page in range(1, HAWAS_MAX_CATALOG_PAGES + 1)]
-            for future in as_completed(futures):
-                for item in future.result():
-                    if item["url"] in seen_urls:
-                        continue
-                    seen_urls.add(item["url"])
-                    results.append(item)
-        results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
-        return results[:50]
+    candidates = []
+    seen = set()
+    for item in products:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get('title') or '').strip()
+        url = _absolute_product_url(item.get('url') or '')
+        handle = str(item.get('handle') or '').strip()
+        if not url and handle:
+            url = BASE + '/products/' + handle.strip('/')
+        if not title or not url or '/products/' not in url.lower():
+            continue
+        if not _match(title, query):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        candidates.append({
+            'title': title,
+            'url': url,
+            'handle': handle,
+            'raw': item,
+        })
+    return candidates
 
-    session = requests.Session()
-    results = []
-    seen_urls = set()
+
+def product_worker(candidate, query):
+    """Fetch one Shopify product JSON and return a normal ScentHunter row."""
+    if not isinstance(candidate, dict):
+        return []
+    url = _absolute_product_url(candidate.get('url') or '')
+    if not url:
+        return []
 
     try:
-        for page in range(1, 31):
-            try:
-                r = session.get(
-                    CATALOG_URL,
-                    params={"page": page},
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-                if r.status_code != 200:
-                    break
-            except requests.RequestException:
-                break
+        response = requests.get(
+            _product_js_url(url),
+            headers={**HEADERS, 'Accept': 'application/json,text/plain,*/*'},
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.status_code != 200:
+            return []
+        data = response.json()
+    except (requests.RequestException, ValueError):
+        return []
 
-            page_results = _extract_page(r.text, query)
-            for item in page_results:
-                if item["url"] in seen_urls:
-                    continue
-                seen_urls.add(item["url"])
-                results.append(item)
+    title = str(data.get('title') or candidate.get('title') or '').strip()
+    if not title or not _match(title, query):
+        return []
 
-            if results and len(_norm(query).split()) >= 2:
-                break
+    # Do not return non-fragrance product pages accidentally matched by a
+    # broad family term.
+    lowered = _norm(title)
+    if any(term in lowered for term in (
+        'gift card', 'giftcard', 'candle', 'diffuser', 'room spray',
+        'body lotion', 'body cream', 'shower gel', 'shampoo',
+        'conditioner', 'deodorant', 'after shave', 'aftershave',
+        'soap', 'hand cream',
+    )):
+        return []
 
-            soup = BeautifulSoup(r.text, "html.parser")
-            if not any(
-                "/products/" in urljoin(BASE, a.get("href", "")).lower()
-                for a in soup.find_all("a", href=True)
-            ):
-                break
+    variants = data.get('variants') or []
+    if not isinstance(variants, list):
+        variants = []
+
+    brand = str(data.get('vendor') or data.get('brand') or '').strip()
+    rows = []
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        price = _shopify_price(variant.get('price'))
+        if not price:
+            continue
+        # Keep unavailable variants only when Shopify does not expose an
+        # explicit availability flag. This mirrors the scraper's role as a
+        # price source without inventing stock state.
+        if variant.get('available') is False:
+            continue
+        row = {
+            'store': STORE,
+            'name': title,
+            'price': price,
+            'url': url,
+        }
+        if brand:
+            row['brand'] = brand
+        size = str(variant.get('title') or '').strip()
+        if size and size.lower() not in {'default title', 'default'}:
+            row['variant'] = size
+        rows.append(row)
+
+    return rows
+
+
+def search_stream(query, emit):
+    """Native streaming entry point used by ScentHunter main.py."""
+    query = str(query or '').strip()
+    if not query:
+        return None
+
+    session = requests.Session()
+    try:
+        candidates = predictive_products(session, query)
     finally:
         session.close()
 
-    results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
-    return results[:20]
+    # Predictive search is the primary discovery path. It is much more
+    # reliable than guessing Shopify pagination URLs, whose collection path
+    # changes on Bplatz (e.g. /collections/Products-a?page=2).
+    if not candidates and _is_hawas_query(query):
+        # Last-resort fallback: crawl the real collection pagination starting
+        # from page 1 and follow the pagination URLs published by the site.
+        candidates = _discover_hawas_from_pagination(query)
+
+    if not candidates:
+        return None
+
+    with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
+        futures = [pool.submit(product_worker, candidate, query) for candidate in candidates]
+        for future in as_completed(futures):
+            try:
+                rows = future.result() or []
+            except Exception:
+                continue
+            for row in rows:
+                if isinstance(row, dict):
+                    emit(row)
+    return None
+
+
+def _discover_hawas_from_pagination(query):
+    """Fallback discovery that follows Bplatz's own pagination hrefs."""
+    try:
+        response = requests.get(
+            CATALOG_URL,
+            params={'page': 1},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.status_code != 200:
+            return []
+        soup = BeautifulSoup(response.text, 'html.parser')
+    except requests.RequestException:
+        return []
+
+    page_urls = {}
+    for a in soup.find_all('a', href=True):
+        href = urljoin(BASE, a.get('href', '')).split('#')[0]
+        match = re.search(r'[?&]page=(\d+)', href, re.I)
+        if not match:
+            continue
+        page = int(match.group(1))
+        if 1 <= page <= 60:
+            page_urls[page] = href
+    page_urls[1] = response.url.split('#')[0]
+
+    if not page_urls:
+        page_urls = {1: CATALOG_URL + '?page=1'}
+
+    candidates = []
+    seen = set()
+
+    def fetch(url):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            if r.status_code != 200:
+                return []
+            return _extract_page(r.text, query)
+        except requests.RequestException:
+            return []
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(fetch, url) for _, url in sorted(page_urls.items())]
+        for future in as_completed(futures):
+            for item in future.result() or []:
+                if item['url'] in seen:
+                    continue
+                seen.add(item['url'])
+                candidates.append({
+                    'title': item['name'],
+                    'url': item['url'],
+                    'handle': '',
+                })
+    return candidates[:50]
+
+def search(query):
+    query = str(query or '').strip()
+    if not query:
+        return []
+
+    results = []
+    seen = set()
+
+    def emit(row):
+        if not isinstance(row, dict):
+            return
+        key = (row.get('url'), row.get('name'), row.get('price'))
+        if key in seen:
+            return
+        seen.add(key)
+        results.append(row)
+
+    search_stream(query, emit)
+    results.sort(key=lambda x: (len(_norm(x.get('name', ''))), x.get('name', '')))
+    return results[:50 if _is_hawas_query(query) else 20]
 
 
 if __name__ == "__main__":
