@@ -28,6 +28,11 @@ BORN_IN_ROMA_MAX_CANDIDATES = 50
 
 MAX_RESULTS = 40
 
+# Born in Roma has multiple real variants and multiple package sizes.
+# Keep the generic cap unchanged, but do not truncate this family before
+# all discovered Deloox variants can reach the central matcher.
+BORN_IN_ROMA_MAX_RESULTS = 100
+
 
 HEADERS = {
     "User-Agent": (
@@ -56,27 +61,21 @@ PRICE_RE = re.compile(
 
 NON_FRAGRANCE = (
     "body mist",
-    "bodymist",
     "body spray",
-    "bodyspray",
     "body lotion",
-    "bodylotion",
     "body cream",
-    "bodycream",
     "deodorant",
-    "dÃ©odorant",
     "after shave",
     "aftershave",
-    "apres rasage",
-    "aprÃ¨s rasage",
     "shower gel",
-    "showergel",
-    "gel douche",
-    "douchegel",
-    "gel doccia",
     "soap",
     "hair mist",
-    "hairmist",
+    # Deloox can expose Valentino Born in Roma Hair & Body Mist
+    # listings whose URL/title uses the combined wording. Keep these
+    # variants explicitly excluded from fragrance results.
+    "hair body mist",
+    "hair and body mist",
+    "body hair mist",
 )
 
 
@@ -335,6 +334,20 @@ def excluded_product_slug(url):
     if any(
         norm(term) in slug
         for term in NON_FRAGRANCE
+    ):
+        return True
+
+    # Defensive handling for compact URL spellings such as
+    # hair-body-mist / hairandbodymist. This remains limited to the
+    # existing Deloox non-fragrance exclusion stage.
+    compact_slug = slug.replace(" ", "")
+    if any(
+        marker in compact_slug
+        for marker in (
+            "hairbodymist",
+            "hairandbodymist",
+            "bodyhairmist",
+        )
     ):
         return True
 
@@ -714,12 +727,8 @@ def _row_from_card(
     ):
         return None
 
-    if non_fragrance(
-        context + " " + image
-    ):
+    if non_fragrance(context):
         # A surrounding card may contain text from another product.
-        # The image URL is also checked because some Deloox cards
-        # expose the cosmetic type only in the product image path.
         # For Born in Roma we already have URL-level exclusion above,
         # so do not reject a valid product merely because the parent
         # container contains neighbouring body-product text.
@@ -1329,7 +1338,12 @@ def search(query):
             )
         )
 
-        return results[:MAX_RESULTS]
+        result_limit = (
+            BORN_IN_ROMA_MAX_RESULTS
+            if is_born_in_roma_query(query)
+            else MAX_RESULTS
+        )
+        return results[:result_limit]
 
     finally:
         session.close()
