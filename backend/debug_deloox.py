@@ -1,5 +1,4 @@
-"""
-ScentHunter — diagnostic Deloox for the 4 remaining Born in Roma variants.
+"""ScentHunter — diagnostic Deloox for the 4 remaining Born in Roma variants.
 
 IMPORTANT:
 - Read-only diagnostic. It does NOT modify the production scraper.
@@ -9,34 +8,26 @@ IMPORTANT:
     3. Born in Roma Donna The Gold
     4. Born in Roma Donna Ivory
 
-Run from the backend directory / project root where the existing
-ScentHunter Deloox scraper is importable.
-
-The diagnostic deliberately tests several Deloox discovery surfaces:
-  A) current Born in Roma search discovery
-  B) direct category/product-line pages when supplied/discovered
-  C) exact product URL candidates found inside those pages
-  D) direct product-page parsing
-  E) central matcher, when importable
-
-It prints one JSON object to stdout at the end, so it can be pasted
-back into the debugging chat.
-
-No GitHub writes. No production-file writes.
+This file also exposes the diagnostic through:
+    GET /diagnose-deloox-born4
 """
 
 from __future__ import annotations
 
+import io
 import json
 import re
 import sys
 import time
+from contextlib import redirect_stdout
 from pathlib import Path
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from fastapi import APIRouter
 
+router = APIRouter()
 
 BASE = "https://www.deloox.be"
 TIMEOUT = (3.0, 8.0)
@@ -107,20 +98,14 @@ TARGETS = [
     },
 ]
 
-
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept": (
-        "text/html,application/xhtml+xml,"
-        "application/json;q=0.9,*/*;q=0.8"
-    ),
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
 }
-
 
 PRODUCT_RE = re.compile(
     r"(?:https?:\\?/\\?/[^\"'<>\\s]+)?/"
@@ -129,30 +114,14 @@ PRODUCT_RE = re.compile(
     re.I,
 )
 
-SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", re.I)
-
 NON_FRAGRANCE = (
-    "body mist",
-    "body spray",
-    "body lotion",
-    "body cream",
-    "deodorant",
-    "after shave",
-    "aftershave",
-    "shower gel",
-    "hair mist",
-    "hair body mist",
-    "hair and body mist",
-    "body hair mist",
+    "body mist", "body spray", "body lotion", "body cream", "deodorant",
+    "after shave", "aftershave", "shower gel", "hair mist",
+    "hair body mist", "hair and body mist", "body hair mist",
 )
 
 NON_PRODUCT_PACKAGING = (
-    "coffret",
-    "cadeau",
-    "gift set",
-    "giftset",
-    "set cadeau",
-    "geschenkset",
+    "coffret", "cadeau", "gift set", "giftset", "set cadeau", "geschenkset",
 )
 
 
@@ -197,13 +166,11 @@ def is_product_url(url):
     if host not in {"deloox.be", "www.deloox.be"}:
         return False
 
-    return bool(
-        re.search(
-            r"/(?:product|produit|producto|prodotto)/\d+/",
-            p.path,
-            re.I,
-        )
-    )
+    return bool(re.search(
+        r"/(?:product|produit|producto|prodotto)/\d+/",
+        p.path,
+        re.I,
+    ))
 
 
 def product_url(raw):
@@ -236,12 +203,6 @@ def excluded(url):
 
 
 def target_score(text, target):
-    """
-    Score by alias coverage. We intentionally allow word-order changes:
-      Born In Roma The Gold Uomo
-      Born in Roma Uomo The Gold
-    are the same identity for this diagnostic.
-    """
     hay = norm(text)
     best = 0
     best_alias = ""
@@ -254,7 +215,6 @@ def target_score(text, target):
         hits = sum(t in hay for t in at)
         score = hits / len(at)
 
-        # Require the distinctive Born/Roma + variant token set.
         if {"born", "roma"} <= at and {"born", "roma"} <= tokens(text):
             score += 0.15
 
@@ -267,7 +227,6 @@ def target_score(text, target):
 
 def extract_urls(html):
     found = set()
-
     soup = BeautifulSoup(html, "html.parser")
 
     for a in soup.find_all("a", href=True):
@@ -290,14 +249,8 @@ def url_text(url):
 
 
 def extract_context_for_url(html, url):
-    """
-    Try to capture the closest useful text around a product URL.
-    This is only diagnostic context; the real product parser is tested
-    separately against the product page.
-    """
     soup = BeautifulSoup(html, "html.parser")
 
-    # First: normal anchor matching the exact URL.
     for a in soup.find_all("a", href=True):
         u = product_url(a.get("href"))
         if u != url:
@@ -320,7 +273,6 @@ def extract_context_for_url(html, url):
 
         return best
 
-    # Fallback: text around the URL slug in raw HTML.
     marker = url.split("/produit/", 1)[-1]
     pos = html.lower().find(marker.lower())
     if pos >= 0:
@@ -331,10 +283,6 @@ def extract_context_for_url(html, url):
 
 
 def discover_search_surface(session, query):
-    """
-    Reproduce the current production Born-in-Roma Deloox discovery:
-    /chercher.html?q=Born+in+Roma, pages 1..10.
-    """
     encoded = quote_plus(query)
     urls = set()
     pages = []
@@ -367,7 +315,6 @@ def discover_search_surface(session, query):
 
         urls.update(born_urls)
 
-        # If the site stops returning meaningful pages, do not hammer it.
         if not page_urls and page > 1:
             break
 
@@ -375,11 +322,6 @@ def discover_search_surface(session, query):
 
 
 def discover_category_surface(session, urls):
-    """
-    Fetch explicit category pages. The current Deloox men's category is
-    known to contain The Gold Uomo. Women's category URLs are tried as
-    candidates; unavailable pages are reported, not treated as failures.
-    """
     all_urls = set()
     page_reports = []
 
@@ -412,8 +354,8 @@ def discover_category_surface(session, urls):
 
 def parse_jsonld_products(html):
     out = []
-
     soup = BeautifulSoup(html, "html.parser")
+
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text())
@@ -487,13 +429,10 @@ def parse_direct_product(session, url, target):
             if not isinstance(offer, dict):
                 continue
 
-            price = offer.get("price")
-            availability = offer.get("availability")
-
             result["offers"] += 1
             result["offer_details"].append({
-                "price": price,
-                "availability": availability,
+                "price": offer.get("price"),
+                "availability": offer.get("availability"),
                 "currency": offer.get("priceCurrency"),
             })
 
@@ -506,20 +445,13 @@ def find_target_urls(all_urls, target):
     for url in all_urls:
         text = url_text(url)
         score, alias = target_score(text, target)
-
-        # Strong URL evidence:
-        # at least Born/Roma + one of the distinctive target terms.
         t = tokens(text)
         distinctive = {"gold", "ivory"} & t
         gender = {"uomo", "donna"} & t
 
         if (
             score >= 0.60
-            or (
-                {"born", "roma"} <= t
-                and distinctive
-                and gender
-            )
+            or ({"born", "roma"} <= t and distinctive and gender)
         ):
             matches.append({
                 "url": url,
@@ -533,10 +465,6 @@ def find_target_urls(all_urls, target):
 
 
 def try_web_search_surface(session, target):
-    """
-    Deloox search endpoint variants for each exact target alias.
-    This does not change production behaviour; it is diagnostic only.
-    """
     results = []
 
     for alias in target["aliases"]:
@@ -557,10 +485,7 @@ def try_web_search_surface(session, target):
             scored = []
 
             for u in candidates:
-                score, matched = target_score(
-                    url_text(u),
-                    target,
-                )
+                score, matched = target_score(url_text(u), target)
                 if score >= 0.45:
                     scored.append({
                         "url": u,
@@ -577,10 +502,6 @@ def try_web_search_surface(session, target):
 
 
 def try_import_production_scraper():
-    """
-    Locate the existing production Deloox scraper without assuming a
-    particular working directory.
-    """
     roots = [
         Path.cwd(),
         Path(__file__).resolve().parent,
@@ -668,11 +589,7 @@ def main():
         "timing_seconds": None,
     }
 
-    # A. Reproduce current production Born in Roma search.
-    born_urls, search_pages = discover_search_surface(
-        session,
-        "Born in Roma",
-    )
+    born_urls, search_pages = discover_search_surface(session, "Born in Roma")
     output["search_surface"] = {
         "query": "Born in Roma",
         "pages": search_pages,
@@ -680,7 +597,6 @@ def main():
         "born_product_urls": born_urls,
     }
 
-    # B. Category pages.
     category_urls = []
     for target in TARGETS:
         category_urls.extend(target["known_category_urls"])
@@ -697,10 +613,8 @@ def main():
         "born_product_urls": category_urls_found,
     }
 
-    # C. Union discovery.
     union_urls = sorted(set(born_urls) | set(category_urls_found))
 
-    # D. Exact search aliases + direct product parsing.
     for target in TARGETS:
         exact_search = try_web_search_surface(session, target)
         exact_urls = set()
@@ -709,24 +623,12 @@ def main():
             for candidate in item.get("urls", []):
                 exact_urls.add(candidate["url"])
 
-        target_union = sorted(
-            set(union_urls) | exact_urls
-        )
-
-        url_matches = find_target_urls(
-            target_union,
-            target,
-        )
+        target_union = sorted(set(union_urls) | exact_urls)
+        url_matches = find_target_urls(target_union, target)
 
         parsed = []
         for item in url_matches[:20]:
-            parsed.append(
-                parse_direct_product(
-                    session,
-                    item["url"],
-                    target,
-                )
-            )
+            parsed.append(parse_direct_product(session, item["url"], target))
 
         production_module = try_import_production_scraper()
         production = run_production_scraper_test(
@@ -745,18 +647,18 @@ def main():
         try_import_production_scraper() is not None
     )
 
-    output["timing_seconds"] = round(
-        time.time() - started,
-        2,
-    )
+    output["timing_seconds"] = round(time.time() - started, 2)
 
-    print(
-        json.dumps(
-            output,
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+@router.get("/diagnose-deloox-born4")
+def diagnose_deloox_born4():
+    """HTTP endpoint for the existing read-only Born4 diagnostic."""
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        main()
+    return json.loads(buffer.getvalue().strip())
 
 
 if __name__ == "__main__":
