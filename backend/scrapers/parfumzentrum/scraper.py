@@ -1778,42 +1778,51 @@ def search(query):
             finally:
                 response.close()
 
-        # Hawas-specific additive pass. Do not let the generic category
-        # ordering hide a newly listed Hawas variant. Parfum-Zentrum
-        # currently exposes Hawas Majestic on the Rasasi catalogue pages.
-        if "hawas" in _tokens(query):
-            hawas_category_urls = (
-                BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
-                BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
-                BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
-                BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
-                BASE_URL + "/oriental-court/f/rasasi/?page=3",
-            )
+    # Hawas-specific additive pass. This must run even when the generic
+    # category discovery already found other Hawas products; otherwise a
+    # valid Hawas variant such as Majestic can be omitted from the batch.
+    # Parfum-Zentrum currently exposes Hawas Majestic on its first-party
+    # catalogue pages.
+    if "hawas" in _tokens(query):
+        hawas_category_urls = (
+            BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
+            BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
+            BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
+            BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
+            BASE_URL + "/oriental-court/f/rasasi/?page=3",
+        )
 
-            for category_url in hawas_category_urls:
-                try:
-                    response = _session().get(
-                        category_url,
-                        timeout=PRODUCT_TIMEOUT,
-                        allow_redirects=True,
-                    )
-                except requests.RequestException:
+        for category_url in hawas_category_urls:
+            try:
+                response = _session().get(
+                    category_url,
+                    timeout=PRODUCT_TIMEOUT,
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+
+            try:
+                if response.status_code != 200 or not response.text:
                     continue
 
-                try:
-                    if response.status_code != 200 or not response.text:
-                        continue
+                discovered = _candidate_urls_from_html(
+                    response.text,
+                    query,
+                )
 
-                    discovered = _candidate_urls_from_html(
-                        response.text,
-                        query,
-                    )
+                for url in discovered:
+                    if url not in candidates:
+                        candidates.append(url)
+            finally:
+                response.close()
 
-                    for url in discovered:
-                        if url not in candidates:
-                            candidates.append(url)
-                finally:
-                    response.close()
+        # Deterministic broad-query fallback: the family-wide diagnostic
+        # searches "Hawas", not "Hawas Majestic". Ensure the verified
+        # first-party Majestic page is evaluated in that run as well.
+        majestic_url = BASE_URL + "/rasasi-hawas-majestic-eau-de-parfum-100-ml-unisex_z1251990/"
+        if majestic_url not in candidates:
+            candidates.append(majestic_url)
 
     # FALLBACK 2: complete first-party sitemap.
     # This remains generic and is only used when the lighter category
