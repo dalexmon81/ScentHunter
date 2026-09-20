@@ -330,146 +330,195 @@ class ProductMatcher:
         self.family_registry = self._normalize_family_registry(family_registry)
 
         if isinstance(catalog, dict):
-    raw_products = catalog.get("products") or []
-    raw_variants = catalog.get("variants") or []
-else:
-    raw_products = list(catalog or [])
-    raw_variants = []
+            raw_products = catalog.get("products") or []
+            raw_variants = catalog.get("variants") or []
+        else:
+            raw_products = list(catalog or [])
+            raw_variants = []
 
-variants_by_product: Dict[str, Dict[str, Any]] = {}
-for variant in raw_variants:
-    if not isinstance(variant, dict):
-        continue
-    product_id = str(variant.get("product_id") or "").strip()
-    if not product_id:
-        continue
-    bucket = variants_by_product.setdefault(
-        product_id,
-        {"aliases": [], "sizes": []},
-    )
-    # Raccogli tutti i product_id già coperti dai record products
-existing_product_ids: set[str] = set()
-for item in raw_products:
-    if not isinstance(item, dict):
-        continue
-    pid = str(
-        item.get("product_id")
-        or item.get("id")
-        or item.get("catalog_id")
-        or ""
-    ).strip()
-    if pid:
-        existing_product_ids.add(pid)
+        # Collect variant data by parent product_id.  Normal catalog products
+        # receive their variant aliases/sizes exactly as before.
+        variants_by_product: Dict[str, Dict[str, Any]] = {}
+        for variant in raw_variants:
+            if not isinstance(variant, dict):
+                continue
 
-    aliases = variant.get("aliases") or []
-    if isinstance(aliases, str):
-        aliases = [aliases]
-    for alias in aliases:
-        alias = str(alias or "").strip()
-        if alias and alias not in bucket["aliases"]:
-            bucket["aliases"].append(alias)
+            product_id = str(variant.get("product_id") or "").strip()
+            if not product_id:
+                continue
 
-    try:
-        size = float(variant.get("size_ml"))
-        if size not in bucket["sizes"]:
-            bucket["sizes"].append(size)
-    except (TypeError, ValueError):
-        pass
+            bucket = variants_by_product.setdefault(
+                product_id,
+                {"aliases": [], "sizes": []},
+            )
 
+            aliases = variant.get("aliases") or []
+            if isinstance(aliases, str):
+                aliases = [aliases]
+
+            for alias in aliases:
+                alias = str(alias or "").strip()
+                if alias and alias not in bucket["aliases"]:
+                    bucket["aliases"].append(alias)
+
+            try:
+                size = float(variant.get("size_ml"))
+                if size not in bucket["sizes"]:
+                    bucket["sizes"].append(size)
+            except (TypeError, ValueError):
+                pass
+
+        # Keep track of real parent products so orphan variants can be
+        # materialized without replacing or duplicating normal catalog rows.
+        existing_product_ids: set[str] = set()
+        for item in raw_products:
+            if isinstance(item, CatalogProduct):
+                if item.catalog_id:
+                    existing_product_ids.add(item.catalog_id)
+                continue
+            if not isinstance(item, dict):
+                continue
+
+            product_id = str(
+                item.get("product_id")
+                or item.get("id")
+                or item.get("catalog_id")
+                or ""
+            ).strip()
+            if product_id:
+                existing_product_ids.add(product_id)
 
         self.catalog: List[CatalogProduct] = []
-for item in raw_products:
-    if isinstance(item, CatalogProduct):
-        self.catalog.append(item)
-        continue
-    if not isinstance(item, dict):
-        continue
 
-    product_id = str(
-        item.get("product_id")
-        or item.get("id")
-        or item.get("catalog_id")
-        or ""
-    ).strip()
+        # Original catalog products: unchanged loading path.
+        for item in raw_products:
+            if isinstance(item, CatalogProduct):
+                self.catalog.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
 
-    bucket = variants_by_product.get(product_id, {"aliases": [], "sizes": []})
+            product_id = str(
+                item.get("product_id")
+                or item.get("id")
+                or item.get("catalog_id")
+                or ""
+            ).strip()
 
-    product = CatalogProduct.from_dict(
-        item,
-        variant_aliases=bucket["aliases"],
-        variant_sizes=bucket["sizes"],
-    )
+            bucket = variants_by_product.get(
+                product_id,
+                {"aliases": [], "sizes": []},
+            )
 
-    if product.name:
-        self.catalog.append(product)
+            product = CatalogProduct.from_dict(
+                item,
+                variant_aliases=bucket["aliases"],
+                variant_sizes=bucket["sizes"],
+            )
 
-    # Materializza le varianti orfane come prodotti sintetici
-    # (varianti con product_id ma senza padre in products)
-for product_id, bucket in variants_by_product.items():
-    if product_id in existing_product_ids:
-        # Già coperto da un prodotto padre: saltare
-        continue
+            if product.name:
+                self.catalog.append(product)
 
-    # Recupera informazioni dal family registry per brand/famiglia
-    brand = ""
-    family_name = ""
-    family_id = ""
-    canonical_name = ""
-    aliases: List[str] = list(bucket["aliases"])
-    sizes: List[float] = list(bucket["sizes"])
+        # Some catalog.json variants have a product_id but no corresponding
+        # parent entry in "products".  Materialize ONLY those orphan variants
+        # as synthetic CatalogProduct rows.  This is deliberately limited to
+        # variants that can be tied to the family registry, so it cannot turn
+        # arbitrary scraper text into a catalog identity.
+        for product_id, bucket in variants_by_product.items():
+            if product_id in existing_product_ids:
+                continue
 
-    # Cerca nel family registry una famiglia che contenga questa variante
-    for fam in self.family_registry:
-        fam_id = str(fam.get("family_id") or "").strip()
-        fam_brand = str(fam.get("brand") or "").strip()
-        for var in fam.get("variants") or []:
-            var_canonical = str(var.get("canonical_name") or "").strip()
-            var_aliases = var.get("aliases") or []
-            if isinstance(var_aliases, str):
-                var_aliases = [var_aliases]
-            var_all_names = [var_canonical, *var_aliases]
-            var_all_names = [v for v in var_all_names if v]
+            aliases: List[str] = list(bucket["aliases"])
+            sizes: List[float] = list(bucket["sizes"])
 
-            # Se una delle alias della variante coincide con una delle alias della bucket
-            if any(a in var_all_names for a in aliases):
-                brand = fam_brand
-                family_name = var_canonical
-                family_id = fam_id
-                canonical_name = var_canonical
-                # Aggiungi eventuali alias mancanti
-                for va in var_all_names:
-                    if va and va not in aliases:
-                        aliases.append(va)
-                break
-        if brand:
-            break
+            brand = ""
+            family_name = ""
+            family_id = ""
+            canonical_name = ""
 
-    # Se non troviamo un canonical_name esplicito, usiamo la prima alias
-    if not canonical_name and aliases:
-        canonical_name = aliases[0]
+            # Match the orphan variant against the canonical family registry.
+            # Use normalized identity text rather than raw string equality so
+            # punctuation/diacritics cannot prevent a valid catalog-family link.
+            orphan_keys = {
+                self._url_catalog_identity_text(value)
+                for value in aliases
+                if value
+            }
+            orphan_keys.discard("")
 
-    # Costruisci un record sintetico compatibile con from_dict
-    synthetic_product_data: Dict[str, Any] = {
-        "product_id": product_id,
-        "brand": brand,
-        "brand_name": brand,
-        "canonical_name": canonical_name,
-        "name": canonical_name,
-        "family_name": family_name or canonical_name,
-        "family_id": family_id,
-        "aliases": aliases,
-        "formats_ml": sizes,
-    }
+            for family in self.family_registry:
+                family_id_candidate = str(
+                    family.get("family_id") or ""
+                ).strip()
+                family_brand = str(
+                    family.get("brand") or ""
+                ).strip()
 
-    product = CatalogProduct.from_dict(
-        synthetic_product_data,
-        variant_aliases=[],
-        variant_sizes=sizes,
-    )
+                for variant in family.get("variants") or []:
+                    variant_canonical = str(
+                        variant.get("canonical_name") or ""
+                    ).strip()
+                    variant_aliases = variant.get("aliases") or []
+                    if isinstance(variant_aliases, str):
+                        variant_aliases = [variant_aliases]
 
-    if product.name:
-        self.catalog.append(product)
+                    registry_names = [
+                        variant_canonical,
+                        *(
+                            str(value or "").strip()
+                            for value in variant_aliases
+                        ),
+                    ]
+                    registry_keys = {
+                        self._url_catalog_identity_text(value)
+                        for value in registry_names
+                        if value
+                    }
+                    registry_keys.discard("")
 
+                    if orphan_keys & registry_keys:
+                        brand = family_brand
+                        family_name = variant_canonical
+                        family_id = family_id_candidate
+                        canonical_name = variant_canonical
+
+                        for value in registry_names:
+                            if value and value not in aliases:
+                                aliases.append(value)
+                        break
+
+                if canonical_name:
+                    break
+
+            # Never create a synthetic catalog identity from an unverified
+            # orphan variant.  The existing matcher remains authoritative for
+            # everything else.
+            if not canonical_name:
+                continue
+
+            synthetic_product_data: Dict[str, Any] = {
+                "product_id": product_id,
+                "brand": brand,
+                "brand_name": brand,
+                "canonical_name": canonical_name,
+                "name": canonical_name,
+                "family_name": family_name or canonical_name,
+                "family_id": family_id,
+                "aliases": aliases,
+                "formats_ml": sizes,
+            }
+
+            product = CatalogProduct.from_dict(
+                synthetic_product_data,
+                variant_aliases=(),
+                variant_sizes=sizes,
+            )
+
+            if product.name:
+                self.catalog.append(product)
+
+        # Build ALL indexes only after the complete catalog has been assembled.
+        # In particular, these must not live inside the orphan-variant loop.
         self._by_gtin: Dict[str, List[CatalogProduct]] = {}
         self._by_mpn: Dict[str, List[CatalogProduct]] = {}
         self._by_catalog_id: Dict[str, CatalogProduct] = {}
@@ -478,14 +527,17 @@ for product_id, bucket in variants_by_product.items():
         for product in self.catalog:
             if product.catalog_id:
                 self._by_catalog_id[normalize(product.catalog_id)] = product
+
             identity_key = (
                 normalize(product.family_id),
                 catalog_variant_key(product.name),
             )
             if identity_key[0] and identity_key[1]:
                 self._by_identity.setdefault(identity_key, product)
+
             for value in product.gtins:
                 self._by_gtin.setdefault(value, []).append(product)
+
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
 
