@@ -39,6 +39,11 @@ BORN_IN_ROMA_MAX_RESULTS = 100
 BOSS_BOTTLED_CATEGORY_MAX_PAGES = 8
 BOSS_BOTTLED_MAX_CANDIDATES = 80
 
+# The Rasasi category contains Hawas flankers that the generic Deloox
+# search surface does not always expose. Keep the fallback bounded while
+# allowing newer variants to appear on later category pages.
+HAWAS_CATEGORY_MAX_PAGES = 8
+
 
 HEADERS = {
     "User-Agent": (
@@ -1309,11 +1314,17 @@ def discover(
                         candidates[url] = info
 
         if "hawas" in q:
-            r = get(
-                session,
-                f"{BASE}/categorie/1080044/rasasi-parfum.html",
-            )
-            if r:
+            # Deloox's Rasasi category is broader than the generic Hawas
+            # search. Walk a bounded number of category pages so newer
+            # flankers such as Verde, Nautilus and Majestic can reach the
+            # normal product-page parser and central matcher.
+            for page in range(1, HAWAS_CATEGORY_MAX_PAGES + 1):
+                endpoint = f"{BASE}/categorie/1080044/rasasi-parfum.html"
+                if page > 1:
+                    endpoint += f"?page={page}"
+                r = get(session, endpoint)
+                if not r:
+                    continue
                 for url, info in _candidate_contexts(r.text, query):
                     if url not in candidates or info[0] > candidates[url][0]:
                         candidates[url] = info
