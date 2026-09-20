@@ -630,30 +630,111 @@ def _run_store_subprocess(store, query, on_result=None):
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
     process=None; rows=[]; worker_error=None
     try:
-        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',bufsize=1,start_new_session=(os.name!='nt'))
+        # IMPORTANT: do not use blocking readline() here.
+        # Under concurrent load a worker can stay silent for a while; a
+        # blocking readline() would then prevent the individual store
+        # timeout from being checked. Use select/os.read so the timeout
+        # remains authoritative.
+        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=False,bufsize=0,start_new_session=(os.name!='nt'))
         deadline=time.monotonic()+timeout
-        while True:
-            if time.monotonic() >= deadline: raise subprocess.TimeoutExpired(process.args,timeout)
-            line=process.stdout.readline() if process.stdout is not None else ''
-            if not line:
-                if process.poll() is not None: break
-                time.sleep(0.01); continue
-            try: event=json.loads(line.strip())
-            except json.JSONDecodeError: continue
-            if not isinstance(event,dict): continue
-            kind=event.get('event')
-            if kind == "result" and isinstance(event.get("row"), dict):
-                prepared = clean_result(event["row"], store)
-                if prepared is None:
-                    continue
-                resolved = _resolve_offer_identity(prepared, query)
-                if resolved is None:
-                    continue
-                rows.append(resolved)
-                if callable(on_result):
-                    on_result(resolved)
+        stdout_buffer=b''
 
-            elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
+        while True:
+            remaining=deadline-time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(process.args,timeout)
+
+            chunk=b''
+            if process.stdout is not None:
+                if os.name != 'nt':
+                    import select
+                    ready,_,_=select.select(
+                        [process.stdout],
+                        [],
+                        [],
+                        min(0.25, remaining),
+                    )
+                    if ready:
+                        try:
+                            chunk=os.read(process.stdout.fileno(),65536)
+                        except (BlockingIOError,OSError):
+                            chunk=b''
+                else:
+                    # Fly.io runs Linux; this branch is retained for
+                    # portability on Windows.
+                    try:
+                        chunk=process.stdout.read1(65536)
+                    except (AttributeError,BlockingIOError):
+                        chunk=b''
+
+            if chunk:
+                stdout_buffer += chunk
+
+                while b'\\n' in stdout_buffer:
+                    raw_line,stdout_buffer=stdout_buffer.split(b'\\n',1)
+
+                    try:
+                        event=json.loads(
+                            raw_line.decode('utf-8','replace').strip()
+                        )
+                    except (json.JSONDecodeError,UnicodeDecodeError):
+                        continue
+
+                    if not isinstance(event,dict):
+                        continue
+
+                    kind=event.get('event')
+
+                    if kind == "result" and isinstance(event.get("row"), dict):
+                        prepared = clean_result(event["row"], store)
+                        if prepared is None:
+                            continue
+
+                        resolved = _resolve_offer_identity(
+                            prepared,
+                            query,
+                        )
+                        if resolved is None:
+                            continue
+
+                        rows.append(resolved)
+
+                        if callable(on_result):
+                            on_result(resolved)
+
+                    elif kind=='error':
+                        worker_error=str(
+                            event.get('error') or 'worker_error'
+                        )
+
+            if process.poll() is not None:
+                # Drain bytes already available after process exit.
+                if process.stdout is not None and os.name != 'nt':
+                    try:
+                        while True:
+                            tail=os.read(process.stdout.fileno(),65536)
+                            if not tail:
+                                break
+                            stdout_buffer += tail
+                    except (BlockingIOError,OSError):
+                        pass
+                break
+
+        # A worker normally ends each event with a newline. If a final
+        # partial line exists, try to decode it as a last event.
+        if stdout_buffer.strip():
+            try:
+                event=json.loads(
+                    stdout_buffer.decode('utf-8','replace').strip()
+                )
+            except (json.JSONDecodeError,UnicodeDecodeError):
+                event=None
+
+            if isinstance(event,dict) and event.get('event')=='error':
+                worker_error=str(
+                    event.get('error') or 'worker_error'
+                )
+
         rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
         if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
         return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
