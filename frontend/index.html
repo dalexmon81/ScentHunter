@@ -1676,7 +1676,7 @@ function shGroupData(data){
   const finalGroups=groups.filter(g=>g.offers.length);
   if(diagEnabled){
     const finalKeys=new Set(finalGroups.map(g=>productGroupKey(g)));
-    const relevant=/boss\s+bottled|born\s+in\s+roma|hawas/i;
+    const relevant=/boss\s+bottled|born\s+in\s+roma|hawas|liquid\s+brun/i;
     const relevantRows=diagIdentityRows.filter(r=>relevant.test(`${r.raw_brand} ${r.raw_name} ${r.identity_name}`));
     window.__SH_DIAG_LAST={
       input:{
@@ -1722,7 +1722,7 @@ function renderSearchDiagnostic(){
   lines.push(`INPUT: comparisons ${i.comparison_groups} gruppi / ${i.comparison_offers} offerte | results ${i.result_groups} gruppi / ${i.result_offers} offerte | unresolved ${i.unresolved_offers} | identity_scope ${i.identity_scope}`);
   lines.push(`PIPELINE: raw ${p.raw_offers} → identity ${p.unique_identity_keys} → pre-merge ${p.groups_before_merge} → post-merge ${p.groups_after_merge} → FINAL ${p.final_groups}`);
   lines.push("");
-  lines.push("BOSS / BORN / HAWAS — OFFERTA → IDENTITÀ:");
+  lines.push("BOSS / BORN / HAWAS / LIQUID BRUN — OFFERTA → IDENTITÀ:");
   d.relevant.forEach((r,n)=>lines.push(`${n+1}. ${r.raw_name||"?"} | ${r.raw_brand||"?"} | catalog=${r.catalog_id||"—"} | ID=${r.identity_name||"—"} | key=${r.key||"—"} | ${r.store||"?"} | URL=${r.url||"—"}`));
   lines.push("");
   lines.push("LETTURA URL: le URL sopra servono solo a capire se una variante è presente nella sorgente ma ha perso il nome; nessuna logica di ricerca usa questa diagnostica.");
