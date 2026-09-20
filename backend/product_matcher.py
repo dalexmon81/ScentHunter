@@ -1214,24 +1214,17 @@ class ProductMatcher:
         query: str,
         family: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
-        # Surgical fallback for the verified orphan catalog variant
-        # "Hawas Lava Gold".  Only this known family identity is handled here.
-        offer_text = str(
-            offer.get("name")
-            or offer.get("title")
-            or offer.get("product_name")
-            or ""
-        )
-        if self._url_catalog_identity_text(offer_text) == "hawas lava gold":
-            lava_gold_product = self._catalog_product_for_family_variant(
-                "Hawas Lava Gold"
-            )
-            if lava_gold_product is not None:
-                return lava_gold_product
-
         variant = self._family_variant_for_offer(offer, family)
         if variant is None:
             return None
+
+        # Surgical handling for the verified orphan catalog variant
+        # "Hawas Lava Gold".  The family registry already knows the variant;
+        # once it has been identified, use the normal family-result builder so
+        # catalog identity, size and product_identity are populated exactly
+        # like every other family variant.
+        if variant.get("canonical_name") == "Hawas Lava Gold":
+            return self._build_family_result(offer, family, variant)
 
         query_is_family = catalog_variant_key(query) in family["normalized_query_aliases"]
         requested = self._requested_variant(query, family)
