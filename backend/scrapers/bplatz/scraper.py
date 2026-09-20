@@ -1,5 +1,6 @@
 import re
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup, Tag
 from urllib.parse import urljoin
 
@@ -14,7 +15,9 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-HAWAS_MAX_CATALOG_PAGES = 30
+HAWAS_MAX_CATALOG_PAGES = 35
+HAWAS_CATALOG_URL = BASE + "/collections/all-products"
+HAWAS_WORKERS = 8
 
 
 def _norm(v):
@@ -137,25 +140,56 @@ def _extract_page(html, query):
     return out
 
 
+def _fetch_hawas_page(page):
+    url = HAWAS_CATALOG_URL
+    try:
+        r = requests.get(
+            url,
+            params={"page": page},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if r.status_code != 200:
+            return []
+        return _extract_page(r.text, "Rasasi Hawas")
+    except requests.RequestException:
+        return []
+
+
 def search(query):
     query = str(query or "").strip()
     if not query:
         return []
 
+    hawas_query = _is_hawas_query(query)
+
+    # Hawas is special on Bplatz: the products are spread through the
+    # paginated "All products" collection (for example, current catalogue
+    # pages around the H section contain multiple Hawas variants).
+    # Do not rely on the generic /collections/produkte page or on a
+    # "page=N" parameter attached to that collection: Bplatz's pagination
+    # can switch collection paths between pages.
+    if hawas_query:
+        results = []
+        seen_urls = set()
+        with ThreadPoolExecutor(max_workers=HAWAS_WORKERS) as pool:
+            futures = [pool.submit(_fetch_hawas_page, page) for page in range(1, HAWAS_MAX_CATALOG_PAGES + 1)]
+            for future in as_completed(futures):
+                for item in future.result():
+                    if item["url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["url"])
+                    results.append(item)
+        results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
+        return results[:50]
+
     session = requests.Session()
     results = []
     seen_urls = set()
-    hawas_query = _is_hawas_query(query)
-
-    # Important: the old scraper used homepage ?s=query.
-    # Bplatz does not expose useful search results that way.
-    # Its real catalogue is /collections/produkte.
-    # For Hawas, DO NOT stop on the first matching page: the collection is
-    # paginated and newer Hawas flankers can sit on later pages.
-    max_pages = HAWAS_MAX_CATALOG_PAGES if hawas_query else 30
 
     try:
-        for page in range(1, max_pages + 1):
+        for page in range(1, 31):
             try:
                 r = session.get(
                     CATALOG_URL,
@@ -170,20 +204,15 @@ def search(query):
                 break
 
             page_results = _extract_page(r.text, query)
-
             for item in page_results:
                 if item["url"] in seen_urls:
                     continue
                 seen_urls.add(item["url"])
                 results.append(item)
 
-            # For ordinary specific perfume queries, a few matches are enough.
-            # Hawas is the deliberate exception: scan the whole bounded
-            # collection because the first page is not a complete family index.
-            if results and len(_norm(query).split()) >= 2 and not hawas_query:
+            if results and len(_norm(query).split()) >= 2:
                 break
 
-            # Stop when Shopify returns an empty catalogue page.
             soup = BeautifulSoup(r.text, "html.parser")
             if not any(
                 "/products/" in urljoin(BASE, a.get("href", "")).lower()
@@ -194,7 +223,7 @@ def search(query):
         session.close()
 
     results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
-    return results[:50 if hawas_query else 20]
+    return results[:20]
 
 
 if __name__ == "__main__":
