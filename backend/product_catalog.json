@@ -17907,28 +17907,6 @@
       "canonical_name": "Hawas Kobra"
     },
     {
-      "product_id": "SH-FAMILY-be780310ae0c",
-      "brand_id": "BR-1be6e01b7664",
-      "brand_name": "Rasasi",
-      "family_name": "Hawas Lava Gold",
-      "concentration": "Eau de Parfum",
-      "gender": "Uomo",
-      "aliases": [
-        "Rasasi - Hawas Lava Gold",
-        "Rasasi Hawas Lava Gold",
-        "Hawas Lava Gold",
-        "Hawas Lava Gold 100 ML",
-        "Hawas Lava Gold Eau de Parfum"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza aggiunta per completare la famiglia Rasasi Hawas; identificata dall'offerta Hawas Lava Gold 100 ml.",
-      "verification_sources": [
-        "https://www.parfumcity.nl/en/products/hawas-lava-gold-rasasi"
-      ],
-      "family_id": "rasasi_hawas",
-      "canonical_name": "Hawas Lava Gold"
-    },
-    {
       "product_id": "SH-AUTO-0733",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
@@ -22504,6 +22482,88 @@
         "https://www.fragrantica.com/designers/Yves-Saint-Laurent.html"
       ],
       "canonical_name": "Y Le Parfum"
+    },
+    {
+      "product_id": "SH-FAMILY-be780310ae0c",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Lava Gold",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Rasasi - Hawas Lava Gold",
+        "Rasasi Hawas Lava Gold",
+        "Hawas Lava Gold",
+        "Hawas Lava Gold 100 ML",
+        "Hawas Lava Gold Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare le varianti Rasasi Hawas richieste.",
+      "verification_sources": [
+        "https://www.parfumcity.nl/en/products/hawas-lava-gold-rasasi"
+      ],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Lava Gold"
+    },
+    {
+      "product_id": "SH-FAMILY-hawas-majestic",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Majestic",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Rasasi - Hawas Majestic",
+        "Rasasi Hawas Majestic",
+        "Hawas Majestic",
+        "Hawas Majestic 100 ML",
+        "Hawas Majestic Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare le varianti Rasasi Hawas richieste.",
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Majestic"
+    },
+    {
+      "product_id": "SH-FAMILY-hawas-thunder",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Thunder",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Rasasi - Hawas Thunder",
+        "Rasasi Hawas Thunder",
+        "Hawas Thunder",
+        "Hawas Thunder 100 ML",
+        "Hawas Thunder Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare le varianti Rasasi Hawas richieste.",
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Thunder"
+    },
+    {
+      "product_id": "SH-FAMILY-hawas-sapphire",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Sapphire",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Rasasi - Hawas Sapphire",
+        "Rasasi Hawas Sapphire",
+        "Hawas Sapphire",
+        "Hawas Sapphire 100 ML",
+        "Hawas Sapphire Eau de Parfum"
+      ],
+      "source_status": "verificato_nome_canonico",
+      "source_notes": "Referenza aggiunta per completare le varianti Rasasi Hawas richieste.",
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Sapphire"
     }
   ],
   "variants": [
@@ -23837,22 +23897,6 @@
         "Hawas Kobra 100 ML",
         "Hawas Kobra Eau de Parfum",
         "Rasasi Hawas Kobra"
-      ],
-      "store_mappings": []
-    },
-    {
-      "variant_id": "VAR-c046bd617c14912e",
-      "product_id": "SH-FAMILY-be780310ae0c",
-      "size_ml": 100,
-      "gtins": [
-        "0614514575352"
-      ],
-      "mpns": [],
-      "aliases": [
-        "Hawas Lava Gold",
-        "Hawas Lava Gold 100 ML",
-        "Hawas Lava Gold Eau de Parfum",
-        "Rasasi Hawas Lava Gold"
       ],
       "store_mappings": []
     },
@@ -25723,6 +25767,62 @@
         "EDICT AMBERYTHME"
       ],
       "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c046bd617c14912e",
+      "product_id": "SH-FAMILY-be780310ae0c",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Lava Gold",
+        "Hawas Lava Gold 100 ML",
+        "Hawas Lava Gold Eau de Parfum",
+        "Rasasi Hawas Lava Gold"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-hawas-majestic-100",
+      "product_id": "SH-FAMILY-hawas-majestic",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Majestic",
+        "Hawas Majestic 100 ML",
+        "Hawas Majestic Eau de Parfum",
+        "Rasasi Hawas Majestic"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-hawas-thunder-100",
+      "product_id": "SH-FAMILY-hawas-thunder",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Thunder",
+        "Hawas Thunder 100 ML",
+        "Hawas Thunder Eau de Parfum",
+        "Rasasi Hawas Thunder"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-hawas-sapphire-100",
+      "product_id": "SH-FAMILY-hawas-sapphire",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Sapphire",
+        "Hawas Sapphire 100 ML",
+        "Hawas Sapphire Eau de Parfum",
+        "Rasasi Hawas Sapphire"
+      ],
+      "store_mappings": []
     }
   ],
   "offers": [],
@@ -25735,10 +25835,10 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1167,
+    "product_count": 1170,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 239,
+    "variant_count": 242,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
@@ -25774,6 +25874,15 @@
         "https://www.jomalone.co.uk/colognes/100ml-colognes",
         "https://fragrance.org/awards-archive/award_year/2026/"
       ]
+    },
+    "hawas_completion": {
+      "added_and_verified_in_this_file": [
+        "Hawas Lava Gold",
+        "Hawas Majestic",
+        "Hawas Thunder",
+        "Hawas Sapphire"
+      ],
+      "note": "Four Hawas identities explicitly present as catalog products and 100 ml variants."
     }
   }
 }
