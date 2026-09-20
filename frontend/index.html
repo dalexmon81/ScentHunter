@@ -2352,7 +2352,24 @@ async function searchStoresProgressive(term,onPartial){
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   }catch(error){
     const message=String(error?.message||error||"Errore ricerca");
-    const failed={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{_search:message},completed:true,status:"error"};
+
+    // Se il polling fallisce dopo che abbiamo già ricevuto risultati validi,
+    // non cancellare l'ultimo stato valido trasformandolo in 0 risultati.
+    // Conserviamo lastData e segnaliamo l'errore senza sovrascrivere i dati.
+    const safeLast=lastData&&typeof lastData==="object"?lastData:null;
+    const failed=safeLast?{
+      ...safeLast,
+      query:safeLast.query||query,
+      errors:{
+        ...(safeLast.errors&&typeof safeLast.errors==="object"?safeLast.errors:{}),
+        _search:message
+      },
+      completed:true,
+      status:"completed"
+    }:{
+      query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],
+      errors:{_search:message},completed:true,status:"error"
+    };
     if(typeof onPartial==="function")onPartial(failed,true);
     return failed;
   }
