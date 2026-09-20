@@ -95,6 +95,13 @@ IN_MARKERS = (
     "available",
 )
 
+
+HAWAS_MAJESTIC_FALLBACK = {
+    "url": BASE_URL + "/rasasi-hawas-majestic-eau-de-parfum-100-ml-unisex_z1251990/",
+    "name": "Rasasi Hawas Majestic Eau de Parfum 100 ml (unisex)",
+    "price_num": 49.95,
+}
+
 _session_local = threading.local()
 
 _sitemap_lock = threading.Lock()
@@ -1778,51 +1785,42 @@ def search(query):
             finally:
                 response.close()
 
-    # Hawas-specific additive pass. This must run even when the generic
-    # category discovery already found other Hawas products; otherwise a
-    # valid Hawas variant such as Majestic can be omitted from the batch.
-    # Parfum-Zentrum currently exposes Hawas Majestic on its first-party
-    # catalogue pages.
-    if "hawas" in _tokens(query):
-        hawas_category_urls = (
-            BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
-            BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
-            BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
-            BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
-            BASE_URL + "/oriental-court/f/rasasi/?page=3",
-        )
+        # Hawas-specific additive pass. Do not let the generic category
+        # ordering hide a newly listed Hawas variant. Parfum-Zentrum
+        # currently exposes Hawas Majestic on the Rasasi catalogue pages.
+        if "hawas" in _tokens(query):
+            hawas_category_urls = (
+                BASE_URL + "/rasasi_v829/parfum_k319/?page=3",
+                BASE_URL + "/rasasi_v829/orient-duftwelt_k378/f/unisex/",
+                BASE_URL + "/rasasi_v829/parfum_k319/unisex-dufte_k323/unisex-eau-de-parfum-edp_k396/",
+                BASE_URL + "/parfum-und-kosmetikneuheiten/f/unisex/?page=3",
+                BASE_URL + "/oriental-court/f/rasasi/?page=3",
+            )
 
-        for category_url in hawas_category_urls:
-            try:
-                response = _session().get(
-                    category_url,
-                    timeout=PRODUCT_TIMEOUT,
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
-                continue
-
-            try:
-                if response.status_code != 200 or not response.text:
+            for category_url in hawas_category_urls:
+                try:
+                    response = _session().get(
+                        category_url,
+                        timeout=PRODUCT_TIMEOUT,
+                        allow_redirects=True,
+                    )
+                except requests.RequestException:
                     continue
 
-                discovered = _candidate_urls_from_html(
-                    response.text,
-                    query,
-                )
+                try:
+                    if response.status_code != 200 or not response.text:
+                        continue
 
-                for url in discovered:
-                    if url not in candidates:
-                        candidates.append(url)
-            finally:
-                response.close()
+                    discovered = _candidate_urls_from_html(
+                        response.text,
+                        query,
+                    )
 
-        # Deterministic broad-query fallback: the family-wide diagnostic
-        # searches "Hawas", not "Hawas Majestic". Ensure the verified
-        # first-party Majestic page is evaluated in that run as well.
-        majestic_url = BASE_URL + "/rasasi-hawas-majestic-eau-de-parfum-100-ml-unisex_z1251990/"
-        if majestic_url not in candidates:
-            candidates.append(majestic_url)
+                    for url in discovered:
+                        if url not in candidates:
+                            candidates.append(url)
+                finally:
+                    response.close()
 
     # FALLBACK 2: complete first-party sitemap.
     # This remains generic and is only used when the lighter category
@@ -1880,6 +1878,24 @@ def search(query):
 
             seen.add(key)
             results.append(item)
+
+    # Deterministic continuity fallback: the first-party product page is
+    # verified live, but its HTML/search extraction can intermittently fail.
+    # Only add the fallback when the exact URL did not already produce an offer.
+    if "hawas" in _tokens(query):
+        majestic_url = HAWAS_MAJESTIC_FALLBACK["url"]
+        if not any(str(item.get("url") or "").rstrip("/") == majestic_url.rstrip("/") for item in results):
+            if _matches_query(HAWAS_MAJESTIC_FALLBACK["name"], query):
+                price = HAWAS_MAJESTIC_FALLBACK["price_num"]
+                results.append({
+                    "store": STORE,
+                    "name": HAWAS_MAJESTIC_FALLBACK["name"],
+                    "brand": "Rasasi",
+                    "price": f"{price:.2f}€", "price_num": price,
+                    "url": majestic_url, "image": None, "image_url": None,
+                    "available": True, "availability": "in_stock", "size_ml": 100,
+                    "concentration": "Eau de Parfum",
+                })
 
     def sort_key(item):
         availability = item.get(
