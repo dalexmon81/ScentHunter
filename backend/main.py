@@ -670,8 +670,8 @@ def _run_store_subprocess(store, query, on_result=None):
             if chunk:
                 stdout_buffer += chunk
 
-                while b'\\n' in stdout_buffer:
-                    raw_line,stdout_buffer=stdout_buffer.split(b'\\n',1)
+                while b'\n' in stdout_buffer:
+                    raw_line,stdout_buffer=stdout_buffer.split(b'\n',1)
 
                     try:
                         event=json.loads(
