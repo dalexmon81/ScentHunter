@@ -477,12 +477,32 @@ class ProductMatcher:
 
     @staticmethod
     def _offer_brand(offer: Dict[str, Any]) -> str:
-        value = first_value(offer, ProductMatcher.BRAND_KEYS)
-        if value:
+        """Return a usable retailer brand, treating placeholders as missing.
+
+        Retailers sometimes expose a literal placeholder such as ``?`` when
+        the brand is unknown.  That value is not a real brand and must not
+        block a family-registry match.  The central matcher is the correct
+        place to normalize this because it protects the identity layer even
+        when an older scraper still emits the placeholder.
+        """
+        def usable(value: Any) -> str:
+            value = str(value or "").strip()
+            if not value:
+                return ""
+            if value.lower() in {
+                "?", "unknown", "n/a", "na", "none", "null", "-", "—",
+            }:
+                return ""
             return normalize(value)
+
+        value = first_value(offer, ProductMatcher.BRAND_KEYS)
+        brand = usable(value)
+        if brand:
+            return brand
+
         source = _nested_source(offer)
         value = first_value(source, ("source_brand", "brand", "manufacturer"))
-        return normalize(value) if value else ""
+        return usable(value)
 
     @staticmethod
     def _offer_name(offer: Dict[str, Any]) -> str:
