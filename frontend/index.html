@@ -1526,8 +1526,6 @@ function shGroupData(data){
     name:String(g.name||"").trim(),
     offers:Number(Array.isArray(g.offers)?g.offers.length:0)
   })):[];
- 
-  const dedupeAudit=[];
 
   groups.forEach(g=>{
     const bySize=new Map();
@@ -1539,60 +1537,29 @@ function shGroupData(data){
 
     const cleanOffers=[];
     bySize.forEach(list=>{
-      const byStore=new Map();
+      const byOffer=new Map();
       list.forEach(o=>{
         const store=String(o.store||"").trim().toLowerCase();
         if(!store){
-          byStore.set(`__empty_${byStore.size}`,o);
+          byOffer.set(`__empty_${byOffer.size}`,o);
           return;
         }
-        const prev=byStore.get(store);
-        if(!prev){
-  byStore.set(store,o);
-}else if(shNum(o)<shNum(prev)){
-  dedupeAudit.push({
-    action:"DROP_PREVIOUS",
-    group:g.name||g.title||g.identity||"",
-    key:`${store} + ${sizeOf(o)||"unknown"}`,
-    dropped_store:prev.store||"",
-    dropped_size:sizeOf(prev)||"unknown",
-    dropped_price:prev.price||prev.current_price||"",
-    dropped_url:prev.url||prev.link||"",
-    dropped_id:prev.product_id||prev.productId||prev.sku||prev.id||"",
-    kept_store:o.store||"",
-    kept_size:sizeOf(o)||"unknown",
-    kept_price:o.price||o.current_price||"",
-    kept_url:o.url||o.link||"",
-    kept_id:o.product_id||o.productId||o.sku||o.id||"",
-    reason:"Stesso store + formato: la nuova offerta ha prezzo inferiore"
-  });
 
-  byStore.set(store,o);
-}else{
-  dedupeAudit.push({
-    action:"DROP_CURRENT",
-    group:g.name||g.title||g.identity||"",
-    key:`${store} + ${sizeOf(o)||"unknown"}`,
-    dropped_store:o.store||"",
-    dropped_size:sizeOf(o)||"unknown",
-    dropped_price:o.price||o.current_price||"",
-    dropped_url:o.url||o.link||"",
-    dropped_id:o.product_id||o.productId||o.sku||o.id||"",
-    kept_store:prev.store||"",
-    kept_size:sizeOf(prev)||"unknown",
-    kept_price:prev.price||prev.current_price||"",
-    kept_url:prev.url||prev.link||"",
-    kept_id:prev.product_id||prev.productId||prev.sku||prev.id||"",
-    reason:"Stesso store + formato: l'offerta già presente ha prezzo inferiore o uguale"
-  });
-}
-
+        /*
+         * Deduplica solo la stessa offerta commerciale.
+         * Non usare piu' (store + size): uno stesso retailer puo' avere
+         * piu' prodotti/varianti distinti dello stesso formato.
+         */
+        const identity=String(
+          o.url || o.product_url || o.store_product_id ||
+          o.product_id || o.sku || o.name || o.title || ""
+        ).trim().toLowerCase();
+        const key=`${store}|${identity}`;
+        const prev=byOffer.get(key);
+        if(!prev||shNum(o)<shNum(prev))byOffer.set(key,o);
       });
-      cleanOffers.push(...byStore.values());
+      cleanOffers.push(...byOffer.values());
     });
-    window.__dedupeAudit=dedupeAudit;
-    console.log("ScentHunter dedupe audit:",dedupeAudit.length,"offerte eliminate");
-    console.table(dedupeAudit);
 
     g.offers=cleanOffers;
 
