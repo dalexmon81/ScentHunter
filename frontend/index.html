@@ -2303,6 +2303,9 @@ async function searchStoresProgressive(term,onPartial){
   const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{}};
   if(!query)return empty;
 
+  // Conserva l'ultimo snapshot valido anche se il polling fallisce dopo.
+  let lastData=empty;
+
   try{
     const start=await fetchJSONWithTimeout(
       backend()+"/search-start?q="+encodeURIComponent(query),
@@ -2313,7 +2316,7 @@ async function searchStoresProgressive(term,onPartial){
 
     const startedAt=Date.now();
     const maxWait=180000;
-    let lastData=start;
+    lastData=start;
 
     while(Date.now()-startedAt<maxWait){
       const status=await fetchJSONWithTimeout(
