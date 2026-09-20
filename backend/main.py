@@ -374,11 +374,49 @@ def result_key(item):
     size = _safe_float(item.get('size_ml'))
     return (store, url or product_id or name, round(size,3) if size is not None else '')
 
-def dedupe_results(results):
-    seen=set(); output=[]
-    for item in results:
-        key=result_key(item)
-        if key not in seen: seen.add(key); output.append(item)
+def dedupe_results(results, diagnostics=None):
+    """Deduplicate offers; optionally record every actual DROP decision."""
+    seen = {}
+    output = []
+    for index, item in enumerate(results):
+        key = result_key(item)
+        if key not in seen:
+            seen[key] = {"index": index, "item": item}
+            output.append(item)
+            continue
+        if diagnostics is not None:
+            keeper = seen[key]["item"]
+            diagnostics.append({
+                "action": "DROP",
+                "reason": "duplicate_dedupe_key",
+                "dedupe_key": [key[0], key[1], key[2]],
+                "dropped": {
+                    "store": item.get("store") or item.get("shop"),
+                    "url": item.get("url") or item.get("product_url"),
+                    "product_id": item.get("store_product_id") or item.get("product_id") or item.get("sku"),
+                    "sku": item.get("sku"),
+                    "name": item.get("name") or item.get("title"),
+                    "size_ml": item.get("size_ml"),
+                    "price": item.get("price"),
+                    "price_num": item.get("price_num"),
+                    "catalog_id": item.get("catalog_id"),
+                    "canonical_name": item.get("canonical_name"),
+                    "raw_name": item.get("_raw_name"),
+                },
+                "kept": {
+                    "store": keeper.get("store") or keeper.get("shop"),
+                    "url": keeper.get("url") or keeper.get("product_url"),
+                    "product_id": keeper.get("store_product_id") or keeper.get("product_id") or keeper.get("sku"),
+                    "sku": keeper.get("sku"),
+                    "name": keeper.get("name") or keeper.get("title"),
+                    "size_ml": keeper.get("size_ml"),
+                    "price": keeper.get("price"),
+                    "price_num": keeper.get("price_num"),
+                    "catalog_id": keeper.get("catalog_id"),
+                    "canonical_name": keeper.get("canonical_name"),
+                    "raw_name": keeper.get("_raw_name"),
+                },
+            })
     return output
 
 def sort_results(results):
@@ -748,8 +786,11 @@ def _snapshot(job_id):
             "errors": dict(
                 job.get("errors", {})
             ),
-            "stores": dict(
+             "stores": dict(
                 job.get("stores", {})
+            ),
+            "dedupe_diagnostics": list(
+                job.get("dedupe_diagnostics", [])
             ),
         }
 
@@ -773,7 +814,8 @@ def _publish_result(job_id, row):
         job.setdefault("offers", [])
         job["offers"].append(row)
         job["offers"] = dedupe_results(
-            job["offers"]
+            job["offers"],
+            job.setdefault("dedupe_diagnostics", []),
         )
 
         grouped, unresolved = (
@@ -827,7 +869,8 @@ def _publish_store(job_id, report):
             job["offers"].append(item)
 
         job["offers"] = dedupe_results(
-            job.get("offers", [])
+            job.get("offers", []),
+            job.setdefault("dedupe_diagnostics", []),
         )
 
         grouped, unresolved = (
@@ -870,7 +913,8 @@ def _run_job(job_id,query):
 
     if job:
         job["offers"] = dedupe_results(
-            job.get("offers", [])
+            job.get("offers", []),
+            job.setdefault("dedupe_diagnostics", []),
         )
 
         grouped, unresolved = (
@@ -934,6 +978,7 @@ def search_perfume(q: str):
             "identity_scope": [],
             "errors": {},
             "stores": {},
+            "dedupe_diagnostics": [],
         }
 
     reports = collect_store_reports_isolated(
@@ -959,7 +1004,11 @@ def search_perfume(q: str):
 
             all_offers.append(item)
 
-    all_offers = dedupe_results(all_offers)
+    dedupe_diagnostics = []
+    all_offers = dedupe_results(
+        all_offers,
+        dedupe_diagnostics,
+    )
 
     grouped, unresolved = (
         _aggregate_identity_results(
@@ -973,6 +1022,7 @@ def search_perfume(q: str):
         "offer_count": len(all_offers),
         "results": grouped,
         "unresolved_offers": unresolved,
+        "dedupe_diagnostics": dedupe_diagnostics,
         "identity_scope": _identity_scope(query),
         "errors": {
             report["store"]: report["error"]
