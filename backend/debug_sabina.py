@@ -19,15 +19,6 @@ ENDPOINT
 --------
 GET /diagnose-sabina?q=Born%20in%20Roma
 
-INSTALL
--------
-Import this router from backend/main.py and include it once:
-
-    from debug_sabina_born_in_roma import router as debug_sabina_born_in_roma_router
-    app.include_router(debug_sabina_born_in_roma_router)
-
-Place those lines after `app = FastAPI(...)` exists.
-
 IMPORTANT
 ---------
 Do not replace the production Sabina scraper. This file only observes it.
@@ -43,6 +34,7 @@ from fastapi import APIRouter, Query
 
 router = APIRouter()
 
+# CURRENT FAMILY REGISTRY: 20 Born in Roma identities.
 EXPECTED = [
     "Born in Roma Uomo",
     "Born in Roma Uomo Intense",
@@ -62,6 +54,8 @@ EXPECTED = [
     "Born in Roma Donna Purple Melancholia",
     "Born in Roma Donna The Gold",
     "Born in Roma Donna Ivory",
+    "Born in Roma Donna Pink PP",
+    "Born in Roma Uomo Rockstud Noir",
 ]
 
 
@@ -105,16 +99,9 @@ def row_text(row: Any) -> str:
 
     values = []
     for key in (
-        "name",
-        "title",
-        "product_name",
-        "canonical_name",
-        "catalog_variant",
-        "brand",
-        "source_brand",
-        "product_line",
-        "variant",
-        "url",
+        "name", "title", "product_name", "canonical_name",
+        "catalog_variant", "brand", "source_brand",
+        "product_line", "variant", "url",
     ):
         value = row.get(key)
         if value not in (None, ""):
@@ -123,13 +110,8 @@ def row_text(row: Any) -> str:
     source = row.get("source")
     if isinstance(source, dict):
         for key in (
-            "name",
-            "title",
-            "product_name",
-            "source_name",
-            "brand",
-            "source_brand",
-            "url",
+            "name", "title", "product_name", "source_name",
+            "brand", "source_brand", "url",
         ):
             value = source.get(key)
             if value not in (None, ""):
@@ -139,14 +121,7 @@ def row_text(row: Any) -> str:
 
 
 def exact_variant_match(row: Any, expected: str) -> bool:
-    """
-    Diagnostic identity test.
-
-    Prefer an exact canonical/name/title/catalog_variant match.
-    Also accept the expected variant as a contiguous phrase in the observed
-    product identity text. This is intentionally broader than ProductMatcher:
-    the diagnostic must tell us what the retailer actually returned.
-    """
+    """Broad diagnostic identity check; it does not change production matching."""
     target = norm(expected)
     if not target:
         return False
@@ -154,11 +129,8 @@ def exact_variant_match(row: Any, expected: str) -> bool:
     explicit = []
     if isinstance(row, dict):
         for key in (
-            "name",
-            "title",
-            "product_name",
-            "canonical_name",
-            "catalog_variant",
+            "name", "title", "product_name",
+            "canonical_name", "catalog_variant",
         ):
             if row.get(key):
                 explicit.append(norm(row[key]))
@@ -173,10 +145,7 @@ def exact_variant_match(row: Any, expected: str) -> bool:
         return True
 
     text = row_text(row)
-    if f" {target} " in f" {text} ":
-        return True
-
-    return False
+    return f" {target} " in f" {text} "
 
 
 def classify_observed_rows(rows: list[dict]) -> dict[str, list[dict]]:
@@ -198,13 +167,6 @@ def safe_copy(value: Any) -> Any:
 
 
 def call_optional_clean_result(main, row: dict, query: str) -> tuple[str, Any]:
-    """
-    Observe main.clean_result when it exists.
-
-    Signature variants are handled without guessing about production code:
-    first try the signature used by the current pipeline, then the common
-    two-argument form.
-    """
     clean = getattr(main, "clean_result", None)
     if not callable(clean):
         return "UNAVAILABLE", None
@@ -229,13 +191,7 @@ def call_optional_clean_result(main, row: dict, query: str) -> tuple[str, Any]:
 
 
 def call_optional_matcher(main, row: dict, query: str) -> tuple[str, Any]:
-    """
-    Observe a ProductMatcher only if the running main module exposes one.
-
-    No matcher is imported independently and no matcher state is changed.
-    """
     candidates = []
-
     for attr in ("PRODUCT_MATCHER", "product_matcher", "MATCHER"):
         obj = getattr(main, attr, None)
         if obj is not None:
@@ -264,11 +220,7 @@ def call_optional_matcher(main, row: dict, query: str) -> tuple[str, Any]:
 def observe_dedupe(main, rows: list[dict]) -> dict:
     fn = getattr(main, "dedupe_results", None)
     if not callable(fn):
-        return {
-            "available": False,
-            "kept": [],
-            "dropped": [],
-        }
+        return {"available": False, "kept": [], "dropped": []}
 
     source = copy.deepcopy(rows)
 
@@ -282,7 +234,6 @@ def observe_dedupe(main, rows: list[dict]) -> dict:
             "dropped": [],
         }
 
-    # Use a stable serialized representation because dedupe may return new dicts.
     import json
 
     kept_keys = {
@@ -307,17 +258,13 @@ def observe_dedupe(main, rows: list[dict]) -> dict:
 
 
 def url_might_identify(url: str, expected: str) -> bool:
-    """
-    Discovery-stage hint only.
-
-    A URL match is NOT treated as proof that extraction succeeded.
-    """
+    """Discovery hint only: all identity words must occur in the URL."""
     u = norm(url)
     parts = [p for p in norm(expected).split() if p]
     return bool(parts) and all(part in u for part in parts)
 
 
-@router.get("/diagnose-sabina")
+@router.get("/diagnose-sabina-born-in-roma")
 def diagnose_sabina_born_in_roma(
     q: str = Query("Born in Roma", min_length=1, max_length=120),
 ):
@@ -338,16 +285,10 @@ def diagnose_sabina_born_in_roma(
         }
 
     if not callable(original_discover):
-        return {
-            "ok": False,
-            "error": "DISCOVERY_FUNCTION_NOT_AVAILABLE",
-        }
+        return {"ok": False, "error": "DISCOVERY_FUNCTION_NOT_AVAILABLE"}
 
     if not callable(original_extract):
-        return {
-            "ok": False,
-            "error": "EXTRACTION_FUNCTION_NOT_AVAILABLE",
-        }
+        return {"ok": False, "error": "EXTRACTION_FUNCTION_NOT_AVAILABLE"}
 
     trace = {
         "discovery": {
@@ -363,27 +304,19 @@ def diagnose_sabina_born_in_roma(
     def traced_discover(session, query):
         trace["discovery"]["called"] = True
         t0 = time.monotonic()
-
         try:
             result = original_discover(session, query)
             urls = list(result or [])
-            trace["discovery"]["elapsed_seconds"] = round(
-                time.monotonic() - t0, 3
-            )
+            trace["discovery"]["elapsed_seconds"] = round(time.monotonic() - t0, 3)
             trace["discovery"]["urls"] = urls
             return urls
         except Exception as exc:
-            trace["discovery"]["elapsed_seconds"] = round(
-                time.monotonic() - t0, 3
-            )
-            trace["discovery"]["error"] = (
-                f"{type(exc).__name__}: {exc}"
-            )
+            trace["discovery"]["elapsed_seconds"] = round(time.monotonic() - t0, 3)
+            trace["discovery"]["error"] = f"{type(exc).__name__}: {exc}"
             raise
 
     def traced_extract(url, query):
         t0 = time.monotonic()
-
         item = {
             "url": url,
             "elapsed_seconds": None,
@@ -395,37 +328,20 @@ def diagnose_sabina_born_in_roma(
         try:
             result = original_extract(url, query)
             rows = list(result or [])
-
-            item["elapsed_seconds"] = round(
-                time.monotonic() - t0, 3
-            )
+            item["elapsed_seconds"] = round(time.monotonic() - t0, 3)
             item["rows"] = [
-                evidence(row)
-                for row in rows
-                if isinstance(row, dict)
+                evidence(row) for row in rows if isinstance(row, dict)
             ]
             item["status"] = "SUCCESS" if item["rows"] else "EMPTY"
-
             return rows
-
         except Exception as exc:
-            item["elapsed_seconds"] = round(
-                time.monotonic() - t0, 3
-            )
+            item["elapsed_seconds"] = round(time.monotonic() - t0, 3)
             item["status"] = "EXCEPTION"
-            item["error"] = (
-                f"{type(exc).__name__}: {exc}"
-            )
-
-            # The real stream adapter catches extraction exceptions. Returning
-            # [] here mirrors that behavior while still recording the failure.
+            item["error"] = f"{type(exc).__name__}: {exc}"
             return []
-
         finally:
             trace["extraction"].append(item)
 
-    # The existing search_stream closure accesses these module attributes at
-    # runtime, so this observes the real live stream without duplicating it.
     setattr(sabina, "_discover_from_first_party", traced_discover)
     setattr(sabina, "_extract_product_page", traced_extract)
 
@@ -436,13 +352,12 @@ def diagnose_sabina_born_in_roma(
     def emit(row):
         if not isinstance(row, dict):
             return
-
         item = copy.deepcopy(row)
         emitted.append(item)
         trace["stream_emissions"].append(evidence(item))
 
     try:
-        # ONE AND ONLY ONE Sabina search.
+        # Exactly one live Sabina search_stream execution.
         stream(q, emit)
     except Exception as exc:
         stream_error = f"{type(exc).__name__}: {exc}"
@@ -450,14 +365,9 @@ def diagnose_sabina_born_in_roma(
         setattr(sabina, "_discover_from_first_party", original_discover)
         setattr(sabina, "_extract_product_page", original_extract)
 
-    stream_elapsed = round(
-        time.monotonic() - stream_started,
-        3,
-    )
-
+    stream_elapsed = round(time.monotonic() - stream_started, 3)
     stream_by_variant = classify_observed_rows(emitted)
 
-    # Extraction evidence is independent from stream emission.
     extraction_by_variant = {}
     for expected in EXPECTED:
         hits = []
@@ -473,9 +383,6 @@ def diagnose_sabina_born_in_roma(
                     })
         extraction_by_variant[expected] = hits
 
-    # Discovery can only be proven from the URL if the URL itself exposes the
-    # identity. Otherwise we explicitly report "NO_URL_EVIDENCE" rather than
-    # falsely claiming the product was not discovered.
     discovery_by_variant = {}
     for expected in EXPECTED:
         hits = [
@@ -483,39 +390,28 @@ def diagnose_sabina_born_in_roma(
             for url in trace["discovery"]["urls"]
             if url_might_identify(url, expected)
         ]
-
         discovery_by_variant[expected] = {
             "url_evidence": bool(hits),
             "candidate_urls": hits,
         }
 
     downstream = []
-
     for row in emitted:
-        clean_status, clean_result = call_optional_clean_result(
-            main, row, q
-        )
-        matcher_status, matcher_result = call_optional_matcher(
-            main, row, q
-        )
-
+        clean_status, clean_result = call_optional_clean_result(main, row, q)
+        matcher_status, matcher_result = call_optional_matcher(main, row, q)
         downstream.append({
             "input": evidence(row),
             "clean_result": {
                 "status": clean_status,
-                "output": (
-                    safe_copy(clean_result)
-                    if clean_status == "PASSED"
-                    else clean_result
-                ),
+                "output": safe_copy(clean_result)
+                if clean_status == "PASSED"
+                else clean_result,
             },
             "product_matcher": {
                 "status": matcher_status,
-                "output": (
-                    safe_copy(matcher_result)
-                    if matcher_status == "PASSED"
-                    else matcher_result
-                ),
+                "output": safe_copy(matcher_result)
+                if matcher_status == "PASSED"
+                else matcher_result,
             },
         })
 
@@ -524,7 +420,6 @@ def diagnose_sabina_born_in_roma(
         for item in downstream
         if item["clean_result"]["status"] == "PASSED"
     ]
-
     matcher_passed = [
         item["input"]
         for item in downstream
@@ -532,7 +427,6 @@ def diagnose_sabina_born_in_roma(
     ]
 
     dedupe = observe_dedupe(main, emitted)
-
     matrix = {}
     loss = {}
 
@@ -585,10 +479,6 @@ def diagnose_sabina_born_in_roma(
             },
         }
 
-        # IMPORTANT:
-        # We only declare "NOT_DISCOVERED" when the extraction layer has no
-        # matching row AND the discovery URL contains no evidence. Otherwise
-        # the diagnostic reports the earliest stage we can prove.
         if not extraction and not discovery["url_evidence"]:
             loss[expected] = "NOT_DISCOVERED_EVIDENCE"
         elif not extraction:
@@ -610,35 +500,24 @@ def diagnose_sabina_born_in_roma(
         "extraction_url_count": len(trace["extraction"]),
         "stream_emission_count": len(emitted),
         "stream_variant_count": sum(
-            1
-            for expected in EXPECTED
-            if matrix[expected]["stream"]["found"]
+            1 for expected in EXPECTED if matrix[expected]["stream"]["found"]
         ),
         "clean_result_variant_count": sum(
-            1
-            for expected in EXPECTED
-            if matrix[expected]["clean_result"]["found"]
+            1 for expected in EXPECTED if matrix[expected]["clean_result"]["found"]
         ),
         "product_matcher_variant_count": sum(
-            1
-            for expected in EXPECTED
-            if matrix[expected]["product_matcher"]["found"]
+            1 for expected in EXPECTED if matrix[expected]["product_matcher"]["found"]
         ),
         "dedupe_variant_count": sum(
-            1
-            for expected in EXPECTED
-            if matrix[expected]["dedupe"]["found"]
+            1 for expected in EXPECTED if matrix[expected]["dedupe"]["found"]
         ),
     }
 
     return {
         "ok": True,
-        "diagnostic_version": "4-real-stream-one-run",
+        "diagnostic_version": "5-born-in-roma-20-real-stream-one-run",
         "query": q,
-        "elapsed_seconds": round(
-            time.monotonic() - started,
-            3,
-        ),
+        "elapsed_seconds": round(time.monotonic() - started, 3),
         "stream": {
             "module": getattr(stream, "__module__", None),
             "function": getattr(stream, "__name__", None),
@@ -647,8 +526,8 @@ def diagnose_sabina_born_in_roma(
         },
         "counts": counts,
         "headline": (
-            "ALL_18_SURVIVED"
-            if counts["dedupe_variant_count"] == 18
+            "ALL_20_SURVIVED"
+            if counts["dedupe_variant_count"] == 20
             else "VARIANTS_MISSING"
         ),
         "loss_by_variant": loss,
@@ -670,6 +549,9 @@ def diagnose_sabina_born_in_roma(
         },
         "direct_search": {
             "executed": False,
-            "reason": "This diagnostic intentionally executes only the live search_stream path.",
+            "reason": (
+                "This diagnostic intentionally executes only the live "
+                "search_stream path."
+            ),
         },
     }
