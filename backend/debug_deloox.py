@@ -30,7 +30,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 BASE = "https://www.deloox.be"
-TIMEOUT = (3.0, 8.0)
+TIMEOUT = (1.5, 3.0)
 
 TARGETS = [
     {
@@ -630,22 +630,64 @@ def main():
         for item in url_matches[:20]:
             parsed.append(parse_direct_product(session, item["url"], target))
 
-        production_module = try_import_production_scraper()
-        production = run_production_scraper_test(
-            target,
-            production_module,
-        )
-
         output["target_results"][target["canonical"]] = {
             "exact_alias_search": exact_search,
             "candidate_url_matches": url_matches,
             "direct_product_parse": parsed,
-            "production_scraper": production,
         }
 
-    output["production_scraper"]["module_imported"] = (
-        try_import_production_scraper() is not None
-    )
+    # Run the production scraper ONCE for all four targets.
+    production_module = try_import_production_scraper()
+    production_all = {}
+    if production_module is None:
+        production_all = {
+            "available": False,
+            "reason": "Could not import production Deloox scraper",
+        }
+    else:
+        try:
+            rows = production_module.search("Born in Roma")
+            production_all = {
+                "available": True,
+                "production_total_rows": len(rows or []),
+                "target_rows": {},
+            }
+            for target in TARGETS:
+                matches = []
+                for row in rows or []:
+                    text = " ".join(
+                        str(row.get(k, ""))
+                        for k in ("brand", "name", "url")
+                    )
+                    score, alias = target_score(text, target)
+                    if score >= 0.60:
+                        matches.append({
+                            "name": row.get("name"),
+                            "brand": row.get("brand"),
+                            "url": row.get("url"),
+                            "price": row.get("price"),
+                            "price_num": row.get("price_num"),
+                            "size_ml": row.get("size_ml"),
+                            "score": round(score, 3),
+                            "matched_alias": alias,
+                        })
+                production_all["target_rows"][target["canonical"]] = matches
+        except Exception as exc:
+            production_all = {
+                "available": True,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+    output["production_scraper"] = production_all
+
+    # Attach the single production result to each target for easy reading.
+    if production_all.get("target_rows"):
+        for target in TARGETS:
+            output["target_results"][target["canonical"]]["production_scraper"] = {
+                "target_rows": production_all["target_rows"].get(
+                    target["canonical"], []
+                )
+            }
 
     output["timing_seconds"] = round(time.time() - started, 2)
 
