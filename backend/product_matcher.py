@@ -361,9 +361,8 @@ class ProductMatcher:
             except (TypeError, ValueError):
                 pass
 
-        # Keep the raw variant index available even when a variant's parent
-        # product row is missing from `products`. The variant's product_id is
-        # still an authoritative catalog identity.
+        # Keep the raw variant index available for catalog variants whose
+        # parent product row is missing from `products`.
         self._variants_by_product = variants_by_product
 
         self.catalog: List[CatalogProduct] = []
@@ -1001,10 +1000,22 @@ class ProductMatcher:
         if best_alias_product is not None:
             return best_alias_product
 
-        # A catalog variant can exist without a corresponding parent row in
-        # `products`. In that situation do NOT mint a new family ID: recover
-        # the existing product_id directly from the variant index.
+        # Some catalog variants exist without a corresponding parent row in
+        # `products`. Recover only an orphan variant whose alias matches the
+        # family-registry variant exactly. Existing catalog products are never
+        # replaced by this fallback.
+        catalog_product_ids = set(self._by_catalog_id)
+        canonical_variant_keys = {
+            self._url_catalog_identity_text(variant.get("canonical_name", "")),
+            *variant_keys,
+        }
+        canonical_variant_keys.discard("")
+
         for product_id, bucket in self._variants_by_product.items():
+            product_id = str(product_id or "").strip()
+            if not product_id or product_id in catalog_product_ids:
+                continue
+
             alias_values = tuple(
                 str(value or "").strip()
                 for value in (bucket.get("aliases") or [])
@@ -1015,13 +1026,14 @@ class ProductMatcher:
                 for value in alias_values
             }
             alias_keys.discard("")
-            if not (variant_keys & alias_keys):
+
+            # Require an exact normalized canonical/alias identity. This avoids
+            # broad token overlap such as matching every "Hawas" variant.
+            if not (canonical_variant_keys & alias_keys):
                 continue
 
-            # The family registry remains authoritative for the canonical
-            # variant name; the catalog variant index supplies the existing ID.
             return CatalogProduct(
-                catalog_id=str(product_id).strip(),
+                catalog_id=product_id,
                 brand=str(family.get("brand") or "").strip(),
                 name=str(variant.get("canonical_name") or "").strip(),
                 aliases=alias_values,
