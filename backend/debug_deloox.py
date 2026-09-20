@@ -1,26 +1,26 @@
-"""ScentHunter — diagnostic Deloox for the 4 remaining Born in Roma variants.
+"""
+ScentHunter — Deloox Born-in-Roma diagnostic.
+
+This is the COMPLETE debug_deloox.py file.
+
+HTTP endpoint:
+    GET /diagnose-deloox-born4
 
 IMPORTANT:
-- Read-only diagnostic. It does NOT modify the production scraper.
-- Target variants ONLY:
-    1. Born in Roma Uomo The Gold
-    2. Born in Roma Uomo Ivory
-    3. Born in Roma Donna The Gold
-    4. Born in Roma Donna Ivory
-
-This file also exposes the diagnostic through:
-    GET /diagnose-deloox-born4
+- Read-only diagnostic.
+- It does NOT call the production Deloox search() function.
+- It does NOT parse the entire Born in Roma catalogue.
+- It only tests the discovery surfaces needed for the four missing variants.
+- Requests are parallelized so the endpoint cannot sit for minutes waiting
+  on sequential Deloox requests.
 """
 
 from __future__ import annotations
 
-import io
 import json
 import re
-import sys
 import time
-from contextlib import redirect_stdout
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -30,7 +30,8 @@ from fastapi import APIRouter
 router = APIRouter()
 
 BASE = "https://www.deloox.be"
-TIMEOUT = (1.5, 3.0)
+TIMEOUT = (1.0, 2.5)
+MAX_WORKERS = 8
 
 TARGETS = [
     {
@@ -41,10 +42,8 @@ TARGETS = [
             "Valentino Born In Roma The Gold Uomo",
             "The Gold Uomo",
         ],
-        "gender": "uomo",
-        "known_category_urls": [
+        "categories": [
             f"{BASE}/categorie/1075744/eau-de-toilette-homme.html",
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme",
             f"{BASE}/categorie/1075744/eau-de-toilette-homme.html?page=2",
         ],
     },
@@ -56,10 +55,8 @@ TARGETS = [
             "Valentino Born In Roma Ivory Uomo",
             "Ivory Uomo",
         ],
-        "gender": "uomo",
-        "known_category_urls": [
+        "categories": [
             f"{BASE}/categorie/1075744/eau-de-toilette-homme.html",
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme",
             f"{BASE}/categorie/1075744/eau-de-toilette-homme.html?page=2",
         ],
     },
@@ -71,12 +68,9 @@ TARGETS = [
             "Valentino Born In Roma The Gold Donna",
             "The Gold Donna",
         ],
-        "gender": "donna",
-        "known_category_urls": [
+        "categories": [
             f"{BASE}/categorie/1075743/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075743/eau-de-parfum-femme",
             f"{BASE}/categorie/1075742/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075742/eau-de-parfum-femme",
         ],
     },
     {
@@ -88,22 +82,21 @@ TARGETS = [
             "Valentino Donna Born In Roma Ivory",
             "Ivory Donna",
         ],
-        "gender": "donna",
-        "known_category_urls": [
+        "categories": [
             f"{BASE}/categorie/1075743/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075743/eau-de-parfum-femme",
             f"{BASE}/categorie/1075742/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075742/eau-de-parfum-femme",
         ],
     },
 ]
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,"
+              "application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
 }
 
@@ -114,67 +107,96 @@ PRODUCT_RE = re.compile(
     re.I,
 )
 
-NON_FRAGRANCE = (
-    "body mist", "body spray", "body lotion", "body cream", "deodorant",
-    "after shave", "aftershave", "shower gel", "hair mist",
-    "hair body mist", "hair and body mist", "body hair mist",
+NON_PRODUCT = (
+    "body mist",
+    "body spray",
+    "body lotion",
+    "body cream",
+    "deodorant",
+    "after shave",
+    "aftershave",
+    "shower gel",
+    "hair mist",
+    "hair body mist",
+    "hair and body mist",
+    "body hair mist",
+    "coffret",
+    "cadeau",
+    "gift set",
+    "giftset",
+    "set cadeau",
+    "geschenkset",
 )
 
-NON_PRODUCT_PACKAGING = (
-    "coffret", "cadeau", "gift set", "giftset", "set cadeau", "geschenkset",
-)
+
+def clean(value) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def clean(v) -> str:
-    return re.sub(r"\s+", " ", str(v or "")).strip()
+def norm(value) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", clean(value).lower()).strip()
 
 
-def norm(v) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", clean(v).lower()).strip()
+def tokens(value) -> set[str]:
+    return {x for x in norm(value).split() if len(x) > 1}
 
 
-def compact(v) -> str:
-    return norm(v).replace(" ", "")
+def request(session: requests.Session, url: str) -> dict:
+    started = time.time()
 
-
-def tokens(v):
-    return {x for x in norm(v).split() if len(x) > 1}
-
-
-def get(session, url):
     try:
-        r = session.get(
+        response = session.get(
             url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
         )
-        if r.status_code == 200 and r.text:
-            return r
-        return None
-    except requests.RequestException:
-        return None
+
+        return {
+            "ok": response.status_code == 200 and bool(response.text),
+            "status": response.status_code,
+            "url": response.url,
+            "bytes": len(response.text or ""),
+            "html": response.text or "",
+            "elapsed": round(time.time() - started, 2),
+            "error": None,
+        }
+
+    except requests.RequestException as exc:
+        return {
+            "ok": False,
+            "status": None,
+            "url": url,
+            "bytes": 0,
+            "html": "",
+            "elapsed": round(time.time() - started, 2),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 
-def is_product_url(url):
+def is_product_url(url: str) -> bool:
     try:
-        p = urlparse(url)
+        parsed = urlparse(url)
     except Exception:
         return False
 
-    host = p.netloc.lower().split(":", 1)[0]
+    host = parsed.netloc.lower().split(":", 1)[0]
+
     if host not in {"deloox.be", "www.deloox.be"}:
         return False
 
-    return bool(re.search(
-        r"/(?:product|produit|producto|prodotto)/\d+/",
-        p.path,
-        re.I,
-    ))
+    return bool(
+        re.search(
+            r"/(?:product|produit|producto|prodotto)/\d+/",
+            parsed.path,
+            re.I,
+        )
+    )
 
 
-def product_url(raw):
+def normalize_product_url(raw: str) -> str:
     raw = clean(raw).replace("\\/", "/")
+
     if not raw:
         return ""
 
@@ -184,177 +206,118 @@ def product_url(raw):
         raw = urljoin(BASE + "/", raw)
 
     raw = raw.split("#", 1)[0].split("?", 1)[0]
+
     return raw if is_product_url(raw) else ""
 
 
-def slug(url):
+def product_slug(url: str) -> str:
     try:
         return clean(urlparse(url).path.rsplit("/", 1)[-1])
     except Exception:
         return ""
 
 
-def excluded(url):
-    s = norm(slug(url))
-    return (
-        any(norm(x) in s for x in NON_FRAGRANCE)
-        or any(norm(x) in s for x in NON_PRODUCT_PACKAGING)
-    )
+def is_born_product(url: str) -> bool:
+    value = norm(product_slug(url))
+
+    if "born" not in value or "roma" not in value:
+        return False
+
+    return not any(norm(x) in value for x in NON_PRODUCT)
 
 
-def target_score(text, target):
-    hay = norm(text)
-    best = 0
-    best_alias = ""
-
-    for alias in target["aliases"]:
-        at = tokens(alias)
-        if not at:
-            continue
-
-        hits = sum(t in hay for t in at)
-        score = hits / len(at)
-
-        if {"born", "roma"} <= at and {"born", "roma"} <= tokens(text):
-            score += 0.15
-
-        if score > best:
-            best = score
-            best_alias = alias
-
-    return min(best, 1.0), best_alias
-
-
-def extract_urls(html):
+def extract_product_urls(html: str) -> list[str]:
     found = set()
-    soup = BeautifulSoup(html, "html.parser")
 
-    for a in soup.find_all("a", href=True):
-        u = product_url(a.get("href"))
-        if u and not excluded(u):
-            found.add(u)
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    for anchor in soup.find_all("a", href=True):
+        url = normalize_product_url(anchor.get("href"))
+        if url and not any(
+            norm(x) in norm(product_slug(url))
+            for x in NON_PRODUCT
+        ):
+            found.add(url)
 
     for raw in PRODUCT_RE.findall(html or ""):
-        u = product_url(raw)
-        if u and not excluded(u):
-            found.add(u)
+        url = normalize_product_url(raw)
+        if url:
+            found.add(url)
 
     return sorted(found)
 
 
-def url_text(url):
-    s = slug(url)
-    s = re.sub(r"[-_]+", " ", s)
-    return clean(s)
+def score_target(url: str, target: dict) -> tuple[float, str]:
+    text = norm(product_slug(url))
+    best = 0.0
+    matched = ""
 
-
-def extract_context_for_url(html, url):
-    soup = BeautifulSoup(html, "html.parser")
-
-    for a in soup.find_all("a", href=True):
-        u = product_url(a.get("href"))
-        if u != url:
+    for alias in target["aliases"]:
+        wanted = tokens(alias)
+        if not wanted:
             continue
 
-        node = a
-        best = clean(a.get_text(" ", strip=True))
+        hits = sum(token in text for token in wanted)
+        score = hits / len(wanted)
 
-        for _ in range(8):
-            node = node.parent
-            if not node:
-                break
+        if {"born", "roma"} <= wanted and {"born", "roma"} <= tokens(text):
+            score += 0.15
 
-            text = clean(node.get_text(" ", strip=True))
-            if 3 <= len(text) <= 3000 and len(text) > len(best):
-                best = text
+        if score > best:
+            best = score
+            matched = alias
 
-            if re.search(r"€|prix|price|prijs|livraison|delivery", text, re.I):
-                break
-
-        return best
-
-    marker = url.split("/produit/", 1)[-1]
-    pos = html.lower().find(marker.lower())
-    if pos >= 0:
-        frag = html[max(0, pos - 5000):pos + 10000]
-        return clean(BeautifulSoup(frag, "html.parser").get_text(" ", strip=True))
-
-    return ""
+    return min(best, 1.0), matched
 
 
-def discover_search_surface(session, query):
-    encoded = quote_plus(query)
-    urls = set()
-    pages = []
+def target_candidates(urls: list[str], target: dict) -> list[dict]:
+    result = []
 
-    for page in range(1, 11):
-        endpoint = (
-            f"{BASE}/chercher.html?q={encoded}"
-            if page == 1
-            else f"{BASE}/chercher.html?q={encoded}&page={page}"
-        )
+    for url in urls:
+        if not is_born_product(url):
+            continue
 
-        r = get(session, endpoint)
-        if not r:
-            break
+        score, alias = score_target(url, target)
+        slug = product_slug(url)
 
-        pages.append({
-            "page": page,
-            "requested_url": endpoint,
-            "final_url": r.url,
-            "status": r.status_code,
-            "bytes": len(r.text or ""),
-        })
+        words = tokens(slug)
+        distinctive = {"gold", "ivory"} & words
+        gender = {"uomo", "donna"} & words
 
-        page_urls = extract_urls(r.text)
-        born_urls = [
-            u for u in page_urls
-            if "born" in norm(slug(u))
-            and "roma" in norm(slug(u))
-        ]
+        if score >= 0.60 or (
+            {"born", "roma"} <= words
+            and distinctive
+            and gender
+        ):
+            result.append({
+                "url": url,
+                "slug": slug,
+                "score": round(score, 3),
+                "matched_alias": alias,
+            })
 
-        urls.update(born_urls)
-
-        if not page_urls and page > 1:
-            break
-
-    return sorted(urls), pages
+    result.sort(key=lambda x: (-x["score"], x["url"]))
+    return result
 
 
-def discover_category_surface(session, urls):
-    all_urls = set()
-    page_reports = []
+def parse_product_page(session: requests.Session, url: str, target: dict) -> dict:
+    response = request(session, url)
 
-    for url in dict.fromkeys(urls):
-        r = get(session, url)
+    result = {
+        "url": url,
+        "reachable": response["ok"],
+        "status": response["status"],
+        "elapsed": response["elapsed"],
+        "jsonld_names": [],
+        "target_name_match": False,
+        "offers": 0,
+        "error": response["error"],
+    }
 
-        report = {
-            "requested_url": url,
-            "final_url": r.url if r else None,
-            "status": r.status_code if r else None,
-            "bytes": len(r.text or "") if r else 0,
-            "reachable": bool(r),
-            "born_urls": [],
-        }
+    if not response["ok"]:
+        return result
 
-        if r:
-            candidates = extract_urls(r.text)
-            born = [
-                u for u in candidates
-                if "born" in norm(slug(u))
-                and "roma" in norm(slug(u))
-            ]
-            report["born_urls"] = sorted(born)
-            all_urls.update(born)
-
-        page_reports.append(report)
-
-    return sorted(all_urls), page_reports
-
-
-def parse_jsonld_products(html):
-    out = []
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(response["html"], "html.parser")
 
     for script in soup.select('script[type="application/ld+json"]'):
         try:
@@ -362,346 +325,289 @@ def parse_jsonld_products(html):
         except Exception:
             continue
 
-        queue = list(data) if isinstance(data, list) else [data]
+        stack = list(data) if isinstance(data, list) else [data]
 
-        while queue:
-            item = queue.pop(0)
+        while stack:
+            item = stack.pop(0)
 
             if isinstance(item, list):
-                queue.extend(item)
+                stack.extend(item)
                 continue
 
             if not isinstance(item, dict):
                 continue
 
             typ = item.get("@type")
+
             if typ == "Product" or (
                 isinstance(typ, list) and "Product" in typ
             ):
-                out.append(item)
+                name = clean(item.get("name"))
+
+                if name:
+                    result["jsonld_names"].append(name)
+
+                    score, _ = score_target(
+                        name.replace(" ", "-"),
+                        target,
+                    )
+
+                    if score >= 0.60:
+                        result["target_name_match"] = True
+
+                offers = item.get("offers")
+
+                if isinstance(offers, dict):
+                    offers = [offers]
+
+                if isinstance(offers, list):
+                    result["offers"] += len(
+                        [x for x in offers if isinstance(x, dict)]
+                    )
 
             graph = item.get("@graph")
+
             if isinstance(graph, list):
-                queue.extend(graph)
-
-    return out
-
-
-def parse_direct_product(session, url, target):
-    r = get(session, url)
-    result = {
-        "url": url,
-        "reachable": bool(r),
-        "status": r.status_code if r else None,
-        "bytes": len(r.text or "") if r else 0,
-        "http_ok": bool(r and r.status_code == 200),
-        "jsonld_products": 0,
-        "jsonld_names": [],
-        "target_name_match": False,
-        "target_name_match_alias": "",
-        "offers": 0,
-        "offer_details": [],
-    }
-
-    if not r:
-        return result
-
-    products = parse_jsonld_products(r.text)
-    result["jsonld_products"] = len(products)
-
-    for p in products:
-        name = clean(p.get("name"))
-        if name:
-            result["jsonld_names"].append(name)
-
-        score, alias = target_score(name, target)
-        if score >= 0.60:
-            result["target_name_match"] = True
-            result["target_name_match_alias"] = alias
-
-        offers = p.get("offers")
-        if isinstance(offers, dict):
-            offers = [offers]
-        elif not isinstance(offers, list):
-            offers = []
-
-        for offer in offers:
-            if not isinstance(offer, dict):
-                continue
-
-            result["offers"] += 1
-            result["offer_details"].append({
-                "price": offer.get("price"),
-                "availability": offer.get("availability"),
-                "currency": offer.get("priceCurrency"),
-            })
+                stack.extend(graph)
 
     return result
 
 
-def find_target_urls(all_urls, target):
-    matches = []
+def parallel_fetch(urls: list[str]) -> dict[str, dict]:
+    results = {}
 
-    for url in all_urls:
-        text = url_text(url)
-        score, alias = target_score(text, target)
-        t = tokens(text)
-        distinctive = {"gold", "ivory"} & t
-        gender = {"uomo", "donna"} & t
-
-        if (
-            score >= 0.60
-            or ({"born", "roma"} <= t and distinctive and gender)
-        ):
-            matches.append({
-                "url": url,
-                "url_text": text,
-                "score": round(score, 3),
-                "matched_alias": alias,
-            })
-
-    matches.sort(key=lambda x: (-x["score"], x["url"]))
-    return matches
-
-
-def try_web_search_surface(session, target):
-    results = []
-
-    for alias in target["aliases"]:
-        endpoint = f"{BASE}/chercher.html?q={quote_plus(alias)}"
-        r = get(session, endpoint)
-
-        item = {
-            "query": alias,
-            "requested_url": endpoint,
-            "final_url": r.url if r else None,
-            "status": r.status_code if r else None,
-            "bytes": len(r.text or "") if r else 0,
-            "urls": [],
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {
+            pool.submit(request, requests.Session(), url): url
+            for url in dict.fromkeys(urls)
         }
 
-        if r:
-            candidates = extract_urls(r.text)
-            scored = []
+        for future in as_completed(futures):
+            url = futures[future]
 
-            for u in candidates:
-                score, matched = target_score(url_text(u), target)
-                if score >= 0.45:
-                    scored.append({
-                        "url": u,
-                        "score": round(score, 3),
-                        "matched_alias": matched,
-                    })
-
-            scored.sort(key=lambda x: (-x["score"], x["url"]))
-            item["urls"] = scored
-
-        results.append(item)
+            try:
+                results[url] = future.result()
+            except Exception as exc:
+                results[url] = {
+                    "ok": False,
+                    "status": None,
+                    "url": url,
+                    "bytes": 0,
+                    "html": "",
+                    "elapsed": 0,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
 
     return results
 
 
-def try_import_production_scraper():
-    roots = [
-        Path.cwd(),
-        Path(__file__).resolve().parent,
-        Path(__file__).resolve().parent.parent,
-    ]
-
-    for root in roots:
-        if (root / "scrapers" / "deloox" / "scraper.py").exists():
-            if str(root) not in sys.path:
-                sys.path.insert(0, str(root))
-            try:
-                from scrapers.deloox import scraper as deloox
-                return deloox
-            except Exception:
-                pass
-
-        if (root / "backend" / "scrapers" / "deloox" / "scraper.py").exists():
-            if str(root) not in sys.path:
-                sys.path.insert(0, str(root))
-            try:
-                from backend.scrapers.deloox import scraper as deloox
-                return deloox
-            except Exception:
-                pass
-
-    return None
-
-
-def run_production_scraper_test(target, production_module):
-    if production_module is None:
-        return {
-            "available": False,
-            "reason": "Could not import production Deloox scraper",
-        }
-
-    try:
-        rows = production_module.search("Born in Roma")
-    except Exception as exc:
-        return {
-            "available": True,
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    matches = []
-
-    for row in rows or []:
-        text = " ".join(
-            str(row.get(k, ""))
-            for k in ("brand", "name", "url")
-        )
-        score, alias = target_score(text, target)
-
-        if score >= 0.60:
-            matches.append({
-                "name": row.get("name"),
-                "brand": row.get("brand"),
-                "url": row.get("url"),
-                "price": row.get("price"),
-                "price_num": row.get("price_num"),
-                "size_ml": row.get("size_ml"),
-                "score": round(score, 3),
-                "matched_alias": alias,
-            })
-
-    return {
-        "available": True,
-        "production_total_rows": len(rows or []),
-        "target_rows": matches,
-    }
-
-
-def main():
+def run_fast_diagnostic() -> dict:
     started = time.time()
-    session = requests.Session()
 
-    output = {
-        "diagnostic": "deloox-born-in-roma-4-targets-v1",
-        "read_only": True,
-        "targets": [x["canonical"] for x in TARGETS],
-        "base": BASE,
-        "search_surface": {},
-        "category_surface": {},
-        "target_results": {},
-        "production_scraper": {},
-        "timing_seconds": None,
-    }
+    # ------------------------------------------------------------
+    # 1. Current production discovery surface:
+    #    /chercher.html?q=Born+in+Roma, pages 1..10.
+    #    Pages are fetched IN PARALLEL, unlike production search().
+    # ------------------------------------------------------------
+    search_urls = []
 
-    born_urls, search_pages = discover_search_surface(session, "Born in Roma")
-    output["search_surface"] = {
-        "query": "Born in Roma",
-        "pages": search_pages,
-        "born_product_url_count": len(born_urls),
-        "born_product_urls": born_urls,
-    }
+    for page in range(1, 11):
+        if page == 1:
+            search_urls.append(
+                f"{BASE}/chercher.html?q={quote_plus('Born in Roma')}"
+            )
+        else:
+            search_urls.append(
+                f"{BASE}/chercher.html?q={quote_plus('Born in Roma')}"
+                f"&page={page}"
+            )
 
+    search_responses = parallel_fetch(search_urls)
+
+    search_pages = []
+    search_products = set()
+
+    for page, url in enumerate(search_urls, 1):
+        response = search_responses.get(url, {})
+
+        urls = extract_product_urls(response.get("html", ""))
+
+        born = {
+            x for x in urls
+            if is_born_product(x)
+        }
+
+        search_products.update(born)
+
+        search_pages.append({
+            "page": page,
+            "requested_url": url,
+            "final_url": response.get("url"),
+            "status": response.get("status"),
+            "bytes": response.get("bytes", 0),
+            "elapsed": response.get("elapsed"),
+            "born_urls": sorted(born),
+            "error": response.get("error"),
+        })
+
+    # ------------------------------------------------------------
+    # 2. Category discovery.
+    # ------------------------------------------------------------
     category_urls = []
-    for target in TARGETS:
-        category_urls.extend(target["known_category_urls"])
 
-    category_urls_found, category_reports = discover_category_surface(
-        session,
-        category_urls,
+    for target in TARGETS:
+        category_urls.extend(target["categories"])
+
+    category_responses = parallel_fetch(category_urls)
+
+    category_products = set()
+    category_pages = []
+
+    for url in dict.fromkeys(category_urls):
+        response = category_responses.get(url, {})
+        urls = extract_product_urls(response.get("html", ""))
+
+        born = {
+            x for x in urls
+            if is_born_product(x)
+        }
+
+        category_products.update(born)
+
+        category_pages.append({
+            "requested_url": url,
+            "final_url": response.get("url"),
+            "status": response.get("status"),
+            "bytes": response.get("bytes", 0),
+            "elapsed": response.get("elapsed"),
+            "born_urls": sorted(born),
+            "error": response.get("error"),
+        })
+
+    # ------------------------------------------------------------
+    # 3. Exact alias searches.
+    #    One page per alias, all aliases in parallel.
+    # ------------------------------------------------------------
+    alias_jobs = []
+
+    for target in TARGETS:
+        for alias in target["aliases"]:
+            alias_jobs.append(
+                (
+                    target["canonical"],
+                    alias,
+                    f"{BASE}/chercher.html?q={quote_plus(alias)}",
+                )
+            )
+
+    alias_responses = parallel_fetch(
+        [job[2] for job in alias_jobs]
     )
 
-    output["category_surface"] = {
-        "requested_page_count": len(category_reports),
-        "pages": category_reports,
-        "born_product_url_count": len(category_urls_found),
-        "born_product_urls": category_urls_found,
-    }
+    # ------------------------------------------------------------
+    # 4. Build target-specific candidate sets.
+    # ------------------------------------------------------------
+    all_discovered = sorted(
+        search_products | category_products
+    )
 
-    union_urls = sorted(set(born_urls) | set(category_urls_found))
+    target_results = {}
 
     for target in TARGETS:
-        exact_search = try_web_search_surface(session, target)
-        exact_urls = set()
+        alias_results = []
+        alias_products = set()
 
-        for item in exact_search:
-            for candidate in item.get("urls", []):
-                exact_urls.add(candidate["url"])
+        for canonical, alias, url in alias_jobs:
+            if canonical != target["canonical"]:
+                continue
 
-        target_union = sorted(set(union_urls) | exact_urls)
-        url_matches = find_target_urls(target_union, target)
-
-        parsed = []
-        for item in url_matches[:20]:
-            parsed.append(parse_direct_product(session, item["url"], target))
-
-        output["target_results"][target["canonical"]] = {
-            "exact_alias_search": exact_search,
-            "candidate_url_matches": url_matches,
-            "direct_product_parse": parsed,
-        }
-
-    # Run the production scraper ONCE for all four targets.
-    production_module = try_import_production_scraper()
-    production_all = {}
-    if production_module is None:
-        production_all = {
-            "available": False,
-            "reason": "Could not import production Deloox scraper",
-        }
-    else:
-        try:
-            rows = production_module.search("Born in Roma")
-            production_all = {
-                "available": True,
-                "production_total_rows": len(rows or []),
-                "target_rows": {},
-            }
-            for target in TARGETS:
-                matches = []
-                for row in rows or []:
-                    text = " ".join(
-                        str(row.get(k, ""))
-                        for k in ("brand", "name", "url")
-                    )
-                    score, alias = target_score(text, target)
-                    if score >= 0.60:
-                        matches.append({
-                            "name": row.get("name"),
-                            "brand": row.get("brand"),
-                            "url": row.get("url"),
-                            "price": row.get("price"),
-                            "price_num": row.get("price_num"),
-                            "size_ml": row.get("size_ml"),
-                            "score": round(score, 3),
-                            "matched_alias": alias,
-                        })
-                production_all["target_rows"][target["canonical"]] = matches
-        except Exception as exc:
-            production_all = {
-                "available": True,
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-
-    output["production_scraper"] = production_all
-
-    # Attach the single production result to each target for easy reading.
-    if production_all.get("target_rows"):
-        for target in TARGETS:
-            output["target_results"][target["canonical"]]["production_scraper"] = {
-                "target_rows": production_all["target_rows"].get(
-                    target["canonical"], []
+            response = alias_responses.get(url, {})
+            products = {
+                x for x in extract_product_urls(
+                    response.get("html", "")
                 )
+                if is_born_product(x)
             }
 
-    output["timing_seconds"] = round(time.time() - started, 2)
+            alias_products.update(products)
 
-    print(json.dumps(output, ensure_ascii=False, indent=2))
+            alias_results.append({
+                "query": alias,
+                "requested_url": url,
+                "final_url": response.get("url"),
+                "status": response.get("status"),
+                "bytes": response.get("bytes", 0),
+                "elapsed": response.get("elapsed"),
+                "urls": sorted(products),
+                "error": response.get("error"),
+            })
+
+        candidates = target_candidates(
+            sorted(set(all_discovered) | alias_products),
+            target,
+        )
+
+        # Only parse the top two candidate product pages.
+        parsed = []
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(
+                    parse_product_page,
+                    requests.Session(),
+                    item["url"],
+                    target,
+                )
+                for item in candidates[:2]
+            ]
+
+            for future in futures:
+                try:
+                    parsed.append(future.result())
+                except Exception as exc:
+                    parsed.append({
+                        "error": f"{type(exc).__name__}: {exc}"
+                    })
+
+        target_results[target["canonical"]] = {
+            "found_candidate": bool(candidates),
+            "candidate_url_matches": candidates,
+            "direct_product_parse": parsed,
+            "exact_alias_search": alias_results,
+        }
+
+    return {
+        "diagnostic": "deloox-born-in-roma-4-targets-fast-v3",
+        "read_only": True,
+        "production_search_called": False,
+        "targets": [x["canonical"] for x in TARGETS],
+        "search_surface": {
+            "pages_checked": 10,
+            "born_product_url_count": len(search_products),
+            "born_product_urls": sorted(search_products),
+            "pages": search_pages,
+        },
+        "category_surface": {
+            "pages_checked": len(set(category_urls)),
+            "born_product_url_count": len(category_products),
+            "born_product_urls": sorted(category_products),
+            "pages": category_pages,
+        },
+        "target_results": target_results,
+        "timing_seconds": round(time.time() - started, 2),
+    }
 
 
 @router.get("/diagnose-deloox-born4")
 def diagnose_deloox_born4():
-    """HTTP endpoint for the existing read-only Born4 diagnostic."""
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        main()
-    return json.loads(buffer.getvalue().strip())
+    return run_fast_diagnostic()
 
 
 if __name__ == "__main__":
-    main()
+    print(
+        json.dumps(
+            run_fast_diagnostic(),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
