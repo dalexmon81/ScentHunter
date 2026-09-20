@@ -361,10 +361,6 @@ class ProductMatcher:
             except (TypeError, ValueError):
                 pass
 
-        # Keep the raw variant index available for catalog variants whose
-        # parent product row is missing from `products`.
-        self._variants_by_product = variants_by_product
-
         self.catalog: List[CatalogProduct] = []
         for item in raw_products:
             if isinstance(item, CatalogProduct):
@@ -999,55 +995,6 @@ class ProductMatcher:
 
         if best_alias_product is not None:
             return best_alias_product
-
-        # Some catalog variants exist without a corresponding parent row in
-        # `products`. Recover only an orphan variant whose alias matches the
-        # family-registry variant exactly. Existing catalog products are never
-        # replaced by this fallback.
-        catalog_product_ids = set(self._by_catalog_id)
-        canonical_variant_keys = {
-            self._url_catalog_identity_text(variant.get("canonical_name", "")),
-            *variant_keys,
-        }
-        canonical_variant_keys.discard("")
-
-        for product_id, bucket in self._variants_by_product.items():
-            product_id = str(product_id or "").strip()
-            if not product_id or product_id in catalog_product_ids:
-                continue
-
-            alias_values = tuple(
-                str(value or "").strip()
-                for value in (bucket.get("aliases") or [])
-                if str(value or "").strip()
-            )
-            alias_keys = {
-                self._url_catalog_identity_text(value)
-                for value in alias_values
-            }
-            alias_keys.discard("")
-
-            # Require an exact normalized canonical/alias identity. This avoids
-            # broad token overlap such as matching every "Hawas" variant.
-            if not (canonical_variant_keys & alias_keys):
-                continue
-
-            return CatalogProduct(
-                catalog_id=product_id,
-                brand=str(family.get("brand") or "").strip(),
-                name=str(variant.get("canonical_name") or "").strip(),
-                aliases=alias_values,
-                formats_ml=tuple(
-                    float(value)
-                    for value in (bucket.get("sizes") or [])
-                    if value not in (None, "")
-                ),
-                family_id=str(family.get("family_id") or "").strip(),
-                family_name=str(
-                    (family.get("query_aliases") or [variant.get("canonical_name") or ""])[0]
-                ).strip(),
-                catalog_variant=str(variant.get("canonical_name") or "").strip(),
-            )
 
         # Some verified legacy catalog rows predate the family_id field.  If an
         # alias exactly identifies the registry variant, it is still safer to
