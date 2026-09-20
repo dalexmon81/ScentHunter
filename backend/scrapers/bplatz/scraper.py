@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 STORE = "Bplatz"
 BASE = "https://en.bplatz.de"
 CATALOG_URL = BASE + "/collections/produkte"
-TIMEOUT = 4
+TIMEOUT = 6
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -18,6 +18,99 @@ HEADERS = {
 HAWAS_MAX_CATALOG_PAGES = 35
 HAWAS_CATALOG_URL = BASE + "/collections/all-products"
 HAWAS_WORKERS = 8
+
+HAWAS_VENDOR_URL = BASE + "/collections/vendors?q=rasasi"
+HAWAS_VENDOR_MAX_PAGES = 60
+
+
+def _discover_hawas_from_rasasi_collection(query):
+    """Discover Hawas directly from Bplatz's Rasasi vendor collection.
+
+    This is the primary Hawas fallback. The live Bplatz site exposes a
+    Rasasi vendor collection containing the Hawas products, while the
+    predictive-search JSON endpoint is not guaranteed to be available to
+    every runtime. We follow the pagination URLs published by Bplatz rather
+    than guessing a collection path.
+    """
+    try:
+        response = requests.get(
+            HAWAS_VENDOR_URL,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.status_code != 200:
+            return []
+    except requests.RequestException:
+        return []
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    page_urls = {1: response.url.split("#")[0]}
+    for a in soup.find_all("a", href=True):
+        href = urljoin(BASE, a.get("href", "")).split("#")[0]
+        match = re.search(r"[?&]page=(\d+)", href, re.I)
+        if not match:
+            continue
+        page = int(match.group(1))
+        if 1 <= page <= HAWAS_VENDOR_MAX_PAGES:
+            page_urls[page] = href
+
+    def fetch_page(url):
+        try:
+            r = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if r.status_code != 200:
+                return []
+            return _extract_page(r.text, query)
+        except requests.RequestException:
+            return []
+
+    rows = []
+    seen = set()
+
+    with ThreadPoolExecutor(
+        max_workers=min(HAWAS_WORKERS, max(1, len(page_urls)))
+    ) as pool:
+        futures = [
+            pool.submit(fetch_page, url)
+            for _, url in sorted(page_urls.items())
+        ]
+        for future in as_completed(futures):
+            for row in future.result() or []:
+                title = str(row.get("name") or "").strip()
+                if not title:
+                    continue
+
+                # Avoid non-standard/tester entries becoming false canonical
+                # offers for the normal Hawas variants.
+                title_norm = _norm(title)
+                if "tester" in title_norm or "sample" in title_norm:
+                    continue
+
+                key = (
+                    row.get("url"),
+                    _norm(title),
+                    row.get("price"),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                row["brand"] = "Rasasi"
+                rows.append(row)
+
+    rows.sort(key=lambda x: (
+        _norm(x.get("name", "")),
+        str(x.get("url") or ""),
+        str(x.get("price") or ""),
+    ))
+    return rows
+
 
 
 def _norm(v):
@@ -195,7 +288,7 @@ def predictive_products(session, query):
     production-compatible function here makes the scraper self-contained and
     prevents the old adapter from replacing this implementation.
     """
-    endpoint = BASE + '/search/suggest.json'
+    endpoint = 'https://bplatz.de/search/suggest.json'
     params = {
         'q': query,
         'resources[type]': 'product',
@@ -331,12 +424,21 @@ def search_stream(query, emit):
     finally:
         session.close()
 
-    # Predictive search is the primary discovery path. It is much more
-    # reliable than guessing Shopify pagination URLs, whose collection path
-    # changes on Bplatz (e.g. /collections/Products-a?page=2).
+    # For Hawas, use the Rasasi vendor collection directly. This avoids
+    # depending on Shopify predictive-search JSON, which can be unavailable
+    # from the production runtime even though the public Bplatz collection
+    # itself is reachable.
+    if _is_hawas_query(query):
+        direct_rows = _discover_hawas_from_rasasi_collection(query)
+        if direct_rows:
+            for row in direct_rows:
+                emit(row)
+            return None
+
+    # Predictive search remains the normal discovery path for non-Hawas
+    # queries, and a secondary fallback for Hawas if the vendor collection
+    # cannot be reached.
     if not candidates and _is_hawas_query(query):
-        # Last-resort fallback: crawl the real collection pagination starting
-        # from page 1 and follow the pagination URLs published by the site.
         candidates = _discover_hawas_from_pagination(query)
 
     if not candidates:
