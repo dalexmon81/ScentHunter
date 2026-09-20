@@ -1002,6 +1002,82 @@ def discover(
 
         # Existing special fallbacks remain available below.
 
+    # -------------------------------------------------------------
+    # BORN IN ROMA — EXACT VARIANT SEARCH FALLBACK
+    #
+    # The generic "Born in Roma" search does not expose all four
+    # catalog identities even though Deloox serves them from exact
+    # variant searches. Add only these four targeted searches.
+    # No other discovery logic is changed.
+    # -------------------------------------------------------------
+    if born_query:
+        exact_aliases = (
+            "Valentino Born In Roma The Gold Uomo",
+            "Valentino Born In Roma Ivory Uomo",
+            "Valentino Donna Born In Roma The Gold",
+            "Valentino Donna Born In Roma Ivory",
+        )
+
+        for alias in exact_aliases:
+            endpoint = (
+                f"{BASE}/chercher.html?q={quote_plus(alias)}"
+            )
+            r = get(session, endpoint)
+            if not r:
+                continue
+
+            alias_html = r.text or ""
+
+            raw_urls = re.findall(
+                r"(?:https?:\\?/\\?/[^\"'<>\s]+)?/produit/\d+/[^\"'<>\s?#]+",
+                alias_html,
+                flags=re.I,
+            )
+
+            for raw in raw_urls:
+                raw = raw.replace("\\/", "/")
+
+                if raw.startswith("/"):
+                    url = urljoin(BASE + "/", raw)
+                elif raw.startswith("http"):
+                    url = raw
+                else:
+                    continue
+
+                url = url.split("#", 1)[0].split("?", 1)[0]
+
+                if not is_product_url(url):
+                    continue
+                if not born_in_roma_slug(url):
+                    continue
+                if excluded_product_slug(url):
+                    continue
+
+                # Higher score ensures these exact-search candidates
+                # remain inside BORN_IN_ROMA_MAX_CANDIDATES.
+                candidates[url] = (
+                    140,
+                    url_slug(url),
+                    "",
+                )
+
+            # Same extraction through normal anchors as a safety net.
+            soup = BeautifulSoup(alias_html, "html.parser")
+            for a in soup.find_all("a", href=True):
+                url = product_url(a.get("href"))
+                if not url:
+                    continue
+                if not born_in_roma_slug(url):
+                    continue
+                if excluded_product_slug(url):
+                    continue
+
+                candidates[url] = (
+                    140,
+                    clean(a.get_text(" ", strip=True)) or url_slug(url),
+                    "",
+                )
+
     # Existing bounded catalog fallbacks for non-Born queries.
     if not born_query:
         if {"liquid", "brun"} <= q and ({"limited", "edition"} & q):
