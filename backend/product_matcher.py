@@ -774,6 +774,7 @@ class ProductMatcher:
                     for token in url_tokens
                     if token not in {
                         "ml", "cl", "spray", "copy", "refill",
+                        "limited", "edition",
                     }
                     and not token.isdigit()
                 }
