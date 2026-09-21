@@ -193,7 +193,7 @@ def discover(session, query):
         try:
             soup = BeautifulSoup(r.text, "html.parser")
             for a in soup.select('a[href*="/products/"]'):
-                if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query): add(a.get("href"))
+                if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query): _add_candidate(a.get("href"), urls, seen)
         finally: r.close()
     return urls[:MAX_CANDIDATES]
 
