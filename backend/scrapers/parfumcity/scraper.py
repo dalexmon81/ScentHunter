@@ -10,6 +10,7 @@ BASE_URL = "https://www.parfumcity.nl"
 TIMEOUT = (2.5, 6.0)
 MAX_CANDIDATES = 40
 MAX_CATALOG_PAGES = 12
+LAST_DIAGNOSTICS = []
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -62,11 +63,35 @@ def parse_price(v):
     return round(n / 100 if re.fullmatch(r"\d+", m.group(0)) and n >= 100 else n, 2) if n > 0 else None
 
 
-def _get(session, url, params=None):
+def _diag_record(label, status=None, size=None, added=None, note=None):
+    entry = {"endpoint": label}
+    if status is not None:
+        entry["status"] = int(status)
+    if size is not None:
+        entry["bytes"] = int(size)
+    if added is not None:
+        entry["added"] = int(added)
+    if note:
+        entry["note"] = clean(note)[:180]
+    LAST_DIAGNOSTICS.append(entry)
+
+
+def _get(session, url, params=None, label=None):
     try:
         r = session.get(url, params=params, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        return r if r.status_code < 400 else None
-    except requests.RequestException:
+        if label:
+            _diag_record(
+                label,
+                status=r.status_code,
+                size=len(r.content or b""),
+            )
+        if r.status_code >= 400:
+            r.close()
+            return None
+        return r
+    except requests.RequestException as exc:
+        if label:
+            _diag_record(label, note=f"{type(exc).__name__}: {exc}")
         return None
 
 
@@ -88,6 +113,7 @@ def _discover_products_json(session, query, urls, seen):
             session,
             BASE_URL + "/products.json",
             {"limit": 250, "page": page},
+            label=f"products_json_page_{page}",
         )
         if not r:
             return
@@ -125,7 +151,8 @@ def _discover_from_sitemap(session, query, urls, seen):
         if sitemap_url in visited:
             continue
         visited.add(sitemap_url)
-        r = _get(session, sitemap_url)
+        sitemap_label = "sitemap:" + sitemap_url.replace(BASE_URL, "")
+        r = _get(session, sitemap_url, label=sitemap_label)
         if not r:
             continue
         try:
@@ -149,62 +176,94 @@ def discover(session, query):
     urls, seen = [], set()
 
     # Shopify predictive search; unavailable products are explicitly requested.
-    for params in (
+    for idx, params in enumerate((
         {"q": query, "resources[type]": "product", "resources[limit]": 50, "resources[options][unavailable_products]": "show"},
         {"q": query, "resources[type]": "product", "resources[limit]": 50},
-    ):
-        r = _get(session, BASE_URL + "/search/suggest.json", params)
+    ), start=1):
+        before = len(urls)
+        label = f"search_suggest_{idx}"
+        r = _get(session, BASE_URL + "/search/suggest.json", params, label=label)
         if r:
             try:
                 data = r.json()
                 products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
                 for p in products:
-                    if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query): _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
-            except (ValueError, TypeError): pass
-            finally: r.close()
-        # Continue with the remaining generic discovery sources even when one
-    # Shopify endpoint already returned candidates. A partial endpoint response
-    # must not hide products omitted from that endpoint.
+                    if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
+                        _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
+            except (ValueError, TypeError) as exc:
+                _diag_record(label + "_parse", note=f"{type(exc).__name__}: {exc}")
+            finally:
+                r.close()
+        LAST_DIAGNOSTICS[-1]["added"] = len(urls) - before
 
     # Shopify search JSON fallback.
-    r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
+    before = len(urls)
+    r = _get(
+        session,
+        BASE_URL + "/search.json",
+        {"q": query, "type": "product", "limit": 50},
+        label="search_json",
+    )
     if r:
         try:
             for p in r.json().get("products") or []:
-                if not isinstance(p, dict): continue
+                if not isinstance(p, dict):
+                    continue
                 u = p.get("url") or p.get("handle")
-                if p.get("handle") and (not u or not str(u).startswith("/products/")): u = "/products/" + str(p["handle"])
-                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query): _add_candidate(u, urls, seen)
-        except (ValueError, TypeError): pass
-        finally: r.close()
-    # Continue to catalog discovery as a supplementary source.
+                if p.get("handle") and (not u or not str(u).startswith("/products/")):
+                    u = "/products/" + str(p["handle"])
+                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
+                    _add_candidate(u, urls, seen)
+        except (ValueError, TypeError) as exc:
+            _diag_record("search_json_parse", note=f"{type(exc).__name__}: {exc}")
+        finally:
+            r.close()
+    for d in reversed(LAST_DIAGNOSTICS):
+        if d["endpoint"] == "search_json":
+            d["added"] = len(urls) - before
+            break
 
     # Generic Shopify product catalog fallback.
     _discover_products_json(session, query, urls, seen)
-    # Continue to sitemap discovery as a supplementary source.
 
     # Generic Shopify sitemap fallback.
     _discover_from_sitemap(session, query, urls, seen)
-    # Continue to HTML search as a final generic source.
 
     # HTML search fallback.
-    r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
+    before = len(urls)
+    r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"}, label="search_html")
     if r:
         try:
             soup = BeautifulSoup(r.text, "html.parser")
             for a in soup.select('a[href*="/products/"]'):
-                if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query): _add_candidate(a.get("href"), urls, seen)
-        finally: r.close()
+                if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query):
+                    _add_candidate(a.get("href"), urls, seen)
+        finally:
+            r.close()
+    for d in reversed(LAST_DIAGNOSTICS):
+        if d["endpoint"] == "search_html":
+            d["added"] = len(urls) - before
+            break
+
     return urls[:MAX_CANDIDATES]
 
 
 def product_json(session, url):
-    r = _get(session, url.rstrip("/") + ".js")
-    if not r: return None
+    label = "product_json:" + url.rstrip("/").rsplit("/products/", 1)[-1]
+    r = _get(session, url.rstrip("/") + ".js", label=label)
+    if not r:
+        return None
     try:
-        data = r.json(); return data if isinstance(data, dict) else None
-    except (ValueError, TypeError): return None
-    finally: r.close()
+        data = r.json()
+        if not isinstance(data, dict):
+            _diag_record(label + "_parse", note="response_json_not_object")
+            return None
+        return data
+    except (ValueError, TypeError) as exc:
+        _diag_record(label + "_parse", note=f"{type(exc).__name__}: {exc}")
+        return None
+    finally:
+        r.close()
 
 
 def make_item(product, variant, url, query):
@@ -233,30 +292,82 @@ def make_item(product, variant, url, query):
 
 
 def search(query):
+    global LAST_DIAGNOSTICS
+    LAST_DIAGNOSTICS = []
     query = clean(query)
-    if not query: return []
+    if not query:
+        return []
     session = requests.Session(); results = []; seen = set()
     try:
-        for url in discover(session, query):
+        candidates = discover(session, query)
+        _diag_record("discovery_total", added=len(candidates))
+        for url in candidates:
             data = product_json(session, url)
-            if not data: continue
+            if not data:
+                continue
             for variant in data.get("variants") or []:
-                if not isinstance(variant, dict): continue
+                if not isinstance(variant, dict):
+                    continue
                 item = make_item(data, variant, url, query)
-                if not item: continue
+                if not item:
+                    continue
                 key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
-                if key in seen: continue
+                if key in seen:
+                    continue
                 seen.add(key); results.append(item)
+        _diag_record("results_total", added=len(results))
         return results
-    finally: session.close()
+    finally:
+        session.close()
+
+
+def _diagnostic_summary():
+    parts = []
+    for d in LAST_DIAGNOSTICS:
+        endpoint = d.get("endpoint", "?")
+        status = d.get("status")
+        added = d.get("added")
+        note = d.get("note")
+        piece = endpoint
+        if status is not None:
+            piece += f"={status}"
+        if added is not None:
+            piece += f"+{added}"
+        if note:
+            piece += f"[{note}]"
+        parts.append(piece)
+    return "ParfumCity endpoint diagnostic: " + "; ".join(parts)
 
 
 def search_stream(query, emit=None):
     rows = search(query)
+    details = {
+        "endpoint_diagnostic": LAST_DIAGNOSTICS,
+        "summary": _diagnostic_summary(),
+    }
     if callable(emit):
-        for row in rows: emit(row)
-        return None
-    return iter(rows)
+        for row in rows:
+            emit(row)
+        # Return a native report so the backend preserves diagnostic details
+        # while keeping streamed rows unchanged.
+        return {
+            "status": "success" if rows else "error",
+            "verified": bool(rows),
+            "results": [],
+            "error": None if rows else details["summary"],
+            "details": details,
+        }
+    return {
+        "status": "success" if rows else "error",
+        "verified": bool(rows),
+        "results": rows,
+        "error": None if rows else details["summary"],
+        "details": details,
+    }
+
+
+def scrape(query):
+    return search(query)
 
 
 def scrape(query): return search(query)
