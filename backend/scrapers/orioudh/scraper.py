@@ -1261,7 +1261,7 @@ def parse_product(
     return rows
 
 
-def search_stream(query):
+def _search_stream_generator(query):
     """
     Standard ScentHunter scraper contract.
 
@@ -1488,12 +1488,37 @@ def search_stream(query):
     }
 
 
+
+def search_stream(query, emit=None):
+    """Native ScentHunter callback contract.
+
+    The store implementation below remains the authoritative discovery/fetch
+    logic. This adapter only bridges its report-generator form to the common
+    callback contract used by main.py.
+    """
+    report = None
+    for value in _search_stream_generator(query):
+        report = value
+        if isinstance(value, dict) and callable(emit):
+            for row in value.get("results") or []:
+                if isinstance(row, dict):
+                    emit(row)
+
+    if report is None:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": "empty_stream",
+            "details": {},
+        }
+
+    return report
+
 def search(query):
     """Compatibility API returning only result rows."""
 
-    report = next(
-        search_stream(query)
-    )
+    report = search_stream(query)
     return report.get(
         "results",
         [],
@@ -1545,9 +1570,7 @@ if __name__ == "__main__":
     report = (
         diagnose(args.query)
         if args.diagnose
-        else next(
-            search_stream(args.query)
-        )
+        else search_stream(args.query)
     )
 
     print(
