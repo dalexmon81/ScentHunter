@@ -719,15 +719,20 @@ let currentOpenSizeKey=null;
 
 
 function shPrice(o){
-  if(o&&o.price!==undefined&&o.price!==null&&String(o.price).trim()!=="")return String(o.price);
+  if(o&&o.price!==undefined&&o.price!==null&&String(o.price).trim()!==""){
+    const text=String(o.price).trim();
+    const parsed=parsePrice(text);
+    if(parsed!==null && parsed<=0)return "Prezzo non disponibile";
+    return text;
+  }
   const n=Number(o&&o.price_num);
-  return Number.isFinite(n)?formatEuro(n):"";
+  return Number.isFinite(n)&&n>0?formatEuro(n):"Prezzo non disponibile";
 }
 function shNum(o){
   const n=Number(o&&o.price_num);
-  if(Number.isFinite(n))return n;
+  if(Number.isFinite(n)&&n>0)return n;
   const p=parsePrice(o&&o.price);
-  return p===null?Infinity:p;
+  return p===null||p<=0?Infinity:p;
 }
 
 /*
@@ -903,6 +908,13 @@ async function fetchJSONWithTimeout(url,ms=90000){
   finally{clearTimeout(timer)}
 }
 
+function diagnosticText(value){
+  if(value===null||value===undefined)return "";
+  if(typeof value==="string")return value;
+  try{return JSON.stringify(value);}
+  catch(_){return String(value);}
+}
+
 function renderStoreDiagnostics(data){
   const stores=(data&&typeof data.stores==="object"&&data.stores)?data.stores:{};
   const errors=(data&&typeof data.errors==="object"&&data.errors)?data.errors:{};
@@ -921,12 +933,12 @@ function renderStoreDiagnostics(data){
     byStore.set(store,{
       store,
       status:String(v?.status||"unavailable").toUpperCase(),
-      error:errors[store]||"Store non verificato"
+      error:diagnosticText(errors[store])||"Store non verificato"
     });
   });
   errorEntries.forEach(([store,error])=>{
     if(!byStore.has(store)){
-      byStore.set(store,{store,status:"ERROR",error:String(error||"Errore tecnico")});
+      byStore.set(store,{store,status:"ERROR",error:diagnosticText(error)||"Errore tecnico"});
     }
   });
   const rows=[...byStore.values()].map(x=>
