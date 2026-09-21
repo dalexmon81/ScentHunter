@@ -360,45 +360,37 @@ def _aggregate_identity_results(offers):
     return result, unresolved
 
 def _empty_report(store, status='error', elapsed=0.0, error=None):
-    return {
-        'store': store,
-        'status': status,
-        'elapsed': round(elapsed, 3),
-        'count': 0,
-        'results': [],
-        'error': error,
-        'attempts': 0,
-        'verified': False,
-        'details': {},
-    }
+    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error}
 
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
-WORKER_CODE = r'''
-import importlib, json, sys
-
-store=sys.argv[1]
-query=sys.argv[2]
-
-def emit(event, **payload):
-    print(json.dumps({'event':event, **payload}, ensure_ascii=False, default=str), flush=True)
-
 def normalise_report(raw):
+    """Normalize the native scraper contract without inventing a match."""
     if isinstance(raw, dict):
-        results=raw.get('results')
-        if results is None: results=raw.get('products')
-        if not isinstance(results,list): results=[]
-        status=str(raw.get('status') or '').strip().lower()
-        if status not in {'success','partial','error','timeout','blocked','unavailable'}:
-            status='success'
-        return {'status':status,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':raw.get('details') or {}}
-    if isinstance(raw,tuple): raw=list(raw)
-    if isinstance(raw,list): return {'status':'success','results':[r for r in raw if isinstance(r,dict)],'error':None,'details':{}}
-    if raw is None: return {'status':'success','results':[],'error':None,'details':{}}
+        results = raw.get('results')
+        if results is None: results = raw.get('products')
+        if not isinstance(results, list): results = []
+        status = str(raw.get('status') or '').strip().lower()
+        if status not in {'success','partial','error','timeout','blocked','unavailable'}: status = 'success'
+        details = raw.get('details') or {}
+        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
+        if isinstance(details, dict) and 'verified' in details: verified = bool(details.get('verified'))
+        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
+    if isinstance(raw, tuple): raw=list(raw)
+    if isinstance(raw, list):
+        rows=[r for r in raw if isinstance(r,dict)]
+        return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+    if raw is None: return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
     try: values=list(raw)
     except TypeError: values=[]
-    return {'status':'success','results':[r for r in values if isinstance(r,dict)],'error':None,'details':{}}
+    rows=[r for r in values if isinstance(r,dict)]
+    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
 
+WORKER_CODE = r'''
+import importlib, json, sys
+store=sys.argv[1]; query=sys.argv[2]
+def emit(event, **payload):
+    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
     stream=getattr(module,'search_stream',None)
@@ -411,18 +403,17 @@ try:
         report=normalise_report(returned)
         if report['results'] and not rows:
             for row in report['results']: emit('result',row=row)
-        emit('done',status=report['status'],error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
+        emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
     else:
         search=getattr(module,'search',None)
         if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
         report=normalise_report(search(query))
         for row in report['results']: emit('result',row=row)
-        emit('done',status=report['status'],error=report.get('error'),details=report.get('details') or {},count=len(report['results']),streaming=False)
+        emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(report['results']),streaming=False)
 except BaseException as exc:
     emit('error',error=f'{type(exc).__name__}: {exc}')
     raise SystemExit(1)
 '''
-
 
 def _kill_process_tree(process):
     try:
@@ -437,7 +428,7 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
     started=time.monotonic()
     timeout=float(timeout_override) if timeout_override is not None else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
-    process=None; rows=[]; worker_status=None; worker_error=None; worker_details={}
+    process=None; rows=[]; worker_status=None; worker_verified=None; worker_error=None; worker_details={}
     try:
         process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=False,bufsize=0,start_new_session=(os.name!='nt'))
         deadline=time.monotonic()+timeout; stdout_buffer=b''
@@ -472,10 +463,11 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
                         if callable(on_result): on_result(resolved)
                     elif kind=='done':
                         worker_status=str(event.get('status') or 'success').strip().lower()
+                        worker_verified=bool(event.get('verified')) if 'verified' in event else None
                         worker_error=event.get('error')
                         if isinstance(event.get('details'),dict): worker_details=event['details']
                     elif kind=='error':
-                        worker_status='error'; worker_error=str(event.get('error') or 'worker_error')
+                        worker_status='error'; worker_verified=False; worker_error=str(event.get('error') or 'worker_error')
             if process.poll() is not None:
                 if process.stdout is not None and os.name!='nt':
                     try:
@@ -490,49 +482,54 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
             except (json.JSONDecodeError,UnicodeDecodeError): event=None
             if isinstance(event,dict):
                 if event.get('event')=='done':
-                    worker_status=str(event.get('status') or 'success').strip().lower(); worker_error=event.get('error')
+                    worker_status=str(event.get('status') or 'success').strip().lower()
+                    worker_verified=bool(event.get('verified')) if 'verified' in event else None
+                    worker_error=event.get('error')
                     if isinstance(event.get('details'),dict): worker_details=event['details']
                 elif event.get('event')=='error':
-                    worker_status='error'; worker_error=str(event.get('error') or 'worker_error')
+                    worker_status='error'; worker_verified=False; worker_error=str(event.get('error') or 'worker_error')
         rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
         if rc!=0 and worker_status not in {'success','partial'}:
             return {'store':store,'status':worker_status or 'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}','details':worker_details,'verified':False}
         status=worker_status or ('success' if rows else 'error')
+        verified=bool(worker_verified) if worker_verified is not None else bool(rows)
         public_status='ok' if status=='success' and rows else ('empty' if status=='success' else status)
-        return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':public_status in {'ok','empty','partial'}}
+        return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':verified}
     except subprocess.TimeoutExpired:
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=2)
             except Exception: pass
-        return _empty_report(store,status='timeout',elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s')
+        return _empty_report(store,status='timeout',elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s') | {'verified':False}
     except Exception as exc:
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=1)
             except Exception: pass
-        return _empty_report(store,status='error',elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
+        return _empty_report(store,status='error',elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}') | {'verified':False}
 
 
 def _run_store_subprocess(store, query, on_result=None):
-    """Retry any unverified store result; only two successful empty runs mean no-match."""
+    """Retry results that are not safely classified by the store contract."""
     first=_run_store_subprocess_once(store,query,on_result=on_result)
-    if first.get('status') in {'ok','no_match'}:
-        first['attempts']=1; first['verified']=True; return first
-    print(f"STORE RETRY store={store} query={query!r} reason={first.get('status')}",flush=True)
+    fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
+    if fv and (fs in {'ok','no_match','empty'} or (fs=='partial' and fc>0)):
+        first['attempts']=1
+        return first
+    print(f"STORE RETRY store={store} query={query!r} reason={fs} verified={fv} count={fc}",flush=True)
     base_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     retry_timeout=max(12.0,min(base_timeout*0.75,45.0))
     second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout)
-    second['attempts']=2; second['first_attempt_status']=first.get('status')
-    if second.get('status')=='empty':
+    second['attempts']=2; second['first_attempt_status']=fs; second['first_attempt_verified']=fv
+    ss=second.get('status'); sv=bool(second.get('verified')); sc=int(second.get('count') or 0)
+    if ss=='empty' and sv:
         second['status']='no_match'; second['verified']=True; second['error']=None; return second
-    if second.get('status') in {'ok','partial'}:
-        second['verified']=True; return second
+    if ss=='ok' and sv: return second
+    if ss=='partial' and sv and sc>0: return second
     second['verified']=False
-    if second.get('status') not in {'error','timeout','blocked','unavailable'}: second['status']='error'
+    if ss not in {'error','timeout','blocked','unavailable'}: second['status']='unavailable'
     if not second.get('error'): second['error']=f"store_unverified_after_retry:{second.get('status')}"
     return second
-
 
 def _run_controlled_store(store,query,on_report,on_result=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
@@ -700,8 +697,6 @@ def _publish_store(job_id, report):
 
         job["stores"][store] = {
             "status": report["status"],
-            "verified": bool(report.get("verified")),
-            "attempts": int(report.get("attempts") or 0),
             "elapsed": report["elapsed"],
             "count": report["count"],
         }
@@ -860,8 +855,6 @@ def search_perfume(q: str):
         "stores": {
             report["store"]: {
                 "status": report["status"],
-                "verified": bool(report.get("verified")),
-                "attempts": int(report.get("attempts") or 0),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
             }
