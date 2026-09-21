@@ -439,7 +439,20 @@ try:
             if isinstance(row,dict):
                 rows.append(row); emit('result',row=row)
         returned=stream(query,on_result)
-        report=normalise_report(returned)
+        # Native streamers commonly use the callback as their output channel
+        # and therefore return None intentionally.  None is an error only when
+        # the streamer emitted no rows at all.  Treating callback-mode None as
+        # scraper_returned_none falsely marked working stores as failed.
+        if returned is None and rows:
+            report={
+                'status':'success',
+                'verified':True,
+                'results':[],
+                'error':None,
+                'details':{},
+            }
+        else:
+            report=normalise_report(returned)
         if report['results'] and not rows:
             for row in report['results']: emit('result',row=row)
         emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
