@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-import time
 from collections import Counter
 import unicodedata
 from dataclasses import dataclass
@@ -95,37 +94,11 @@ def catalog_variant_key(value: Any) -> str:
     return catalog_clean_text(value)
 
 
-def stable_auto_id(brand: Any, name: Any) -> str:
-    key = f"{normalize(brand)}::{normalize(name)}"
-    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
-
 
 def stable_family_id(family_id: Any, canonical_name: Any) -> str:
     key = f"{normalize(family_id)}::{normalize(canonical_name)}"
     return "SH-FAMILY-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
-
-def extract_size_ml(text: str) -> Optional[int]:
-    if not text:
-        return None
-
-    text = normalize(text)
-    match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)",
-        text,
-        re.I,
-    )
-    if not match:
-        return None
-
-    value = float(match.group(1))
-    unit = match.group(2).lower()
-
-    if unit in ("l", "litri"):
-        return int(value * 1000)
-    if unit in ("oz", "fl. oz", "fl oz"):
-        return int(value * 29.5735)
-    return int(value)
 
 
 def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
@@ -295,22 +268,12 @@ class CatalogProduct:
             family_name=family_name,
             catalog_variant=canonical_name,
             concentration=str(data.get("concentration") or "").strip(),
-            canonical_image=str(
-                data.get("canonical_image")
-                or data.get("image")
-                or data.get("product_image")
-                or data.get("image_url")
-                or ""
-            ).strip(),
+            canonical_image=str(data.get("canonical_image") or data.get("image") or data.get("image_url") or "").strip(),
         )
 
     @property
     def normalized_brand(self) -> str:
         return normalize(self.brand)
-
-    @property
-    def normalized_name(self) -> str:
-        return normalize(self.name)
 
     @property
     def normalized_aliases(self) -> Tuple[str, ...]:
@@ -587,10 +550,23 @@ class ProductMatcher:
                     value = str(value or "").strip()
                     if value and value not in valid_aliases:
                         valid_aliases.append(value)
+                formats_ml = []
+                raw_formats = variant.get("formats_ml") or []
+                if isinstance(raw_formats, (str, int, float)):
+                    raw_formats = [raw_formats]
+                for raw_size in raw_formats:
+                    try:
+                        size = float(raw_size)
+                    except (TypeError, ValueError):
+                        continue
+                    if size not in formats_ml:
+                        formats_ml.append(size)
+
                 variants.append(
                     {
                         "canonical_name": canonical,
                         "aliases": valid_aliases,
+                        "formats_ml": tuple(formats_ml),
                         "normalized_aliases": tuple(
                             ProductMatcher._url_catalog_identity_text(value) for value in valid_aliases
                             if ProductMatcher._url_catalog_identity_text(value)
@@ -1203,16 +1179,24 @@ class ProductMatcher:
                 "match_method": "family_registry_alias",
                 "match_score": 1.0,
                 "product_identity": catalog_id,
-                "canonical_image": catalog_product.canonical_image if catalog_product is not None else "",
             }
         )
 
         resolved_size = size_ml(offer)
+        if resolved_size is None:
+            family_formats = tuple(variant.get("formats_ml") or ())
+            if len(family_formats) == 1:
+                resolved_size = family_formats[0]
         if resolved_size is not None:
             result["size_ml"] = resolved_size
             result["variant_id"] = f"{catalog_id}:{resolved_size:g}"
         else:
             result["variant_id"] = catalog_id
+
+        if catalog_product is not None:
+            result["canonical_image"] = catalog_product.canonical_image
+        else:
+            result["canonical_image"] = ""
 
         return result
 
@@ -1237,36 +1221,33 @@ class ProductMatcher:
 
         return self._build_family_result(offer, family, variant)
 
-    def match(
-        self,
-        offer: Dict[str, Any],
-        query: str,
-    ) -> Optional[Dict[str, Any]]:
-        """Backward-compatible wrapper around the single public resolver.
+    def match(self, offer: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
+        """Compatibility entry point using the same central matching path.
 
-        There is intentionally only one identity engine: ``match_offer``.
-        Older callers may still call ``match(offer, query)``; this wrapper
-        converts that call into the same catalog-derived query scope and then
-        returns the legacy ``dict | None`` shape.
+        There is no second matching engine: all identity decisions are made by
+        ``match_offer`` with a catalog-derived query scope.
         """
-        query_scope = self.build_query_scope(query)
-        resolved = self.match_offer(offer, query_scope)
-        if not isinstance(resolved, dict) or resolved.get("status") != "matched":
+        scope = self.build_query_scope(query)
+        resolved = self.match_offer(offer=offer, query_scope=scope)
+        if not isinstance(resolved, dict):
             return None
-
+        if resolved.get("status") != "matched":
+            return None
         result = dict(offer)
         result.update({
             "catalog_id": resolved.get("catalog_id"),
             "family_id": resolved.get("family_id", ""),
-            "family_name": resolved.get("family", ""),
+            "family_name": resolved.get("family_name") or resolved.get("family"),
             "canonical_name": resolved.get("canonical_name"),
             "canonical_brand": resolved.get("brand"),
             "catalog_variant": resolved.get("variant"),
-            "canonical_image": resolved.get("canonical_image") or "",
-            "match_method": resolved.get("match_method", "central_match"),
-            "match_score": resolved.get("confidence", 0.0),
+            "match_method": resolved.get("match_method", "central"),
+            "match_score": resolved.get("confidence"),
             "product_identity": resolved.get("catalog_id"),
         })
+        for key in ("size_ml", "variant_id", "canonical_image"):
+            if resolved.get(key) not in (None, ""):
+                result[key] = resolved[key]
         return result
 
     def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
@@ -1692,35 +1673,39 @@ class ProductMatcher:
         offer: Dict[str, Any],
         query_scope: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Resolve a raw offer against the catalog-derived query scope.
+        """Resolve one raw retailer offer through the single identity engine.
 
-        Unresolved offers are returned as ``status=unresolved`` rather than
-        discarded.  Only an explicit non-fragrance/sample rejection is a hard
-        rejection here.
+        Identity, variant and canonical format are resolved here. Commercial
+        fields such as price, availability and retailer URL remain untouched.
         """
         if self._is_non_fragrance_offer(offer):
             return {"status": "rejected", "reject_reason": "non_fragrance"}
 
-        # Family registry is the canonical family/variant knowledge layer.
-        # Reuse the same resolver used by match() so family variants that are
-        # known in family_registry.json are not incorrectly returned unresolved
-        # merely because they are not yet materialized as catalog products.
         query = str(query_scope.get("query") or "").strip()
         family = self._family_for_query(query)
+
         if family is not None:
             family_result = self._match_family(offer, query, family)
             if family_result is not None:
+                catalog_id = family_result.get("catalog_id")
+                size = family_result.get("size_ml")
+                variant_id = family_result.get("variant_id")
+                canonical_image = family_result.get("canonical_image") or ""
                 return {
                     "status": "matched",
-                    "catalog_id": family_result.get("catalog_id"),
-                    "brand": family_result.get("canonical_brand"),
-                    "family": family_result.get("family_name"),
-                    "variant": family_result.get("catalog_variant"),
+                    "catalog_id": catalog_id,
+                    "family_id": family_result.get("family_id", ""),
+                    "family_name": family_result.get("family_name") or family_result.get("family"),
+                    "brand": family_result.get("canonical_brand") or family_result.get("brand"),
+                    "family": family_result.get("family_name") or family_result.get("family"),
+                    "variant": family_result.get("catalog_variant") or family_result.get("variant"),
                     "canonical_name": family_result.get("canonical_name"),
                     "confidence": family_result.get("match_score", 1.0),
                     "matched_alias": family_result.get("canonical_name"),
-                    "canonical_image": family_result.get("canonical_image") or "",
                     "match_method": family_result.get("match_method", "family_registry_alias"),
+                    "size_ml": size,
+                    "variant_id": variant_id,
+                    "canonical_image": canonical_image,
                 }
 
         candidates = list(query_scope.get("candidates") or [])
@@ -1728,11 +1713,6 @@ class ProductMatcher:
         offer_brand = self._offer_brand(offer)
         if not offer_name or not candidates:
             return {"status": "unresolved", "confidence": 0.0}
-
-        best_product = None
-        best_score = 0.0
-        best_specificity = -1
-        best_alias = ""
 
         eligible: List[CatalogProduct] = []
         eligible_ids: set[str] = set()
@@ -1744,17 +1724,11 @@ class ProductMatcher:
             eligible.append(product)
             eligible_ids.add(product.catalog_id)
 
-        # Query scope is deliberately compact, but a retailer URL can contain
-        # a more specific identity than the scraped/display name.  In that
-        # situation the URL must be allowed to discover the stronger catalog
-        # identity even when it was not present in the initial query scope.
-        # This is catalog-wide and brand-bounded: it is not a retailer rule and
-        # cannot pull an unrelated brand into the match.
+        # A strong product URL may identify a catalog variant that the initial
+        # lexical query scope did not contain. This remains generic and brand-bounded.
         if offer_brand:
             for product in self.catalog:
-                if product.catalog_id in eligible_ids:
-                    continue
-                if not product.normalized_brand:
+                if product.catalog_id in eligible_ids or not product.normalized_brand:
                     continue
                 brand = normalize(product.brand)
                 if offer_brand != brand and offer_brand not in brand and brand not in offer_brand:
@@ -1764,10 +1738,6 @@ class ProductMatcher:
                     eligible.append(product)
                     eligible_ids.add(product.catalog_id)
 
-        # First establish whether the URL contains a sufficiently specific
-        # catalog identity.  If it does, use URL scores consistently across
-        # all candidates so an exact generic name cannot defeat a more specific
-        # variant found in the URL.
         url_matches = [
             (product, *self._url_candidate_score(offer, product))
             for product in eligible
@@ -1775,43 +1745,26 @@ class ProductMatcher:
         best_url_product = None
         best_url_score = 0.0
         best_url_specificity = -1
-        best_url_alias = ""
-        for product, url_score, url_alias in url_matches:
-            specificity_key = self._variant_specificity_key(
-                product.name, product.brand
-            )
-            specificity = len(set(specificity_key.split()))
-            if (
-                url_score > best_url_score
-                or (
-                    abs(url_score - best_url_score) < 0.03
-                    and specificity > best_url_specificity
-                )
-            ):
+        for product, url_score, _url_alias in url_matches:
+            specificity = len(set(self._variant_specificity_key(product.name, product.brand).split()))
+            if url_score > best_url_score or (abs(url_score - best_url_score) < 0.03 and specificity > best_url_specificity):
                 best_url_product = product
                 best_url_score = url_score
                 best_url_specificity = specificity
-                best_url_alias = url_alias
 
         use_url_identity = best_url_product is not None and best_url_score >= 0.70
+        best_product: Optional[CatalogProduct] = None
+        best_score = 0.0
+        best_specificity = -1
+        best_alias = ""
 
         for product, url_score, url_alias in url_matches:
             if use_url_identity:
                 score, alias = url_score, url_alias
             else:
                 score, alias = self._query_candidate_score(offer_name, product)
-
-            specificity_key = self._variant_specificity_key(
-                product.name, product.brand
-            )
-            specificity = len(set(specificity_key.split()))
-            if (
-                score > best_score
-                or (
-                    abs(score - best_score) < 0.03
-                    and specificity > best_specificity
-                )
-            ):
+            specificity = len(set(self._variant_specificity_key(product.name, product.brand).split()))
+            if score > best_score or (abs(score - best_score) < 0.03 and specificity > best_specificity):
                 best_product = product
                 best_score = score
                 best_specificity = specificity
@@ -1820,19 +1773,32 @@ class ProductMatcher:
         if best_product is None or best_score < 0.72:
             return {"status": "unresolved", "confidence": round(best_score, 4)}
 
+        resolved_size = size_ml(offer)
+        # If the catalog has exactly one verified format for this identity, that
+        # canonical format is safe to use when the retailer omitted the size.
+        if resolved_size is None and len(best_product.formats_ml) == 1:
+            resolved_size = best_product.formats_ml[0]
+
+        variant_id = best_product.catalog_id
+        if resolved_size is not None:
+            variant_id = f"{best_product.catalog_id}:{resolved_size:g}"
+
         return {
             "status": "matched",
             "catalog_id": best_product.catalog_id,
+            "family_id": best_product.family_id,
+            "family_name": best_product.family_name or best_product.name,
             "brand": best_product.brand,
             "family": best_product.family_name or best_product.name,
             "variant": best_product.catalog_variant or best_product.name,
             "canonical_name": best_product.name,
             "confidence": round(min(1.0, best_score), 4),
             "matched_alias": best_alias,
+            "match_method": "url_identity" if use_url_identity else "catalog_name",
+            "size_ml": resolved_size,
+            "variant_id": variant_id,
+            "canonical_image": best_product.canonical_image,
         }
-
-
-
 
 
 _MATCHER_CACHE: Dict[Tuple[int, int], ProductMatcher] = {}
@@ -1853,7 +1819,26 @@ def match_product(
             family_registry=family_registry,
         )
         _MATCHER_CACHE[key] = matcher
-    return matcher.match(product, query)
+    scope = matcher.build_query_scope(query)
+    resolved = matcher.match_offer(product, scope)
+    if not isinstance(resolved, dict) or resolved.get("status") != "matched":
+        return None
+    output = dict(product)
+    output.update({
+        "catalog_id": resolved.get("catalog_id"),
+        "family_id": resolved.get("family_id", ""),
+        "family_name": resolved.get("family_name"),
+        "canonical_name": resolved.get("canonical_name"),
+        "canonical_brand": resolved.get("brand"),
+        "catalog_variant": resolved.get("variant"),
+        "match_method": resolved.get("match_method"),
+        "match_score": resolved.get("confidence"),
+        "product_identity": resolved.get("catalog_id"),
+    })
+    for key in ("size_ml", "variant_id", "canonical_image"):
+        if resolved.get(key) not in (None, ""):
+            output[key] = resolved[key]
+    return output
 
 
 def offer_key(offer: Dict[str, Any]) -> Tuple[str, str, str, str]:
@@ -1886,7 +1871,24 @@ def attach_matches(
     for offer in offers:
         if not isinstance(offer, dict):
             continue
-        matched = matcher.match(offer, query)
-        if matched is not None:
-            output.append(matched)
+        scope = matcher.build_query_scope(query)
+        resolved = matcher.match_offer(offer, scope)
+        if not isinstance(resolved, dict) or resolved.get("status") != "matched":
+            continue
+        matched = dict(offer)
+        matched.update({
+            "catalog_id": resolved.get("catalog_id"),
+            "family_id": resolved.get("family_id", ""),
+            "family_name": resolved.get("family_name"),
+            "canonical_name": resolved.get("canonical_name"),
+            "canonical_brand": resolved.get("brand"),
+            "catalog_variant": resolved.get("variant"),
+            "match_method": resolved.get("match_method"),
+            "match_score": resolved.get("confidence"),
+            "product_identity": resolved.get("catalog_id"),
+        })
+        for key in ("size_ml", "variant_id", "canonical_image"):
+            if resolved.get(key) not in (None, ""):
+                matched[key] = resolved[key]
+        output.append(matched)
     return output
