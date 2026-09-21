@@ -88,7 +88,13 @@ def _identity_scope(query):
     if PRODUCT_MATCHER is None:
         return []
     try:
-        return PRODUCT_MATCHER.build_identity_scope(str(query or "").strip())
+        method = getattr(PRODUCT_MATCHER, "build_identity_scope", None)
+        if callable(method):
+            return method(str(query or "").strip())
+        method = getattr(PRODUCT_MATCHER, "build_query_scope", None)
+        if callable(method):
+            return method(str(query or "").strip())
+        return []
     except Exception as exc:
         print(
             f'PRODUCT_IDENTITY_SCOPE_ERROR: {type(exc).__name__}: {exc}',
@@ -97,44 +103,67 @@ def _identity_scope(query):
         return []
 
 def _resolve_offer_identity(result, query):
-    """Resolve one raw retailer offer through ProductMatcher."""
+    """Resolve one raw retailer offer through the central ProductMatcher.
+
+    The canonical matcher contract is ``match(offer, query)``.  Older
+    ``build_query_scope`` / ``match_offer`` calls were a different contract and
+    caused valid retailer rows to remain unresolved even though the catalog
+    contained the product.
+    """
     if not isinstance(result, dict):
         return None
+
     output = dict(result)
+
     if PRODUCT_MATCHER is None:
-        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
+        output.update({
+            "_match_status": "unresolved",
+            "catalog_id": None,
+            "canonical_name": None,
+        })
         return output
 
     try:
-        scope = PRODUCT_MATCHER.build_query_scope(query)
-        match = PRODUCT_MATCHER.match_offer(offer=output, query_scope=scope)
+        match_method = getattr(PRODUCT_MATCHER, "match", None)
+        if not callable(match_method):
+            raise RuntimeError("ProductMatcher non espone match(offer, query)")
+
+        match = match_method(output, str(query or "").strip())
     except Exception as exc:
-        print(f"PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}", flush=True)
-        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None, "_match_error": f"{type(exc).__name__}: {exc}"})
+        print(
+            f"PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        output.update({
+            "_match_status": "unresolved",
+            "catalog_id": None,
+            "canonical_name": None,
+            "_match_error": f"{type(exc).__name__}: {exc}",
+        })
         return output
 
     if not isinstance(match, dict):
-        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
+        # ``None`` is the ProductMatcher's explicit unresolved/rejected result.
+        output.update({
+            "_match_status": "unresolved",
+            "catalog_id": None,
+            "canonical_name": None,
+        })
         return output
 
-    status = str(match.get("status") or "unresolved").strip().lower()
-    if status == "rejected":
-        return None
+    # The central matcher returns the resolved offer directly.  Do not replace
+    # the retailer's raw brand/name fields; canonical identity is exposed in
+    # its dedicated canonical_* fields.
+    output.update(match)
+    output["_match_status"] = "matched"
 
-    output["_match_status"] = status
-    if status != "matched":
-        output.update({"catalog_id": None, "brand": None, "family": None, "variant": None, "canonical_name": None})
-        return output
+    if not output.get("catalog_id"):
+        output["_match_status"] = "unresolved"
 
-    for key in (
-        "catalog_id", "family_id", "family_name", "brand", "family",
-        "variant", "canonical_name", "match_method", "match_score",
-        "confidence", "matched_alias", "size_ml", "variant_id",
-        "canonical_image",
-    ):
-        if key in match:
-            output[key] = match.get(key)
-    output["match_confidence"] = match.get("confidence")
+    if output.get("canonical_brand") and not output.get("_canonical_brand"):
+        output["_canonical_brand"] = output.get("canonical_brand")
+
+    output["match_confidence"] = output.get("confidence")
     return output
 
 def clean_result(item, store):
@@ -168,6 +197,22 @@ def clean_result(item, store):
     # Preserve retailer values before any harmless technical cleanup.
     result["_raw_name"] = raw_name
     result["_raw_brand"] = raw_brand
+
+    # Some retailer APIs expose the retailer/vendor name in the ``brand``
+    # field rather than the actual product brand. That is commercial source
+    # metadata, not product identity. Do not let a store name become a hard
+    # brand constraint for the central matcher; the original value remains
+    # available in ``_raw_brand`` for diagnostics/provenance.
+    if raw_brand:
+        normalized_brand = " ".join(raw_brand.lower().replace("-", " ").split())
+        normalized_store_label = " ".join(
+            str(STORE_LABELS.get(machine_store, machine_store) or "")
+            .lower()
+            .replace("-", " ")
+            .split()
+        )
+        if normalized_brand == normalized_store_label:
+            result["brand"] = ""
 
     # Keep the retailer's raw name untouched. Identity belongs to ProductMatcher.
 
@@ -912,136 +957,6 @@ def search_perfume(q: str):
             }
             for report in reports
         },
-    }
-
-@app.get('/diagnostic/matcher')
-def diagnostic_matcher(store: str, q: str):
-    """Targeted diagnostic: raw scraper -> clean_result -> ProductMatcher.
-
-    This endpoint is diagnostic only. It does not change the normal search
-    pipeline and does not publish offers into a search job.
-    """
-    store = str(store or '').strip().lower()
-    query = str(q or '').strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-    if not query:
-        raise HTTPException(status_code=400, detail='Parametro q mancante')
-
-    raw_rows = []
-    stream_return = None
-    stream_error = None
-
-    try:
-        module = __import__(
-            f'scrapers.{store}.scraper',
-            fromlist=['scraper'],
-        )
-        stream = getattr(module, 'search_stream', None)
-        if not callable(stream):
-            raise RuntimeError('search_stream_not_available')
-
-        def collect(row):
-            if isinstance(row, dict):
-                raw_rows.append(dict(row))
-
-        stream_return = stream(query, collect)
-    except Exception as exc:
-        stream_error = f'{type(exc).__name__}: {exc}'
-
-    stages = []
-    matcher_scope = _identity_scope(query)
-    matched = []
-    rejected = []
-    unresolved = []
-    clean_errors = []
-
-    for index, raw in enumerate(raw_rows):
-        prepared = clean_result(raw, store)
-        if prepared is None:
-            clean_errors.append({
-                'index': index,
-                'raw_name': raw.get('name'),
-                'raw_url': raw.get('url'),
-                'reason': 'clean_result_returned_none',
-            })
-            continue
-
-        output = dict(prepared)
-        if PRODUCT_MATCHER is None:
-            output['_match_status'] = 'unresolved'
-            output['catalog_id'] = None
-            output['canonical_name'] = None
-            unresolved.append(output)
-            continue
-
-        try:
-            scope = PRODUCT_MATCHER.build_query_scope(query)
-            match = PRODUCT_MATCHER.match_offer(
-                offer=output,
-                query_scope=scope,
-            )
-        except Exception as exc:
-            output['_match_status'] = 'matcher_exception'
-            output['_match_error'] = f'{type(exc).__name__}: {exc}'
-            unresolved.append(output)
-            continue
-
-        if not isinstance(match, dict):
-            output['_match_status'] = 'matcher_non_dict'
-            unresolved.append(output)
-            continue
-
-        status = str(match.get('status') or 'unresolved').strip().lower()
-        item = {
-            'index': index,
-            'name': output.get('name'),
-            'brand': output.get('brand'),
-            'price': output.get('price'),
-            'price_num': output.get('price_num'),
-            'size_ml': output.get('size_ml'),
-            'url': output.get('url'),
-            'availability': output.get('availability'),
-            'match_status': status,
-            'match_method': match.get('match_method'),
-            'match_score': match.get('match_score'),
-            'confidence': match.get('confidence'),
-            'catalog_id': match.get('catalog_id'),
-            'canonical_name': match.get('canonical_name'),
-            'family': match.get('family'),
-            'variant': match.get('variant'),
-            'matched_alias': match.get('matched_alias'),
-        }
-
-        if status == 'matched':
-            matched.append(item)
-        elif status == 'rejected':
-            item['reject_reason'] = match.get('reason') or match.get('reject_reason')
-            rejected.append(item)
-        else:
-            unresolved.append(item)
-
-    return {
-        'ok': True,
-        'diagnostic': 'scraper -> clean_result -> ProductMatcher',
-        'store': store,
-        'query': query,
-        'stream_return_type': type(stream_return).__name__,
-        'stream_error': stream_error,
-        'identity_scope_count': len(matcher_scope),
-        'raw_count': len(raw_rows),
-        'matched_count': len(matched),
-        'rejected_count': len(rejected),
-        'unresolved_count': len(unresolved),
-        'clean_error_count': len(clean_errors),
-        'matched': matched,
-        'rejected': rejected,
-        'unresolved': unresolved,
-        'clean_errors': clean_errors,
     }
 
 @app.get('/frontend')
