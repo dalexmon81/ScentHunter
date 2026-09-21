@@ -573,8 +573,16 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
         print(f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',flush=True)
+        synthetic=[]
         with lock:
-            for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
+            for store in unfinished:
+                if store not in reports:
+                    report=_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout') | {'verified':False}
+                    reports[store]=report
+                    synthetic.append(report)
+        if callable(on_report):
+            for report in synthetic:
+                on_report(report)
     return [reports[s] for s in requested if s in reports]
 
 JOBS={}; JOBS_LOCK=threading.Lock()
