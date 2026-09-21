@@ -295,7 +295,7 @@ class CatalogProduct:
             family_name=family_name,
             catalog_variant=canonical_name,
             concentration=str(data.get("concentration") or "").strip(),
-            canonical_image=(str(data.get("canonical_image") or "").strip() or None),
+            canonical_image=str(data.get("canonical_image") or "").strip() or None,
         )
 
     @property
@@ -1197,16 +1197,35 @@ class ProductMatcher:
                 "match_method": "family_registry_alias",
                 "match_score": 1.0,
                 "product_identity": catalog_id,
-                "canonical_image": catalog_product.canonical_image if catalog_product is not None else None,
             }
         )
 
         resolved_size = size_ml(offer)
+        if resolved_size is None:
+            variant_sizes = []
+            raw_sizes = variant.get("formats_ml") or variant.get("sizes_ml") or []
+            if isinstance(raw_sizes, (str, int, float)):
+                raw_sizes = [raw_sizes]
+            for raw_size in raw_sizes:
+                try:
+                    value = float(raw_size)
+                except (TypeError, ValueError):
+                    continue
+                if value not in variant_sizes:
+                    variant_sizes.append(value)
+            if not variant_sizes and catalog_product is not None:
+                variant_sizes = list(catalog_product.formats_ml)
+            if len(variant_sizes) == 1:
+                resolved_size = variant_sizes[0]
+
         if resolved_size is not None:
             result["size_ml"] = resolved_size
             result["variant_id"] = f"{catalog_id}:{resolved_size:g}"
         else:
             result["variant_id"] = catalog_id
+
+        if catalog_product is not None and catalog_product.canonical_image:
+            result["canonical_image"] = catalog_product.canonical_image
 
         return result
 
@@ -1729,7 +1748,7 @@ class ProductMatcher:
         if family is not None:
             family_result = self._match_family(offer, query, family)
             if family_result is not None:
-                return {
+                matched = {
                     "status": "matched",
                     "catalog_id": family_result.get("catalog_id"),
                     "brand": family_result.get("canonical_brand"),
@@ -1739,6 +1758,13 @@ class ProductMatcher:
                     "confidence": family_result.get("match_score", 1.0),
                     "matched_alias": family_result.get("canonical_name"),
                 }
+                if family_result.get("size_ml") is not None:
+                    matched["size_ml"] = family_result.get("size_ml")
+                if family_result.get("variant_id"):
+                    matched["variant_id"] = family_result.get("variant_id")
+                if family_result.get("canonical_image"):
+                    matched["canonical_image"] = family_result.get("canonical_image")
+                return matched
 
         candidates = list(query_scope.get("candidates") or [])
         offer_name = self._offer_name(offer)
@@ -1837,7 +1863,7 @@ class ProductMatcher:
         if best_product is None or best_score < 0.72:
             return {"status": "unresolved", "confidence": round(best_score, 4)}
 
-        return {
+        matched = {
             "status": "matched",
             "catalog_id": best_product.catalog_id,
             "brand": best_product.brand,
@@ -1847,6 +1873,17 @@ class ProductMatcher:
             "confidence": round(min(1.0, best_score), 4),
             "matched_alias": best_alias,
         }
+        resolved_size = size_ml(offer)
+        if resolved_size is None and len(best_product.formats_ml) == 1:
+            resolved_size = best_product.formats_ml[0]
+        if resolved_size is not None:
+            matched["size_ml"] = resolved_size
+            matched["variant_id"] = f"{best_product.catalog_id}:{resolved_size:g}"
+        else:
+            matched["variant_id"] = best_product.catalog_id
+        if best_product.canonical_image:
+            matched["canonical_image"] = best_product.canonical_image
+        return matched
 
     def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
         """Resolve a generic offer with identifiers, name evidence and URL identity.
@@ -2012,16 +2049,19 @@ class ProductMatcher:
                 "match_method": method if method != "none" else "generic",
                 "match_score": round(score, 4),
                 "product_identity": product.catalog_id,
-                "canonical_image": product.canonical_image,
             }
         )
 
         resolved_size = size_ml(offer)
+        if resolved_size is None and len(product.formats_ml) == 1:
+            resolved_size = product.formats_ml[0]
         if resolved_size is not None:
             result["size_ml"] = resolved_size
             result["variant_id"] = f"{product.catalog_id}:{resolved_size:g}"
         else:
             result["variant_id"] = product.catalog_id
+        if product.canonical_image:
+            result["canonical_image"] = product.canonical_image
 
         print(
             "SCENTHUNTER: MATCHER_RESULT "
