@@ -1,586 +1,414 @@
-from fastapi import APIRouter
-import json
 import re
-import time
-from urllib.parse import urljoin, urlparse
-
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from bs4 import BeautifulSoup, Tag
+from urllib.parse import urljoin
 
-try:
-    from bs4 import BeautifulSoup
-except Exception:
-    BeautifulSoup = None
-
-router = APIRouter()
-
-BASE = "https://bplatz.de"
-LOCALIZED_BASE = "https://it.bplatz.de"
-
-SEARCH_TIMEOUT = (3.0, 10.0)
-PRODUCT_TIMEOUT = (3.0, 10.0)
-PREDICTIVE_LIMIT = 50
+STORE = "Bplatz"
+BASE = "https://en.bplatz.de"
+CATALOG_URL = BASE + "/collections/produkte"
+TIMEOUT = 5
+CATALOG_PAGE_SIZE = 250
+MAX_CATALOG_PAGES = 20
+MAX_RESULTS = 50
+CATALOG_WORKERS = 8
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/140.0 Safari/537.36"
-    ),
-    "Accept": "application/json,text/plain,*/*",
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
-PAGE_HEADERS = {
-    **HEADERS,
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-}
-
-GENERIC_QUERY_TERMS = {
-    "perfume", "parfum", "profumo", "fragrance",
-    "eau", "de", "edt", "edp", "for", "him", "her",
-    "men", "woman", "women", "man",
+STOPWORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
+    "for", "by", "pour", "ml", "cl", "men", "man", "women", "woman",
+    "male", "female", "homme", "femme", "herren", "damen",
 }
 
 
-def norm(value):
+def _norm(value):
     value = str(value or "").lower()
-    value = re.sub(r"[^\w\s]+", " ", value, flags=re.UNICODE)
+    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
+    value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
 
-def query_matches(title, query):
-    title_tokens = set(norm(title).split())
-    query_tokens = [
-        token for token in norm(query).split()
-        if token not in GENERIC_QUERY_TERMS
-    ]
-    return all(token in title_tokens for token in query_tokens)
+def _query_tokens(query):
+    tokens = []
+    for token in _norm(query).split():
+        if token in STOPWORDS or re.fullmatch(r"\d+(?:[.,]\d+)?", token):
+            continue
+        tokens.append(token)
+    return tokens
 
 
-def contains_non_perfume_marker(title):
-    n = norm(title)
-    markers = (
-        "gift card", "giftcard", "candela", "candle",
-        "diffusore", "diffuser", "home fragrance",
-        "room spray", "body lotion", "body cream",
-        "shower gel", "shampoo", "conditioner",
-        "deodorant", "deo spray", "after shave",
-        "aftershave", "soap", "savon", "hand cream",
-        "hair", "capelli",
-    )
-    return any(marker in n for marker in markers)
+def _match(text, query):
+    wanted = _query_tokens(query)
+    if not wanted:
+        return False
+    hay = set(_norm(text).split())
+    return all(token in hay for token in wanted)
 
 
-def absolute_url(value):
-    if not value:
-        return ""
-    value = str(value)
-    if value.startswith("//"):
-        return "https:" + value
-    if value.startswith("http://") or value.startswith("https://"):
-        return value
-    return urljoin(BASE + "/", value)
-
-
-def product_js_url(product_url):
-    parsed = urlparse(product_url)
-    path = parsed.path.rstrip("/")
-    if path.endswith(".js"):
-        return product_url
-    return BASE + path + ".js"
-
-
-def safe_price(value):
+def _price(value):
     if value in (None, ""):
         return None
-    try:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
         number = float(value)
-    except (TypeError, ValueError):
-        return None
-    # Shopify product.js normally exposes cents.
-    return number / 100.0 if number >= 100 else number
+        if number >= 100:
+            number /= 100.0
+        return f"{number:.2f}".replace(".", ",") + " €"
+
+    text = str(value)
+    patterns = (
+        r"retail\s+price\s*€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"sale\s+price\s*€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"(\d{1,4}(?:[.,]\d{2})?)\s*€",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if match:
+            number = float(match.group(1).replace(",", "."))
+            if number > 0:
+                return f"{number:.2f}".replace(".", ",") + " €"
+    return None
 
 
-def get(url, params=None, headers=None, timeout=None):
-    started = time.monotonic()
+def _absolute_product_url(value):
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    return urljoin(BASE + "/", value).split("#")[0].split("?")[0].rstrip("/")
+
+
+def _product_js_url(url):
+    url = url.rstrip("/")
+    return url if url.endswith(".js") else url + ".js"
+
+
+def _get(session, url, params=None, accept=None):
     try:
-        response = requests.get(
+        return session.get(
             url,
             params=params,
-            headers=headers or HEADERS,
-            timeout=timeout or SEARCH_TIMEOUT,
+            headers={**HEADERS, **({"Accept": accept} if accept else {})},
+            timeout=TIMEOUT,
             allow_redirects=True,
         )
-        return response, round(time.monotonic() - started, 3), None
-    except Exception as exc:
-        return None, round(time.monotonic() - started, 3), (
-            f"{type(exc).__name__}: {exc}"
-        )
+    except requests.RequestException:
+        return None
 
 
-def target_info(title, url=""):
-    n = norm(f"{title} {url}")
-    targets = []
-    if "kobra" in n:
-        targets.append("KOBRA")
-    if "reina" in n:
-        targets.append("REINA")
-    return targets
+def _product_urls_from_html(html):
+    soup = BeautifulSoup(html, "html.parser")
+    urls = []
+    seen = set()
+    for anchor in soup.find_all("a", href=True):
+        url = _absolute_product_url(anchor.get("href"))
+        if "/products/" not in url.lower() or url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
+    return urls
 
 
-def discover_predictive(query):
-    endpoint = BASE + "/search/suggest.json"
-    params = {
-        "q": query,
-        "resources[type]": "product",
-        "resources[limit]": str(PREDICTIVE_LIMIT),
-        "resources[options][unavailable_products]": "show",
-    }
-
-    response, elapsed, error = get(
-        endpoint, params=params, headers=HEADERS, timeout=SEARCH_TIMEOUT
+def _catalog_json_page(session, page):
+    response = _get(
+        session,
+        CATALOG_URL + "/products.json",
+        {
+            "limit": CATALOG_PAGE_SIZE,
+            "page": page,
+        },
+        accept="application/json,text/plain,*/*",
     )
-
-    report = {
-        "endpoint": endpoint,
-        "params": params,
-        "elapsed": elapsed,
-        "http_status": response.status_code if response else None,
-        "final_url": str(response.url) if response else None,
-        "error": error,
-        "raw_product_count": 0,
-        "products": [],
-        "targets": {},
-    }
-
-    if error or response is None or response.status_code != 200:
-        if response is not None:
-            report["body_preview"] = response.text[:2000]
-        return report
-
+    if not response or response.status_code != 200:
+        return None
     try:
         payload = response.json()
-    except Exception as exc:
-        report["error"] = f"JSON decode error: {type(exc).__name__}: {exc}"
-        report["body_preview"] = response.text[:3000]
-        return report
-
-    products = (
-        payload.get("resources", {})
-        .get("results", {})
-        .get("products", [])
-    )
-
-    if not isinstance(products, list):
-        report["error"] = "Unexpected resources.results.products type"
-        return report
-
-    report["raw_product_count"] = len(products)
-
-    for index, item in enumerate(products, 1):
-        title = str(item.get("title") or "").strip()
-        url = absolute_url(item.get("url") or "")
-        handle = str(item.get("handle") or "").strip()
-
-        if not url and handle:
-            url = BASE + "/products/" + handle.strip("/")
-
-        matches = query_matches(title, query)
-        marker = contains_non_perfume_marker(title)
-        targets = target_info(title, url)
-
-        product = {
-            "index": index,
-            "title": title,
-            "url": url,
-            "handle": handle,
-            "query_matches": matches,
-            "non_perfume_marker": marker,
-            "targets": targets,
-            "raw_keys": sorted(item.keys()),
-        }
-
-        report["products"].append(product)
-
-        for target in targets:
-            report["targets"].setdefault(target.lower(), []).append(product)
-
-    return report
+    except (ValueError, TypeError):
+        return None
+    products = payload.get("products") if isinstance(payload, dict) else None
+    return products if isinstance(products, list) else None
 
 
-def inspect_product(product, query):
-    title = product.get("title", "")
-    url = product.get("url", "")
-    js_url = product_js_url(url) if url else ""
-
-    result = {
-        "candidate_title": title,
-        "candidate_url": url,
-        "js_url": js_url,
-        "candidate_query_matches": product.get("query_matches"),
-        "candidate_non_perfume_marker": product.get("non_perfume_marker"),
-        "targets": product.get("targets", []),
-        "http_status": None,
-        "elapsed": None,
-        "error": None,
-        "json_ok": False,
-        "json_title": None,
-        "json_query_matches": None,
-        "json_non_perfume_marker": None,
-        "variants_count": 0,
-        "variants": [],
-        "priced_variants": [],
-        "available_priced_variants": [],
-        "decision": "REJECT",
-        "reason": "",
-    }
-
-    if not url:
-        result["reason"] = "NO_PRODUCT_URL"
-        return result
-
-    response, elapsed, error = get(
-        js_url,
-        headers=HEADERS,
-        timeout=PRODUCT_TIMEOUT,
-    )
-
-    result["elapsed"] = elapsed
-
-    if error:
-        result["error"] = error
-        result["reason"] = "PRODUCT_JS_REQUEST_ERROR"
-        return result
-
-    result["http_status"] = response.status_code
-
-    if response.status_code != 200:
-        result["reason"] = f"PRODUCT_JS_HTTP_{response.status_code}"
-        result["body_preview"] = response.text[:1500]
-        return result
-
-    try:
-        data = response.json()
-    except Exception as exc:
-        result["error"] = f"JSON decode error: {type(exc).__name__}: {exc}"
-        result["reason"] = "PRODUCT_JS_INVALID_JSON"
-        result["body_preview"] = response.text[:1500]
-        return result
-
-    result["json_ok"] = True
-    json_title = str(data.get("title") or "").strip()
-    result["json_title"] = json_title
-    result["json_query_matches"] = query_matches(json_title, query)
-    result["json_non_perfume_marker"] = contains_non_perfume_marker(json_title)
-
-    variants = data.get("variants") or []
-    if not isinstance(variants, list):
-        variants = []
-
-    result["variants_count"] = len(variants)
-
-    for variant in variants:
-        raw_price = variant.get("price")
-        price = safe_price(raw_price)
-        available = variant.get("available")
-
-        item = {
-            "id": variant.get("id"),
-            "title": str(variant.get("title") or "").strip(),
-            "raw_price": raw_price,
-            "price": price,
-            "available": available,
-        }
-        result["variants"].append(item)
-
-        if price is not None and price > 0:
-            result["priced_variants"].append(item)
-            if available is not False:
-                result["available_priced_variants"].append(item)
-
-    if not result["json_query_matches"]:
-        result["reason"] = "PRODUCT_JSON_TITLE_QUERY_MISMATCH"
-        return result
-
-    if result["json_non_perfume_marker"]:
-        result["reason"] = "NON_PERFUME_MARKER"
-        return result
-
-    if not result["priced_variants"]:
-        result["reason"] = "NO_VALID_PRICED_VARIANT"
-        return result
-
-    result["decision"] = "ACCEPT"
-    result["reason"] = "VALID_PRODUCT"
-    return result
-
-
-def _context_snippets(text, needle, radius=500, max_matches=5):
-    text = str(text or "")
-    needle = str(needle or "")
-    if not needle:
+def _catalog_html_page(session, page):
+    response = _get(session, CATALOG_URL, {"page": page})
+    if not response or response.status_code != 200:
         return []
-
-    lowered = text.lower()
-    target = needle.lower()
-    snippets = []
-    start = 0
-
-    while len(snippets) < max_matches:
-        position = lowered.find(target, start)
-        if position < 0:
-            break
-
-        left = max(0, position - radius)
-        right = min(len(text), position + len(needle) + radius)
-
-        snippets.append({
-            "position": position,
-            "text": text[left:right],
-        })
-
-        start = position + len(needle)
-
-    return snippets
+    return _product_urls_from_html(response.text)
 
 
-def _extract_product_paths_near_target(text, target):
-    snippets = _context_snippets(text, target, radius=1800, max_matches=10)
-    results = []
-
-    patterns = [
-        r'https?://[^"\']+/products/[^"\']+',
-        r'//[^"\']+/products/[^"\']+',
-        r'["\']((?:\\?/)+products\\?/[^"\']+)["\']',
-        r'["\']((?:/|\\/)products(?:/|\\/)[^"\']+)["\']',
-        r'["\']([^"\']*rasasi[^"\']*(?:kobra|reina)[^"\']*)["\']',
-    ]
-
-    for snippet in snippets:
-        local = snippet["text"]
-
-        for pattern in patterns:
-            for match in re.finditer(pattern, local, flags=re.IGNORECASE):
-                value = match.group(1) if match.lastindex else match.group(0)
-                value = value.replace("\\/", "/")
-                results.append({
-                    "target": target,
-                    "value": value[:1000],
-                    "context_position": snippet["position"],
-                })
-
-    # Deduplicate while preserving order.
-    seen = set()
-    unique = []
-    for item in results:
-        key = item["value"]
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(item)
-
-    return unique[:30]
-
-
-def inspect_search_page(query):
-    url = LOCALIZED_BASE + "/search"
-    response, elapsed, error = get(
-        url,
-        params={"q": query},
-        headers=PAGE_HEADERS,
-        timeout=SEARCH_TIMEOUT,
+def _candidate_from_catalog_product(product):
+    if not isinstance(product, dict):
+        return None
+    url = _absolute_product_url(
+        product.get("handle") or product.get("url") or ""
     )
-
-    report = {
+    if not url:
+        return None
+    title = str(product.get("title") or "").strip()
+    vendor = str(product.get("vendor") or "").strip()
+    if not title:
+        return None
+    return {
         "url": url,
-        "elapsed": elapsed,
-        "http_status": response.status_code if response else None,
-        "final_url": str(response.url) if response else None,
-        "error": error,
-        "html_length": len(response.text) if response else 0,
-        "products": [],
-        "targets": {},
-        "raw_target_diagnostics": {},
+        "title": title,
+        "vendor": vendor,
+        "raw": product,
     }
 
-    if error or response is None or response.status_code != 200:
-        if response is not None:
-            report["body_preview"] = response.text[:2000]
-        return report
 
-    html = response.text
+def _discover_catalog(query, session):
+    """
+    Discover candidates from the store catalog, never from product-specific
+    rules. Shopify's public collection product feed is attempted first because
+    it returns many products per request. The public collection HTML is the
+    generic fallback when that feed is unavailable.
+    """
+    candidates = {}
+    query = str(query or "").strip()
 
-    # Diagnostic only: inspect the raw HTML for the two missing products.
-    # This deliberately does not change production discovery behavior.
-    for target in ("Kobra", "Reina"):
-        report["raw_target_diagnostics"][target.lower()] = {
-            "literal_occurrences": len(
-                re.findall(re.escape(target), html, flags=re.IGNORECASE)
-            ),
-            "contexts": _context_snippets(
-                html, target, radius=700, max_matches=5
-            ),
-            "product_paths_near_target": _extract_product_paths_near_target(
-                html, target
-            ),
-        }
+    first = _catalog_json_page(session, 1)
+    if first is not None:
+        for product in first:
+            candidate = _candidate_from_catalog_product(product)
+            if not candidate:
+                continue
+            if _match(
+                f"{candidate['title']} {candidate['vendor']} {candidate['url']}",
+                query,
+            ):
+                candidates[candidate["url"]] = candidate
 
-    # Inspect JSON/script containers because Shopify themes often embed
-    # product-card data there instead of ordinary <a href="/products/..."> links.
-    if BeautifulSoup is not None:
-        soup = BeautifulSoup(html, "html.parser")
+        # Continue through the public Shopify product feed until it is empty
+        # or the bounded catalog limit is reached.
+        for page in range(2, MAX_CATALOG_PAGES + 1):
+            products = _catalog_json_page(session, page)
+            if products is None or not products:
+                break
+            for product in products:
+                candidate = _candidate_from_catalog_product(product)
+                if not candidate:
+                    continue
+                if _match(
+                    f"{candidate['title']} {candidate['vendor']} {candidate['url']}",
+                    query,
+                ):
+                    candidates[candidate["url"]] = candidate
+            if len(products) < CATALOG_PAGE_SIZE:
+                break
 
-        script_report = []
-        for index, script in enumerate(soup.find_all("script"), 1):
-            script_type = str(script.get("type") or "").strip()
-            script_text = script.string or script.get_text() or ""
+        if candidates:
+            return list(candidates.values())
 
-            if not script_text:
+    # Generic HTML catalog fallback.
+    page_urls = {}
+    first_urls = _catalog_html_page(session, 1)
+    page_urls[1] = first_urls
+
+    # The first collection page publishes its pagination links. Follow only
+    # those links instead of inventing a product-specific page range.
+    response = _get(session, CATALOG_URL, {"page": 1})
+    if response and response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        for anchor in soup.find_all("a", href=True):
+            href = urljoin(BASE, anchor.get("href", "")).split("#")[0]
+            match = re.search(r"[?&]page=(\d+)", href, re.I)
+            if match:
+                page = int(match.group(1))
+                if 1 <= page <= MAX_CATALOG_PAGES:
+                    page_urls.setdefault(page, [])
+
+    def fetch(page):
+        return page, _catalog_html_page(session, page)
+
+    with ThreadPoolExecutor(
+        max_workers=min(CATALOG_WORKERS, max(1, len(page_urls)))
+    ) as pool:
+        futures = [pool.submit(fetch, page) for page in sorted(page_urls)]
+        for future in as_completed(futures):
+            _, urls = future.result()
+            for url in urls:
+                if _match(url, query):
+                    candidates[url] = {
+                        "url": url,
+                        "title": "",
+                        "vendor": "",
+                        "raw": None,
+                    }
+    return list(candidates.values())
+
+
+def _product_worker(candidate, query):
+    url = candidate["url"]
+    session = requests.Session()
+    try:
+        response = _get(
+            session,
+            _product_js_url(url),
+            accept="application/json,text/plain,*/*",
+        )
+        if not response or response.status_code != 200:
+            return []
+
+        try:
+            product = response.json()
+        except (ValueError, TypeError):
+            return []
+        if not isinstance(product, dict):
+            return []
+
+        title = str(product.get("title") or candidate.get("title") or "").strip()
+        vendor = str(
+            product.get("vendor") or candidate.get("vendor") or ""
+        ).strip()
+
+        if not title or not _match(f"{title} {vendor} {url}", query):
+            return []
+
+        image = product.get("featured_image")
+        if isinstance(image, dict):
+            image = image.get("src") or image.get("url")
+        if not image:
+            images = product.get("images") or []
+            image = images[0] if images else None
+
+        rows = []
+        variants = product.get("variants") or []
+        if not isinstance(variants, list):
+            return []
+
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            if variant.get("available") is False:
+                continue
+            price = _price(variant.get("price"))
+            if not price:
                 continue
 
-            hits = []
-            for target in ("Kobra", "Reina"):
-                if re.search(re.escape(target), script_text, flags=re.IGNORECASE):
-                    hits.append({
-                        "target": target,
-                        "contexts": _context_snippets(
-                            script_text, target, radius=500, max_matches=3
-                        ),
-                        "product_paths_near_target": _extract_product_paths_near_target(
-                            script_text, target
-                        ),
-                    })
+            variant_title = str(variant.get("title") or "").strip()
+            rows.append({
+                "store": STORE,
+                "name": title,
+                "price": price,
+                "url": url,
+                "brand": vendor or None,
+                "variant": (
+                    variant_title
+                    if variant_title.lower() not in {"default title", "default"}
+                    else None
+                ),
+                "available": variant.get("available"),
+                "image": _absolute_product_url(image) if image else None,
+                "size_ml": _size_ml(variant_title, title),
+            })
+        return rows
+    finally:
+        session.close()
 
-            if hits:
-                script_report.append({
-                    "index": index,
-                    "type": script_type,
-                    "id": str(script.get("id") or ""),
-                    "length": len(script_text),
-                    "hits": hits,
-                })
 
-        report["raw_target_diagnostics"]["script_containers"] = script_report
+def _size_ml(*values):
+    match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        " ".join(str(v or "") for v in values),
+        re.I,
+    )
+    if not match:
+        return None
+    number = float(match.group(1).replace(",", "."))
+    if match.group(2).lower() == "cl":
+        number *= 10
+    return int(number) if number.is_integer() else number
 
-    # Keep the original simple anchor parser for comparison.
-    if BeautifulSoup is None:
-        report["error"] = "beautifulsoup4_not_installed"
-        return report
 
-    soup = BeautifulSoup(html, "html.parser")
+def search_stream(query, emit):
+    query = str(query or "").strip()
+    if not query:
+        return None
+
+    session = requests.Session()
+    try:
+        candidates = _discover_catalog(query, session)
+    finally:
+        session.close()
+
+    if not candidates:
+        return None
+
+    with ThreadPoolExecutor(
+        max_workers=min(CATALOG_WORKERS, len(candidates))
+    ) as pool:
+        futures = [
+            pool.submit(_product_worker, candidate, query)
+            for candidate in candidates
+        ]
+        for future in as_completed(futures):
+            try:
+                rows = future.result() or []
+            except Exception:
+                continue
+            for row in rows:
+                if isinstance(row, dict):
+                    emit(row)
+    return None
+
+
+def search(query):
+    results = []
     seen = set()
 
-    for anchor in soup.find_all("a", href=True):
-        href = str(anchor.get("href") or "")
-        if "/products/" not in href:
-            continue
+    def emit(row):
+        key = (
+            row.get("url"),
+            row.get("variant"),
+            row.get("price"),
+        )
+        if key in seen:
+            return
+        seen.add(key)
+        results.append(row)
 
-        absolute = absolute_url(href)
-        parsed = urlparse(absolute)
-        clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-
-        if clean_url in seen:
-            continue
-        seen.add(clean_url)
-
-        text = " ".join(anchor.stripped_strings).strip()
-
-        if not text:
-            image = anchor.find("img")
-            if image:
-                text = (
-                    image.get("alt")
-                    or image.get("title")
-                    or ""
-                ).strip()
-
-        targets = target_info(text, clean_url)
-
-        product = {
-            "title_or_anchor_text": text,
-            "url": clean_url,
-            "targets": targets,
-        }
-
-        report["products"].append(product)
-
-        for target in targets:
-            report["targets"].setdefault(target.lower(), []).append(product)
-
-    return report
+    search_stream(query, emit)
+    return results[:MAX_RESULTS]
 
 
-@router.get("/diagnose-bplatz")
-def diagnose_bplatz(q: str = "Hawas"):
-    query = str(q or "").strip()
+def scrape(query):
+    return search(query)
 
+
+def diagnose(query):
+    query = str(query or "").strip()
     if not query:
+        return {"diagnostic": True, "query": query, "candidate_count": 0, "candidates": []}
+
+    session = requests.Session()
+    try:
+        candidates = _discover_catalog(query, session)
         return {
-            "ok": False,
-            "error": "empty_query",
+            "diagnostic": True,
+            "query": query,
+            "candidate_count": len(candidates),
+            "candidates": [c["url"] for c in candidates[:100]],
         }
+    finally:
+        session.close()
 
-    started = time.monotonic()
 
-    predictive = discover_predictive(query)
-    page = inspect_search_page(query)
+if __name__ == "__main__":
+    import argparse
+    import json
 
-    # Only predictive candidates that the production scraper would pass
-    # before requesting the product .js endpoint.
-    candidates = [
-        item for item in predictive["products"]
-        if item.get("query_matches")
-        and not item.get("non_perfume_marker")
-    ]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
+    args = parser.parse_args()
 
-    product_results = []
-
-    # Sequential on purpose: this is a diagnostic, not production scraping.
-    for candidate in candidates:
-        product_results.append(inspect_product(candidate, query))
-
-    final = [
-        item for item in product_results
-        if item.get("decision") == "ACCEPT"
-    ]
-
-    targets = {}
-
-    for target in ("kobra", "reina"):
-        predictive_hits = predictive["targets"].get(target, [])
-        page_hits = page["targets"].get(target, [])
-        product_hits = [
-            item for item in product_results
-            if target.upper() in item.get("targets", [])
-        ]
-
-        targets[target] = {
-            "in_predictive_search": bool(predictive_hits),
-            "predictive_hits": predictive_hits,
-            "in_localized_search_html": bool(page_hits),
-            "localized_search_hits": page_hits,
-            "reached_product_js": bool(product_hits),
-            "product_js_results": product_hits,
-        }
-
-    return {
-        "ok": True,
-        "diagnostic": "bplatz",
-        "query": query,
-        "elapsed": round(time.monotonic() - started, 3),
-        "summary": {
-            "predictive_raw_count": predictive["raw_product_count"],
-            "localized_search_html_count": len(page["products"]),
-            "pre_product_candidates": len(candidates),
-            "product_js_inspected": len(product_results),
-            "final_accepted": len(final),
-        },
-        "predictive_search": predictive,
-        "localized_search_page": page,
-        "product_stage": product_results,
-        "final_accepted": final,
-        "targets": targets,
-    }
+    print(json.dumps(
+        diagnose(args.query) if args.diagnose else search(args.query),
+        ensure_ascii=False,
+        indent=2,
+    ))
