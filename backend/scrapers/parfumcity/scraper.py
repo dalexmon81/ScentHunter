@@ -17,6 +17,13 @@ MAX_CATALOG_PAGES = 40
 MAX_RESULTS = 50
 CATALOG_WORKERS = 8
 
+class StoreRequestError(RuntimeError):
+    def __init__(self, kind, message, url=None, status_code=None):
+        super().__init__(message)
+        self.kind = kind
+        self.url = url
+        self.status_code = status_code
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -101,9 +108,48 @@ def price(value):
 
 def _get(session, url, params=None):
     try:
-        return session.get(url, params=params, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-    except requests.RequestException:
-        return None
+        response = session.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.Timeout as exc:
+        raise StoreRequestError(
+            "timeout",
+            f"timeout while requesting {url}",
+            url=url,
+        ) from exc
+    except requests.RequestException as exc:
+        raise StoreRequestError(
+            "unavailable",
+            f"request failed for {url}: {type(exc).__name__}: {exc}",
+            url=url,
+        ) from exc
+
+    if response.status_code in (403, 429):
+        raise StoreRequestError(
+            "blocked",
+            f"HTTP {response.status_code} from {url}",
+            url=url,
+            status_code=response.status_code,
+        )
+    if response.status_code >= 500:
+        raise StoreRequestError(
+            "unavailable",
+            f"HTTP {response.status_code} from {url}",
+            url=url,
+            status_code=response.status_code,
+        )
+    if response.status_code >= 400:
+        raise StoreRequestError(
+            "error",
+            f"HTTP {response.status_code} from {url}",
+            url=url,
+            status_code=response.status_code,
+        )
+    return response
 
 
 def _absolute_product_url(value):
@@ -131,36 +177,54 @@ def _catalog_candidate(product):
 
 
 def _catalog_page(session, page):
-    response = _get(session, CATALOG_URL, {"limit": CATALOG_PAGE_SIZE, "page": page})
-    if not response or response.status_code != 200:
-        return None
+    response = _get(
+        session,
+        CATALOG_URL,
+        {"limit": CATALOG_PAGE_SIZE, "page": page},
+    )
     try:
         payload = response.json()
-    except (ValueError, TypeError):
-        return None
+    except (ValueError, TypeError) as exc:
+        raise StoreRequestError(
+            "error",
+            f"invalid Shopify catalog JSON on page {page}",
+            url=CATALOG_URL,
+        ) from exc
+
     products = payload.get("products") if isinstance(payload, dict) else None
-    return products if isinstance(products, list) else None
+    if not isinstance(products, list):
+        raise StoreRequestError(
+            "error",
+            f"invalid Shopify catalog payload on page {page}",
+            url=CATALOG_URL,
+        )
+    return products
 
 
 def _discover_catalog(query, session):
     candidates = {}
-    first = _catalog_page(session, 1)
-    if first is None:
-        return []
 
     for page in range(1, MAX_CATALOG_PAGES + 1):
-        products = first if page == 1 else _catalog_page(session, page)
-        if products is None or not products:
+        products = _catalog_page(session, page)
+        if not products:
             break
+
         for product in products:
             candidate = _catalog_candidate(product)
             if not candidate:
                 continue
-            haystack = " ".join(str(candidate.get(key) or "") for key in ("title", "vendor", "url"))
+
+            haystack = " ".join(
+                str(candidate.get(key) or "")
+                for key in ("title", "vendor", "url")
+            )
+
             if matches(haystack, query):
                 candidates[candidate["url"]] = candidate
+
         if len(products) < CATALOG_PAGE_SIZE:
             break
+
     return list(candidates.values())
 
 
@@ -187,38 +251,57 @@ def _is_non_fragrance(title):
 def _product_worker(candidate, query):
     url = candidate["url"]
     session = requests.Session()
+
     try:
         response = _get(session, _product_js_url(url))
-        if not response or response.status_code != 200:
-            return []
+
         try:
             product = response.json()
-        except (ValueError, TypeError):
-            return []
+        except (ValueError, TypeError) as exc:
+            raise StoreRequestError(
+                "error",
+                f"invalid product JSON from {url}",
+                url=url,
+            ) from exc
+
         if not isinstance(product, dict):
-            return []
+            raise StoreRequestError(
+                "error",
+                f"invalid product payload from {url}",
+                url=url,
+            )
 
         name = clean(product.get("title") or candidate.get("title"))
         brand = clean(product.get("vendor") or candidate.get("vendor"))
+
         if not name or not matches(f"{name} {brand} {url}", query):
             return []
+
         if _is_non_fragrance(name):
             return []
 
         image = _extract_image(product)
         rows = []
+
         for variant in product.get("variants") or []:
             if not isinstance(variant, dict):
                 continue
+
             amount = price(variant.get("price"))
             if amount is None:
                 continue
+
             variant_title = clean(variant.get("title"))
             available = variant.get("available")
+
             rows.append({
                 "store": STORE,
                 "source": {
-                    "source_name": name if not variant_title or variant_title.lower() == "default title" else f"{name} {variant_title}",
+                    "source_name": (
+                        name
+                        if not variant_title or variant_title.lower() == "default title"
+                        else f"{name} {variant_title}"
+                    ),
                     "source_brand": brand or None,
                     "url": url,
                     "image": image,
@@ -226,20 +309,39 @@ def _product_worker(candidate, query):
                 "identity": {
                     "gtin": None,
                     "mpn": None,
-                    "sku": ({"value": str(variant.get("sku")), "source": "shopify_variant"} if variant.get("sku") else None),
-                    "store_product_id": ({"value": product.get("id"), "source": "shopify_product"} if product.get("id") is not None else None),
-                    "store_variant_id": ({"value": variant.get("id"), "source": "shopify_variant"} if variant.get("id") is not None else None),
+                    "sku": (
+                        {"value": str(variant.get("sku")), "source": "shopify_variant"}
+                        if variant.get("sku") else None
+                    ),
+                    "store_product_id": (
+                        {"value": product.get("id"), "source": "shopify_product"}
+                        if product.get("id") is not None else None
+                    ),
+                    "store_variant_id": (
+                        {"value": variant.get("id"), "source": "shopify_variant"}
+                        if variant.get("id") is not None else None
+                    ),
                 },
                 "attributes": {
-                    "size_ml": ({"value": size_ml(variant_title, name), "source": "product_variant"} if size_ml(variant_title, name) is not None else None),
-                    "concentration": ({"value": concentration(variant_title, name), "source": "product_title"} if concentration(variant_title, name) else None),
+                    "size_ml": (
+                        {"value": size_ml(variant_title, name), "source": "product_variant"}
+                        if size_ml(variant_title, name) is not None else None
+                    ),
+                    "concentration": (
+                        {"value": concentration(variant_title, name), "source": "product_title"}
+                        if concentration(variant_title, name) else None
+                    ),
                     "gender": {"value": "unknown", "source": "not_explicit"},
                     "packaging_type": {"value": "product", "source": "default"},
                 },
                 "offer": {
                     "price": amount,
                     "currency": "EUR",
-                    "availability": "in_stock" if available is True else "out_of_stock" if available is False else "unknown",
+                    "availability": (
+                        "in_stock" if available is True
+                        else "out_of_stock" if available is False
+                        else "unknown"
+                    ),
                 },
                 "provenance": {
                     "source_page": url,
@@ -252,46 +354,92 @@ def _product_worker(candidate, query):
                 "url": url,
                 "available": available,
             })
+
         return rows
+
     finally:
         session.close()
+
+
+def _report(status, results=None, error=None, details=None):
+    return {
+        "status": status,
+        "results": results or [],
+        "error": error,
+        "details": details or {},
+    }
 
 
 def search_stream(query, emit):
     query = clean(query)
     if not query:
-        return None
+        return _report("error", error="empty_query")
+
     session = requests.Session()
+
     try:
-        candidates = _discover_catalog(query, session)
+        try:
+            candidates = _discover_catalog(query, session)
+        except StoreRequestError as exc:
+            return _report(
+                exc.kind,
+                error=str(exc),
+                details={"url": exc.url, "status_code": exc.status_code},
+            )
     finally:
         session.close()
-    if not candidates:
-        return None
 
-    with ThreadPoolExecutor(max_workers=min(CATALOG_WORKERS, len(candidates))) as pool:
-        futures = [pool.submit(_product_worker, candidate, query) for candidate in candidates]
+    if not candidates:
+        return _report("success", results=[])
+
+    results = []
+    failures = []
+
+    with ThreadPoolExecutor(
+        max_workers=min(CATALOG_WORKERS, len(candidates))
+    ) as pool:
+        futures = {
+            pool.submit(_product_worker, candidate, query): candidate
+            for candidate in candidates
+        }
+
         for future in as_completed(futures):
+            candidate = futures[future]
+
             try:
                 rows = future.result() or []
-            except Exception:
+            except StoreRequestError as exc:
+                failures.append({
+                    "url": candidate.get("url"),
+                    "status": exc.kind,
+                    "error": str(exc),
+                })
                 continue
+            except Exception as exc:
+                failures.append({
+                    "url": candidate.get("url"),
+                    "status": "error",
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                continue
+
             for row in rows:
                 if isinstance(row, dict):
+                    results.append(row)
                     emit(row)
-    return None
+
+    return _report(
+        "partial" if failures else "success",
+        results=results,
+        details={
+            "candidate_count": len(candidates),
+            "failed_candidates": failures,
+        },
+    )
 
 
 def search(query):
-    results = []
-    seen = set()
-    def emit(row):
-        key = (row.get("url"), (row.get("identity", {}).get("store_variant_id") or {}).get("value"), row.get("price"))
-        if key not in seen:
-            seen.add(key)
-            results.append(row)
-    search_stream(query, emit)
-    return results[:MAX_RESULTS]
+    return search_stream(query, lambda row: None)
 
 
 def scrape(query):
@@ -301,11 +449,34 @@ def scrape(query):
 def diagnose(query):
     query = clean(query)
     if not query:
-        return {"diagnostic": True, "query": query, "candidate_count": 0, "candidates": []}
+        return {
+            "diagnostic": True,
+            "query": query,
+            "status": "error",
+            "candidate_count": 0,
+            "candidates": [],
+        }
+
     session = requests.Session()
     try:
-        candidates = _discover_catalog(query, session)
-        return {"diagnostic": True, "query": query, "candidate_count": len(candidates), "candidates": [candidate["url"] for candidate in candidates[:100]]}
+        try:
+            candidates = _discover_catalog(query, session)
+            return {
+                "diagnostic": True,
+                "query": query,
+                "status": "success",
+                "candidate_count": len(candidates),
+                "candidates": [candidate["url"] for candidate in candidates[:100]],
+            }
+        except StoreRequestError as exc:
+            return {
+                "diagnostic": True,
+                "query": query,
+                "status": exc.kind,
+                "error": str(exc),
+                "candidate_count": 0,
+                "candidates": [],
+            }
     finally:
         session.close()
 
