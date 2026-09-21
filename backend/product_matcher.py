@@ -210,6 +210,7 @@ class CatalogProduct:
     family_name: str = ""
     catalog_variant: str = ""
     concentration: str = ""
+    canonical_image: str = ""
 
     @classmethod
     def from_dict(
@@ -294,6 +295,13 @@ class CatalogProduct:
             family_name=family_name,
             catalog_variant=canonical_name,
             concentration=str(data.get("concentration") or "").strip(),
+            canonical_image=str(
+                data.get("canonical_image")
+                or data.get("image")
+                or data.get("product_image")
+                or data.get("image_url")
+                or ""
+            ).strip(),
         )
 
     @property
@@ -829,115 +837,62 @@ class ProductMatcher:
         if not self._brand_matches(offer_brand, family.get("brand", "")):
             return None
 
-        # A retailer can expose two different names for the same offer:
-        # ``offer.name`` may contain only the base product while
-        # ``source.source_name`` preserves the complete retailer title.
-        # Evaluate both instead of treating source_name only as a fallback.
-        # This is important for distinct family variants such as
-        # "Liquid Brun" vs "Liquid Brun Limited Edition".
-        name_candidates: List[str] = []
-        seen_name_candidates: set[str] = set()
+        raw_name = first_value(offer, self.NAME_KEYS)
+        if not raw_name:
+            source = _nested_source(offer)
+            raw_name = first_value(source, ("source_name", "name", "title"))
 
-        for key in self.NAME_KEYS:
-            value = first_value(offer, (key,))
-            if value:
-                text = str(value).strip()
-                if text and text not in seen_name_candidates:
-                    seen_name_candidates.add(text)
-                    name_candidates.append(text)
-
-        source = _nested_source(offer)
-        for key in ("source_name", "name", "title"):
-            value = first_value(source, (key,))
-            if value:
-                text = str(value).strip()
-                if text and text not in seen_name_candidates:
-                    seen_name_candidates.add(text)
-                    name_candidates.append(text)
-
-        if not name_candidates:
+        candidate = self._remove_brand(raw_name, family.get("brand", ""))
+        candidate_key = catalog_variant_key(candidate)
+        if not candidate_key:
             return None
 
-        excluded = {
+        excluded = tuple(
             catalog_variant_key(value)
-            for value in (
-                *family.get("excluded_products", ()),
-                *family.get("excluded_aliases", ()),
-            )
-        }
+            for value in (*family.get("excluded_products", ()), *family.get("excluded_aliases", ()))
+        )
+        if candidate_key in excluded:
+            return None
 
-        # Resolve every available name independently. If more than one name
-        # resolves, prefer the identity carrying the greatest number of
-        # variant-specific tokens. This lets a complete source title refine a
-        # generic scraper name without any retailer- or product-specific rule.
         name_variant: Optional[Dict[str, Any]] = None
-        name_variant_specificity = -1
 
-        for raw_name in name_candidates:
-            candidate = self._remove_brand(raw_name, family.get("brand", ""))
-            candidate_key = catalog_variant_key(candidate)
-            if not candidate_key or candidate_key in excluded:
-                continue
+        for variant in family["variants"]:
+            if candidate_key in variant["normalized_aliases"]:
+                name_variant = variant
+                break
 
-            candidate_variant: Optional[Dict[str, Any]] = None
+        # Retailers may append or insert audience/editorial labels around the
+        # actual variant name. These labels are not part of the variant identity.
+        if name_variant is None:
+            editorial_tokens = {
+                "men", "women", "man", "woman", "heren", "dames",
+            }
+            stripped_tokens = [
+                token for token in candidate_key.split()
+                if token not in editorial_tokens
+            ]
+            stripped_key = " ".join(stripped_tokens).strip()
+            if stripped_key != candidate_key:
+                for variant in family["variants"]:
+                    if stripped_key in variant["normalized_aliases"]:
+                        name_variant = variant
+                        break
 
-            for variant in family["variants"]:
-                if candidate_key in variant["normalized_aliases"]:
-                    candidate_variant = variant
-                    break
-
-            # Retailers may append or insert audience/editorial labels around
-            # the actual variant name. These labels are not part of identity.
-            if candidate_variant is None:
-                editorial_tokens = {
-                    "men", "women", "man", "woman", "heren", "dames",
-                }
-                stripped_tokens = [
-                    token
-                    for token in candidate_key.split()
-                    if token not in editorial_tokens
-                ]
-                stripped_key = " ".join(stripped_tokens).strip()
-                if stripped_key != candidate_key:
-                    for variant in family["variants"]:
-                        if stripped_key in variant["normalized_aliases"]:
-                            candidate_variant = variant
-                            break
-
-            # "for men" / "for women" can survive as two tokens after the
-            # first pass; remove the complete phrase only when it produces an
-            # exact family alias.
-            if candidate_variant is None:
-                stripped_for_tokens = re.sub(
-                    r"\bfor\s+(?:men|women|him|her)\b",
-                    " ",
-                    candidate_key,
-                    flags=re.I,
-                )
-                stripped_for_tokens = re.sub(
-                    r"\s+", " ", stripped_for_tokens
-                ).strip()
-                if stripped_for_tokens != candidate_key:
-                    for variant in family["variants"]:
-                        if stripped_for_tokens in variant["normalized_aliases"]:
-                            candidate_variant = variant
-                            break
-
-            if candidate_variant is None:
-                continue
-
-            specificity_key = self._variant_specificity_key(
-                candidate_variant.get("canonical_name", ""),
-                family.get("brand", ""),
+        # "for men" / "for women" can survive as two tokens after the first
+        # pass; remove the complete phrase only when it produces an exact alias.
+        if name_variant is None:
+            stripped_for_tokens = re.sub(
+                r"\bfor\s+(?:men|women|him|her)\b",
+                " ",
+                candidate_key,
+                flags=re.I,
             )
-            specificity = len(set(specificity_key.split()))
-
-            if (
-                name_variant is None
-                or specificity > name_variant_specificity
-            ):
-                name_variant = candidate_variant
-                name_variant_specificity = specificity
+            stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
+            if stripped_for_tokens != candidate_key:
+                for variant in family["variants"]:
+                    if stripped_for_tokens in variant["normalized_aliases"]:
+                        name_variant = variant
+                        break
 
         # The retailer name can be generic while the URL still contains the
         # actual variant. Resolve URL evidence generically against the family
@@ -1013,9 +968,8 @@ class ProductMatcher:
                         # variant-bearing tokens.  Use the same generic
                         # specificity vocabulary used elsewhere in the family
                         # matcher.  This prevents a URL such as
-                        # ``hawas-for-him-chrome`` from scoring the generic
-                        # ``Hawas for Him`` alias above the more specific
-                        # ``Hawas Chrome`` identity.
+                        # a more specific variant URL from scoring above the
+                        # generic family alias.
                         alias_key = self._variant_specificity_key(
                             alias,
                             family.get("brand", ""),
@@ -1125,7 +1079,7 @@ class ProductMatcher:
             # canonical product URL contains the exact variant.  When URL
             # evidence is very strong, it must be allowed to override an
             # equally-specific name variant; otherwise cases such as
-            # ``Hawas for Him`` + a ``hawas-malibu`` URL remain contaminated.
+            # a generic family name paired with a more specific URL remain contaminated.
             # This is generic family-level logic: no retailer or product is
             # hard-coded here.
             if name_variant is None or (
@@ -1160,7 +1114,7 @@ class ProductMatcher:
 
         # Legacy catalog rows can store the family/variant name in
         # ``family_name`` or aliases while ``canonical_name`` is only the
-        # shorter collection name (e.g. Valentino Born in Roma Uomo).  The
+        # shorter collection name. The
         # family registry is the canonical variant vocabulary, so resolve the
         # corresponding catalog record by exact canonical/alias identity before
         # falling back to a deterministic family ID.
@@ -1249,6 +1203,7 @@ class ProductMatcher:
                 "match_method": "family_registry_alias",
                 "match_score": 1.0,
                 "product_identity": catalog_id,
+                "canonical_image": catalog_product.canonical_image if catalog_product is not None else "",
             }
         )
 
@@ -1271,14 +1226,6 @@ class ProductMatcher:
         if variant is None:
             return None
 
-        # Surgical handling for the verified orphan catalog variant
-        # "Hawas Lava Gold".  The family registry already knows the variant;
-        # once it has been identified, use the normal family-result builder so
-        # catalog identity, size and product_identity are populated exactly
-        # like every other family variant.
-        if variant.get("canonical_name") == "Hawas Lava Gold":
-            return self._build_family_result(offer, family, variant)
-
         query_is_family = catalog_variant_key(query) in family["normalized_query_aliases"]
         requested = self._requested_variant(query, family)
 
@@ -1295,57 +1242,32 @@ class ProductMatcher:
         offer: Dict[str, Any],
         query: str,
     ) -> Optional[Dict[str, Any]]:
-        started = time.perf_counter()
+        """Backward-compatible wrapper around the single public resolver.
 
-        store = str(offer.get("store") or "")
-        raw_name = str(
-            offer.get("name") or offer.get("title") or offer.get("product_name") or ""
-        )
-
-        # Never treat samples/decants/testers as full-size fragrance offers.
-        # This guard runs before family and generic matching, so removing bottle
-        # size from identity normalization can never turn a sample into a product.
-        identity_text = " ".join(
-            str(offer.get(key) or "")
-            for key in ("name", "title", "product_name")
-        )
-        if re.search(
-            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
-            identity_text,
-            flags=re.I,
-        ):
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                "method=sample_or_tester",
-                flush=True,
-            )
+        There is intentionally only one identity engine: ``match_offer``.
+        Older callers may still call ``match(offer, query)``; this wrapper
+        converts that call into the same catalog-derived query scope and then
+        returns the legacy ``dict | None`` shape.
+        """
+        query_scope = self.build_query_scope(query)
+        resolved = self.match_offer(offer, query_scope)
+        if not isinstance(resolved, dict) or resolved.get("status") != "matched":
             return None
 
-        family = self._family_for_query(query)
-        if family is not None:
-            result = self._match_family(offer, query, family)
-            elapsed_ms = (time.perf_counter() - started) * 1000.0
-            if result is None:
-                print(
-                    "SCENTHUNTER: MATCHER_REJECTED "
-                    f"store={store!r} name={raw_name!r} "
-                    f"method=rejected elapsed_ms={elapsed_ms:.1f}",
-                    flush=True,
-                )
-                return None
-
-            print(
-                "SCENTHUNTER: MATCHER_RESULT "
-                f"store={store!r} raw_name={raw_name!r} "
-                f"family_id={result.get('family_id')!r} "
-                f"canonical_name={result.get('canonical_name')!r} "
-                f"method={result.get('match_method')} elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
-            )
-            return result
-
-        return self._match_generic(offer, query, started)
+        result = dict(offer)
+        result.update({
+            "catalog_id": resolved.get("catalog_id"),
+            "family_id": resolved.get("family_id", ""),
+            "family_name": resolved.get("family", ""),
+            "canonical_name": resolved.get("canonical_name"),
+            "canonical_brand": resolved.get("brand"),
+            "catalog_variant": resolved.get("variant"),
+            "canonical_image": resolved.get("canonical_image") or "",
+            "match_method": resolved.get("match_method", "central_match"),
+            "match_score": resolved.get("confidence", 0.0),
+            "product_identity": resolved.get("catalog_id"),
+        })
+        return result
 
     def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
         """Return compact, JSON-safe identity candidates for diagnostics.
@@ -1471,16 +1393,15 @@ class ProductMatcher:
                     or candidate.endswith(" " + q)
                     or (" " + q + " ") in (" " + candidate + " ")
                 ):
-                    # Phrase containment is useful for family/variant queries
-                    # (e.g. "Boss Bottled" -> "Boss Bottled Elixir"), but
+                    # Phrase containment is useful for family/variant queries, but
                     # never use arbitrary substring containment.  Otherwise a
                     # short catalog name such as "Le" can become a candidate
                     # for an unrelated query simply because "le" occurs inside
                     # another word.
                     score = max(score, 0.90)
                 elif len(q.split()) == 1 and q in c_tokens:
-                    # Single-token family queries such as "Hawas" should keep
-                    # the variants "Hawas Ice", "Hawas Kobra", etc.
+                    # Single-token family queries should keep their registered
+                    # variants.
                     score = max(score, 0.75)
                 best = max(best, score)
             if best >= 0.55:
@@ -1570,7 +1491,7 @@ class ProductMatcher:
         """Resolve a concentration descriptor that is safe to compare with an offer URL.
 
         Some catalog identities use a concentration word as part of the
-        canonical variant name (for example, ``Boss Bottled Elixir``). In
+        canonical variant name. In
         those cases the structured ``concentration`` value is identity
         metadata, not evidence that an URL's EDP/EDT descriptor must match
         ``Elixir``. Returning an empty comparison token preserves the variant
@@ -1580,7 +1501,7 @@ class ProductMatcher:
         name_text = catalog_norm(product.name)
 
         # A concentration word embedded in the canonical identity (for example
-        # ``Elixir`` in Boss Bottled Elixir or ``Parfum`` in Boss Bottled Parfum)
+        # an identity token that also resembles a concentration descriptor)
         # is an identity token, not reliable evidence that the retailer URL's
         # concentration descriptor must agree with it.  Keep it in the lexical
         # identity score and remove it from the separate concentration penalty.
@@ -1638,8 +1559,8 @@ class ProductMatcher:
                         "edp_intense", "edt_intense",
                     }
                     # A concentration token can itself be part of the
-                    # canonical product identity (e.g. Boss Bottled Parfum,
-                    # Boss Bottled Eau de Parfum, or Boss Bottled Elixir).
+                    # canonical product identity when the concentration token is part of
+                    # the product's canonical name.
                     # Remove concentration descriptors only when they are
                     # NOT identity-bearing in the catalog name.  Otherwise a
                     # specific catalog identity collapses to the generic
@@ -1682,8 +1603,8 @@ class ProductMatcher:
                         continue
                     # Keep a concentration token in the URL when the
                     # candidate product uses that token as part of its own
-                    # identity.  For a generic product (e.g. Boss Bottled),
-                    # the same URL token remains descriptive and is removed.
+                    # identity. For a generic product, the same URL token remains
+                    # descriptive and is removed.
                     identity_candidate_token_set = set(identity_candidate.split())
                     identity_url = " ".join(
                         token
@@ -1729,7 +1650,7 @@ class ProductMatcher:
 
                     # When two candidates have the same core score, prefer the one
                     # whose non-concentration identity is more specific.  This is
-                    # generic: ``Infinite`` beats the shorter ``Boss Bottled``
+                    # generic: a more specific identity beats a shorter family identity
                     # identity when the URL explicitly contains ``Infinite``.
                     specificity = len(identity_c_tokens)
                     if (
@@ -1798,6 +1719,8 @@ class ProductMatcher:
                     "canonical_name": family_result.get("canonical_name"),
                     "confidence": family_result.get("match_score", 1.0),
                     "matched_alias": family_result.get("canonical_name"),
+                    "canonical_image": family_result.get("canonical_image") or "",
+                    "match_method": family_result.get("match_method", "family_registry_alias"),
                 }
 
         candidates = list(query_scope.get("candidates") or [])
@@ -1843,8 +1766,8 @@ class ProductMatcher:
 
         # First establish whether the URL contains a sufficiently specific
         # catalog identity.  If it does, use URL scores consistently across
-        # all candidates so an exact generic name (e.g. "Boss Bottled") cannot
-        # defeat a more specific variant found in the URL.
+        # all candidates so an exact generic name cannot defeat a more specific
+        # variant found in the URL.
         url_matches = [
             (product, *self._url_candidate_score(offer, product))
             for product in eligible
@@ -1908,193 +1831,8 @@ class ProductMatcher:
             "matched_alias": best_alias,
         }
 
-    def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
-        """Resolve a generic offer with identifiers, name evidence and URL identity.
 
-        Retailer display names are not authoritative: a product card can carry a
-        shortened or neighbouring-product name while the product URL contains the
-        exact variant. URL evidence is therefore used generically across the
-        catalog, with specificity tie-breaking, before accepting a weaker text
-        match. No retailer- or product-specific rule is used here.
-        """
-        gtin = identifier(offer, self.GTIN_KEYS)
-        if gtin in self._by_gtin and len(self._by_gtin[gtin]) == 1:
-            return self._by_gtin[gtin][0], "gtin", 1.0
 
-        mpn = identifier(offer, self.MPN_KEYS)
-        if mpn in self._by_mpn and len(self._by_mpn[mpn]) == 1:
-            return self._by_mpn[mpn][0], "mpn", 0.99
-
-        catalog_id = identifier(offer, self.CATALOG_KEYS)
-        if catalog_id in self._by_catalog_id:
-            return self._by_catalog_id[catalog_id], "catalog_id", 0.98
-
-        brand = self._offer_brand(offer)
-        name = self._offer_name(offer)
-        if not name:
-            return None, "none", 0.0
-
-        eligible = []
-        normalized_brand = normalize(brand)
-        for product in self.catalog:
-            if normalized_brand and product.normalized_brand:
-                product_brand = normalize(product.brand)
-                if (
-                    normalized_brand != product_brand
-                    and normalized_brand not in product_brand
-                    and product_brand not in normalized_brand
-                ):
-                    continue
-            eligible.append(product)
-
-        # First resolve the strongest textual candidate for the fallback path.
-        best_text_product: Optional[CatalogProduct] = None
-        best_text_score = 0.0
-        best_text_specificity = -1
-        for product in eligible:
-            score = self._text_score(brand, name, product)
-            specificity = len(
-                set(self._variant_specificity_key(product.name, product.brand).split())
-            )
-            if (
-                score > best_text_score
-                or (
-                    abs(score - best_text_score) < 0.03
-                    and specificity > best_text_specificity
-                )
-            ):
-                best_text_product = product
-                best_text_score = score
-                best_text_specificity = specificity
-
-        # URL evidence is independent of retailer and can discover a stronger
-        # catalog identity than the scraped name. This is what prevents a
-        # generic ``Boss Bottled`` display name from defeating a
-        # ``bottled-beyond-intense`` URL.
-        best_url_product: Optional[CatalogProduct] = None
-        best_url_score = 0.0
-        best_url_specificity = -1
-        for product in eligible:
-            score, _alias = self._url_candidate_score(offer, product)
-            specificity = len(
-                set(self._variant_specificity_key(product.name, product.brand).split())
-            )
-            if (
-                score > best_url_score
-                or (
-                    abs(score - best_url_score) < 0.03
-                    and specificity > best_url_specificity
-                )
-            ):
-                best_url_product = product
-                best_url_score = score
-                best_url_specificity = specificity
-
-        if best_url_product is not None and best_url_score >= 0.72:
-            # Strong URL identity wins when it is more specific than the text
-            # candidate, or when the URL itself is materially stronger.
-            if (
-                best_text_product is None
-                or best_url_specificity > best_text_specificity
-                or best_url_score - best_text_score >= 0.12
-            ):
-                return best_url_product, "url_identity", best_url_score
-
-        if best_text_product is None or best_text_score < 0.86:
-            return None, "none", best_text_score
-        return best_text_product, (
-            "exact_name" if best_text_score >= 0.94 else "token_score"
-        ), best_text_score
-
-    @staticmethod
-    def _text_score(
-        brand: str,
-        name: str,
-        product: CatalogProduct,
-    ) -> float:
-        brand_score = 1.0 if brand and brand == product.normalized_brand else 0.0
-        best = 0.0
-
-        for candidate in (product.normalized_name, *product.normalized_aliases):
-            if not candidate:
-                continue
-            if name == candidate:
-                best = max(best, 1.0)
-                continue
-
-            query_tokens = set(name.split())
-            candidate_tokens = set(candidate.split())
-            intersection = len(query_tokens & candidate_tokens)
-            recall = intersection / len(candidate_tokens) if candidate_tokens else 0.0
-            precision = intersection / max(1, len(query_tokens))
-            f_score = (
-                2 * recall * precision / (recall + precision)
-                if recall + precision
-                else 0.0
-            )
-
-            # Preserve the original matcher rule: generic matching must not
-            # promote a shorter query merely because it is a substring of a
-            # longer canonical name.
-            if candidate in name:
-                f_score = max(f_score, 0.92)
-
-            best = max(best, f_score)
-
-        return 0.45 + 0.55 * best if brand_score else 0.95 * best
-
-    def _match_generic(
-        self,
-        offer: Dict[str, Any],
-        query: str,
-        started: float,
-    ) -> Optional[Dict[str, Any]]:
-        product, method, score = self._best_match(offer)
-        elapsed_ms = (time.perf_counter() - started) * 1000.0
-
-        if product is None:
-            print(
-                "SCENTHUNTER: MATCHER_UNRESOLVED "
-                f"store={offer.get('store', '')!r} "
-                f"name={offer.get('name', '')!r} "
-                f"score={score:.4f} elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
-            )
-            return None
-
-        result = dict(offer)
-        result.update(
-            {
-                "catalog_id": product.catalog_id,
-                "family_id": product.family_id,
-                "family_name": product.family_name,
-                "canonical_name": product.name,
-                "canonical_brand": product.brand,
-                "catalog_variant": product.catalog_variant or product.name,
-                "match_method": method if method != "none" else "generic",
-                "match_score": round(score, 4),
-                "product_identity": product.catalog_id,
-            }
-        )
-
-        resolved_size = size_ml(offer)
-        if resolved_size is not None:
-            result["size_ml"] = resolved_size
-            result["variant_id"] = f"{product.catalog_id}:{resolved_size:g}"
-        else:
-            result["variant_id"] = product.catalog_id
-
-        print(
-            "SCENTHUNTER: MATCHER_RESULT "
-            f"store={offer.get('store', '')!r} "
-            f"raw_name={offer.get('name', '')!r} "
-            f"catalog_id={product.catalog_id!r} "
-            f"canonical_name={product.name!r} "
-            f"method={result['match_method']} score={score:.4f} "
-            f"elapsed_ms={elapsed_ms:.1f}",
-            flush=True,
-        )
-        return result
 
 
 _MATCHER_CACHE: Dict[Tuple[int, int], ProductMatcher] = {}
