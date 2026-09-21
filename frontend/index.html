@@ -698,7 +698,8 @@ function displayStoreName(v){
     parfumzentrum:"ParfumZentrum",
     perfumemarket:"PerfumeMarket",
     sabina:"Sabina",
-    orioudh:"Orioudh"
+    orioudh:"Orioudh",
+     easycosmetic:"Easycosmetic"
   };
   return names[key]||String(v??"");
 }
@@ -828,7 +829,7 @@ function showProducts(groups){
   });
   currentProductGroups=list;
   clearOpenProduct();
-  statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"Nessun risultato trovato.";
+  statusBox.textContent=list.length?`${list.length}${list.length===1?" prodotto trovato.":" prodotti trovati."}`:"";
   resultsBox.innerHTML=list.map((g,i)=>{
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
@@ -902,6 +903,38 @@ async function fetchJSONWithTimeout(url,ms=90000){
   finally{clearTimeout(timer)}
 }
 
+function renderStoreDiagnostics(data){
+  const stores=(data&&typeof data.stores==="object"&&data.stores)?data.stores:{};
+  const errors=(data&&typeof data.errors==="object"&&data.errors)?data.errors:{};
+  const entries=Object.entries(stores);
+  const problematic=entries.filter(([_,v])=>{
+    const status=String(v?.status||"").toLowerCase();
+    return v?.verified===false || ["error","timeout","blocked","unavailable"].includes(status);
+  });
+  const errorEntries=Object.entries(errors);
+  if(!problematic.length && !errorEntries.length){
+    errorsBox.innerHTML="";
+    return;
+  }
+  const byStore=new Map();
+  problematic.forEach(([store,v])=>{
+    byStore.set(store,{
+      store,
+      status:String(v?.status||"unavailable").toUpperCase(),
+      error:errors[store]||"Store non verificato"
+    });
+  });
+  errorEntries.forEach(([store,error])=>{
+    if(!byStore.has(store)){
+      byStore.set(store,{store,status:"ERROR",error:String(error||"Errore tecnico")});
+    }
+  });
+  const rows=[...byStore.values()].map(x=>
+    `<div style="margin-top:5px"><strong>${esc(displayStoreName(x.store))}</strong> — ${esc(x.status)}${x.error?` — ${esc(x.error)}`:""}</div>`
+  ).join("");
+  errorsBox.innerHTML=`<div style="color:#e7b83f;font-weight:900;margin-bottom:6px">Problemi tecnici durante la ricerca</div>${rows}`;
+}
+
 async function searchStoresProgressive(term,onPartial){
   const query=String(term||"").trim();
   const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{},stores:{}};
@@ -950,8 +983,22 @@ async function searchPerfume(){
       }
       updateBestPricesFromGroups(groups);
       refreshWishlistFromResults(groups.flatMap(g=>(g.offers||[]).map(o=>({catalog_id:g.catalog_id,name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_num,store:o.store||"",url:o.url||""}))));
-      errorsBox.innerHTML="";
-      if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+      renderStoreDiagnostics(data||{});
+      const stores=(data&&typeof data.stores==="object"&&data.stores)?data.stores:{};
+      const storeEntries=Object.values(stores);
+      const hasUnverified=storeEntries.some(v=>v?.verified===false || ["error","timeout","blocked","unavailable"].includes(String(v?.status||"").toLowerCase()));
+      const hasErrors=Boolean(data&&data.errors&&Object.keys(data.errors).length);
+      if(final){
+        if(groups.length && (hasUnverified||hasErrors)){
+          statusBox.textContent=`${groups.length}${groups.length===1?" prodotto trovato":" prodotti trovati"} — ricerca parziale: alcuni store non sono stati verificati.`;
+        }else if(groups.length){
+          statusBox.textContent=`Ricerca completata: ${groups.length} ${groups.length===1?"prodotto":"prodotti"} trovati.`;
+        }else if(hasUnverified||hasErrors){
+          statusBox.textContent="Ricerca non verificata: alcuni store non hanno potuto essere controllati.";
+        }else{
+          statusBox.textContent="Nessun risultato trovato.";
+        }
+      }
     };
     const data=await searchStoresProgressive(q,renderData);
     renderData(data,true);
