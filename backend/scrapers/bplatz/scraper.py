@@ -210,7 +210,21 @@ def _worker(candidate, query):
     finally: session.close()
 
 def _report(status, results=None, error=None, details=None):
-    return {"status": status, "results": results or [], "error": error, "details": details or {}}
+    details = details or {}
+    # The main process reads verification from the top-level report.
+    # Keep it explicit so a verified empty catalog is NOT retried as an error,
+    # while partial/technical failures remain unverified.
+    if "verified" in details:
+        verified = bool(details["verified"])
+    else:
+        verified = str(status).strip().lower() == "success"
+    return {
+        "status": status,
+        "verified": verified,
+        "results": results or [],
+        "error": error,
+        "details": details,
+    }
 
 def search_stream(query, emit=None):
     query = clean(query)
