@@ -59,7 +59,7 @@ PRICE_RE = re.compile(
 )
 
 PRODUCT_PATH_RE = re.compile(
-    r"/(?:product|produit|producto|prodotto)/\d+/",
+    r"/(?:product|produit|producto|prodotto)(?:/|\-)",
     re.I,
 )
 
@@ -351,7 +351,7 @@ def product_url(raw_url):
     return url if is_product_url(url) else ""
 
 
-def _candidate_product_urls(html, query=None):
+def _candidate_product_urls(html, query=None, discovery_query=None):
     """Extract product URLs from normal links and serialized page data."""
 
     soup = BeautifulSoup(html or "", "html.parser")
@@ -363,11 +363,18 @@ def _candidate_product_urls(html, query=None):
         if not url or url in seen:
             return
 
-        if query and not query_matches(
-            f"{context} {url}",
-            query,
-        ):
-            return
+        # Discovery is intentionally broader than final matching. Search
+        # pages can omit part of a product title from the anchor text or
+        # render it only in serialized data. Require at least one meaningful
+        # discovery token here; _parse_product_page() remains authoritative
+        # and validates the complete original query against the real product
+        # name.
+        discovery = clean(discovery_query or query)
+        if discovery:
+            wanted = tokens(discovery)
+            hay = tokens(f"{context} {url}")
+            if wanted and not (wanted & hay):
+                return
 
         seen.add(url)
         found.append(url)
@@ -382,9 +389,9 @@ def _candidate_product_urls(html, query=None):
 
     patterns = (
         r'https?://(?:www\.)?deloox\.be/[^"\'<>\s]+/'
-        r'(?:product|produit|producto|prodotto)/\d+/[^"\'<>\s?#]+',
+        r'(?:product|produit|producto|prodotto)(?:/|-)[^"\'<>\s?#]+',
         r'["\']((?:/)?(?:en/|nl/|fr/|it/)?'
-        r'(?:product|produit|producto|prodotto)/\d+/'
+        r'(?:product|produit|producto|prodotto)(?:/|-)'
         r'[^"\']+)["\']',
     )
 
@@ -541,41 +548,70 @@ def _search_endpoints(query):
     )
 
 
+def _candidate_queries(query):
+    q = clean(query)
+    if not q:
+        return []
+    variants = [q]
+    parts = q.split()
+    removable = {
+        "parfum", "perfume", "eau", "de", "toilette", "edt", "edp",
+        "extrait", "extract", "for", "the", "and", "by",
+    }
+    broad = " ".join(p for p in parts if p.lower() not in removable).strip()
+    if broad and norm(broad) != norm(q):
+        variants.append(broad)
+    for token in sorted(tokens(q), key=lambda x: (-len(x), x)):
+        if token not in variants:
+            variants.append(token)
+    out=[]; seen=set()
+    for item in variants:
+        key=norm(item)
+        if key and key not in seen:
+            seen.add(key); out.append(item)
+    return out
+
+
 def _discover_from_search(session, query, candidates):
-    """Use Deloox search endpoints as generic discovery fallbacks."""
+    """Use current Deloox search endpoints with generic discovery broadening."""
+    for discovery_query in _candidate_queries(query):
+        encoded = quote_plus(discovery_query)
+        endpoints = (
+            BASE + f"/chercher.html?q={encoded}",
+            BASE + f"/en/search?query={encoded}",
+            BASE + f"/en/search?q={encoded}",
+            BASE + f"/nl/zoeken?query={encoded}",
+            BASE + f"/nl/zoeken?q={encoded}",
+            BASE + f"/fr/recherche?query={encoded}",
+            BASE + f"/fr/recherche?q={encoded}",
+        )
 
-    for endpoint in _search_endpoints(query):
-        if len(candidates) >= MAX_CANDIDATES:
-            break
-
-        try:
-            response = _request(session, endpoint)
-        except StoreRequestError:
-            continue
-
-        for product in _candidate_product_urls(
-            response.text,
-            query,
-        ):
-            candidates.setdefault(product, endpoint)
-
-        for page_url in _pagination_urls(endpoint):
+        for endpoint in endpoints:
             if len(candidates) >= MAX_CANDIDATES:
-                break
-
-            if page_url == endpoint:
-                continue
-
+                return candidates
             try:
-                page_response = _request(session, page_url)
+                response = _request(session, endpoint)
             except StoreRequestError:
                 continue
 
             for product in _candidate_product_urls(
-                page_response.text,
-                query,
+                response.text, query, discovery_query=discovery_query
             ):
-                candidates.setdefault(product, page_url)
+                candidates.setdefault(product, endpoint)
+
+            for page_url in _pagination_urls(endpoint):
+                if len(candidates) >= MAX_CANDIDATES:
+                    break
+                if page_url == endpoint:
+                    continue
+                try:
+                    page_response = _request(session, page_url)
+                except StoreRequestError:
+                    continue
+                for product in _candidate_product_urls(
+                    page_response.text, query, discovery_query=discovery_query
+                ):
+                    candidates.setdefault(product, page_url)
 
     return candidates
 
@@ -733,6 +769,19 @@ def discover(session, query):
                 query,
                 candidates,
             )
+        except StoreRequestError as exc:
+            failures.append(
+                {
+                    "status": exc.status,
+                    "url": exc.url,
+                    "http_status": exc.http_status,
+                    "message": str(exc),
+                }
+            )
+
+    if len(candidates) < MAX_CANDIDATES:
+        try:
+            _discover_from_sitemap(session, query, candidates)
         except StoreRequestError as exc:
             failures.append(
                 {
