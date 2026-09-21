@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, uuid
 try:
-    from product_matcher import ProductMatcher, catalog_variant_key
+    from product_matcher import ProductMatcher
 except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-APP_VERSION = '4.0-linear'
+APP_VERSION = '4.1-linear-store-contract'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -96,159 +96,45 @@ def _identity_scope(query):
         )
         return []
 
-
-def _family_variant_targets(query):
-    """
-    Return the canonical variant search targets for a family query.
-    Identity knowledge stays inside ProductMatcher; main only orchestrates
-    additional retailer discovery for variants the user asked to search.
-    """
-    q = str(query or "").strip()
-    if not q or PRODUCT_MATCHER is None:
-        return []
-
-    try:
-        family = PRODUCT_MATCHER._family_for_query(q)
-        if family is None:
-            return []
-
-        query_key = catalog_variant_key(q)
-        query_is_family = query_key in tuple(
-            family.get("normalized_query_aliases") or ()
-        )
-        requested = PRODUCT_MATCHER._requested_variant(q, family)
-        if not query_is_family and requested is not None:
-            return []
-
-        targets = []
-        for variant in family.get("variants") or []:
-            canonical = str(variant.get("canonical_name") or "").strip()
-            if not canonical:
-                continue
-            catalog_id = ""
-            try:
-                product = PRODUCT_MATCHER._catalog_product_for_family_variant(
-                    family,
-                    variant,
-                )
-                if product is not None:
-                    catalog_id = str(product.catalog_id or "").strip()
-            except Exception:
-                pass
-            targets.append((canonical, catalog_id))
-
-        return targets
-    except Exception:
-        return []
-
 def _resolve_offer_identity(result, query):
-    """
-    Resolve one RAW retailer offer through the central ProductMatcher.
-
-    Possible outcomes:
-    - matched: catalog identity assigned;
-    - rejected: definitely not relevant;
-    - unresolved: preserve the commercial offer without inventing identity.
-    """
+    """Resolve one raw retailer offer through ProductMatcher."""
     if not isinstance(result, dict):
         return None
-
     output = dict(result)
-
     if PRODUCT_MATCHER is None:
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
         return output
 
     try:
-        if PRODUCT_MATCHER._is_non_fragrance_offer(output):
-            print(
-                "PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: "
-                f"name={output.get('_raw_name', '')!r} "
-                f"brand={output.get('_raw_brand', '')!r}",
-                flush=True,
-            )
-            return None
+        scope = PRODUCT_MATCHER.build_query_scope(query)
+        match = PRODUCT_MATCHER.match_offer(offer=output, query_scope=scope)
     except Exception as exc:
-        print(
-            "PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-
-    try:
-        query_scope = PRODUCT_MATCHER.build_query_scope(query)
-
-        match = PRODUCT_MATCHER.match_offer(
-            offer=output,
-            query_scope=query_scope,
-        )
-    except AttributeError:
-        # Temporary compatibility fallback while product_matcher.py
-        # is being migrated to the new interface.
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
-        output["_match_error"] = "new_matcher_interface_missing"
-        return output
-    except Exception as exc:
-        print(
-            "PRODUCT_MATCHER_MATCH_ERROR: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
-        output["_match_error"] = f"{type(exc).__name__}: {exc}"
+        print(f"PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}", flush=True)
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None, "_match_error": f"{type(exc).__name__}: {exc}"})
         return output
 
     if not isinstance(match, dict):
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
         return output
 
-    status = str(
-        match.get("status") or "unresolved"
-    ).strip().lower()
-
+    status = str(match.get("status") or "unresolved").strip().lower()
     if status == "rejected":
-        print(
-            "PRODUCT_MATCHER_REJECT: "
-            f"name={output.get('_raw_name', '')!r} "
-            f"reason={match.get('reject_reason')!r}",
-            flush=True,
-        )
         return None
 
     output["_match_status"] = status
+    if status != "matched":
+        output.update({"catalog_id": None, "brand": None, "family": None, "variant": None, "canonical_name": None})
+        return output
 
-    if status == "matched":
-        output["catalog_id"] = match.get("catalog_id")
-        output["brand"] = match.get("brand")
-        output["family"] = match.get("family")
-        output["variant"] = match.get("variant")
-        output["canonical_name"] = match.get("canonical_name")
-        output["match_confidence"] = match.get("confidence")
-        output["matched_alias"] = match.get("matched_alias")
-
-        # Identity-owned fields returned by ProductMatcher must survive the
-        # backend boundary. They are not retailer data.
-        if match.get("size_ml") is not None:
-            output["size_ml"] = match.get("size_ml")
-        if match.get("variant_id"):
-            output["variant_id"] = match.get("variant_id")
-        if match.get("canonical_image"):
-            output["canonical_image"] = match.get("canonical_image")
-    else:
-        output["catalog_id"] = None
-        output["brand"] = None
-        output["family"] = None
-        output["variant"] = None
-        output["canonical_name"] = None
-
+    for key in (
+        "catalog_id", "family_id", "family_name", "brand", "family",
+        "variant", "canonical_name", "match_method", "match_score",
+        "confidence", "matched_alias", "size_ml", "variant_id",
+        "canonical_image",
+    ):
+        if key in match:
+            output[key] = match.get(key)
+    output["match_confidence"] = match.get("confidence")
     return output
 
 def clean_result(item, store):
@@ -284,12 +170,6 @@ def clean_result(item, store):
     result["_raw_brand"] = raw_brand
 
     # Keep the retailer's raw name untouched. Identity belongs to ProductMatcher.
-
-    # Preserve the original source image behavior.
-    if machine_store == "parfumcity" and not result.get("image"):
-        source = result.get("source")
-        if isinstance(source, dict) and source.get("image"):
-            result["image"] = source.get("image")
 
     result["store"] = STORE_LABELS.get(
         machine_store,
@@ -400,6 +280,7 @@ def _public_offer(item):
         "price_num": item.get("price_num"),
         "format": item.get("format"),
         "size_ml": item.get("size_ml"),
+        "variant_id": item.get("variant_id"),
         "url": item.get("url") or item.get("product_url"),
         "retailer_image": item.get("image") or item.get("image_url"),
         "available": item.get("available"),
@@ -444,7 +325,7 @@ def _aggregate_identity_results(offers):
                     "canonical_name": offer.get(
                         "canonical_name"
                     ),
-                    "image": offer.get("canonical_image"),
+                    "image": offer.get("canonical_image") or "",
                     "offers": [],
                 }
 
@@ -479,7 +360,16 @@ def _aggregate_identity_results(offers):
     return result, unresolved
 
 def _empty_report(store, status='error', elapsed=0.0, error=None):
-    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error}
+    return {
+        'store': store,
+        'status': status,
+        'elapsed': round(elapsed, 3),
+        'count': 0,
+        'results': [],
+        'error': error,
+        'attempts': 0,
+        'verified': False,
+    }
 
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
@@ -530,13 +420,8 @@ def _kill_process_tree(process):
         try: process.kill()
         except Exception: pass
 
-def _run_store_subprocess(store, query, on_result=None, timeout_override=None):
-    started=time.monotonic()
-    timeout = (
-        float(timeout_override)
-        if timeout_override is not None
-        else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
-    )
+def _run_store_subprocess_once(store, query, on_result=None, timeout_override=None):
+    started=time.monotonic(); timeout=(float(timeout_override) if timeout_override is not None else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS))
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
     process=None; rows=[]; worker_error=None
     try:
@@ -661,161 +546,103 @@ def _run_store_subprocess(store, query, on_result=None, timeout_override=None):
             except Exception: pass
         return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
 
+
+def _run_store_subprocess(store, query, on_result=None):
+    """
+    Execute one store search with one automatic retry when the scraper
+    returns no rows without an explicit error.
+
+    An empty result is therefore never trusted after a single transient
+    attempt. The scraper remains responsible for actual discovery; Main only
+    supervises execution and records whether the store was verified.
+    """
+    first = _run_store_subprocess_once(
+        store,
+        query,
+        on_result=on_result,
+    )
+
+    if first.get("status") != "empty":
+        first["attempts"] = 1
+        first["verified"] = first.get("status") == "ok"
+        return first
+
+    # A second independent attempt protects against intermittent HTTP,
+    # anti-bot, DNS, session and upstream-search failures. We deliberately
+    # do not label the first empty response as "no match" yet.
+    print(
+        f"STORE RETRY store={store} query={query!r} reason=empty_first_attempt",
+        flush=True,
+    )
+
+    base_timeout = STORE_TIMEOUTS.get(
+        store,
+        STORE_TIMEOUT_SECONDS,
+    )
+    retry_timeout = max(
+        12.0,
+        min(
+            base_timeout * 0.5,
+            35.0,
+        ),
+    )
+    second = _run_store_subprocess_once(
+        store,
+        query,
+        on_result=on_result,
+        timeout_override=retry_timeout,
+    )
+    second["attempts"] = 2
+    second["first_attempt_status"] = "empty"
+
+    if second.get("status") == "empty":
+        # Only after two completed empty attempts do we call the result a
+        # genuine no-match. This is still a verified live response, just with
+        # zero matching products.
+        second["status"] = "no_match"
+        second["verified"] = True
+        second["error"] = None
+        return second
+
+    second["verified"] = second.get("status") == "ok"
+    return second
+
 def _run_controlled_store(store,query,on_report,on_result=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
     semaphore=LIGHT_SEMAPHORE; lane='light'
     if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
     elif store in NETWORK_HEAVY_STORES: semaphore=NETWORK_SEMAPHORE; lane='network'
-
     wait=time.monotonic()
     if semaphore is not None:
         if not semaphore.acquire(timeout=JOB_TIMEOUT_SECONDS):
             report=_empty_report(store,error=f'{lane}_lane_unavailable')
-            print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True)
-            on_report(report)
-            return
+            print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
         waited=round(time.monotonic()-wait,3)
-        if waited>.1:
-            print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
-
-    started=time.monotonic()
-    all_rows=[]
-    errors=[]
-    queries=[str(query or '').strip()]
-
-    # If the query names a registered family rather than one exact variant,
-    # run the family query first. Only variants not found by that first pass
-    # are searched explicitly. This keeps ordinary searches cheap while making
-    # multi-variant families discoverable across retailers whose search engine
-    # returns only the base product for a family query.
-    family_targets=_family_variant_targets(query)
-    found_catalog_ids=set()
-
-    try:
-        first=_run_store_subprocess(store,queries[0],on_result=on_result)
-        all_rows.extend(first.get('results',[]))
-        if first.get('error'):
-            errors.append(str(first.get('error')))
-
-        for row in first.get('results',[]) or []:
-            if isinstance(row,dict) and row.get('catalog_id'):
-                found_catalog_ids.add(str(row.get('catalog_id')).strip())
-
-        missing_targets=[
-            (variant_query,catalog_id)
-            for variant_query,catalog_id in family_targets
-            if not catalog_id or catalog_id not in found_catalog_ids
-        ]
-
-        for variant_query,catalog_id in missing_targets:
-            if time.monotonic()-started >= JOB_TIMEOUT_SECONDS:
-                errors.append('job_timeout_before_family_variant_search')
-                break
-
-            print(
-                f'STORE FAMILY FALLBACK store={store} '
-                f'base={query!r} variant={variant_query!r}',
-                flush=True,
-            )
-            remaining = JOB_TIMEOUT_SECONDS - (time.monotonic() - started)
-            if remaining <= 0:
-                errors.append('job_timeout_before_family_variant_search')
-                break
-
-            extra=_run_store_subprocess(
-                store,
-                variant_query,
-                on_result=on_result,
-                timeout_override=min(
-                    STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS),
-                    remaining,
-                ),
-            )
-            all_rows.extend(extra.get('results',[]))
-
-            if extra.get('error'):
-                errors.append(str(extra.get('error')))
-
-            for row in extra.get('results',[]) or []:
-                if isinstance(row,dict) and row.get('catalog_id'):
-                    found_catalog_ids.add(str(row.get('catalog_id')).strip())
-
-        elapsed=round(time.monotonic()-started,3)
-        status='ok' if all_rows else ('error' if errors else 'empty')
-        report={
-            'store':store,
-            'status':status,
-            'elapsed':elapsed,
-            'count':len(all_rows),
-            'results':all_rows,
-            'error':'; '.join(errors) if errors else None,
-        }
-    except Exception as exc:
-        report=_empty_report(
-            store,
-            elapsed=round(time.monotonic()-started,3),
-            error=f'{type(exc).__name__}: {exc}',
-        )
+        if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
+    try: report=_run_store_subprocess(store,query,on_result=on_result)
     finally:
-        if semaphore is not None:
-            semaphore.release()
-
+        if semaphore is not None: semaphore.release()
     if report.get('status')=='error':
-        print(
-            f"STORE ERROR store={store} error={report.get('error')}",
-            flush=True,
-        )
-    print(
-        f"STORE END store={store} status={report.get('status')} "
-        f"elapsed={report.get('elapsed')} count={report.get('count')}",
-        flush=True,
-    )
+        if str(report.get('error','')).startswith('store_timeout_'): print(f"STORE TIMEOUT store={store} timeout={report['error']}",flush=True)
+        else: print(f"STORE ERROR store={store} error={report.get('error')}",flush=True)
+    print(f"STORE END store={store} status={report.get('status')} elapsed={report.get('elapsed')} count={report.get('count')}",flush=True)
     on_report(report)
 
 def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
-
     def publish(report):
-        with lock:
-            reports[report['store']]=report
-        if callable(on_report):
-            on_report(report)
-
+        with lock: reports[report['store']]=report
+        if callable(on_report): on_report(report)
     for store in requested:
-        t=threading.Thread(
-            target=_run_controlled_store,
-            args=(store,query,publish,on_result),
-            daemon=True,
-            name=f'scenthunter-store-{store}',
-        )
-        t.start()
-        threads.append(t)
-
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result),daemon=True,name=f'scenthunter-store-{store}')
+        t.start(); threads.append(t)
     deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
-    for t in threads:
-        t.join(timeout=max(0.0,deadline-time.monotonic()))
-
-    unfinished=[
-        t.name.rsplit('scenthunter-store-',1)[-1]
-        for t in threads
-        if t.is_alive()
-    ]
+    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
+    unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
-        print(
-            f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',
-            flush=True,
-        )
+        print(f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',flush=True)
         with lock:
-            for store in unfinished:
-                reports.setdefault(
-                    store,
-                    _empty_report(
-                        store,
-                        elapsed=JOB_TIMEOUT_SECONDS,
-                        error='job_timeout',
-                    ),
-                )
-
+            for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
     return [reports[s] for s in requested if s in reports]
 
 JOBS={}; JOBS_LOCK=threading.Lock()
@@ -946,6 +773,8 @@ def _publish_store(job_id, report):
 
         job["stores"][store] = {
             "status": report["status"],
+            "verified": bool(report.get("verified")),
+            "attempts": int(report.get("attempts") or 0),
             "elapsed": report["elapsed"],
             "count": report["count"],
         }
@@ -1104,6 +933,8 @@ def search_perfume(q: str):
         "stores": {
             report["store"]: {
                 "status": report["status"],
+                "verified": bool(report.get("verified")),
+                "attempts": int(report.get("attempts") or 0),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
             }
