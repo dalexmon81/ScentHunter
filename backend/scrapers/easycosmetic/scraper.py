@@ -635,7 +635,7 @@ def _discover(query):
     }
 
 
-def search_stream(query: str):
+def _search_stream_generator(query: str):
     query = _clean(query)
     started = time.perf_counter()
 
@@ -740,8 +740,35 @@ def search_stream(query: str):
     }
 
 
+
+def search_stream(query, emit=None):
+    """Native ScentHunter callback contract.
+
+    The store implementation below remains the authoritative discovery/fetch
+    logic. This adapter only bridges its report-generator form to the common
+    callback contract used by main.py.
+    """
+    report = None
+    for value in _search_stream_generator(query):
+        report = value
+        if isinstance(value, dict) and callable(emit):
+            for row in value.get("results") or []:
+                if isinstance(row, dict):
+                    emit(row)
+
+    if report is None:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": "empty_stream",
+            "details": {},
+        }
+
+    return report
+
 def search(query):
-    return next(search_stream(query)).get("results", [])
+    return search_stream(query).get("results", [])
 
 
 def scrape(query):
@@ -753,7 +780,7 @@ def search_easycosmetic(query):
 
 
 def diagnose(query):
-    report = next(search_stream(query))
+    report = search_stream(query)
     return {
         "diagnostic": True,
         "store": STORE,
