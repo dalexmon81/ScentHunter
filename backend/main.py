@@ -369,15 +369,36 @@ def _empty_report(store, status='error', elapsed=0.0, error=None):
         'error': error,
         'attempts': 0,
         'verified': False,
+        'details': {},
     }
 
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
 WORKER_CODE = r'''
 import importlib, json, sys
-store=sys.argv[1]; query=sys.argv[2]
+
+store=sys.argv[1]
+query=sys.argv[2]
+
 def emit(event, **payload):
-    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
+    print(json.dumps({'event':event, **payload}, ensure_ascii=False, default=str), flush=True)
+
+def normalise_report(raw):
+    if isinstance(raw, dict):
+        results=raw.get('results')
+        if results is None: results=raw.get('products')
+        if not isinstance(results,list): results=[]
+        status=str(raw.get('status') or '').strip().lower()
+        if status not in {'success','partial','error','timeout','blocked','unavailable'}:
+            status='success'
+        return {'status':status,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':raw.get('details') or {}}
+    if isinstance(raw,tuple): raw=list(raw)
+    if isinstance(raw,list): return {'status':'success','results':[r for r in raw if isinstance(r,dict)],'error':None,'details':{}}
+    if raw is None: return {'status':'success','results':[],'error':None,'details':{}}
+    try: values=list(raw)
+    except TypeError: values=[]
+    return {'status':'success','results':[r for r in values if isinstance(r,dict)],'error':None,'details':{}}
+
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
     stream=getattr(module,'search_stream',None)
@@ -387,29 +408,21 @@ try:
             if isinstance(row,dict):
                 rows.append(row); emit('result',row=row)
         returned=stream(query,on_result)
-        if returned is not None:
-            try:
-                for row in returned:
-                    if isinstance(row,dict): emit('result',row=row); rows.append(row)
-            except TypeError: pass
-        emit('done',count=len(rows),streaming=True)
+        report=normalise_report(returned)
+        if report['results'] and not rows:
+            for row in report['results']: emit('result',row=row)
+        emit('done',status=report['status'],error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
     else:
         search=getattr(module,'search',None)
         if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
-        raw=search(query)
-        if raw is None: rows=[]
-        elif isinstance(raw,list): rows=raw
-        elif isinstance(raw,tuple): rows=list(raw)
-        else:
-            try: rows=list(raw)
-            except TypeError: rows=[]
-        for row in rows:
-            if isinstance(row,dict): emit('result',row=row)
-        emit('done',count=len(rows),streaming=False)
+        report=normalise_report(search(query))
+        for row in report['results']: emit('result',row=row)
+        emit('done',status=report['status'],error=report.get('error'),details=report.get('details') or {},count=len(report['results']),streaming=False)
 except BaseException as exc:
     emit('error',error=f'{type(exc).__name__}: {exc}')
     raise SystemExit(1)
 '''
+
 
 def _kill_process_tree(process):
     try:
@@ -421,191 +434,105 @@ def _kill_process_tree(process):
         except Exception: pass
 
 def _run_store_subprocess_once(store, query, on_result=None, timeout_override=None):
-    started=time.monotonic(); timeout=(float(timeout_override) if timeout_override is not None else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS))
+    started=time.monotonic()
+    timeout=float(timeout_override) if timeout_override is not None else STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
-    process=None; rows=[]; worker_error=None
+    process=None; rows=[]; worker_status=None; worker_error=None; worker_details={}
     try:
-        # IMPORTANT: do not use blocking readline() here.
-        # Under concurrent load a worker can stay silent for a while; a
-        # blocking readline() would then prevent the individual store
-        # timeout from being checked. Use select/os.read so the timeout
-        # remains authoritative.
         process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=False,bufsize=0,start_new_session=(os.name!='nt'))
-        deadline=time.monotonic()+timeout
-        stdout_buffer=b''
-
+        deadline=time.monotonic()+timeout; stdout_buffer=b''
         while True:
             remaining=deadline-time.monotonic()
-            if remaining <= 0:
-                raise subprocess.TimeoutExpired(process.args,timeout)
-
+            if remaining<=0: raise subprocess.TimeoutExpired(process.args,timeout)
             chunk=b''
             if process.stdout is not None:
-                if os.name != 'nt':
+                if os.name!='nt':
                     import select
-                    ready,_,_=select.select(
-                        [process.stdout],
-                        [],
-                        [],
-                        min(0.25, remaining),
-                    )
+                    ready,_,_=select.select([process.stdout],[],[],min(0.25,remaining))
                     if ready:
-                        try:
-                            chunk=os.read(process.stdout.fileno(),65536)
-                        except (BlockingIOError,OSError):
-                            chunk=b''
+                        try: chunk=os.read(process.stdout.fileno(),65536)
+                        except (BlockingIOError,OSError): chunk=b''
                 else:
-                    # Fly.io runs Linux; this branch is retained for
-                    # portability on Windows.
-                    try:
-                        chunk=process.stdout.read1(65536)
-                    except (AttributeError,BlockingIOError):
-                        chunk=b''
-
+                    try: chunk=process.stdout.read1(65536)
+                    except (AttributeError,BlockingIOError): chunk=b''
             if chunk:
-                stdout_buffer += chunk
-
+                stdout_buffer+=chunk
                 while b'\n' in stdout_buffer:
                     raw_line,stdout_buffer=stdout_buffer.split(b'\n',1)
-
-                    try:
-                        event=json.loads(
-                            raw_line.decode('utf-8','replace').strip()
-                        )
-                    except (json.JSONDecodeError,UnicodeDecodeError):
-                        continue
-
-                    if not isinstance(event,dict):
-                        continue
-
+                    try: event=json.loads(raw_line.decode('utf-8','replace').strip())
+                    except (json.JSONDecodeError,UnicodeDecodeError): continue
+                    if not isinstance(event,dict): continue
                     kind=event.get('event')
-
-                    if kind == "result" and isinstance(event.get("row"), dict):
-                        prepared = clean_result(event["row"], store)
-                        if prepared is None:
-                            continue
-
-                        resolved = _resolve_offer_identity(
-                            prepared,
-                            query,
-                        )
-                        if resolved is None:
-                            continue
-
+                    if kind=='result' and isinstance(event.get('row'),dict):
+                        prepared=clean_result(event['row'],store)
+                        if prepared is None: continue
+                        resolved=_resolve_offer_identity(prepared,query)
+                        if resolved is None: continue
                         rows.append(resolved)
-
-                        if callable(on_result):
-                            on_result(resolved)
-
+                        if callable(on_result): on_result(resolved)
+                    elif kind=='done':
+                        worker_status=str(event.get('status') or 'success').strip().lower()
+                        worker_error=event.get('error')
+                        if isinstance(event.get('details'),dict): worker_details=event['details']
                     elif kind=='error':
-                        worker_error=str(
-                            event.get('error') or 'worker_error'
-                        )
-
+                        worker_status='error'; worker_error=str(event.get('error') or 'worker_error')
             if process.poll() is not None:
-                # Drain bytes already available after process exit.
-                if process.stdout is not None and os.name != 'nt':
+                if process.stdout is not None and os.name!='nt':
                     try:
                         while True:
                             tail=os.read(process.stdout.fileno(),65536)
-                            if not tail:
-                                break
-                            stdout_buffer += tail
-                    except (BlockingIOError,OSError):
-                        pass
+                            if not tail: break
+                            stdout_buffer+=tail
+                    except (BlockingIOError,OSError): pass
                 break
-
-        # A worker normally ends each event with a newline. If a final
-        # partial line exists, try to decode it as a last event.
         if stdout_buffer.strip():
-            try:
-                event=json.loads(
-                    stdout_buffer.decode('utf-8','replace').strip()
-                )
-            except (json.JSONDecodeError,UnicodeDecodeError):
-                event=None
-
-            if isinstance(event,dict) and event.get('event')=='error':
-                worker_error=str(
-                    event.get('error') or 'worker_error'
-                )
-
+            try: event=json.loads(stdout_buffer.decode('utf-8','replace').strip())
+            except (json.JSONDecodeError,UnicodeDecodeError): event=None
+            if isinstance(event,dict):
+                if event.get('event')=='done':
+                    worker_status=str(event.get('status') or 'success').strip().lower(); worker_error=event.get('error')
+                    if isinstance(event.get('details'),dict): worker_details=event['details']
+                elif event.get('event')=='error':
+                    worker_status='error'; worker_error=str(event.get('error') or 'worker_error')
         rc=process.wait(timeout=1); elapsed=round(time.monotonic()-started,3)
-        if rc!=0 or worker_error: return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
-        return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
+        if rc!=0 and worker_status not in {'success','partial'}:
+            return {'store':store,'status':worker_status or 'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}','details':worker_details,'verified':False}
+        status=worker_status or ('success' if rows else 'error')
+        public_status='ok' if status=='success' and rows else ('empty' if status=='success' else status)
+        return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':public_status in {'ok','empty','partial'}}
     except subprocess.TimeoutExpired:
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=2)
             except Exception: pass
-        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s')
+        return _empty_report(store,status='timeout',elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s')
     except Exception as exc:
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=1)
             except Exception: pass
-        return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
+        return _empty_report(store,status='error',elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
 
 
 def _run_store_subprocess(store, query, on_result=None):
-    """
-    Execute one store search with one automatic retry when the scraper
-    returns no rows without an explicit error.
-
-    An empty result is therefore never trusted after a single transient
-    attempt. The scraper remains responsible for actual discovery; Main only
-    supervises execution and records whether the store was verified.
-    """
-    first = _run_store_subprocess_once(
-        store,
-        query,
-        on_result=on_result,
-    )
-
-    if first.get("status") != "empty":
-        first["attempts"] = 1
-        first["verified"] = first.get("status") == "ok"
-        return first
-
-    # A second independent attempt protects against intermittent HTTP,
-    # anti-bot, DNS, session and upstream-search failures. We deliberately
-    # do not label the first empty response as "no match" yet.
-    print(
-        f"STORE RETRY store={store} query={query!r} reason=empty_first_attempt",
-        flush=True,
-    )
-
-    base_timeout = STORE_TIMEOUTS.get(
-        store,
-        STORE_TIMEOUT_SECONDS,
-    )
-    retry_timeout = max(
-        12.0,
-        min(
-            base_timeout * 0.5,
-            35.0,
-        ),
-    )
-    second = _run_store_subprocess_once(
-        store,
-        query,
-        on_result=on_result,
-        timeout_override=retry_timeout,
-    )
-    second["attempts"] = 2
-    second["first_attempt_status"] = "empty"
-
-    if second.get("status") == "empty":
-        # Only after two completed empty attempts do we call the result a
-        # genuine no-match. This is still a verified live response, just with
-        # zero matching products.
-        second["status"] = "no_match"
-        second["verified"] = True
-        second["error"] = None
-        return second
-
-    second["verified"] = second.get("status") == "ok"
+    """Retry any unverified store result; only two successful empty runs mean no-match."""
+    first=_run_store_subprocess_once(store,query,on_result=on_result)
+    if first.get('status') in {'ok','no_match'}:
+        first['attempts']=1; first['verified']=True; return first
+    print(f"STORE RETRY store={store} query={query!r} reason={first.get('status')}",flush=True)
+    base_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
+    retry_timeout=max(12.0,min(base_timeout*0.75,45.0))
+    second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout)
+    second['attempts']=2; second['first_attempt_status']=first.get('status')
+    if second.get('status')=='empty':
+        second['status']='no_match'; second['verified']=True; second['error']=None; return second
+    if second.get('status') in {'ok','partial'}:
+        second['verified']=True; return second
+    second['verified']=False
+    if second.get('status') not in {'error','timeout','blocked','unavailable'}: second['status']='error'
+    if not second.get('error'): second['error']=f"store_unverified_after_retry:{second.get('status')}"
     return second
+
 
 def _run_controlled_store(store,query,on_report,on_result=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
