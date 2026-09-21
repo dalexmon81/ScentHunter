@@ -202,6 +202,17 @@ def clean_result(item, store):
         if parsed is not None:
             result["price_num"] = parsed
 
+    # Never expose a zero/negative retailer price as a real commercial price.
+    # A missing/invalid price remains unknown and must not become 0,00 €.
+    try:
+        price_num = float(result.get("price_num"))
+    except (TypeError, ValueError):
+        price_num = None
+
+    if price_num is not None and price_num <= 0:
+        result["price_num"] = None
+        result["price"] = None
+
     return result
 
 def result_key(item):
