@@ -215,6 +215,16 @@ def clean_result(item, store):
         )
         if normalized_brand == normalized_store_label:
             result["brand"] = ""
+            source = result.get("source")
+            if isinstance(source, dict):
+                source = dict(source)
+                source_brand = str(source.get("source_brand") or source.get("brand") or "").strip()
+                normalized_source_brand = " ".join(source_brand.lower().replace("-", " ").split())
+                if normalized_source_brand == normalized_store_label:
+                    source["source_brand"] = ""
+                    if "brand" in source:
+                        source["brand"] = ""
+                result["source"] = source
 
     # Keep the retailer's raw name untouched. Identity belongs to ProductMatcher.
 
