@@ -360,7 +360,7 @@ def _aggregate_identity_results(offers):
     return result, unresolved
 
 def _empty_report(store, status='error', elapsed=0.0, error=None):
-    return {'store':store,'status':status,'verified':False,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error}
+    return {'store':store,'status':status,'elapsed':round(elapsed,3),'count':0,'results':[],'error':error,'verified':False}
 
 def load_scraper(store): return importlib.import_module(f'scrapers.{store}.scraper')
 
@@ -391,6 +391,34 @@ import importlib, json, sys
 store=sys.argv[1]; query=sys.argv[2]
 def emit(event, **payload):
     print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
+
+def normalise_report(raw):
+    if isinstance(raw, dict):
+        results = raw.get('results')
+        if results is None:
+            results = raw.get('products')
+        if not isinstance(results, list):
+            results = []
+        status = str(raw.get('status') or '').strip().lower()
+        if status not in {'success','partial','error','timeout','blocked','unavailable'}:
+            status = 'success'
+        details = raw.get('details') or {}
+        verified = bool(raw.get('verified')) if 'verified' in raw else (status == 'success')
+        if isinstance(details, dict) and 'verified' in details:
+            verified = bool(details.get('verified'))
+        return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
+    if isinstance(raw, (list, tuple)):
+        rows=[r for r in raw if isinstance(r,dict)]
+        return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+    if raw is None:
+        return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
+    try:
+        values=list(raw)
+    except TypeError:
+        values=[]
+    rows=[r for r in values if isinstance(r,dict)]
+    return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
     stream=getattr(module,'search_stream',None)
@@ -510,30 +538,21 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
 
 def _run_store_subprocess(store, query, on_result=None):
     """Retry results that are not safely classified by the store contract."""
-    def publish_verified(report):
-        if not callable(on_result) or not report.get('verified'):
-            return
-        for row in report.get('results') or []:
-            on_result(row)
-
-    first=_run_store_subprocess_once(store,query,on_result=None)
+    first=_run_store_subprocess_once(store,query,on_result=on_result)
     fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
     if fv and (fs in {'ok','no_match','empty'} or (fs=='partial' and fc>0)):
-        publish_verified(first)
         first['attempts']=1
         return first
     print(f"STORE RETRY store={store} query={query!r} reason={fs} verified={fv} count={fc}",flush=True)
     base_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     retry_timeout=max(12.0,min(base_timeout*0.75,45.0))
-    second=_run_store_subprocess_once(store,query,on_result=None,timeout_override=retry_timeout)
+    second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout)
     second['attempts']=2; second['first_attempt_status']=fs; second['first_attempt_verified']=fv
     ss=second.get('status'); sv=bool(second.get('verified')); sc=int(second.get('count') or 0)
     if ss=='empty' and sv:
-        second['status']='no_match'; second['verified']=True; second['error']=None; publish_verified(second); return second
-    if ss=='ok' and sv:
-        publish_verified(second); return second
-    if ss=='partial' and sv and sc>0:
-        publish_verified(second); return second
+        second['status']='no_match'; second['verified']=True; second['error']=None; return second
+    if ss=='ok' and sv: return second
+    if ss=='partial' and sv and sc>0: return second
     second['verified']=False
     if ss not in {'error','timeout','blocked','unavailable'}: second['status']='unavailable'
     if not second.get('error'): second['error']=f"store_unverified_after_retry:{second.get('status')}"
@@ -573,16 +592,8 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
         print(f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',flush=True)
-        synthetic=[]
         with lock:
-            for store in unfinished:
-                if store not in reports:
-                    report=_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout') | {'verified':False}
-                    reports[store]=report
-                    synthetic.append(report)
-        if callable(on_report):
-            for report in synthetic:
-                on_report(report)
+            for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
     return [reports[s] for s in requested if s in reports]
 
 JOBS={}; JOBS_LOCK=threading.Lock()
@@ -721,13 +732,12 @@ def _publish_store(job_id, report):
         if report.get("error"):
             job["errors"][store] = report["error"]
 
-        if report.get("verified"):
-            for item in report.get("results", []):
-                if not isinstance(item, dict):
-                    continue
+        for item in report.get("results", []):
+            if not isinstance(item, dict):
+                continue
 
-                job.setdefault("offers", [])
-                job["offers"].append(item)
+            job.setdefault("offers", [])
+            job["offers"].append(item)
 
         job["offers"] = dedupe_results(
             job.get("offers", []),
@@ -754,7 +764,7 @@ def _publish_store(job_id, report):
 
 def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
+    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r))
     with JOBS_LOCK:
         job = JOBS.get(job_id)
 
@@ -836,8 +846,6 @@ def search_perfume(q: str):
     all_offers = []
 
     for report in reports:
-        if not report.get("verified"):
-            continue
         for item in report.get(
             "results",
             [],
@@ -875,7 +883,6 @@ def search_perfume(q: str):
         "stores": {
             report["store"]: {
                 "status": report["status"],
-                "verified": bool(report.get("verified")),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
             }
