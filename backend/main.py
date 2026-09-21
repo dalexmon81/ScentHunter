@@ -204,8 +204,10 @@ def clean_result(item, store):
     # brand constraint for the central matcher; the original value remains
     # available in ``_raw_brand`` for diagnostics/provenance.
     if raw_brand:
-        normalized_brand = " ".join(raw_brand.lower().replace("-", " ").split())
-        normalized_store_label = " ".join(
+        normalized_brand = "".join(
+            raw_brand.lower().replace("-", " ").split()
+        )
+        normalized_store_label = "".join(
             str(STORE_LABELS.get(machine_store, machine_store) or "")
             .lower()
             .replace("-", " ")
