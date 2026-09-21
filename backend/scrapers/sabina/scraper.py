@@ -253,13 +253,13 @@ def walk_json(value):
 
 
 def first_jsonld_product(soup, query=None):
-    """Return the Product JSON-LD that actually matches the requested product.
+    """Select the Product JSON-LD belonging to this exact product page.
 
-    Sabina pages can contain more than one Product object (for example a
-    related/recommendation item). The first Product object is therefore not
-    authoritative. Prefer a Product whose name/brand matches the runtime
-    query, then fall back to the first real Product only when no query is
-    supplied.
+    Sabina pages can contain multiple Product objects, including related
+    products. For a query such as "Liquid brun", query matching alone is not
+    sufficient because both the normal product and the Limited Edition match.
+    Prefer the Product whose name exactly matches the page H1/title, then fall
+    back to the first Product that matches the runtime query.
     """
     products = []
     for script in soup.select('script[type="application/ld+json"]'):
@@ -281,6 +281,19 @@ def first_jsonld_product(soup, query=None):
     if not products:
         return None
 
+    h1 = soup.select_one("h1")
+    page_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    page_name_norm = norm(page_name)
+
+    if page_name_norm:
+        exact = []
+        for item in products:
+            name = clean(item.get("name"))
+            if norm(name) == page_name_norm:
+                exact.append(item)
+        if exact:
+            return exact[0]
+
     if query:
         for item in products:
             name = clean(item.get("name"))
@@ -291,7 +304,6 @@ def first_jsonld_product(soup, query=None):
                 return item
 
     return products[0]
-
 
 def meta_content(soup, *selectors):
     for selector in selectors:
@@ -696,6 +708,58 @@ def discover_product_urls(session, query):
         re.I,
     ):
         add(match.group(0))
+
+    # Sabina search can omit a valid product from the result page. Use the
+    # public product sitemap only as a generic discovery supplement. The
+    # original runtime query decides which URLs are candidates; no product or
+    # URL is hard-coded.
+    if len(urls) < MAX_CANDIDATES:
+        try:
+            sitemap = session.get(
+                BASE_URL + "/sitemap.xml",
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if sitemap.status_code < 400:
+                sitemap_text = sitemap.text or ""
+                sitemap.close()
+                pending = []
+                for raw in re.findall(r"<loc>\s*([^<]+)\s*</loc>", sitemap_text, re.I):
+                    u = clean(raw)
+                    if u.lower().endswith(".xml") or "sitemap" in u.lower():
+                        if u not in pending:
+                            pending.append(u)
+                    elif is_product_url(u) and query_matches(u, query):
+                        add(u)
+
+                visited = set()
+                while pending and len(visited) < 12 and len(urls) < MAX_CANDIDATES:
+                    sitemap_url = pending.pop(0)
+                    if sitemap_url in visited:
+                        continue
+                    visited.add(sitemap_url)
+                    try:
+                        r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                    except requests.RequestException:
+                        continue
+                    if r.status_code >= 400:
+                        r.close()
+                        continue
+                    text = r.text or ""
+                    r.close()
+                    for raw in re.findall(r"<loc>\s*([^<]+)\s*</loc>", text, re.I):
+                        u = clean(raw)
+                        low = u.lower()
+                        if low.endswith(".xml") or "sitemap" in low:
+                            if u not in visited:
+                                pending.append(u)
+                        elif is_product_url(u) and query_matches(u, query):
+                            add(u)
+                            if len(urls) >= MAX_CANDIDATES:
+                                break
+        except requests.RequestException:
+            pass
 
     return urls[:MAX_CANDIDATES]
 
