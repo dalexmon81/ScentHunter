@@ -832,84 +832,6 @@ def root():
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
-@app.get('/diagnostic/{store}')
-def diagnostic_store(store: str, q: str = ''):
-    """Temporary compact endpoint diagnostic; does not use matcher or aggregation."""
-    store_key = _normalise_store(store, store).strip().lower()
-    query = str(q or '').strip()
-    if store_key not in STORES:
-        return {'ok': False, 'error': 'unknown_store', 'store': store_key, 'allowed_stores': STORES}
-    if not query:
-        return {'ok': False, 'error': 'missing_query', 'store': store_key}
-
-    started = time.monotonic()
-    try:
-        module = load_scraper(store_key)
-        stream = getattr(module, 'search_stream', None)
-        if not callable(stream):
-            return {
-                'ok': False,
-                'store': store_key,
-                'query': query,
-                'error': 'search_stream_missing',
-                'elapsed': round(time.monotonic() - started, 3),
-            }
-
-        report = stream(query)
-        if isinstance(report, dict):
-            details = report.get('details') if isinstance(report.get('details'), dict) else {}
-            diagnostic = details.get('endpoint_diagnostic') if isinstance(details.get('endpoint_diagnostic'), list) else []
-            rows = report.get('results') if isinstance(report.get('results'), list) else []
-            compact_rows = []
-            for row in rows[:50]:
-                if not isinstance(row, dict):
-                    continue
-                compact_rows.append({
-                    'name': row.get('name'),
-                    'brand': row.get('brand'),
-                    'price_num': row.get('price_num'),
-                    'size_ml': row.get('size_ml'),
-                    'availability': row.get('availability'),
-                    'url': row.get('url'),
-                })
-            return {
-                'ok': True,
-                'store': store_key,
-                'query': query,
-                'status': report.get('status'),
-                'verified': bool(report.get('verified')),
-                'error': report.get('error'),
-                'details': {
-                    'summary': details.get('summary'),
-                    'endpoint_diagnostic': diagnostic,
-                },
-                'result_count': len(rows),
-                'results': compact_rows,
-                'elapsed': round(time.monotonic() - started, 3),
-            }
-
-        rows = list(report) if report is not None else []
-        return {
-            'ok': True,
-            'store': store_key,
-            'query': query,
-            'status': 'success' if rows else 'error',
-            'verified': bool(rows),
-            'error': None if rows else 'empty_result',
-            'details': {'summary': None, 'endpoint_diagnostic': []},
-            'result_count': len(rows),
-            'results': rows[:50],
-            'elapsed': round(time.monotonic() - started, 3),
-        }
-    except Exception as exc:
-        return {
-            'ok': False,
-            'store': store_key,
-            'query': query,
-            'error': f'{type(exc).__name__}: {exc}',
-            'elapsed': round(time.monotonic() - started, 3),
-        }
-
 @app.get('/search-start')
 def search_start(q:str):
     query=str(q or '').strip()
@@ -990,6 +912,136 @@ def search_perfume(q: str):
             }
             for report in reports
         },
+    }
+
+@app.get('/diagnostic/matcher')
+def diagnostic_matcher(store: str, q: str):
+    """Targeted diagnostic: raw scraper -> clean_result -> ProductMatcher.
+
+    This endpoint is diagnostic only. It does not change the normal search
+    pipeline and does not publish offers into a search job.
+    """
+    store = str(store or '').strip().lower()
+    query = str(q or '').strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
+        )
+    if not query:
+        raise HTTPException(status_code=400, detail='Parametro q mancante')
+
+    raw_rows = []
+    stream_return = None
+    stream_error = None
+
+    try:
+        module = __import__(
+            f'scrapers.{store}.scraper',
+            fromlist=['scraper'],
+        )
+        stream = getattr(module, 'search_stream', None)
+        if not callable(stream):
+            raise RuntimeError('search_stream_not_available')
+
+        def collect(row):
+            if isinstance(row, dict):
+                raw_rows.append(dict(row))
+
+        stream_return = stream(query, collect)
+    except Exception as exc:
+        stream_error = f'{type(exc).__name__}: {exc}'
+
+    stages = []
+    matcher_scope = _identity_scope(query)
+    matched = []
+    rejected = []
+    unresolved = []
+    clean_errors = []
+
+    for index, raw in enumerate(raw_rows):
+        prepared = clean_result(raw, store)
+        if prepared is None:
+            clean_errors.append({
+                'index': index,
+                'raw_name': raw.get('name'),
+                'raw_url': raw.get('url'),
+                'reason': 'clean_result_returned_none',
+            })
+            continue
+
+        output = dict(prepared)
+        if PRODUCT_MATCHER is None:
+            output['_match_status'] = 'unresolved'
+            output['catalog_id'] = None
+            output['canonical_name'] = None
+            unresolved.append(output)
+            continue
+
+        try:
+            scope = PRODUCT_MATCHER.build_query_scope(query)
+            match = PRODUCT_MATCHER.match_offer(
+                offer=output,
+                query_scope=scope,
+            )
+        except Exception as exc:
+            output['_match_status'] = 'matcher_exception'
+            output['_match_error'] = f'{type(exc).__name__}: {exc}'
+            unresolved.append(output)
+            continue
+
+        if not isinstance(match, dict):
+            output['_match_status'] = 'matcher_non_dict'
+            unresolved.append(output)
+            continue
+
+        status = str(match.get('status') or 'unresolved').strip().lower()
+        item = {
+            'index': index,
+            'name': output.get('name'),
+            'brand': output.get('brand'),
+            'price': output.get('price'),
+            'price_num': output.get('price_num'),
+            'size_ml': output.get('size_ml'),
+            'url': output.get('url'),
+            'availability': output.get('availability'),
+            'match_status': status,
+            'match_method': match.get('match_method'),
+            'match_score': match.get('match_score'),
+            'confidence': match.get('confidence'),
+            'catalog_id': match.get('catalog_id'),
+            'canonical_name': match.get('canonical_name'),
+            'family': match.get('family'),
+            'variant': match.get('variant'),
+            'matched_alias': match.get('matched_alias'),
+        }
+
+        if status == 'matched':
+            matched.append(item)
+        elif status == 'rejected':
+            item['reject_reason'] = match.get('reason') or match.get('reject_reason')
+            rejected.append(item)
+        else:
+            unresolved.append(item)
+
+    return {
+        'ok': True,
+        'diagnostic': 'scraper -> clean_result -> ProductMatcher',
+        'store': store,
+        'query': query,
+        'stream_return_type': type(stream_return).__name__,
+        'stream_error': stream_error,
+        'identity_scope_count': len(matcher_scope),
+        'raw_count': len(raw_rows),
+        'matched_count': len(matched),
+        'rejected_count': len(rejected),
+        'unresolved_count': len(unresolved),
+        'clean_error_count': len(clean_errors),
+        'matched': matched,
+        'rejected': rejected,
+        'unresolved': unresolved,
+        'clean_errors': clean_errors,
     }
 
 @app.get('/frontend')
