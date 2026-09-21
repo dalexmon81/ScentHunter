@@ -829,62 +829,115 @@ class ProductMatcher:
         if not self._brand_matches(offer_brand, family.get("brand", "")):
             return None
 
-        raw_name = first_value(offer, self.NAME_KEYS)
-        if not raw_name:
-            source = _nested_source(offer)
-            raw_name = first_value(source, ("source_name", "name", "title"))
+        # A retailer can expose two different names for the same offer:
+        # ``offer.name`` may contain only the base product while
+        # ``source.source_name`` preserves the complete retailer title.
+        # Evaluate both instead of treating source_name only as a fallback.
+        # This is important for distinct family variants such as
+        # "Liquid Brun" vs "Liquid Brun Limited Edition".
+        name_candidates: List[str] = []
+        seen_name_candidates: set[str] = set()
 
-        candidate = self._remove_brand(raw_name, family.get("brand", ""))
-        candidate_key = catalog_variant_key(candidate)
-        if not candidate_key:
+        for key in self.NAME_KEYS:
+            value = first_value(offer, (key,))
+            if value:
+                text = str(value).strip()
+                if text and text not in seen_name_candidates:
+                    seen_name_candidates.add(text)
+                    name_candidates.append(text)
+
+        source = _nested_source(offer)
+        for key in ("source_name", "name", "title"):
+            value = first_value(source, (key,))
+            if value:
+                text = str(value).strip()
+                if text and text not in seen_name_candidates:
+                    seen_name_candidates.add(text)
+                    name_candidates.append(text)
+
+        if not name_candidates:
             return None
 
-        excluded = tuple(
+        excluded = {
             catalog_variant_key(value)
-            for value in (*family.get("excluded_products", ()), *family.get("excluded_aliases", ()))
-        )
-        if candidate_key in excluded:
-            return None
-
-        name_variant: Optional[Dict[str, Any]] = None
-
-        for variant in family["variants"]:
-            if candidate_key in variant["normalized_aliases"]:
-                name_variant = variant
-                break
-
-        # Retailers may append or insert audience/editorial labels around the
-        # actual variant name. These labels are not part of the variant identity.
-        if name_variant is None:
-            editorial_tokens = {
-                "men", "women", "man", "woman", "heren", "dames",
-            }
-            stripped_tokens = [
-                token for token in candidate_key.split()
-                if token not in editorial_tokens
-            ]
-            stripped_key = " ".join(stripped_tokens).strip()
-            if stripped_key != candidate_key:
-                for variant in family["variants"]:
-                    if stripped_key in variant["normalized_aliases"]:
-                        name_variant = variant
-                        break
-
-        # "for men" / "for women" can survive as two tokens after the first
-        # pass; remove the complete phrase only when it produces an exact alias.
-        if name_variant is None:
-            stripped_for_tokens = re.sub(
-                r"\bfor\s+(?:men|women|him|her)\b",
-                " ",
-                candidate_key,
-                flags=re.I,
+            for value in (
+                *family.get("excluded_products", ()),
+                *family.get("excluded_aliases", ()),
             )
-            stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
-            if stripped_for_tokens != candidate_key:
-                for variant in family["variants"]:
-                    if stripped_for_tokens in variant["normalized_aliases"]:
-                        name_variant = variant
-                        break
+        }
+
+        # Resolve every available name independently. If more than one name
+        # resolves, prefer the identity carrying the greatest number of
+        # variant-specific tokens. This lets a complete source title refine a
+        # generic scraper name without any retailer- or product-specific rule.
+        name_variant: Optional[Dict[str, Any]] = None
+        name_variant_specificity = -1
+
+        for raw_name in name_candidates:
+            candidate = self._remove_brand(raw_name, family.get("brand", ""))
+            candidate_key = catalog_variant_key(candidate)
+            if not candidate_key or candidate_key in excluded:
+                continue
+
+            candidate_variant: Optional[Dict[str, Any]] = None
+
+            for variant in family["variants"]:
+                if candidate_key in variant["normalized_aliases"]:
+                    candidate_variant = variant
+                    break
+
+            # Retailers may append or insert audience/editorial labels around
+            # the actual variant name. These labels are not part of identity.
+            if candidate_variant is None:
+                editorial_tokens = {
+                    "men", "women", "man", "woman", "heren", "dames",
+                }
+                stripped_tokens = [
+                    token
+                    for token in candidate_key.split()
+                    if token not in editorial_tokens
+                ]
+                stripped_key = " ".join(stripped_tokens).strip()
+                if stripped_key != candidate_key:
+                    for variant in family["variants"]:
+                        if stripped_key in variant["normalized_aliases"]:
+                            candidate_variant = variant
+                            break
+
+            # "for men" / "for women" can survive as two tokens after the
+            # first pass; remove the complete phrase only when it produces an
+            # exact family alias.
+            if candidate_variant is None:
+                stripped_for_tokens = re.sub(
+                    r"\bfor\s+(?:men|women|him|her)\b",
+                    " ",
+                    candidate_key,
+                    flags=re.I,
+                )
+                stripped_for_tokens = re.sub(
+                    r"\s+", " ", stripped_for_tokens
+                ).strip()
+                if stripped_for_tokens != candidate_key:
+                    for variant in family["variants"]:
+                        if stripped_for_tokens in variant["normalized_aliases"]:
+                            candidate_variant = variant
+                            break
+
+            if candidate_variant is None:
+                continue
+
+            specificity_key = self._variant_specificity_key(
+                candidate_variant.get("canonical_name", ""),
+                family.get("brand", ""),
+            )
+            specificity = len(set(specificity_key.split()))
+
+            if (
+                name_variant is None
+                or specificity > name_variant_specificity
+            ):
+                name_variant = candidate_variant
+                name_variant_specificity = specificity
 
         # The retailer name can be generic while the URL still contains the
         # actual variant. Resolve URL evidence generically against the family
