@@ -139,7 +139,7 @@ body{position:relative}
 </style>
 
 <style>
-.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
@@ -1235,36 +1235,20 @@ function shGroupData(data){
     const rawText=norm([
       o?._source_name,o?.raw_name,o?.name,o?.title
     ].filter(Boolean).join(" "));
-    if(rawBrand!=="french avenue" || !/\bliquid\s+brun\b/.test(rawText))return null;
+    const isFrenchAvenue=rawBrand==="french avenue" || /\bfrench\s+avenue\b/.test(rawText);
+    if(!isFrenchAvenue || !/\bliquid\s+brun\b/.test(rawText))return null;
 
     if(/\bliquid\s+brun\s+limited\s+edition\b/.test(rawText)){
-      return {
-        brand:"French Avenue",
-        name:"Liquid Brun Limited Edition",
-        key:"catalog|SH-0031",
-        catalog_id:"SH-0031"
-      };
+      return {brand:"French Avenue",name:"Liquid Brun Limited Edition",key:"catalog|SH-0031",catalog_id:"SH-0031"};
     }
 
-    return {
-      brand:"French Avenue",
-      name:"Liquid Brun",
-      key:"catalog|SH-0030",
-      catalog_id:"SH-0030"
-    };
+    return {brand:"French Avenue",name:"Liquid Brun",key:"catalog|SH-0030",catalog_id:"SH-0030"};
   }
 
   function productIdentity(o,identityScope){
     /*
-     * CORREZIONE FRONTEND MIRATA — LIQUID BRUN.
-     *
-     * Il backend puo' consegnare un catalog_id corretto per la referenza
-     * base anche quando _source_name contiene una variante piu' specifica.
-     * Per Liquid Brun usiamo il titolo originale dello scraper per evitare
-     * che Limited Edition 150 ml finisca nella scheda base 100 ml.
-     * Questa regola e' isolata a French Avenue + Liquid Brun.
-     *
      * IDENTITA BACKEND — PRIORITA ASSOLUTA.
+
      *
      * Quando il backend ha gia risolto l'offerta contro il catalogo centrale,
      * l'Index non deve reinterpretare il prodotto con MASTER_CATALOG,
@@ -1912,7 +1896,7 @@ document.addEventListener("pointerdown",e=>{
 
 document.addEventListener("pointerup",e=>{
   if(!cardPointerActive)return;
-  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>20;
+  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
   cardPointerActive=false;
 },{passive:true,capture:true});
 
@@ -2142,7 +2126,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       </div>`;
     }).join("")}
   </article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // Nessuno scroll automatico: la posizione dell'utente va mantenuta.
 }
 
 async function openProduct(i) {
@@ -2158,13 +2142,16 @@ async function openProduct(i) {
   const img = g.image;
   const saved = getWishlist();
 
-  statusBox.textContent = 'Nessun formato identificabile';
+  statusBox.textContent = sizes.length ? '' : 'Nessun formato disponibile';
 
-  // UN SOLO FORMATO resta il comportamento storico, terza scheda evitata.
+  // UN SOLO FORMATO resta il comportamento storico. Se il catalogo conosce
+  // il formato ma il retailer non lo ha dichiarato nell'offerta, mostriamo
+  // comunque tutte le offerte della scheda invece di perdere il prodotto.
   if (sizes.length <= 1) {
     const selected = getSizeGroups(g).find(s => s.size === sizes[0]);
-    const offers = selected?.offers;
-    renderSingleFormatComparison(g, img, offers, sizes[0], saved);
+    const offers = selected?.offers || g.offers || [];
+    const displaySize = sizes[0] || selected?.size || '';
+    renderSingleFormatComparison(g, img, offers, displaySize, saved);
     return;
   }
 
@@ -2441,24 +2428,29 @@ async function searchPerfume(){
 
    if(currentOpenProductKey){
 
-    const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
+    // Durante il polling NON ricreare la scheda aperta: ogni ricostruzione
+    // del DOM può riportare la pagina alla posizione iniziale. La scheda
+    // viene aggiornata una sola volta quando la ricerca è realmente conclusa.
+    if(final){
+      const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
 
-    if(gi>=0){
+      if(gi>=0){
 
-     if(currentOpenSizeKey!==null){
+       if(currentOpenSizeKey!==null){
 
-      const sg=getSizeGroups(groups[gi]).find(x=>x.size===currentOpenSizeKey);
+        const sg=getSizeGroups(groups[gi]).find(x=>x.size===currentOpenSizeKey);
 
-      if(sg) openSize(gi,currentOpenSizeKey,false);
+        if(sg) openSize(gi,currentOpenSizeKey,false);
 
-      else openProduct(gi);
+        else openProduct(gi);
 
-     }else{
+       }else{
 
-      openProduct(gi);
+        openProduct(gi);
 
-     }
+       }
 
+      }
     }
 
    }else{
