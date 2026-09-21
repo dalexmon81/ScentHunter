@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 STORE = "Bplatz"
 BASE_URL = "https://en.bplatz.de"
 TIMEOUT = (2.5, 6.0)
-MAX_CANDIDATES = 20
+MAX_CANDIDATES = 40
+MAX_CATALOG_PAGES = 12
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -125,6 +126,75 @@ def add_candidate(url, query, candidates, seen):
     candidates.append(absolute)
 
 
+def _discover_products_json(session, query, candidates, seen):
+    """Generic Shopify catalog fallback.
+
+    This is store catalog discovery only: it does not know any perfume name
+    or variant. The final product page remains authoritative for price/stock.
+    """
+    for page in range(1, MAX_CATALOG_PAGES + 1):
+        data = request_json(
+            session,
+            BASE_URL + "/products.json",
+            {"limit": 250, "page": page},
+        )
+        if not isinstance(data, dict):
+            return
+        products = data.get("products")
+        if not isinstance(products, list) or not products:
+            return
+
+        for product in products:
+            if not isinstance(product, dict):
+                continue
+            title = clean(product.get("title"))
+            vendor = clean(product.get("vendor"))
+            handle = clean(product.get("handle"))
+            url = product.get("url") or ("/products/" + handle if handle else "")
+            if matches(f"{title} {vendor} {handle} {url}", query):
+                add_candidate(url, query, candidates, seen)
+                if len(candidates) >= MAX_CANDIDATES:
+                    return
+
+        if len(products) < 250:
+            return
+
+
+def _discover_from_sitemap(session, query, candidates, seen):
+    """Generic Shopify sitemap fallback, including nested sitemap indexes."""
+    pending = [BASE_URL + "/sitemap.xml"]
+    visited = set()
+
+    while pending and len(visited) < 20 and len(candidates) < MAX_CANDIDATES:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in visited:
+            continue
+        visited.add(sitemap_url)
+
+        try:
+            response = session.get(
+                sitemap_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
+            )
+            if response.status_code >= 400:
+                response.close()
+                continue
+            text = response.text or ""
+            response.close()
+        except requests.RequestException:
+            continue
+
+        for raw_url in re.findall(r"<loc>\s*([^<]+)\s*</loc>", text, re.I):
+            url = urljoin(BASE_URL, clean(raw_url)).split("#", 1)[0]
+            low = url.lower()
+            if low.endswith(".xml") or "sitemap" in low:
+                if url not in visited:
+                    pending.append(url)
+                continue
+            add_candidate(url, query, candidates, seen)
+            if len(candidates) >= MAX_CANDIDATES:
+                return
+
+
 def discover(session, query):
     candidates, seen = [], set()
 
@@ -158,6 +228,16 @@ def discover(session, query):
             url = "/products/" + str(product["handle"])
         if matches(f"{product.get('title','')} {product.get('vendor','')} {url or ''}", query):
             add_candidate(url, query, candidates, seen)
+    if candidates:
+        return candidates[:MAX_CANDIDATES]
+
+    # Generic Shopify product catalog fallback.
+    _discover_products_json(session, query, candidates, seen)
+    if candidates:
+        return candidates[:MAX_CANDIDATES]
+
+    # Generic Shopify sitemap fallback.
+    _discover_from_sitemap(session, query, candidates, seen)
     if candidates:
         return candidates[:MAX_CANDIDATES]
 
