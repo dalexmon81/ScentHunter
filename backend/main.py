@@ -128,7 +128,47 @@ def _resolve_offer_identity(result, query):
         if not callable(match_method):
             raise RuntimeError("ProductMatcher non espone match(offer, query)")
 
-        match = match_method(output, str(query or "").strip())
+        # IMPORTANT: some retailer APIs put their own vendor/store name in
+        # nested source metadata. ProductMatcher is allowed to fall back to
+        # source.brand/source_brand, so even after the public ``brand`` field
+        # is cleaned that retailer label can still become a false brand
+        # constraint.
+        #
+        # For the matcher input only, build a clean identity payload. The
+        # public/output object is left untouched. When the top-level brand is
+        # the retailer label, remove the entire nested source identity and
+        # keep the already-normalized product name as the authoritative name.
+        matcher_offer = dict(output)
+        matcher_brand = str(matcher_offer.get("brand") or "").strip()
+        matcher_store_label = "".join(
+            str(STORE_LABELS.get(
+                _normalise_store(matcher_offer.get("store") or matcher_offer.get("shop"), ""),
+                _normalise_store(matcher_offer.get("store") or matcher_offer.get("shop"), ""),
+            ) or "")
+            .lower()
+            .replace("-", " ")
+            .split()
+        )
+        matcher_brand_normalized = "".join(
+            matcher_brand.lower().replace("-", " ").split()
+        )
+        if matcher_brand_normalized == matcher_store_label or (
+            not matcher_brand_normalized
+            and str(output.get("_raw_brand") or "").strip()
+            and "".join(str(output.get("_raw_brand") or "").lower().replace("-", " ").split()) == matcher_store_label
+        ):
+            matcher_offer["brand"] = ""
+            matcher_offer.pop("manufacturer", None)
+            source = matcher_offer.get("source")
+            if isinstance(source, dict):
+                clean_source = dict(source)
+                for key in ("source_brand", "brand", "manufacturer"):
+                    clean_source.pop(key, None)
+                matcher_offer["source"] = clean_source
+            elif source is not None:
+                matcher_offer.pop("source", None)
+
+        match = match_method(matcher_offer, str(query or "").strip())
     except Exception as exc:
         print(
             f"PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}",
@@ -225,6 +265,35 @@ def clean_result(item, store):
                     if "brand" in source:
                         source["brand"] = ""
                 result["source"] = source
+
+    # Remove retailer-vendor brand metadata from nested source structures too.
+    # Some scraper payloads expose the same vendor under source/source_brand
+    # or source/brand; ProductMatcher may legitimately fall back to those
+    # fields when the top-level brand is empty. This cleanup is generic and
+    # applies only when the nested value is the retailer label itself.
+    def _clean_retailer_brand_metadata(value):
+        if isinstance(value, dict):
+            cleaned = dict(value)
+            for key in ("source_brand", "brand", "manufacturer"):
+                current = str(cleaned.get(key) or "").strip()
+                if current:
+                    normalized_current = "".join(
+                        current.lower().replace("-", " ").split()
+                    )
+                    if normalized_current == normalized_store_label:
+                        cleaned[key] = ""
+            for key, nested in list(cleaned.items()):
+                if isinstance(nested, (dict, list, tuple)):
+                    cleaned[key] = _clean_retailer_brand_metadata(nested)
+            return cleaned
+        if isinstance(value, list):
+            return [_clean_retailer_brand_metadata(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(_clean_retailer_brand_metadata(item) for item in value)
+        return value
+
+    if isinstance(result.get("source"), (dict, list, tuple)):
+        result["source"] = _clean_retailer_brand_metadata(result.get("source"))
 
     # Keep the retailer's raw name untouched. Identity belongs to ProductMatcher.
 
