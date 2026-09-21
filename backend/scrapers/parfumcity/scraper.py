@@ -70,6 +70,17 @@ def _get(session, url, params=None):
         return None
 
 
+def _add_candidate(url, urls, seen):
+    if not url:
+        return False
+    absolute = urljoin(BASE_URL, str(url)).split("?", 1)[0].split("#", 1)[0].rstrip("/")
+    if "/products/" not in absolute or absolute in seen:
+        return False
+    seen.add(absolute)
+    urls.append(absolute)
+    return True
+
+
 def _discover_products_json(session, query, urls, seen):
     """Generic Shopify catalog fallback; no product-specific knowledge."""
     for page in range(1, MAX_CATALOG_PAGES + 1):
@@ -97,7 +108,7 @@ def _discover_products_json(session, query, urls, seen):
             title = clean(p.get("title")); vendor = clean(p.get("vendor")); handle = clean(p.get("handle"))
             u = p.get("url") or ("/products/" + handle if handle else "")
             if matches(f"{title} {vendor} {handle} {u}", query):
-                add(u)
+                _add_candidate(u, urls, seen)
                 if len(urls) >= MAX_CANDIDATES:
                     return
 
@@ -124,23 +135,18 @@ def _discover_from_sitemap(session, query, urls, seen):
         for raw_url in re.findall(r"<loc>\s*([^<]+)\s*</loc>", text, re.I):
             u = urljoin(BASE_URL, clean(raw_url)).split("#",1)[0]
             low = u.lower()
-            if low.endswith(".xml") or "sitemap" in low:
+            if low.endswith(".xml") or ".xml?" in low or "sitemap" in low:
                 if u not in visited:
                     pending.append(u)
                 continue
             if "/products/" in low and matches(u, query):
-                add(u)
+                _add_candidate(u, urls, seen)
                 if len(urls) >= MAX_CANDIDATES:
                     return
 
 
 def discover(session, query):
     urls, seen = [], set()
-    def add(u):
-        if not u: return
-        absolute = urljoin(BASE_URL, str(u)).split("?", 1)[0].split("#", 1)[0].rstrip("/")
-        if "/products/" not in absolute or absolute in seen: return
-        seen.add(absolute); urls.append(absolute)
 
     # Shopify predictive search; unavailable products are explicitly requested.
     for params in (
@@ -153,10 +159,12 @@ def discover(session, query):
                 data = r.json()
                 products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
                 for p in products:
-                    if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query): add(p.get("url") or p.get("product_url"))
+                    if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query): _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
             except (ValueError, TypeError): pass
             finally: r.close()
-        if urls: return urls[:MAX_CANDIDATES]
+        # Continue with the remaining generic discovery sources even when one
+    # Shopify endpoint already returned candidates. A partial endpoint response
+    # must not hide products omitted from that endpoint.
 
     # Shopify search JSON fallback.
     r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
@@ -166,18 +174,18 @@ def discover(session, query):
                 if not isinstance(p, dict): continue
                 u = p.get("url") or p.get("handle")
                 if p.get("handle") and (not u or not str(u).startswith("/products/")): u = "/products/" + str(p["handle"])
-                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query): add(u)
+                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query): _add_candidate(u, urls, seen)
         except (ValueError, TypeError): pass
         finally: r.close()
-    if urls: return urls[:MAX_CANDIDATES]
+    # Continue to catalog discovery as a supplementary source.
 
     # Generic Shopify product catalog fallback.
     _discover_products_json(session, query, urls, seen)
-    if urls: return urls[:MAX_CANDIDATES]
+    # Continue to sitemap discovery as a supplementary source.
 
     # Generic Shopify sitemap fallback.
     _discover_from_sitemap(session, query, urls, seen)
-    if urls: return urls[:MAX_CANDIDATES]
+    # Continue to HTML search as a final generic source.
 
     # HTML search fallback.
     r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
