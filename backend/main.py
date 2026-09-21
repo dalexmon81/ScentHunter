@@ -97,105 +97,44 @@ def _identity_scope(query):
         return []
 
 def _resolve_offer_identity(result, query):
-    """
-    Resolve one RAW retailer offer through the central ProductMatcher.
-
-    Possible outcomes:
-    - matched: catalog identity assigned;
-    - rejected: definitely not relevant;
-    - unresolved: preserve the commercial offer without inventing identity.
-    """
+    """Resolve one raw retailer offer through ProductMatcher."""
     if not isinstance(result, dict):
         return None
-
     output = dict(result)
-
     if PRODUCT_MATCHER is None:
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
         return output
 
     try:
-        if PRODUCT_MATCHER._is_non_fragrance_offer(output):
-            print(
-                "PRODUCT_MATCHER_NON_FRAGRANCE_REJECT: "
-                f"name={output.get('_raw_name', '')!r} "
-                f"brand={output.get('_raw_brand', '')!r}",
-                flush=True,
-            )
-            return None
+        scope = PRODUCT_MATCHER.build_query_scope(query)
+        match = PRODUCT_MATCHER.match_offer(offer=output, query_scope=scope)
     except Exception as exc:
-        print(
-            "PRODUCT_MATCHER_CATEGORY_FILTER_ERROR: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-
-    try:
-        query_scope = PRODUCT_MATCHER.build_query_scope(query)
-
-        match = PRODUCT_MATCHER.match_offer(
-            offer=output,
-            query_scope=query_scope,
-        )
-    except AttributeError:
-        # Temporary compatibility fallback while product_matcher.py
-        # is being migrated to the new interface.
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
-        output["_match_error"] = "new_matcher_interface_missing"
-        return output
-    except Exception as exc:
-        print(
-            "PRODUCT_MATCHER_MATCH_ERROR: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
-        output["_match_error"] = f"{type(exc).__name__}: {exc}"
+        print(f"PRODUCT_MATCHER_MATCH_ERROR: {type(exc).__name__}: {exc}", flush=True)
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None, "_match_error": f"{type(exc).__name__}: {exc}"})
         return output
 
     if not isinstance(match, dict):
-        output["_match_status"] = "unresolved"
-        output["catalog_id"] = None
-        output["canonical_name"] = None
+        output.update({"_match_status": "unresolved", "catalog_id": None, "canonical_name": None})
         return output
 
-    status = str(
-        match.get("status") or "unresolved"
-    ).strip().lower()
-
+    status = str(match.get("status") or "unresolved").strip().lower()
     if status == "rejected":
-        print(
-            "PRODUCT_MATCHER_REJECT: "
-            f"name={output.get('_raw_name', '')!r} "
-            f"reason={match.get('reject_reason')!r}",
-            flush=True,
-        )
         return None
 
     output["_match_status"] = status
+    if status != "matched":
+        output.update({"catalog_id": None, "brand": None, "family": None, "variant": None, "canonical_name": None})
+        return output
 
-    if status == "matched":
-        output["catalog_id"] = match.get("catalog_id")
-        output["brand"] = match.get("brand")
-        output["family"] = match.get("family")
-        output["variant"] = match.get("variant")
-        output["canonical_name"] = match.get("canonical_name")
-        output["canonical_image"] = match.get("canonical_image") or ""
-        output["match_confidence"] = match.get("confidence")
-        output["matched_alias"] = match.get("matched_alias")
-    else:
-        output["catalog_id"] = None
-        output["brand"] = None
-        output["family"] = None
-        output["variant"] = None
-        output["canonical_name"] = None
-
+    for key in (
+        "catalog_id", "family_id", "family_name", "brand", "family",
+        "variant", "canonical_name", "match_method", "match_score",
+        "confidence", "matched_alias", "size_ml", "variant_id",
+        "canonical_image",
+    ):
+        if key in match:
+            output[key] = match.get(key)
+    output["match_confidence"] = match.get("confidence")
     return output
 
 def clean_result(item, store):
@@ -341,6 +280,7 @@ def _public_offer(item):
         "price_num": item.get("price_num"),
         "format": item.get("format"),
         "size_ml": item.get("size_ml"),
+        "variant_id": item.get("variant_id"),
         "url": item.get("url") or item.get("product_url"),
         "retailer_image": item.get("image") or item.get("image_url"),
         "available": item.get("available"),
@@ -385,7 +325,7 @@ def _aggregate_identity_results(offers):
                     "canonical_name": offer.get(
                         "canonical_name"
                     ),
-                    "image": offer.get("canonical_image"),
+                    "image": offer.get("canonical_image") or "",
                     "offers": [],
                 }
 
