@@ -8,7 +8,8 @@ from bs4 import BeautifulSoup
 STORE = "ParfumCity"
 BASE_URL = "https://www.parfumcity.nl"
 TIMEOUT = (2.5, 6.0)
-MAX_CANDIDATES = 20
+MAX_CANDIDATES = 40
+MAX_CATALOG_PAGES = 12
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -69,6 +70,70 @@ def _get(session, url, params=None):
         return None
 
 
+def _discover_products_json(session, query, urls, seen):
+    """Generic Shopify catalog fallback; no product-specific knowledge."""
+    for page in range(1, MAX_CATALOG_PAGES + 1):
+        r = _get(
+            session,
+            BASE_URL + "/products.json",
+            {"limit": 250, "page": page},
+        )
+        if not r:
+            return
+        try:
+            data = r.json()
+            products = data.get("products") if isinstance(data, dict) else None
+        except (ValueError, TypeError):
+            products = None
+        finally:
+            r.close()
+
+        if not isinstance(products, list) or not products:
+            return
+
+        for p in products:
+            if not isinstance(p, dict):
+                continue
+            title = clean(p.get("title")); vendor = clean(p.get("vendor")); handle = clean(p.get("handle"))
+            u = p.get("url") or ("/products/" + handle if handle else "")
+            if matches(f"{title} {vendor} {handle} {u}", query):
+                add(u)
+                if len(urls) >= MAX_CANDIDATES:
+                    return
+
+        if len(products) < 250:
+            return
+
+
+def _discover_from_sitemap(session, query, urls, seen):
+    """Generic Shopify sitemap fallback, including nested indexes."""
+    pending = [BASE_URL + "/sitemap.xml"]
+    visited = set()
+    while pending and len(visited) < 20 and len(urls) < MAX_CANDIDATES:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in visited:
+            continue
+        visited.add(sitemap_url)
+        r = _get(session, sitemap_url)
+        if not r:
+            continue
+        try:
+            text = r.text or ""
+        finally:
+            r.close()
+        for raw_url in re.findall(r"<loc>\s*([^<]+)\s*</loc>", text, re.I):
+            u = urljoin(BASE_URL, clean(raw_url)).split("#",1)[0]
+            low = u.lower()
+            if low.endswith(".xml") or "sitemap" in low:
+                if u not in visited:
+                    pending.append(u)
+                continue
+            if "/products/" in low and matches(u, query):
+                add(u)
+                if len(urls) >= MAX_CANDIDATES:
+                    return
+
+
 def discover(session, query):
     urls, seen = [], set()
     def add(u):
@@ -104,6 +169,14 @@ def discover(session, query):
                 if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query): add(u)
         except (ValueError, TypeError): pass
         finally: r.close()
+    if urls: return urls[:MAX_CANDIDATES]
+
+    # Generic Shopify product catalog fallback.
+    _discover_products_json(session, query, urls, seen)
+    if urls: return urls[:MAX_CANDIDATES]
+
+    # Generic Shopify sitemap fallback.
+    _discover_from_sitemap(session, query, urls, seen)
     if urls: return urls[:MAX_CANDIDATES]
 
     # HTML search fallback.
