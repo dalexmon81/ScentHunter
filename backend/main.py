@@ -832,6 +832,84 @@ def root():
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
+@app.get('/diagnostic/{store}')
+def diagnostic_store(store: str, q: str = ''):
+    """Temporary compact endpoint diagnostic; does not use matcher or aggregation."""
+    store_key = _normalise_store(store, store).strip().lower()
+    query = str(q or '').strip()
+    if store_key not in STORES:
+        return {'ok': False, 'error': 'unknown_store', 'store': store_key, 'allowed_stores': STORES}
+    if not query:
+        return {'ok': False, 'error': 'missing_query', 'store': store_key}
+
+    started = time.monotonic()
+    try:
+        module = load_scraper(store_key)
+        stream = getattr(module, 'search_stream', None)
+        if not callable(stream):
+            return {
+                'ok': False,
+                'store': store_key,
+                'query': query,
+                'error': 'search_stream_missing',
+                'elapsed': round(time.monotonic() - started, 3),
+            }
+
+        report = stream(query)
+        if isinstance(report, dict):
+            details = report.get('details') if isinstance(report.get('details'), dict) else {}
+            diagnostic = details.get('endpoint_diagnostic') if isinstance(details.get('endpoint_diagnostic'), list) else []
+            rows = report.get('results') if isinstance(report.get('results'), list) else []
+            compact_rows = []
+            for row in rows[:50]:
+                if not isinstance(row, dict):
+                    continue
+                compact_rows.append({
+                    'name': row.get('name'),
+                    'brand': row.get('brand'),
+                    'price_num': row.get('price_num'),
+                    'size_ml': row.get('size_ml'),
+                    'availability': row.get('availability'),
+                    'url': row.get('url'),
+                })
+            return {
+                'ok': True,
+                'store': store_key,
+                'query': query,
+                'status': report.get('status'),
+                'verified': bool(report.get('verified')),
+                'error': report.get('error'),
+                'details': {
+                    'summary': details.get('summary'),
+                    'endpoint_diagnostic': diagnostic,
+                },
+                'result_count': len(rows),
+                'results': compact_rows,
+                'elapsed': round(time.monotonic() - started, 3),
+            }
+
+        rows = list(report) if report is not None else []
+        return {
+            'ok': True,
+            'store': store_key,
+            'query': query,
+            'status': 'success' if rows else 'error',
+            'verified': bool(rows),
+            'error': None if rows else 'empty_result',
+            'details': {'summary': None, 'endpoint_diagnostic': []},
+            'result_count': len(rows),
+            'results': rows[:50],
+            'elapsed': round(time.monotonic() - started, 3),
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'store': store_key,
+            'query': query,
+            'error': f'{type(exc).__name__}: {exc}',
+            'elapsed': round(time.monotonic() - started, 3),
+        }
+
 @app.get('/search-start')
 def search_start(q:str):
     query=str(q or '').strip()
