@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup
 
 STORE = "Bplatz"
 BASE_URL = "https://en.bplatz.de"
@@ -139,49 +138,151 @@ def _catalog_candidate(product):
     return {"url": url, "title": title, "vendor": vendor, "raw": product}
 
 
-def _catalog_page(session, page):
+def _xml_urls(text):
+    """Return URL values from a Shopify XML sitemap/feed."""
+    if not text:
+        return []
+    return [
+        clean(value)
+        for value in re.findall(r"<loc>\s*(.*?)\s*</loc>", text, flags=re.I | re.S)
+        if clean(value)
+    ]
+
+
+def _sitemap_product_urls(session):
+    """
+    Discover product URLs from Shopify's sitemap hierarchy.
+
+    Shopify generates a sitemap index at /sitemap.xml and product sitemap(s)
+    below it. This is the primary catalog source because it is independent of
+    collection ordering and does not assume a fixed number of JSON pages.
+    """
+    response = _get(session, BASE_URL + "/sitemap.xml")
+    if not response or response.status_code != 200:
+        return []
+
+    xml = response.text or ""
+    sitemap_urls = _xml_urls(xml)
+    if not sitemap_urls:
+        return []
+
+    product_sitemaps = [
+        url for url in sitemap_urls
+        if "sitemap_products" in url.lower()
+    ]
+
+    urls = []
+    for sitemap_url in product_sitemaps:
+        child = _get(session, sitemap_url)
+        if not child or child.status_code != 200:
+            continue
+        urls.extend(_xml_urls(child.text or ""))
+
+    # A Shopify product sitemap can also be returned directly in some setups.
+    if not product_sitemaps and "<urlset" in xml.lower():
+        urls.extend(sitemap_urls)
+
+    return list(dict.fromkeys(
+        _absolute_product_url(url)
+        for url in urls
+        if "/products/" in url.lower()
+    ))
+
+
+def _sitemap_candidates(query, session):
+    """
+    Turn sitemap product URLs into generic query candidates.
+
+    The URL slug is deliberately used as discovery metadata only. No product
+    name, brand, variant, or store-specific exception is encoded here.
+    """
+    candidates = {}
+    for url in _sitemap_product_urls(session):
+        slug = url.rstrip("/").rsplit("/products/", 1)[-1]
+        if not matches(slug.replace("-", " "), query):
+            continue
+        candidates[url] = {
+            "url": url,
+            "title": slug.replace("-", " "),
+            "vendor": "",
+            "raw": {"discovery": "shopify_product_sitemap"},
+        }
+    return list(candidates.values())
+
+
+def _search_suggest_candidates(query, session):
+    """
+    Generic Shopify predictive-search discovery.
+
+    This is a secondary discovery channel, not a perfume-specific fallback.
+    It uses the store's own search mechanism and therefore applies equally to
+    every product query.
+    """
     response = _get(
         session,
-        CATALOG_URL,
-        {"limit": CATALOG_PAGE_SIZE, "page": page},
+        BASE_URL + "/search/suggest.json",
+        {
+            "q": query,
+            "resources[type]": "product",
+            "resources[limit]": 50,
+            "resources[options][unavailable_products]": "show",
+        },
     )
     if not response or response.status_code != 200:
-        return None
+        return []
+
     try:
         payload = response.json()
     except (ValueError, TypeError):
-        return None
-    products = payload.get("products") if isinstance(payload, dict) else None
-    return products if isinstance(products, list) else None
+        return []
+
+    resources = payload.get("resources") if isinstance(payload, dict) else None
+    results = resources.get("results") if isinstance(resources, dict) else None
+    products = results.get("products") if isinstance(results, dict) else None
+    if not isinstance(products, list):
+        return []
+
+    candidates = {}
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        handle = clean(product.get("handle"))
+        url = _absolute_product_url(
+            product.get("url") or (f"/products/{handle}" if handle else "")
+        )
+        title = clean(product.get("title") or product.get("name"))
+        vendor = clean(product.get("vendor") or product.get("brand"))
+        if not url or not title:
+            continue
+        haystack = f"{title} {vendor} {url}"
+        if matches(haystack, query):
+            candidates[url] = {
+                "url": url,
+                "title": title,
+                "vendor": vendor,
+                "raw": product,
+            }
+    return list(candidates.values())
 
 
 def _discover_catalog(query, session):
+    """
+    Generic product discovery for Bplatz.
+
+    Primary source: Shopify product sitemap.
+    Secondary source: Shopify predictive search.
+
+    No individual perfume, brand, variant, or URL is hardcoded.
+    """
     candidates = {}
-    first = _catalog_page(session, 1)
-    if first is None:
-        return []
 
-    for page in range(1, MAX_CATALOG_PAGES + 1):
-        products = first if page == 1 else _catalog_page(session, page)
-        if products is None or not products:
-            break
+    for candidate in _sitemap_candidates(query, session):
+        candidates[candidate["url"]] = candidate
 
-        for product in products:
-            candidate = _catalog_candidate(product)
-            if not candidate:
-                continue
-            haystack = " ".join(
-                str(candidate.get(key) or "")
-                for key in ("title", "vendor", "url")
-            )
-            if matches(haystack, query):
-                candidates[candidate["url"]] = candidate
-
-        if len(products) < CATALOG_PAGE_SIZE:
-            break
+    for candidate in _search_suggest_candidates(query, session):
+        candidates[candidate["url"]] = candidate
 
     return list(candidates.values())
-
 
 def _extract_image(product):
     image = product.get("featured_image")
