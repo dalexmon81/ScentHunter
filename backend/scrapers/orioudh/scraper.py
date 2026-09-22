@@ -355,7 +355,6 @@ def _raw_offer(
         source_name = product_name
 
     vendor = _clean(product.get("vendor")) or None
-    product_line = _canonical_product_line(source_name, vendor or "")
     variant_id = variant.get("id")
     product_id = product.get("id")
     sku = _clean(variant.get("sku")) or None
@@ -394,7 +393,6 @@ def _raw_offer(
                 if concentration else None
             ),
             "gender": {"value": gender, "source": "product_source"},
-            "product_line": {"value": product_line, "source": "canonical_name"},
             "packaging_type": {"value": "product", "source": "default"},
         },
         "offer": {
