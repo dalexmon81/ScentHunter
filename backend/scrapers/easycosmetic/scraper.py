@@ -697,20 +697,6 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def search_stream(query: str, emit=None):
-    results = search(query)
-
-    def rows():
-        yield from results
-
-    if callable(emit):
-        for row in rows():
-            emit(row)
-        return None
-
-    return rows()
-
-
 def diagnose(query: str) -> Dict[str, Any]:
     query = _clean(query)
 
