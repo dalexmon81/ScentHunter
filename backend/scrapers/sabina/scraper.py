@@ -538,6 +538,86 @@ def _parse_html(text, query):
     impressions = _parse_datalayer_impressions(text)
     rows = _parse_product_containers(text, query, impressions)
 
+    # Generic fallback: Sabina can expose the product card data in dataLayer
+    # while the visible card URL is encoded elsewhere in the HTML. Pair each
+    # impression with a first-party product URL using only generic signals:
+    # product id, product-name tokens, and the URL slug.
+    soup = BeautifulSoup(text or "", "html.parser")
+    query_tokens = [
+        w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower())
+        if len(w) > 1 and w != "ml" and not w.isdigit()
+    ]
+
+    if impressions:
+        product_links = []
+        for a in soup.find_all("a", href=True):
+            url = urljoin(BASE, html_lib.unescape(str(a.get("href") or ""))).split("#", 1)[0]
+            if not _looks_like_product_url(url):
+                continue
+            product_links.append((a, url))
+
+        for impression in impressions:
+            name = _clean(impression.get("name"))
+            if not name:
+                continue
+
+            name_tokens = [
+                w for w in re.findall(r"[a-z0-9À-ÿ]+", name.lower())
+                if len(w) > 1 and w != "ml" and not w.isdigit()
+            ]
+            product_id = _clean(impression.get("product_id"))
+            numeric_id = ""
+            id_match = re.search(r"(?<!\\d)(\\d{4,})(?:_|$)", product_id)
+            if id_match:
+                numeric_id = id_match.group(1)
+
+            selected = None
+            for anchor, url in product_links:
+                hay = (url + " " + _clean(anchor.get_text(" ", strip=True)) + " " +
+                       _clean(anchor.get("title")) + " " + _clean(anchor.get("aria-label"))).lower()
+
+                if numeric_id and numeric_id in url:
+                    selected = (anchor, url)
+                    break
+
+                if name_tokens and all(token in hay for token in name_tokens):
+                    selected = (anchor, url)
+                    break
+
+            if not selected:
+                continue
+
+            anchor, url = selected
+            price = _price(impression.get("price"))
+            if not price:
+                continue
+
+            row = {
+                "store": STORE,
+                "name": name,
+                "price": price,
+                "url": url,
+            }
+            if impression.get("brand"):
+                row["brand"] = impression["brand"]
+            if impression.get("size_ml"):
+                row["size_ml"] = impression["size_ml"]
+            if product_id:
+                row["product_id"] = product_id
+
+            image = ""
+            img = anchor.find("img")
+            if img:
+                for attr in ("data-original", "data-src", "src"):
+                    candidate = html_lib.unescape(str(img.get(attr) or "")).strip()
+                    if candidate and not candidate.startswith("data:"):
+                        image = urljoin(BASE, candidate)
+                        break
+            if image:
+                row["image"] = image
+
+            rows.append(row)
+
     # Generic fallback for installations/pages that do not expose the
     # product-container markup. JSON-LD and normal product links are retained.
     soup = BeautifulSoup(text or "", "html.parser")
