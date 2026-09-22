@@ -66,7 +66,6 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
                 "context": _compact(text[max(0, i-350):i+700], 1050)
             }
 
-        # Inspect links around product-like references.
         links = []
         for m in re.finditer(r'href=["\']([^"\']+)["\']', text, re.I):
             href = m.group(1)
@@ -148,7 +147,6 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
         "stages": {},
     }
 
-    # 1. HTTP: fetch exactly one known-good Sabina search endpoint.
     page = _get(url, timeout=(2.0, 8.0), headers=headers)
     result["stages"]["http"] = {
         "ok": page["ok"],
@@ -165,7 +163,6 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
 
     text = page["text"]
 
-    # 2. dataLayer parser: what the current deployed scraper extracts.
     try:
         impressions = module._parse_datalayer_impressions(text)
         result["stages"]["dataLayer"] = {
@@ -179,7 +176,6 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
         }
         impressions = []
 
-    # 3. Product-container / HTML parser: complete _parse_html result.
     try:
         parsed = module._parse_html(text, q)
         result["stages"]["parse_html"] = {
@@ -192,15 +188,13 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    # 4. Trace the exact search() URL loop without changing production code.
-    # This reproduces the search() control flow and records every hidden exception.
     try:
         import requests as _requests
         session = _requests.Session()
         session.headers.update(headers)
         queries = [q]
         query_without_size = module._clean(
-            re.sub(r"(?<!\\d)\\d{2,4}\\s*ml\\b", " ", q, flags=re.I)
+            re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", q, flags=re.I)
         )
         if query_without_size and query_without_size.casefold() != q.casefold():
             queries.append(query_without_size)
@@ -273,7 +267,6 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    # 5. Direct search(): final behavior, kept for comparison.
     try:
         searched = module.search(q)
         result["stages"]["search"] = {
@@ -286,7 +279,6 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    # 5. search_stream(): final scraper contract, still read-only.
     try:
         streamed = module.search_stream(q)
         result["stages"]["search_stream"] = {
@@ -318,7 +310,6 @@ def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
     for p in pages:
         text = p["text"]
         low = text.lower()
-        # Capture product-card-like anchors whose nearby text contains a query token.
         matches = []
         for m in re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', text, re.I | re.S):
             href, inner = m.group(1), m.group(2)
@@ -329,7 +320,6 @@ def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
                     "url": urljoin(p["url"], href),
                     "text": visible,
                 })
-        # Also locate raw occurrences in page text, independent of href.
         raw_contexts = []
         for m in list(TOKEN_RE.finditer(text))[:20]:
             raw_contexts.append(_compact(text[max(0, m.start()-300):m.end()+500], 900))
@@ -351,3 +341,160 @@ def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
         "purpose": "read-only inspection of category/card text; no URL-token discovery and no production search()",
         "pages": out,
     }
+
+
+@router.get("/diagnose-deloox-pipeline")
+def diagnose_deloox_pipeline(q: str = Query("Liquid Brun")):
+    """Read-only trace of the current Deloox production scraper pipeline.
+
+    Traces discovery -> candidate HTTP fetch -> _product parsing -> search().
+    It does not modify the production scraper and contains no product-specific
+    business rule.
+    """
+    import importlib.util
+    import os
+    import requests as _requests
+
+    started = time.monotonic()
+    scraper_path = os.path.join(
+        os.path.dirname(__file__),
+        "scrapers",
+        "deloox",
+        "scraper.py",
+    )
+
+    result = {
+        "diagnostic": True,
+        "store": "Deloox",
+        "query": q,
+        "purpose": "read-only trace of current Deloox scraper: _discover -> HTTP -> _product -> search",
+        "scraper_file": scraper_path,
+        "stages": {},
+    }
+
+    spec = importlib.util.spec_from_file_location(
+        "scent_hunter_deloox_pipeline_diag",
+        scraper_path,
+    )
+    if spec is None or spec.loader is None:
+        result["stages"]["import"] = {
+            "ok": False,
+            "error": "Could not load Deloox scraper",
+        }
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
+
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        result["stages"]["import"] = {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
+
+    result["stages"]["import"] = {
+        "ok": True,
+        "module": getattr(module, "__file__", None),
+        "has_discover": hasattr(module, "_discover"),
+        "has_product": hasattr(module, "_product"),
+        "has_search": hasattr(module, "search"),
+    }
+
+    session = None
+    candidates = []
+
+    try:
+        session = _requests.Session()
+        if hasattr(module, "HEADERS"):
+            session.headers.update(getattr(module, "HEADERS"))
+
+        t0 = time.monotonic()
+        candidates = module._discover(session, q)
+        result["stages"]["discover"] = {
+            "ok": True,
+            "elapsed_sec": round(time.monotonic() - t0, 3),
+            "type": type(candidates).__name__,
+            "count": len(candidates) if isinstance(candidates, list) else None,
+            "urls": candidates[:100] if isinstance(candidates, list) else candidates,
+        }
+    except Exception as exc:
+        result["stages"]["discover"] = {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        candidates = []
+
+    candidate_results = []
+    if isinstance(candidates, list):
+        for index, url in enumerate(candidates[:100]):
+            item = {
+                "index": index,
+                "url": url,
+            }
+            try:
+                t0 = time.monotonic()
+                response = session.get(
+                    url,
+                    timeout=getattr(module, "TIMEOUT", 4),
+                    allow_redirects=True,
+                )
+                item["http_elapsed_sec"] = round(time.monotonic() - t0, 3)
+                item["status"] = response.status_code
+                item["final_url"] = response.url
+                item["bytes"] = len(response.content)
+
+                if response.status_code >= 400:
+                    item["parser_result"] = "skipped_http_error"
+                else:
+                    try:
+                        parsed = module._product(response.url, response.text, q)
+                        item["parser_result"] = "matched" if parsed else "rejected_or_none"
+                        if parsed:
+                            item["product"] = parsed
+                    except Exception as exc:
+                        item["parser_result"] = "exception"
+                        item["parser_error"] = f"{type(exc).__name__}: {exc}"
+                response.close()
+            except Exception as exc:
+                item["http_error"] = f"{type(exc).__name__}: {exc}"
+            candidate_results.append(item)
+
+    status_values = [x.get("status") for x in candidate_results if x.get("status") is not None]
+    result["stages"]["candidate_fetch_and_product"] = {
+        "candidate_count": len(candidate_results),
+        "matched_count": sum(1 for x in candidate_results if x.get("parser_result") == "matched"),
+        "http_error_count": sum(1 for x in candidate_results if "http_error" in x),
+        "http_status_counts": {
+            str(code): sum(1 for x in candidate_results if x.get("status") == code)
+            for code in sorted(set(status_values))
+        },
+        "items": candidate_results,
+    }
+
+    try:
+        t0 = time.monotonic()
+        searched = module.search(q)
+        result["stages"]["search"] = {
+            "ok": True,
+            "elapsed_sec": round(time.monotonic() - t0, 3),
+            "type": type(searched).__name__,
+            "count": len(searched) if isinstance(searched, list) else None,
+            "rows": searched[:20] if isinstance(searched, list) else searched,
+        }
+    except Exception as exc:
+        result["stages"]["search"] = {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    if session is not None:
+        try:
+            session.close()
+        except Exception:
+            pass
+
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
