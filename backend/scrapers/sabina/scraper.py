@@ -367,78 +367,104 @@ def _extract_balanced_json_object(text, start):
     return None
 
 
-def _parse_datalayer_impressions(text):
-    """Extract generic product impressions emitted by Sabina's search page.
+def _extract_balanced_json_object(text, start):
+    """Extract one JSON object starting at `start`, respecting quoted strings."""
+    depth = 0
+    in_string = False
+    escaped = False
 
-    Sabina embeds nested JSON inside dataLayer.push(...). A non-greedy
-    regex cannot safely parse that structure because the payload itself
-    contains nested closing braces. We locate dataLayer.push calls and
-    balance JSON braces while respecting quoted strings.
-    """
-    out = []
-    source = text or ""
-    marker = "dataLayer.push("
-    pos = 0
+    for i in range(start, len(text)):
+        ch = text[i]
 
-    while True:
-        call = source.find(marker, pos)
-        if call < 0:
-            break
-
-        start = call + len(marker)
-        while start < len(source) and source[start].isspace():
-            start += 1
-
-        if start >= len(source) or source[start] != "{":
-            pos = start
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
             continue
 
-        raw = _extract_balanced_json_object(source, start)
-        if raw:
-            try:
-                payload = json.loads(raw)
-            except Exception:
-                payload = None
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
 
-            ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
-            impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
+    return None
 
-            if isinstance(impressions, list):
-                for item in impressions:
-                    if not isinstance(item, dict):
-                        continue
 
-                    name = _clean(item.get("name"))
-                    if not name:
-                        continue
+def _parse_datalayer_impressions(text):
+    """Extract generic product impressions emitted by Sabina's search page."""
+    out = []
+    marker = "dataLayer.push("
+    cursor = 0
 
-                    out.append({
-                        "name": name,
-                        "price": item.get("price"),
-                        "brand": _clean(item.get("brand")),
-                        "size_ml": _clean(item.get("variant")),
-                        "product_id": _clean(item.get("id")),
-                        "position": item.get("position"),
-                    })
+    while True:
+        marker_pos = (text or "").find(marker, cursor)
+        if marker_pos < 0:
+            break
 
-            pos = start + len(raw)
-        else:
-            pos = start + 1
+        object_start = marker_pos + len(marker)
+        while object_start < len(text) and text[object_start].isspace():
+            object_start += 1
 
-    unique = []
+        if object_start >= len(text) or text[object_start] != "{":
+            cursor = marker_pos + len(marker)
+            continue
+
+        payload_text = _extract_balanced_json_object(text, object_start)
+        if not payload_text:
+            cursor = object_start + 1
+            continue
+
+        try:
+            payload = json.loads(payload_text)
+        except Exception:
+            cursor = object_start + len(payload_text)
+            continue
+
+        ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
+        impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
+
+        if isinstance(impressions, list):
+            for item in impressions:
+                if not isinstance(item, dict):
+                    continue
+
+                name = _clean(item.get("name"))
+                if not name:
+                    continue
+
+                out.append({
+                    "name": name,
+                    "price": item.get("price"),
+                    "brand": _clean(item.get("brand")),
+                    "size_ml": _clean(item.get("variant")),
+                    "product_id": _clean(item.get("id")),
+                    "position": item.get("position"),
+                })
+
+        cursor = object_start + len(payload_text)
+
+    # Generic dedupe: preserve order and never invent identity.
     seen = set()
+    result = []
     for item in out:
         key = (
-            _clean(item.get("name")).casefold(),
-            _clean(item.get("product_id")).casefold(),
-            _clean(item.get("size_ml")).casefold(),
+            item.get("product_id") or "",
+            item.get("name") or "",
+            item.get("size_ml") or "",
         )
         if key in seen:
             continue
         seen.add(key)
-        unique.append(item)
+        result.append(item)
 
-    return unique
+    return result
 
 
 def _parse_product_containers(text, query, impressions):
