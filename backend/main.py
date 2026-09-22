@@ -346,12 +346,21 @@ def clean_result(item, store):
     return result
 
 def result_key(item):
+    """Build one stable commercial-offer key.
+
+    The central matcher owns catalog identity. When a catalog_id is available,
+    it is therefore the strongest generic signal for collapsing duplicate
+    listings from the same retailer and format. URL/product-id/name remain
+    fallbacks for unresolved or legacy rows.
+    """
     store = _normalise_store(item.get('store') or item.get('shop'), '')
+    catalog_id = str(item.get('catalog_id') or '').strip().lower()
     url = str(item.get('url') or item.get('product_url') or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    return (store, url or product_id or name, round(size,3) if size is not None else '')
+    identity_key = catalog_id or url or product_id or name
+    return (store, identity_key, round(size,3) if size is not None else '')
 
 def dedupe_results(results, diagnostics=None):
     """Deduplicate offers; optionally record every actual DROP decision."""
