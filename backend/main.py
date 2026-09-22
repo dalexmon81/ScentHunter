@@ -238,6 +238,16 @@ def clean_result(item, store):
     result["_raw_name"] = raw_name
     result["_raw_brand"] = raw_brand
 
+    # Compute the normalized retailer label unconditionally. The nested
+    # generic cleanup below also runs when a scraper does not provide a
+    # brand, so this value must never depend on ``raw_brand`` being present.
+    normalized_store_label = "".join(
+        str(STORE_LABELS.get(machine_store, machine_store) or "")
+        .lower()
+        .replace("-", " ")
+        .split()
+    )
+
     # Some retailer APIs expose the retailer/vendor name in the ``brand``
     # field rather than the actual product brand. That is commercial source
     # metadata, not product identity. Do not let a store name become a hard
@@ -246,12 +256,6 @@ def clean_result(item, store):
     if raw_brand:
         normalized_brand = "".join(
             raw_brand.lower().replace("-", " ").split()
-        )
-        normalized_store_label = "".join(
-            str(STORE_LABELS.get(machine_store, machine_store) or "")
-            .lower()
-            .replace("-", " ")
-            .split()
         )
         if normalized_brand == normalized_store_label:
             result["brand"] = ""
