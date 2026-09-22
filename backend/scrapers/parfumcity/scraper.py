@@ -20,11 +20,26 @@ STOPWORDS = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray",
 
 
 def clean(v): return re.sub(r"\s+", " ", str(v or "")).strip()
-def norm(v): return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
-def tokens(q): return [x for x in norm(q).split() if x not in STOPWORDS and len(x) > 1]
+def norm(v):
+    text = re.sub(r"[^a-z0-9]+", " ", clean(v).lower())
+    text = re.sub(r"(?<=\\d)(?=[a-z])|(?<=[a-z])(?=\\d)", " ", text)
+    return re.sub(r"\\s+", " ", text).strip()
+
+
+def tokens(q):
+    return [x for x in norm(q).split() if x not in STOPWORDS and len(x) > 1]
+
+
 def matches(text, q):
-    hay = set(norm(text).split()); wanted = tokens(q)
-    return bool(wanted) and all(x in hay for x in wanted)
+    wanted = tokens(q)
+    if not wanted:
+        return False
+    hay = set(norm(text).split())
+    if all(x in hay for x in wanted):
+        return True
+    compact_hay = "".join(hay)
+    compact_wanted = "".join(wanted)
+    return bool(compact_wanted and compact_wanted in compact_hay)
 
 
 def size_ml(*values):
@@ -62,12 +77,25 @@ def parse_price(v):
     return round(n / 100 if re.fullmatch(r"\d+", m.group(0)) and n >= 100 else n, 2) if n > 0 else None
 
 
+class StoreRequestError(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
 def _get(session, url, params=None):
     try:
         r = session.get(url, params=params, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        return r if r.status_code < 400 else None
-    except requests.RequestException:
-        return None
+    except requests.Timeout as exc:
+        raise StoreRequestError("timeout", f"ParfumCity timeout: {url}") from exc
+    except requests.RequestException as exc:
+        raise StoreRequestError("unavailable", f"ParfumCity request failed: {type(exc).__name__}: {exc}") from exc
+
+    if r.status_code >= 400:
+        status = "blocked" if r.status_code in (401, 403, 429) else "unavailable" if r.status_code >= 500 else "error"
+        r.close()
+        raise StoreRequestError(status, f"ParfumCity HTTP {r.status_code}: {url}")
+    return r
 
 
 def _canonical_product_url(url):
@@ -163,56 +191,73 @@ def _discover_from_sitemap(session, query, urls, seen):
 
 
 def discover(session, query):
-    urls, seen = [], set()
+    urls, seen, errors = [], set(), []
 
-    # Shopify predictive search; unavailable products are explicitly requested.
-    for params in (
-        {"q": query, "resources[type]": "product", "resources[limit]": 50, "resources[options][unavailable_products]": "show"},
-        {"q": query, "resources[type]": "product", "resources[limit]": 50},
-    ):
-        r = _get(session, BASE_URL + "/search/suggest.json", params)
-        if r:
+    def record(source, exc):
+        errors.append({"source": source, "status": exc.status, "error": str(exc)})
+
+    try:
+        for params in (
+            {"q": query, "resources[type]": "product", "resources[limit]": 50, "resources[options][unavailable_products]": "show"},
+            {"q": query, "resources[type]": "product", "resources[limit]": 50},
+        ):
             try:
-                data = r.json()
-                products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
-                for p in products:
-                    if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query): _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
-            except (ValueError, TypeError): pass
-            finally: r.close()
-        # Continue with the remaining generic discovery sources even when one
-    # Shopify endpoint already returned candidates. A partial endpoint response
-    # must not hide products omitted from that endpoint.
+                r = _get(session, BASE_URL + "/search/suggest.json", params)
+                try:
+                    data = r.json()
+                    products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
+                    for p in products:
+                        if isinstance(p, dict) and matches(f"{p.get('title','')} {p.get('vendor','')} {p.get('url','')}", query):
+                            _add_candidate(p.get("url") or p.get("product_url"), urls, seen)
+                finally:
+                    r.close()
+            except StoreRequestError as exc:
+                record("shopify_predictive_search", exc)
 
-    # Shopify search JSON fallback.
-    r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
-    if r:
         try:
-            for p in r.json().get("products") or []:
-                if not isinstance(p, dict): continue
-                u = p.get("url") or p.get("handle")
-                if p.get("handle") and (not u or not str(u).startswith("/products/")): u = "/products/" + str(p["handle"])
-                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query): _add_candidate(u, urls, seen)
-        except (ValueError, TypeError): pass
-        finally: r.close()
-    # Continue to catalog discovery as a supplementary source.
+            r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
+            try:
+                for p in r.json().get("products") or []:
+                    if not isinstance(p, dict):
+                        continue
+                    u = p.get("url") or p.get("handle")
+                    if p.get("handle") and (not u or not str(u).startswith("/products/")):
+                        u = "/products/" + str(p["handle"])
+                    if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", query):
+                        _add_candidate(u, urls, seen)
+            finally:
+                r.close()
+        except (StoreRequestError, ValueError, TypeError) as exc:
+            if isinstance(exc, StoreRequestError):
+                record("shopify_search_json", exc)
+            else:
+                errors.append({"source": "shopify_search_json", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
-    # Generic Shopify product catalog fallback.
-    _discover_products_json(session, query, urls, seen)
-    # Continue to sitemap discovery as a supplementary source.
-
-    # Generic Shopify sitemap fallback.
-    _discover_from_sitemap(session, query, urls, seen)
-    # Continue to HTML search as a final generic source.
-
-    # HTML search fallback.
-    r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
-    if r:
         try:
-            soup = BeautifulSoup(r.text, "html.parser")
-            for a in soup.select('a[href*="/products/"]'):
-                if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query): _add_candidate(a.get("href"), urls, seen)
-        finally: r.close()
-    return urls[:MAX_CANDIDATES]
+            _discover_products_json(session, query, urls, seen)
+        except StoreRequestError as exc:
+            record("shopify_products_json", exc)
+
+        try:
+            _discover_from_sitemap(session, query, urls, seen)
+        except StoreRequestError as exc:
+            record("shopify_sitemap", exc)
+
+        try:
+            r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
+            try:
+                soup = BeautifulSoup(r.text, "html.parser")
+                for a in soup.select('a[href*="/products/"]'):
+                    if matches(f"{a.get('title','')} {a.get_text(' ', strip=True)} {a.get('href','')}", query):
+                        _add_candidate(a.get("href"), urls, seen)
+            finally:
+                r.close()
+        except StoreRequestError as exc:
+            record("html_search", exc)
+    except Exception as exc:
+        errors.append({"source": "discovery", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+
+    return urls[:MAX_CANDIDATES], errors
 
 
 def product_json(session, url):
@@ -249,31 +294,77 @@ def make_item(product, variant, url, query):
     }
 
 
-def search(query):
+def _search_report(query):
     query = clean(query)
-    if not query: return []
-    session = requests.Session(); results = []; seen = set()
+    if not query:
+        return {"status": "success", "verified": True, "results": [], "error": None, "details": {"verified_empty": True}}
+
+    session = requests.Session()
+    results, seen = [], set()
+    fetch_errors = []
     try:
-        for url in discover(session, query):
-            data = product_json(session, url)
-            if not data: continue
-            for variant in data.get("variants") or []:
-                if not isinstance(variant, dict): continue
-                item = make_item(data, variant, url, query)
-                if not item: continue
-                key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
-                if key in seen: continue
-                seen.add(key); results.append(item)
-        return results
-    finally: session.close()
+        urls, discovery_errors = discover(session, query)
+        if not urls and discovery_errors:
+            error = discovery_errors[0]
+            return {
+                "status": error["status"],
+                "verified": False,
+                "results": [],
+                "error": error["error"],
+                "details": {"verified_empty": False, "discovery_errors": discovery_errors},
+            }
+
+        for url in urls:
+            try:
+                data = product_json(session, url)
+                if not data:
+                    fetch_errors.append({"status": "error", "url": url, "error": "empty_product_json"})
+                    continue
+                for variant in data.get("variants") or []:
+                    if not isinstance(variant, dict):
+                        continue
+                    item = make_item(data, variant, url, query)
+                    if not item:
+                        continue
+                    key = (item["url"], (item.get("identity", {}).get("store_variant_id") or {}).get("value"))
+                    if key not in seen:
+                        seen.add(key)
+                        results.append(item)
+            except StoreRequestError as exc:
+                fetch_errors.append({"status": exc.status, "url": url, "error": str(exc)})
+
+        errors = discovery_errors + fetch_errors
+        if results and errors:
+            status, verified, error = "partial", True, None
+        elif results:
+            status, verified, error = "success", True, None
+        elif errors:
+            error = errors[0]
+            return {"status": error["status"], "verified": False, "results": [], "error": error["error"], "details": {"verified_empty": False, "errors": errors}}
+        else:
+            status, verified, error = "success", True, None
+
+        return {
+            "status": status,
+            "verified": verified,
+            "results": results,
+            "error": error,
+            "details": {"verified_empty": not results and not errors, "candidate_count": len(urls), "errors": errors},
+        }
+    finally:
+        session.close()
+
+
+def search(query):
+    return _search_report(query).get("results", [])
 
 
 def search_stream(query, emit=None):
-    rows = search(query)
+    report = _search_report(query)
     if callable(emit):
-        for row in rows: emit(row)
-        return None
-    return iter(rows)
+        for row in report.get("results", []):
+            emit(row)
+    return report
 
 
 def scrape(query): return search(query)
