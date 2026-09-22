@@ -41,7 +41,7 @@ def _compact(s, n=500):
     s = re.sub(r"\s+", " ", s or "").strip()
     return s[:n]
 
-@router.get("/diagnose-sabina-precise")
+@router.get("/diagnose-sabina-catalog")
 def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
     base = "https://www.sabina.com"
     urls = [
@@ -91,7 +91,7 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
         "probes": probes,
     }
 
-@router.get("/diagnose-deloox-precise")
+@router.get("/diagnose-deloox-catalog")
 def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
     urls = [
         "https://www.deloox.com/en/category/1121334/french-avenue-mens-fragrances.html",
