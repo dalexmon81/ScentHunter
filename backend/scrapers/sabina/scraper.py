@@ -10,7 +10,6 @@ STORE = "Sabina"
 BASE = "https://www.sabina.com"
 TIMEOUT = 4
 SEARCH_TIMEOUT = 8
-
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
@@ -263,21 +262,16 @@ def _enrich_product_sizes(session, rows, query=""):
 
 def _dedupe(rows, query):
     q = _clean(query).lower()
-
-    # Il formato è un filtro sulla variante, non una parola che deve essere
-    # necessariamente presente nel nome della card di ricerca.
     words = [
         w for w in re.findall(r"[a-z0-9À-ÿ]+", q)
         if len(w) > 1 and w != "ml" and not w.isdigit()
     ]
 
     out, seen = [], set()
-
     for row in rows:
         name = _clean(row.get("name"))
         url = row.get("url")
         price = _price(row.get("price"))
-
         if not name or not url or not price:
             continue
 
@@ -291,18 +285,16 @@ def _dedupe(rows, query):
             continue
         seen.add(key)
 
-        item = {
-            "store": STORE,
-            "name": name,
-            "price": price,
-            "url": url.split("#")[0],
-        }
+        item = dict(row)
+        item["store"] = STORE
+        item["name"] = name
+        item["price"] = price
+        item["url"] = url.split("#")[0]
         if size:
             item["size_ml"] = size
         out.append(item)
 
     return out
-
 
 def _walk_json(obj, query):
     """Estrae prodotti da JSON anche se SellBoost cambia leggermente i nomi dei campi."""
@@ -353,73 +345,234 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 
+def _extract_balanced_json_object(text, start):
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for i in range(start, len(text)):
+        ch = text[i]
+
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+
+    return None
+
+
+def _parse_datalayer_impressions(text):
+    out = []
+    marker = "dataLayer.push("
+    cursor = 0
+
+    while True:
+        marker_pos = (text or "").find(marker, cursor)
+        if marker_pos < 0:
+            break
+
+        object_start = marker_pos + len(marker)
+        while object_start < len(text) and text[object_start].isspace():
+            object_start += 1
+
+        if object_start >= len(text) or text[object_start] != "{":
+            cursor = marker_pos + len(marker)
+            continue
+
+        payload_text = _extract_balanced_json_object(text, object_start)
+        if not payload_text:
+            cursor = object_start + 1
+            continue
+
+        try:
+            payload = json.loads(payload_text)
+        except Exception:
+            cursor = object_start + len(payload_text)
+            continue
+
+        ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
+        impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
+
+        if isinstance(impressions, list):
+            for item in impressions:
+                if not isinstance(item, dict):
+                    continue
+                name = _clean(item.get("name"))
+                if not name:
+                    continue
+                out.append({
+                    "name": name,
+                    "price": item.get("price"),
+                    "brand": _clean(item.get("brand")),
+                    "size_ml": _clean(item.get("variant")),
+                    "product_id": _clean(item.get("id")),
+                    "position": item.get("position"),
+                })
+
+        cursor = object_start + len(payload_text)
+
+    seen = set()
+    result = []
+    for item in out:
+        key = (
+            item.get("product_id") or "",
+            item.get("name") or "",
+            item.get("size_ml") or "",
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+
+    return result
+
+
 def _parse_html(text, query):
-    soup = BeautifulSoup(text, "html.parser")
+    impressions = _parse_datalayer_impressions(text)
+    soup = BeautifulSoup(text or "", "html.parser")
     rows = []
 
-    # 1) JSON-LD: è il dato più pulito quando presente.
+    # Pair dataLayer product impressions with first-party product URLs.
+    product_links = []
+    for anchor in soup.find_all("a", href=True):
+        url = urljoin(BASE, html_lib.unescape(str(anchor.get("href") or ""))).split("#", 1)[0]
+        if _looks_like_product_url(url):
+            product_links.append((anchor, url))
+
+    for impression in impressions:
+        name = _clean(impression.get("name"))
+        if not name:
+            continue
+
+        name_tokens = [
+            w for w in re.findall(r"[a-z0-9À-ÿ]+", name.lower())
+            if len(w) > 1 and w != "ml" and not w.isdigit()
+        ]
+
+        product_id = _clean(impression.get("product_id"))
+        numeric_id = ""
+        m = re.search(r"(?<!\d)(\d{4,})(?:_|$)", product_id)
+        if m:
+            numeric_id = m.group(1)
+
+        selected = None
+        for anchor, url in product_links:
+            hay = (
+                url + " " +
+                _clean(anchor.get_text(" ", strip=True)) + " " +
+                _clean(anchor.get("title")) + " " +
+                _clean(anchor.get("aria-label"))
+            ).lower()
+
+            if numeric_id and numeric_id in url:
+                selected = (anchor, url)
+                break
+
+            if name_tokens and all(token in hay for token in name_tokens):
+                selected = (anchor, url)
+                break
+
+        if not selected:
+            continue
+
+        anchor, url = selected
+        price = _price(impression.get("price"))
+        if not price:
+            continue
+
+        row = {
+            "store": STORE,
+            "name": name,
+            "price": price,
+            "url": url,
+        }
+
+        if impression.get("brand"):
+            row["brand"] = impression["brand"]
+        if impression.get("size_ml"):
+            row["size_ml"] = impression["size_ml"]
+        if product_id:
+            row["product_id"] = product_id
+
+        img = anchor.find("img")
+        if img:
+            for attr in ("data-original", "data-src", "src"):
+                candidate = html_lib.unescape(str(img.get(attr) or "")).strip()
+                if candidate and not candidate.startswith("data:"):
+                    row["image"] = urljoin(BASE, candidate)
+                    break
+
+        rows.append(row)
+
+    # Generic JSON-LD fallback.
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text(strip=True))
             rows.extend(_walk_json(data, query))
         except Exception:
-            pass
-
-    # 2) Card / link prodotto. Non dipende da UNA singola classe CSS.
-    for a in soup.find_all("a", href=True):
-        url = urljoin(BASE, a["href"])
-        if not _looks_like_product_url(url):
             continue
 
-        container = a
-        for _ in range(7):
-            parent = getattr(container, "parent", None)
-            if not parent:
-                break
-            container = parent
-            txt = _clean(container.get_text(" ", strip=True))
-            if "€" in txt and len(txt) < 1800:
-                break
+    # Generic visible-card fallback for pages without a usable dataLayer.
+    if not rows:
+        for anchor in soup.find_all("a", href=True):
+            url = urljoin(BASE, html_lib.unescape(str(anchor.get("href") or "")))
+            if not _looks_like_product_url(url):
+                continue
 
-        text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
-            continue
+            container = anchor
+            for _ in range(7):
+                parent = getattr(container, "parent", None)
+                if not parent:
+                    break
+                container = parent
+                txt = _clean(container.get_text(" ", strip=True))
+                if "€" in txt and len(txt) < 1800:
+                    break
 
-        # Preferenza: titolo strutturato della card; poi title/aria-label;
-        # solo alla fine il testo grezzo del link. In questo modo non
-        # incorporiamo prezzo, sconto o altre informazioni nel nome prodotto.
-        candidates = []
+            text_block = _clean(container.get_text(" ", strip=True))
+            pm = PRICE_RE.search(text_block)
+            if not pm:
+                continue
 
-        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-            el = container.select_one(sel)
-            if el:
-                candidates.append(el.get_text(" ", strip=True))
+            candidates = []
+            for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+                el = container.select_one(sel)
+                if el:
+                    candidates.append(el.get_text(" ", strip=True))
+            candidates.extend([
+                anchor.get("title"),
+                anchor.get("aria-label"),
+                anchor.get_text(" ", strip=True),
+            ])
 
-        candidates.extend([
-            a.get("title"),
-            a.get("aria-label"),
-            a.get_text(" ", strip=True),
-        ])
-
-        name = next(
-            (
-                _clean(x)
-                for x in candidates
-                if _clean(x)
-                and _clean(x).lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}
-            ),
-            "",
-        )
-        if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
-            continue
-
-        rows.append({
-            "store": STORE,
-            "name": name,
-            "price": pm.group(1) + " €",
-            "url": url,
-        })
+            name = next(
+                (
+                    _clean(x) for x in candidates
+                    if _clean(x) and _clean(x).lower()
+                    not in {"vedi", "vedi tutto", "acquista", "immagine"}
+                ),
+                "",
+            )
+            if name:
+                rows.append({
+                    "store": STORE,
+                    "name": name,
+                    "price": pm.group(1) + " €",
+                    "url": url,
+                })
 
     return _dedupe(rows, query)
 
