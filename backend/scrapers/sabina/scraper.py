@@ -10,7 +10,6 @@ STORE = "Sabina"
 BASE = "https://www.sabina.com"
 TIMEOUT = 4
 SEARCH_TIMEOUT = 8
-SEARCH_TIMEOUT = 8
 
 HEADERS = {
     "User-Agent": (
