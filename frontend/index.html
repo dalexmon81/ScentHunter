@@ -24,7 +24,18 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .smart{margin-top:26px;border:1px solid #303236;border-radius:20px;background:linear-gradient(120deg,#111416,#080a0b);padding:20px;display:flex;align-items:center;gap:18px} .smarticon{font-size:47px;color:#e4ae37} .smart strong{color:#e7b83f;font-size:20px} .smart p{margin:5px 0 0;line-height:1.35}
 #searchOutput{margin-bottom:18px} #status{margin:14px 5px 10px;color:#b6b6bd;font-size:16px;line-height:1.4} .result,.comparison{margin-top:12px;padding:17px;border:1px solid #303238;border-radius:18px;background:#121416}
 .store,.badge{color:#e7b83f;font-size:12px;font-weight:900;text-transform:uppercase} .name{margin-top:7px;font-size:18px;font-weight:750} .price,.offer-price{font-weight:900;color:#55ce78} .result a,.offer a{display:inline-block;margin-top:10px;color:#e7b83f;text-decoration:none;font-weight:700}
-.offer{padding:12px 0;border-top:1px solid #303238} .offer-row{display:flex;justify-content:space-between;gap:12px} .offer-store{font-weight:800} .saving{margin:9px 0;color:#8ee6ad;font-weight:800} #errorsBox{margin:20px 5px;color:#85858d;font-size:13px}
+.offer{padding:12px 0;border-top:1px solid #303238} .offer-row{display:flex;justify-content:space-between;gap:12px} .offer-store{font-weight:800} .saving{margin:9px 0;color:#8ee6ad;font-weight:800} #errorsBox{margin:20px 5px;color:#85858d;font-size:13px}#unresolvedBox{margin:18px 0 0}
+.unresolved-head{margin:0 4px 10px;color:#e7b83f;font-size:15px;font-weight:900}
+.unresolved-note{margin:0 4px 12px;color:#92949a;font-size:12px;line-height:1.4}
+.unresolved-card{margin:10px 0;padding:13px;border:1px solid #3a3527;border-radius:16px;background:linear-gradient(145deg,#171612,#0c0d0d)}
+.unresolved-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.unresolved-store{color:#e7b83f;font-size:11px;font-weight:900;text-transform:uppercase}
+.unresolved-name{margin-top:4px;font-size:15px;font-weight:800;line-height:1.25}
+.unresolved-meta{margin-top:7px;color:#a9aaae;font-size:11px;line-height:1.35}
+.unresolved-price{color:#55ce78;font-size:17px;font-weight:900;white-space:nowrap}
+.unresolved-out{color:#55ce78;font-size:13px;font-weight:950;white-space:nowrap}
+.unresolved-link{display:inline-block;margin-top:9px;color:#e7b83f;text-decoration:none;font-size:12px;font-weight:800}
+
 .nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,760px);padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(7,8,9,.96);border-top:1px solid #25272a;display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)} .navitem{text-align:center;color:#98999c;font-size:10px} .navitem b{display:block;font-size:27px;line-height:29px;margin-bottom:3px;font-weight:400} .navitem.active{color:#e7b83f}
 @media(max-width:390px){.app{padding-left:12px;padding-right:12px}.hero{padding:21px 16px}.bottle{font-size:65px}.hero h2{font-size:19px}.deal{padding:8px}.pic{height:82px;font-size:46px}}
 
@@ -325,7 +336,7 @@ body{position:relative}
     <button id="searchButton" class="home-search-button" type="button">INIZIA LA RICERCA</button>
   </div>
 </section>
-<div id="searchOutput"><div id="status">Cerca un profumo per confrontare i prezzi.</div><section id="results"></section><div id="errorsBox"></div></div>
+<div id="searchOutput"><div id="status">Cerca un profumo per confrontare i prezzi.</div><section id="results"></section><section id="unresolvedBox" aria-live="polite"></section><div id="errorsBox"></div></div>
 
 
 
@@ -355,7 +366,7 @@ body{position:relative}
 </nav>
 <script>
 let isSearching = false;
-const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
+const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),unresolvedBox=document.getElementById("unresolvedBox"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
@@ -915,6 +926,24 @@ function diagnosticText(value){
   catch(_){return String(value);}
 }
 
+function renderUnresolvedOffers(data){
+  if(!unresolvedBox)return;
+  const offers=Array.isArray(data?.unresolved_offers)?data.unresolved_offers:[];
+  if(!offers.length){ unresolvedBox.innerHTML=""; return; }
+  const rows=offers.map(o=>{
+    const store=displayStoreName(o?.store||o?.shop||"Negozio");
+    const rawName=String(o?.raw_name||o?.name||o?.title||"Prodotto rilevato").trim();
+    const rawBrand=String(o?.raw_brand||o?.brand||"").trim();
+    const label=rawBrand?`${rawBrand} — ${rawName}`:rawName;
+    const out=isOfferOutOfStock(o);
+    const price=out?"":shPrice(o);
+    const size=o?.size_ml??o?.format??"";
+    const meta=[size?formatLabel(size):"",o?.availability||""].filter(Boolean).join(" · ");
+    return `<article class="unresolved-card"><div class="unresolved-top"><div><div class="unresolved-store">${esc(store)}</div><div class="unresolved-name">${esc(label)}</div></div>${out?`<div class="unresolved-out">OUT OF STOCK</div>`:(price?`<div class="unresolved-price">${esc(price)}</div>`:"")}</div>${meta?`<div class="unresolved-meta">${esc(meta)}</div>`:""}${o?.url?`<a class="unresolved-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`;
+  }).join("");
+  unresolvedBox.innerHTML=`<div class="unresolved-head">Offerte trovate ma non ancora classificate</div><div class="unresolved-note">Il negozio ha restituito un prodotto, ma il catalogo centrale non ha ancora potuto associarlo con sufficiente certezza. Nessuna identità viene inventata.</div>${rows}`;
+}
+
 function renderStoreDiagnostics(data){
   const stores=(data&&typeof data.stores==="object"&&data.stores)?data.stores:{};
   const errors=(data&&typeof data.errors==="object"&&data.errors)?data.errors:{};
@@ -976,19 +1005,30 @@ async function searchStoresProgressive(term,onPartial){
 
 async function searchPerfume(){
   const q=queryInput.value.trim();
-  if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";errorsBox.innerHTML="";return;}
+  if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";return;}
   searchButton.disabled=true;searchButton.classList.add("searching");searchButton.textContent="CERCO…";
-  statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";clearOpenProduct();
+  statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";clearOpenProduct();
   try{
     const renderData=(data,final=false)=>{
       const groups=shGroupData(data||{});currentProductGroups=groups;
+      renderUnresolvedOffers(data||{});
       if(currentOpenProductKey){
-        if(final){
-          const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
-          if(gi>=0){
-            if(currentOpenSizeKey!==null)openSize(gi,currentOpenSizeKey);
-            else openProduct(gi);
+        const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
+        if(gi>=0){
+          // The search is progressive: keep the detail page open and
+          // refresh it on every poll, not only when the whole job finishes.
+          // This lets newly responding stores appear live in the open card.
+          if(currentOpenSizeKey!==null){
+            const selected=getSizeGroups(groups[gi]).find(s=>String(s.size)===String(currentOpenSizeKey));
+            if(selected) openSize(gi,currentOpenSizeKey);
+            else if(final) openProduct(gi);
+          }else{
+            openProduct(gi);
           }
+        }else if(final){
+          // The product disappeared from the final resolved payload; return
+          // to the product list instead of leaving a stale detail card.
+          showProducts(groups);
         }
       }else if(groups.length||final){
         showProducts(groups);
