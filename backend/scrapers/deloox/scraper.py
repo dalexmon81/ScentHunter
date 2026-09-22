@@ -26,12 +26,10 @@ STORE = "Deloox"
 # search/category surfaces, then falls back to the generic .com surface.
 BASE_URL = "https://www.deloox.be"
 DELOOX_BASE_URLS = (
-    # Luxembourg is the user's market and exposes the same Deloox catalog
-    # through its own storefront.
-    "https://www.deloox.lu",
+    "https://www.deloox.com",
     "https://www.deloox.be",
     "https://www.deloox.nl",
-    "https://www.deloox.com",
+    "https://www.deloox.lu",
     "https://www.deloox.es",
 )
 TIMEOUT = (2.5, 6.0)
@@ -406,8 +404,8 @@ def _candidate_product_urls(
     # Product URLs can also be present in JSON state, JSON-LD or hydration
     # payloads and therefore not appear as ordinary anchors.
     patterns = (
-        r'https?://(?:www\.)?deloox\.(?:be|com|nl|es)/[^"\'<>\s]+/(?:product|produit|producto|prodotto)/\d+[^"\'<>\s]*',
-        r'(?:(?:https?:)?//(?:www\.)?deloox\.(?:be|com|nl|es))?/(?:en/|fr/|nl/|es/|it/)?(?:product|produit|producto|prodotto)/\d+/[^"\'<>\s]+',
+        r'https?://(?:www\.)?deloox\.(?:lu|be|com|nl|es)/[^"\'<>\s]+/(?:product|produit|producto|prodotto)/\d+[^"\'<>\s]*',
+        r'(?:(?:https?:)?//(?:www\.)?deloox\.(?:lu|be|com|nl|es))?/(?:en/|fr/|nl/|es/|it/)?(?:product|produit|producto|prodotto)/\d+/[^"\'<>\s]+',
     )
     for pattern in patterns:
         for raw in re.findall(pattern, html, re.I):
@@ -457,39 +455,100 @@ def _fetch_xml(session, url):
     return r.text
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=6, max_urls=24):
-    """Small, bounded sitemap fallback; never scans an entire sitemap tree."""
+def _sitemap_product_urls(session, query, max_sitemaps=120, max_urls=MAX_CANDIDATES):
+    """Search the retailer's sitemap tree generically and with bounded concurrency.
+
+    The previous implementation inspected only a handful of sitemap nodes.
+    Large retailers commonly shard product URLs across many child sitemaps, so
+    an arbitrary small prefix can miss a valid product.  We now expand the
+    sitemap index, fetch child sitemaps concurrently, and select only URLs
+    whose own path contains the complete query token set.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     q_tokens = tokens(query)
     if not q_tokens:
         return []
-    pending = list(_sitemap_roots())
-    seen = set()
-    out = []
-    seen_out = set()
-    while pending and len(seen) < max_sitemaps and len(out) < max_urls:
-        u = pending.pop(0)
-        if u in seen:
-            continue
-        seen.add(u)
-        xml = _fetch_xml(session, u)
-        if not xml:
-            continue
-        soup = BeautifulSoup(xml, "xml")
+
+    roots = _sitemap_roots()
+    seen_roots = set()
+    root_xmls = []
+
+    def fetch_xml(url):
+        try:
+            r = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if r.status_code >= 400:
+                return None
+            return r.text
+        except requests.RequestException:
+            return None
+
+    with ThreadPoolExecutor(max_workers=min(8, len(roots))) as pool:
+        futures={pool.submit(fetch_xml,u):u for u in roots}
+        for f in as_completed(futures):
+            u=futures[f]
+            try: xml=f.result()
+            except Exception: xml=None
+            if xml:
+                root_xmls.append((u,xml))
+
+    pending=[]
+    direct=[]
+    for root_url,xml in root_xmls:
+        soup=BeautifulSoup(xml,"xml")
         for loc in soup.find_all("loc"):
-            value = clean(loc.get_text())
-            low = value.lower()
+            value=clean(loc.get_text())
             if not value:
                 continue
-            if re.search(r"/(?:product|produit|producto|prodotto)/\d+", low):
-                if q_tokens.issubset(tokens(low)) and value not in seen_out:
+            low=value.lower()
+            if re.search(r"/(?:product|produit|producto|prodotto)/\d+", low, re.I):
+                direct.append(value)
+            elif low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_roots:
+                    seen_roots.add(value)
+                    pending.append(value)
+
+    # If a root itself is a sitemap containing product URLs, use them first.
+    out=[]
+    seen_out=set()
+    for value in direct:
+        if q_tokens.issubset(tokens(value)) and value not in seen_out:
+            seen_out.add(value)
+            out.append(value)
+            if len(out)>=max_urls:
+                return out[:max_urls]
+
+    pending=pending[:max_sitemaps]
+
+    # Fetch the sharded product sitemaps concurrently.  The limit is large
+    # enough to cover normal sitemap trees but bounded so one store cannot
+    # monopolize Main's global timeout.
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        futures={pool.submit(fetch_xml,u):u for u in pending}
+        for f in as_completed(futures):
+            try: xml=f.result()
+            except Exception: xml=None
+            if not xml:
+                continue
+            soup=BeautifulSoup(xml,"xml")
+            for loc in soup.find_all("loc"):
+                value=clean(loc.get_text())
+                low=value.lower()
+                if not re.search(r"/(?:product|produit|producto|prodotto)/\d+", low, re.I):
+                    continue
+                if q_tokens.issubset(tokens(value)) and value not in seen_out:
                     seen_out.add(value)
                     out.append(value)
-                    if len(out) >= max_urls:
-                        break
-            elif low.endswith(".xml") or "sitemap" in low:
-                if value not in seen and len(seen) + len(pending) < max_sitemaps * 2:
-                    pending.append(value)
+                    if len(out)>=max_urls:
+                        return out[:max_urls]
+
     return out[:max_urls]
+
 
 
 def _discover_from_search(session, query):
@@ -509,9 +568,13 @@ def _discover_from_search(session, query):
     routes = (
         "/chercher.html",
         "/zoeken.html",
+        "/search.html",
         "/search",
+        "/en/search.html",
         "/en/search",
+        "/fr/search.html",
         "/fr/search",
+        "/nl/search.html",
         "/nl/search",
     )
     params = ("q", "query", "search", "searchTerm", "keyword")
@@ -582,6 +645,40 @@ def _discover_from_search(session, query):
                     return found
 
     return found
+
+def _category_product_line_links(html, query):
+    """Extract generic category/filter links whose visible text matches query.
+
+    This is not product-specific: it simply uses the store's own category/filter
+    navigation as a discovery surface and lets _product() validate the final
+    product page.
+    """
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+
+    for a in soup.find_all("a", href=True):
+        label = clean(a.get_text(" ", strip=True))
+        href = clean(a.get("href"))
+        context = f"{label} {href}"
+        if not q_tokens.issubset(tokens(context)):
+            continue
+        url = urljoin(BASE_URL, href).split("#")[0]
+        parsed = urlparse(url)
+        if parsed.netloc.lower() not in DELOOX_HOSTS:
+            continue
+        # Category/filter discovery only. Never treat this URL as a product
+        # unless _candidate_product_urls() later identifies a product URL.
+        if re.search(r"/(?:category|categorie|categoria)/", parsed.path, re.I):
+            if url not in seen:
+                seen.add(url)
+                found.append(url)
+    return found[:MAX_CANDIDATES]
+
 
 def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
     """Bounded generic category fallback after search has failed."""
