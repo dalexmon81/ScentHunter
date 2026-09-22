@@ -262,46 +262,31 @@ def _enrich_product_sizes(session, rows, query=""):
 
 def _dedupe(rows, query):
     q = _clean(query).lower()
-
-    # Il formato è un filtro sulla variante, non una parola che deve essere
-    # necessariamente presente nel nome della card di ricerca.
-    words = [
-        w for w in re.findall(r"[a-z0-9À-ÿ]+", q)
-        if len(w) > 1 and w != "ml" and not w.isdigit()
-    ]
-
+    words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", q) if len(w) > 1 and w != "ml" and not w.isdigit()]
     out, seen = [], set()
-
     for row in rows:
         name = _clean(row.get("name"))
         url = row.get("url")
         price = _price(row.get("price"))
-
         if not name or not url or not price:
             continue
-
         hay = name.lower()
         if words and not all(w in hay for w in words):
             continue
-
         size = str(row.get("size_ml") or "").strip()
         key = (name.lower(), url.split("?")[0], size)
         if key in seen:
             continue
         seen.add(key)
-
-        item = {
-            "store": STORE,
-            "name": name,
-            "price": price,
-            "url": url.split("#")[0],
-        }
+        item = dict(row)
+        item["store"] = STORE
+        item["name"] = name
+        item["price"] = price
+        item["url"] = url.split("#")[0]
         if size:
             item["size_ml"] = size
         out.append(item)
-
     return out
-
 
 def _walk_json(obj, query):
     """Estrae prodotti da JSON anche se SellBoost cambia leggermente i nomi dei campi."""
@@ -352,194 +337,143 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 
-def _parse_datalayer_products(text, query):
-    """Estrae le impression di prodotto dal dataLayer della pagina ricerca.
-
-    Sabina espone i risultati di ricerca in una struttura JSON dentro
-    `dataLayer.push(...)`. La struttura è generica e non dipende da nomi,
-    ID o URL di singoli profumi.
-    """
-    rows = []
-    if not text:
-        return rows
-
-    for m in re.finditer(
-        r'dataLayer\s*=\s*dataLayer\s*\|\|\s*\[\]\s*;\s*'
-        r'dataLayer\.push\(\s*(\{.*?\})\s*\)\s*;',
-        text,
-        re.I | re.S,
-    ):
-        blob = m.group(1)
+def _parse_datalayer_impressions(text):
+    """Extract generic product impressions emitted by Sabina's search page."""
+    out = []
+    pattern = re.compile(r"dataLayer\s*=\s*dataLayer\s*\|\|\s*\[\];\s*dataLayer\.push\((\{.*?\})\);", re.S)
+    for match in pattern.finditer(text or ""):
         try:
-            data = json.loads(blob)
+            payload = json.loads(match.group(1))
         except Exception:
             continue
-
-        ecommerce = data.get("ecommerce") if isinstance(data, dict) else None
+        ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
         impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
         if not isinstance(impressions, list):
             continue
-
         for item in impressions:
             if not isinstance(item, dict):
                 continue
             name = _clean(item.get("name"))
-            price = _price(item.get("price"))
-            variant = _clean(item.get("variant"))
-            if not name or not price:
+            if not name:
                 continue
-
-            # Manteniamo anche i metadati tecnici presenti nel feed del negozio;
-            # non assegniamo qui alcuna identità ScentHunter.
+            product_id = _clean(item.get("id"))
+            size = _clean(item.get("variant"))
             row = {
-                "store": STORE,
                 "name": name,
-                "price": price,
+                "price": item.get("price"),
+                "brand": _clean(item.get("brand")),
+                "size_ml": size,
+                "product_id": product_id,
+                "position": item.get("position"),
             }
-            if item.get("id") is not None:
-                row["retailer_id"] = str(item.get("id"))
-            if item.get("brand"):
-                row["brand"] = _clean(item.get("brand"))
-            if item.get("category"):
-                row["category"] = _clean(item.get("category"))
-            if variant:
-                vm = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", variant, re.I)
-                if vm:
-                    row["size_ml"] = vm.group(1)
-                else:
-                    row["variant"] = variant
-            rows.append(row)
-
-    return rows
+            out.append(row)
+    return out
 
 
-def _parse_product_containers(text, query):
-    """Estrae URL, immagine e dati card dai container prodotto Sabina.
-
-    Il markup attuale contiene i dati della card in attributi HTML/JSON
-    escaped. La funzione cerca genericamente i container di prodotto e li
-    abbina al nome/ID già presenti nel dataLayer quando possibile.
-    """
+def _parse_product_containers(text, query, impressions):
+    """Extract URL/image/card data from Sabina product containers generically."""
+    soup = BeautifulSoup(text or "", "html.parser")
     rows = []
-    if not text:
-        return rows
+    used = set()
 
-    decoded = html_lib.unescape(text)
-    soup = BeautifulSoup(decoded, "html.parser")
+    def tokens_for(q):
+        return [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(q).lower()) if len(w) > 1 and w != "ml" and not w.isdigit()]
+
+    query_tokens = tokens_for(query)
 
     for container in soup.select(".product-container"):
-        raw = str(container)
+        link = container.select_one("[data-href]")
         url = ""
-        image = ""
-
-        # URL prodotto: preferiamo data-href/href di elementi della card.
-        for el in container.find_all(True):
-            for attr in ("data-href", "href"):
-                value = el.get(attr)
-                if value and _looks_like_product_url(urljoin(BASE, value)):
-                    url = urljoin(BASE, value)
-                    break
-            if url:
-                break
-
+        if link:
+            url = urljoin(BASE, html_lib.unescape(str(link.get("data-href") or "")))
         if not url:
-            m = re.search(
-                r'https?://(?:www\.)?sabina\.com/it/[^"\'<>\s]+',
-                raw,
-                re.I,
-            )
-            if m:
-                url = html_lib.unescape(m.group(0)).replace("&amp;", "&")
-
-        # Immagine retailer: solo quella dichiarata dalla card.
-        for el in container.find_all("img"):
-            for attr in ("data-original", "data-src", "src"):
-                value = el.get(attr)
-                if value and "sabinacdn.com" in value:
-                    image = value
-                    break
-            if image:
-                break
-
-        if not url:
+            a = container.find("a", href=True)
+            if a:
+                url = urljoin(BASE, html_lib.unescape(str(a.get("href") or "")))
+        if not _looks_like_product_url(url):
             continue
 
-        text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
-            # Il prezzo può stare nell'attributo JSON della card.
-            price_m = re.search(
-                r'price_with_reduction(?:&quot;|\")\s*:\s*([0-9]+(?:[.,][0-9]+))',
-                raw,
-                re.I,
-            )
-            if price_m:
-                price = _price(price_m.group(1))
-            else:
-                price = None
+        title = ""
+        if link and link.get("title"):
+            title = _clean(link.get("title"))
+        if not title:
+            img = container.find("img")
+            title = _clean(img.get("alt") if img else "")
+        if not title:
+            for sel in ("h1", "h2", "h3", "h4", ".product-name", ".product-title", ".name"):
+                el = container.select_one(sel)
+                if el:
+                    title = _clean(el.get_text(" ", strip=True))
+                    if title:
+                        break
+
+        # Match the card against the query using generic visible/url text.
+        hay = (title + " " + url.replace("-", " ")).lower()
+        if query_tokens and not all(t in hay for t in query_tokens):
+            # If the card title is generic, use the dataLayer product name.
+            matched_impression = next((x for x in impressions if all(t in _clean(x.get("name")).lower() for t in query_tokens)), None)
+            if matched_impression is None:
+                continue
         else:
-            price = _price(pm.group(1))
+            matched_impression = next((x for x in impressions if _clean(x.get("name")).lower() == title.lower()), None)
+            if matched_impression is None:
+                matched_impression = next((x for x in impressions if all(t in _clean(x.get("name")).lower() for t in query_tokens)), None)
 
-        candidates = []
-        for attr in ("title", "data-name", "data-product-name"):
-            for el in container.find_all(True):
-                value = el.get(attr)
-                if value:
-                    candidates.append(value)
-        for el in container.find_all(["h1", "h2", "h3", "h4"]):
-            candidates.append(el.get_text(" ", strip=True))
-        for el in container.find_all("img"):
-            if el.get("title"):
-                candidates.append(el.get("title"))
-            if el.get("alt"):
-                candidates.append(el.get("alt"))
+        price = _price(matched_impression.get("price")) if matched_impression else None
+        if not price:
+            text_block = _clean(container.get_text(" ", strip=True))
+            pm = PRICE_RE.search(text_block)
+            price = (pm.group(1) + " €") if pm else None
+        if not price:
+            continue
 
-        name = next((_clean(x) for x in candidates if _clean(x)), "")
+        image = ""
+        img = container.find("img")
+        if img:
+            for attr in ("data-original", "data-src", "src"):
+                candidate = html_lib.unescape(str(img.get(attr) or "")).strip()
+                if candidate and not candidate.startswith("data:"):
+                    image = urljoin(BASE, candidate)
+                    break
 
-        # In molte pagine il nome non è un normale heading: lo ricaviamo
-        # dall'attributo title del link/data-href o dal testo della card.
+        name = _clean(matched_impression.get("name")) if matched_impression else title
         if not name:
-            for el in container.find_all("a"):
-                value = el.get("title")
-                if value and _clean(value):
-                    name = _clean(value)
-                    break
-
-        if not name and text_block:
-            parts = [p.strip() for p in re.split(r"\s{2,}|\n", text_block) if p.strip()]
-            for part in parts:
-                if not PRICE_RE.search(part) and len(part) >= 3:
-                    name = _clean(part)
-                    break
-
+            name = title
         if not name:
             continue
 
         row = {
             "store": STORE,
             "name": name,
-            "url": url.split("#")[0],
+            "price": price,
+            "url": url.split("#", 1)[0],
         }
-        if price:
-            row["price"] = price
+        if matched_impression:
+            if matched_impression.get("brand"):
+                row["brand"] = matched_impression["brand"]
+            if matched_impression.get("size_ml"):
+                row["size_ml"] = matched_impression["size_ml"]
+            if matched_impression.get("product_id"):
+                row["product_id"] = matched_impression["product_id"]
         if image:
             row["image"] = image
+
+        key = (row["url"].lower(), row["name"].lower(), str(row.get("size_ml") or ""))
+        if key in used:
+            continue
+        used.add(key)
         rows.append(row)
 
     return rows
 
 
 def _parse_html(text, query):
-    # 1) Feed strutturato della pagina ricerca: è la fonte più affidabile
-    # per nome, prezzo, brand, categoria, ID e variante.
-    datalayer_rows = _parse_datalayer_products(text, query)
+    impressions = _parse_datalayer_impressions(text)
+    rows = _parse_product_containers(text, query, impressions)
 
-    # 2) Card prodotto: completa i dati con URL e immagine retailer.
-    card_rows = _parse_product_containers(text, query)
-
-    # 3) JSON-LD / dati strutturati standard.
-    rows = []
-    soup = BeautifulSoup(text, "html.parser")
+    # Generic fallback for installations/pages that do not expose the
+    # product-container markup. JSON-LD and normal product links are retained.
+    soup = BeautifulSoup(text or "", "html.parser")
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text(strip=True))
@@ -547,66 +481,35 @@ def _parse_html(text, query):
         except Exception:
             pass
 
-    # 4) Parser HTML generico già esistente, mantenuto come fallback.
-    for a in soup.find_all("a", href=True):
-        url = urljoin(BASE, a["href"])
-        if not _looks_like_product_url(url):
-            continue
+    if not rows:
+        for a in soup.find_all("a", href=True):
+            url = urljoin(BASE, html_lib.unescape(str(a.get("href") or "")))
+            if not _looks_like_product_url(url):
+                continue
+            container = a
+            for _ in range(7):
+                parent = getattr(container, "parent", None)
+                if not parent:
+                    break
+                container = parent
+                txt = _clean(container.get_text(" ", strip=True))
+                if "€" in txt and len(txt) < 1800:
+                    break
+            text_block = _clean(container.get_text(" ", strip=True))
+            pm = PRICE_RE.search(text_block)
+            if not pm:
+                continue
+            candidates = []
+            for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+                el = container.select_one(sel)
+                if el:
+                    candidates.append(el.get_text(" ", strip=True))
+            candidates.extend([a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)])
+            name = next((_clean(x) for x in candidates if _clean(x) and _clean(x).lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}), "")
+            if name:
+                rows.append({"store": STORE, "name": name, "price": pm.group(1) + " €", "url": url})
 
-        container = a
-        for _ in range(7):
-            parent = getattr(container, "parent", None)
-            if not parent:
-                break
-            container = parent
-            txt = _clean(container.get_text(" ", strip=True))
-            if "€" in txt and len(txt) < 1800:
-                break
-
-        text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
-            continue
-
-        candidates = []
-        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-            el = container.select_one(sel)
-            if el:
-                candidates.append(el.get_text(" ", strip=True))
-        candidates.extend([a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)])
-        name = next((_clean(x) for x in candidates if _clean(x)), "")
-        if not name:
-            continue
-        rows.append({"store": STORE, "name": name, "price": pm.group(1) + " €", "url": url})
-
-    # Unione generica: il dataLayer fornisce l'identità retailer, le card
-    # forniscono URL/immagine. L'abbinamento è per ID retailer quando
-    # presente, altrimenti per nome normalizzato.
-    card_by_name = {}
-    card_by_id = {}
-    for card in card_rows:
-        card_by_name.setdefault(_clean(card.get("name")).lower(), card)
-        url = str(card.get("url") or "")
-        m_id = re.search(r"/(\d+)-[^/]+\.html(?:[?#]|$)", url, re.I)
-        if m_id:
-            card_by_id.setdefault(m_id.group(1), card)
-
-    combined = []
-    for row in datalayer_rows:
-        item = dict(row)
-        retailer_id = str(item.get("retailer_id") or "")
-        id_match = re.search(r"(?:^|[-_])(\d+)(?:[-_]|$)", retailer_id)
-        card = card_by_id.get(id_match.group(1)) if id_match else None
-        if card is None:
-            card = card_by_name.get(_clean(item.get("name")).lower())
-        if card:
-            item.setdefault("url", card.get("url"))
-            item.setdefault("image", card.get("image"))
-        combined.append(item)
-
-    combined.extend(card_rows)
-    combined.extend(rows)
-    return _dedupe(combined, query)
+    return _dedupe(rows, query)
 
 def _get(session, url, **kwargs):
     r = session.get(
@@ -769,6 +672,43 @@ def search(query):
 
     finally:
         s.close()
+
+
+def search_stream(query, on_result=None):
+    """Common ScentHunter scraper contract.
+
+    The scraper owns discovery and retailer data only. Product identity remains
+    the responsibility of catalog + ProductMatcher in main.py.
+    """
+    query = _clean(query)
+    if not query:
+        report = {"status": "success", "verified": True, "results": [], "error": None, "details": {"reason": "empty_query"}}
+        return report
+
+    try:
+        results = search(query)
+    except requests.exceptions.Timeout as exc:
+        return {"status": "timeout", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
+    except requests.exceptions.HTTPError as exc:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        kind = "blocked" if status in (403, 429) else "error"
+        return {"status": kind, "verified": False, "results": [], "error": f"HTTP {status}: {exc}", "details": {}}
+    except requests.RequestException as exc:
+        return {"status": "error", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
+    except Exception as exc:
+        return {"status": "error", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
+
+    results = results if isinstance(results, list) else []
+    if callable(on_result):
+        for item in results:
+            on_result(item)
+
+    if results:
+        return {"status": "success", "verified": True, "results": results, "error": None, "details": {"count": len(results)}}
+
+    # An empty response from the fallback-heavy Sabina search path is not
+    # authoritative proof of absence; Main must not convert it into NOT_FOUND.
+    return {"status": "partial", "verified": False, "results": [], "error": None, "details": {"reason": "no_verified_product_rows"}}
 
 
 # Alias compatibili con gli altri scraper del progetto.
