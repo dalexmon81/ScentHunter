@@ -192,7 +192,88 @@ def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    # 4. Direct search(): shows whether the scraper loses rows later.
+    # 4. Trace the exact search() URL loop without changing production code.
+    # This reproduces the search() control flow and records every hidden exception.
+    try:
+        import requests as _requests
+        session = _requests.Session()
+        session.headers.update(headers)
+        queries = [q]
+        query_without_size = module._clean(
+            re.sub(r"(?<!\\d)\\d{2,4}\\s*ml\\b", " ", q, flags=re.I)
+        )
+        if query_without_size and query_without_size.casefold() != q.casefold():
+            queries.append(query_without_size)
+
+        urls = []
+        for search_query in queries:
+            urls.extend([
+                base + "/it/ricerca?search_query=" + quote(search_query),
+                base + "/it/ricerca_old?s=" + quote(search_query),
+                base + "/it/ricerca_old?search_query=" + quote(search_query),
+            ])
+
+        flow = []
+        accumulated = []
+        for search_url in urls:
+            step = {"url": search_url}
+            try:
+                t0 = time.monotonic()
+                r = module._get(session, search_url)
+                step["elapsed_sec"] = round(time.monotonic() - t0, 3)
+                step["status"] = None if r is None else r.status_code
+                if r is None:
+                    step["result"] = "request_returned_none"
+                    flow.append(step)
+                    continue
+
+                html = r.text
+                step["bytes"] = len(r.content)
+                r.close()
+
+                try:
+                    parsed_url_rows = module._parse_html(html, q)
+                    step["parse_html_count"] = len(parsed_url_rows)
+                    step["parse_html_rows"] = parsed_url_rows[:10]
+                    accumulated.extend(parsed_url_rows)
+                except Exception as exc:
+                    step["parse_html_error"] = f"{type(exc).__name__}: {exc}"
+                    flow.append(step)
+                    continue
+
+                try:
+                    deduped = module._dedupe(accumulated, q)
+                    step["dedupe_count"] = len(deduped)
+                    step["dedupe_rows"] = deduped[:10]
+                except Exception as exc:
+                    step["dedupe_error"] = f"{type(exc).__name__}: {exc}"
+                    flow.append(step)
+                    continue
+
+                if deduped:
+                    try:
+                        enriched = module._enrich_product_sizes(session, deduped, q)
+                        step["enrich_count"] = len(enriched)
+                        step["enrich_rows"] = enriched[:10]
+                    except Exception as exc:
+                        step["enrich_error"] = f"{type(exc).__name__}: {exc}"
+                flow.append(step)
+            except Exception as exc:
+                step["exception"] = f"{type(exc).__name__}: {exc}"
+                flow.append(step)
+
+        session.close()
+        result["stages"]["search_flow"] = {
+            "url_count": len(urls),
+            "steps": flow,
+            "accumulated_final_count": len(accumulated),
+        }
+    except Exception as exc:
+        result["stages"]["search_flow"] = {
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    # 5. Direct search(): final behavior, kept for comparison.
     try:
         searched = module.search(q)
         result["stages"]["search"] = {
