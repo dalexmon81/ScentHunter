@@ -8,7 +8,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-APP_VERSION = '4.1-linear-store-contract'
+APP_VERSION = '4.2-linear-store-contract'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -516,7 +516,13 @@ def normalise_report(raw):
     if isinstance(raw, tuple): raw=list(raw)
     if isinstance(raw, list):
         rows=[r for r in raw if isinstance(r,dict)]
-        return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+        return {
+            'status':'success' if rows else 'unavailable',
+            'verified':bool(rows),
+            'results':rows,
+            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
+            'details':{},
+        }
     if raw is None: return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
     try: values=list(raw)
     except TypeError: values=[]
@@ -546,7 +552,13 @@ def normalise_report(raw):
         return {'status':status,'verified':verified,'results':[r for r in results if isinstance(r,dict)],'error':raw.get('error'),'details':details}
     if isinstance(raw, (list, tuple)):
         rows=[r for r in raw if isinstance(r,dict)]
-        return {'status':'success','verified':bool(rows),'results':rows,'error':None,'details':{}}
+        return {
+            'status':'success' if rows else 'unavailable',
+            'verified':bool(rows),
+            'results':rows,
+            'error':None if rows else 'legacy_scraper_returned_unverified_empty_list',
+            'details':{},
+        }
     if raw is None:
         return {'status':'error','verified':False,'results':[],'error':'scraper_returned_none','details':{}}
     try:
@@ -565,22 +577,12 @@ try:
             if isinstance(row,dict):
                 rows.append(row); emit('result',row=row)
         returned=stream(query,on_result)
-        # In callback mode the native search_stream contract uses the
-        # callback as the output channel and may intentionally return None
-        # both when rows were emitted and when the verified search produced
-        # no matches.  An exception is raised for a real scraper failure.
-        # Therefore None here is a successful callback completion, never
-        # scraper_returned_none.
+        # The definitive scraper contract requires search_stream() to return
+        # its report even when callback delivery is used. None is therefore a
+        # contract violation, not a verified empty search.
         if returned is None:
-            report={
-                'status':'success',
-                'verified':True,
-                'results':[],
-                'error':None,
-                'details':{},
-            }
-        else:
-            report=normalise_report(returned)
+            raise RuntimeError('scraper_search_stream_returned_none')
+        report=normalise_report(returned)
         if report['results'] and not rows:
             for row in report['results']: emit('result',row=row)
         emit('done',status=report['status'],verified=bool(report.get('verified')),error=report.get('error'),details=report.get('details') or {},count=len(rows) if rows else len(report['results']),streaming=True)
@@ -672,7 +674,14 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
             return {'store':store,'status':worker_status or 'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}','details':worker_details,'verified':False}
         status=worker_status or ('success' if rows else 'error')
         verified=bool(worker_verified) if worker_verified is not None else bool(rows)
-        public_status='ok' if status=='success' and rows else ('empty' if status=='success' else status)
+        # A verified empty result is a real NOT_FOUND. Keep the distinction
+        # explicit so technical failures can never become absence.
+        if status == 'success' and verified and not rows:
+            public_status='no_match'
+        elif status == 'success' and rows:
+            public_status='ok'
+        else:
+            public_status=status
         return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':verified}
     except subprocess.TimeoutExpired:
         if process is not None:
@@ -692,7 +701,7 @@ def _run_store_subprocess(store, query, on_result=None):
     """Retry results that are not safely classified by the store contract."""
     first=_run_store_subprocess_once(store,query,on_result=on_result)
     fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
-    if fv and (fs in {'ok','no_match','empty'} or (fs=='partial' and fc>0)):
+    if fv and (fs in {'ok','no_match'} or (fs=='partial' and fc>0)):
         first['attempts']=1
         return first
     print(f"STORE RETRY store={store} query={query!r} reason={fs} verified={fv} count={fc}",flush=True)
@@ -701,7 +710,7 @@ def _run_store_subprocess(store, query, on_result=None):
     second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout)
     second['attempts']=2; second['first_attempt_status']=fs; second['first_attempt_verified']=fv
     ss=second.get('status'); sv=bool(second.get('verified')); sc=int(second.get('count') or 0)
-    if ss=='empty' and sv:
+    if ss=='no_match' and sv:
         second['status']='no_match'; second['verified']=True; second['error']=None; return second
     if ss=='ok' and sv: return second
     if ss=='partial' and sv and sc>0: return second
@@ -879,6 +888,7 @@ def _publish_store(job_id, report):
             "verified": bool(report.get("verified")),
             "elapsed": report["elapsed"],
             "count": report["count"],
+            "details": dict(report.get("details") or {}),
         }
 
         if report.get("error"):
@@ -1183,8 +1193,10 @@ def search_perfume(q: str):
         "stores": {
             report["store"]: {
                 "status": report["status"],
+                "verified": bool(report.get("verified")),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
+                "details": dict(report.get("details") or {}),
             }
             for report in reports
         },
