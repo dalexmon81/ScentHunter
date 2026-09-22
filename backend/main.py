@@ -10,6 +10,13 @@ except Exception as exc:
 from pathlib import Path
 APP_VERSION = '4.2-linear-store-contract'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
+
+# Read-only scraper diagnostics. This module does not participate in normal search.
+try:
+    from diagnose_two_scrapers import router as diagnose_two_scrapers_router
+    app.include_router(diagnose_two_scrapers_router)
+except Exception as exc:
+    print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
