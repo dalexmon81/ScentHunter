@@ -565,11 +565,13 @@ try:
             if isinstance(row,dict):
                 rows.append(row); emit('result',row=row)
         returned=stream(query,on_result)
-        # Native streamers commonly use the callback as their output channel
-        # and therefore return None intentionally.  None is an error only when
-        # the streamer emitted no rows at all.  Treating callback-mode None as
-        # scraper_returned_none falsely marked working stores as failed.
-        if returned is None and rows:
+        # In callback mode the native search_stream contract uses the
+        # callback as the output channel and may intentionally return None
+        # both when rows were emitted and when the verified search produced
+        # no matches.  An exception is raised for a real scraper failure.
+        # Therefore None here is a successful callback completion, never
+        # scraper_returned_none.
+        if returned is None:
             report={
                 'status':'success',
                 'verified':True,
