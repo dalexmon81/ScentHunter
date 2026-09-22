@@ -44,6 +44,7 @@ class StoreRequestError(RuntimeError):
 
 
 _LAST_DISCOVERY_ERRORS = []
+_LAST_DISCOVERY_UNCERTAIN = False
 _LAST_PRODUCT_ERRORS = []
 
 
@@ -1114,6 +1115,7 @@ def _sitemap_category_urls(
     seen_categories = set()
 
     def fetch_xml(url):
+        global _LAST_DISCOVERY_UNCERTAIN
 
         try:
             r = session.get(
@@ -1122,9 +1124,11 @@ def _sitemap_category_urls(
                 timeout=TIMEOUT,
             )
         except requests.RequestException:
+            _LAST_DISCOVERY_UNCERTAIN = True
             return None
 
         if r.status_code >= 400:
+            _LAST_DISCOVERY_UNCERTAIN = True
             return None
 
         body = r.text.lstrip()
@@ -1283,6 +1287,7 @@ def _sitemap_product_urls(
     seen_products = set()
 
     def fetch_xml(url):
+        global _LAST_DISCOVERY_UNCERTAIN
 
         try:
             r = session.get(
@@ -1291,9 +1296,11 @@ def _sitemap_product_urls(
                 timeout=TIMEOUT,
             )
         except requests.RequestException:
+            _LAST_DISCOVERY_UNCERTAIN = True
             return None
 
         if r.status_code >= 400:
+            _LAST_DISCOVERY_UNCERTAIN = True
             return None
 
         ctype = (
@@ -1504,9 +1511,11 @@ def _discover_from_categories(
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             if page.status_code >= 400:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             candidates = _candidate_product_urls(
@@ -1590,9 +1599,11 @@ def _discover(session, q):
                 timeout=TIMEOUT,
             )
         except requests.RequestException:
+            _LAST_DISCOVERY_UNCERTAIN = True
             continue
 
         if page.status_code >= 400:
+            _LAST_DISCOVERY_UNCERTAIN = True
             continue
 
         if add_many(
@@ -1645,9 +1656,11 @@ def _discover(session, q):
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             if r.status_code >= 400:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             if add_many(
@@ -1788,9 +1801,11 @@ def diagnose_search(
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             if page.status_code >= 400:
+                _LAST_DISCOVERY_UNCERTAIN = True
                 continue
 
             candidates = _candidate_product_urls(
@@ -1969,12 +1984,13 @@ def diagnose_search(
 # =========================================================
 
 def search(query):
-    global _LAST_DISCOVERY_ERRORS, _LAST_PRODUCT_ERRORS
+    global _LAST_DISCOVERY_ERRORS, _LAST_PRODUCT_ERRORS, _LAST_DISCOVERY_UNCERTAIN
 
     query = clean(query)
 
     _LAST_DISCOVERY_ERRORS = []
     _LAST_PRODUCT_ERRORS = []
+    _LAST_DISCOVERY_UNCERTAIN = False
 
     if not query:
         return []
@@ -2132,6 +2148,19 @@ def search_stream(query, emit=None):
             "results": [],
             "error": str(first),
             "details": {
+                "discovery_errors": len(_LAST_DISCOVERY_ERRORS),
+                "product_errors": len(_LAST_PRODUCT_ERRORS),
+            },
+        }
+
+    if _LAST_DISCOVERY_UNCERTAIN:
+        return {
+            "status": "partial",
+            "verified": False,
+            "results": [],
+            "error": "discovery_incomplete",
+            "details": {
+                "reason": "discovery_not_verified",
                 "discovery_errors": len(_LAST_DISCOVERY_ERRORS),
                 "product_errors": len(_LAST_PRODUCT_ERRORS),
             },
