@@ -367,36 +367,6 @@ def _extract_balanced_json_object(text, start):
     return None
 
 
-def _extract_balanced_json_object(text, start):
-    """Extract one JSON object starting at `start`, respecting quoted strings."""
-    depth = 0
-    in_string = False
-    escaped = False
-
-    for i in range(start, len(text)):
-        ch = text[i]
-
-        if in_string:
-            if escaped:
-                escaped = False
-            elif ch == "\\\\":
-                escaped = True
-            elif ch == '"':
-                in_string = False
-            continue
-
-        if ch == '"':
-            in_string = True
-        elif ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start:i + 1]
-
-    return None
-
-
 def _parse_datalayer_impressions(text):
     """Extract generic product impressions emitted by Sabina's search page."""
     out = []
