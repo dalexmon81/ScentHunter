@@ -337,37 +337,108 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 
+def _extract_balanced_json_object(text, start):
+    """Extract one balanced JSON object starting at an opening brace."""
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for i in range(start, len(text)):
+        ch = text[i]
+
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+
+    return None
+
+
 def _parse_datalayer_impressions(text):
-    """Extract generic product impressions emitted by Sabina's search page."""
+    """Extract generic product impressions emitted by Sabina's search page.
+
+    Sabina embeds nested JSON inside dataLayer.push(...). A non-greedy
+    regex cannot safely parse that structure because the payload itself
+    contains nested closing braces. We locate dataLayer.push calls and
+    balance JSON braces while respecting quoted strings.
+    """
     out = []
-    pattern = re.compile(r"dataLayer\s*=\s*dataLayer\s*\|\|\s*\[\];\s*dataLayer\.push\((\{.*?\})\);", re.S)
-    for match in pattern.finditer(text or ""):
-        try:
-            payload = json.loads(match.group(1))
-        except Exception:
+    source = text or ""
+    marker = "dataLayer.push("
+    pos = 0
+
+    while True:
+        call = source.find(marker, pos)
+        if call < 0:
+            break
+
+        start = call + len(marker)
+        while start < len(source) and source[start].isspace():
+            start += 1
+
+        if start >= len(source) or source[start] != "{":
+            pos = start
             continue
-        ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
-        impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
-        if not isinstance(impressions, list):
+
+        raw = _extract_balanced_json_object(source, start)
+        if raw:
+            try:
+                payload = json.loads(raw)
+            except Exception:
+                payload = None
+
+            ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
+            impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
+
+            if isinstance(impressions, list):
+                for item in impressions:
+                    if not isinstance(item, dict):
+                        continue
+
+                    name = _clean(item.get("name"))
+                    if not name:
+                        continue
+
+                    out.append({
+                        "name": name,
+                        "price": item.get("price"),
+                        "brand": _clean(item.get("brand")),
+                        "size_ml": _clean(item.get("variant")),
+                        "product_id": _clean(item.get("id")),
+                        "position": item.get("position"),
+                    })
+
+            pos = start + len(raw)
+        else:
+            pos = start + 1
+
+    unique = []
+    seen = set()
+    for item in out:
+        key = (
+            _clean(item.get("name")).casefold(),
+            _clean(item.get("product_id")).casefold(),
+            _clean(item.get("size_ml")).casefold(),
+        )
+        if key in seen:
             continue
-        for item in impressions:
-            if not isinstance(item, dict):
-                continue
-            name = _clean(item.get("name"))
-            if not name:
-                continue
-            product_id = _clean(item.get("id"))
-            size = _clean(item.get("variant"))
-            row = {
-                "name": name,
-                "price": item.get("price"),
-                "brand": _clean(item.get("brand")),
-                "size_ml": size,
-                "product_id": product_id,
-                "position": item.get("position"),
-            }
-            out.append(row)
-    return out
+        seen.add(key)
+        unique.append(item)
+
+    return unique
 
 
 def _parse_product_containers(text, query, impressions):
