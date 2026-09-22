@@ -5,6 +5,7 @@ from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
@@ -487,27 +488,25 @@ def _get(session, url, **kwargs):
     return r
 
 def search(query):
-    """Generic Sabina discovery; preserve transport failures instead of treating them as absence."""
+    """Generic Sabina discovery with bounded parallel first-party probes.
+
+    Sabina exposes several search mechanisms. Running them sequentially made
+    the scraper spend most of its store timeout budget on mechanisms that had
+    already failed before reaching the useful one. Each mechanism is now
+    isolated and probed in parallel; the first verified product rows win.
+    Transport failures remain technical failures and can never become
+    NOT_FOUND.
+    """
     query = _clean(query)
     if not query:
         return []
 
-    s = requests.Session()
-    s.headers.update(HEADERS)
-    results = []
+    session = requests.Session()
+    session.headers.update(HEADERS)
     transport_errors = []
     successful_http = False
 
     try:
-        try:
-            r = _get(s, BASE + "/it/")
-            successful_http = True
-            r.close()
-        except StoreRequestError as exc:
-            # The homepage is only a warm-up request. Do not let its failure
-            # hide a later successful search endpoint.
-            transport_errors.append(exc)
-
         queries = [query]
         query_without_size = _clean(
             re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I)
@@ -515,54 +514,69 @@ def search(query):
         if query_without_size and query_without_size.casefold() != query.casefold():
             queries.append(query_without_size)
 
-        urls = []
+        search_urls = []
         for search_query in queries:
-            urls.extend([
-                BASE + "/it/ricerca?search_query=" + quote_plus(search_query),
-                BASE + "/it/ricerca_old?s=" + quote_plus(search_query),
-                BASE + "/it/ricerca_old?search_query=" + quote_plus(search_query),
+            encoded = quote_plus(search_query)
+            search_urls.extend([
+                BASE + "/it/ricerca?search_query=" + encoded,
+                BASE + "/it/ricerca_old?s=" + encoded,
+                BASE + "/it/ricerca_old?search_query=" + encoded,
             ])
 
-        blocked_error = None
-        for url in urls:
+        def fetch_search(url):
             try:
-                r = _get(s, url)
-                successful_http = True
-                html = r.text
+                r = _get(session, url)
+                text = r.text
                 r.close()
-                results.extend(_parse_html(html, query))
-                if results:
-                    return _enrich_product_sizes(s, _dedupe(results, query), query)
+                return ("ok", url, text, None)
             except StoreRequestError as exc:
-                transport_errors.append(exc)
-                if exc.status == "blocked":
-                    blocked_error = exc
-                    break
+                return ("error", url, None, exc)
 
-        if blocked_error is not None and not successful_http:
-            raise blocked_error
+        # One bounded round instead of six sequential 4-second requests.
+        with ThreadPoolExecutor(max_workers=min(6, len(search_urls))) as pool:
+            futures = [pool.submit(fetch_search, url) for url in search_urls]
+            for future in as_completed(futures):
+                kind, url, text, error = future.result()
+                if kind == "error":
+                    transport_errors.append(error)
+                    continue
 
+                successful_http = True
+                rows = _parse_html(text, query)
+                if rows:
+                    return _enrich_product_sizes(
+                        session,
+                        rows,
+                        query,
+                    )
+
+        # First-party AJAX fallback. Keep this bounded too. It is only reached
+        # when the normal search pages answered successfully but produced no
+        # product rows, or when they all failed technically.
         ajax_url = BASE + "/modules/ecelastic/ajax.php"
-        payloads = [
-            {"q": query, "query": query, "search_query": query,
-             "id_lang": 5, "id_country": 10, "id_currency": 1},
-            {"s": query, "search_query": query,
-             "id_lang": 5, "id_country": 10, "id_currency": 1},
-            {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-        ]
+        payloads = []
+        for search_query in queries:
+            payloads.extend([
+                {"q": search_query, "query": search_query,
+                 "search_query": search_query, "id_lang": 5,
+                 "id_country": 10, "id_currency": 1},
+                {"s": search_query, "search_query": search_query,
+                 "id_lang": 5, "id_country": 10, "id_currency": 1},
+            ])
 
-        for payload in payloads:
+        def fetch_ajax(payload):
+            local = []
             for method in ("get", "post"):
                 try:
                     if method == "get":
-                        r = s.get(
+                        r = session.get(
                             ajax_url,
                             params=payload,
                             headers=HEADERS,
                             timeout=TIMEOUT,
                         )
                     else:
-                        r = s.post(
+                        r = session.post(
                             ajax_url,
                             data=payload,
                             headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
@@ -570,63 +584,59 @@ def search(query):
                         )
 
                     if r.status_code in (403, 429):
-                        exc = StoreRequestError("blocked", f"HTTP {r.status_code}", http_status=r.status_code)
-                        transport_errors.append(exc)
+                        local.append(StoreRequestError("blocked", f"HTTP {r.status_code}", http_status=r.status_code))
                         r.close()
                         continue
                     if 500 <= r.status_code <= 599:
-                        exc = StoreRequestError("unavailable", f"HTTP {r.status_code}", http_status=r.status_code)
-                        transport_errors.append(exc)
+                        local.append(StoreRequestError("unavailable", f"HTTP {r.status_code}", http_status=r.status_code))
                         r.close()
                         continue
                     if 400 <= r.status_code <= 499:
-                        exc = StoreRequestError("error", f"HTTP {r.status_code}", http_status=r.status_code)
-                        transport_errors.append(exc)
+                        local.append(StoreRequestError("error", f"HTTP {r.status_code}", http_status=r.status_code))
                         r.close()
                         continue
 
-                    successful_http = True
-                    if not r.text.strip():
-                        r.close()
-                        continue
-
-                    response_text = r.text
+                    text = r.text
                     r.close()
+                    if not text.strip():
+                        continue
+
                     try:
-                        rows = _walk_json(json.loads(response_text), query)
+                        rows = _walk_json(json.loads(text), query)
                     except Exception:
-                        rows = _parse_html(response_text, query)
-
+                        rows = _parse_html(text, query)
                     if rows:
-                        return _enrich_product_sizes(s, _dedupe(rows, query), query)
-
+                        return ("rows", rows, local)
+                    successful = True
+                    return ("empty", [], local)
                 except requests.Timeout as exc:
-                    transport_errors.append(StoreRequestError("timeout", str(exc)))
-                    continue
+                    local.append(StoreRequestError("timeout", str(exc)))
                 except requests.ConnectionError as exc:
-                    transport_errors.append(StoreRequestError("unavailable", str(exc)))
-                    continue
+                    local.append(StoreRequestError("unavailable", str(exc)))
                 except requests.RequestException as exc:
-                    transport_errors.append(StoreRequestError("error", str(exc)))
-                    continue
+                    local.append(StoreRequestError("error", str(exc)))
+            return ("error", [], local)
 
-        # Critical contract rule: if every discovery mechanism failed
-        # technically, do NOT return [] because that would look like absence.
+        with ThreadPoolExecutor(max_workers=min(4, len(payloads))) as pool:
+            futures = [pool.submit(fetch_ajax, payload) for payload in payloads]
+            for future in as_completed(futures):
+                kind, rows, local_errors = future.result()
+                transport_errors.extend(local_errors)
+                if kind == "rows" and rows:
+                    return _enrich_product_sizes(session, rows, query)
+                if kind == "empty":
+                    successful_http = True
+
         if not successful_http and transport_errors:
-            # Prefer a concrete blocked/timeout/unavailable signal over a
-            # generic error when several mechanisms failed.
             priority = {"blocked": 0, "timeout": 1, "unavailable": 2, "error": 3}
             raise sorted(
                 transport_errors,
                 key=lambda exc: priority.get(exc.status, 99),
             )[0]
 
-        # We reached at least one endpoint successfully but obtained no
-        # authoritative empty result. Keep this as unverified/partial.
         return []
     finally:
-        s.close()
-
+        session.close()
 
 def search_stream(query, emit=None):
     """Return the common ScentHunter scraper report."""
