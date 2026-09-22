@@ -640,14 +640,56 @@ class ProductMatcher:
                 return ""
             return normalize(value)
 
+        def retailer_brand_placeholder(raw_value: Any) -> bool:
+            """Return True when a retailer label was incorrectly exposed as brand.
+
+            Some generic store APIs put their own shop name in the product
+            ``brand`` field.  That value is not product identity and must not
+            block the catalog matcher.  Compare only against retailer/source
+            metadata already present on the offer; no store or perfume names
+            are hard-coded here.
+            """
+            candidate = usable(raw_value)
+            if not candidate:
+                return False
+
+            source = _nested_source(offer)
+            retailer_values = (
+                offer.get("store"),
+                offer.get("shop"),
+                offer.get("retailer"),
+                offer.get("retailer_name"),
+                offer.get("merchant"),
+                offer.get("vendor"),
+                offer.get("seller"),
+                source.get("store"),
+                source.get("shop"),
+                source.get("retailer"),
+                source.get("retailer_name"),
+                source.get("merchant"),
+                source.get("vendor"),
+                source.get("seller"),
+                source.get("source_name"),
+            )
+
+            candidate_key = catalog_norm(candidate).replace(" ", "")
+            for retailer_value in retailer_values:
+                retailer_key = catalog_norm(retailer_value).replace(" ", "")
+                if retailer_key and candidate_key == retailer_key:
+                    return True
+            return False
+
         value = first_value(offer, ProductMatcher.BRAND_KEYS)
         brand = usable(value)
-        if brand:
+        if brand and not retailer_brand_placeholder(value):
             return brand
 
         source = _nested_source(offer)
         value = first_value(source, ("source_brand", "brand", "manufacturer"))
-        return usable(value)
+        brand = usable(value)
+        if brand and not retailer_brand_placeholder(value):
+            return brand
+        return ""
 
     @staticmethod
     def _offer_name(offer: Dict[str, Any]) -> str:
