@@ -1,594 +1,400 @@
-"""Read-only diagnostics for Sabina and Deloox.
-
-Endpoints:
-  /diagnose-sabina-liquid-brun
-  /diagnose-deloox-liquid-brun
-
-This module does not modify production scraper code. It probes the same
-first-party discovery surfaces independently and reports where candidates
-are lost. It intentionally uses short, bounded timeouts and parallel probes.
-"""
-from __future__ import annotations
-
+from fastapi import APIRouter, Query
 import json
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import quote_plus, urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Query
 
 router = APIRouter()
 
-SABINA = "https://www.sabina.com"
-DELOOX = "https://www.deloox.com"
+UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
+    "Mobile/15E148 Safari/604.1"
+)
+
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.7",
+    "User-Agent": UA,
+    "Accept-Language": "en-GB,en;q=0.9",
 }
 TIMEOUT = (1.5, 4.0)
 
+MAX_DELOOX_PAGES = 8
+MAX_SABINA_URLS = 12
 
-def _clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+def _norm(value):
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
 
 
-def _request(url, method="get", **kwargs):
-    started = time.monotonic()
+def _tokens(value):
+    stop = {"ml", "eau", "de", "parfum", "perfume", "fragrance"}
+    return [x for x in _norm(value).split() if len(x) > 1 and x not in stop]
+
+
+def _get(session, url):
+    started = time.perf_counter()
+
     try:
-        with requests.Session() as session:
-            if method == "post":
-                response = session.post(
-                    url, headers=HEADERS, timeout=TIMEOUT, **kwargs
-                )
-            else:
-                response = session.get(
-                    url, headers=HEADERS, timeout=TIMEOUT, **kwargs
-                )
-
-            body = response.text or ""
-            return {
-                "ok": 200 <= response.status_code < 400,
-                "status": response.status_code,
-                "url": response.url,
-                "elapsed_sec": round(time.monotonic() - started, 3),
-                "bytes": len(body),
-                "content_type": response.headers.get("content-type", ""),
-                "text": body,
-                "error": None,
-            }
-    except requests.Timeout as exc:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
         return {
-            "ok": False,
-            "status": None,
-            "url": url,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-            "bytes": 0,
-            "content_type": "",
-            "text": "",
-            "error": f"TIMEOUT: {exc}",
-        }
-    except requests.ConnectionError as exc:
-        return {
-            "ok": False,
-            "status": None,
-            "url": url,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-            "bytes": 0,
-            "content_type": "",
-            "text": "",
-            "error": f"CONNECTION_ERROR: {exc}",
+            "ok": 200 <= response.status_code < 400,
+            "status": response.status_code,
+            "url": response.url,
+            "elapsed_sec": round(time.perf_counter() - started, 3),
+            "bytes": len(response.content),
+            "text": response.text,
+            "error": None,
         }
     except requests.RequestException as exc:
         return {
             "ok": False,
             "status": None,
             "url": url,
-            "elapsed_sec": round(time.monotonic() - started, 3),
+            "elapsed_sec": round(time.perf_counter() - started, 3),
             "bytes": 0,
-            "content_type": "",
             "text": "",
             "error": f"{type(exc).__name__}: {exc}",
         }
 
 
-def _compact(response):
-    return {
-        key: response.get(key)
-        for key in (
-            "ok",
-            "status",
-            "url",
-            "elapsed_sec",
-            "bytes",
-            "content_type",
-            "error",
-        )
-    }
-
-
-def _sabina_product_links(html):
+def _links(html, base, fragment):
     soup = BeautifulSoup(html or "", "html.parser")
-    urls = set()
+    found = []
+    seen = set()
 
     for anchor in soup.find_all("a", href=True):
-        url = urljoin(SABINA, anchor.get("href"))
-        parsed = urlparse(url)
+        url = urljoin(base, anchor.get("href", "")).split("#")[0]
 
-        if parsed.netloc.lower() not in {"sabina.com", "www.sabina.com"}:
+        if fragment and fragment not in urlparse(url).path.lower():
             continue
 
-        if not parsed.path.startswith("/it/"):
-            continue
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
 
-        if re.search(
-            r"/(?:ricerca|ricerca_old|content|marchi|negozi|contatto|faq|"
-            r"carrello|ordine|module)/",
-            parsed.path,
-            re.I,
-        ):
-            continue
-
-        urls.add(url.split("#")[0].split("?")[0])
-
-    return sorted(urls)
+    return found
 
 
-def _sabina_text_hits(html, query):
-    text = _clean(
-        BeautifulSoup(html or "", "html.parser").get_text(" ", strip=True)
-    )
-    lower = text.lower()
+def _title(html):
+    soup = BeautifulSoup(html or "", "html.parser")
 
-    return {
-        "query_exact_hits": lower.count(_clean(query).lower()),
-        "liquid_hits": len(re.findall(r"\bliquid\b", text, re.I)),
-        "brun_hits": len(re.findall(r"\bbrun\b", text, re.I)),
-        "liquid_brun_hits": len(
-            list(re.finditer(r"liquid\s+brun", text, re.I))
-        ),
-        "sample_contexts": [
-            _clean(text[max(0, match.start() - 120):match.end() + 180])
-            for match in list(
-                re.finditer(r"liquid\s+brun", text, re.I)
-            )[:5]
-        ],
-    }
+    h1 = soup.find("h1")
+    if h1:
+        return re.sub(r"\s+", " ", h1.get_text(" ", strip=True))
 
-
-def _sabina_current_parser(html, query):
-    try:
-        from scrapers.sabina.scraper import _parse_html
-
-        rows = _parse_html(html, query)
-        return {
-            "parser_rows": len(rows),
-            "parser_rows_sample": rows[:5],
-        }
-    except Exception as exc:
-        return {
-            "parser_rows": None,
-            "parser_error": f"{type(exc).__name__}: {exc}",
-        }
-
-
-def _sabina_probe(endpoint, query):
-    response = _request(
-        endpoint["url"],
-        params=endpoint.get("params"),
-    )
-
-    result = {
-        "kind": endpoint["kind"],
-        "method": endpoint["method"],
-        "url": endpoint["url"],
-        "params": endpoint.get("params"),
-        "response": _compact(response),
-    }
-
-    if not response["ok"]:
-        return result
-
-    result["text_hits"] = _sabina_text_hits(response["text"], query)
-
-    if endpoint["kind"] == "search":
-        links = _sabina_product_links(response["text"])
-        result["product_like_link_count"] = len(links)
-        result["product_like_links_sample"] = links[:10]
-        result["current_parser"] = _sabina_current_parser(
-            response["text"], query
-        )
-    else:
-        body = _clean(response["text"])
-        result["body_preview"] = body[:1600]
+    for script in soup.select('script[type="application/ld+json"]'):
         try:
-            payload = json.loads(response["text"])
-            result["json_type"] = type(payload).__name__
+            data = json.loads(script.get_text(strip=True))
         except Exception:
-            result["json_type"] = None
+            continue
 
-    return result
+        items = data if isinstance(data, list) else [data]
+
+        for item in items:
+            if isinstance(item, dict) and item.get("name"):
+                return str(item["name"]).strip()
+
+    return ""
 
 
-@router.get("/diagnose-sabina-liquid-brun")
-def diagnose_sabina_liquid_brun(
-    q: str = Query("Liquid Brun", min_length=1, max_length=120),
-):
-    started = time.monotonic()
-    query = _clean(q)
+@router.get("/diagnose-sabina-catalog")
+def diagnose_sabina_catalog(q: str = Query("Liquid Brun")):
+    started = time.perf_counter()
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
-    without_size = _clean(
-        re.sub(
-            r"(?<!\d)\d{2,4}\s*ml\b",
-            " ",
-            query,
-            flags=re.I,
+    tokens = _tokens(q)
+
+    probes = [
+        "/it/sitemap.xml",
+        "/sitemap.xml",
+        "/it/sitemap_index.xml",
+        "/sitemap_index.xml",
+        "/it/sitemap-products.xml",
+        "/it/sitemap_products.xml",
+    ]
+
+    results = []
+    catalog_urls = []
+
+    for path in probes:
+        response = _get(session, "https://www.sabina.com" + path)
+
+        results.append(
+            {
+                key: value
+                for key, value in response.items()
+                if key != "text"
+            }
         )
+
+        if response["ok"] and response["text"]:
+            for match in re.finditer(
+                r'https?://(?:www\.)?sabina\.com/[^"<>\\s]+',
+                response["text"],
+                re.I,
+            ):
+                url = match.group(0).replace("&amp;", "&")
+
+                if "/it/" in url and url not in catalog_urls:
+                    catalog_urls.append(url)
+
+    search_url = (
+        "https://www.sabina.com/it/ricerca_old?s="
+        + requests.utils.quote(q)
     )
 
-    queries = [query]
-    if without_size and without_size.casefold() != query.casefold():
-        queries.append(without_size)
+    search_response = _get(session, search_url)
 
-    endpoints = []
+    results.append(
+        {
+            key: value
+            for key, value in search_response.items()
+            if key != "text"
+        }
+    )
 
-    for search_query in queries:
-        encoded = quote_plus(search_query)
-
-        endpoints.extend(
-            [
-                {
-                    "kind": "search",
-                    "method": "GET",
-                    "url": (
-                        f"{SABINA}/it/ricerca"
-                        f"?search_query={encoded}"
-                    ),
-                },
-                {
-                    "kind": "search",
-                    "method": "GET",
-                    "url": (
-                        f"{SABINA}/it/ricerca_old"
-                        f"?s={encoded}"
-                    ),
-                },
-                {
-                    "kind": "search",
-                    "method": "GET",
-                    "url": (
-                        f"{SABINA}/it/ricerca_old"
-                        f"?search_query={encoded}"
-                    ),
-                },
-            ]
-        )
-
-    ajax_url = SABINA + "/modules/ecelastic/ajax.php"
-
-    for search_query in queries:
-        endpoints.extend(
-            [
-                {
-                    "kind": "ajax",
-                    "method": "GET",
-                    "url": ajax_url,
-                    "params": {
-                        "q": search_query,
-                        "query": search_query,
-                        "search_query": search_query,
-                        "id_lang": 5,
-                        "id_country": 10,
-                        "id_currency": 1,
-                    },
-                },
-                {
-                    "kind": "ajax",
-                    "method": "GET",
-                    "url": ajax_url,
-                    "params": {
-                        "s": search_query,
-                        "search_query": search_query,
-                        "id_lang": 5,
-                        "id_country": 10,
-                        "id_currency": 1,
-                    },
-                },
-            ]
-        )
-
-    with ThreadPoolExecutor(max_workers=min(10, len(endpoints))) as pool:
-        results = list(
-            pool.map(
-                lambda endpoint: _sabina_probe(endpoint, query),
-                endpoints,
+    if search_response["ok"]:
+        catalog_urls.extend(
+            _links(
+                search_response["text"],
+                "https://www.sabina.com",
+                "",
             )
         )
 
-    status_counts = {}
-    for item in results:
-        status = str(item["response"].get("status"))
-        status_counts[status] = status_counts.get(status, 0) + 1
+    catalog_urls = list(dict.fromkeys(catalog_urls))
+
+    token_hit_urls = [
+        url
+        for url in catalog_urls
+        if any(token in _norm(url) for token in tokens)
+    ]
+
+    verification = []
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_get, session, url): url
+            for url in token_hit_urls[:MAX_SABINA_URLS]
+        }
+
+        for future in as_completed(futures):
+            url = futures[future]
+            response = future.result()
+
+            title = _title(response.get("text", "")) if response["ok"] else ""
+
+            verification.append(
+                {
+                    "url": url,
+                    "http_status": response["status"],
+                    "title": title,
+                    "query_token_match": (
+                        all(token in _norm(title) for token in tokens)
+                        if title
+                        else False
+                    ),
+                    "elapsed_sec": response["elapsed_sec"],
+                    "error": response["error"],
+                }
+            )
+
+    session.close()
 
     return {
         "diagnostic": True,
         "store": "Sabina",
-        "query": query,
-        "elapsed_sec": round(time.monotonic() - started, 3),
-        "queries_tested": queries,
+        "query": q,
+        "elapsed_sec": round(time.perf_counter() - started, 3),
         "summary": {
-            "endpoints_tested": len(results),
-            "http_success": sum(
-                1 for item in results if item["response"]["ok"]
+            "sitemap_probes": len(probes),
+            "catalog_urls": len(catalog_urls),
+            "token_hit_urls": len(token_hit_urls),
+            "verified_product_hits": sum(
+                1
+                for item in verification
+                if item["query_token_match"]
             ),
-            "status_counts": status_counts,
-            "parser_rows_total": sum(
-                (item.get("current_parser") or {}).get("parser_rows", 0)
-                or 0
-                for item in results
-            ),
-            "liquid_brun_hits_total": sum(
-                item.get("text_hits", {}).get("liquid_brun_hits", 0)
-                for item in results
-            ),
-            "transport_errors": [
-                item["response"]["error"]
-                for item in results
-                if item["response"].get("error")
-            ][:20],
         },
-        "results": results,
+        "probes": results,
+        "token_hit_urls": token_hit_urls[:MAX_SABINA_URLS],
+        "verification": verification,
     }
 
 
-def _deloox_product_links(html):
-    soup = BeautifulSoup(html or "", "html.parser")
-    urls = set()
+@router.get("/diagnose-deloox-catalog")
+def diagnose_deloox_catalog(q: str = Query("Liquid Brun")):
+    started = time.perf_counter()
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
-    for anchor in soup.find_all("a", href=True):
-        url = (
-            urljoin(DELOOX, anchor.get("href"))
-            .split("#")[0]
-            .split("?")[0]
-        )
-        parsed = urlparse(url)
+    tokens = _tokens(q)
+    base = "https://www.deloox.com"
 
-        if (
-            parsed.netloc.lower() in {"deloox.com", "www.deloox.com"}
-            and "/product/" in parsed.path.lower()
-        ):
-            urls.add(url)
-
-    for match in re.finditer(
-        r'(?:https?:)?//(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
-        html or "",
-        re.I,
-    ):
-        url = (
-            urljoin(DELOOX, match.group(0))
-            .split("#")[0]
-            .split("?")[0]
-        )
-        if "/product/" in urlparse(url).path.lower():
-            urls.add(url)
-
-    return sorted(urls)
-
-
-def _deloox_query_variants(query):
-    normalized = re.sub(r"\s+", " ", query).strip()
-    variants = [query]
-
-    if normalized and normalized.casefold() != query.casefold():
-        variants.append(normalized)
-
-    meaningful = [
-        token
-        for token in re.findall(r"[A-Za-z0-9]+", normalized)
-        if len(token) > 1
-        and token.lower()
-        not in {
-            "for",
-            "the",
-            "and",
-            "with",
-            "in",
-            "of",
-            "de",
-            "di",
-            "da",
-        }
+    seeds = [
+        base + "/category/1000054/mens-fragrances.html",
+        base + "/category/1075639/womens-fragrances.html",
+        base + "/category/1075750/mens-perfume.html",
+        base + "/category/1079036/armaf-fragrances.html",
     ]
 
-    for token in sorted(
-        set(meaningful),
-        key=lambda value: (-len(value), value),
-    ):
-        if token.casefold() not in {
-            value.casefold() for value in variants
-        }:
-            variants.append(token)
+    pages = []
+    seen_pages = set()
 
-    return variants[:6]
+    def add_page(url):
+        if url in seen_pages:
+            return
 
+        if len(seen_pages) >= MAX_DELOOX_PAGES:
+            return
 
-def _deloox_search_probe(query):
-    endpoints = []
+        seen_pages.add(url)
+        pages.append(url)
 
-    for search_query in _deloox_query_variants(query):
-        encoded = quote_plus(search_query)
+    for seed in seeds:
+        add_page(seed)
 
-        for template in (
-            f"{DELOOX}/en/search?query={encoded}",
-            f"{DELOOX}/en/search?search={encoded}",
-            f"{DELOOX}/en/search?q={encoded}",
-            f"{DELOOX}/en?search={encoded}",
-        ):
-            endpoints.append(
-                {
-                    "query": search_query,
-                    "url": template,
-                }
-            )
+    index = 0
 
-    def probe(endpoint):
-        response = _request(endpoint["url"])
+    while index < len(pages):
+        url = pages[index]
+        index += 1
+
+        response = _get(session, url)
 
         item = {
-            "query": endpoint["query"],
-            "url": endpoint["url"],
-            "response": _compact(response),
+            "url": url,
+            "status": response["status"],
+            "elapsed_sec": response["elapsed_sec"],
+            "bytes": response["bytes"],
+            "error": response["error"],
         }
 
         if response["ok"]:
-            links = _deloox_product_links(response["text"])
+            links = _links(
+                response["text"],
+                base,
+                "/product/",
+            )
+
             item["product_link_count"] = len(links)
-            item["product_links_sample"] = links[:10]
 
-            try:
-                from scrapers.deloox.scraper import (
-                    _candidate_product_urls,
+            item["token_hit_links"] = [
+                link
+                for link in links
+                if any(token in _norm(link) for token in tokens)
+            ][:20]
+
+            soup = BeautifulSoup(
+                response["text"],
+                "html.parser",
+            )
+
+            for anchor in soup.find_all("a", href=True):
+                text = re.sub(
+                    r"\s+",
+                    " ",
+                    anchor.get_text(" ", strip=True),
+                ).lower()
+
+                href = urljoin(
+                    url,
+                    anchor["href"],
+                ).split("#")[0]
+
+                is_next = (
+                    "next" in text
+                    or "page=" in href.lower()
+                    or "/page/" in href.lower()
                 )
 
-                candidates = _candidate_product_urls(
+                if is_next and "/category/" in href:
+                    add_page(href)
+
+        pages[index - 1] = item
+
+    candidates = []
+
+    for page in pages:
+        if "url" not in page:
+            continue
+
+        response = _get(session, page["url"])
+
+        if response["ok"]:
+            candidates.extend(
+                _links(
                     response["text"],
-                    query,
+                    base,
+                    "/product/",
                 )
-                item["current_scraper_candidate_count"] = len(
-                    candidates
-                )
-                item["current_scraper_candidates_sample"] = (
-                    candidates[:10]
-                )
-            except Exception as exc:
-                item["candidate_parser_error"] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
+            )
 
-        return item
+    candidates = list(dict.fromkeys(candidates))
 
-    with ThreadPoolExecutor(max_workers=12) as pool:
-        return list(pool.map(probe, endpoints))
-
-
-def _deloox_category_probe():
-    try:
-        from scrapers.deloox.scraper import _category_pages
-
-        urls = list(_category_pages())
-        import_error = None
-    except Exception as exc:
-        urls = []
-        import_error = f"{type(exc).__name__}: {exc}"
-
-    def probe(url):
-        response = _request(url)
-        links = (
-            _deloox_product_links(response["text"])
-            if response["ok"]
-            else []
-        )
-
-        return {
-            "url": url,
-            "response": _compact(response),
-            "product_link_count": len(links),
-            "product_links_sample": links[:10],
-        }
-
-    with ThreadPoolExecutor(max_workers=max(1, len(urls))) as pool:
-        results = list(pool.map(probe, urls)) if urls else []
-
-    return {
-        "urls": urls,
-        "import_error": import_error,
-        "results": results,
-    }
-
-
-def _deloox_sitemap_probe():
-    urls = [
-        f"{DELOOX}/sitemap.xml",
-        f"{DELOOX}/sitemap_index.xml",
-        f"{DELOOX}/sitemap-index.xml",
-        f"{DELOOX}/en/sitemap.xml",
+    token_hits = [
+        url
+        for url in candidates
+        if any(token in _norm(url) for token in tokens)
     ]
 
-    def probe(url):
-        response = _request(url)
-        locs = (
-            re.findall(
-                r"<loc>\s*(.*?)\s*</loc>",
-                response["text"],
-                re.I | re.S,
-            )
-            if response["ok"]
-            else []
-        )
-
-        return {
-            "url": url,
-            "response": _compact(response),
-            "loc_count": len(locs),
-            "loc_sample": locs[:15],
-        }
+    verification = []
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        return list(pool.map(probe, urls))
+        futures = {
+            pool.submit(_get, session, url): url
+            for url in token_hits[:20]
+        }
 
+        for future in as_completed(futures):
+            url = futures[future]
+            response = future.result()
 
-@router.get("/diagnose-deloox-liquid-brun")
-def diagnose_deloox_liquid_brun(
-    q: str = Query("Liquid Brun", min_length=1, max_length=120),
-):
-    started = time.monotonic()
-    query = _clean(q)
+            title = _title(response.get("text", "")) if response["ok"] else ""
 
-    search = _deloox_search_probe(query)
-    categories = _deloox_category_probe()
-    sitemaps = _deloox_sitemap_probe()
+            verification.append(
+                {
+                    "url": url,
+                    "http_status": response["status"],
+                    "title": title,
+                    "query_token_match": (
+                        all(token in _norm(title) for token in tokens)
+                        if title
+                        else False
+                    ),
+                    "elapsed_sec": response["elapsed_sec"],
+                    "error": response["error"],
+                }
+            )
+
+    session.close()
 
     return {
         "diagnostic": True,
         "store": "Deloox",
-        "query": query,
-        "elapsed_sec": round(time.monotonic() - started, 3),
+        "query": q,
+        "elapsed_sec": round(time.perf_counter() - started, 3),
         "summary": {
-            "search_endpoints_tested": len(search),
-            "search_http_success": sum(
+            "category_pages_tested": len(pages),
+            "product_urls_seen": len(candidates),
+            "token_hit_urls": len(token_hits),
+            "verified_product_hits": sum(
                 1
-                for item in search
-                if item["response"]["ok"]
-            ),
-            "search_product_links_total": sum(
-                item.get("product_link_count", 0)
-                for item in search
-            ),
-            "category_pages_tested": len(categories["results"]),
-            "category_http_success": sum(
-                1
-                for item in categories["results"]
-                if item["response"]["ok"]
-            ),
-            "category_product_links_total": sum(
-                item.get("product_link_count", 0)
-                for item in categories["results"]
-            ),
-            "sitemap_endpoints_tested": len(sitemaps),
-            "sitemap_http_success": sum(
-                1
-                for item in sitemaps
-                if item["response"]["ok"]
+                for item in verification
+                if item["query_token_match"]
             ),
         },
-        "search": search,
-        "categories": categories,
-        "sitemaps": sitemaps,
+        "pages": pages,
+        "token_hit_urls": token_hits[:20],
+        "verification": verification,
     }
