@@ -39,9 +39,15 @@ def tokens(value):
 
 
 def matches(text, query):
-    hay = set(norm(text).split())
     q = tokens(query)
-    return bool(q) and all(token in hay for token in q)
+    if not q:
+        return False
+    hay = set(norm(text).split())
+    if all(token in hay for token in q):
+        return True
+    compact_query = "".join(q)
+    compact_text = "".join(tokens(text))
+    return bool(compact_query and compact_query in compact_text)
 
 
 def size_ml(*values):
@@ -101,15 +107,22 @@ def availability_from_text(text):
 def request_json(session, url, params=None):
     try:
         response = session.get(url, params=params, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if response.status_code >= 400:
-            response.close()
-            return None
-        try:
-            return response.json()
-        finally:
-            response.close()
-    except (requests.RequestException, ValueError, TypeError):
-        return None
+    except requests.Timeout as exc:
+        raise RuntimeError(f"timeout: {url}") from exc
+    except requests.RequestException as exc:
+        raise RuntimeError(f"unavailable: {url}: {type(exc).__name__}: {exc}") from exc
+
+    if response.status_code >= 400:
+        status = "blocked" if response.status_code in (401, 403, 429) else "unavailable" if response.status_code >= 500 else "error"
+        response.close()
+        raise RuntimeError(f"{status}: HTTP {response.status_code}: {url}")
+
+    try:
+        return response.json()
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(f"error: invalid JSON: {url}") from exc
+    finally:
+        response.close()
 
 
 def add_candidate(url, query, candidates, seen):
@@ -332,7 +345,6 @@ def product_from_page(session, url, query):
         availability = availability_from_text(page_text)
 
     if price is None:
-        # Current Bplatz product pages expose retail price in visible text.
         price_patterns = [
             r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
             r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
@@ -378,14 +390,21 @@ def product_from_page(session, url, query):
     }
 
 
-def search(query):
+def _search_report(query):
     query = clean(query)
     if not query:
-        return []
+        return {"status": "success", "verified": True, "results": [], "error": None, "details": {"verified_empty": True}}
+
     session = requests.Session()
+    results, seen = [], set()
     try:
-        candidates = discover(session, query)
-        results, seen = [], set()
+        try:
+            candidates = discover(session, query)
+        except RuntimeError as exc:
+            text = str(exc)
+            status = next((x for x in ("timeout", "blocked", "unavailable", "error") if text.startswith(x + ":")), "error")
+            return {"status": status, "verified": False, "results": [], "error": text, "details": {"verified_empty": False}}
+
         for url in candidates:
             try:
                 item = product_from_page(session, url, query)
@@ -398,19 +417,23 @@ def search(query):
                 continue
             seen.add(key)
             results.append(item)
+
         results.sort(key=lambda x: (x.get("available") is not True, x.get("price_num") is None, x.get("price_num") or 999999))
-        return results
+        return {"status": "success", "verified": True, "results": results, "error": None, "details": {"verified_empty": not bool(results), "candidate_count": len(candidates)}}
     finally:
         session.close()
 
 
+def search(query):
+    return _search_report(query).get("results", [])
+
+
 def search_stream(query, emit=None):
-    rows = search(query)
+    report = _search_report(query)
     if callable(emit):
-        for row in rows:
+        for row in report.get("results", []):
             emit(row)
-        return None
-    return iter(rows)
+    return report
 
 
 def scrape(query):
