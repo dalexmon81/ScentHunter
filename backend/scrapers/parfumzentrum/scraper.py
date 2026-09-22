@@ -43,6 +43,16 @@ SITEMAP_TTL = 30 * 60
 SITEMAP_MAX_CHILD_MAPS = 100
 SITEMAP_WORKERS = 12
 
+
+class StoreRequestError(RuntimeError):
+    """Technical failure while contacting or reading the retailer."""
+
+    def __init__(self, status, message=""):
+        self.status = status
+        self.message = message or status
+        super().__init__(self.message)
+
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -1019,7 +1029,7 @@ def _search_page_state(html_text, query):
         return "unknown"
 
     # The real Parfum-Zentrum search page echoes the query in the heading,
-    # e.g. `Suche „Liquid brun"`. Only then can a zero-result state be trusted.
+    # The echoed query must be present before a zero-result state is trusted.
     query_reflected = normalized_query in normalized_text
 
     if not query_reflected:
@@ -1047,155 +1057,209 @@ def _search_page_state(html_text, query):
 
 
 def _discover_from_store_search_form(query):
-    """Use the retailer's own search form when fixed endpoint variants fail.
-
-    The form action and query parameter are discovered from the live homepage;
-    no product, perfume, brand, URL or price is hard-coded here.
-    """
+    """Discover the retailer search form without product-specific rules."""
     session = requests.Session()
     session.headers.update(HEADERS)
+    successful_pages = 0
+    last_error = None
+
     try:
-        response = session.get(
-            BASE_URL + "/",
-            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
-            allow_redirects=True,
-        )
-        if response.status_code >= 400:
-            return []
-        soup = BeautifulSoup(response.text, "html.parser")
-        forms = soup.find_all("form")
-        for form in forms:
-            inputs = form.find_all(["input", "textarea"])
-            query_input = None
-            for node in inputs:
-                name = str(node.get("name") or "").strip().lower()
-                placeholder = str(node.get("placeholder") or "").strip().lower()
-                input_type = str(node.get("type") or "").strip().lower()
-                if input_type in {"search", "text"} and (
-                    name in {"q", "query", "search", "s", "search_query", "search_query_string"}
-                    or "such" in name
-                    or "search" in name
-                    or "such" in placeholder
-                    or "search" in placeholder
-                ):
-                    query_input = node
-                    break
-            if query_input is None:
-                continue
-            action = form.get("action") or response.url
-            method = str(form.get("method") or "get").lower()
-            if method != "get":
-                continue
-            param = query_input.get("name") or "q"
-            target = urljoin(response.url, action)
-            try:
-                result = session.get(
-                    target,
-                    params={param: query},
-                    timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
-                continue
-            try:
-                if result.status_code >= 400:
+        try:
+            response = session.get(
+                BASE_URL + "/",
+                timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+                allow_redirects=True,
+            )
+        except requests.Timeout as exc:
+            raise StoreRequestError("timeout", str(exc)) from exc
+        except requests.RequestException as exc:
+            raise StoreRequestError("unavailable", str(exc)) from exc
+
+        try:
+            if response.status_code in {401, 403, 429}:
+                raise StoreRequestError("blocked", f"HTTP {response.status_code}")
+            if response.status_code >= 500:
+                raise StoreRequestError("unavailable", f"HTTP {response.status_code}")
+            if response.status_code >= 400:
+                raise StoreRequestError("error", f"HTTP {response.status_code}")
+
+            soup = BeautifulSoup(response.text, "html.parser")
+            forms = soup.find_all("form")
+            for form in forms:
+                inputs = form.find_all(["input", "textarea"])
+                query_input = None
+
+                for node in inputs:
+                    name = str(node.get("name") or "").strip().lower()
+                    placeholder = str(node.get("placeholder") or "").strip().lower()
+                    input_type = str(node.get("type") or "").strip().lower()
+
+                    if input_type in {"search", "text"} and (
+                        name in {
+                            "q", "query", "search", "s",
+                            "search_query", "search_query_string",
+                        }
+                        or "such" in name
+                        or "search" in name
+                        or "such" in placeholder
+                        or "search" in placeholder
+                    ):
+                        query_input = node
+                        break
+
+                if query_input is None:
                     continue
-                urls = _candidate_urls_from_html(result.text, query)
-                if urls:
-                    return urls
-            finally:
-                result.close()
-        return []
-    except requests.RequestException:
-        return []
+
+                action = form.get("action") or response.url
+                method = str(form.get("method") or "get").lower()
+                if method != "get":
+                    continue
+
+                param = query_input.get("name") or "q"
+                target = urljoin(response.url, action)
+
+                try:
+                    result = session.get(
+                        target,
+                        params={param: query},
+                        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+                        allow_redirects=True,
+                    )
+                except requests.Timeout as exc:
+                    last_error = StoreRequestError("timeout", str(exc))
+                    continue
+                except requests.RequestException as exc:
+                    last_error = StoreRequestError("unavailable", str(exc))
+                    continue
+
+                try:
+                    if result.status_code in {401, 403, 429}:
+                        last_error = StoreRequestError(
+                            "blocked", f"HTTP {result.status_code}"
+                        )
+                        continue
+                    if result.status_code >= 500:
+                        last_error = StoreRequestError(
+                            "unavailable", f"HTTP {result.status_code}"
+                        )
+                        continue
+                    if result.status_code >= 400:
+                        last_error = StoreRequestError(
+                            "error", f"HTTP {result.status_code}"
+                        )
+                        continue
+
+                    successful_pages += 1
+                    urls = _candidate_urls_from_html(result.text, query)
+                    if urls:
+                        return urls
+                finally:
+                    result.close()
+
+            if successful_pages == 0 and last_error is not None:
+                raise last_error
+            return []
+        finally:
+            response.close()
     finally:
         session.close()
 
-
 def _search_discovery(query):
-    """Discover products from the store's live search first.
+    """Discover products from the retailer's live search.
 
-    Returns `(candidates, authoritative_zero)`.
-    `authoritative_zero=True` means the live store search itself explicitly
-    answered the query with zero products. In that case sitemap URLs must NOT
-    be used as a fallback, because they may represent stale/hidden products.
+    Returns ``(candidates, authoritative_zero, error)``.
+    ``error`` is a technical StoreRequestError when the live discovery path
+    could not be verified.
     """
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
         endpoints = (
-            SEARCH_URL
-            + "?q="
-            + quote_plus(query),
-            SEARCH_URL
-            + "?search="
-            + quote_plus(query),
-            SEARCH_URL
-            + "?query="
-            + quote_plus(query),
-            SEARCH_URL
-            + "?text="
-            + quote_plus(query),
+            SEARCH_URL + "?q=" + quote_plus(query),
+            SEARCH_URL + "?search=" + quote_plus(query),
+            SEARCH_URL + "?query=" + quote_plus(query),
+            SEARCH_URL + "?text=" + quote_plus(query),
         )
 
         seen = set()
         candidates = []
         authoritative_zero = False
+        successful_pages = 0
+        errors = []
 
         for endpoint in endpoints:
             try:
                 response = session.get(
                     endpoint,
-                    timeout=(
-                        CONNECT_TIMEOUT,
-                        READ_TIMEOUT,
-                    ),
+                    timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
                     allow_redirects=True,
                 )
-            except requests.RequestException:
+            except requests.Timeout as exc:
+                errors.append(StoreRequestError("timeout", str(exc)))
+                continue
+            except requests.RequestException as exc:
+                errors.append(StoreRequestError("unavailable", str(exc)))
                 continue
 
             try:
+                if response.status_code in {401, 403, 429}:
+                    errors.append(
+                        StoreRequestError("blocked", f"HTTP {response.status_code}")
+                    )
+                    continue
+                if response.status_code >= 500:
+                    errors.append(
+                        StoreRequestError("unavailable", f"HTTP {response.status_code}")
+                    )
+                    continue
                 if response.status_code >= 400:
+                    errors.append(
+                        StoreRequestError("error", f"HTTP {response.status_code}")
+                    )
                     continue
 
+                successful_pages += 1
                 html_text = response.text
-                urls = _candidate_urls_from_html(
-                    html_text,
-                    query,
-                )
+                urls = _candidate_urls_from_html(html_text, query)
 
                 for url in urls:
                     if url in seen:
                         continue
-
                     seen.add(url)
                     candidates.append(url)
-
                     if len(candidates) >= MAX_CANDIDATES:
-                        return candidates, False
+                        return candidates, False, None
 
-                state = _search_page_state(
-                    html_text,
-                    query,
-                )
-
+                state = _search_page_state(html_text, query)
                 if state == "zero":
                     authoritative_zero = True
-                elif state == "results":
-                    # A live result page without extractable product URLs is
-                    # not a reason to trust the sitemap, so keep searching the
-                    # alternate parameter forms but do not mark zero.
-                    pass
+                # "results" without extractable URLs and "unknown" both remain
+                # non-authoritative for absence.
             finally:
                 response.close()
 
         if candidates:
-            return candidates, False
+            return candidates, False, None
 
-        return [], authoritative_zero
+        if authoritative_zero:
+            return [], True, None
 
+        if successful_pages == 0 and errors:
+            # Preserve the most actionable technical state.
+            priority = {
+                "blocked": 0,
+                "timeout": 1,
+                "unavailable": 2,
+                "error": 3,
+            }
+            error = sorted(
+                errors,
+                key=lambda item: priority.get(item.status, 99),
+            )[0]
+            return [], False, error
+
+        return [], False, None
     finally:
         session.close()
 
@@ -1216,38 +1280,17 @@ def _xml_urls(xml_text):
 
 
 def _get_sitemap_urls():
-    """
-    Load the complete product URL index published by Parfum-Zentrum.
-
-    The previous implementation only inspected the first six child sitemaps.
-    That is not safe: sitemap indexes are ordered administrative files, not a
-    guarantee that the requested product is in one of the first six files.
-    A perfectly valid product can therefore disappear from ScentHunter even
-    though its product page exists and the URL is present in the site's index.
-
-    We fetch every child sitemap (bounded by SITEMAP_MAX_CHILD_MAPS) in
-    parallel, cache the resulting product URLs, and keep direct URLs from the
-    root sitemap as well. This is generic and contains no perfume-specific
-    rules or prices.
-    """
+    """Load and cache the retailer product URL index generically."""
     global _sitemap_cache
     global _sitemap_cached_at
 
     now = time.monotonic()
-
-    if (
-        _sitemap_cache
-        and now - _sitemap_cached_at < SITEMAP_TTL
-    ):
+    if _sitemap_cache and now - _sitemap_cached_at < SITEMAP_TTL:
         return list(_sitemap_cache)
 
     with _sitemap_lock:
         now = time.monotonic()
-
-        if (
-            _sitemap_cache
-            and now - _sitemap_cached_at < SITEMAP_TTL
-        ):
+        if _sitemap_cache and now - _sitemap_cached_at < SITEMAP_TTL:
             return list(_sitemap_cache)
 
         try:
@@ -1256,11 +1299,25 @@ def _get_sitemap_urls():
                 headers=HEADERS,
                 timeout=SITEMAP_TIMEOUT,
             )
-            response.raise_for_status()
-            root_urls = _xml_urls(response.text)
+        except requests.Timeout as exc:
+            raise StoreRequestError("timeout", str(exc)) from exc
+        except requests.RequestException as exc:
+            raise StoreRequestError("unavailable", str(exc)) from exc
+
+        try:
+            if response.status_code in {401, 403, 429}:
+                raise StoreRequestError("blocked", f"HTTP {response.status_code}")
+            if response.status_code >= 500:
+                raise StoreRequestError("unavailable", f"HTTP {response.status_code}")
+            if response.status_code >= 400:
+                raise StoreRequestError("error", f"HTTP {response.status_code}")
+
+            try:
+                root_urls = _xml_urls(response.text)
+            except Exception as exc:
+                raise StoreRequestError("error", str(exc)) from exc
+        finally:
             response.close()
-        except (requests.RequestException, ET.ParseError):
-            return []
 
         child_maps = []
         direct_urls = []
@@ -1272,9 +1329,6 @@ def _get_sitemap_urls():
             elif _product_url(url):
                 direct_urls.append(url)
 
-        # Some stores expose more than one sitemap index level. Resolve one
-        # additional index level generically instead of assuming a fixed file
-        # naming scheme.
         child_maps = list(dict.fromkeys(child_maps))[:SITEMAP_MAX_CHILD_MAPS]
 
         def fetch_sitemap(url):
@@ -1284,35 +1338,50 @@ def _get_sitemap_urls():
                     headers=HEADERS,
                     timeout=(1.8, 4.0),
                 )
+            except requests.Timeout as exc:
+                return None, StoreRequestError("timeout", str(exc))
+            except requests.RequestException as exc:
+                return None, StoreRequestError("unavailable", str(exc))
+
+            try:
+                if child.status_code in {401, 403, 429}:
+                    return None, StoreRequestError(
+                        "blocked", f"HTTP {child.status_code}"
+                    )
+                if child.status_code >= 500:
+                    return None, StoreRequestError(
+                        "unavailable", f"HTTP {child.status_code}"
+                    )
+                if child.status_code >= 400:
+                    return None, StoreRequestError(
+                        "error", f"HTTP {child.status_code}"
+                    )
+
                 try:
-                    if child.status_code != 200:
-                        return []
-                    return _xml_urls(child.text)
-                finally:
-                    child.close()
-            except (requests.RequestException, ET.ParseError):
-                return []
+                    return _xml_urls(child.text), None
+                except Exception as exc:
+                    return None, StoreRequestError("error", str(exc))
+            finally:
+                child.close()
 
         collected = list(direct_urls)
+        child_errors = []
 
         if child_maps:
             with ThreadPoolExecutor(
                 max_workers=min(SITEMAP_WORKERS, len(child_maps))
             ) as pool:
-                futures = [
-                    pool.submit(fetch_sitemap, url)
-                    for url in child_maps
-                ]
-
+                futures = [pool.submit(fetch_sitemap, url) for url in child_maps]
                 for future in as_completed(futures):
                     try:
-                        values = future.result()
-                    except Exception:
-                        values = []
+                        values, error = future.result()
+                    except Exception as exc:
+                        values, error = None, StoreRequestError("error", str(exc))
+                    if error is not None:
+                        child_errors.append(error)
+                        continue
+                    collected.extend(values or [])
 
-                    collected.extend(values)
-
-        # If a child sitemap is itself an index, resolve its children once.
         nested_maps = []
         product_urls = []
 
@@ -1329,42 +1398,43 @@ def _get_sitemap_urls():
             with ThreadPoolExecutor(
                 max_workers=min(SITEMAP_WORKERS, len(nested_maps))
             ) as pool:
-                futures = [
-                    pool.submit(fetch_sitemap, url)
-                    for url in nested_maps
-                ]
-
+                futures = [pool.submit(fetch_sitemap, url) for url in nested_maps]
                 for future in as_completed(futures):
                     try:
-                        values = future.result()
-                    except Exception:
-                        values = []
-
-                    for value in values:
+                        values, error = future.result()
+                    except Exception as exc:
+                        values, error = None, StoreRequestError("error", str(exc))
+                    if error is not None:
+                        child_errors.append(error)
+                        continue
+                    for value in values or []:
                         if _product_url(value):
                             product_urls.append(value)
 
-        # Preserve order while removing duplicates.
         unique = []
         seen = set()
-
         for url in product_urls:
             canonical = _product_url(url)
             if not canonical:
                 continue
-
             key = canonical.lower()
             if key in seen:
                 continue
-
             seen.add(key)
             unique.append(canonical)
 
+        # If every child map failed, the sitemap index was not successfully
+        # verified. Do not convert that into an empty catalog.
+        if child_maps and not unique and child_errors:
+            priority = {"blocked": 0, "timeout": 1, "unavailable": 2, "error": 3}
+            raise sorted(
+                child_errors,
+                key=lambda item: priority.get(item.status, 99),
+            )[0]
+
         _sitemap_cache = unique
         _sitemap_cached_at = time.monotonic()
-
         return list(_sitemap_cache)
-
 
 def _sitemap_discovery(query):
     urls = _get_sitemap_urls()
@@ -1467,111 +1537,48 @@ def _extract_product(url, query):
             timeout=PRODUCT_TIMEOUT,
             allow_redirects=True,
         )
-    except requests.RequestException:
-        return None
+    except requests.Timeout as exc:
+        raise StoreRequestError("timeout", str(exc)) from exc
+    except requests.RequestException as exc:
+        raise StoreRequestError("unavailable", str(exc)) from exc
 
     try:
-        if response.status_code != 200:
-            return None
-
+        if response.status_code in {401, 403, 429}:
+            raise StoreRequestError("blocked", f"HTTP {response.status_code}")
+        if response.status_code >= 500:
+            raise StoreRequestError("unavailable", f"HTTP {response.status_code}")
+        if response.status_code >= 400:
+            raise StoreRequestError("error", f"HTTP {response.status_code}")
         html_text = response.text
     finally:
         response.close()
 
-    soup = BeautifulSoup(
-        html_text,
-        "html.parser",
-    )
+    soup = BeautifulSoup(html_text, "html.parser")
+    data = _jsonld_product(soup)
+    name = _extract_name(soup, data)
 
-    data = _jsonld_product(
-        soup
-    )
-
-    name = _extract_name(
-        soup,
-        data,
-    )
-
-    if not name:
+    if not name or not _matches_query(name, query) or not _looks_like_perfume(name):
         return None
 
-    if not _matches_query(
-        name,
-        query,
-    ):
-        return None
-
-    if not _looks_like_perfume(
-        name
-    ):
-        return None
-
-    price = _extract_price(
-        soup,
-        data,
-    )
-
+    price = _extract_price(soup, data)
     availability = (
-        _jsonld_availability(
-            data
-        )
-        or _availability_from_text(
-            soup.get_text(
-                " ",
-                strip=True,
-            )
-        )
+        _jsonld_availability(data)
+        or _availability_from_text(soup.get_text(" ", strip=True))
     )
 
-    # Out-of-stock products are valid results
-    # even when no current price is exposed.
-    if (
-        price is None
-        and availability
-        == "unknown"
-    ):
+    # An explicitly out-of-stock product is a valid discovered offer even
+    # when no current price is exposed. Unknown commercial state is not.
+    if price is None and availability == "unknown":
         return None
 
-    brand = _jsonld_value(
-        data,
-        "brand",
-    )
-
-    image = _extract_image(
-        soup,
-        data,
-    )
-
-    size = _size_ml(
-        name
-    )
-
-    gtin = _jsonld_value(
-        data,
-        "gtin13",
-        "gtin",
-        "gtin8",
-    )
-
-    mpn = _jsonld_value(
-        data,
-        "mpn",
-    )
-
-    sku = _jsonld_value(
-        data,
-        "sku",
-    )
-
-    product_id = _jsonld_value(
-        data,
-        "productID",
-        "productId",
-    )
-
-    concentration = (
-        _concentration(name)
-    )
+    brand = _jsonld_value(data, "brand")
+    image = _extract_image(soup, data)
+    size = _size_ml(name)
+    gtin = _jsonld_value(data, "gtin13", "gtin", "gtin8")
+    mpn = _jsonld_value(data, "mpn")
+    sku = _jsonld_value(data, "sku")
+    product_id = _jsonld_value(data, "productID", "productId")
+    concentration = _concentration(name)
 
     return {
         "store": STORE,
@@ -1582,65 +1589,25 @@ def _extract_product(url, query):
             "image": image,
         },
         "identity": {
-            "gtin": (
-                {
-                    "value": gtin,
-                    "source": "jsonld",
-                }
-                if gtin
-                else None
-            ),
-            "mpn": (
-                {
-                    "value": mpn,
-                    "source": "jsonld",
-                }
-                if mpn
-                else None
-            ),
-            "sku": (
-                {
-                    "value": sku,
-                    "source": "jsonld",
-                }
-                if sku
-                else None
-            ),
+            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
+            "sku": {"value": sku, "source": "jsonld"} if sku else None,
             "store_product_id": (
-                {
-                    "value": product_id,
-                    "source": "jsonld",
-                }
-                if product_id
-                else None
+                {"value": product_id, "source": "jsonld"} if product_id else None
             ),
             "store_variant_id": None,
         },
         "attributes": {
             "size_ml": (
-                {
-                    "value": size,
-                    "source": "product_title",
-                }
-                if size is not None
-                else None
+                {"value": size, "source": "product_title"}
+                if size is not None else None
             ),
             "concentration": (
-                {
-                    "value": concentration,
-                    "source": "product_title",
-                }
-                if concentration
-                else None
+                {"value": concentration, "source": "product_title"}
+                if concentration else None
             ),
-            "gender": {
-                "value": "unknown",
-                "source": "not_explicit",
-            },
-            "packaging_type": {
-                "value": "product",
-                "source": "default",
-            },
+            "gender": {"value": "unknown", "source": "not_explicit"},
+            "packaging_type": {"value": "product", "source": "default"},
         },
         "offer": {
             "price": price,
@@ -1649,40 +1616,22 @@ def _extract_product(url, query):
         },
         "provenance": {
             "source_page": url,
-            "product_source": (
-                "jsonld_or_page"
-            ),
+            "product_source": "jsonld_or_page",
         },
-        "raw_data": {
-            "jsonld": data,
-        },
-
-        # Compatibility fields for the current main.py.
+        "raw_data": {"jsonld": data},
         "name": name,
         "brand": brand,
-        "price": (
-            f"{price:.2f}€"
-            if price is not None
-            else None
-        ),
+        "price": f"{price:.2f}€" if price is not None else None,
         "price_num": price,
         "url": url,
         "available": (
-            availability == "in_stock"
-            if availability != "unknown"
-            else None
+            availability == "in_stock" if availability != "unknown" else None
         ),
         "availability": availability,
         "size_ml": size,
         "size": (
-            f"{int(size)} ml"
-            if size is not None
-            and float(size).is_integer()
-            else (
-                f"{size} ml"
-                if size is not None
-                else None
-            )
+            f"{int(size)} ml" if size is not None and float(size).is_integer()
+            else f"{size} ml" if size is not None else None
         ),
         "concentration": concentration,
         "image": image,
@@ -1692,59 +1641,116 @@ def _extract_product(url, query):
         "store_product_id": product_id,
     }
 
+def _sort_results(results):
+    def sort_key(item):
+        availability = item.get("availability")
+        if availability == "out_of_stock":
+            state_rank = 2
+        elif item.get("price_num") is not None:
+            state_rank = 0
+        else:
+            state_rank = 1
 
-def search(query):
-    query = _clean(query)
+        try:
+            numeric_price = float(item.get("price_num"))
+        except (TypeError, ValueError):
+            numeric_price = float("inf")
 
-    if not query:
-        return []
-
-    # PRIMARY PATH: the store's live search is authoritative when it
-    # explicitly reports zero products. This prevents stale sitemap/product
-    # URLs from reappearing in ScentHunter after the retailer removes a
-    # product from its current catalog.
-    candidates, authoritative_zero = _search_discovery(
-        query
-    )
-
-    if not candidates and not authoritative_zero:
-        candidates = _discover_from_store_search_form(query)
-
-    # FALLBACK: use the cached sitemap only when the live search response was
-    # not authoritative (for example a transient block or an unexpected page
-    # shell). Never use the sitemap to override an explicit live zero-result.
-    if not candidates:
-        candidates = _sitemap_discovery(
-            query
+        return (
+            state_rank,
+            numeric_price,
+            float(item.get("size_ml") or 99999),
         )
 
+    results.sort(key=sort_key)
+    return results[:40]
+
+
+def _search_report(query):
+    query = _clean(query)
+    if not query:
+        return {
+            "status": "success",
+            "verified": True,
+            "results": [],
+            "error": None,
+            "details": {"reason": "empty_query"},
+        }
+
+    candidates, authoritative_zero, discovery_error = _search_discovery(query)
+
+    if not candidates and discovery_error is not None:
+        # A live technical failure may still be recoverable through the store's
+        # own search form or sitemap, so continue. The error is retained.
+        primary_error = discovery_error
+    else:
+        primary_error = None
+
+    if not candidates and not authoritative_zero:
+        try:
+            candidates = _discover_from_store_search_form(query)
+        except StoreRequestError as exc:
+            if primary_error is None:
+                primary_error = exc
+
+    if not candidates and not authoritative_zero:
+        try:
+            candidates = _sitemap_discovery(query)
+        except StoreRequestError as exc:
+            if primary_error is None:
+                primary_error = exc
+            else:
+                # Keep the more specific/current failure if the fallback also
+                # failed technically.
+                primary_error = exc
+
     if not candidates:
-        return []
+        if authoritative_zero:
+            return {
+                "status": "success",
+                "verified": True,
+                "results": [],
+                "error": None,
+                "details": {"reason": "verified_zero_results"},
+            }
+
+        if primary_error is not None:
+            return {
+                "status": primary_error.status,
+                "verified": False,
+                "results": [],
+                "error": str(primary_error),
+                "details": {"phase": "discovery"},
+            }
+
+        return {
+            "status": "success",
+            "verified": True,
+            "results": [],
+            "error": None,
+            "details": {"reason": "verified_catalog_search_empty"},
+        }
 
     results = []
+    errors = []
     seen = set()
 
     with ThreadPoolExecutor(
-        max_workers=min(
-            PRODUCT_WORKERS,
-            len(candidates),
-        )
+        max_workers=min(PRODUCT_WORKERS, len(candidates))
     ) as pool:
         futures = {
-            pool.submit(
-                _extract_product,
-                url,
-                query,
-            ): url
+            pool.submit(_extract_product, url, query): url
             for url in candidates
         }
 
-        for future in as_completed(
-            futures
-        ):
+        for future in as_completed(futures):
             try:
                 item = future.result()
-            except Exception:
+            except StoreRequestError as exc:
+                errors.append(exc)
+                continue
+            except Exception as exc:
+                errors.append(StoreRequestError("error", str(exc)))
                 continue
 
             if not item:
@@ -1756,64 +1762,76 @@ def search(query):
                 item.get("price_num"),
                 item.get("availability"),
             )
-
             if key in seen:
                 continue
 
             seen.add(key)
             results.append(item)
 
-    def sort_key(item):
-        availability = item.get(
-            "availability"
-        )
+    _sort_results(results)
 
-        if availability == "out_of_stock":
-            state_rank = 2
-        elif item.get("price_num") is not None:
-            state_rank = 0
-        else:
-            state_rank = 1
+    if results and errors:
+        status = "partial"
+    elif results:
+        status = "success"
+    elif errors:
+        primary = errors[0]
+        priority = {"blocked": 0, "timeout": 1, "unavailable": 2, "error": 3}
+        primary = sorted(
+            errors,
+            key=lambda item: priority.get(item.status, 99),
+        )[0]
+        return {
+            "status": primary.status,
+            "verified": False,
+            "results": [],
+            "error": str(primary),
+            "details": {
+                "phase": "product_fetch",
+                "candidate_count": len(candidates),
+                "failed_count": len(errors),
+            },
+        }
+    else:
+        # Candidate URLs were discovered and successfully fetched, but none
+        # matched the requested normalized product. This is verified absence.
+        status = "success"
 
-        price = item.get(
-            "price_num"
-        )
+    return {
+        "status": status,
+        "verified": True,
+        "results": results,
+        "error": (
+            "; ".join(str(error) for error in errors[:3])
+            if errors else None
+        ),
+        "details": {
+            "candidate_count": len(candidates),
+            "result_count": len(results),
+            "failed_count": len(errors),
+        },
+    }
 
-        try:
-            numeric_price = float(
-                price
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            numeric_price = float(
-                "inf"
-            )
 
-        return (
-            state_rank,
-            numeric_price,
-            float(
-                item.get("size_ml")
-                or 99999
-            ),
-        )
-
-    results.sort(
-        key=sort_key
-    )
-
-    return results[:40]
+def search(query):
+    """Backward-compatible list-returning API for diagnostics and scripts."""
+    return _search_report(query)["results"]
 
 
 def search_stream(query, emit=None):
-    rows = search(query)
+    """Return the common ScentHunter store contract.
+
+    Callback mode still emits each offer, but always returns the report dict.
+    It never returns ``None`` because ``None`` is ambiguous and can be mistaken
+    for a verified empty search by the orchestrator.
+    """
+    report = _search_report(query)
+
     if callable(emit):
-        for row in rows:
+        for row in report["results"]:
             emit(row)
-        return None
-    return iter(rows)
+
+    return report
 
 
 def scrape(query):
@@ -1825,7 +1843,7 @@ if __name__ == "__main__":
 
     query = (
         " ".join(sys.argv[1:]).strip()
-        or "Afnan 9 PM"
+        or "parfum"
     )
 
     print(
