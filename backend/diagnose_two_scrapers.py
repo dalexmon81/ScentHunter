@@ -91,6 +91,137 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
         "probes": probes,
     }
 
+
+@router.get("/diagnose-sabina-pipeline")
+def diagnose_sabina_pipeline(q: str = Query("Liquid Brun")):
+    """Read-only trace of the Sabina scraper pipeline.
+
+    This route does not modify the production scraper. It imports the current
+    Sabina scraper and reports what each parser stage produces.
+    """
+    import importlib.util
+    import os
+
+    started = time.monotonic()
+    scraper_path = os.path.join(
+        os.path.dirname(__file__),
+        "scrapers",
+        "sabina",
+        "scraper.py",
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        "scent_hunter_sabina_pipeline_diag",
+        scraper_path,
+    )
+    if spec is None or spec.loader is None:
+        return {
+            "diagnostic": True,
+            "store": "Sabina",
+            "query": q,
+            "stage": "import",
+            "error": "Could not load Sabina scraper",
+        }
+
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        return {
+            "diagnostic": True,
+            "store": "Sabina",
+            "query": q,
+            "stage": "import",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    base = getattr(module, "BASE", "https://www.sabina.com")
+    headers = getattr(module, "HEADERS", HEADERS)
+    url = base + "/it/ricerca_old?search_query=" + quote(q)
+
+    result = {
+        "diagnostic": True,
+        "store": "Sabina",
+        "query": q,
+        "purpose": "read-only pipeline trace; no production mutation",
+        "scraper_file": scraper_path,
+        "stages": {},
+    }
+
+    # 1. HTTP: fetch exactly one known-good Sabina search endpoint.
+    page = _get(url, timeout=(2.0, 8.0), headers=headers)
+    result["stages"]["http"] = {
+        "ok": page["ok"],
+        "status": page["status"],
+        "url": page["url"],
+        "elapsed_sec": page["elapsed_sec"],
+        "bytes": page["bytes"],
+        "error": page["error"],
+    }
+
+    if not page["ok"] or page["status"] != 200:
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
+
+    text = page["text"]
+
+    # 2. dataLayer parser: what the current deployed scraper extracts.
+    try:
+        impressions = module._parse_datalayer_impressions(text)
+        result["stages"]["dataLayer"] = {
+            "count": len(impressions),
+            "items": impressions[:20],
+        }
+    except Exception as exc:
+        result["stages"]["dataLayer"] = {
+            "count": 0,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        impressions = []
+
+    # 3. Product-container / HTML parser: complete _parse_html result.
+    try:
+        parsed = module._parse_html(text, q)
+        result["stages"]["parse_html"] = {
+            "count": len(parsed) if isinstance(parsed, list) else None,
+            "rows": parsed[:20] if isinstance(parsed, list) else parsed,
+        }
+    except Exception as exc:
+        result["stages"]["parse_html"] = {
+            "count": 0,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    # 4. Direct search(): shows whether the scraper loses rows later.
+    try:
+        searched = module.search(q)
+        result["stages"]["search"] = {
+            "count": len(searched) if isinstance(searched, list) else None,
+            "rows": searched[:20] if isinstance(searched, list) else searched,
+        }
+    except Exception as exc:
+        result["stages"]["search"] = {
+            "count": 0,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    # 5. search_stream(): final scraper contract, still read-only.
+    try:
+        streamed = module.search_stream(q)
+        result["stages"]["search_stream"] = {
+            "type": type(streamed).__name__,
+            "result": streamed,
+        }
+    except Exception as exc:
+        result["stages"]["search_stream"] = {
+            "type": "error",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
+
+
 @router.get("/diagnose-deloox-catalog")
 def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
     urls = [
