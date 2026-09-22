@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
 TIMEOUT = 4
+SEARCH_TIMEOUT = 8
+SEARCH_TIMEOUT = 8
 
 HEADERS = {
     "User-Agent": (
@@ -262,31 +264,46 @@ def _enrich_product_sizes(session, rows, query=""):
 
 def _dedupe(rows, query):
     q = _clean(query).lower()
-    words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", q) if len(w) > 1 and w != "ml" and not w.isdigit()]
+
+    # Il formato è un filtro sulla variante, non una parola che deve essere
+    # necessariamente presente nel nome della card di ricerca.
+    words = [
+        w for w in re.findall(r"[a-z0-9À-ÿ]+", q)
+        if len(w) > 1 and w != "ml" and not w.isdigit()
+    ]
+
     out, seen = [], set()
+
     for row in rows:
         name = _clean(row.get("name"))
         url = row.get("url")
         price = _price(row.get("price"))
+
         if not name or not url or not price:
             continue
+
         hay = name.lower()
         if words and not all(w in hay for w in words):
             continue
+
         size = str(row.get("size_ml") or "").strip()
         key = (name.lower(), url.split("?")[0], size)
         if key in seen:
             continue
         seen.add(key)
-        item = dict(row)
-        item["store"] = STORE
-        item["name"] = name
-        item["price"] = price
-        item["url"] = url.split("#")[0]
+
+        item = {
+            "store": STORE,
+            "name": name,
+            "price": price,
+            "url": url.split("#")[0],
+        }
         if size:
             item["size_ml"] = size
         out.append(item)
+
     return out
+
 
 def _walk_json(obj, query):
     """Estrae prodotti da JSON anche se SellBoost cambia leggermente i nomi dei campi."""
@@ -337,290 +354,11 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 
-def _extract_balanced_json_object(text, start):
-    """Extract one balanced JSON object starting at an opening brace."""
-    depth = 0
-    in_string = False
-    escaped = False
-
-    for i in range(start, len(text)):
-        ch = text[i]
-
-        if in_string:
-            if escaped:
-                escaped = False
-            elif ch == "\\":
-                escaped = True
-            elif ch == '"':
-                in_string = False
-            continue
-
-        if ch == '"':
-            in_string = True
-        elif ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start:i + 1]
-
-    return None
-
-
-def _parse_datalayer_impressions(text):
-    """Extract generic product impressions emitted by Sabina's search page."""
-    out = []
-    marker = "dataLayer.push("
-    cursor = 0
-
-    while True:
-        marker_pos = (text or "").find(marker, cursor)
-        if marker_pos < 0:
-            break
-
-        object_start = marker_pos + len(marker)
-        while object_start < len(text) and text[object_start].isspace():
-            object_start += 1
-
-        if object_start >= len(text) or text[object_start] != "{":
-            cursor = marker_pos + len(marker)
-            continue
-
-        payload_text = _extract_balanced_json_object(text, object_start)
-        if not payload_text:
-            cursor = object_start + 1
-            continue
-
-        try:
-            payload = json.loads(payload_text)
-        except Exception:
-            cursor = object_start + len(payload_text)
-            continue
-
-        ecommerce = payload.get("ecommerce") if isinstance(payload, dict) else None
-        impressions = ecommerce.get("impressions") if isinstance(ecommerce, dict) else None
-
-        if isinstance(impressions, list):
-            for item in impressions:
-                if not isinstance(item, dict):
-                    continue
-
-                name = _clean(item.get("name"))
-                if not name:
-                    continue
-
-                out.append({
-                    "name": name,
-                    "price": item.get("price"),
-                    "brand": _clean(item.get("brand")),
-                    "size_ml": _clean(item.get("variant")),
-                    "product_id": _clean(item.get("id")),
-                    "position": item.get("position"),
-                })
-
-        cursor = object_start + len(payload_text)
-
-    # Generic dedupe: preserve order and never invent identity.
-    seen = set()
-    result = []
-    for item in out:
-        key = (
-            item.get("product_id") or "",
-            item.get("name") or "",
-            item.get("size_ml") or "",
-        )
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(item)
-
-    return result
-
-
-def _parse_product_containers(text, query, impressions):
-    """Extract URL/image/card data from Sabina product containers generically."""
-    soup = BeautifulSoup(text or "", "html.parser")
-    rows = []
-    used = set()
-
-    def tokens_for(q):
-        return [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(q).lower()) if len(w) > 1 and w != "ml" and not w.isdigit()]
-
-    query_tokens = tokens_for(query)
-
-    for container in soup.select(".product-container"):
-        link = container.select_one("[data-href]")
-        url = ""
-        if link:
-            url = urljoin(BASE, html_lib.unescape(str(link.get("data-href") or "")))
-        if not url:
-            a = container.find("a", href=True)
-            if a:
-                url = urljoin(BASE, html_lib.unescape(str(a.get("href") or "")))
-        if not _looks_like_product_url(url):
-            continue
-
-        title = ""
-        if link and link.get("title"):
-            title = _clean(link.get("title"))
-        if not title:
-            img = container.find("img")
-            title = _clean(img.get("alt") if img else "")
-        if not title:
-            for sel in ("h1", "h2", "h3", "h4", ".product-name", ".product-title", ".name"):
-                el = container.select_one(sel)
-                if el:
-                    title = _clean(el.get_text(" ", strip=True))
-                    if title:
-                        break
-
-        # Match the card against the query using generic visible/url text.
-        hay = (title + " " + url.replace("-", " ")).lower()
-        if query_tokens and not all(t in hay for t in query_tokens):
-            # If the card title is generic, use the dataLayer product name.
-            matched_impression = next((x for x in impressions if all(t in _clean(x.get("name")).lower() for t in query_tokens)), None)
-            if matched_impression is None:
-                continue
-        else:
-            matched_impression = next((x for x in impressions if _clean(x.get("name")).lower() == title.lower()), None)
-            if matched_impression is None:
-                matched_impression = next((x for x in impressions if all(t in _clean(x.get("name")).lower() for t in query_tokens)), None)
-
-        price = _price(matched_impression.get("price")) if matched_impression else None
-        if not price:
-            text_block = _clean(container.get_text(" ", strip=True))
-            pm = PRICE_RE.search(text_block)
-            price = (pm.group(1) + " €") if pm else None
-        if not price:
-            continue
-
-        image = ""
-        img = container.find("img")
-        if img:
-            for attr in ("data-original", "data-src", "src"):
-                candidate = html_lib.unescape(str(img.get(attr) or "")).strip()
-                if candidate and not candidate.startswith("data:"):
-                    image = urljoin(BASE, candidate)
-                    break
-
-        name = _clean(matched_impression.get("name")) if matched_impression else title
-        if not name:
-            name = title
-        if not name:
-            continue
-
-        row = {
-            "store": STORE,
-            "name": name,
-            "price": price,
-            "url": url.split("#", 1)[0],
-        }
-        if matched_impression:
-            if matched_impression.get("brand"):
-                row["brand"] = matched_impression["brand"]
-            if matched_impression.get("size_ml"):
-                row["size_ml"] = matched_impression["size_ml"]
-            if matched_impression.get("product_id"):
-                row["product_id"] = matched_impression["product_id"]
-        if image:
-            row["image"] = image
-
-        key = (row["url"].lower(), row["name"].lower(), str(row.get("size_ml") or ""))
-        if key in used:
-            continue
-        used.add(key)
-        rows.append(row)
-
-    return rows
-
-
 def _parse_html(text, query):
-    impressions = _parse_datalayer_impressions(text)
-    rows = _parse_product_containers(text, query, impressions)
+    soup = BeautifulSoup(text, "html.parser")
+    rows = []
 
-    # Generic fallback: Sabina can expose the product card data in dataLayer
-    # while the visible card URL is encoded elsewhere in the HTML. Pair each
-    # impression with a first-party product URL using only generic signals:
-    # product id, product-name tokens, and the URL slug.
-    soup = BeautifulSoup(text or "", "html.parser")
-    query_tokens = [
-        w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower())
-        if len(w) > 1 and w != "ml" and not w.isdigit()
-    ]
-
-    if impressions:
-        product_links = []
-        for a in soup.find_all("a", href=True):
-            url = urljoin(BASE, html_lib.unescape(str(a.get("href") or ""))).split("#", 1)[0]
-            if not _looks_like_product_url(url):
-                continue
-            product_links.append((a, url))
-
-        for impression in impressions:
-            name = _clean(impression.get("name"))
-            if not name:
-                continue
-
-            name_tokens = [
-                w for w in re.findall(r"[a-z0-9À-ÿ]+", name.lower())
-                if len(w) > 1 and w != "ml" and not w.isdigit()
-            ]
-            product_id = _clean(impression.get("product_id"))
-            numeric_id = ""
-            id_match = re.search(r"(?<!\\d)(\\d{4,})(?:_|$)", product_id)
-            if id_match:
-                numeric_id = id_match.group(1)
-
-            selected = None
-            for anchor, url in product_links:
-                hay = (url + " " + _clean(anchor.get_text(" ", strip=True)) + " " +
-                       _clean(anchor.get("title")) + " " + _clean(anchor.get("aria-label"))).lower()
-
-                if numeric_id and numeric_id in url:
-                    selected = (anchor, url)
-                    break
-
-                if name_tokens and all(token in hay for token in name_tokens):
-                    selected = (anchor, url)
-                    break
-
-            if not selected:
-                continue
-
-            anchor, url = selected
-            price = _price(impression.get("price"))
-            if not price:
-                continue
-
-            row = {
-                "store": STORE,
-                "name": name,
-                "price": price,
-                "url": url,
-            }
-            if impression.get("brand"):
-                row["brand"] = impression["brand"]
-            if impression.get("size_ml"):
-                row["size_ml"] = impression["size_ml"]
-            if product_id:
-                row["product_id"] = product_id
-
-            image = ""
-            img = anchor.find("img")
-            if img:
-                for attr in ("data-original", "data-src", "src"):
-                    candidate = html_lib.unescape(str(img.get(attr) or "")).strip()
-                    if candidate and not candidate.startswith("data:"):
-                        image = urljoin(BASE, candidate)
-                        break
-            if image:
-                row["image"] = image
-
-            rows.append(row)
-
-    # Generic fallback for installations/pages that do not expose the
-    # product-container markup. JSON-LD and normal product links are retained.
-    soup = BeautifulSoup(text or "", "html.parser")
+    # 1) JSON-LD: è il dato più pulito quando presente.
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text(strip=True))
@@ -628,41 +366,71 @@ def _parse_html(text, query):
         except Exception:
             pass
 
-    if not rows:
-        for a in soup.find_all("a", href=True):
-            url = urljoin(BASE, html_lib.unescape(str(a.get("href") or "")))
-            if not _looks_like_product_url(url):
-                continue
-            container = a
-            for _ in range(7):
-                parent = getattr(container, "parent", None)
-                if not parent:
-                    break
-                container = parent
-                txt = _clean(container.get_text(" ", strip=True))
-                if "€" in txt and len(txt) < 1800:
-                    break
-            text_block = _clean(container.get_text(" ", strip=True))
-            pm = PRICE_RE.search(text_block)
-            if not pm:
-                continue
-            candidates = []
-            for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-                el = container.select_one(sel)
-                if el:
-                    candidates.append(el.get_text(" ", strip=True))
-            candidates.extend([a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)])
-            name = next((_clean(x) for x in candidates if _clean(x) and _clean(x).lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}), "")
-            if name:
-                rows.append({"store": STORE, "name": name, "price": pm.group(1) + " €", "url": url})
+    # 2) Card / link prodotto. Non dipende da UNA singola classe CSS.
+    for a in soup.find_all("a", href=True):
+        url = urljoin(BASE, a["href"])
+        if not _looks_like_product_url(url):
+            continue
+
+        container = a
+        for _ in range(7):
+            parent = getattr(container, "parent", None)
+            if not parent:
+                break
+            container = parent
+            txt = _clean(container.get_text(" ", strip=True))
+            if "€" in txt and len(txt) < 1800:
+                break
+
+        text_block = _clean(container.get_text(" ", strip=True))
+        pm = PRICE_RE.search(text_block)
+        if not pm:
+            continue
+
+        # Preferenza: titolo strutturato della card; poi title/aria-label;
+        # solo alla fine il testo grezzo del link. In questo modo non
+        # incorporiamo prezzo, sconto o altre informazioni nel nome prodotto.
+        candidates = []
+
+        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+            el = container.select_one(sel)
+            if el:
+                candidates.append(el.get_text(" ", strip=True))
+
+        candidates.extend([
+            a.get("title"),
+            a.get("aria-label"),
+            a.get_text(" ", strip=True),
+        ])
+
+        name = next(
+            (
+                _clean(x)
+                for x in candidates
+                if _clean(x)
+                and _clean(x).lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}
+            ),
+            "",
+        )
+        if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
+            continue
+
+        rows.append({
+            "store": STORE,
+            "name": name,
+            "price": pm.group(1) + " €",
+            "url": url,
+        })
 
     return _dedupe(rows, query)
 
+
 def _get(session, url, **kwargs):
+    request_timeout = kwargs.pop("timeout", TIMEOUT)
     r = session.get(
         url,
         headers=HEADERS,
-        timeout=TIMEOUT,
+        timeout=request_timeout,
         allow_redirects=True,
         **kwargs,
     )
@@ -714,16 +482,18 @@ def search(query):
 
     urls = []
     for search_query in queries:
+        # Proven working Sabina endpoint first; generic fallback order.
         urls.extend([
-            BASE + "/it/ricerca?search_query=" + quote_plus(search_query),
-            BASE + "/it/ricerca_old?s=" + quote_plus(search_query),
             BASE + "/it/ricerca_old?search_query=" + quote_plus(search_query),
+            BASE + "/it/ricerca_old?s=" + quote_plus(search_query),
+            BASE + "/it/ricerca?search_query=" + quote_plus(search_query),
         ])
+
 
     try:
         for url in urls:
             try:
-                r = _get(s, url)
+                r = _get(s, url, timeout=SEARCH_TIMEOUT)
 
                 # 403/429 significa che Sabina ci sta bloccando:
                 # non passiamo subito a un'altra ricerca equivalente.
@@ -819,43 +589,6 @@ def search(query):
 
     finally:
         s.close()
-
-
-def search_stream(query, on_result=None):
-    """Common ScentHunter scraper contract.
-
-    The scraper owns discovery and retailer data only. Product identity remains
-    the responsibility of catalog + ProductMatcher in main.py.
-    """
-    query = _clean(query)
-    if not query:
-        report = {"status": "success", "verified": True, "results": [], "error": None, "details": {"reason": "empty_query"}}
-        return report
-
-    try:
-        results = search(query)
-    except requests.exceptions.Timeout as exc:
-        return {"status": "timeout", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
-    except requests.exceptions.HTTPError as exc:
-        status = getattr(getattr(exc, "response", None), "status_code", None)
-        kind = "blocked" if status in (403, 429) else "error"
-        return {"status": kind, "verified": False, "results": [], "error": f"HTTP {status}: {exc}", "details": {}}
-    except requests.RequestException as exc:
-        return {"status": "error", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
-    except Exception as exc:
-        return {"status": "error", "verified": False, "results": [], "error": f"{type(exc).__name__}: {exc}", "details": {}}
-
-    results = results if isinstance(results, list) else []
-    if callable(on_result):
-        for item in results:
-            on_result(item)
-
-    if results:
-        return {"status": "success", "verified": True, "results": results, "error": None, "details": {"count": len(results)}}
-
-    # An empty response from the fallback-heavy Sabina search path is not
-    # authoritative proof of absence; Main must not convert it into NOT_FOUND.
-    return {"status": "partial", "verified": False, "results": [], "error": None, "details": {"reason": "no_verified_product_rows"}}
 
 
 # Alias compatibili con gli altri scraper del progetto.
