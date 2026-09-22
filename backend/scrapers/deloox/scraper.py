@@ -26,9 +26,12 @@ STORE = "Deloox"
 # search/category surfaces, then falls back to the generic .com surface.
 BASE_URL = "https://www.deloox.be"
 DELOOX_BASE_URLS = (
+    # Luxembourg is the user's market and exposes the same Deloox catalog
+    # through its own storefront.
+    "https://www.deloox.lu",
     "https://www.deloox.be",
-    "https://www.deloox.com",
     "https://www.deloox.nl",
+    "https://www.deloox.com",
     "https://www.deloox.es",
 )
 TIMEOUT = (2.5, 6.0)
@@ -46,6 +49,7 @@ HEADERS = {
     "Cache-Control": "no-cache",
 }
 DELOOX_HOSTS = {
+    "deloox.lu", "www.deloox.lu",
     "deloox.be", "www.deloox.be",
     "deloox.com", "www.deloox.com",
     "deloox.nl", "www.deloox.nl",
@@ -372,10 +376,32 @@ def _candidate_product_urls(
         seen.add(url)
         found.append(url)
 
+    # Normal links.
     for a in soup.find_all("a", href=True):
         add(a.get("href"))
         if len(found) >= MAX_CANDIDATES:
             return found
+
+    # Some Deloox storefronts expose the product target in data-* attributes
+    # rather than href.  Read attributes generically; never infer a product
+    # from its name or from a product-specific rule.
+    attr_names = (
+        "data-url",
+        "data-href",
+        "data-link",
+        "data-product-url",
+        "data-product-link",
+        "data-target",
+        "data-href-url",
+    )
+    for node in soup.find_all(True):
+        for attr in attr_names:
+            raw = node.get(attr)
+            if not raw:
+                continue
+            add(raw)
+            if len(found) >= MAX_CANDIDATES:
+                return found
 
     # Product URLs can also be present in JSON state, JSON-LD or hydration
     # payloads and therefore not appear as ordinary anchors.
@@ -467,48 +493,101 @@ def _sitemap_product_urls(session, query, max_sitemaps=6, max_urls=24):
 
 
 def _discover_from_search(session, query):
-    """Use the retailer's search surface first, with a strict request budget."""
+    """Generic, bounded search discovery across Deloox storefronts.
+
+    Different Deloox country storefronts have historically exposed the public
+    search through different path/parameter combinations.  Probe a bounded
+    matrix concurrently, stop as soon as product URLs are found, and leave
+    product identity validation to _product().
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    query = clean(query)
+    if not query:
+        return []
+
     routes = (
-        "/chercher.html?q=",
-        "/zoeken.html?q=",
-        "/en/search?q=",
-        "/en/search?query=",
-        "/search?q=",
+        "/chercher.html",
+        "/zoeken.html",
+        "/search",
+        "/en/search",
+        "/fr/search",
+        "/nl/search",
     )
+    params = ("q", "query", "search", "searchTerm", "keyword")
+
+    jobs = []
+    seen_jobs = set()
+
+    # Keep the matrix deliberately bounded.  The first storefronts are the
+    # current Luxembourg/Belgium/Netherlands surfaces, followed by generic
+    # international fallbacks.
     for base in DELOOX_BASE_URLS:
         for route in routes:
-            for page_no in range(1, MAX_SEARCH_PAGES + 1):
-                endpoint = base + route + quote_plus(query)
-                if page_no > 1:
-                    endpoint += "&page=" + str(page_no)
-                try:
-                    r = session.get(
-                        endpoint,
-                        headers=HEADERS,
-                        timeout=TIMEOUT,
-                        allow_redirects=True,
-                    )
-                except requests.RequestException:
-                    continue
-                if r.status_code >= 400:
-                    continue
-                final_base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-                candidates = _candidate_product_urls(
-                    r.text,
-                    query,
-                    base_url=final_base,
-                    accept_all_products=True,
+            for param in params:
+                endpoint = (
+                    base + route + "?" + param + "=" + quote_plus(query)
                 )
-                if candidates:
-                    return candidates[:MAX_CANDIDATES]
-    return []
+                if endpoint in seen_jobs:
+                    continue
+                seen_jobs.add(endpoint)
+                jobs.append(endpoint)
 
+    # Do not let a slow storefront consume Main's entire 45s store budget.
+    jobs = jobs[:75]
+
+    def probe(endpoint):
+        try:
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            return []
+
+        if r.status_code >= 400:
+            return []
+
+        final_base = (
+            f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+        )
+        return _candidate_product_urls(
+            r.text,
+            query,
+            base_url=final_base,
+            accept_all_products=True,
+        )[:MAX_CANDIDATES]
+
+    found = []
+    seen = set()
+
+    # A small parallel pool is intentional: one blocked/slow locale must not
+    # serialize the entire discovery process.
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        futures = {pool.submit(probe, endpoint): endpoint for endpoint in jobs}
+        for future in as_completed(futures):
+            try:
+                candidates = future.result()
+            except Exception:
+                candidates = []
+
+            for url in candidates:
+                if url in seen:
+                    continue
+                seen.add(url)
+                found.append(url)
+                if len(found) >= MAX_CANDIDATES:
+                    return found
+
+    return found
 
 def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
     """Bounded generic category fallback after search has failed."""
     urls = []
     seen = set()
-    for page_url in _category_pages()[:6]:
+    for page_url in _category_pages()[:12]:
         try:
             r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         except requests.RequestException:
@@ -544,7 +623,7 @@ def _discover(session, q):
     return _sitemap_product_urls(
         session,
         q,
-        max_sitemaps=6,
+        max_sitemaps=12,
         max_urls=MAX_CANDIDATES,
     )[:MAX_CANDIDATES]
 
