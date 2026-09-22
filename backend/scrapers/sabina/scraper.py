@@ -659,7 +659,10 @@ def search(query):
                 results.extend(parsed)
 
                 if results:
-                    return _enrich_product_sizes(s, _dedupe(results, query), query)
+                    clean_results = _dedupe(results, query)
+                    if re.search(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I):
+                        return _enrich_product_sizes(s, clean_results, query)
+                    return clean_results
             except Exception:
                 continue
 
@@ -732,7 +735,10 @@ def search(query):
                         rows = _parse_html(response_text, query)
 
                     if rows:
-                        return _enrich_product_sizes(s, _dedupe(rows, query), query)
+                        clean_rows = _dedupe(rows, query)
+                        if re.search(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I):
+                            return _enrich_product_sizes(s, clean_rows, query)
+                        return clean_rows
 
                 except Exception:
                     continue
