@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, signal, subprocess, sys, threading, time, uuid
+import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -205,6 +205,66 @@ def _resolve_offer_identity(result, query):
 
     output["match_confidence"] = output.get("confidence")
     return output
+
+_NON_FRAGRANCE_TITLE_RE = re.compile(
+    r"(?:^|[^a-z0-9])(?:gift\s*set|set\s*regalo|coffret|cofre|estuche|"
+    r"discovery\s*set|sample\s*set|mystery\s*box|beauty\s*box|"
+    r"gift\s*box|bundle|pack\s*regalo|duo|trio|kit|case|set)(?:[^a-z0-9]|$)",
+    re.I,
+)
+
+_NON_FRAGRANCE_CATEGORY_RE = re.compile(
+    r"(?:cosmetic|cosmetics|make[- ]?up|maquill|skincare|skin\s*care|"
+    r"hair\s*care|shampoo|conditioner|body\s*care|bath|shower|"
+    r"cream|crema|lotion|serum|mascara|lipstick|candle|vela|home|"
+    r"accessor|accessori|jewell|joyer|watch|reloj|bag|bolso|"
+    r"toiletr|wallet|cartera|brush|pennello|sponge|esponja|"
+    r"deodorant|desodorante|aftershave|rasage|soap|jabon)(?:[^a-z0-9]|$)",
+    re.I,
+)
+
+
+def _is_non_fragrance_offer(item):
+    """Reject generic non-perfume commercial items before matching/publication.
+
+    This is intentionally category-based, never product-specific. Bundles,
+    gift sets, mystery boxes and clearly non-fragrance categories are not
+    individual perfume offers, so they must not enter either the matcher or
+    the unresolved-offers UI.
+    """
+    if not isinstance(item, dict):
+        return True
+
+    for key in ("is_fragrance", "is_perfume"):
+        if key in item and item.get(key) is False:
+            return True
+
+    category_values = []
+    for key in (
+        "product_type", "productType", "category", "category_name",
+        "categoryName", "department", "type", "product_category",
+        "productCategory",
+    ):
+        value = item.get(key)
+        if value not in (None, ""):
+            category_values.append(str(value))
+
+    category_text = " ".join(category_values)
+    if category_text and _NON_FRAGRANCE_CATEGORY_RE.search(category_text):
+        return True
+
+    title_parts = []
+    for key in ("name", "title", "raw_name", "_raw_name", "canonical_name"):
+        value = item.get(key)
+        if value not in (None, ""):
+            title_parts.append(str(value))
+    title_text = " ".join(title_parts)
+
+    return bool(
+        _NON_FRAGRANCE_TITLE_RE.search(title_text)
+        or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
+    )
+
 
 def clean_result(item, store):
     """
@@ -652,8 +712,17 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
                     if kind=='result' and isinstance(event.get('row'),dict):
                         prepared=clean_result(event['row'],store)
                         if prepared is None: continue
+                        # ScentHunter searches individual perfumes only.
+                        # Generic non-fragrance commercial items (sets, boxes,
+                        # bundles, cosmetics, accessories, etc.) are discarded
+                        # before ProductMatcher and therefore can never appear
+                        # in either results or unresolved_offers.
+                        if _is_non_fragrance_offer(prepared):
+                            continue
                         resolved=_resolve_offer_identity(prepared,query)
                         if resolved is None: continue
+                        if _is_non_fragrance_offer(resolved):
+                            continue
                         rows.append(resolved)
                     elif kind=='done':
                         worker_status=str(event.get('status') or 'success').strip().lower()
@@ -1175,7 +1244,8 @@ def search_perfume(q: str):
         ):
             if not isinstance(item, dict):
                 continue
-
+            if _is_non_fragrance_offer(item):
+                continue
             all_offers.append(item)
 
     dedupe_diagnostics = []
