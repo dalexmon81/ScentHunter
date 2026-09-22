@@ -430,7 +430,12 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
+    # Stable store-level entry points.  These are generic Deloox catalogue
+    # surfaces, not product-specific URLs.  Try the localized path first
+    # because current Deloox pages expose the catalogue under /en/.
     return (
+        BASE_URL + "/en/category/1075660/womens-perfume.html",
+        BASE_URL + "/en/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
     )
@@ -684,9 +689,9 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 def _discover(session, q):
     """Generic deterministic Deloox discovery.
 
-    Search results are filtered generically before entering the global
-    candidate cap. This prevents unrelated products from consuming the
-    candidate budget and hiding a valid matching product.
+    The catalogue is the primary discovery surface. Search and sitemap
+    mechanisms are fallbacks. No product name, brand, URL or price is
+    hardcoded here.
     """
     urls = []
     seen = set()
@@ -695,6 +700,15 @@ def _discover(session, q):
         if url and url not in seen and len(urls) < 24:
             seen.add(url)
             urls.append(url)
+
+    # 1. PRIMARY: current broad catalogue pages.
+    # Search the catalogue itself before spending the request budget on
+    # search/sitemap mechanisms. Candidate filtering remains generic and
+    # _product() is still the final authority.
+    for url in _discover_from_categories(session, q, max_urls=24):
+        add(url)
+        if len(urls) >= 24:
+            return urls[:24]
 
     discovery_queries = _candidate_queries(q)[:2]
 
@@ -707,6 +721,7 @@ def _discover(session, q):
     search_category_urls = []
     seen_categories = set()
 
+    # 2. SECONDARY: Deloox internal search.
     for discovery_query in discovery_queries:
         for route in search_endpoints:
             endpoint = BASE_URL + route + quote_plus(discovery_query)
@@ -725,10 +740,7 @@ def _discover(session, q):
 
             html = r.text
 
-            # IMPORTANT:
-            # Do not accept every product returned by a generic search page.
-            # Filter candidates generically using the query context first.
-            # _product() remains the authoritative final validation.
+            # Filter generically before the global candidate cap.
             for product_url in _candidate_product_urls(
                 html,
                 q,
@@ -736,7 +748,6 @@ def _discover(session, q):
                 accept_all_products=False,
             ):
                 add(product_url)
-
                 if len(urls) >= 24:
                     return urls[:24]
 
@@ -751,7 +762,7 @@ def _discover(session, q):
         if len(search_category_urls) >= 6:
             break
 
-    # Inspect category pages exposed by the search surface.
+    # 3. Inspect category/filter pages exposed by search.
     for category_url in search_category_urls[:6]:
         try:
             r = session.get(
@@ -772,11 +783,10 @@ def _discover(session, q):
             accept_all_products=True,
         ):
             add(product_url)
-
             if len(urls) >= 24:
                 return urls[:24]
 
-    # Dedicated Product-line/category pages from sitemap.
+    # 4. Dedicated category URLs from sitemap.
     for category_url in _sitemap_category_urls(
         session,
         q,
@@ -802,11 +812,10 @@ def _discover(session, q):
             accept_all_products=True,
         ):
             add(product_url)
-
             if len(urls) >= 24:
                 return urls[:24]
 
-    # Direct product sitemap.
+    # 5. Product sitemap fallback.
     for product_url in _sitemap_product_urls(
         session,
         q,
@@ -814,23 +823,10 @@ def _discover(session, q):
         max_urls=12,
     ):
         add(product_url)
-
-        if len(urls) >= 24:
-            return urls[:24]
-
-    # Broad category fallback.
-    for url in _discover_from_categories(
-        session,
-        q,
-        max_urls=12,
-    ):
-        add(url)
-
         if len(urls) >= 24:
             return urls[:24]
 
     return urls[:24]
-
 
 def diagnose_search(session, query):
     """Deep Deloox discovery diagnostic; does not change normal search."""
