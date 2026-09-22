@@ -487,7 +487,7 @@ def _get(session, url, **kwargs):
     return r
 
 def search(query):
-    """Generic Sabina discovery; transport failures are not converted to absence."""
+    """Generic Sabina discovery; preserve transport failures instead of treating them as absence."""
     query = _clean(query)
     if not query:
         return []
@@ -495,17 +495,22 @@ def search(query):
     s = requests.Session()
     s.headers.update(HEADERS)
     results = []
+    transport_errors = []
+    successful_http = False
 
     try:
         try:
             r = _get(s, BASE + "/it/")
+            successful_http = True
             r.close()
-        except StoreRequestError:
-            pass
+        except StoreRequestError as exc:
+            # The homepage is only a warm-up request. Do not let its failure
+            # hide a later successful search endpoint.
+            transport_errors.append(exc)
 
         queries = [query]
         query_without_size = _clean(
-            re.sub(r"(?<!\\d)\\d{2,4}\\s*ml\\b", " ", query, flags=re.I)
+            re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I)
         )
         if query_without_size and query_without_size.casefold() != query.casefold():
             queries.append(query_without_size)
@@ -518,17 +523,24 @@ def search(query):
                 BASE + "/it/ricerca_old?search_query=" + quote_plus(search_query),
             ])
 
+        blocked_error = None
         for url in urls:
             try:
                 r = _get(s, url)
+                successful_http = True
                 html = r.text
                 r.close()
                 results.extend(_parse_html(html, query))
                 if results:
                     return _enrich_product_sizes(s, _dedupe(results, query), query)
             except StoreRequestError as exc:
+                transport_errors.append(exc)
                 if exc.status == "blocked":
+                    blocked_error = exc
                     break
+
+        if blocked_error is not None and not successful_http:
+            raise blocked_error
 
         ajax_url = BASE + "/modules/ecelastic/ajax.php"
         payloads = [
@@ -543,23 +555,37 @@ def search(query):
             for method in ("get", "post"):
                 try:
                     if method == "get":
-                        r = s.get(ajax_url, params=payload, headers=HEADERS, timeout=TIMEOUT)
+                        r = s.get(
+                            ajax_url,
+                            params=payload,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
                     else:
                         r = s.post(
-                            ajax_url, data=payload,
+                            ajax_url,
+                            data=payload,
                             headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
                             timeout=TIMEOUT,
                         )
 
                     if r.status_code in (403, 429):
+                        exc = StoreRequestError("blocked", f"HTTP {r.status_code}", http_status=r.status_code)
+                        transport_errors.append(exc)
                         r.close()
-                        return []
+                        continue
                     if 500 <= r.status_code <= 599:
+                        exc = StoreRequestError("unavailable", f"HTTP {r.status_code}", http_status=r.status_code)
+                        transport_errors.append(exc)
                         r.close()
                         continue
                     if 400 <= r.status_code <= 499:
+                        exc = StoreRequestError("error", f"HTTP {r.status_code}", http_status=r.status_code)
+                        transport_errors.append(exc)
                         r.close()
                         continue
+
+                    successful_http = True
                     if not r.text.strip():
                         r.close()
                         continue
@@ -574,11 +600,29 @@ def search(query):
                     if rows:
                         return _enrich_product_sizes(s, _dedupe(rows, query), query)
 
-                except requests.Timeout:
+                except requests.Timeout as exc:
+                    transport_errors.append(StoreRequestError("timeout", str(exc)))
                     continue
-                except requests.RequestException:
+                except requests.ConnectionError as exc:
+                    transport_errors.append(StoreRequestError("unavailable", str(exc)))
+                    continue
+                except requests.RequestException as exc:
+                    transport_errors.append(StoreRequestError("error", str(exc)))
                     continue
 
+        # Critical contract rule: if every discovery mechanism failed
+        # technically, do NOT return [] because that would look like absence.
+        if not successful_http and transport_errors:
+            # Prefer a concrete blocked/timeout/unavailable signal over a
+            # generic error when several mechanisms failed.
+            priority = {"blocked": 0, "timeout": 1, "unavailable": 2, "error": 3}
+            raise sorted(
+                transport_errors,
+                key=lambda exc: priority.get(exc.status, 99),
+            )[0]
+
+        # We reached at least one endpoint successfully but obtained no
+        # authoritative empty result. Keep this as unverified/partial.
         return []
     finally:
         s.close()
