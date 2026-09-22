@@ -1,400 +1,141 @@
 from fastapi import APIRouter, Query
+import concurrent.futures
 import json
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin
 
 import requests
-from bs4 import BeautifulSoup
 
 router = APIRouter()
 
-UA = (
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
-    "Mobile/15E148 Safari/604.1"
-)
+UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1"
+HEADERS = {"User-Agent": UA, "Accept-Language": "it-IT,it;q=0.9,en;q=0.8"}
+TOKEN_RE = re.compile(r"\b(liquid|brun)\b", re.I)
 
-HEADERS = {
-    "User-Agent": UA,
-    "Accept-Language": "en-GB,en;q=0.9",
-}
-TIMEOUT = (1.5, 4.0)
-
-MAX_DELOOX_PAGES = 8
-MAX_SABINA_URLS = 12
-
-
-def _norm(value):
-    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
-
-
-def _tokens(value):
-    stop = {"ml", "eau", "de", "parfum", "perfume", "fragrance"}
-    return [x for x in _norm(value).split() if len(x) > 1 and x not in stop]
-
-
-def _get(session, url):
-    started = time.perf_counter()
-
+def _get(url, timeout=(1.5, 5.0), headers=None):
+    t = time.monotonic()
     try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
+        r = requests.get(url, headers=headers or HEADERS, timeout=timeout, allow_redirects=True)
         return {
-            "ok": 200 <= response.status_code < 400,
-            "status": response.status_code,
-            "url": response.url,
-            "elapsed_sec": round(time.perf_counter() - started, 3),
-            "bytes": len(response.content),
-            "text": response.text,
+            "ok": True,
+            "status": r.status_code,
+            "url": r.url,
+            "elapsed_sec": round(time.monotonic()-t, 3),
+            "bytes": len(r.content),
+            "text": r.text,
             "error": None,
         }
-    except requests.RequestException as exc:
+    except Exception as e:
         return {
             "ok": False,
             "status": None,
             "url": url,
-            "elapsed_sec": round(time.perf_counter() - started, 3),
+            "elapsed_sec": round(time.monotonic()-t, 3),
             "bytes": 0,
             "text": "",
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": f"{type(e).__name__}: {e}",
         }
 
+def _compact(s, n=500):
+    s = re.sub(r"\s+", " ", s or "").strip()
+    return s[:n]
 
-def _links(html, base, fragment):
-    soup = BeautifulSoup(html or "", "html.parser")
-    found = []
-    seen = set()
-
-    for anchor in soup.find_all("a", href=True):
-        url = urljoin(base, anchor.get("href", "")).split("#")[0]
-
-        if fragment and fragment not in urlparse(url).path.lower():
-            continue
-
-        if url not in seen:
-            seen.add(url)
-            found.append(url)
-
-    return found
-
-
-def _title(html):
-    soup = BeautifulSoup(html or "", "html.parser")
-
-    h1 = soup.find("h1")
-    if h1:
-        return re.sub(r"\s+", " ", h1.get_text(" ", strip=True))
-
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(script.get_text(strip=True))
-        except Exception:
-            continue
-
-        items = data if isinstance(data, list) else [data]
-
-        for item in items:
-            if isinstance(item, dict) and item.get("name"):
-                return str(item["name"]).strip()
-
-    return ""
-
-
-@router.get("/diagnose-sabina-catalog")
-def diagnose_sabina_catalog(q: str = Query("Liquid Brun")):
-    started = time.perf_counter()
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    tokens = _tokens(q)
-
-    probes = [
-        "/it/sitemap.xml",
-        "/sitemap.xml",
-        "/it/sitemap_index.xml",
-        "/sitemap_index.xml",
-        "/it/sitemap-products.xml",
-        "/it/sitemap_products.xml",
+@router.get("/diagnose-sabina-precise")
+def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
+    base = "https://www.sabina.com"
+    urls = [
+        f"{base}/it/ricerca_old?s={quote(q)}",
+        f"{base}/it/ricerca?search_query={quote(q)}",
+        f"{base}/it/ricerca_old?search_query={quote(q)}",
     ]
+    started = time.monotonic()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        pages = list(ex.map(lambda u: _get(u), urls))
 
-    results = []
-    catalog_urls = []
-
-    for path in probes:
-        response = _get(session, "https://www.sabina.com" + path)
-
-        results.append(
-            {
-                key: value
-                for key, value in response.items()
-                if key != "text"
+    probes = []
+    for p in pages:
+        text = p["text"]
+        low = text.lower()
+        hits = {}
+        for marker in [q, "liquid brun", "liquid-brun", "34982", "720100",
+                       "french avenue", "profumi-da-uomo", "/it/profumi-da-uomo/"]:
+            i = low.find(marker.lower())
+            hits[marker] = None if i < 0 else {
+                "offset": i,
+                "context": _compact(text[max(0, i-350):i+700], 1050)
             }
-        )
 
-        if response["ok"] and response["text"]:
-            for match in re.finditer(
-                r'https?://(?:www\.)?sabina\.com/[^"<>\\s]+',
-                response["text"],
-                re.I,
-            ):
-                url = match.group(0).replace("&amp;", "&")
-
-                if "/it/" in url and url not in catalog_urls:
-                    catalog_urls.append(url)
-
-    search_url = (
-        "https://www.sabina.com/it/ricerca_old?s="
-        + requests.utils.quote(q)
-    )
-
-    search_response = _get(session, search_url)
-
-    results.append(
-        {
-            key: value
-            for key, value in search_response.items()
-            if key != "text"
-        }
-    )
-
-    if search_response["ok"]:
-        catalog_urls.extend(
-            _links(
-                search_response["text"],
-                "https://www.sabina.com",
-                "",
-            )
-        )
-
-    catalog_urls = list(dict.fromkeys(catalog_urls))
-
-    token_hit_urls = [
-        url
-        for url in catalog_urls
-        if any(token in _norm(url) for token in tokens)
-    ]
-
-    verification = []
-
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        futures = {
-            pool.submit(_get, session, url): url
-            for url in token_hit_urls[:MAX_SABINA_URLS]
-        }
-
-        for future in as_completed(futures):
-            url = futures[future]
-            response = future.result()
-
-            title = _title(response.get("text", "")) if response["ok"] else ""
-
-            verification.append(
-                {
-                    "url": url,
-                    "http_status": response["status"],
-                    "title": title,
-                    "query_token_match": (
-                        all(token in _norm(title) for token in tokens)
-                        if title
-                        else False
-                    ),
-                    "elapsed_sec": response["elapsed_sec"],
-                    "error": response["error"],
-                }
-            )
-
-    session.close()
+        # Inspect links around product-like references.
+        links = []
+        for m in re.finditer(r'href=["\']([^"\']+)["\']', text, re.I):
+            href = m.group(1)
+            if any(x in href.lower() for x in ["34982", "liquid", "brun", "profumi-da-uomo"]):
+                links.append(urljoin(p["url"], href))
+        probes.append({
+            "url": p["url"],
+            "status": p["status"],
+            "elapsed_sec": p["elapsed_sec"],
+            "bytes": p["bytes"],
+            "error": p["error"],
+            "markers": hits,
+            "matching_links": list(dict.fromkeys(links))[:50],
+        })
 
     return {
         "diagnostic": True,
         "store": "Sabina",
         "query": q,
-        "elapsed_sec": round(time.perf_counter() - started, 3),
-        "summary": {
-            "sitemap_probes": len(probes),
-            "catalog_urls": len(catalog_urls),
-            "token_hit_urls": len(token_hit_urls),
-            "verified_product_hits": sum(
-                1
-                for item in verification
-                if item["query_token_match"]
-            ),
-        },
-        "probes": results,
-        "token_hit_urls": token_hit_urls[:MAX_SABINA_URLS],
-        "verification": verification,
+        "elapsed_sec": round(time.monotonic()-started, 3),
+        "purpose": "read-only inspection of real search responses; no production search() and no product-specific rule",
+        "probes": probes,
     }
 
-
-@router.get("/diagnose-deloox-catalog")
-def diagnose_deloox_catalog(q: str = Query("Liquid Brun")):
-    started = time.perf_counter()
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    tokens = _tokens(q)
-    base = "https://www.deloox.com"
-
-    seeds = [
-        base + "/category/1000054/mens-fragrances.html",
-        base + "/category/1075639/womens-fragrances.html",
-        base + "/category/1075750/mens-perfume.html",
-        base + "/category/1079036/armaf-fragrances.html",
+@router.get("/diagnose-deloox-precise")
+def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
+    urls = [
+        "https://www.deloox.com/en/category/1121334/french-avenue-mens-fragrances.html",
+        "https://www.deloox.com/en/category/1121322/french-avenue-fragrances.html",
+        "https://www.deloox.com/en/category/1132834/liquid-brun.html",
     ]
+    started = time.monotonic()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        pages = list(ex.map(lambda u: _get(u, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"}), urls))
 
-    pages = []
-    seen_pages = set()
-
-    def add_page(url):
-        if url in seen_pages:
-            return
-
-        if len(seen_pages) >= MAX_DELOOX_PAGES:
-            return
-
-        seen_pages.add(url)
-        pages.append(url)
-
-    for seed in seeds:
-        add_page(seed)
-
-    index = 0
-
-    while index < len(pages):
-        url = pages[index]
-        index += 1
-
-        response = _get(session, url)
-
-        item = {
-            "url": url,
-            "status": response["status"],
-            "elapsed_sec": response["elapsed_sec"],
-            "bytes": response["bytes"],
-            "error": response["error"],
-        }
-
-        if response["ok"]:
-            links = _links(
-                response["text"],
-                base,
-                "/product/",
-            )
-
-            item["product_link_count"] = len(links)
-
-            item["token_hit_links"] = [
-                link
-                for link in links
-                if any(token in _norm(link) for token in tokens)
-            ][:20]
-
-            soup = BeautifulSoup(
-                response["text"],
-                "html.parser",
-            )
-
-            for anchor in soup.find_all("a", href=True):
-                text = re.sub(
-                    r"\s+",
-                    " ",
-                    anchor.get_text(" ", strip=True),
-                ).lower()
-
-                href = urljoin(
-                    url,
-                    anchor["href"],
-                ).split("#")[0]
-
-                is_next = (
-                    "next" in text
-                    or "page=" in href.lower()
-                    or "/page/" in href.lower()
-                )
-
-                if is_next and "/category/" in href:
-                    add_page(href)
-
-        pages[index - 1] = item
-
-    candidates = []
-
-    for page in pages:
-        if "url" not in page:
-            continue
-
-        response = _get(session, page["url"])
-
-        if response["ok"]:
-            candidates.extend(
-                _links(
-                    response["text"],
-                    base,
-                    "/product/",
-                )
-            )
-
-    candidates = list(dict.fromkeys(candidates))
-
-    token_hits = [
-        url
-        for url in candidates
-        if any(token in _norm(url) for token in tokens)
-    ]
-
-    verification = []
-
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        futures = {
-            pool.submit(_get, session, url): url
-            for url in token_hits[:20]
-        }
-
-        for future in as_completed(futures):
-            url = futures[future]
-            response = future.result()
-
-            title = _title(response.get("text", "")) if response["ok"] else ""
-
-            verification.append(
-                {
-                    "url": url,
-                    "http_status": response["status"],
-                    "title": title,
-                    "query_token_match": (
-                        all(token in _norm(title) for token in tokens)
-                        if title
-                        else False
-                    ),
-                    "elapsed_sec": response["elapsed_sec"],
-                    "error": response["error"],
-                }
-            )
-
-    session.close()
+    out = []
+    for p in pages:
+        text = p["text"]
+        low = text.lower()
+        # Capture product-card-like anchors whose nearby text contains a query token.
+        matches = []
+        for m in re.finditer(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', text, re.I | re.S):
+            href, inner = m.group(1), m.group(2)
+            visible = re.sub(r"<[^>]+>", " ", inner)
+            visible = _compact(visible, 800)
+            if TOKEN_RE.search(visible):
+                matches.append({
+                    "url": urljoin(p["url"], href),
+                    "text": visible,
+                })
+        # Also locate raw occurrences in page text, independent of href.
+        raw_contexts = []
+        for m in list(TOKEN_RE.finditer(text))[:20]:
+            raw_contexts.append(_compact(text[max(0, m.start()-300):m.end()+500], 900))
+        out.append({
+            "url": p["url"],
+            "status": p["status"],
+            "elapsed_sec": p["elapsed_sec"],
+            "bytes": p["bytes"],
+            "error": p["error"],
+            "card_token_hits": matches[:50],
+            "raw_token_contexts": raw_contexts,
+        })
 
     return {
         "diagnostic": True,
         "store": "Deloox",
         "query": q,
-        "elapsed_sec": round(time.perf_counter() - started, 3),
-        "summary": {
-            "category_pages_tested": len(pages),
-            "product_urls_seen": len(candidates),
-            "token_hit_urls": len(token_hits),
-            "verified_product_hits": sum(
-                1
-                for item in verification
-                if item["query_token_match"]
-            ),
-        },
-        "pages": pages,
-        "token_hit_urls": token_hits[:20],
-        "verification": verification,
+        "elapsed_sec": round(time.monotonic()-started, 3),
+        "purpose": "read-only inspection of category/card text; no URL-token discovery and no production search()",
+        "pages": out,
     }
