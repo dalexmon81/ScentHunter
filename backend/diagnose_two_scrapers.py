@@ -825,3 +825,245 @@ def diagnose_deloox_micro():
         "queries": results,
         "elapsed_sec": round(time.monotonic() - started, 3),
     }
+
+
+@router.get("/diagnose-deloox-micro2")
+def diagnose_deloox_micro2():
+    """Read-only, same-surface HTML structure comparison.
+
+    Fetches exactly the same three Deloox.be search pages as micro, once each,
+    then inspects links/attributes/scripts without calling any production
+    scraper function, sitemap, category, or fallback endpoint.
+    """
+    from html.parser import HTMLParser
+    from urllib.parse import urlparse
+
+    class LinkParser(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.links = []
+            self.current = None
+            self.text_buf = []
+            self.script_buf = []
+            self.in_script = False
+            self.script_type = None
+            self.script_src = None
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag.lower() == "a":
+                self.current = {"attrs": attrs, "text": ""}
+                self.text_buf = []
+            if tag.lower() == "script":
+                self.in_script = True
+                self.script_type = attrs.get("type")
+                self.script_src = attrs.get("src")
+                self.script_buf = []
+
+        def handle_data(self, data):
+            if self.current is not None:
+                self.text_buf.append(data)
+            if self.in_script:
+                self.script_buf.append(data)
+
+        def handle_endtag(self, tag):
+            tag = tag.lower()
+            if tag == "a" and self.current is not None:
+                self.current["text"] = re.sub(r"\s+", " ", " ".join(self.text_buf)).strip()
+                self.links.append(self.current)
+                self.current = None
+                self.text_buf = []
+            if tag == "script" and self.in_script:
+                self.script_buf = []
+                self.in_script = False
+                self.script_type = None
+                self.script_src = None
+
+    queries = ["Liquid Brun", "Liquid Brun Limited Edition", "9 PM Night Out"]
+    base = "https://www.deloox.be"
+    route = "/chercher.html?q="
+    started = time.monotonic()
+    results = []
+
+    def norm(s):
+        return re.sub(r"\s+", " ", (s or "")).strip()
+
+    def token_set(q):
+        return [x for x in re.findall(r"[\w]+", q.casefold()) if len(x) >= 2]
+
+    # Deliberately broad: identify the actual URL shape Deloox is returning,
+    # rather than assuming /product/<id> or /produit/<id>.
+    product_shape_re = re.compile(
+        r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)(?:/|%2f)\d+",
+        re.I,
+    )
+    numeric_product_shape_re = re.compile(
+        r"/(?:[a-z]{2}/)?\d{5,9}/[^\s\"'<>]+",
+        re.I,
+    )
+    category_shape_re = re.compile(
+        r"/(?:[a-z]{2}/)?(?:category|categorie|categoria|categorieen)(?:/|%2f)",
+        re.I,
+    )
+
+    for query in queries:
+        url = base + route + quote(query, safe="")
+        t0 = time.monotonic()
+        item = {"query": query, "request_url": url}
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=(1.5, 5.0), allow_redirects=True)
+            html = r.text or ""
+            item.update({
+                "status": r.status_code,
+                "final_url": r.url,
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "bytes": len(r.content),
+                "content_type": r.headers.get("content-type"),
+            })
+
+            parser = LinkParser()
+            try:
+                parser.feed(html)
+                parser.close()
+            except Exception as exc:
+                item["html_parser_error"] = f"{type(exc).__name__}: {exc}"
+
+            tokens = token_set(query)
+            low = html.casefold()
+            item["exact_query_occurrences"] = low.count(query.casefold())
+            item["token_occurrences"] = {tok: low.count(tok) for tok in tokens}
+
+            anchors = []
+            product_like = []
+            token_href_hits = []
+            token_text_hits = []
+            category_like = []
+            data_attr_hits = []
+
+            for link in parser.links:
+                attrs = link["attrs"]
+                href = attrs.get("href") or ""
+                abs_href = urljoin(r.url, href)
+                text_value = norm(link["text"])
+                hay_href = href.casefold()
+                hay_text = text_value.casefold()
+
+                if href:
+                    anchors.append({
+                        "href": abs_href,
+                        "text": text_value[:220],
+                    })
+
+                if product_shape_re.search(abs_href) or numeric_product_shape_re.search(abs_href):
+                    product_like.append({
+                        "href": abs_href,
+                        "text": text_value[:220],
+                    })
+
+                if any(tok in hay_href for tok in tokens):
+                    token_href_hits.append({
+                        "href": abs_href,
+                        "text": text_value[:220],
+                    })
+
+                if any(tok in hay_text for tok in tokens):
+                    token_text_hits.append({
+                        "href": abs_href,
+                        "text": text_value[:220],
+                    })
+
+                if category_shape_re.search(abs_href):
+                    category_like.append({
+                        "href": abs_href,
+                        "text": text_value[:220],
+                    })
+
+                for name, value in attrs.items():
+                    if name.startswith("data-") and value and any(tok in value.casefold() for tok in tokens):
+                        data_attr_hits.append({
+                            "attribute": name,
+                            "value": value[:300],
+                            "text": text_value[:180],
+                            "href": abs_href,
+                        })
+
+            # Deduplicate while preserving order.
+            def dedupe_rows(rows, keys):
+                out, seen = [], set()
+                for row in rows:
+                    key = tuple(row.get(k, "") for k in keys)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    out.append(row)
+                return out
+
+            product_like = dedupe_rows(product_like, ("href", "text"))
+            token_href_hits = dedupe_rows(token_href_hits, ("href", "text"))
+            token_text_hits = dedupe_rows(token_text_hits, ("href", "text"))
+            category_like = dedupe_rows(category_like, ("href", "text"))
+            data_attr_hits = dedupe_rows(data_attr_hits, ("attribute", "value", "href"))
+
+            item["anchor_count"] = len(anchors)
+            item["product_like_links"] = {
+                "count": len(product_like),
+                "rows": product_like[:50],
+            }
+            item["query_token_in_href"] = {
+                "count": len(token_href_hits),
+                "rows": token_href_hits[:50],
+            }
+            item["query_token_in_anchor_text"] = {
+                "count": len(token_text_hits),
+                "rows": token_text_hits[:50],
+            }
+            item["category_like_links"] = {
+                "count": len(category_like),
+                "rows": category_like[:50],
+            }
+            item["data_attribute_hits"] = {
+                "count": len(data_attr_hits),
+                "rows": data_attr_hits[:50],
+            }
+
+            # Show likely product/catalog structures without dumping the full page.
+            script_tags = re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.I | re.S)
+            item["script_count"] = len(script_tags)
+            script_product_hits = []
+            for attrs_raw, body in script_tags:
+                body_low = body.casefold()
+                if any(x in body_low for x in ("/product/", "/produit/", "productid", "product_id", "sku", "gtin")):
+                    script_product_hits.append({
+                        "attrs": norm(attrs_raw)[:300],
+                        "excerpt": norm(body)[:1200],
+                    })
+            item["script_product_hits"] = script_product_hits[:20]
+
+            # Exact query contexts: this tells us whether the query is merely
+            # echoed in the title/search box or actually occurs near a link.
+            contexts = []
+            needle = query.casefold()
+            pos = 0
+            while True:
+                pos = low.find(needle, pos)
+                if pos < 0 or len(contexts) >= 10:
+                    break
+                contexts.append(_compact(html[max(0, pos-500):pos+1000], 1500))
+                pos += max(1, len(needle))
+            item["query_contexts"] = contexts
+
+        except Exception as exc:
+            item.update({
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+        results.append(item)
+
+    return {
+        "diagnostic": True,
+        "store": "Deloox",
+        "purpose": "same-surface HTML structure comparison; no scraper discovery, no sitemap, no category fetch",
+        "surface": base + route + "<query>",
+        "queries": results,
+        "elapsed_sec": round(time.monotonic() - started, 3),
+    }
