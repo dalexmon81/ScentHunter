@@ -1,8 +1,8 @@
 """Deloox adapter for ScentHunter.
 
 Discovery strategy:
-- Prefer Deloox's current category pages and their Product line filter links.
-- Fall back to Deloox search endpoints and sitemap discovery.
+- Prefer Deloox's public search surface (/chercher.html?q=...) and bounded pagination.
+- Use category and sitemap discovery only when search yields no candidates.
 - Product pages are parsed through JSON-LD/page content.
 
 Important:
@@ -35,7 +35,8 @@ DELOOX_BASE_URLS = (
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
 MAX_RESULTS = 80
-MAX_SEARCH_PAGES = 3
+MAX_SEARCH_PAGES = 10
+MAX_SEARCH_CANDIDATES = 24
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -417,6 +418,8 @@ def _candidate_product_urls(
             return
 
         score = relevance(url, context)
+        if not accept_all_products and score <= 0:
+            return
         existing = candidates.get(url)
         if existing is None or score > existing[0]:
             candidates[url] = (score, order)
@@ -676,7 +679,7 @@ def _discover_from_search(session, query):
     failed_pages = 0
     encoded = quote_plus(query)
 
-    for page_number in range(1, 11):
+    for page_number in range(1, MAX_SEARCH_PAGES + 1):
         endpoint = (
             f"{BASE_URL}/chercher.html?q={encoded}"
             if page_number == 1
@@ -713,12 +716,18 @@ def _discover_from_search(session, query):
         for url in found:
             candidates[url] = True
 
+        # Deloox search is ranked by the retailer. Once a page has yielded
+        # relevant product URLs, do not spend the store timeout budget
+        # crawling additional pages or unrelated fallback surfaces.
+        if found:
+            break
+
     global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
-    return list(candidates.keys())[:MAX_CANDIDATES]
+    return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
 
 def _category_product_line_links(html, query):
     """Extract generic category/filter links whose visible text matches query.
@@ -833,9 +842,17 @@ def _discover(session, q):
             seen.add(url)
             candidates.append(url)
 
-    # Search is authoritative for absence only when the search surface itself
-    # was successfully reached.  Fallback discovery remains additive because
-    # a search page can legitimately omit a product.
+    # Search is the primary discovery surface. If it produced relevant
+    # candidates, stop here: category and sitemap crawling are fallbacks, not
+    # additional work that every successful search must perform. This keeps
+    # discovery fast and preserves the proven Deloox search mechanism.
+    if candidates:
+        return candidates[:MAX_CANDIDATES]
+
+    # Only when search produced no candidates do we use the generic fallback
+    # surfaces. A successful search with no matches is still a verified search
+    # result; fallback discovery may nevertheless recover products omitted by
+    # the retailer search surface.
     category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
     if category_candidates:
         _LAST_DISCOVERY_STATE["category_verified"] = True
