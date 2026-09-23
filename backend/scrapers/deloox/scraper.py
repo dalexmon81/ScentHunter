@@ -36,7 +36,7 @@ TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
 MAX_RESULTS = 80
 MAX_SEARCH_PAGES = 10
-MAX_SEARCH_CANDIDATES = 24
+MAX_SEARCH_CANDIDATES = 16
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -410,11 +410,21 @@ def _candidate_product_urls(
             return
         if parsed.netloc.lower() not in DELOOX_HOSTS:
             return
-        if not re.search(
-            r"/(?:product|produit|producto|prodotto)/\d+",
-            parsed.path,
+        path = parsed.path or ""
+        product_path = re.search(
+            r"/(?:product|produit|producto|prodotto)/\d+(?:/|$)",
+            path,
             re.I,
-        ):
+        )
+        slug_product_path = (
+            path.lower().endswith(".html")
+            and not re.search(
+                r"/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca)(?:/|$)",
+                path,
+                re.I,
+            )
+        )
+        if not product_path and not slug_product_path:
             return
 
         score = relevance(url, context)
@@ -662,29 +672,59 @@ def _candidate_category_urls(html, query, base_url=None):
     return found[:32]
 
 
-def _discover_from_search(session, query):
-    """Primary Deloox discovery: use the retailer search surface first.
+def _search_endpoints(query):
+    """Return a small, generic set of Deloox public search surfaces.
 
-    This preserves the proven Deloox mechanism: /chercher.html?q=... with
-    bounded pagination.  Candidate extraction is generic and scans the full
-    returned HTML, so unrelated links appearing before the real product do not
-    consume the candidate budget.
+    Deloox operates several localized storefronts.  The public search route
+    differs between generations/locales, so discovery probes a bounded set of
+    store-provided search endpoints in parallel.  No product, brand or SKU is
+    encoded here.
     """
+    encoded = quote_plus(query)
+    endpoints = []
+
+    # Legacy/localized public search surface.
+    for base in DELOOX_BASE_URLS:
+        endpoints.append(f"{base}/chercher.html?q={encoded}")
+
+    # Current multilingual search surfaces.  These are generic store routes;
+    # a 404 simply means that storefront does not expose this route.
+    for base in DELOOX_BASE_URLS:
+        endpoints.append(f"{base}/en/search?query={encoded}")
+        endpoints.append(f"{base}/en/search?q={encoded}")
+
+    # Deduplicate while preserving deterministic order.
+    out = []
+    seen = set()
+    for url in endpoints:
+        if url not in seen:
+            seen.add(url)
+            out.append(url)
+    return out
+
+
+def _discover_from_search(session, query):
+    """Primary Deloox discovery across localized public search surfaces.
+
+    The old scraper relied on one storefront (/chercher.html on .be).  The
+    current Deloox catalogue is exposed through multiple localized storefronts,
+    and a valid product can therefore be invisible from one search surface
+    while present on another.  We probe a bounded set concurrently, inspect the
+    complete returned HTML, and stop discovery as soon as relevant candidates
+    are found.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     query = clean(query)
     if not query:
         return []
 
+    endpoints = _search_endpoints(query)
     candidates = {}
     successful_pages = 0
     failed_pages = 0
-    encoded = quote_plus(query)
 
-    for page_number in range(1, MAX_SEARCH_PAGES + 1):
-        endpoint = (
-            f"{BASE_URL}/chercher.html?q={encoded}"
-            if page_number == 1
-            else f"{BASE_URL}/chercher.html?q={encoded}&page={page_number}"
-        )
+    def fetch(endpoint):
         try:
             r = session.get(
                 endpoint,
@@ -692,35 +732,39 @@ def _discover_from_search(session, query):
                 timeout=TIMEOUT,
                 allow_redirects=True,
             )
-        except requests.Timeout:
-            failed_pages += 1
-            continue
+            return endpoint, r
         except requests.RequestException:
-            failed_pages += 1
-            continue
+            return endpoint, None
 
-        if r.status_code >= 400 or not r.text:
-            failed_pages += 1
-            continue
+    # One bounded wave: at most 13 requests, all sharing the same per-request
+    # timeout.  We do not paginate until a storefront has actually returned
+    # candidates, and in normal operation the first successful candidate set
+    # ends the discovery work.
+    with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
+        futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
+        for future in as_completed(futures):
+            endpoint, r = future.result()
+            if r is None or r.status_code >= 400 or not r.text:
+                failed_pages += 1
+                continue
 
-        successful_pages += 1
-        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        found = _candidate_product_urls(
-            r.text,
-            query,
-            discovery_query=query,
-            accept_all_products=True,
-            base_url=base,
-        )
+            successful_pages += 1
+            base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+            found = _candidate_product_urls(
+                r.text,
+                query,
+                discovery_query=query,
+                accept_all_products=False,
+                base_url=base,
+            )
 
-        for url in found:
-            candidates[url] = True
+            for url in found:
+                candidates[url] = True
 
-        # Deloox search is ranked by the retailer. Once a page has yielded
-        # relevant product URLs, do not spend the store timeout budget
-        # crawling additional pages or unrelated fallback surfaces.
-        if found:
-            break
+            if found:
+                # We already have the retailer's own relevant product links.
+                # No category/sitemap crawl is needed in this pass.
+                break
 
     global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
