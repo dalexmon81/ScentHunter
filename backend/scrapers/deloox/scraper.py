@@ -33,7 +33,7 @@ DELOOX_BASE_URLS = (
     "https://www.deloox.es",
 )
 TIMEOUT = (2.5, 6.0)
-MAX_CANDIDATES = 24
+MAX_CANDIDATES = 48
 MAX_RESULTS = 40
 MAX_SEARCH_PAGES = 3
 HEADERS = {
@@ -551,13 +551,54 @@ def _sitemap_product_urls(session, query, max_sitemaps=120, max_urls=MAX_CANDIDA
 
 
 
-def _discover_from_search(session, query):
-    """Generic, bounded search discovery across Deloox storefronts.
+def _candidate_category_urls(html, query, base_url=None):
+    """Extract retailer category/filter URLs that are relevant to the query.
 
-    Different Deloox country storefronts have historically exposed the public
-    search through different path/parameter combinations.  Probe a bounded
-    matrix concurrently, stop as soon as product URLs are found, and leave
-    product identity validation to _product().
+    This is a store-navigation mechanism, not a product rule.  A Deloox search
+    can resolve a query to a category/brand/product-family page rather than
+    exposing every matching product directly.  Following those store-provided
+    links is necessary to discover all variants.
+    """
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return []
+
+    base_url = clean(base_url or BASE_URL)
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+
+    for a in soup.find_all("a", href=True):
+        href = clean(a.get("href"))
+        label = clean(a.get_text(" ", strip=True))
+        context = norm(f"{label} {href}")
+        parsed = urlparse(urljoin(base_url, href).split("#")[0].split("?")[0])
+        if parsed.netloc.lower() not in DELOOX_HOSTS:
+            continue
+        if not re.search(r"/(?:category|categorie|categoria|catégorie)/", parsed.path, re.I):
+            continue
+
+        # Require at least one query token in the retailer's own category
+        # label/URL. This is intentionally broad: the category page itself
+        # will perform the authoritative product discovery.
+        if not any(tok in context.split() or tok in norm(parsed.path).split() for tok in q_tokens):
+            continue
+
+        url = parsed.geturl()
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
+
+    return found[:32]
+
+
+def _discover_from_search(session, query):
+    """Discover product URLs and store category URLs from Deloox search.
+
+    Important: a non-empty search result is NOT considered complete.  Search
+    pages may expose only one variant while linking to a category/family page
+    containing the other variants.  We therefore collect both product and
+    relevant category URLs and let the next stage inspect those pages.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -566,85 +607,83 @@ def _discover_from_search(session, query):
         return []
 
     routes = (
-        "/chercher.html",
-        "/zoeken.html",
-        "/search.html",
-        "/search",
-        "/en/search.html",
-        "/en/search",
-        "/fr/search.html",
-        "/fr/search",
-        "/nl/search.html",
-        "/nl/search",
+        "/chercher.html", "/zoeken.html", "/search.html", "/search",
+        "/en/search.html", "/en/search", "/fr/search.html", "/fr/search",
+        "/nl/search.html", "/nl/search",
     )
     params = ("q", "query", "search", "searchTerm", "keyword")
-
     jobs = []
     seen_jobs = set()
 
-    # Keep the matrix deliberately bounded.  The first storefronts are the
-    # current Luxembourg/Belgium/Netherlands surfaces, followed by generic
-    # international fallbacks.
     for base in DELOOX_BASE_URLS:
         for route in routes:
             for param in params:
-                endpoint = (
-                    base + route + "?" + param + "=" + quote_plus(query)
-                )
-                if endpoint in seen_jobs:
-                    continue
-                seen_jobs.add(endpoint)
-                jobs.append(endpoint)
+                endpoint = base + route + "?" + param + "=" + quote_plus(query)
+                if endpoint not in seen_jobs:
+                    seen_jobs.add(endpoint)
+                    jobs.append(endpoint)
 
-    # Do not let a slow storefront consume Main's entire 45s store budget.
     jobs = jobs[:75]
 
     def probe(endpoint):
         try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         except requests.RequestException:
-            return []
-
+            return [], []
         if r.status_code >= 400:
-            return []
+            return [], []
+        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+        products = _candidate_product_urls(r.text, query, base_url=base, accept_all_products=True)
+        categories = _candidate_category_urls(r.text, query, base_url=base)
+        return products, categories
 
-        final_base = (
-            f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        )
-        return _candidate_product_urls(
-            r.text,
-            query,
-            base_url=final_base,
-            accept_all_products=True,
-        )[:MAX_CANDIDATES]
+    products = []
+    categories = []
+    seen_products = set()
+    seen_categories = set()
 
-    found = []
-    seen = set()
-
-    # A small parallel pool is intentional: one blocked/slow locale must not
-    # serialize the entire discovery process.
     with ThreadPoolExecutor(max_workers=12) as pool:
-        futures = {pool.submit(probe, endpoint): endpoint for endpoint in jobs}
+        futures = [pool.submit(probe, endpoint) for endpoint in jobs]
         for future in as_completed(futures):
             try:
-                candidates = future.result()
+                found_products, found_categories = future.result()
             except Exception:
-                candidates = []
+                continue
+            for url in found_products:
+                if url not in seen_products:
+                    seen_products.add(url)
+                    products.append(url)
+            for url in found_categories:
+                if url not in seen_categories:
+                    seen_categories.add(url)
+                    categories.append(url)
 
-            for url in candidates:
-                if url in seen:
-                    continue
-                seen.add(url)
-                found.append(url)
-                if len(found) >= MAX_CANDIDATES:
-                    return found
+    # Follow the store's own relevant category/family links.  This is the
+    # generic path that allows queries such as a product variant to discover
+    # sibling variants that are not all exposed by the search result cards.
+    def fetch_category(url):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        except requests.RequestException:
+            return []
+        if r.status_code >= 400:
+            return []
+        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+        return _candidate_product_urls(r.text, query, base_url=base, accept_all_products=True)
 
-    return found
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(fetch_category, url) for url in categories[:16]]
+        for future in as_completed(futures):
+            try:
+                found = future.result()
+            except Exception:
+                continue
+            for url in found:
+                if url not in seen_products:
+                    seen_products.add(url)
+                    products.append(url)
+
+    return products[:MAX_CANDIDATES]
 
 def _category_product_line_links(html, query):
     """Extract generic category/filter links whose visible text matches query.
@@ -692,14 +731,37 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
         if r.status_code >= 400:
             continue
         base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        for product_url in _candidate_product_urls(
-            r.text, query, base_url=base, accept_all_products=True
-        ):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
-                if len(urls) >= max_urls:
-                    return urls
+        pages = [r.url]
+        soup = BeautifulSoup(r.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = clean(a.get("href"))
+            if "page=" not in href.lower():
+                continue
+            u = urljoin(base, href)
+            if u not in pages:
+                pages.append(u)
+            if len(pages) >= 8:
+                break
+
+        for current_url in pages:
+            if current_url == r.url:
+                html = r.text
+            else:
+                try:
+                    page = session.get(current_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                    if page.status_code >= 400:
+                        continue
+                    html = page.text
+                except requests.RequestException:
+                    continue
+            for product_url in _candidate_product_urls(
+                html, query, base_url=base, accept_all_products=True
+            ):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls
     return urls
 
 
@@ -709,20 +771,26 @@ def _discover(session, q):
     if not q:
         return []
 
-    candidates = _discover_from_search(session, q)
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
+    # Every discovery surface is complementary.  A search hit is not proof
+    # that the search page is exhaustive, so never stop merely because one
+    # surface returned candidates.
+    candidates = []
+    seen = set()
 
-    candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
+    for source in (
+        _discover_from_search(session, q),
+        _discover_from_categories(session, q, MAX_CANDIDATES),
+        _sitemap_product_urls(session, q, max_sitemaps=48, max_urls=MAX_CANDIDATES),
+    ):
+        for url in source:
+            if url in seen:
+                continue
+            seen.add(url)
+            candidates.append(url)
+            if len(candidates) >= MAX_CANDIDATES:
+                return candidates
 
-    return _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=12,
-        max_urls=MAX_CANDIDATES,
-    )[:MAX_CANDIDATES]
+    return candidates
 
 
 def diagnose_search(session, query):
