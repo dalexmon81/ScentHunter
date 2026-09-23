@@ -10,8 +10,10 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
+SITEMAP_INDEX_URL = BASE_URL + "/sitemap_index_shop_1.xml"
 TIMEOUT = 10
-MAX_CANDIDATES = 20
+MAX_CANDIDATES = 30
+MAX_SITEMAPS = 30
 
 HEADERS = {
     "User-Agent": (
@@ -680,61 +682,40 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-def discover_product_urls(session, query):
-    """
-    The only primary discovery path used by the real scraper.
+def _add_product_url(urls, seen, raw, base_url=BASE_URL):
+    absolute = normalise_url(raw, base_url)
+    if not absolute or not is_product_url(absolute):
+        return False
+    if absolute in seen:
+        return False
+    seen.add(absolute)
+    urls.append(absolute)
+    return True
 
-    The query is supplied at runtime. No product, brand, SKU or URL
-    is hard-coded here.
-    """
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return []
 
-    if response.status_code >= 400:
-        return []
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
+def _discover_product_urls_from_search(session, query):
+    """Discover product URLs through Sabina's live search page."""
+    response = session.get(
+        SEARCH_URL,
+        params={"search_query": query},
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
     )
 
+    if response.status_code >= 400:
+        response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
     urls = []
     seen = set()
 
     def add(raw):
-        absolute = normalise_url(
-            raw,
-            response.url,
-        )
+        _add_product_url(urls, seen, raw, response.url)
 
-        if not absolute:
-            return
-
-        if not is_product_url(absolute):
-            return
-
-        if absolute in seen:
-            return
-
-        seen.add(absolute)
-        urls.append(absolute)
-
-    # First source: normal product links.
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
+    for anchor in soup.find_all("a", href=True):
         add(anchor.get("href"))
 
-    # Second source: product URLs embedded in the returned HTML/JSON.
     decoded = (
         response.text
         .replace("\\/", "/")
@@ -742,480 +723,122 @@ def discover_product_urls(session, query):
     )
 
     for match in re.finditer(
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
+        r'https?://(?:www\\.)?sabina\\.com/'
+        r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
         decoded,
         re.I,
     ):
         add(match.group(0))
 
     for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
+        r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
         decoded,
         re.I,
     ):
         add(match.group(0))
 
-    return urls[:MAX_CANDIDATES]
+    return urls
 
 
-def _offer_list(product):
-    offers = product.get("offers") if isinstance(product, dict) else None
-    if isinstance(offers, dict):
-        return [offers]
-    if isinstance(offers, list):
-        return [offer for offer in offers if isinstance(offer, dict)]
-    return []
+def _discover_product_urls_from_sitemaps(session, query):
+    """
+    Generic catalog discovery fallback.
 
+    Sabina is PrestaShop and publishes a sitemap index in robots.txt. The
+    product sitemap URLs contain the same canonical product URLs used by
+    product pages. We therefore use the store's own sitemap as a catalog
+    source instead of adding product-, brand- or SKU-specific rules.
+    """
+    response = session.get(
+        SITEMAP_INDEX_URL,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
+    )
+    if response.status_code >= 400:
+        response.raise_for_status()
 
-def _offer_size(offer, product):
-    parts = []
-    for value in (
-        offer.get("name"),
-        offer.get("description"),
-        offer.get("sku"),
-        offer.get("url"),
-        product.get("name"),
-        product.get("description"),
-        product.get("sku"),
-    ):
-        if value:
-            parts.append(str(value))
-    return extract_size_ml(" ".join(parts))
+    soup = BeautifulSoup(response.text, "xml")
+    sitemap_urls = []
+    seen_sitemaps = set()
 
+    for loc in soup.find_all("loc"):
+        raw = clean(loc.get_text())
+        absolute = normalise_url(raw, response.url)
+        if not absolute or absolute in seen_sitemaps:
+            continue
+        seen_sitemaps.add(absolute)
+        sitemap_urls.append(absolute)
+        if len(sitemap_urls) >= MAX_SITEMAPS:
+            break
 
-def _select_product_offer(product, final_url, title, size_ml):
-    offers = _offer_list(product)
-
-    if not offers:
-        return None
-
-    # Prefer the offer whose URL/name identifies the same product page.
-    same_product = []
-    for offer in offers:
-        offer_url = normalise_url(offer.get("url"))
-        offer_name = clean(offer.get("name"))
-        if offer_url == final_url:
-            same_product.append(offer)
-        elif offer_name and query_matches(
-            f"{offer_name} {title}", title
+    if not sitemap_urls:
+        # Some sitemap indexes can be returned as HTML/plain XML despite
+        # content-type quirks. Keep discovery generic by extracting locs.
+        for match in re.finditer(
+            r'<loc>\s*(https?://[^<\s]+)\s*</loc>',
+            response.text,
+            re.I,
         ):
-            same_product.append(offer)
+            absolute = normalise_url(match.group(1), response.url)
+            if absolute and absolute not in seen_sitemaps:
+                seen_sitemaps.add(absolute)
+                sitemap_urls.append(absolute)
+                if len(sitemap_urls) >= MAX_SITEMAPS:
+                    break
 
-    candidates = same_product or offers
+    tokens = query_tokens(query)
+    if not tokens:
+        return []
 
-    # If the offer itself declares a bottle size, it must match the
-    # selected product size. Never take an unrelated variant's price.
-    if size_ml is not None:
-        sized = [
-            offer for offer in candidates
-            if _offer_size(offer, product) is not None
-            and abs(_offer_size(offer, product) - size_ml) < 0.01
-        ]
-        if sized:
-            candidates = sized
-        elif any(_offer_size(offer, product) is not None for offer in candidates):
-            return None
+    urls = []
+    seen_products = set()
 
-    # Prefer an offer with a real price and otherwise keep the first
-    # product-bound offer.
-    priced = [
-        offer for offer in candidates
-        if money_to_float(offer.get("price")) is not None
-    ]
-    return priced[0] if priced else candidates[0]
-
-
-def extract_product_page(session, url, query):
-    try:
-        response = session.get(
-            url,
+    for sitemap_url in sitemap_urls:
+        child = session.get(
+            sitemap_url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
         )
-    except requests.RequestException:
-        return None
+        if child.status_code >= 400:
+            child.raise_for_status()
 
-    if response.status_code >= 400:
-        return None
-
-    final_url = normalise_url(response.url)
-
-    if not final_url or not is_product_url(final_url):
-        return None
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    product = first_jsonld_product(soup)
-
-    h1 = soup.select_one("h1")
-    h1_text = (
-        clean(h1.get_text(" ", strip=True))
-        if h1
-        else ""
-    )
-
-    title = clean(
-        (product or {}).get("name")
-        or h1_text
-    )
-
-    if not title:
-        return None
-
-    brand = None
-    raw_brand = (product or {}).get("brand")
-
-    if isinstance(raw_brand, dict):
-        brand = clean(raw_brand.get("name")) or None
-    elif raw_brand:
-        brand = clean(raw_brand)
-
-    if not query_matches(
-        f"{title} {brand or ''}",
-        query,
-    ):
-        return None
-
-    # Determine the product size from product-specific areas first.
-    size_ml, size_source = extract_size_ml_from_product_page(
-        soup,
-        title,
-    )
-
-    # Select price from the offer belonging to this exact product/format.
-    offer = _select_product_offer(
-        product or {},
-        final_url,
-        title,
-        size_ml,
-    )
-
-    price = (
-        money_to_float(offer.get("price"))
-        if isinstance(offer, dict)
-        else None
-    )
-    price_source = "sabina_jsonld"
-
-    # If JSON-LD has no usable price, use the product-page HTML fallback.
-    # This fallback deliberately ignores struck-through/reference prices.
-    if price is None:
-        price, price_source = extract_price_from_html(soup)
-
-    currency = (
-        clean(offer.get("priceCurrency"))
-        if isinstance(offer, dict)
-        else ""
-    ) or "EUR"
-
-    availability, availability_source = availability_from_product_page(
-        soup,
-        offer,
-    )
-
-    image = (product or {}).get("image")
-
-    if isinstance(image, list):
-        image = image[0] if image else None
-
-    if isinstance(image, dict):
-        image = (
-            image.get("url")
-            or image.get("contentUrl")
-        )
-
-    if image:
-        image = urljoin(
-            response.url,
-            image,
-        )
-
-    gtin = clean(
-        (product or {}).get("gtin13")
-        or (product or {}).get("gtin12")
-        or (product or {}).get("gtin14")
-        or (product or {}).get("gtin")
-    ) or None
-
-    mpn = clean(
-        (product or {}).get("mpn")
-    ) or None
-
-    sku = clean(
-        (product or {}).get("sku")
-    ) or None
-
-    page_text = soup.get_text(
-        " ",
-        strip=True,
-    )
-
-    if not sku:
-        reference_match = re.search(
-            r"(?:referencia|reference|référence|riferimento)"
-            r"\s*[:#]?\s*([A-Z0-9_-]+)",
-            page_text,
+        # Product sitemap files are XML, but using regex here also tolerates
+        # servers that send an unexpected content-type.
+        locs = re.findall(
+            r'<loc>\s*(https?://[^<\s]+)\s*</loc>',
+            child.text,
             re.I,
         )
+        if not locs:
+            child_soup = BeautifulSoup(child.text, "xml")
+            locs = [clean(loc.get_text()) for loc in child_soup.find_all("loc")]
 
-        if reference_match:
-            sku = reference_match.group(1)
+        for raw in locs:
+            product_url = normalise_url(raw, child.url)
+            if not is_product_url(product_url):
+                continue
 
-    product_id = product_id_from_url(
-        final_url
-    )
+            # Discovery is lexical only. Identity, size and concentration are
+            # deliberately left to normalization + ProductMatcher.
+            path_text = norm(urlparse(product_url).path)
+            if not all(token in path_text for token in tokens):
+                continue
 
-    concentration, concentration_source = (
-        extract_concentration(
-            title,
-            page_text,
-        )
-    )
+            if _add_product_url(urls, seen_products, product_url, child.url):
+                if len(urls) >= MAX_CANDIDATES:
+                    return urls
 
-    gender, gender_source = extract_gender(
-        title,
-        page_text,
-    )
+    return urls
 
-    return {
-        "store": STORE,
 
-        "source": {
-            "url": final_url,
-            "name": title,
-            "brand": brand,
-            "image": image,
-        },
-
-        "identity": {
-            "gtin": (
-                {
-                    "value": gtin,
-                    "source": "sabina_jsonld",
-                }
-                if gtin
-                else None
-            ),
-
-            "mpn": (
-                {
-                    "value": mpn,
-                    "source": "sabina_jsonld",
-                }
-                if mpn
-                else None
-            ),
-
-            "sku": (
-                {
-                    "value": sku,
-                    "source": "sabina_jsonld_or_reference",
-                }
-                if sku
-                else None
-            ),
-
-            "store_product_id": (
-                {
-                    "value": product_id,
-                    "source": "product_url",
-                }
-                if product_id
-                else None
-            ),
-        },
-
-        "attributes": {
-            "size_ml": (
-                {
-                    "value": size_ml,
-                    "source": size_source,
-                }
-                if size_ml is not None
-                else None
-            ),
-
-            "concentration": (
-                {
-                    "value": concentration,
-                    "source": concentration_source,
-                }
-                if concentration
-                else None
-            ),
-
-            "gender": (
-                {
-                    "value": gender,
-                    "source": gender_source,
-                }
-                if gender_source
-                else {
-                    "value": "unknown",
-                    "source": "default",
-                }
-            ),
-
-            "packaging_type": {
-                "value": "product",
-                "source": "default",
-            },
-        },
-
-        "offer": {
-            "price": price,
-            "currency": currency,
-            "availability": availability,
-        },
-
-        "provenance": {
-            "name": "sabina_jsonld_or_h1",
-            "brand": (
-                "sabina_jsonld"
-                if brand
-                else None
-            ),
-            "price": price_source,
-            "availability": availability_source,
-            "image": (
-                "sabina_jsonld"
-                if image
-                else None
-            ),
-            "store_product_id": (
-                "product_url"
-                if product_id
-                else None
-            ),
-            "sku": (
-                "sabina_jsonld_or_reference"
-                if sku
-                else None
-            ),
-            "gtin": (
-                "sabina_jsonld"
-                if gtin
-                else None
-            ),
-            "mpn": (
-                "sabina_jsonld"
-                if mpn
-                else None
-            ),
-            "size_ml": size_source,
-            "concentration": concentration_source,
-            "gender": gender_source,
-            "packaging_type": "default",
-        },
-
-        "raw_data": {
-            "product_url": final_url,
-            "status_code": response.status_code,
-            "jsonld_product": product,
-        },
-
-        "name": title,
-        "brand": brand,
-        "price": (
-            f"{price:.2f}".replace(".", ",")
-            + " €"
-            if price is not None
-            else ""
-        ),
-        "url": final_url,
-        # Unknown is intentionally not converted to false.
-        # The main backend must not interpret missing evidence as OOS.
-        "available": (
-            True if availability == "in_stock"
-            else False if availability == "out_of_stock"
-            else None
-        ),
-    }
-
-def _fallback_extract_product_page(session, url, query):
-    """Minimal product-page parser used only when the rich parser raises.
-
-    It is deliberately generic: it reads the current product H1, visible
-    customer price, size and purchase/notification state from the retailer
-    page. It never contains a product-specific URL or price.
-    """
-    try:
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-    except requests.RequestException:
-        return None
-
-    try:
-        if response.status_code >= 400:
-            return None
-        final_url = normalise_url(response.url)
-        if not final_url or not is_product_url(final_url):
-            return None
-        soup = BeautifulSoup(response.text, "html.parser")
-    finally:
-        response.close()
-
-    h1 = soup.select_one("h1")
-    title = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not title or not query_matches(title, query):
-        return None
-
-    page_text = clean(soup.get_text(" ", strip=True))
-
-    # Prefer the visible customer-facing price near the product heading.
-    price = None
-    price_patterns = (
-        r"precio\s*:\s*([0-9][0-9\s.,]*)\s*€",
-        r"price\s*:\s*([0-9][0-9\s.,]*)\s*€",
-        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€\s*\([^)]*100ml",
-        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€",
-    )
-    for pattern in price_patterns:
-        match = re.search(pattern, page_text, re.I)
-        if match:
-            candidate = money_to_float(match.group(1))
-            if candidate is not None and candidate > 0:
-                price = candidate
-                break
-
-    size = extract_size_ml(title, page_text)
-    normalized = norm(page_text)
-    if any(marker in normalized for marker in ("fecha de disponibilidad", "avísame", "notificarme", "notify me")):
-        availability = "out_of_stock"
-    elif any(marker in normalized for marker in ("añadir al carrito", "agregar al carrito", "comprar", "add to cart", "buy now")):
-        availability = "in_stock"
-    else:
-        availability = "unknown"
-
-    image = None
-    meta = soup.select_one('meta[property="og:image"]')
-    if meta and meta.get("content"):
-        image = urljoin(BASE_URL, meta.get("content"))
-
-    return {
-        "store": STORE,
-        "source": {"url": final_url, "name": title, "brand": None, "image": image},
-        "identity": {"gtin": None, "mpn": None, "sku": None, "store_product_id": {"value": product_id_from_url(final_url), "source": "product_url"}, "store_variant_id": None},
-        "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": extract_concentration(title, page_text)[0], "source": "product_text"} if extract_concentration(title, page_text)[0] else None, "gender": {"value": "unknown", "source": "default"}, "packaging_type": {"value": "product", "source": "default"}},
-        "offer": {"price": price, "currency": "EUR", "availability": availability},
-        "provenance": {"name": "sabina_html_fallback", "price": "visible_product_page", "availability": "visible_product_page", "size_ml": "visible_product_page"},
-        "raw_data": {"product_url": final_url, "status_code": 200},
-        "name": title,
-        "brand": None,
-        "price": f"{price:.2f}".replace(".", ",") + " €" if price is not None else "",
-        "price_num": price,
-        "url": final_url,
-        "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
-        "availability": availability,
-        "size_ml": size,
-        "image": image,
-    }
+def discover_product_urls(session, query):
+    """Generic multi-source discovery: live search first, store sitemap second."""
+    primary = _discover_product_urls_from_search(session, query)
+    if primary:
+        return primary
+    return _discover_product_urls_from_sitemaps(session, query)
 
 
 def search(query):
