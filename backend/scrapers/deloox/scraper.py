@@ -342,19 +342,52 @@ def _candidate_product_urls(
     accept_all_products=True,
     base_url=None,
 ):
-    """Extract generic Deloox product URLs from any retailer page.
+    """Extract and rank generic Deloox product URLs.
 
-    Candidate discovery deliberately does not require the query to appear in
-    the card text.  Search-result markup varies by storefront and product
-    pages are the authoritative place where the query is validated by
-    _product().
+    Deloox search pages contain many unrelated product links in navigation,
+    recommendations and other page sections.  Taking the first N product URLs
+    is therefore unsafe: the desired product can occur much later in the HTML.
+
+    We collect all product URLs visible in the bounded HTML response, score
+    them by generic query relevance (link text, URL and nearby product-card
+    context), then return the highest-ranked candidates.  The product page
+    remains authoritative through _product().
     """
     soup = BeautifulSoup(html, "html.parser")
-    found = []
-    seen = set()
     base_url = clean(base_url or BASE_URL)
 
-    def add(raw_url):
+    # Keep numeric query tokens for discovery scoring (e.g. a model line or
+    # product family may contain a single digit).  Final identity validation
+    # is still performed by _product()/ProductMatcher.
+    query_tokens = [
+        x for x in re.findall(r"[a-z0-9]+", clean(query).lower())
+        if x
+    ]
+    query_norm = " ".join(query_tokens)
+
+    candidates = {}
+    order = 0
+
+    def relevance(url, context=""):
+        nonlocal order
+        path_text = norm(url)
+        context_text = norm(context)
+        combined = f"{context_text} {path_text}".strip()
+        score = 0
+
+        if query_norm and query_norm in combined:
+            score += 100
+        for tok in query_tokens:
+            if tok in context_text:
+                score += 20
+            if tok in path_text:
+                score += 12
+            if tok in combined:
+                score += 4
+        return score
+
+    def add(raw_url, context=""):
+        nonlocal order
         if not raw_url:
             return
         raw_url = clean(raw_url).replace("\\/", "/")
@@ -367,22 +400,47 @@ def _candidate_product_urls(
             return
         if parsed.netloc.lower() not in DELOOX_HOSTS:
             return
-        if not re.search(r"/(?:product|produit|producto|prodotto)/\d+", parsed.path, re.I):
+        if not re.search(
+            r"/(?:product|produit|producto|prodotto)/\d+",
+            parsed.path,
+            re.I,
+        ):
             return
-        if url in seen:
-            return
-        seen.add(url)
-        found.append(url)
 
-    # Normal links.
+        score = relevance(url, context)
+        existing = candidates.get(url)
+        if existing is None or score > existing[0]:
+            candidates[url] = (score, order)
+        order += 1
+
+    # First pass: normal product links.  Use the anchor's own text plus the
+    # nearest product/article container as generic relevance context.
     for a in soup.find_all("a", href=True):
-        add(a.get("href"))
-        if len(found) >= MAX_CANDIDATES:
-            return found
+        href = a.get("href")
+        parent_context = ""
+        node = a
+        for _ in range(3):
+            node = getattr(node, "parent", None)
+            if node is None:
+                break
+            cls = " ".join(node.get("class", [])) if getattr(node, "get", None) else ""
+            if any(x in cls.lower() for x in ("product", "article", "variation", "card", "row")):
+                parent_context = clean(node.get_text(" ", strip=True))[:2500]
+                break
+        context = clean(
+            " ".join(
+                x for x in (
+                    a.get_text(" ", strip=True),
+                    a.get("title"),
+                    href,
+                    parent_context,
+                ) if x
+            )
+        )
+        add(href, context)
 
-    # Some Deloox storefronts expose the product target in data-* attributes
-    # rather than href.  Read attributes generically; never infer a product
-    # from its name or from a product-specific rule.
+    # Second pass: generic data-* URL attributes.  Do not assume a particular
+    # product/card implementation; only inspect common URL-bearing fields.
     attr_names = (
         "data-url",
         "data-href",
@@ -393,26 +451,26 @@ def _candidate_product_urls(
         "data-href-url",
     )
     for node in soup.find_all(True):
+        context = clean(node.get_text(" ", strip=True))[:2500]
         for attr in attr_names:
             raw = node.get(attr)
-            if not raw:
-                continue
-            add(raw)
-            if len(found) >= MAX_CANDIDATES:
-                return found
+            if raw:
+                add(raw, f"{raw} {context}")
 
-    # Product URLs can also be present in JSON state, JSON-LD or hydration
-    # payloads and therefore not appear as ordinary anchors.
+    # Third pass: product URLs embedded in JSON/state/hydration payloads.
     patterns = (
-        r'https?://(?:www\.)?deloox\.(?:lu|be|com|nl|es)/[^"\'<>\s]+/(?:product|produit|producto|prodotto)/\d+[^"\'<>\s]*',
-        r'(?:(?:https?:)?//(?:www\.)?deloox\.(?:lu|be|com|nl|es))?/(?:en/|fr/|nl/|es/|it/)?(?:product|produit|producto|prodotto)/\d+/[^"\'<>\s]+',
+        r'https?://(?:www\\.)?deloox\.(?:lu|be|com|nl|es)/[^"\'<>\s]+/(?:product|produit|producto|prodotto)/\d+[^"\'<>\s]*',
+        r'(?:(?:https?:)?//(?:www\\.)?deloox\.(?:lu|be|com|nl|es))?/(?:en/|fr/|nl/|es/|it/|de/)?(?:product|produit|producto|prodotto)/\d+/[^"\'<>\s]+',
     )
     for pattern in patterns:
         for raw in re.findall(pattern, html, re.I):
-            add(raw)
-            if len(found) >= MAX_CANDIDATES:
-                return found
-    return found
+            add(raw, raw)
+
+    ranked = sorted(
+        candidates.items(),
+        key=lambda item: (-item[1][0], item[1][1]),
+    )
+    return [url for url, _meta in ranked[:MAX_CANDIDATES]]
 
 
 def _category_pages(session=None):
