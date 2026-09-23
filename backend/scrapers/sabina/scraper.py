@@ -1,21 +1,17 @@
 import json
 import re
 import unicodedata
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, quote_plus, parse_qs, unquote
 
 import requests
 from bs4 import BeautifulSoup
 
 
+STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
-HOME_URL = BASE_URL + "/es/"
-SEARCH_URLS = (
-    BASE_URL + "/es/buscar",
-    BASE_URL + "/es/search",
-)
-TIMEOUT = 15
-MAX_CANDIDATES = 50
-
+SEARCH_URL = BASE_URL + "/es/buscar"
+TIMEOUT = 10
+MAX_CANDIDATES = 20
 
 HEADERS = {
     "User-Agent": (
@@ -33,11 +29,12 @@ HEADERS = {
 
 PRODUCT_PATH_RE = re.compile(
     r"^/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/"
-    r"[^/]+/(\d+)-[^/]+\.html$"
-    r"(?!content|ricerca|ricerca_old|buscar|buscar_old|search|"
-    r"marchi|negozi|contatto|faq|carrello|ordine|stato-ordine|"
-    r"il-mio-conto|module|modules)"
-    r"[^/?#]+(?:/[^/?#]+)*$",
+    r"(?!content(?:/|$)|ricerca(?:/|$)|ricerca_old(?:/|$)|"
+    r"buscar(?:/|$)|buscar_old(?:/|$)|search(?:/|$)|"
+    r"marchi(?:/|$)|negozi(?:/|$)|contatto(?:/|$)|faq(?:/|$)|"
+    r"carrello(?:/|$)|ordine(?:/|$)|stato-ordine(?:/|$)|"
+    r"il-mio-conto(?:/|$)|module(?:/|$)|modules(?:/|$))"
+    r"[^/?#]+/\d+-[^/?#]+\.html$",
     re.I,
 )
 
@@ -689,45 +686,39 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-def _extract_product_links_from_html(html, base_url):
+def discover_product_urls(session, query):
+    """
+    The only primary discovery path used by the real scraper.
+
+    The query is supplied at runtime. No product, brand, SKU or URL
+    is hard-coded here.
+    """
+    try:
+        response = session.get(
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return []
+
+    if response.status_code >= 400:
+        return []
+
     soup = BeautifulSoup(
-        html or "",
+        response.text,
         "html.parser",
     )
 
-    links = []
+    urls = []
     seen = set()
 
     def add(raw):
-        if not raw:
-            return
-
-        if isinstance(raw, list):
-            for item in raw:
-                add(item)
-            return
-
-        if isinstance(raw, dict):
-            raw = (
-                raw.get("url")
-                or raw.get("link")
-                or raw.get("href")
-                or raw.get("product_url")
-            )
-
-        if not isinstance(raw, str):
-            return
-
-        raw = (
-            raw.replace("\\/", "/")
-            .replace("\\u002F", "/")
-            .replace("&amp;", "&")
-            .strip()
-        )
-
         absolute = normalise_url(
             raw,
-            base_url,
+            response.url,
         )
 
         if not absolute:
@@ -740,225 +731,41 @@ def _extract_product_links_from_html(html, base_url):
             return
 
         seen.add(absolute)
-        links.append(absolute)
+        urls.append(absolute)
 
-    # 1. Link normali delle product card.
-    for node in soup.find_all("a"):
-        for attribute in (
-            "href",
-            "data-url",
-            "data-link",
-            "data-product-url",
-            "data-href",
-        ):
-            add(node.get(attribute))
-
-    # 2. URL presenti in altri attributi HTML.
-    for node in soup.find_all(True):
-        for value in node.attrs.values():
-            if not isinstance(value, str):
-                continue
-
-            for match in re.finditer(
-                r'(?:https?://(?:www\.)?sabina\.com)?'
-                r'/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
-                r'[^"\'<>\s\\]+',
-                value,
-                re.I,
-            ):
-                add(match.group(0))
-
-    # 3. URL assoluti o relativi presenti nell’HTML/JSON/JavaScript.
-    decoded = (
-        html or ""
-    ).replace("\\/", "/").replace("\\u002F", "/")
-
-    for pattern in (
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
-        r'[^"\'<>\s\\]+',
-
-        r'/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
-        r'[^"\'<>\s\\]+',
+    # First source: normal product links.
+    for anchor in soup.find_all(
+        "a",
+        href=True,
     ):
-        for match in re.finditer(
-            pattern,
-            decoded,
-            re.I,
-        ):
-            add(match.group(0))
+        add(anchor.get("href"))
 
-    # 4. URL contenuti in oggetti JSON dentro gli script.
-    for script in soup.find_all("script"):
-        script_text = script.string or script.get_text(
-            " ",
-            strip=False,
-        )
+    # Second source: product URLs embedded in the returned HTML/JSON.
+    decoded = (
+        response.text
+        .replace("\\/", "/")
+        .replace("\\u002F", "/")
+    )
 
-        if not script_text:
-            continue
+    for match in re.finditer(
+        r'https?://(?:www\.)?sabina\.com/'
+        r'(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
 
-        for match in re.finditer(
-            r'(?:"url"|"link"|"href"|"product_url")'
-            r'\s*:\s*"([^"]+)"',
-            script_text,
-            re.I,
-        ):
-            add(match.group(1))
-
-    return links
-
-
-
-def _extract_search_engine_urls(text, query):
-    soup = BeautifulSoup(text or "", "html.parser")
-    found, seen = [], set()
-    tokens = [t for t in query_tokens(query) if len(t) > 1 and not t.isdigit()]
-    for anchor in soup.find_all("a", href=True):
-        href = str(anchor.get("href") or "")
-        candidate = href
-        parsed = urlparse(href)
-        params = parse_qs(parsed.query)
-        for key in ("url", "q", "uddg"):
-            if params.get(key):
-                candidate = unquote(params[key][0])
-                break
-        url = normalise_url(candidate, BASE_URL)
-        if not url or not is_product_url(url):
-            continue
-        url_hay = norm(url.replace("-", " "))
-        text_hay = norm(clean(anchor.get_text(" ", strip=True)).replace("-", " "))
-        if not tokens or not (all(t in url_hay for t in tokens) or (len(text_hay) <= 500 and all(t in text_hay for t in tokens))):
-            continue
-        if url in seen:
-            continue
-        seen.add(url)
-        found.append(url)
-        if len(found) >= MAX_EXTERNAL_RESULTS:
-            break
-    return found
-
-
-def _discover_from_external_search(session, query):
-    q = quote_plus(f"site:sabina.com {query}")
-    endpoints = [
-        f"https://www.google.com/search?q={q}&num=20",
-        f"https://www.bing.com/search?q={q}&count=20",
-        f"https://html.duckduckgo.com/html/?q={q}",
-    ]
-    for endpoint in endpoints:
-        try:
-            response = session.get(endpoint, headers={**HEADERS, "Referer": "https://www.google.com/"}, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        try:
-            if not response.ok:
-                continue
-            urls = _extract_search_engine_urls(response.text, query)
-            if urls:
-                return urls
-        finally:
-            response.close()
-    return []
-
-
-def discover_product_urls(session, query):
-    """Generic, bounded discovery using Sabina's historical working routes."""
-    urls, seen = [], set()
-    q = quote_plus(query)
-    search_urls = [
-        BASE_URL + "/es/buscar?s=" + q,
-        BASE_URL + "/es/buscar?controller=search&s=" + q,
-        BASE_URL + "/es/buscar_old?s=" + q,
-        BASE_URL + "/es/buscar?search_query=" + q,
-        BASE_URL + "/es/buscar_old?search_query=" + q,
-        BASE_URL + "/es/search?s=" + q,
-    ]
-
-    # First-party search routes are tried in order. We stop after the first
-    # route that yields query-relevant product URLs.
-    for search_url in search_urls:
-        try:
-            response = session.get(search_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        except requests.RequestException:
-            continue
-        try:
-            if response.status_code >= 400:
-                continue
-            links = _extract_product_links_from_html(response.text, query)
-            print(
-            json.dumps(
-                {
-                    "sabina_discovery_attempt": {
-                        "request_url": response.request.url
-                        if response.request
-                        else search_url,
-                        "final_url": response.url,
-                        "status_code": response.status_code,
-                        "content_type": response.headers.get(
-                            "content-type",
-                            "",
-                        ),
-                        "html_length": len(response.text or ""),
-                        "link_count": len(links),
-                        "links": links[:20],
-                    }
-                },
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
-
-        finally:
-            response.close()
-        for link in links:
-            if link not in seen:
-                seen.add(link)
-                urls.append(link)
-                if len(urls) >= MAX_CANDIDATES:
-                    return urls[:MAX_CANDIDATES]
-        if urls:
-            break
-
-    # Public-index fallback: generic and bounded, never product-specific.
-    if not urls:
-        for link in _discover_from_external_search(session, query):
-            if link not in seen:
-                seen.add(link)
-                urls.append(link)
-                if len(urls) >= MAX_CANDIDATES:
-                    return urls[:MAX_CANDIDATES]
-
-    # Historical AJAX fallback.
-    ajax_endpoints = [
-        BASE_URL + "/es/module/ec_customization/ajax",
-        BASE_URL + "/es/modules/ec_customization/ajax",
-        BASE_URL + "/modules/ecelastic/ajax.php",
-    ]
-    payloads = [
-        {"s": query, "query": query, "search_query": query},
-        {"q": query, "query": query, "search_query": query},
-    ]
-    for endpoint in ajax_endpoints:
-        for payload in payloads:
-            try:
-                response = session.get(endpoint, params=payload, headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"}, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            try:
-                if response.status_code >= 400:
-                    continue
-                links = _extract_product_links_from_html(response.text, query)
-            finally:
-                response.close()
-            for link in links:
-                if link not in seen:
-                    seen.add(link)
-                    urls.append(link)
-                    if len(urls) >= MAX_CANDIDATES:
-                        return urls[:MAX_CANDIDATES]
+    for match in re.finditer(
+        r'/(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
 
     return urls[:MAX_CANDIDATES]
+
 
 def _offer_list(product):
     offers = product.get("offers") if isinstance(product, dict) else None
@@ -1424,28 +1231,25 @@ def search(query):
         return []
 
     session = requests.Session()
-    session.headers.update(HEADERS)
 
     try:
-        # Historical Sabina behavior: establish the storefront session and
-        # locale before attempting any search/AJAX discovery. This is part of
-        # the generic site protocol, not a product-specific workaround.
-        try:
-            warmup = session.get(
-                BASE_URL + "/es/",
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            warmup = None
-        finally:
-            if warmup is not None:
-                warmup.close()
-
         candidate_urls = discover_product_urls(
             session,
             query,
+        )
+
+        print(
+            json.dumps(
+                {
+                    "sabina_search_diagnostic": {
+                        "query": query,
+                        "candidate_count": len(candidate_urls),
+                        "candidate_urls": candidate_urls[:50],
+                    }
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
         )
 
         results = []
@@ -1495,26 +1299,12 @@ def search(query):
 
 
 def search_stream(query, emit=None):
-    """Current ScentHunter scraper contract."""
-    try:
-        rows = search(query)
-        if callable(emit):
-            for row in rows:
-                emit(row)
-        return {
-            "status": "success",
-            "verified": True,
-            "results": rows,
-            "details": {"discovered": len(rows)},
-        }
-    except requests.Timeout as exc:
-        return {"status": "timeout", "verified": False, "results": [], "error": str(exc)}
-    except requests.ConnectionError as exc:
-        return {"status": "unavailable", "verified": False, "results": [], "error": str(exc)}
-    except requests.RequestException as exc:
-        return {"status": "error", "verified": False, "results": [], "error": str(exc)}
-    except Exception as exc:
-        return {"status": "error", "verified": False, "results": [], "error": str(exc)}
+    rows = search(query)
+    if callable(emit):
+        for row in rows:
+            emit(row)
+        return None
+    return iter(rows)
 
 
 # Compatibility with the generic main.py interface.
