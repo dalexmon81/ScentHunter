@@ -52,6 +52,17 @@ DELOOX_HOSTS = {
     "deloox.es", "www.deloox.es",
 }
 
+# Discovery state is diagnostic/contract state only. It never decides identity.
+_LAST_DISCOVERY_STATE = {
+    "search_pages_ok": 0,
+    "search_pages_failed": 0,
+    "search_verified": False,
+    "category_verified": False,
+    "sitemap_verified": False,
+    "technical_failure": False,
+}
+
+
 
 def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
@@ -649,97 +660,65 @@ def _candidate_category_urls(html, query, base_url=None):
 
 
 def _discover_from_search(session, query):
-    """Discover product URLs and store category URLs from Deloox search.
+    """Primary Deloox discovery: use the retailer search surface first.
 
-    Important: a non-empty search result is NOT considered complete.  Search
-    pages may expose only one variant while linking to a category/family page
-    containing the other variants.  We therefore collect both product and
-    relevant category URLs and let the next stage inspect those pages.
+    This preserves the proven Deloox mechanism: /chercher.html?q=... with
+    bounded pagination.  Candidate extraction is generic and scans the full
+    returned HTML, so unrelated links appearing before the real product do not
+    consume the candidate budget.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     query = clean(query)
     if not query:
         return []
 
-    routes = (
-        "/chercher.html", "/zoeken.html", "/search.html", "/search",
-        "/en/search.html", "/en/search", "/fr/search.html", "/fr/search",
-        "/nl/search.html", "/nl/search",
-    )
-    params = ("q", "query", "search", "searchTerm", "keyword")
-    jobs = []
-    seen_jobs = set()
+    candidates = {}
+    successful_pages = 0
+    failed_pages = 0
+    encoded = quote_plus(query)
 
-    for base in DELOOX_BASE_URLS:
-        for route in routes:
-            for param in params:
-                endpoint = base + route + "?" + param + "=" + quote_plus(query)
-                if endpoint not in seen_jobs:
-                    seen_jobs.add(endpoint)
-                    jobs.append(endpoint)
-
-    jobs = jobs[:75]
-
-    def probe(endpoint):
+    for page_number in range(1, 11):
+        endpoint = (
+            f"{BASE_URL}/chercher.html?q={encoded}"
+            if page_number == 1
+            else f"{BASE_URL}/chercher.html?q={encoded}&page={page_number}"
+        )
         try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.Timeout:
+            failed_pages += 1
+            continue
         except requests.RequestException:
-            return [], []
-        if r.status_code >= 400:
-            return [], []
+            failed_pages += 1
+            continue
+
+        if r.status_code >= 400 or not r.text:
+            failed_pages += 1
+            continue
+
+        successful_pages += 1
         base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        products = _candidate_product_urls(r.text, query, base_url=base, accept_all_products=True)
-        categories = _candidate_category_urls(r.text, query, base_url=base)
-        return products, categories
+        found = _candidate_product_urls(
+            r.text,
+            query,
+            discovery_query=query,
+            accept_all_products=True,
+            base_url=base,
+        )
 
-    products = []
-    categories = []
-    seen_products = set()
-    seen_categories = set()
+        for url in found:
+            candidates[url] = True
 
-    with ThreadPoolExecutor(max_workers=12) as pool:
-        futures = [pool.submit(probe, endpoint) for endpoint in jobs]
-        for future in as_completed(futures):
-            try:
-                found_products, found_categories = future.result()
-            except Exception:
-                continue
-            for url in found_products:
-                if url not in seen_products:
-                    seen_products.add(url)
-                    products.append(url)
-            for url in found_categories:
-                if url not in seen_categories:
-                    seen_categories.add(url)
-                    categories.append(url)
+    global _LAST_DISCOVERY_STATE
+    _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
+    _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
+    _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
-    # Follow the store's own relevant category/family links.  This is the
-    # generic path that allows queries such as a product variant to discover
-    # sibling variants that are not all exposed by the search result cards.
-    def fetch_category(url):
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        except requests.RequestException:
-            return []
-        if r.status_code >= 400:
-            return []
-        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        return _candidate_product_urls(r.text, query, base_url=base, accept_all_products=True)
-
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = [pool.submit(fetch_category, url) for url in categories[:16]]
-        for future in as_completed(futures):
-            try:
-                found = future.result()
-            except Exception:
-                continue
-            for url in found:
-                if url not in seen_products:
-                    seen_products.add(url)
-                    products.append(url)
-
-    return products[:MAX_CANDIDATES]
+    return list(candidates.keys())[:MAX_CANDIDATES]
 
 def _category_product_line_links(html, query):
     """Extract generic category/filter links whose visible text matches query.
@@ -822,32 +801,77 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery: search first, bounded fallbacks second."""
+    """Generic deterministic discovery with search as the primary surface.
+
+    Order is deliberate:
+      1. Deloox public search + pagination
+      2. retailer category/filter surfaces
+      3. product sitemap fallback
+
+    No product, brand, SKU, price or variant is hardcoded here.
+    """
+    global _LAST_DISCOVERY_STATE
+    _LAST_DISCOVERY_STATE = {
+        "search_pages_ok": 0,
+        "search_pages_failed": 0,
+        "search_verified": False,
+        "category_verified": False,
+        "sitemap_verified": False,
+        "technical_failure": False,
+    }
+
     q = clean(q)
     if not q:
         return []
 
-    # Every discovery surface is complementary.  A search hit is not proof
-    # that the search page is exhaustive, so never stop merely because one
-    # surface returned candidates.
     candidates = []
     seen = set()
 
-    for source in (
-        _discover_from_search(session, q),
-        _discover_from_categories(session, q, MAX_CANDIDATES),
-        _sitemap_product_urls(session, q, max_sitemaps=48, max_urls=MAX_CANDIDATES),
-    ):
-        for url in source:
-            if url in seen:
-                continue
+    search_candidates = _discover_from_search(session, q)
+    for url in search_candidates:
+        if url not in seen:
+            seen.add(url)
+            candidates.append(url)
+
+    # Search is authoritative for absence only when the search surface itself
+    # was successfully reached.  Fallback discovery remains additive because
+    # a search page can legitimately omit a product.
+    category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
+    if category_candidates:
+        _LAST_DISCOVERY_STATE["category_verified"] = True
+    for url in category_candidates:
+        if url not in seen:
             seen.add(url)
             candidates.append(url)
             if len(candidates) >= MAX_CANDIDATES:
-                return candidates
+                break
 
-    return candidates
+    if len(candidates) < MAX_CANDIDATES:
+        sitemap_candidates = _sitemap_product_urls(
+            session,
+            q,
+            max_sitemaps=48,
+            max_urls=MAX_CANDIDATES - len(candidates),
+        )
+        if sitemap_candidates:
+            _LAST_DISCOVERY_STATE["sitemap_verified"] = True
+        for url in sitemap_candidates:
+            if url not in seen:
+                seen.add(url)
+                candidates.append(url)
+                if len(candidates) >= MAX_CANDIDATES:
+                    break
 
+    if not candidates and not any(
+        (
+            _LAST_DISCOVERY_STATE["search_verified"],
+            _LAST_DISCOVERY_STATE["category_verified"],
+            _LAST_DISCOVERY_STATE["sitemap_verified"],
+        )
+    ):
+        _LAST_DISCOVERY_STATE["technical_failure"] = True
+
+    return candidates[:MAX_CANDIDATES]
 
 def diagnose_search(session, query):
     """Deep Deloox discovery diagnostic; does not change normal search."""
@@ -1048,34 +1072,46 @@ def search(query):
 
 
 def search_stream(query, emit=None):
-    """Common ScentHunter scraper contract.
-
-    The scraper returns normalized retailer rows. Canonical identity, family,
-    variant and canonical format remain outside this adapter.
-    """
+    """ScentHunter scraper contract with explicit discovery state."""
     query = clean(query)
     if not query:
         return {
-            "status": "success", "verified": True, "results": [],
-            "error": None, "details": {"reason": "empty_query"},
+            "status": "success",
+            "verified": True,
+            "results": [],
+            "error": None,
+            "details": {"reason": "empty_query"},
         }
 
     try:
         results = search(query)
     except requests.Timeout as exc:
-        return {"status":"timeout", "verified":False, "results":[],
-                "error":str(exc), "details":{}}
+        return {"status": "timeout", "verified": False, "results": [],
+                "error": str(exc), "details": {}}
     except requests.ConnectionError as exc:
-        return {"status":"unavailable", "verified":False, "results":[],
-                "error":str(exc), "details":{}}
+        return {"status": "unavailable", "verified": False, "results": [],
+                "error": str(exc), "details": {}}
     except requests.RequestException as exc:
-        return {"status":"error", "verified":False, "results":[],
-                "error":str(exc), "details":{}}
+        return {"status": "error", "verified": False, "results": [],
+                "error": str(exc), "details": {}}
     except Exception as exc:
-        return {"status":"error", "verified":False, "results":[],
-                "error":str(exc), "details":{"exception":type(exc).__name__}}
+        return {"status": "error", "verified": False, "results": [],
+                "error": str(exc),
+                "details": {"exception": type(exc).__name__}}
 
     results = results if isinstance(results, list) else []
+    details = dict(_LAST_DISCOVERY_STATE)
+    details["count"] = len(results)
+
+    if _LAST_DISCOVERY_STATE.get("technical_failure"):
+        return {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "error": "discovery_unavailable",
+            "details": details,
+        }
+
     if callable(emit):
         for row in results:
             if isinstance(row, dict):
@@ -1086,7 +1122,7 @@ def search_stream(query, emit=None):
         "verified": True,
         "results": results,
         "error": None,
-        "details": {"count": len(results)},
+        "details": details,
     }
 
 
