@@ -1,7 +1,7 @@
 import json
 import re
 import unicodedata
-from urllib.parse import urljoin, urlparse, quote_plus, parse_qs, unquote
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,13 +28,7 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/"
-    r"(?!content(?:/|$)|ricerca(?:/|$)|ricerca_old(?:/|$)|"
-    r"buscar(?:/|$)|buscar_old(?:/|$)|search(?:/|$)|"
-    r"marchi(?:/|$)|negozi(?:/|$)|contatto(?:/|$)|faq(?:/|$)|"
-    r"carrello(?:/|$)|ordine(?:/|$)|stato-ordine(?:/|$)|"
-    r"il-mio-conto(?:/|$)|module(?:/|$)|modules(?:/|$))"
-    r"[^/?#]+/\d+-[^/?#]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
     re.I,
 )
 
@@ -686,6 +680,247 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
+
+def _diagnostic_url_decision(raw, base_url, response_url):
+    """Return normalized URL plus the exact product-regex decision."""
+    absolute = normalise_url(raw, response_url or base_url)
+    if not absolute:
+        return {
+            "raw": clean(raw),
+            "normalized": None,
+            "is_product": False,
+            "reason": "invalid_or_external_url",
+        }
+
+    path = urlparse(absolute).path
+    matched = bool(PRODUCT_PATH_RE.match(path))
+    return {
+        "raw": clean(raw),
+        "normalized": absolute,
+        "is_product": matched,
+        "reason": "product_regex_match" if matched else "product_regex_reject",
+    }
+
+
+def _diagnostic_search_request(session, url, params, label):
+    """Inspect one first-party search route without changing scraper output."""
+    result = {
+        "label": label,
+        "requested_url": None,
+        "final_url": None,
+        "status_code": None,
+        "content_type": None,
+        "response_length": 0,
+        "title": None,
+        "anchor_count": 0,
+        "anchor_samples": [],
+        "sabina_url_samples": [],
+        "product_url_samples": [],
+        "product_url_rejections": [],
+        "exception": None,
+    }
+
+    try:
+        prepared = requests.Request(
+            "GET",
+            url,
+            params=params,
+            headers=HEADERS,
+        ).prepare()
+        result["requested_url"] = prepared.url
+    except Exception as exc:
+        result["exception"] = f"request_prepare: {type(exc).__name__}: {exc}"
+        return result
+
+    try:
+        response = session.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        result["final_url"] = response.url
+        result["status_code"] = response.status_code
+        result["content_type"] = response.headers.get("Content-Type", "")
+        result["response_length"] = len(response.text or "")
+
+        if response.status_code >= 400:
+            return result
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        title_node = soup.find("title")
+        result["title"] = (
+            clean(title_node.get_text(" ", strip=True))
+            if title_node else None
+        )
+
+        anchors = soup.find_all("a", href=True)
+        result["anchor_count"] = len(anchors)
+
+        for anchor in anchors[:30]:
+            result["anchor_samples"].append({
+                "text": clean(anchor.get_text(" ", strip=True))[:160],
+                "href": clean(anchor.get("href"))[:500],
+            })
+
+        decoded = (
+            response.text
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+        )
+
+        raw_urls = []
+
+        # Absolute Sabina URLs.
+        for match in re.finditer(
+            r'https?://(?:www\.)?sabina\.com/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            raw_urls.append(match.group(0))
+
+        # Root-relative Sabina URLs.
+        for match in re.finditer(
+            r'/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            raw_urls.append(match.group(0))
+
+        seen_raw = set()
+        decisions = []
+
+        for raw in raw_urls:
+            raw_clean = clean(raw)
+            if not raw_clean or raw_clean in seen_raw:
+                continue
+            seen_raw.add(raw_clean)
+
+            decision = _diagnostic_url_decision(
+                raw_clean,
+                BASE_URL,
+                response.url,
+            )
+            decisions.append(decision)
+
+        result["sabina_url_samples"] = [
+            d["normalized"] or d["raw"]
+            for d in decisions[:50]
+        ]
+
+        result["product_url_samples"] = [
+            d["normalized"]
+            for d in decisions
+            if d["is_product"]
+        ][:50]
+
+        result["product_url_rejections"] = [
+            {
+                "raw": d["raw"],
+                "normalized": d["normalized"],
+            }
+            for d in decisions
+            if not d["is_product"]
+        ][:50]
+
+        return result
+
+    except requests.RequestException as exc:
+        result["exception"] = f"{type(exc).__name__}: {exc}"
+        return result
+    except Exception as exc:
+        result["exception"] = f"{type(exc).__name__}: {exc}"
+        return result
+    finally:
+        try:
+            response.close()
+        except Exception:
+            pass
+
+
+def diagnostic_discover_product_urls(session, query):
+    """
+    Diagnostic-only discovery.
+
+    It does NOT alter the production discovery function. It probes the
+    first-party Sabina search routes used by the known 20-Sep baseline and
+    reports exactly what each route returns.
+    """
+    routes = (
+        ("search_query", SEARCH_URL, {"search_query": query}),
+        ("s", SEARCH_URL, {"s": query}),
+        ("controller_search", SEARCH_URL, {
+            "controller": "search",
+            "s": query,
+        }),
+        ("buscar_old_s", BASE_URL + "/es/buscar_old", {"s": query}),
+        ("buscar_old_search_query", BASE_URL + "/es/buscar_old", {
+            "search_query": query,
+        }),
+        ("search_s", BASE_URL + "/es/search", {"s": query}),
+    )
+
+    report = {
+        "query": query,
+        "routes": [],
+    }
+
+    for label, url, params in routes:
+        report["routes"].append(
+            _diagnostic_search_request(
+                session,
+                url,
+                params,
+                label,
+            )
+        )
+
+    # Also inspect the storefront warm-up separately.
+    warmup = {
+        "label": "warmup",
+        "requested_url": BASE_URL + "/es/",
+        "final_url": None,
+        "status_code": None,
+        "content_type": None,
+        "response_length": 0,
+        "title": None,
+        "exception": None,
+    }
+
+    try:
+        response = session.get(
+            BASE_URL + "/es/",
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        warmup["final_url"] = response.url
+        warmup["status_code"] = response.status_code
+        warmup["content_type"] = response.headers.get("Content-Type", "")
+        warmup["response_length"] = len(response.text or "")
+        soup = BeautifulSoup(response.text, "html.parser")
+        title_node = soup.find("title")
+        warmup["title"] = (
+            clean(title_node.get_text(" ", strip=True))
+            if title_node else None
+        )
+    except requests.RequestException as exc:
+        warmup["exception"] = f"{type(exc).__name__}: {exc}"
+    except Exception as exc:
+        warmup["exception"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        try:
+            response.close()
+        except Exception:
+            pass
+
+    report["warmup"] = warmup
+    return report
+
+
 def discover_product_urls(session, query):
     """
     The only primary discovery path used by the real scraper.
@@ -1233,7 +1468,7 @@ def search(query):
     session = requests.Session()
 
     try:
-        candidate_urls = discover_product_urls(
+        diagnostic = diagnostic_discover_product_urls(
             session,
             query,
         )
@@ -1241,23 +1476,59 @@ def search(query):
         print(
             json.dumps(
                 {
-                    "sabina_search_diagnostic": {
-                        "query": query,
-                        "candidate_count": len(candidate_urls),
-                        "candidate_urls": candidate_urls[:50],
-                    }
+                    "sabina_discovery_diagnostic": diagnostic,
                 },
                 ensure_ascii=False,
             ),
             flush=True,
         )
 
-        results = []
-        seen = set()
+        # IMPORTANT:
+        # After diagnostics, run the exact production search logic that was
+        # present in the supplied base file. The diagnostic does not become a
+        # fallback and does not change production discovery behavior.
+        return _production_search(query, session)
 
-        for url in candidate_urls:
+    finally:
+        session.close()
+
+
+def _production_search(query, session):
+    candidate_urls = discover_product_urls(
+        session,
+        query,
+    )
+
+    print(
+        json.dumps(
+            {
+                "sabina_search_diagnostic": {
+                    "query": query,
+                    "candidate_count": len(candidate_urls),
+                    "candidate_urls": candidate_urls[:50],
+                }
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+    results = []
+    seen = set()
+
+    for url in candidate_urls:
+        try:
+            product = extract_product_page(
+                session,
+                url,
+                query,
+            )
+        except Exception:
+            product = None
+
+        if not product:
             try:
-                product = extract_product_page(
+                product = _fallback_extract_product_page(
                     session,
                     url,
                     query,
@@ -1265,37 +1536,24 @@ def search(query):
             except Exception:
                 product = None
 
-            if not product:
-                try:
-                    product = _fallback_extract_product_page(
-                        session,
-                        url,
-                        query,
-                    )
-                except Exception:
-                    product = None
+        if not product:
+            continue
 
-            if not product:
-                continue
+        product_id = (
+            product.get("identity", {})
+            .get("store_product_id", {})
+            .get("value")
+        )
 
-            product_id = (
-                product.get("identity", {})
-                .get("store_product_id", {})
-                .get("value")
-            )
+        key = product_id or product.get("url")
 
-            key = product_id or product.get("url")
+        if key in seen:
+            continue
 
-            if key in seen:
-                continue
+        seen.add(key)
+        results.append(product)
 
-            seen.add(key)
-            results.append(product)
-
-        return results
-
-    finally:
-        session.close()
+    return results
 
 
 def search_stream(query, emit=None):
@@ -1321,13 +1579,34 @@ if __name__ == "__main__":
         "query",
         help="Search query supplied at runtime",
     )
+    parser.add_argument(
+        "--diagnostic-only",
+        action="store_true",
+        help="Run Sabina discovery diagnostics without product extraction.",
+    )
 
     args = parser.parse_args()
 
-    print(
-        json.dumps(
-            search(args.query),
-            ensure_ascii=False,
-            indent=2,
+    if args.diagnostic_only:
+        session = requests.Session()
+        try:
+            print(
+                json.dumps(
+                    diagnostic_discover_product_urls(
+                        session,
+                        clean(args.query),
+                    ),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        finally:
+            session.close()
+    else:
+        print(
+            json.dumps(
+                search(args.query),
+                ensure_ascii=False,
+                indent=2,
+            )
         )
-    )
