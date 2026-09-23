@@ -32,7 +32,8 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt)/"
+    r"^/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/"
+    r"[^/]+/(\d+)-[^/]+\.html$"
     r"(?!content|ricerca|ricerca_old|buscar|buscar_old|search|"
     r"marchi|negozi|contatto|faq|carrello|ordine|stato-ordine|"
     r"il-mio-conto|module|modules)"
