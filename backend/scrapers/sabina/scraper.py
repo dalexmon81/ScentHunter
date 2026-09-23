@@ -7,11 +7,15 @@ import requests
 from bs4 import BeautifulSoup
 
 
-STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
-SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = (2.5, 5.0)
-MAX_CANDIDATES = 20
+HOME_URL = BASE_URL + "/es/"
+SEARCH_URLS = (
+    BASE_URL + "/es/buscar",
+    BASE_URL + "/es/search",
+)
+TIMEOUT = 15
+MAX_CANDIDATES = 50
+
 
 HEADERS = {
     "User-Agent": (
@@ -684,50 +688,125 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-def _extract_product_links_from_html(text, query):
-    """Generic Sabina discovery from a search/AJAX HTML response."""
-    soup = BeautifulSoup(text or "", "html.parser")
-    found = []
+def _extract_product_links_from_html(html, base_url):
+    soup = BeautifulSoup(
+        html or "",
+        "html.parser",
+    )
+
+    links = []
     seen = set()
-    tokens = [t for t in query_tokens(query) if len(t) > 1 and not t.isdigit()]
 
-    for anchor in soup.find_all("a", href=True):
-        url = normalise_url(anchor.get("href"), BASE_URL)
-        if not url or not is_product_url(url):
-            continue
+    def add(raw):
+        if not raw:
+            return
 
-        url_hay = norm(url.replace("-", " "))
-        url_match = bool(tokens) and all(token in url_hay for token in tokens)
+        if isinstance(raw, list):
+            for item in raw:
+                add(item)
+            return
 
-        text_candidates = [
-            clean(anchor.get("title")),
-            clean(anchor.get("aria-label")),
-            clean(anchor.get_text(" ", strip=True)),
-        ]
-        container = anchor
-        for _ in range(4):
-            container = getattr(container, "parent", None)
-            if not container:
-                break
-            marker = (" ".join(container.get("class", [])) + " " + str(container.get("id", ""))).lower()
-            container_text = clean(container.get_text(" ", strip=True))
-            if len(container_text) <= 700 and any(x in marker for x in ("product", "item", "card", "result", "ajax_block")):
-                text_candidates.append(container_text)
-                break
+        if isinstance(raw, dict):
+            raw = (
+                raw.get("url")
+                or raw.get("link")
+                or raw.get("href")
+                or raw.get("product_url")
+            )
 
-        text_match = any(
-            candidate and len(candidate) <= 700 and all(token in norm(candidate) for token in tokens)
-            for candidate in text_candidates
+        if not isinstance(raw, str):
+            return
+
+        raw = (
+            raw.replace("\\/", "/")
+            .replace("\\u002F", "/")
+            .replace("&amp;", "&")
+            .strip()
         )
-        if not tokens or not (url_match or text_match):
+
+        absolute = normalise_url(
+            raw,
+            base_url,
+        )
+
+        if not absolute:
+            return
+
+        if not is_product_url(absolute):
+            return
+
+        if absolute in seen:
+            return
+
+        seen.add(absolute)
+        links.append(absolute)
+
+    # 1. Link normali delle product card.
+    for node in soup.find_all("a"):
+        for attribute in (
+            "href",
+            "data-url",
+            "data-link",
+            "data-product-url",
+            "data-href",
+        ):
+            add(node.get(attribute))
+
+    # 2. URL presenti in altri attributi HTML.
+    for node in soup.find_all(True):
+        for value in node.attrs.values():
+            if not isinstance(value, str):
+                continue
+
+            for match in re.finditer(
+                r'(?:https?://(?:www\.)?sabina\.com)?'
+                r'/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
+                r'[^"\'<>\s\\]+',
+                value,
+                re.I,
+            ):
+                add(match.group(0))
+
+    # 3. URL assoluti o relativi presenti nell’HTML/JSON/JavaScript.
+    decoded = (
+        html or ""
+    ).replace("\\/", "/").replace("\\u002F", "/")
+
+    for pattern in (
+        r'https?://(?:www\.)?sabina\.com/'
+        r'(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
+        r'[^"\'<>\s\\]+',
+
+        r'/(?:es|it|fr|en|de|nl|pt|da|pl|sv|fi|no|ro|cs)/'
+        r'[^"\'<>\s\\]+',
+    ):
+        for match in re.finditer(
+            pattern,
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+    # 4. URL contenuti in oggetti JSON dentro gli script.
+    for script in soup.find_all("script"):
+        script_text = script.string or script.get_text(
+            " ",
+            strip=False,
+        )
+
+        if not script_text:
             continue
-        if url in seen:
-            continue
-        seen.add(url)
-        found.append(url)
-        if len(found) >= MAX_CANDIDATES:
-            break
-    return found
+
+        for match in re.finditer(
+            r'(?:"url"|"link"|"href"|"product_url")'
+            r'\s*:\s*"([^"]+)"',
+            script_text,
+            re.I,
+        ):
+            add(match.group(1))
+
+    return links
+
 
 
 def _extract_search_engine_urls(text, query):
