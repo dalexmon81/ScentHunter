@@ -77,9 +77,28 @@ def tokens(v):
     return {x for x in norm(v).split() if len(x) > 1}
 
 
+def compact_norm(v):
+    """Normalize text again without word separators for discovery matching.
+
+    Retailers often store the same product line with different separators:
+    ``Night Out``, ``Night-Out`` or ``NightOut``.  This is a generic lexical
+    normalization only; it does not identify a product or variant.
+    """
+    return re.sub(r"[^a-z0-9]+", "", clean(v).lower())
+
+
 def matches(text, q):
     q_tokens = tokens(q)
-    return bool(q_tokens) and q_tokens.issubset(tokens(text))
+    if not q_tokens:
+        return False
+    if q_tokens.issubset(tokens(text)):
+        return True
+
+    # Also accept a query written as one concatenated token when the retailer
+    # writes the same words separately (e.g. ``nightout`` vs ``Night Out``).
+    q_compact = compact_norm(q)
+    text_compact = compact_norm(text)
+    return bool(q_compact) and q_compact in text_compact
 
 
 def size_ml(*values):
@@ -374,6 +393,7 @@ def _candidate_product_urls(
         if x
     ]
     query_norm = " ".join(query_tokens)
+    query_compact = compact_norm(query)
 
     candidates = {}
     order = 0
@@ -387,6 +407,8 @@ def _candidate_product_urls(
 
         if query_norm and query_norm in combined:
             score += 100
+        if query_compact and query_compact in compact_norm(f"{context_text} {path_text}"):
+            score += 90
         for tok in query_tokens:
             if tok in context_text:
                 score += 20
