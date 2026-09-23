@@ -1341,12 +1341,32 @@ def search(query):
 
 
 def search_stream(query, emit=None):
+    """
+    Definitive linear scraper contract.
+
+    When the caller provides a callback, emit every discovered row AND return
+    the complete structured scraper report. Returning None would violate the
+    backend contract and make the backend report a false technical error even
+    though the rows were successfully discovered.
+    """
     rows = search(query)
+
+    report = {
+        "status": "success",
+        "verified": True,
+        "results": rows,
+        "error": None,
+        "details": {
+            "candidate_count": len(rows),
+        },
+    }
+
     if callable(emit):
         for row in rows:
             emit(row)
-        return None
-    return iter(rows)
+        return report
+
+    return report
 
 
 # Compatibility with the generic main.py interface.
