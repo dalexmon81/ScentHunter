@@ -816,24 +816,10 @@ function getSizeGroups(g){
   });
 }
 
-let cardPointerStartX=0,cardPointerStartY=0,cardPointerMoved=false,cardPointerActive=false;
-document.addEventListener("pointerdown",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  cardPointerActive=true;cardPointerMoved=false;
-  cardPointerStartX=e.clientX;cardPointerStartY=e.clientY;
-},{passive:true,capture:true});
-document.addEventListener("pointerup",e=>{
-  if(!cardPointerActive)return;
-  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
-  cardPointerActive=false;
-},{passive:true,capture:true});
-document.addEventListener("click",e=>{
-  if(!cardPointerMoved)return;
-  if(e.target.closest(".product-choice")){e.preventDefault();e.stopImmediatePropagation();}
-  cardPointerMoved=false;
-},{capture:true});
-
+// Le schede .product-choice usano il normale click/tap del browser.
+// Il precedente intercettore globale pointerdown/pointerup poteva
+// sopprimere il tap su iPhone quando Safari rilevava un piccolo movimento.
+// Lo scroll verticale è già gestito da touch-action: pan-y nel CSS.
 function productGroupKey(g){return String(g?.catalog_id||"").trim()}
 function clearOpenProduct(){currentOpenProductKey="";currentOpenSizeKey=null}
 
@@ -1015,15 +1001,19 @@ async function searchPerfume(){
       if(currentOpenProductKey){
         const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
         if(gi>=0){
-          // The search is progressive: keep the detail page open and
-          // refresh it on every poll, not only when the whole job finishes.
-          // This lets newly responding stores appear live in the open card.
-          if(currentOpenSizeKey!==null){
-            const selected=getSizeGroups(groups[gi]).find(s=>String(s.size)===String(currentOpenSizeKey));
-            if(selected) openSize(gi,currentOpenSizeKey);
-            else if(final) openProduct(gi);
-          }else{
-            openProduct(gi);
+          // Do not replace the open detail DOM while the search is still
+          // receiving progressive results. On iPhone/Safari a polling update
+          // could replace the format card between touch and click, making
+          // the format appear non-clickable. Refresh the open detail only
+          // after the final payload is available.
+          if(final){
+            if(currentOpenSizeKey!==null){
+              const selected=getSizeGroups(groups[gi]).find(s=>String(s.size)===String(currentOpenSizeKey));
+              if(selected) openSize(gi,currentOpenSizeKey);
+              else openProduct(gi);
+            }else{
+              openProduct(gi);
+            }
           }
         }else if(final){
           // The product disappeared from the final resolved payload; return
