@@ -861,7 +861,7 @@ function renderFormatChoiceCard(gi,g,sizes){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
-    return `<div class="product-choice format-choice" onclick="openSize(${gi},${JSON.stringify(String(size))})"><div class="format-icon">🧴</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
+    return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">🧴</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
   }).join("")}</article>`;
 }
 
