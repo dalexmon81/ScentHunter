@@ -32,19 +32,17 @@ DELOOX_BASE_URLS = (
     "https://www.deloox.lu",
     "https://www.deloox.es",
 )
-TIMEOUT = (2.5, 6.0)
-MAX_CANDIDATES = 48
-MAX_RESULTS = 40
+TIMEOUT = (3.5, 8.0)
+MAX_CANDIDATES = 80
+MAX_RESULTS = 80
 MAX_SEARCH_PAGES = 3
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "fr-BE,fr;q=0.9,en;q=0.8,nl;q=0.7",
-    "Cache-Control": "no-cache",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
 }
 DELOOX_HOSTS = {
     "deloox.lu", "www.deloox.lu",
@@ -1047,6 +1045,49 @@ def search(query):
         return results[:MAX_RESULTS]
     finally:
         session.close()
+
+
+def search_stream(query, emit=None):
+    """Common ScentHunter scraper contract.
+
+    The scraper returns normalized retailer rows. Canonical identity, family,
+    variant and canonical format remain outside this adapter.
+    """
+    query = clean(query)
+    if not query:
+        return {
+            "status": "success", "verified": True, "results": [],
+            "error": None, "details": {"reason": "empty_query"},
+        }
+
+    try:
+        results = search(query)
+    except requests.Timeout as exc:
+        return {"status":"timeout", "verified":False, "results":[],
+                "error":str(exc), "details":{}}
+    except requests.ConnectionError as exc:
+        return {"status":"unavailable", "verified":False, "results":[],
+                "error":str(exc), "details":{}}
+    except requests.RequestException as exc:
+        return {"status":"error", "verified":False, "results":[],
+                "error":str(exc), "details":{}}
+    except Exception as exc:
+        return {"status":"error", "verified":False, "results":[],
+                "error":str(exc), "details":{"exception":type(exc).__name__}}
+
+    results = results if isinstance(results, list) else []
+    if callable(emit):
+        for row in results:
+            if isinstance(row, dict):
+                emit(row)
+
+    return {
+        "status": "success",
+        "verified": True,
+        "results": results,
+        "error": None,
+        "details": {"count": len(results)},
+    }
 
 
 def scrape(query):
