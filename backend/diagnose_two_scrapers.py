@@ -745,3 +745,83 @@ def diagnose_deloox_compare(
 
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
+
+
+@router.get("/diagnose-deloox-micro")
+def diagnose_deloox_micro():
+    """Minimal comparative HTTP probe: one Deloox search surface only."""
+    queries = ["Liquid Brun", "Liquid Brun Limited Edition", "9 PM Night Out"]
+    base = "https://www.deloox.be"
+    route = "/chercher.html?q="
+    started = time.monotonic()
+    results = []
+
+    product_re = re.compile(
+        r"(?:https?:)?//(?:www\\.)?deloox\\.(?:be|com|nl|lu|es)"
+        r"/[^\"'<>\\s]+/(?:product|produit|producto|prodotto)/\\d+"
+        r"[^\"'<>\\s]*", re.I)
+    relative_product_re = re.compile(
+        r"(?:href|data-url|data-href|data-link|data-product-url)\\s*=\\s*[\"']"
+        r"([^\"']*(?:/product/|/produit/|/producto/|/prodotto/)[^\"']*)", re.I)
+    category_re = re.compile(
+        r"(?:href|data-url|data-href|data-link)\\s*=\\s*[\"']"
+        r"([^\"']*(?:/category/|/categorie/|/categoria/)[^\"']*)", re.I)
+
+    for query in queries:
+        url = base + route + quote(query, safe="")
+        t0 = time.monotonic()
+        item = {"query": query, "request_url": url}
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=(1.5, 5.0), allow_redirects=True)
+            html = r.text or ""
+            item.update({
+                "status": r.status_code,
+                "final_url": r.url,
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "bytes": len(r.content),
+                "content_type": r.headers.get("content-type"),
+                "server": r.headers.get("server"),
+                "title": (re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S) or [None, None])[1],
+            })
+            tokens = [x for x in re.findall(r"[\w]+", query.lower()) if len(x) >= 3]
+            low = html.lower()
+            item["query_token_presence"] = {tok: (tok in low) for tok in tokens}
+            product_urls = []
+            seen = set()
+            for raw in product_re.findall(html) + relative_product_re.findall(html):
+                absolute = urljoin(r.url, raw)
+                if absolute not in seen:
+                    seen.add(absolute)
+                    product_urls.append(absolute)
+            item["product_url_count"] = len(product_urls)
+            item["product_urls"] = product_urls[:20]
+            category_urls = []
+            seen_cat = set()
+            for raw in category_re.findall(html):
+                absolute = urljoin(r.url, raw)
+                if absolute not in seen_cat:
+                    seen_cat.add(absolute)
+                    category_urls.append(absolute)
+            item["category_url_count"] = len(category_urls)
+            item["category_urls"] = category_urls[:20]
+            snippets = []
+            for tok in tokens[:3]:
+                pos = low.find(tok)
+                if pos >= 0:
+                    snippets.append(html[max(0, pos-180):pos+420])
+            item["snippets"] = snippets[:5]
+        except Exception as exc:
+            item.update({
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+        results.append(item)
+
+    return {
+        "diagnostic": True,
+        "store": "Deloox",
+        "purpose": "minimal same-surface comparison",
+        "surface": base + route + "<query>",
+        "queries": results,
+        "elapsed_sec": round(time.monotonic() - started, 3),
+    }
