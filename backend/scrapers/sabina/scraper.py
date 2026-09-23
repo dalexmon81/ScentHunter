@@ -834,22 +834,160 @@ def _discover_product_urls_from_sitemaps(session, query):
 
 
 def discover_product_urls(session, query):
-    """Generic multi-source discovery: live search first, store sitemap second."""
-    primary = _discover_product_urls_from_search(session, query)
-    if primary:
-        return primary
-    return _discover_product_urls_from_sitemaps(session, query)
+    """
+    Generic first-party discovery.
+
+    Restored from the verified 20-Sep Sabina strategy: the storefront exposed
+    several equivalent search routes, so discovery must not depend on only
+    one endpoint. No product/family/brand-specific URL is used here.
+    """
+    urls = []
+    seen = set()
+
+    q = quote_plus(query)
+
+    search_urls = (
+        SEARCH_URL + "?s=" + q,
+        SEARCH_URL + "?controller=search&s=" + q,
+        BASE_URL + "/es/buscar_old?s=" + q,
+        SEARCH_URL + "?search_query=" + q,
+        BASE_URL + "/es/buscar_old?search_query=" + q,
+        BASE_URL + "/es/search?s=" + q,
+    )
+
+    def add_links(html):
+        links = []
+        soup = BeautifulSoup(html or "", "html.parser")
+
+        for anchor in soup.find_all("a", href=True):
+            href = anchor.get("href") or ""
+            absolute = _clean_product_url(href)
+            if not absolute or absolute in seen:
+                continue
+
+            name = _clean(anchor.get_text(" ", strip=True))
+            title = _clean(anchor.get("title") or "")
+            if not query_matches(f"{name} {title}", absolute, query):
+                continue
+
+            seen.add(absolute)
+            urls.append(absolute)
+            links.append(absolute)
+
+            if len(urls) >= MAX_CANDIDATES:
+                break
+
+        return links
+
+    # Try every generic first-party search route until one actually produces
+    # candidates. This is the key difference from the broken single-route
+    # discovery.
+    for url in search_urls:
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.Timeout:
+            continue
+        except requests.RequestException:
+            continue
+
+        try:
+            if response.status_code >= 400:
+                continue
+            links = add_links(response.text)
+        finally:
+            response.close()
+
+        if len(urls) >= MAX_CANDIDATES or links:
+            break
+
+    # Sitemap discovery remains generic and is useful when the storefront
+    # search does not expose a newly indexed product.
+    if len(urls) < MAX_CANDIDATES:
+        try:
+            for link in _discover_product_urls_from_sitemaps(
+                session,
+                query,
+            ):
+                if link not in seen:
+                    seen.add(link)
+                    urls.append(link)
+                    if len(urls) >= MAX_CANDIDATES:
+                        break
+        except Exception:
+            pass
+
+    # Historical generic AJAX fallback. It only discovers URLs; it does not
+    # assign identity, family, variant, or canonical format.
+    if len(urls) < MAX_CANDIDATES:
+        ajax_endpoints = (
+            BASE_URL + "/es/module/ec_customization/ajax",
+            BASE_URL + "/es/modules/ec_customization/ajax",
+            BASE_URL + "/modules/ecelastic/ajax.php",
+        )
+
+        payloads = (
+            {"s": query, "query": query, "search_query": query},
+            {"q": query, "query": query, "search_query": query},
+        )
+
+        for endpoint in ajax_endpoints:
+            for payload in payloads:
+                try:
+                    response = session.get(
+                        endpoint,
+                        params=payload,
+                        headers={
+                            **HEADERS,
+                            "X-Requested-With": "XMLHttpRequest",
+                        },
+                        timeout=TIMEOUT,
+                        allow_redirects=True,
+                    )
+                except requests.RequestException:
+                    continue
+
+                try:
+                    if response.status_code >= 400:
+                        continue
+                    links = add_links(response.text)
+                finally:
+                    response.close()
+
+                if len(urls) >= MAX_CANDIDATES:
+                    break
+            if len(urls) >= MAX_CANDIDATES:
+                break
+
+    return urls[:MAX_CANDIDATES]
+
 
 
 def search(query):
-    query = clean(query)
-
+    query = _clean(query)
     if not query:
         return []
 
     session = requests.Session()
+    session.headers.update(HEADERS)
 
     try:
+        # Warm-up keeps the same session/cookies used for discovery and fetch.
+        try:
+            response = session.get(
+                BASE_URL + "/es/",
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            response.close()
+        except requests.RequestException:
+            pass
+
         candidate_urls = discover_product_urls(
             session,
             query,
@@ -858,99 +996,128 @@ def search(query):
         results = []
         seen = set()
 
-        for url in candidate_urls:
-            try:
-                product = extract_product_page(
-                    session,
-                    url,
-                    query,
-                )
-            except Exception:
-                product = None
+        # Keep the historical bounded parallel extraction model.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-            if not product:
-                try:
-                    product = _fallback_extract_product_page(
+        if candidate_urls:
+            with ThreadPoolExecutor(
+                max_workers=min(8, len(candidate_urls))
+            ) as pool:
+                futures = {
+                    pool.submit(
+                        extract_product_page,
                         session,
                         url,
                         query,
-                    )
-                except Exception:
-                    product = None
+                    ): url
+                    for url in candidate_urls
+                }
 
-            if not product:
-                continue
+                for future in as_completed(futures):
+                    try:
+                        rows = future.result()
+                    except Exception:
+                        continue
 
-            product_id = (
-                product.get("identity", {})
-                .get("store_product_id", {})
-                .get("value")
-            )
+                    if not rows:
+                        continue
 
-            key = product_id or product.get("url")
+                    for row in rows:
+                        if not isinstance(row, dict):
+                            continue
+                        key = (
+                            row.get("store_product_id")
+                            or row.get("url")
+                        )
+                        key = (
+                            key,
+                            row.get("size_ml"),
+                            row.get("price_num"),
+                            row.get("availability"),
+                        )
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        results.append(row)
 
-            if key in seen:
-                continue
-
-            seen.add(key)
-            results.append(product)
-
-        return results
+        return results[:80]
 
     finally:
         session.close()
 
 
 def search_stream(query, emit=None):
-    """Return the common ScentHunter store contract."""
-    query = clean(query)
-    if not query:
-        return {
-            "status": "success",
-            "verified": True,
-            "results": [],
-            "error": None,
-            "details": {"reason": "empty_query"},
-        }
+    """
+    Common ScentHunter scraper contract.
 
+    Empty results are PARTIAL/unverified, never verified NOT_FOUND.
+    """
     try:
         rows = search(query)
-    except requests.Timeout as exc:
-        return {"status": "timeout", "verified": False, "results": [], "error": str(exc), "details": {"exception": type(exc).__name__}}
-    except requests.ConnectionError as exc:
-        return {"status": "unavailable", "verified": False, "results": [], "error": str(exc), "details": {"exception": type(exc).__name__}}
-    except requests.RequestException as exc:
-        return {"status": "error", "verified": False, "results": [], "error": str(exc), "details": {"exception": type(exc).__name__}}
-    except Exception as exc:
-        return {"status": "error", "verified": False, "results": [], "error": str(exc), "details": {"exception": type(exc).__name__}}
 
-    if callable(emit):
-        for row in rows:
-            emit(row)
+        if callable(emit):
+            for row in rows:
+                emit(row)
 
-    if rows:
+        if rows:
+            return {
+                "status": "success",
+                "verified": True,
+                "results": [] if callable(emit) else rows,
+                "error": None,
+                "details": {
+                    "discovery": "20sep_first_party_search_routes"
+                },
+            }
+
         return {
-            "status": "success",
-            "verified": True,
-            "results": rows,
+            "status": "partial",
+            "verified": False,
+            "results": [],
             "error": None,
-            "details": {"count": len(rows)},
+            "details": {
+                "reason": "empty_search_not_authoritatively_verified",
+                "discovery": "20sep_first_party_search_routes",
+            },
         }
 
-    return {
-        "status": "partial",
-        "verified": False,
-        "results": [],
-        "error": None,
-        "details": {
-            "count": 0,
-            "reason": "empty_search_not_authoritatively_verified",
-        },
-    }
+    except requests.Timeout as exc:
+        return {
+            "status": "timeout",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.ConnectionError as exc:
+        return {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.RequestException as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
 
 
-# Compatibility with the generic main.py interface.
-scrape = search_stream
+def scrape(query):
+    return search_stream(query)
+
 
 
 if __name__ == "__main__":
