@@ -498,3 +498,250 @@ def diagnose_deloox_pipeline(q: str = Query("Liquid Brun")):
 
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
+
+@router.get("/diagnose-deloox-compare")
+def diagnose_deloox_compare(
+    qs: str = Query(
+        "Liquid Brun|Liquid Brun Limited Edition|9 PM Night Out|Hawas|Hawas Ice|Hawas Black|Hawas Majestic|Hawas Lava Gold"
+    )
+):
+    """Comparative, read-only audit of the current Deloox discovery pipeline.
+
+    Runs the CURRENT production scraper against multiple queries in the same
+    request and exposes where each query diverges: search discovery, category
+    discovery, sitemap discovery, final _discover(), product fetch and
+    _product(). It does not alter the production scraper and contains no
+    product-specific business rule.
+    """
+    import importlib.util
+    import inspect
+    import os
+    from urllib.parse import urlparse
+
+    started = time.monotonic()
+    scraper_path = os.path.join(
+        os.path.dirname(__file__), "scrapers", "deloox", "scraper.py"
+    )
+
+    raw_queries = [x.strip() for x in (qs or "").split("|") if x.strip()]
+    queries = []
+    seen_q = set()
+    for q in raw_queries[:12]:
+        key = q.casefold()
+        if key not in seen_q:
+            seen_q.add(key)
+            queries.append(q)
+
+    result = {
+        "diagnostic": True,
+        "store": "Deloox",
+        "purpose": "comparative read-only audit: same current scraper, multiple queries, stage-by-stage divergence",
+        "scraper_file": scraper_path,
+        "queries": queries,
+        "stages_definition": {
+            "search": "current scraper search-discovery function, if present",
+            "categories": "current scraper category-discovery function, if present",
+            "sitemaps": "current scraper sitemap-discovery function, if present",
+            "discover": "current scraper _discover() result",
+            "product": "HTTP fetch + current _product() validation of discovered candidates",
+            "search_final": "current public search() result",
+        },
+        "query_results": [],
+    }
+
+    spec = importlib.util.spec_from_file_location(
+        "scent_hunter_deloox_compare_diag", scraper_path
+    )
+    if spec is None or spec.loader is None:
+        result["import"] = {"ok": False, "error": "Could not load Deloox scraper"}
+        return result
+
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        result["import"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        return result
+
+    result["import"] = {
+        "ok": True,
+        "module": getattr(module, "__file__", None),
+        "timeout": getattr(module, "TIMEOUT", None),
+        "base_urls": getattr(module, "DELOOX_BASE_URLS", None),
+    }
+
+    session = requests.Session()
+    try:
+        if hasattr(module, "HEADERS"):
+            session.headers.update(getattr(module, "HEADERS"))
+
+        def call_stage(fn_name, q):
+            fn = getattr(module, fn_name, None)
+            if not callable(fn):
+                return {"present": False}
+            try:
+                sig = inspect.signature(fn)
+                names = list(sig.parameters)
+                if len(names) >= 2:
+                    value = fn(session, q)
+                elif len(names) == 1:
+                    value = fn(q)
+                else:
+                    value = fn()
+                return {
+                    "present": True,
+                    "ok": True,
+                    "type": type(value).__name__,
+                    "count": len(value) if isinstance(value, (list, tuple, set)) else None,
+                    "urls": list(value)[:50] if isinstance(value, (list, tuple, set)) else value,
+                }
+            except Exception as exc:
+                return {
+                    "present": True,
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+
+        for q in queries:
+            qr = {"query": q, "stages": {}}
+            q_tokens = [t.casefold() for t in re.findall(r"[\w]+", q) if len(t) >= 2]
+            qr["query_tokens"] = q_tokens
+
+            for stage_name, fn_names in {
+                "search": ["_discover_from_search", "_search_discovery", "_discover_search"],
+                "categories": ["_discover_from_categories", "_category_discovery", "_discover_categories"],
+                "sitemaps": ["_discover_from_sitemaps", "_discover_from_sitemap", "_sitemap_discovery"],
+            }.items():
+                chosen = next((n for n in fn_names if callable(getattr(module, n, None))), None)
+                if chosen:
+                    data = call_stage(chosen, q)
+                    data["function"] = chosen
+                else:
+                    data = {"present": False, "function": None}
+                qr["stages"][stage_name] = data
+
+            # The authoritative production discovery result.
+            try:
+                t0 = time.monotonic()
+                discovered = module._discover(session, q)
+                qr["stages"]["discover"] = {
+                    "ok": True,
+                    "elapsed_sec": round(time.monotonic() - t0, 3),
+                    "type": type(discovered).__name__,
+                    "count": len(discovered) if isinstance(discovered, list) else None,
+                    "urls": discovered[:100] if isinstance(discovered, list) else discovered,
+                }
+            except Exception as exc:
+                discovered = []
+                qr["stages"]["discover"] = {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+
+            # Fetch a bounded set of candidates and let the CURRENT parser make
+            # the decision. This is the key comparison: discovery vs parser.
+            product_items = []
+            if isinstance(discovered, list):
+                for idx, url in enumerate(discovered[:30]):
+                    item = {"index": idx, "url": url}
+                    try:
+                        t0 = time.monotonic()
+                        r = session.get(
+                            url,
+                            timeout=getattr(module, "TIMEOUT", (2.5, 6.0)),
+                            allow_redirects=True,
+                        )
+                        item.update({
+                            "status": r.status_code,
+                            "final_url": r.url,
+                            "elapsed_sec": round(time.monotonic() - t0, 3),
+                            "bytes": len(r.content),
+                            "content_type": r.headers.get("content-type"),
+                        })
+                        if r.status_code >= 400:
+                            item["parser_result"] = "skipped_http_error"
+                        else:
+                            try:
+                                parsed = module._product(r.url, r.text, q)
+                                item["parser_result"] = "matched" if parsed else "rejected_or_none"
+                                if parsed:
+                                    item["product"] = parsed
+                            except Exception as exc:
+                                item["parser_result"] = "exception"
+                                item["parser_error"] = f"{type(exc).__name__}: {exc}"
+                        r.close()
+                    except Exception as exc:
+                        item["http_error"] = f"{type(exc).__name__}: {exc}"
+                    product_items.append(item)
+
+            qr["stages"]["product"] = {
+                "candidate_count": len(product_items),
+                "matched_count": sum(1 for x in product_items if x.get("parser_result") == "matched"),
+                "http_error_count": sum(1 for x in product_items if "http_error" in x),
+                "items": product_items,
+            }
+
+            try:
+                t0 = time.monotonic()
+                final_rows = module.search(q)
+                qr["stages"]["search_final"] = {
+                    "ok": True,
+                    "elapsed_sec": round(time.monotonic() - t0, 3),
+                    "type": type(final_rows).__name__,
+                    "count": len(final_rows) if isinstance(final_rows, list) else None,
+                    "rows": final_rows[:20] if isinstance(final_rows, list) else final_rows,
+                }
+            except Exception as exc:
+                qr["stages"]["search_final"] = {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+
+            # Compact cross-stage explanation generated from observed facts,
+            # not from product-specific assumptions.
+            search_count = qr["stages"]["search"].get("count") if isinstance(qr["stages"].get("search"), dict) else None
+            cat_count = qr["stages"]["categories"].get("count") if isinstance(qr["stages"].get("categories"), dict) else None
+            disc_count = qr["stages"]["discover"].get("count") if isinstance(qr["stages"].get("discover"), dict) else None
+            matched_count = qr["stages"]["product"].get("matched_count", 0)
+            final_count = qr["stages"]["search_final"].get("count") if isinstance(qr["stages"].get("search_final"), dict) else None
+
+            if matched_count:
+                explanation = "product_candidate_reached_parser_and_matched"
+            elif disc_count == 0:
+                explanation = "discovery_returned_zero_candidates"
+            elif disc_count:
+                explanation = "candidates_found_but_none_matched_product_parser"
+            elif search_count == 0 and cat_count == 0:
+                explanation = "search_and_category_discovery_both_empty"
+            elif final_count == 0:
+                explanation = "public_search_returned_empty_after_discovery"
+            else:
+                explanation = "no_single_stage_failure_identified"
+            qr["observed_explanation"] = explanation
+            result["query_results"].append(qr)
+
+        # Pairwise comparison makes the Liquid Brun vs other-query difference
+        # immediately visible without making any judgment about why beyond the
+        # observed stage values.
+        by_query = {x["query"]: x for x in result["query_results"]}
+        result["comparison"] = []
+        for q in queries:
+            x = by_query[q]
+            result["comparison"].append({
+                "query": q,
+                "search_count": x["stages"].get("search", {}).get("count"),
+                "category_count": x["stages"].get("categories", {}).get("count"),
+                "sitemap_count": x["stages"].get("sitemaps", {}).get("count"),
+                "discover_count": x["stages"].get("discover", {}).get("count"),
+                "parser_matches": x["stages"].get("product", {}).get("matched_count"),
+                "final_search_count": x["stages"].get("search_final", {}).get("count"),
+                "explanation": x.get("observed_explanation"),
+            })
+    finally:
+        try:
+            session.close()
+        except Exception:
+            pass
+
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
