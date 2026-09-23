@@ -538,18 +538,16 @@ def extract_size_ml_from_product_page(soup, title=""):
 
 def availability_from_product_page(soup, jsonld_offer=None):
     """
-    Deep diagnostic version.
-
-    It records the actual signals found on the product page, but keeps the
-    decision conservative. No product name, SKU, URL or retailer-specific
-    product rule is hard-coded.
+    Deep availability diagnostic.
+    Generic only: no product-specific names, URLs, SKUs or prices.
     """
     debug = {
         "jsonld_availability": None,
         "availability_nodes": [],
         "purchase_controls": [],
-        "stock_text_hits": [],
         "page_text_hits": [],
+        "decision": None,
+        "decision_source": None,
     }
 
     explicit_in_stock = False
@@ -562,7 +560,7 @@ def availability_from_product_page(soup, jsonld_offer=None):
         low = raw.lower()
         if "instock" in low:
             explicit_in_stock = True
-        elif any(token in low for token in ("outofstock", "soldout", "unavailable")):
+        elif any(x in low for x in ("outofstock", "soldout", "unavailable")):
             explicit_out_of_stock = True
         elif "preorder" in low:
             explicit_preorder = True
@@ -580,20 +578,15 @@ def availability_from_product_page(soup, jsonld_offer=None):
         for node in soup.select(selector):
             attrs = {}
             for key, value in node.attrs.items():
-                if key == "class":
-                    attrs[key] = list(value) if isinstance(value, list) else value
-                elif isinstance(value, (str, int, float, bool)):
-                    attrs[key] = str(value)[:500]
+                attrs[key] = list(value) if isinstance(value, list) else str(value)[:500]
 
             text = clean(node.get_text(" ", strip=True))
-            record = {
+            debug["availability_nodes"].append({
                 "selector": selector,
                 "tag": node.name,
                 "text": text[:500],
                 "attrs": attrs,
-            }
-            if record not in debug["availability_nodes"]:
-                debug["availability_nodes"].append(record)
+            })
 
             raw = clean(" ".join([
                 str(node.get("content", "")),
@@ -606,13 +599,14 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
             if "instock" in raw or "in stock" in raw:
                 explicit_in_stock = True
-            if any(token in raw for token in (
+
+            if any(x in raw for x in (
                 "outofstock", "out of stock", "soldout", "sold out",
-                "unavailable", "agotado", "producto agotado",
+                "unavailable", "agotado", "producto agotado", "sin stock",
             )):
                 explicit_out_of_stock = True
 
-    purchase_roots = soup.select(
+    roots = soup.select(
         "main, #main, .product-container, .product-information, "
         ".product-detail, .product-page, .product-actions, "
         ".product-add-to-cart, .product-combination, form"
@@ -631,17 +625,16 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     has_purchase = False
     has_disabled_purchase = False
-    seen_nodes = set()
+    seen = set()
 
-    for root in purchase_roots:
+    for root in roots:
         for node in root.select(
             'button, input[type="submit"], input[type="button"], '
             'a, [data-button-action], [data-action]'
         ):
-            node_id = id(node)
-            if node_id in seen_nodes:
+            if id(node) in seen:
                 continue
-            seen_nodes.add(node_id)
+            seen.add(id(node))
 
             classes = " ".join(node.get("class", []))
             raw = norm(" ".join([
@@ -654,37 +647,31 @@ def availability_from_product_page(soup, jsonld_offer=None):
                 node.get("data-action", ""),
             ]))
 
-            if not any(word in raw for word in purchase_words) and not any(
-                marker in raw for marker in purchase_markers
+            if not any(x in raw for x in purchase_words) and not any(
+                x in raw for x in purchase_markers
             ):
                 continue
-
-            record = {
-                "tag": node.name,
-                "text": clean(node.get_text(" ", strip=True))[:300],
-                "value": clean(node.get("value", ""))[:300],
-                "aria_disabled": str(node.get("aria-disabled", "")),
-                "disabled": node.has_attr("disabled"),
-                "class": classes[:500],
-                "id": clean(node.get("id", ""))[:300],
-                "name": clean(node.get("name", ""))[:300],
-                "data_button_action": clean(node.get("data-button-action", ""))[:300],
-                "data_action": clean(node.get("data-action", ""))[:300],
-            }
-            debug["purchase_controls"].append(record)
 
             disabled = (
                 node.has_attr("disabled")
                 or str(node.get("aria-disabled", "")).lower() == "true"
                 or "disabled" in node.get("class", [])
             )
-            style = norm(node.get("style", ""))
-            hidden = (
-                node.has_attr("hidden")
-                or str(node.get("type", "")).lower() == "hidden"
-                or "display none" in style
-                or "visibility hidden" in style
-            )
+            hidden = node.has_attr("hidden")
+
+            debug["purchase_controls"].append({
+                "tag": node.name,
+                "text": clean(node.get_text(" ", strip=True))[:300],
+                "value": clean(node.get("value", ""))[:300],
+                "disabled": disabled,
+                "aria_disabled": str(node.get("aria-disabled", "")),
+                "hidden": hidden,
+                "class": classes[:500],
+                "id": clean(node.get("id", ""))[:300],
+                "name": clean(node.get("name", ""))[:300],
+                "data_button_action": clean(node.get("data-button-action", ""))[:300],
+                "data_action": clean(node.get("data-action", ""))[:300],
+            })
 
             if disabled or hidden:
                 has_disabled_purchase = True
@@ -692,39 +679,22 @@ def availability_from_product_page(soup, jsonld_offer=None):
                 has_purchase = True
 
     page_text = norm(soup.get_text(" ", strip=True))
-    for marker in (
-        "producto agotado",
-        "agotado",
-        "sin stock",
-        "out of stock",
-        "sold out",
-        "unavailable",
-        "añadir al carrito",
-        "agregar al carrito",
-        "comprar",
-        "add to cart",
-        "buy now",
-        "sí avísame",
-        "avísame",
-        "fecha de disponibilidad",
-    ):
-        marker_norm = norm(marker)
-        if marker_norm in page_text:
-            debug["page_text_hits"].append(marker)
 
-    # Explicit product-page OOS wording wins over generic notification UI.
-    if any(
-        marker in page_text
-        for marker in (
-            "producto agotado",
-            "producto esta agotado",
-            "producto está agotado",
-            "sin stock",
-            "out of stock",
-            "sold out",
-            "unavailable",
-        )
+    for marker_text in (
+        "producto agotado", "agotado", "sin stock", "out of stock",
+        "sold out", "unavailable", "añadir al carrito",
+        "agregar al carrito", "comprar", "add to cart", "buy now",
+        "sí avísame", "avísame", "fecha de disponibilidad",
     ):
+        if norm(marker_text) in page_text:
+            debug["page_text_hits"].append(marker_text)
+
+    # This is diagnostic priority only:
+    # explicit stock wording > active purchase control > structured signals.
+    if any(x in page_text for x in (
+        "producto agotado", "producto esta agotado", "producto está agotado",
+        "sin stock", "out of stock", "sold out", "unavailable",
+    )):
         availability = "out_of_stock"
         source = "sabina_explicit_stock_text"
     elif has_purchase:
@@ -750,8 +720,6 @@ def availability_from_product_page(soup, jsonld_offer=None):
     debug["decision"] = availability
     debug["decision_source"] = source
 
-    # Emit full diagnostic to Fly logs. This is intentionally generic and
-    # contains no product-specific condition.
     print(
         json.dumps(
             {"sabina_availability_diagnostic": debug},
@@ -761,6 +729,7 @@ def availability_from_product_page(soup, jsonld_offer=None):
     )
 
     return availability, source, debug
+
 
 def discover_product_urls(session, query):
     """
@@ -1157,13 +1126,7 @@ def extract_product_page(session, url, query):
             "availability": availability,
         },
 
-        # Top-level mirror for the generic main.py diagnostic contract.
         "availability": availability,
-        "available": (
-            True if availability == "in_stock"
-            else False if availability == "out_of_stock"
-            else None
-        ),
         "availability_debug": availability_debug,
 
         "provenance": {
@@ -1221,6 +1184,13 @@ def extract_product_page(session, url, query):
             else ""
         ),
         "url": final_url,
+        # Unknown is intentionally not converted to false.
+        # The main backend must not interpret missing evidence as OOS.
+        "available": (
+            True if availability == "in_stock"
+            else False if availability == "out_of_stock"
+            else None
+        ),
     }
 
 def _fallback_extract_product_page(session, url, query):
@@ -1311,67 +1281,17 @@ def search(query):
     session = requests.Session()
 
     try:
-        diagnostic = diagnostic_discover_product_urls(
+        candidate_urls = discover_product_urls(
             session,
             query,
         )
 
-        print(
-            json.dumps(
-                {
-                    "sabina_discovery_diagnostic": diagnostic,
-                },
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
+        results = []
+        seen = set()
 
-        # IMPORTANT:
-        # After diagnostics, run the exact production search logic that was
-        # present in the supplied base file. The diagnostic does not become a
-        # fallback and does not change production discovery behavior.
-        return _production_search(query, session)
-
-    finally:
-        session.close()
-
-
-def _production_search(query, session):
-    candidate_urls = discover_product_urls(
-        session,
-        query,
-    )
-
-    print(
-        json.dumps(
-            {
-                "sabina_search_diagnostic": {
-                    "query": query,
-                    "candidate_count": len(candidate_urls),
-                    "candidate_urls": candidate_urls[:50],
-                }
-            },
-            ensure_ascii=False,
-        ),
-        flush=True,
-    )
-
-    results = []
-    seen = set()
-
-    for url in candidate_urls:
-        try:
-            product = extract_product_page(
-                session,
-                url,
-                query,
-            )
-        except Exception:
-            product = None
-
-        if not product:
+        for url in candidate_urls:
             try:
-                product = _fallback_extract_product_page(
+                product = extract_product_page(
                     session,
                     url,
                     query,
@@ -1379,24 +1299,37 @@ def _production_search(query, session):
             except Exception:
                 product = None
 
-        if not product:
-            continue
+            if not product:
+                try:
+                    product = _fallback_extract_product_page(
+                        session,
+                        url,
+                        query,
+                    )
+                except Exception:
+                    product = None
 
-        product_id = (
-            product.get("identity", {})
-            .get("store_product_id", {})
-            .get("value")
-        )
+            if not product:
+                continue
 
-        key = product_id or product.get("url")
+            product_id = (
+                product.get("identity", {})
+                .get("store_product_id", {})
+                .get("value")
+            )
 
-        if key in seen:
-            continue
+            key = product_id or product.get("url")
 
-        seen.add(key)
-        results.append(product)
+            if key in seen:
+                continue
 
-    return results
+            seen.add(key)
+            results.append(product)
+
+        return results
+
+    finally:
+        session.close()
 
 
 def search_stream(query, emit=None):
@@ -1422,34 +1355,13 @@ if __name__ == "__main__":
         "query",
         help="Search query supplied at runtime",
     )
-    parser.add_argument(
-        "--diagnostic-only",
-        action="store_true",
-        help="Run Sabina discovery diagnostics without product extraction.",
-    )
 
     args = parser.parse_args()
 
-    if args.diagnostic_only:
-        session = requests.Session()
-        try:
-            print(
-                json.dumps(
-                    diagnostic_discover_product_urls(
-                        session,
-                        clean(args.query),
-                    ),
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
-        finally:
-            session.close()
-    else:
-        print(
-            json.dumps(
-                search(args.query),
-                ensure_ascii=False,
-                indent=2,
-            )
+    print(
+        json.dumps(
+            search(args.query),
+            ensure_ascii=False,
+            indent=2,
         )
+    )
