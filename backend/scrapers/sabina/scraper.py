@@ -742,81 +742,108 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
 def discover_product_urls(session, query):
     """
-    The only primary discovery path used by the real scraper.
+    Generic Sabina catalog discovery.
 
-    The query is supplied at runtime. No product, brand, SKU or URL
-    is hard-coded here.
+    Primary path: the retailer's own search endpoint.
+    Fallback: retry the same first-party search mechanism with generic
+    lexical variants of the runtime query (spacing/compact form). This is
+    still catalog discovery and contains no product, brand, SKU or URL rules.
     """
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
+    query = clean(query)
+    if not query:
         return []
 
-    if response.status_code >= 400:
-        return []
+    search_queries = [query]
 
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
+    normalized = " ".join(query_tokens(query))
+    if normalized and normalized.lower() not in {q.lower() for q in search_queries}:
+        search_queries.append(normalized)
+
+    compact = re.sub(r"[^a-z0-9]+", "", norm(query))
+    if compact and compact.lower() not in {q.lower() for q in search_queries}:
+        search_queries.append(compact)
+
+    # Generic lexical fallback for short multi-token queries.
+    # It never names or targets a specific product.
+    if len(search_queries) < 4:
+        for token in query_tokens(query):
+            if len(token) < 2:
+                continue
+            if token.lower() not in {q.lower() for q in search_queries}:
+                search_queries.append(token)
 
     urls = []
     seen = set()
 
-    def add(raw):
-        absolute = normalise_url(
-            raw,
-            response.url,
+    for search_query in search_queries[:4]:
+        try:
+            response = session.get(
+                SEARCH_URL,
+                params={"search_query": search_query},
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code >= 400:
+            continue
+
+        soup = BeautifulSoup(
+            response.text,
+            "html.parser",
         )
 
-        if not absolute:
-            return
+        def add(raw):
+            absolute = normalise_url(
+                raw,
+                response.url,
+            )
 
-        if not is_product_url(absolute):
-            return
+            if not absolute:
+                return
 
-        if absolute in seen:
-            return
+            if not is_product_url(absolute):
+                return
 
-        seen.add(absolute)
-        urls.append(absolute)
+            if absolute in seen:
+                return
 
-    # First source: normal product links.
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
-        add(anchor.get("href"))
+            seen.add(absolute)
+            urls.append(absolute)
 
-    # Second source: product URLs embedded in the returned HTML/JSON.
-    decoded = (
-        response.text
-        .replace("\\/", "/")
-        .replace("\\u002F", "/")
-    )
+        for anchor in soup.find_all(
+            "a",
+            href=True,
+        ):
+            add(anchor.get("href"))
 
-    for match in re.finditer(
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
+        decoded = (
+            response.text
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+        )
 
-    for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
+        for match in re.finditer(
+            r'https?://(?:www\.)?sabina\.com/'
+            r'(?:es|it|fr|en|de|nl|pt)/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+        for match in re.finditer(
+            r'/(?:es|it|fr|en|de|nl|pt)/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+        if len(urls) >= MAX_CANDIDATES:
+            break
 
     return urls[:MAX_CANDIDATES]
 
