@@ -731,6 +731,11 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
                         if _is_non_fragrance_offer(resolved):
                             continue
                         rows.append(resolved)
+                        if callable(on_result):
+                            try:
+                                on_result(resolved)
+                            except Exception:
+                                pass
                     elif kind=='done':
                         worker_status=str(event.get('status') or 'success').strip().lower()
                         worker_verified=bool(event.get('verified')) if 'verified' in event else None
@@ -1015,7 +1020,12 @@ def _publish_store(job_id, report):
 
 def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r))
+    collect_store_reports_isolated(
+        query,
+        STORES,
+        on_report=lambda r:_publish_store(job_id,r),
+        on_result=lambda row:_publish_result(job_id,row),
+    )
     with JOBS_LOCK:
         job = JOBS.get(job_id)
 
