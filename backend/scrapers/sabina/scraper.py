@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 10
+TIMEOUT = (2.5, 5.0)
 MAX_CANDIDATES = 20
 
 HEADERS = {
@@ -28,7 +28,11 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl|pt)/"
+    r"(?!content|ricerca|ricerca_old|buscar|buscar_old|search|"
+    r"marchi|negozi|contatto|faq|carrello|ordine|stato-ordine|"
+    r"il-mio-conto|module|modules)"
+    r"[^/?#]+(?:/[^/?#]+)*$",
     re.I,
 )
 
@@ -1317,8 +1321,25 @@ def search(query):
         return []
 
     session = requests.Session()
+    session.headers.update(HEADERS)
 
     try:
+        # Historical Sabina behavior: establish the storefront session and
+        # locale before attempting any search/AJAX discovery. This is part of
+        # the generic site protocol, not a product-specific workaround.
+        try:
+            warmup = session.get(
+                BASE_URL + "/es/",
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            warmup = None
+        finally:
+            if warmup is not None:
+                warmup.close()
+
         candidate_urls = discover_product_urls(
             session,
             query,
