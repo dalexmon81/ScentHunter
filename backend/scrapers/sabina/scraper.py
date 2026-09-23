@@ -886,7 +886,7 @@ def discover_product_urls(session, query):
             if response.status_code >= 400:
                 continue
             links = _extract_product_links_from_html(response.text, query)
-                    print(
+            print(
             json.dumps(
                 {
                     "sabina_discovery_attempt": {
