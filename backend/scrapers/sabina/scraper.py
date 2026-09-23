@@ -538,31 +538,34 @@ def extract_size_ml_from_product_page(soup, title=""):
 
 def availability_from_product_page(soup, jsonld_offer=None):
     """
-    Deep availability diagnostic.
-    Generic only: no product-specific names, URLs, SKUs or prices.
-    """
-    debug = {
-        "jsonld_availability": None,
-        "availability_nodes": [],
-        "purchase_controls": [],
-        "page_text_hits": [],
-        "decision": None,
-        "decision_source": None,
-    }
+    Determine availability using product-specific purchase evidence first.
 
+    Generic Sabina logic:
+      1. Explicit product-level OUT_OF_STOCK signal.
+      2. Active product purchase control -> in_stock.
+      3. Explicit structured in-stock signal.
+      4. Disabled purchase / structured out-of-stock signal.
+      5. Preorder.
+      6. Unknown when evidence is insufficient.
+
+    Generic notification text such as "avísame" is NOT sufficient by itself
+    to declare a product out of stock.
+    """
     explicit_in_stock = False
     explicit_out_of_stock = False
     explicit_preorder = False
 
     if isinstance(jsonld_offer, dict):
-        raw = clean(jsonld_offer.get("availability"))
-        debug["jsonld_availability"] = raw or None
-        low = raw.lower()
-        if "instock" in low:
+        raw = clean(jsonld_offer.get("availability")).lower()
+
+        if "instock" in raw:
             explicit_in_stock = True
-        elif any(x in low for x in ("outofstock", "soldout", "unavailable")):
+        elif any(
+            token in raw
+            for token in ("outofstock", "soldout", "unavailable")
+        ):
             explicit_out_of_stock = True
-        elif "preorder" in low:
+        elif "preorder" in raw:
             explicit_preorder = True
 
     for selector in (
@@ -570,166 +573,172 @@ def availability_from_product_page(soup, jsonld_offer=None):
         '[data-availability]',
         '[data-stock-status]',
         '[data-product-availability]',
-        '[class*="availability"]',
-        '[class*="stock"]',
-        '[id*="availability"]',
-        '[id*="stock"]',
     ):
         for node in soup.select(selector):
-            attrs = {}
-            for key, value in node.attrs.items():
-                attrs[key] = list(value) if isinstance(value, list) else str(value)[:500]
+            raw = " ".join(
+                str(node.get(attr, ""))
+                for attr in (
+                    "content",
+                    "href",
+                    "data-availability",
+                    "data-stock-status",
+                    "data-product-availability",
+                )
+            )
 
-            text = clean(node.get_text(" ", strip=True))
-            debug["availability_nodes"].append({
-                "selector": selector,
-                "tag": node.name,
-                "text": text[:500],
-                "attrs": attrs,
-            })
-
-            raw = clean(" ".join([
-                str(node.get("content", "")),
-                str(node.get("href", "")),
-                str(node.get("data-availability", "")),
-                str(node.get("data-stock-status", "")),
-                str(node.get("data-product-availability", "")),
-                text,
-            ])).lower()
+            raw = clean(
+                f"{raw} {node.get_text(' ', strip=True)}"
+            ).lower()
 
             if "instock" in raw or "in stock" in raw:
                 explicit_in_stock = True
 
-            if any(x in raw for x in (
-                "outofstock", "out of stock", "soldout", "sold out",
-                "unavailable", "agotado", "producto agotado", "sin stock",
-            )):
+            if any(
+                token in raw
+                for token in (
+                    "outofstock",
+                    "out of stock",
+                    "soldout",
+                    "sold out",
+                    "unavailable",
+                    "agotado",
+                    "producto agotado",
+                    "sin stock",
+                )
+            ):
                 explicit_out_of_stock = True
 
-    roots = soup.select(
+    purchase_roots = soup.select(
         "main, #main, .product-container, .product-information, "
         ".product-detail, .product-page, .product-actions, "
         ".product-add-to-cart, .product-combination, form"
     ) or [soup]
 
     purchase_words = (
-        "añadir al carrito", "agregar al carrito", "comprar",
-        "add to cart", "add-to-cart", "buy now",
-        "ajouter au panier", "acheter", "in den warenkorb", "jetzt kaufen",
-        "acquista", "aggiungi al carrello",
+        "añadir al carrito",
+        "agregar al carrito",
+        "comprar",
+        "add to cart",
+        "add-to-cart",
+        "buy now",
+        "ajouter au panier",
+        "acheter",
+        "in den warenkorb",
+        "jetzt kaufen",
+        "acquista",
+        "aggiungi al carrello",
     )
+
     purchase_markers = (
-        "add-to-cart", "add_to_cart", "addtocart", "add-cart",
-        "product-add-to-cart", "buy-now", "buy_now", "purchase",
+        "add-to-cart",
+        "add_to_cart",
+        "addtocart",
+        "add-cart",
+        "product-add-to-cart",
+        "buy-now",
+        "buy_now",
+        "purchase",
     )
 
     has_purchase = False
     has_disabled_purchase = False
-    seen = set()
+    seen_nodes = set()
 
-    for root in roots:
+    for root in purchase_roots:
         for node in root.select(
             'button, input[type="submit"], input[type="button"], '
             'a, [data-button-action], [data-action]'
         ):
-            if id(node) in seen:
-                continue
-            seen.add(id(node))
+            node_id = id(node)
 
-            classes = " ".join(node.get("class", []))
+            if node_id in seen_nodes:
+                continue
+
+            seen_nodes.add(node_id)
+
             raw = norm(" ".join([
                 node.get_text(" ", strip=True),
                 node.get("value", ""),
                 node.get("aria-label", ""),
                 node.get("title", ""),
-                classes,
+                " ".join(node.get("class", [])),
                 node.get("data-button-action", ""),
                 node.get("data-action", ""),
             ]))
 
-            if not any(x in raw for x in purchase_words) and not any(
-                x in raw for x in purchase_markers
+            if not any(
+                word in raw
+                for word in purchase_words
+            ) and not any(
+                marker in raw
+                for marker in purchase_markers
             ):
                 continue
 
             disabled = (
                 node.has_attr("disabled")
-                or str(node.get("aria-disabled", "")).lower() == "true"
+                or str(
+                    node.get("aria-disabled", "")
+                ).lower() == "true"
                 or "disabled" in node.get("class", [])
             )
-            hidden = node.has_attr("hidden")
 
-            debug["purchase_controls"].append({
-                "tag": node.name,
-                "text": clean(node.get_text(" ", strip=True))[:300],
-                "value": clean(node.get("value", ""))[:300],
-                "disabled": disabled,
-                "aria_disabled": str(node.get("aria-disabled", "")),
-                "hidden": hidden,
-                "class": classes[:500],
-                "id": clean(node.get("id", ""))[:300],
-                "name": clean(node.get("name", ""))[:300],
-                "data_button_action": clean(node.get("data-button-action", ""))[:300],
-                "data_action": clean(node.get("data-action", ""))[:300],
-            })
+            style = norm(node.get("style", ""))
+
+            hidden = (
+                node.has_attr("hidden")
+                or str(
+                    node.get("type", "")
+                ).lower() == "hidden"
+                or "display none" in style
+                or "visibility hidden" in style
+            )
 
             if disabled or hidden:
                 has_disabled_purchase = True
             else:
                 has_purchase = True
 
-    page_text = norm(soup.get_text(" ", strip=True))
-
-    for marker_text in (
-        "producto agotado", "agotado", "sin stock", "out of stock",
-        "sold out", "unavailable", "añadir al carrito",
-        "agregar al carrito", "comprar", "add to cart", "buy now",
-        "sí avísame", "avísame", "fecha de disponibilidad",
-    ):
-        if norm(marker_text) in page_text:
-            debug["page_text_hits"].append(marker_text)
-
-    # This is diagnostic priority only:
-    # explicit stock wording > active purchase control > structured signals.
-    if any(x in page_text for x in (
-        "producto agotado", "producto esta agotado", "producto está agotado",
-        "sin stock", "out of stock", "sold out", "unavailable",
-    )):
-        availability = "out_of_stock"
-        source = "sabina_explicit_stock_text"
-    elif has_purchase:
-        availability = "in_stock"
-        source = "sabina_purchase_control"
-    elif explicit_in_stock:
-        availability = "in_stock"
-        source = "sabina_html_availability"
-    elif has_disabled_purchase or explicit_out_of_stock:
-        availability = "out_of_stock"
-        source = (
-            "sabina_purchase_control"
-            if has_disabled_purchase
-            else "sabina_html_availability"
-        )
-    elif explicit_preorder:
-        availability = "preorder"
-        source = "sabina_jsonld"
-    else:
-        availability = "unknown"
-        source = "sabina_html_availability"
-
-    debug["decision"] = availability
-    debug["decision_source"] = source
-
-    print(
-        json.dumps(
-            {"sabina_availability_diagnostic": debug},
-            ensure_ascii=False,
-        ),
-        flush=True,
+    # Explicit product-level stock wording has priority.
+    page_text = norm(
+        soup.get_text(" ", strip=True)
     )
 
-    return availability, source, debug
+    if any(
+        marker in page_text
+        for marker in (
+            "producto agotado",
+            "producto esta agotado",
+            "producto está agotado",
+            "sin stock",
+            "out of stock",
+            "sold out",
+            "unavailable",
+        )
+    ):
+        return "out_of_stock", "sabina_explicit_stock_text"
 
+    # A real active purchase control is stronger than generic notification
+    # text such as "avísame".
+    if has_purchase:
+        return "in_stock", "sabina_purchase_control"
+
+    if explicit_in_stock:
+        return "in_stock", "sabina_html_availability"
+
+    if has_disabled_purchase or explicit_out_of_stock:
+        return (
+            "out_of_stock",
+            "sabina_purchase_control"
+            if has_disabled_purchase
+            else "sabina_html_availability",
+        )
+
+    if explicit_preorder:
+        return "preorder", "sabina_jsonld"
+
+    # Notification widgets alone are intentionally insufficient evidence.
+    return "unknown", "sabina_html_availability"
 
 def discover_product_urls(session, query):
     """
@@ -966,7 +975,7 @@ def extract_product_page(session, url, query):
         else ""
     ) or "EUR"
 
-    availability, availability_source, availability_debug = availability_from_product_page(
+    availability, availability_source = availability_from_product_page(
         soup,
         offer,
     )
@@ -1127,7 +1136,6 @@ def extract_product_page(session, url, query):
         },
 
         "availability": availability,
-        "availability_debug": availability_debug,
 
         "provenance": {
             "name": "sabina_jsonld_or_h1",
