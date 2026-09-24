@@ -1,7 +1,7 @@
 import json
 import re
 import unicodedata
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, unquote
 
 import requests
 from bs4 import BeautifulSoup
