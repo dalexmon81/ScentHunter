@@ -737,50 +737,79 @@ def discover_product_urls(session, query):
         sequence += 1
 
     def score_candidate(url, context):
-        """
-        Relevance is calculated from the complete candidate context.
+    """
+    Generic relevance scoring.
 
-        The URL is evidence, but never the only evidence.
-        """
+    Matching is performed against:
+    - visible candidate text;
+    - HTML attributes;
+    - embedded JSON/JavaScript;
+    - URL path;
+    - compact forms without separators.
 
-        if not is_product_url(url):
-            return -1
+    No product, brand or SKU is hard-coded.
+    """
 
-        evidence = norm(
-            " ".join(
-                (
-                    context or "",
-                    urlparse(url).path,
-                )
-            )
+    if not is_product_url(url):
+        return -1
+
+    raw_evidence = " ".join(
+        (
+            context or "",
+            urlparse(url).path,
+        )
+    )
+
+    evidence = norm(raw_evidence)
+
+    evidence_compact = re.sub(
+        r"[^a-z0-9]",
+        "",
+        evidence,
+    )
+
+    query_compact_local = re.sub(
+        r"[^a-z0-9]",
+        "",
+        query_norm,
+    )
+
+    if query_norm and query_norm in evidence:
+        return 100 + (20 * len(tokens))
+
+    if (
+        query_compact_local
+        and query_compact_local in evidence_compact
+    ):
+        return 95 + (20 * len(tokens))
+
+    if not tokens:
+        return 0
+
+    matched = 0
+
+    for token in tokens:
+        token_compact = re.sub(
+            r"[^a-z0-9]",
+            "",
+            token,
         )
 
-        evidence_compact = evidence.replace(" ", "")
-
-        if query_norm and query_norm in evidence:
-            return 100 + (20 * len(tokens))
+        if token in evidence:
+            matched += 1
+            continue
 
         if (
-            query_compact
-            and query_compact in evidence_compact
+            token_compact
+            and token_compact in evidence_compact
         ):
-            return 95 + (20 * len(tokens))
+            matched += 1
 
-        if not tokens:
-            return 0
+    if matched == len(tokens):
+        return 80 + (10 * matched)
 
-        matched = sum(
-            1
-            for token in tokens
-            if token in evidence
-        )
+    return -1
 
-        if matched == len(tokens):
-            return 80 + (10 * matched)
-
-        # Do not accept a candidate merely because one token matches.
-        # This prevents broad queries from returning unrelated products.
-        return -1
 
     def node_context(node):
         """
@@ -853,12 +882,13 @@ def discover_product_urls(session, query):
         decoded = str(text)
 
         replacements = (
-            ("\\\\/", "/"),
-            ("\\\\u002F", "/"),
-            ("\\\\u002f", "/"),
-            ("&amp;", "&"),
-            ("\\/", "/"),
-        )
+    ("\\\\u002F", "/"),
+    ("\\\\u002f", "/"),
+    ("\\\\/", "/"),
+    ("\\/", "/"),
+    ("&amp;", "&"),
+)
+
 
         for old, new in replacements:
             decoded = decoded.replace(old, new)
