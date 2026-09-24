@@ -40,7 +40,16 @@ IGNORED_QUERY_WORDS = {
 
 
 def clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    # Repair the common UTF-8-as-Windows-1252 mojibake seen in Sabina HTML.
+    if any(marker in text for marker in ("â‚¬", "Ã", "Â")):
+        try:
+            repaired = text.encode("latin1").decode("utf-8")
+            if repaired:
+                text = repaired
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    return text
 
 
 def response_html(response):
@@ -1013,7 +1022,14 @@ def extract_product_page(session, url, query):
         title,
     )
 
-    # Select price from the offer belonging to this exact product/format.
+    # Sabina's visible customer price is the authoritative commercial value.
+    # JSON-LD can lag behind the rendered page or expose a reference/variant
+    # price, so read the product-bound visible price first and use JSON-LD only
+    # as a fallback.
+    price, price_source = extract_price_from_html(soup)
+
+    # Select the offer belonging to this exact product/format only when the
+    # visible product price is unavailable.
     offer = _select_product_offer(
         product or {},
         final_url,
@@ -1021,17 +1037,14 @@ def extract_product_page(session, url, query):
         size_ml,
     )
 
-    price = (
-        money_to_float(offer.get("price"))
-        if isinstance(offer, dict)
-        else None
-    )
-    price_source = "sabina_jsonld"
-
-    # If JSON-LD has no usable price, use the product-page HTML fallback.
-    # This fallback deliberately ignores struck-through/reference prices.
     if price is None:
-        price, price_source = extract_price_from_html(soup)
+        price = (
+            money_to_float(offer.get("price"))
+            if isinstance(offer, dict)
+            else None
+        )
+        if price is not None:
+            price_source = "sabina_jsonld"
 
     currency = (
         clean(offer.get("priceCurrency"))
