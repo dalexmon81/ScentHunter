@@ -696,9 +696,9 @@ def availability_from_product_page(soup, jsonld_offer=None):
 def _discover_from_sitemaps(session, query):
     """Generic Sabina catalog discovery through the public brand index.
 
-    Sabina's native search can return HTTP 200 with false-positive product
-    links. The public brand index is therefore used as a generic catalog
-    surface. No brand, product, SKU, price or URL is hard-coded.
+    Sabina native search may return HTTP 200 with unrelated product links.
+    The public brand index is therefore the authoritative generic discovery
+    surface used here. No brand, product, SKU, price or URL is hard-coded.
     """
     tokens = [token for token in query_tokens(query) if token]
     if not tokens:
@@ -708,7 +708,7 @@ def _discover_from_sitemaps(session, query):
         response = session.get(
             BASE_URL + "/es/marcas",
             headers=HEADERS,
-            timeout=TIMEOUT,
+            timeout=(2, 4),
             allow_redirects=True,
         )
     except requests.RequestException:
@@ -718,36 +718,33 @@ def _discover_from_sitemaps(session, query):
         return []
 
     soup = BeautifulSoup(response_html(response), "html.parser")
-    brand_urls = []
+    brand_entries = []
     seen_brands = set()
 
     for anchor in soup.find_all("a", href=True):
         href = normalise_url(anchor.get("href"), response.url)
         if not href:
             continue
-        if not re.match(
-            r"^/(?:es|it|fr|en|de|nl|pt)/\d+_[^/]+$",
-            urlparse(href).path,
-            re.I,
-        ):
+        path = urlparse(href).path
+        if not re.match(r"^/(?:es|it|fr|en|de|nl|pt)/\d+_[^/]+$", path, re.I):
             continue
-        if href not in seen_brands:
-            seen_brands.add(href)
-            brand_urls.append(href)
+        if href in seen_brands:
+            continue
+        seen_brands.add(href)
+        brand_name = clean(anchor.get_text(" ", strip=True))
+        brand_entries.append((brand_name, href))
 
-    def scan_brand(url):
-        # Catalog discovery must be bounded independently from product fetches.
-        # A slow brand page must never keep the diagnostic/request hanging.
+    def scan_brand(entry):
+        _brand_name, url = entry
         try:
             r = requests.get(
                 url,
                 headers=HEADERS,
-                timeout=(2, 3),
+                timeout=(1.5, 2.5),
                 allow_redirects=True,
             )
         except requests.RequestException:
             return []
-
         try:
             if r.status_code >= 400:
                 return []
@@ -772,54 +769,67 @@ def _discover_from_sitemaps(session, query):
         finally:
             r.close()
 
+    # Prefer a brand whose visible name itself matches a query token. This is
+    # generic and avoids wasting requests when the user explicitly searches a
+    # brand name, without embedding any store/product-specific knowledge.
+    def brand_priority(entry):
+        name = norm(entry[0])
+        return 0 if any(token in name for token in tokens) else 1
+
+    brand_entries.sort(key=brand_priority)
+
     found = []
     seen_products = set()
+    deadline = time.monotonic() + 8.0
 
-    executor = None
-    try:
-        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-        # Do NOT use `with ThreadPoolExecutor(...)`: returning from that
-        # context waits for every outstanding brand request and can make the
-        # endpoint appear to load forever.
+    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+
+    # Scan small bounded batches. Unlike submitting hundreds of requests at
+    # once, this lets us stop immediately after a complete catalog hit while
+    # keeping discovery generic for brands appearing later in the index.
+    batch_size = 16
+    for offset in range(0, len(brand_entries), batch_size):
+        if time.monotonic() >= deadline:
+            break
+        batch = brand_entries[offset:offset + batch_size]
         executor = ThreadPoolExecutor(max_workers=8)
-        futures = [executor.submit(scan_brand, url) for url in brand_urls[:220]]
-        deadline = time.monotonic() + 12.0
-        pending = set(futures)
-        while pending and time.monotonic() < deadline:
+        futures = [executor.submit(scan_brand, entry) for entry in batch]
+        try:
             remaining = max(0.05, deadline - time.monotonic())
-            try:
-                completed = as_completed(pending, timeout=remaining)
-                for future in completed:
-                    pending.discard(future)
-                    try:
-                        urls = future.result()
-                    except Exception:
-                        urls = []
-                    for product_url in urls:
-                        if product_url in seen_products:
-                            continue
-                        seen_products.add(product_url)
-                        found.append(product_url)
-                        if len(found) >= MAX_CANDIDATES:
-                            return found[:MAX_CANDIDATES]
-            except TimeoutError:
-                break
-            if len(found) >= MAX_CANDIDATES:
-                break
-    except Exception:
-        pass
-    finally:
-        if executor is not None:
+            for future in as_completed(futures, timeout=remaining):
+                try:
+                    urls = future.result()
+                except Exception:
+                    urls = []
+                for product_url in urls:
+                    if product_url in seen_products:
+                        continue
+                    seen_products.add(product_url)
+                    found.append(product_url)
+                    if len(found) >= MAX_CANDIDATES:
+                        return found[:MAX_CANDIDATES]
+        except TimeoutError:
+            pass
+        finally:
             executor.shutdown(wait=False, cancel_futures=True)
+
+        if found:
+            return found[:MAX_CANDIDATES]
 
     return found[:MAX_CANDIDATES]
 
 
 def discover_product_urls(session, query):
-    """Generic Sabina discovery: native search plus catalog fallback."""
+    """Generic Sabina discovery: authoritative catalog first, native search fallback."""
+    # Sabina's native search can return unrelated HTTP-200 product links.
+    # Use the generic catalog surface first; only fall back to native search
+    # when the catalog cannot verify any product.
+    catalog_urls = _discover_from_sitemaps(session, query)
+    if catalog_urls:
+        return catalog_urls[:MAX_CANDIDATES]
+
     found = []
     seen = set()
-
     try:
         response = session.get(
             SEARCH_URL,
@@ -845,35 +855,21 @@ def discover_product_urls(session, query):
         for anchor in soup.find_all("a", href=True):
             add(anchor.get("href"))
 
-        decoded = (
-            response_html(response)
-            .replace("\\/", "/")
-            .replace("\\u002F", "/")
-        )
+        decoded = response_html(response).replace("\\/", "/").replace("\\u002F", "/")
         for match in re.finditer(
             r'https?://(?:www\.)?sabina\.com/'
-            r'(?:es|it|fr|en|de|nl|pt)/'
-            r'[^"\'<>\s\\]+',
-            decoded,
-            re.I,
+            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded, re.I,
         ):
             add(match.group(0))
         for match in re.finditer(
-            r'/(?:es|it|fr|en|de|nl|pt)/'
-            r'[^"\'<>\s\\]+',
-            decoded,
-            re.I,
+            r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded, re.I,
         ):
             add(match.group(0))
 
-    # Search results are not authoritative on Sabina. Always consult the
-    # generic catalog index as the discovery fallback.
-    for url in _discover_from_sitemaps(session, query):
-        if url not in seen:
-            seen.add(url)
-            found.append(url)
-
     return found[:MAX_CANDIDATES]
+
 
 def _offer_list(product):
     offers = product.get("offers") if isinstance(product, dict) else None
