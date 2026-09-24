@@ -174,6 +174,25 @@ def diagnose_sabina_discovery_trace(q: str = Query("9 PM")):
             sitemap_refs = re.findall(r'(?im)^\s*Sitemap:\s*(https?://\S+)', robots["text"] or "")
             trace["robots_sitemaps"] = sitemap_refs[:100]
 
+            # Detailed read-only inspection of every sitemap declared by robots.
+            sitemap_http_trace = []
+            for sitemap_url in sitemap_refs[:20]:
+                sp = _get(sitemap_url, timeout=(2, 12), headers=getattr(scraper, "HEADERS", HEADERS))
+                body = sp["text"] or ""
+                locs = re.findall(r"<\s*loc(?:\s[^>]*)?>\s*(.*?)\s*</\s*loc\s*>", body, re.I | re.S)
+                sitemap_http_trace.append({
+                    "url": sitemap_url,
+                    "ok": sp["ok"],
+                    "status": sp["status"],
+                    "elapsed_sec": sp["elapsed_sec"],
+                    "bytes": sp["bytes"],
+                    "error": sp["error"],
+                    "loc_count": len(locs),
+                    "loc_sample": [re.sub(r"\s+", " ", x).strip() for x in locs[:20]],
+                    "head": re.sub(r"\s+", " ", body[:1500]).strip(),
+                })
+            trace["sitemap_http_trace"] = sitemap_http_trace
+
             # Trace actual sitemap helper output without changing production code.
             sitemap_fn = getattr(scraper, "_discover_from_sitemaps", None)
             if sitemap_fn:
