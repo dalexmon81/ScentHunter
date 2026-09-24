@@ -140,96 +140,70 @@ def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
         "pages": out,
     }
 
-@router.get("/diagnose-sabina-runtime")
-def diagnose_sabina_runtime(q: str = Query("9 PM")):
-    """Read-only diagnostic of the exact deployed Sabina scraper discovery."""
+
+@router.get("/diagnose-sabina-discovery-trace")
+def diagnose_sabina_discovery_trace(q: str = Query("9 PM")):
+    """Deep read-only trace of Sabina discovery stages."""
     started = time.monotonic()
+    out = {"diagnostic": True, "store": "Sabina", "query": q,
+           "purpose": "read-only trace of deployed Sabina discovery stages"}
     try:
         from scrapers.sabina import scraper
         import requests
-
         session = requests.Session()
         try:
-            urls = scraper.discover_product_urls(session, q)
+            out["scraper_module"] = getattr(scraper, "__file__", None)
+            trace = {}
+            # Normal search surface
+            search_url = f"{scraper.SEARCH_URL}?search_query={quote(q)}"
+            page = _get(search_url, timeout=(2, 8), headers=getattr(scraper, "HEADERS", HEADERS))
+            trace["search_page"] = {k: page[k] for k in ("ok","status","url","elapsed_sec","bytes","error")}
+            text = page["text"]
+            links = []
+            if text:
+                for m in re.finditer(r'href=["\\\']([^"\\\']+)["\\\']', text, re.I):
+                    u = urljoin(page["url"], m.group(1))
+                    if scraper.is_product_url(u):
+                        links.append(u)
+            trace["search_product_urls"] = list(dict.fromkeys(links))[:100]
+
+            # Robots / sitemap discovery, using the actual scraper helper if present.
+            robots_url = scraper.BASE_URL + "/robots.txt"
+            robots = _get(robots_url, timeout=(2, 8), headers=getattr(scraper, "HEADERS", HEADERS))
+            trace["robots"] = {k: robots[k] for k in ("ok","status","url","elapsed_sec","bytes","error")}
+            sitemap_refs = re.findall(r'(?im)^\\s*Sitemap:\\s*(https?://\\S+)', robots["text"] or "")
+            trace["robots_sitemaps"] = sitemap_refs[:100]
+
+            # Trace actual sitemap helper output without changing production code.
+            sitemap_fn = getattr(scraper, "_discover_from_sitemaps", None)
+            if sitemap_fn:
+                try:
+                    result = sitemap_fn(session, q)
+                    trace["sitemap_discovery"] = {"ok": True, "count": len(result or []), "urls": (result or [])[:100]}
+                except Exception as exc:
+                    trace["sitemap_discovery"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+            else:
+                trace["sitemap_discovery"] = {"ok": False, "error": "_discover_from_sitemaps not found"}
+
+            # Exact scoring of URLs found by the sitemap helper, if available.
+            score_fn = getattr(scraper, "_catalog_candidate_score", None)
+            candidates = []
+            if score_fn and trace.get("sitemap_discovery", {}).get("ok"):
+                for u in trace["sitemap_discovery"]["urls"]:
+                    try:
+                        candidates.append({"url": u, "score": score_fn(u, q)})
+                    except Exception as exc:
+                        candidates.append({"url": u, "score_error": f"{type(exc).__name__}: {exc}"})
+            trace["sitemap_scored_candidates"] = sorted(candidates, key=lambda x: x.get("score", -1), reverse=True)[:100]
+
+            final = scraper.discover_product_urls(session, q)
+            trace["final_discovery"] = {"count": len(final or []), "urls": (final or [])[:100]}
+            out["trace"] = trace
         finally:
             session.close()
-
-        return {
-            "diagnostic": True,
-            "store": "Sabina",
-            "query": q,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-            "purpose": "read-only execution of the deployed Sabina discovery function",
-            "scraper_module": getattr(scraper, "__file__", None),
-            "discovery": {
-                "ok": True,
-                "count": len(urls),
-                "urls": urls,
-            },
-        }
+        out["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return out
     except Exception as exc:
-        return {
-            "diagnostic": True,
-            "store": "Sabina",
-            "query": q,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-            "purpose": "read-only execution of the deployed Sabina discovery function",
-            "discovery": {
-                "ok": False,
-                "count": 0,
-                "urls": [],
-                "error": f"{type(exc).__name__}: {exc}",
-            },
-        }
-
-
-@router.get("/diagnose-sabina-html")
-def diagnose_sabina_html(q: str = Query("9 PM")):
-    """Inspect the raw Sabina search response without using production discovery."""
-    started = time.monotonic()
-    base = "https://www.sabina.com"
-    url = f"{base}/es/buscar?search_query={quote(q)}"
-    page = _get(url, headers=HEADERS)
-    text = page["text"]
-    low = text.lower()
-
-    query_hits = []
-    needle = (q or "").lower()
-    if needle:
-        for m in list(re.finditer(re.escape(needle), low))[:20]:
-            query_hits.append(_compact(text[max(0, m.start()-300):m.end()+500], 900))
-
-    product_links = []
-    for m in re.finditer(r'href=["\']([^"\']+)["\']', text, re.I):
-        href = m.group(1)
-        if re.search(r'/es/[^/]+/\d+-[^/]+\.html$', href, re.I):
-            product_links.append(urljoin(page["url"], href))
-
-    soup_text = re.sub(r'<[^>]+>', ' ', text)
-    heading = None
-    warning = None
-    mh = re.search(r'<h1\b[^>]*>(.*?)</h1>', text, re.I | re.S)
-    mw = re.search(r'<p\b[^>]*class=["\'][^"\']*alert[^"\']*["\'][^>]*>(.*?)</p>', text, re.I | re.S)
-    if mh:
-        heading = _compact(re.sub(r'<[^>]+>', ' ', mh.group(1)), 500)
-    if mw:
-        warning = _compact(re.sub(r'<[^>]+>', ' ', mw.group(1)), 500)
-
-    return {
-        "diagnostic": True,
-        "store": "Sabina",
-        "query": q,
-        "elapsed_sec": round(time.monotonic() - started, 3),
-        "purpose": "raw HTML inspection only; no production discovery/search and no product-specific rule",
-        "page": {
-            "url": page["url"],
-            "status": page["status"],
-            "bytes": page["bytes"],
-            "error": page["error"],
-            "heading": heading,
-            "warning": warning,
-            "literal_query_occurrences": len(list(re.finditer(re.escape(needle), low))) if needle else 0,
-            "query_contexts": query_hits,
-            "product_like_links": list(dict.fromkeys(product_links))[:100],
-        },
-    }
+        out["elapsed_sec"] = round(time.monotonic() - started, 3)
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
