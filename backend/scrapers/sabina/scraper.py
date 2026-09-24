@@ -736,79 +736,78 @@ def discover_product_urls(session, query):
 
         sequence += 1
 
-    def score_candidate(url, context):
-    """
-    Generic relevance scoring.
+        def score_candidate(url, context):
+            """
+            Generic relevance scoring.
 
-    Matching is performed against:
-    - visible candidate text;
-    - HTML attributes;
-    - embedded JSON/JavaScript;
-    - URL path;
-    - compact forms without separators.
+            Matching is performed against:
+            - visible candidate text;
+            - HTML attributes;
+            - embedded JSON/JavaScript;
+            - URL path;
+            - compact forms without separators.
+            """
 
-    No product, brand or SKU is hard-coded.
-    """
+            if not is_product_url(url):
+                return -1
 
-    if not is_product_url(url):
-        return -1
+            raw_evidence = " ".join(
+                (
+                    context or "",
+                    urlparse(url).path,
+                )
+            )
 
-    raw_evidence = " ".join(
-        (
-            context or "",
-            urlparse(url).path,
-        )
-    )
+            evidence = norm(raw_evidence)
 
-    evidence = norm(raw_evidence)
+            evidence_compact = re.sub(
+                r"[^a-z0-9]",
+                "",
+                evidence,
+            )
 
-    evidence_compact = re.sub(
-        r"[^a-z0-9]",
-        "",
-        evidence,
-    )
+            query_compact_local = re.sub(
+                r"[^a-z0-9]",
+                "",
+                query_norm,
+            )
 
-    query_compact_local = re.sub(
-        r"[^a-z0-9]",
-        "",
-        query_norm,
-    )
+            if query_norm and query_norm in evidence:
+                return 100 + (20 * len(tokens))
 
-    if query_norm and query_norm in evidence:
-        return 100 + (20 * len(tokens))
+            if (
+               query_compact_local
+               and query_compact_local in evidence_compact
+            ):
+               return 95 + (20 * len(tokens))
 
-    if (
-        query_compact_local
-        and query_compact_local in evidence_compact
-    ):
-        return 95 + (20 * len(tokens))
+            if not tokens:
+               return 0
 
-    if not tokens:
-        return 0
+            matched = 0
 
-    matched = 0
+            for token in tokens:
+                token_compact = re.sub(
+                    r"[^a-z0-9]",
+                    "",
+                    token,
+                )
 
-    for token in tokens:
-        token_compact = re.sub(
-            r"[^a-z0-9]",
-            "",
-            token,
-        )
+                if token in evidence:
+                    matched += 1
+                    continue
 
-        if token in evidence:
-            matched += 1
-            continue
+                if (
+                    token_compact
+                    and token_compact in evidence_compact
+                ):
+                    matched += 1
 
-        if (
-            token_compact
-            and token_compact in evidence_compact
-        ):
-            matched += 1
+           if matched == len(tokens):
+               return 80 + (10 * matched)
 
-    if matched == len(tokens):
-        return 80 + (10 * matched)
+           return -1
 
-    return -1
 
 
     def node_context(node):
