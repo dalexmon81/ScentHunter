@@ -1,8 +1,7 @@
 import json
-import html
 import re
 import unicodedata
-from urllib.parse import urljoin, urlparse, unquote
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -41,6 +40,27 @@ IGNORED_QUERY_WORDS = {
 
 def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def response_html(response):
+    """Decode Sabina HTML from raw bytes so UTF-8 currency/accents are preserved."""
+    content = getattr(response, "content", b"")
+    if content:
+        # Sabina pages are UTF-8; prefer the document charset over requests.text
+        # when the HTTP headers omit or misreport it.
+        try:
+            head = content[:4096].decode("ascii", errors="ignore")
+            match = re.search(r"charset\s*=\s*[\"']?([A-Za-z0-9._-]+)", head, re.I)
+            if match:
+                encoding = match.group(1)
+                try:
+                    return content.decode(encoding, errors="replace")
+                except LookupError:
+                    pass
+            return content.decode("utf-8", errors="replace")
+        except Exception:
+            pass
+    return response.text
 
 
 def norm(value):
@@ -433,6 +453,24 @@ def extract_price_from_html(soup):
         if value is not None:
             return value, "sabina_html_price"
 
+    # Sabina currently renders the customer price as plain product text, e.g.
+    # "Precio: 33,20 €". Search product-bound containers for that labelled
+    # value before giving up. This is deliberately generic and does not use
+    # any product-specific number or URL.
+    for container in containers:
+        text_value = clean(container.get_text(" ", strip=True))
+        match = re.search(
+            r"(?:precio|price|prix|preis)\s*[:\-]\s*"
+            r"([0-9]{1,4}(?:[.\s][0-9]{3})*(?:,[0-9]{1,2})?|"
+            r"[0-9]{1,4}(?:\.[0-9]{1,2})?)",
+            text_value,
+            re.I,
+        )
+        if match:
+            value = money_to_float(match.group(1))
+            if value is not None and value > 0:
+                return value, "sabina_html_price"
+
     return None, None
 
 
@@ -563,8 +601,9 @@ def availability_from_product_page(soup, jsonld_offer=None):
     ) or [soup]
 
     purchase_words = (
-        "añadir al carrito", "agregar al carrito", "comprar",
-        "add to cart", "add-to-cart", "buy now",
+        "añadir al carrito", "añadir a la cesta", "agregar al carrito",
+        "agregar a la cesta", "comprar", "añadir",
+        "add to cart", "add-to-cart", "add to bag", "buy now",
         "ajouter au panier", "acheter", "in den warenkorb", "jetzt kaufen",
         "acquista", "aggiungi al carrello",
     )
@@ -653,355 +692,12 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-SITEMAP_FALLBACK_MAX_INDEXES = 500
-SITEMAP_FALLBACK_MAX_URLS_PER_INDEX = 50000
-
-
-def _catalog_candidate_score(url, query):
-    query_norm = norm(query)
-    if not query_norm:
-        return 0
-    path = norm(unquote(urlparse(url).path))
-    compact_path = re.sub(r"[^a-z0-9]+", "", path)
-    compact_query = re.sub(r"[^a-z0-9]+", "", query_norm)
-    if not compact_query or compact_query not in compact_path:
-        return 0
-    return 100 + len(compact_query)
-
-
-def _discover_from_sitemaps(session, query):
-    """Generic catalog discovery through robots-declared XML sitemaps."""
-    sitemap_urls = []
-    seen_sitemaps = set()
-
-    def add_sitemap(url):
-        absolute = normalise_url(url, BASE_URL)
-        if absolute and absolute not in seen_sitemaps:
-            seen_sitemaps.add(absolute)
-            sitemap_urls.append(absolute)
-
-    try:
-        robots = session.get(
-            urljoin(BASE_URL, "/robots.txt"),
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-        if robots.status_code < 400:
-            for line in robots.text.splitlines():
-                if line.lower().startswith("sitemap:"):
-                    add_sitemap(line.split(":", 1)[1].strip())
-    except requests.RequestException:
-        pass
-
-    if not sitemap_urls:
-        add_sitemap(urljoin(BASE_URL, "/sitemap_index_shop_1.xml"))
-
-    queue = list(sitemap_urls)
-    candidates = []
-    visited = set()
-
-    while queue and len(visited) < SITEMAP_FALLBACK_MAX_INDEXES:
-        sitemap = queue.pop(0)
-        if sitemap in visited:
-            continue
-        visited.add(sitemap)
-        try:
-            response = session.get(
-                sitemap,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            continue
-        if response.status_code >= 400:
-            continue
-
-        locations = re.findall(
-            r"<loc>\s*(.*?)\s*</loc>",
-            response.text,
-            re.I | re.S,
-        )
-        for raw in locations[:SITEMAP_FALLBACK_MAX_URLS_PER_INDEX]:
-            location = html.unescape(raw.strip())
-            if location.lower().endswith((".xml", ".xml.gz")):
-                add_sitemap(location)
-                if location not in visited and location not in queue:
-                    queue.append(location)
-                continue
-            absolute = normalise_url(location, sitemap)
-            if not absolute or not is_product_url(absolute):
-                continue
-            score = _catalog_candidate_score(absolute, query)
-            if score:
-                candidates.append((score, absolute))
-
-        if candidates:
-            candidates.sort(key=lambda item: (-item[0], item[1]))
-            return [url for _, url in candidates[:MAX_CANDIDATES]]
-
-    candidates.sort(key=lambda item: (-item[0], item[1]))
-    return [url for _, url in candidates[:MAX_CANDIDATES]]
-
-
-CATALOG_FALLBACK_MAX_SEEDS = 2
-CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 24
-CATALOG_FALLBACK_WORKERS = 12
-CATALOG_BRAND_INDEX_URL = "/es/marcas"
-
-
-def _catalog_query_matches(text, query):
-    tokens = query_tokens(query)
-    normalized = norm(text)
-    return bool(tokens) and all(token in normalized for token in tokens)
-
-
-def _catalog_product_urls_from_page(soup, query, base_url):
-    """Extract product URLs only when the product card itself matches query."""
-    urls = []
-    seen = set()
-    query_compact = re.sub(r"[^a-z0-9]+", "", norm(query))
-
-    for anchor in soup.find_all("a", href=True):
-        absolute = normalise_url(anchor.get("href"), base_url)
-        if not absolute or not is_product_url(absolute) or absolute in seen:
-            continue
-
-        anchor_text = clean(anchor.get_text(" ", strip=True))
-        card = anchor
-        for _ in range(5):
-            parent = getattr(card, "parent", None)
-            if not parent:
-                break
-            parent_text = clean(parent.get_text(" ", strip=True))
-            if len(parent_text) > len(anchor_text):
-                anchor_text = parent_text
-            card = parent
-            if len(parent_text) >= 80:
-                break
-
-        path_compact = re.sub(
-            r"[^a-z0-9]+", "",
-            norm(unquote(urlparse(absolute).path)),
-        )
-
-        if (query_compact and query_compact in path_compact) or _catalog_query_matches(anchor_text, query):
-            seen.add(absolute)
-            urls.append(absolute)
-
-    return urls
-
-
-def _catalog_brand_urls_from_index(soup, base_url):
-    """Discover brand landing pages from Sabina's live brand index."""
-    urls = []
-    seen = set()
-    for anchor in soup.find_all("a", href=True):
-        absolute = normalise_url(anchor.get("href"), base_url)
-        if not absolute or is_product_url(absolute) or absolute in seen:
-            continue
-        parsed = urlparse(absolute)
-        if parsed.netloc.lower() not in {"sabina.com", "www.sabina.com"}:
-            continue
-        path = parsed.path.rstrip("/")
-        if not path or path in {"", "/es", "/es/marcas"}:
-            continue
-        # Brand links on this surface are numeric-slug paths such as /es/579_afnan.
-        if not re.match(r"^/es/\d+_[^/]+$", path, re.I):
-            continue
-        seen.add(absolute)
-        urls.append(absolute)
-    return urls
-
-
-def _fetch_catalog_page(session, page_url):
-    try:
-        response = session.get(
-            page_url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return None
-    if response.status_code >= 400:
-        return None
-    return response
-
-
-def _discover_from_brand_index(session, query):
-    """Search Sabina's generic live brand index before crawling broad categories."""
-    response = _fetch_catalog_page(
-        session,
-        urljoin(BASE_URL, CATALOG_BRAND_INDEX_URL),
-    )
-    if response is None:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    brand_urls = _catalog_brand_urls_from_index(soup, response.url)
-    if not brand_urls:
-        return []
-
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    # Preserve the retailer's brand-index order. Process small concurrent
-    # batches so a matching brand can terminate discovery quickly without
-    # crawling the whole catalog. No brand/product is hard-coded.
-    batch_size = CATALOG_FALLBACK_WORKERS
-    for offset in range(0, len(brand_urls), batch_size):
-        batch = brand_urls[offset:offset + batch_size]
-        found = []
-        seen_products = set()
-        with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
-            futures = {
-                executor.submit(_fetch_catalog_page, session, url): url
-                for url in batch
-            }
-            for future in as_completed(futures):
-                page_response = future.result()
-                if page_response is None:
-                    continue
-                page_soup = BeautifulSoup(page_response.text, "html.parser")
-                for product_url in _catalog_product_urls_from_page(
-                    page_soup,
-                    query,
-                    page_response.url,
-                ):
-                    if product_url in seen_products:
-                        continue
-                    seen_products.add(product_url)
-                    found.append(product_url)
-                    if len(found) >= MAX_CANDIDATES:
-                        return found[:MAX_CANDIDATES]
-        if found:
-            return found[:MAX_CANDIDATES]
-
-    return []
-
-
-def _catalog_seed_urls_from_homepage(soup, base_url):
-    """Discover retailer category/brand landing pages from the live homepage."""
-    seeds = []
-    seen = set()
-    priority_words = (
-        "perfume", "perfumes", "parfum", "fragrance", "fragrances",
-        "cosmetic", "cosmetica", "makeup", "maquillaje", "beauty",
-        "care", "skincare", "cabello", "hair", "body", "hombre", "mujer",
-    )
-
-    candidates = []
-    for anchor in soup.find_all("a", href=True):
-        absolute = normalise_url(anchor.get("href"), base_url)
-        if not absolute or is_product_url(absolute):
-            continue
-        parsed = urlparse(absolute)
-        if parsed.netloc.lower() not in {"sabina.com", "www.sabina.com"}:
-            continue
-        path = parsed.path.rstrip("/")
-        if not path or path in {"", "/es", "/es/"} or "." in path.rsplit("/", 1)[-1]:
-            continue
-        text = clean(anchor.get_text(" ", strip=True))
-        normalized = norm(f"{text} {path}")
-        score = sum(10 for word in priority_words if word in normalized)
-        numeric_category = bool(re.search(r"/es/(?:\d+-|\d+_)", path, re.I))
-        perfume_surface = any(
-            word in normalized
-            for word in ("perfume", "perfumes", "parfum", "fragrance", "fragancias")
-        )
-        if numeric_category:
-            score += 5
-        if numeric_category and perfume_surface:
-            score += 100
-        elif not perfume_surface:
-            continue
-        candidates.append((score, absolute))
-
-    for _, url in sorted(candidates, key=lambda item: (-item[0], item[1])):
-        if url in seen:
-            continue
-        seen.add(url)
-        seeds.append(url)
-        if len(seeds) >= CATALOG_FALLBACK_MAX_SEEDS:
-            break
-    return seeds
-
-
-def _catalog_page_urls(seed, max_pages):
-    """Generate the retailer's observed generic pagination form (?p=N)."""
-    parsed = urlparse(seed)
-    base = parsed._replace(query="", fragment="")
-    root = base.geturl()
-    return [root if page == 1 else root + "?p=" + str(page) for page in range(1, max_pages + 1)]
-
-
-def _discover_from_catalog_pages(session, query):
-    """Generic catalog fallback for stores whose product sitemap is empty."""
-    brand_found = _discover_from_brand_index(session, query)
-    if brand_found:
-        return brand_found[:MAX_CANDIDATES]
-
-    try:
-        response = session.get(
-            urljoin(BASE_URL, "/es/"),
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return []
-
-    if response.status_code >= 400:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    seeds = _catalog_seed_urls_from_homepage(soup, response.url)
-    if not seeds:
-        return []
-
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    for seed in seeds:
-        page_urls = _catalog_page_urls(seed, CATALOG_FALLBACK_MAX_PAGES_PER_SEED)
-        found = []
-        seen_products = set()
-
-        with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
-            futures = {
-                executor.submit(_fetch_catalog_page, session, url): url
-                for url in page_urls
-            }
-            for future in as_completed(futures):
-                page_response = future.result()
-                if page_response is None:
-                    continue
-                page_soup = BeautifulSoup(page_response.text, "html.parser")
-                for product_url in _catalog_product_urls_from_page(
-                    page_soup, query, page_response.url
-                ):
-                    if product_url in seen_products:
-                        continue
-                    seen_products.add(product_url)
-                    found.append(product_url)
-                    if len(found) >= MAX_CANDIDATES:
-                        for pending in futures:
-                            if not pending.done():
-                                pending.cancel()
-                        return found[:MAX_CANDIDATES]
-
-        if found:
-            return found[:MAX_CANDIDATES]
-
-    return []
-
 def discover_product_urls(session, query):
     """
-    Discover product URLs through Sabina's normal search surface.
+    The only primary discovery path used by the real scraper.
 
-    If the search surface returns only unrelated template/recommendation links,
-    verify the catalog generically through the retailer's live category
-    pagination. No product, brand, SKU, price or URL is hard-coded.
+    The query is supplied at runtime. No product, brand, SKU or URL
+    is hard-coded here.
     """
     try:
         response = session.get(
@@ -1018,36 +714,41 @@ def discover_product_urls(session, query):
         return []
 
     soup = BeautifulSoup(
-        response.text,
+        response_html(response),
         "html.parser",
     )
 
     urls = []
     seen = set()
-    query_compact = re.sub(r"[^a-z0-9]+", "", norm(query))
 
     def add(raw):
-        absolute = normalise_url(raw, response.url)
-        if not absolute or not is_product_url(absolute):
+        absolute = normalise_url(
+            raw,
+            response.url,
+        )
+
+        if not absolute:
             return
 
-        path_compact = re.sub(
-            r"[^a-z0-9]+",
-            "",
-            norm(unquote(urlparse(absolute).path)),
-        )
-        if not query_compact or query_compact not in path_compact:
+        if not is_product_url(absolute):
             return
+
         if absolute in seen:
             return
+
         seen.add(absolute)
         urls.append(absolute)
 
-    for anchor in soup.find_all("a", href=True):
+    # First source: normal product links.
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
         add(anchor.get("href"))
 
+    # Second source: product URLs embedded in the returned HTML/JSON.
     decoded = (
-        response.text
+        response_html(response)
         .replace("\\/", "/")
         .replace("\\u002F", "/")
     )
@@ -1069,10 +770,8 @@ def discover_product_urls(session, query):
     ):
         add(match.group(0))
 
-    if urls:
-        return urls[:MAX_CANDIDATES]
+    return urls[:MAX_CANDIDATES]
 
-    return _discover_from_catalog_pages(session, query)
 
 def _offer_list(product):
     offers = product.get("offers") if isinstance(product, dict) else None
@@ -1171,7 +870,7 @@ def extract_product_page(session, url, query):
         return None
 
     soup = BeautifulSoup(
-        response.text,
+        response_html(response),
         "html.parser",
     )
 
@@ -1484,7 +1183,7 @@ def _fallback_extract_product_page(session, url, query):
         final_url = normalise_url(response.url)
         if not final_url or not is_product_url(final_url):
             return None
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response_html(response), "html.parser")
     finally:
         response.close()
 
@@ -1514,7 +1213,7 @@ def _fallback_extract_product_page(session, url, query):
     normalized = norm(page_text)
     if any(marker in normalized for marker in ("fecha de disponibilidad", "avísame", "notificarme", "notify me")):
         availability = "out_of_stock"
-    elif any(marker in normalized for marker in ("añadir al carrito", "agregar al carrito", "comprar", "add to cart", "buy now")):
+    elif any(marker in normalized for marker in ("añadir al carrito", "añadir a la cesta", "agregar al carrito", "agregar a la cesta", "comprar", "add to cart", "add to bag", "buy now")):
         availability = "in_stock"
     else:
         availability = "unknown"
