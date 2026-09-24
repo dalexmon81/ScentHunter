@@ -654,156 +654,112 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
 def discover_product_urls(session, query):
     """
-    The only primary discovery path used by the real scraper.
+    Generic runtime discovery for Sabina.
 
-    The query is supplied at runtime. No product, brand, SKU or URL
-    is hard-coded here.
+    Discovery errors are preserved as technical failures. Multiple generic
+    Sabina search surfaces are tried before returning a verified empty result.
+    No product, brand, SKU, price or product URL is hard-coded here.
     """
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        # A technical discovery failure must never become an empty
-        # NOT_FOUND result. Preserve the exception for search_stream.
-        raise
+    query = clean(query)
+    if not query:
+        return []
 
-    if response.status_code >= 400:
-        # Same rule for HTTP errors (403/429/5xx/etc.): do not collapse
-        # them into [] because the backend must distinguish them from
-        # a verified empty search.
-        response.raise_for_status()
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
+    surfaces = (
+        (SEARCH_URL, {"search_query": query}),
+        (BASE_URL + "/it/ricerca", {"search_query": query}),
+        (BASE_URL + "/it/ricerca_old", {"s": query}),
+        (BASE_URL + "/it/ricerca_old", {"search_query": query}),
     )
 
     urls = []
     seen = set()
+    successful_responses = 0
+    first_error = None
 
-    def add(raw):
-        absolute = normalise_url(
-            raw,
-            response.url,
-        )
-
-        if not absolute:
+    def add(raw, base_url):
+        absolute = normalise_url(raw, base_url)
+        if not absolute or not is_product_url(absolute):
             return
-
-        if not is_product_url(absolute):
-            return
-
         if absolute in seen:
             return
-
         seen.add(absolute)
         urls.append(absolute)
 
-    # First source: normal product links.
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
-        add(anchor.get("href"))
-
-    # Second source: product URLs embedded in the returned HTML/JSON.
-    decoded = (
-        response.text
-        .replace("\\/", "/")
-        .replace("\\u002F", "/")
-    )
-
-    for match in re.finditer(
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
-
-    # Generic fallback: if the valid search response exposes no product
-    # links, consult the public sitemap and filter candidate product URLs
-    # using the runtime query tokens. No product-specific rules are used.
-    if not urls:
-        query_parts = [
-            token for token in query_tokens(query) if len(token) >= 2
-        ]
-        if query_parts:
-            try:
-                sitemap_response = session.get(
-                    BASE_URL + "/sitemap.xml",
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
+    for search_url, params in surfaces:
+        try:
+            response = session.get(
+                search_url,
+                params=params,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.Timeout:
+            if first_error is None:
+                first_error = requests.Timeout(
+                    f"Sabina discovery timeout: {search_url}"
                 )
-                sitemap_response.raise_for_status()
+            continue
+        except requests.ConnectionError as exc:
+            if first_error is None:
+                first_error = exc
+            continue
+        except requests.RequestException as exc:
+            if first_error is None:
+                first_error = exc
+            continue
 
-                sitemap_text = (
-                    sitemap_response.text
-                    .replace("\\/", "/")
-                    .replace("\\u002F", "/")
-                )
+        try:
+            if response.status_code >= 400:
+                if first_error is None:
+                    first_error = requests.HTTPError(
+                        f"Sabina discovery HTTP {response.status_code}: {response.url}"
+                    )
+                continue
 
-                # Handle both a sitemap document and a sitemap index.
-                locations = re.findall(
-                    r"<loc>\s*([^<]+?)\s*</loc>",
-                    sitemap_text,
-                    re.I,
-                )
-                child_sitemaps = [
-                    location.strip()
-                    for location in locations
-                    if "sitemap" in location.lower()
-                ]
-                product_locations = [
-                    location.strip()
-                    for location in locations
-                    if is_product_url(location.strip())
-                ]
+            successful_responses += 1
+            soup = BeautifulSoup(response.text or "", "html.parser")
 
-                for child_url in child_sitemaps[:20]:
-                    if len(product_locations) >= 250:
-                        break
-                    try:
-                        child_response = session.get(
-                            child_url,
-                            headers=HEADERS,
-                            timeout=TIMEOUT,
-                            allow_redirects=True,
-                        )
-                        child_response.raise_for_status()
-                        child_locations = re.findall(
-                            r"<loc>\s*([^<]+?)\s*</loc>",
-                            child_response.text or "",
-                            re.I,
-                        )
-                        product_locations.extend(
-                            location.strip()
-                            for location in child_locations
-                            if is_product_url(location.strip())
-                        )
-                    except requests.RequestException:
-                        continue
+            for anchor in soup.find_all("a", href=True):
+                add(anchor.get("href"), response.url)
 
-                for location in product_locations:
-                    if all(
-                        token in norm(location)
-                        for token in query_parts
-                    ):
-                        add(location)
-                    if len(urls) >= MAX_CANDIDATES:
-                        break
+            decoded = (
+                response.text
+                .replace("\\/", "/")
+                .replace("\\u002F", "/")
+            )
 
-            except requests.RequestException:
-                pass
+            for match in re.finditer(
+                r'https?://(?:www\.)?sabina\.com/'
+                r'(?:es|it|fr|en|de|nl|pt)/'
+                r'[^"\'<>\s\\]+',
+                decoded,
+                re.I,
+            ):
+                add(match.group(0), response.url)
 
-    return urls[:MAX_CANDIDATES]
+            for match in re.finditer(
+                r'/(?:es|it|fr|en|de|nl|pt)/'
+                r'[^"\'<>\s\\]+',
+                decoded,
+                re.I,
+            ):
+                add(match.group(0), response.url)
+        finally:
+            response.close()
+
+        if len(urls) >= MAX_CANDIDATES:
+            break
+
+    if urls:
+        return urls[:MAX_CANDIDATES]
+
+    # A valid response with no product URLs is not automatically a technical
+    # error. Only if every discovery surface failed technically do we raise.
+    if successful_responses == 0 and first_error is not None:
+        raise first_error
+
+    return []
 
 
 def _offer_list(product):
