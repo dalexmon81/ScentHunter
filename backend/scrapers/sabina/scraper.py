@@ -666,6 +666,7 @@ def discover_product_urls(session, query):
         seen = set()
         tokens = query_tokens(query)
         query_norm = norm(query)
+        query_compact = query_norm.replace(" ", "")
 
         def score_candidate(url, anchor_text="", surrounding_text=""):
             if not is_product_url(url):
@@ -677,7 +678,11 @@ def discover_product_urls(session, query):
                 urlparse(url).path,
             )))
 
-            if query_norm and query_norm in evidence:
+            evidence_compact = evidence.replace(" ", "")
+            if query_norm and (
+                query_norm in evidence
+                or (query_compact and query_compact in evidence_compact)
+            ):
                 return 100 + 20 * len(tokens)
 
             matched = sum(1 for token in tokens if token in evidence)
@@ -805,8 +810,12 @@ def discover_product_urls(session, query):
 
                 sitemap_seen.add(url)
                 url_norm = norm(url)
+                url_compact = url_norm.replace(" ", "")
 
-                if tokens and not all(token in url_norm for token in tokens):
+                if tokens and not (
+                    all(token in url_norm for token in tokens)
+                    or (query_compact and query_compact in url_compact)
+                ):
                     continue
 
                 urls.append(url)
