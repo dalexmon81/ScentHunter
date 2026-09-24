@@ -171,7 +171,7 @@ def diagnose_sabina_discovery_trace(q: str = Query("9 PM")):
             robots_url = scraper.BASE_URL + "/robots.txt"
             robots = _get(robots_url, timeout=(2, 8), headers=getattr(scraper, "HEADERS", HEADERS))
             trace["robots"] = {k: robots[k] for k in ("ok","status","url","elapsed_sec","bytes","error")}
-            sitemap_refs = re.findall(r'(?im)^\\s*Sitemap:\\s*(https?://\\S+)', robots["text"] or "")
+            sitemap_refs = re.findall(r'(?im)^\s*Sitemap:\s*(https?://\S+)', robots["text"] or "")
             trace["robots_sitemaps"] = sitemap_refs[:100]
 
             # Trace actual sitemap helper output without changing production code.
