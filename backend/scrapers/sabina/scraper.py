@@ -1055,6 +1055,23 @@ def discover_product_urls(session, query):
             context=context,
             source="raw_html",
         )
+            if query.strip().lower() == "9 pm":
+        print(
+            "SABINA_DEBUG_9PM",
+            {
+                "total_candidates": len(candidates),
+                "all_candidates": [
+                    {
+                        "url": item["url"],
+                        "score": item["score"],
+                        "source": item["source"],
+                        "context": item["context"][:500],
+                    }
+                    for item in candidates.values()
+                ],
+            },
+            flush=True,
+        )
 
     ranked = [
         candidate
