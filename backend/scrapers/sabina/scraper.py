@@ -1299,9 +1299,12 @@ def extract_product_page(session, url, query):
 
         "name": title,
         "brand": brand,
+        # Keep the human-readable price ASCII-safe because the deployed
+        # diagnostic path has previously re-encoded the euro glyph.
+        # price_num remains the authoritative numeric value.
         "price": (
             f"{price:.2f}".replace(".", ",")
-            + " €"
+            + " EUR"
             if price is not None
             else ""
         ),
