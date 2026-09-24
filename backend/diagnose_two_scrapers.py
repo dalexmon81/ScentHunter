@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Query
 import concurrent.futures
+import importlib.util
 import json
+import os
 import re
 import time
 from urllib.parse import quote, urljoin
@@ -91,307 +93,127 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
         "probes": probes,
     }
 
+
 @router.get("/diagnose-sabina-runtime")
-def diagnose_sabina_runtime(
-    qs: str = Query("9 PM|Liquid Brun|Hawas")
-):
-    """Read-only runtime diagnosis of the current Sabina discovery/search path.
+def diagnose_sabina_runtime(qs: str = Query("9 PM|Liquid Brun|Hawas")):
+    """Bounded, read-only Sabina diagnostic.
 
-    It deliberately does not modify the production scraper. It captures the
-    real HTTP response from Sabina's search surfaces and, when possible,
-    invokes the current scraper discovery/search functions while preserving
-    exceptions and HTTP status information instead of converting failures into
-    empty results.
+    It deliberately does NOT call search() and search_stream() together.
+    The endpoint first tests the real search HTTP surface and then executes
+    discover_product_urls() at most once per query with a hard diagnostic
+    timeout. A timeout is returned as data instead of leaving the HTTP request
+    hanging.
     """
-    import importlib.util
-    import os
-    import requests as _requests
-
     started = time.monotonic()
-
-    raw_queries = [x.strip() for x in (qs or "").split("|") if x.strip()]
     queries = []
     seen = set()
-    for q in raw_queries[:12]:
-        key = q.casefold()
-        if key not in seen:
-            seen.add(key)
+    for raw in (qs or "").split("|")[:12]:
+        q = raw.strip()
+        if q and q.casefold() not in seen:
+            seen.add(q.casefold())
             queries.append(q)
 
     scraper_path = os.path.join(
-        os.path.dirname(__file__),
-        "scrapers",
-        "sabina",
-        "scraper.py",
+        os.path.dirname(__file__), "scrapers", "sabina", "scraper.py"
     )
-
-    result = {
+    out = {
         "diagnostic": True,
         "store": "Sabina",
-        "purpose": "read-only runtime diagnosis; no production mutation",
-        "scraper_file": scraper_path,
         "queries": queries,
+        "scraper_file": scraper_path,
         "query_results": [],
     }
 
-    # Load the exact production scraper currently deployed with this app.
     spec = importlib.util.spec_from_file_location(
-        "scent_hunter_sabina_runtime_diag",
-        scraper_path,
+        "scent_hunter_sabina_runtime_diag", scraper_path
     )
     module = None
     if spec is None or spec.loader is None:
-        result["import"] = {
-            "ok": False,
-            "error": "Could not load Sabina scraper",
-        }
+        out["import"] = {"ok": False, "error": "Could not load Sabina scraper"}
     else:
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-            result["import"] = {
-                "ok": True,
-                "module_file": getattr(module, "__file__", None),
-            }
+            out["import"] = {"ok": True, "module_file": getattr(module, "__file__", None)}
         except Exception as exc:
-            result["import"] = {
-                "ok": False,
-                "error": f"{type(exc).__name__}: {exc}",
-            }
+            out["import"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             module = None
 
-    base = getattr(module, "BASE_URL", None) or getattr(
-        module, "BASE", "https://www.sabina.com"
-    )
-    search_url = getattr(
-        module,
-        "SEARCH_URL",
-        base.rstrip("/") + "/es/buscar",
-    )
+    base = getattr(module, "BASE_URL", None) or getattr(module, "BASE", "https://www.sabina.com")
+    search_url = getattr(module, "SEARCH_URL", base.rstrip("/") + "/es/buscar")
     headers = getattr(module, "HEADERS", HEADERS)
 
     for q in queries:
-        qr = {
-            "query": q,
-            "http_surfaces": [],
-            "scraper": {},
-        }
-
-        # Probe the same generic search surfaces without treating an error
-        # as an empty result.
-        surfaces = [
-            {
-                "name": "production_search_url",
-                "url": search_url,
-                "params": {"search_query": q},
-            },
-            {
-                "name": "it_search",
-                "url": base.rstrip("/") + "/it/ricerca",
-                "params": {"search_query": q},
-            },
-            {
-                "name": "it_search_old_s",
-                "url": base.rstrip("/") + "/it/ricerca_old",
-                "params": {"s": q},
-            },
-            {
-                "name": "it_search_old_query",
-                "url": base.rstrip("/") + "/it/ricerca_old",
-                "params": {"search_query": q},
-            },
-        ]
-
-        for surface in surfaces:
-            item = {
-                "name": surface["name"],
-                "url": surface["url"],
-                "params": surface["params"],
+        qr = {"query": q, "http": {}, "discovery": {}}
+        t0 = time.monotonic()
+        try:
+            r = requests.get(
+                search_url,
+                params={"search_query": q},
+                headers=headers,
+                timeout=(2.5, 7.0),
+                allow_redirects=True,
+            )
+            html = r.text or ""
+            qr["http"] = {
+                "ok": True,
+                "status": r.status_code,
+                "requested_url": r.url,
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "bytes": len(r.content),
+                "query_occurrences": html.casefold().count(q.casefold()),
+                "classification": "http_error" if r.status_code >= 400 else "http_response_received",
             }
-            t0 = time.monotonic()
-            try:
-                r = _requests.get(
-                    surface["url"],
-                    params=surface["params"],
-                    headers=headers,
-                    timeout=(2.5, 10.0),
-                    allow_redirects=True,
-                )
-                html = r.text or ""
-                item.update({
+            r.close()
+        except requests.Timeout as exc:
+            qr["http"] = {"ok": False, "classification": "timeout", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
+        except requests.RequestException as exc:
+            qr["http"] = {"ok": False, "classification": "request_error", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
+
+        discover = getattr(module, "discover_product_urls", None) if module else None
+        if not callable(discover):
+            qr["discovery"] = {"ok": False, "classification": "missing_discover_product_urls"}
+        else:
+            holder = {}
+            def _run_discovery():
+                try:
+                    holder["value"] = discover(q)
+                except Exception as exc:
+                    holder["error"] = f"{type(exc).__name__}: {exc}"
+
+            thread = __import__("threading").Thread(target=_run_discovery, daemon=True)
+            t1 = time.monotonic()
+            thread.start()
+            thread.join(timeout=12.0)
+            if thread.is_alive():
+                qr["discovery"] = {
+                    "ok": False,
+                    "classification": "diagnostic_timeout",
+                    "elapsed_sec": round(time.monotonic()-t1, 3),
+                    "error": "discover_product_urls did not return within 12s",
+                }
+            elif "error" in holder:
+                qr["discovery"] = {
+                    "ok": False,
+                    "classification": "scraper_exception",
+                    "elapsed_sec": round(time.monotonic()-t1, 3),
+                    "error": holder["error"],
+                }
+            else:
+                value = holder.get("value")
+                qr["discovery"] = {
                     "ok": True,
-                    "status": r.status_code,
-                    "requested_url": r.url,
-                    "elapsed_sec": round(time.monotonic() - t0, 3),
-                    "bytes": len(r.content),
-                    "content_type": r.headers.get("content-type"),
-                    "server": r.headers.get("server"),
-                    "location": r.headers.get("location"),
-                })
+                    "classification": "urls_found" if value else "verified_empty",
+                    "elapsed_sec": round(time.monotonic()-t1, 3),
+                    "type": type(value).__name__,
+                    "count": len(value) if isinstance(value, list) else None,
+                    "urls": value[:50] if isinstance(value, list) else value,
+                }
 
-                # Generic product URL extraction based on the current
-                # scraper's URL contract, not on a particular product.
-                product_re = getattr(module, "PRODUCT_URL_RE", None)
-                if product_re is not None:
-                    try:
-                        matches = list(product_re.finditer(html))
-                        urls = []
-                        for m in matches:
-                            try:
-                                raw = m.group(0)
-                            except Exception:
-                                raw = None
-                            if raw:
-                                urls.append(urljoin(r.url, raw))
-                        item["production_regex_match_count"] = len(matches)
-                        item["production_regex_urls"] = list(
-                            dict.fromkeys(urls)
-                        )[:50]
-                    except Exception as exc:
-                        item["production_regex_error"] = (
-                            f"{type(exc).__name__}: {exc}"
-                        )
+        out["query_results"].append(qr)
 
-                # Generic anchor inspection. This is diagnostic only.
-                links = []
-                for m in re.finditer(
-                    r'href=["\']([^"\']+)["\']',
-                    html,
-                    re.I,
-                ):
-                    href = m.group(1)
-                    absolute = urljoin(r.url, href)
-                    if re.search(
-                        r"/(?:es|it|fr|en|de|nl|pt)/[^/]+/\d+-[^/]+\.html$",
-                        absolute,
-                        re.I,
-                    ):
-                        links.append(absolute)
-
-                item["generic_product_url_count"] = len(
-                    list(dict.fromkeys(links))
-                )
-                item["generic_product_urls"] = list(
-                    dict.fromkeys(links)
-                )[:50]
-
-                # Query occurrence is informational only; it is not used to
-                # decide whether the store has a product.
-                item["query_occurrences"] = html.casefold().count(
-                    q.casefold()
-                )
-
-                if r.status_code >= 400:
-                    item["classification"] = "http_error"
-                elif not html:
-                    item["classification"] = "empty_http_body"
-                else:
-                    item["classification"] = "http_response_received"
-
-                r.close()
-            except _requests.Timeout as exc:
-                item.update({
-                    "ok": False,
-                    "classification": "timeout",
-                    "elapsed_sec": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-            except _requests.ConnectionError as exc:
-                item.update({
-                    "ok": False,
-                    "classification": "unavailable",
-                    "elapsed_sec": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-            except _requests.RequestException as exc:
-                item.update({
-                    "ok": False,
-                    "classification": "request_error",
-                    "elapsed_sec": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-            except Exception as exc:
-                item.update({
-                    "ok": False,
-                    "classification": "exception",
-                    "elapsed_sec": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-
-            qr["http_surfaces"].append(item)
-
-        if module is not None:
-            # Trace discovery if the current scraper exposes it.
-            discover = getattr(module, "discover_product_urls", None)
-            if callable(discover):
-                try:
-                    t0 = time.monotonic()
-                    discovered = discover(q)
-                    qr["scraper"]["discover_product_urls"] = {
-                        "ok": True,
-                        "elapsed_sec": round(time.monotonic() - t0, 3),
-                        "type": type(discovered).__name__,
-                        "count": (
-                            len(discovered)
-                            if isinstance(discovered, list)
-                            else None
-                        ),
-                        "urls": (
-                            discovered[:50]
-                            if isinstance(discovered, list)
-                            else discovered
-                        ),
-                    }
-                except Exception as exc:
-                    qr["scraper"]["discover_product_urls"] = {
-                        "ok": False,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
-
-            # Trace the current production search separately.
-            search = getattr(module, "search", None)
-            if callable(search):
-                try:
-                    t0 = time.monotonic()
-                    rows = search(q)
-                    qr["scraper"]["search"] = {
-                        "ok": True,
-                        "elapsed_sec": round(time.monotonic() - t0, 3),
-                        "type": type(rows).__name__,
-                        "count": (
-                            len(rows) if isinstance(rows, list) else None
-                        ),
-                        "rows": (
-                            rows[:20] if isinstance(rows, list) else rows
-                        ),
-                    }
-                except Exception as exc:
-                    qr["scraper"]["search"] = {
-                        "ok": False,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
-
-            search_stream = getattr(module, "search_stream", None)
-            if callable(search_stream):
-                try:
-                    t0 = time.monotonic()
-                    streamed = search_stream(q)
-                    qr["scraper"]["search_stream"] = {
-                        "ok": True,
-                        "elapsed_sec": round(time.monotonic() - t0, 3),
-                        "type": type(streamed).__name__,
-                        "result": streamed,
-                    }
-                except Exception as exc:
-                    qr["scraper"]["search_stream"] = {
-                        "ok": False,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
-
-        result["query_results"].append(qr)
-
-    result["elapsed_sec"] = round(time.monotonic() - started, 3)
-    return result
+    out["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return out
 
 @router.get("/diagnose-deloox-catalog")
 def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
