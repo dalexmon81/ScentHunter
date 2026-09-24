@@ -746,6 +746,30 @@ def discover_product_urls(session, query):
         ):
             add(match.group(0))
 
+        # Some Sabina search responses serialize product links inside
+        # JavaScript/JSON structures without exposing them as normal hrefs.
+        # Recover any Sabina localized product URL generically, then apply
+        # the exact same query-relevance scoring.
+        for match in re.finditer(
+            r'(?:https?:)?//(?:www\.)?sabina\.com/'
+            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+?'
+            r'/\d+-[^"\'<>\s\\]+?\.html(?:\?[^"\'<>\s\\]*)?',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+        # Final generic form for serialized relative URLs where the
+        # category segment is encoded differently but the product path
+        # remains identifiable by its numeric product id and .html suffix.
+        for match in re.finditer(
+            r'(?<![A-Za-z0-9])/(?:[^/"\'<>\s\\]+/)+'
+            r'\d+-[^/"\'<>\s\\]+\.html(?:\?[^"\'<>\s\\]*)?',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
         candidates.sort(key=lambda item: (-item[0], item[1]))
         return [url for _, url in candidates[:MAX_CANDIDATES]]
 
