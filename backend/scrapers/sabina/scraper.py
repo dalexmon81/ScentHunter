@@ -692,17 +692,20 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-def discover_product_urls(session, query):
-    """
-    The only primary discovery path used by the real scraper.
+def _discover_from_sitemaps(session, query):
+    """Generic Sabina catalog discovery through the public brand index.
 
-    The query is supplied at runtime. No product, brand, SKU or URL
-    is hard-coded here.
+    Sabina's native search can return HTTP 200 with false-positive product
+    links. The public brand index is therefore used as a generic catalog
+    surface. No brand, product, SKU, price or URL is hard-coded.
     """
+    tokens = [token for token in query_tokens(query) if token]
+    if not tokens:
+        return []
+
     try:
         response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
+            BASE_URL + "/es/marcas",
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
@@ -713,65 +716,146 @@ def discover_product_urls(session, query):
     if response.status_code >= 400:
         return []
 
-    soup = BeautifulSoup(
-        response_html(response),
-        "html.parser",
-    )
+    soup = BeautifulSoup(response_html(response), "html.parser")
+    brand_urls = []
+    seen_brands = set()
 
-    urls = []
+    for anchor in soup.find_all("a", href=True):
+        href = normalise_url(anchor.get("href"), response.url)
+        if not href:
+            continue
+        if not re.match(
+            r"^/(?:es|it|fr|en|de|nl|pt)/\d+_[^/]+$",
+            urlparse(href).path,
+            re.I,
+        ):
+            continue
+        if href not in seen_brands:
+            seen_brands.add(href)
+            brand_urls.append(href)
+
+    def scan_brand(url):
+        try:
+            r = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            return []
+
+        try:
+            if r.status_code >= 400:
+                return []
+            page_soup = BeautifulSoup(response_html(r), "html.parser")
+            found = []
+            seen = set()
+            for anchor in page_soup.find_all("a", href=True):
+                product_url = normalise_url(anchor.get("href"), r.url)
+                if not product_url or not is_product_url(product_url):
+                    continue
+                label = clean(anchor.get_text(" ", strip=True))
+                haystack = norm(f"{label} {product_url}")
+                if not all(token in haystack for token in tokens):
+                    continue
+                if product_url in seen:
+                    continue
+                seen.add(product_url)
+                found.append(product_url)
+                if len(found) >= MAX_CANDIDATES:
+                    break
+            return found
+        finally:
+            r.close()
+
+    found = []
+    seen_products = set()
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [
+                executor.submit(scan_brand, url)
+                for url in brand_urls[:220]
+            ]
+            for future in as_completed(futures):
+                try:
+                    urls = future.result()
+                except Exception:
+                    urls = []
+                for product_url in urls:
+                    if product_url in seen_products:
+                        continue
+                    seen_products.add(product_url)
+                    found.append(product_url)
+                    if len(found) >= MAX_CANDIDATES:
+                        return found[:MAX_CANDIDATES]
+    except Exception:
+        pass
+
+    return found[:MAX_CANDIDATES]
+
+
+def discover_product_urls(session, query):
+    """Generic Sabina discovery: native search plus catalog fallback."""
+    found = []
     seen = set()
 
-    def add(raw):
-        absolute = normalise_url(
-            raw,
-            response.url,
+    try:
+        response = session.get(
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
         )
+    except requests.RequestException:
+        response = None
 
-        if not absolute:
-            return
+    if response is not None and response.status_code < 400:
+        soup = BeautifulSoup(response_html(response), "html.parser")
 
-        if not is_product_url(absolute):
-            return
+        def add(raw):
+            absolute = normalise_url(raw, response.url)
+            if not absolute or not is_product_url(absolute):
+                return
+            if absolute not in seen:
+                seen.add(absolute)
+                found.append(absolute)
 
-        if absolute in seen:
-            return
+        for anchor in soup.find_all("a", href=True):
+            add(anchor.get("href"))
 
-        seen.add(absolute)
-        urls.append(absolute)
+        decoded = (
+            response_html(response)
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+        )
+        for match in re.finditer(
+            r'https?://(?:www\.)?sabina\.com/'
+            r'(?:es|it|fr|en|de|nl|pt)/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+        for match in re.finditer(
+            r'/(?:es|it|fr|en|de|nl|pt)/'
+            r'[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
 
-    # First source: normal product links.
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
-        add(anchor.get("href"))
+    # Search results are not authoritative on Sabina. Always consult the
+    # generic catalog index as the discovery fallback.
+    for url in _discover_from_sitemaps(session, query):
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
 
-    # Second source: product URLs embedded in the returned HTML/JSON.
-    decoded = (
-        response_html(response)
-        .replace("\\/", "/")
-        .replace("\\u002F", "/")
-    )
-
-    for match in re.finditer(
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
-
-    for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
-
-    return urls[:MAX_CANDIDATES]
-
+    return found[:MAX_CANDIDATES]
 
 def _offer_list(product):
     offers = product.get("offers") if isinstance(product, dict) else None
