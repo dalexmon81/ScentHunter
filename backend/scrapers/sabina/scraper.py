@@ -653,7 +653,7 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-SITEMAP_FALLBACK_MAX_INDEXES = 20
+SITEMAP_FALLBACK_MAX_INDEXES = 500
 SITEMAP_FALLBACK_MAX_URLS_PER_INDEX = 50000
 
 def _catalog_query_tokens(query):
@@ -706,7 +706,7 @@ def _discover_from_sitemaps(session, query):
     if not sitemap_urls:
         add_sitemap(urljoin(BASE_URL, "/sitemap_index_shop_1.xml"))
 
-    queue = list(sitemap_urls[:SITEMAP_FALLBACK_MAX_INDEXES])
+    queue = list(sitemap_urls)
     product_candidates = []
     visited = set()
 
