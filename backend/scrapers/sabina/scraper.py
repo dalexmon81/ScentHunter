@@ -668,10 +668,15 @@ def discover_product_urls(session, query):
             allow_redirects=True,
         )
     except requests.RequestException:
-        return []
+        # A technical discovery failure must never become an empty
+        # NOT_FOUND result. Preserve the exception for search_stream.
+        raise
 
     if response.status_code >= 400:
-        return []
+        # Same rule for HTTP errors (403/429/5xx/etc.): do not collapse
+        # them into [] because the backend must distinguish them from
+        # a verified empty search.
+        response.raise_for_status()
 
     soup = BeautifulSoup(
         response.text,
@@ -722,13 +727,81 @@ def discover_product_urls(session, query):
     ):
         add(match.group(0))
 
-    for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
+    # Generic fallback: if the valid search response exposes no product
+    # links, consult the public sitemap and filter candidate product URLs
+    # using the runtime query tokens. No product-specific rules are used.
+    if not urls:
+        query_parts = [
+            token for token in query_tokens(query) if len(token) >= 2
+        ]
+        if query_parts:
+            try:
+                sitemap_response = session.get(
+                    BASE_URL + "/sitemap.xml",
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                    allow_redirects=True,
+                )
+                sitemap_response.raise_for_status()
+
+                sitemap_text = (
+                    sitemap_response.text
+                    .replace("\\/", "/")
+                    .replace("\\u002F", "/")
+                )
+
+                # Handle both a sitemap document and a sitemap index.
+                locations = re.findall(
+                    r"<loc>\s*([^<]+?)\s*</loc>",
+                    sitemap_text,
+                    re.I,
+                )
+                child_sitemaps = [
+                    location.strip()
+                    for location in locations
+                    if "sitemap" in location.lower()
+                ]
+                product_locations = [
+                    location.strip()
+                    for location in locations
+                    if is_product_url(location.strip())
+                ]
+
+                for child_url in child_sitemaps[:20]:
+                    if len(product_locations) >= 250:
+                        break
+                    try:
+                        child_response = session.get(
+                            child_url,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                            allow_redirects=True,
+                        )
+                        child_response.raise_for_status()
+                        child_locations = re.findall(
+                            r"<loc>\s*([^<]+?)\s*</loc>",
+                            child_response.text or "",
+                            re.I,
+                        )
+                        product_locations.extend(
+                            location.strip()
+                            for location in child_locations
+                            if is_product_url(location.strip())
+                        )
+                    except requests.RequestException:
+                        continue
+
+                for location in product_locations:
+                    if all(
+                        token in norm(location)
+                        for token in query_parts
+                    ):
+                        add(location)
+                    if len(urls) >= MAX_CANDIDATES:
+                        break
+
+            except requests.RequestException:
+                pass
 
     return urls[:MAX_CANDIDATES]
 
