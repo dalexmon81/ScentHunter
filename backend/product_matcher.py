@@ -914,15 +914,23 @@ class ProductMatcher:
             return None
 
         offer_brand = self._offer_brand(offer)
-        if not self._brand_matches(offer_brand, family.get("brand", "")):
-            return None
+        brand_conflict = bool(offer_brand) and not self._brand_matches(
+            offer_brand, family.get("brand", "")
+        )
 
         raw_name = first_value(offer, self.NAME_KEYS)
         if not raw_name:
             source = _nested_source(offer)
             raw_name = first_value(source, ("source_name", "name", "title"))
 
-        candidate = self._remove_brand(raw_name, family.get("brand", ""))
+        # If the retailer supplies a conflicting brand, treat that field as
+        # non-authoritative only when removing it exposes an exact registered
+        # family variant. This is generic and avoids allowing arbitrary brand
+        # mismatches to override the canonical family registry.
+        candidate_source = raw_name
+        if brand_conflict:
+            candidate_source = self._remove_brand(candidate_source, offer_brand)
+        candidate = self._remove_brand(candidate_source, family.get("brand", ""))
         candidate_key = catalog_variant_key(candidate)
         if not candidate_key:
             return None
@@ -941,11 +949,18 @@ class ProductMatcher:
                 name_variant = variant
                 break
 
+        # A conflicting brand may be ignored only when removing that brand
+        # exposed an exact registered family alias. Do not let editorial/fuzzy
+        # cleanup override a genuine conflicting brand field.
+        if brand_conflict and name_variant is None:
+            return None
+
         # Retailers may append or insert audience/editorial labels around the
         # actual variant name. These labels are not part of the variant identity.
         if name_variant is None:
             editorial_tokens = {
                 "men", "women", "man", "woman", "heren", "dames",
+                "by", "perfume", "parfum", "fragrance",
             }
             stripped_tokens = [
                 token for token in candidate_key.split()
@@ -964,7 +979,7 @@ class ProductMatcher:
             stripped_for_tokens = re.sub(
                 r"\bfor\s+(?:men|women|him|her)\b",
                 " ",
-                candidate_key,
+                stripped_key if name_variant is None else candidate_key,
                 flags=re.I,
             )
             stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
