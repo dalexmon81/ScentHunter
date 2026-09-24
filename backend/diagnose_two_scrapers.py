@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Query
 import concurrent.futures
-import importlib.util
 import json
-import os
 import re
 import time
 from urllib.parse import quote, urljoin
@@ -96,14 +94,15 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
 
 @router.get("/diagnose-sabina-runtime")
 def diagnose_sabina_runtime(qs: str = Query("9 PM|Liquid Brun|Hawas")):
-    """Bounded, read-only Sabina diagnostic.
+    """Read-only diagnostic of the deployed Sabina discovery path.
 
-    It deliberately does NOT call search() and search_stream() together.
-    The endpoint first tests the real search HTTP surface and then executes
-    discover_product_urls() at most once per query with a hard diagnostic
-    timeout. A timeout is returned as data instead of leaving the HTTP request
-    hanging.
+    IMPORTANT: Sabina's discover_product_urls() contract is
+    discover_product_urls(session, query). The diagnostic must create and
+    pass the same kind of Session used by production search().
     """
+    import importlib.util
+    import os
+
     started = time.monotonic()
     queries = []
     seen = set()
@@ -116,11 +115,11 @@ def diagnose_sabina_runtime(qs: str = Query("9 PM|Liquid Brun|Hawas")):
     scraper_path = os.path.join(
         os.path.dirname(__file__), "scrapers", "sabina", "scraper.py"
     )
-    out = {
+    result = {
         "diagnostic": True,
         "store": "Sabina",
-        "queries": queries,
         "scraper_file": scraper_path,
+        "queries": queries,
         "query_results": [],
     }
 
@@ -129,91 +128,88 @@ def diagnose_sabina_runtime(qs: str = Query("9 PM|Liquid Brun|Hawas")):
     )
     module = None
     if spec is None or spec.loader is None:
-        out["import"] = {"ok": False, "error": "Could not load Sabina scraper"}
-    else:
-        module = importlib.util.module_from_spec(spec)
-        try:
-            spec.loader.exec_module(module)
-            out["import"] = {"ok": True, "module_file": getattr(module, "__file__", None)}
-        except Exception as exc:
-            out["import"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            module = None
+        result["import"] = {"ok": False, "error": "Could not load Sabina scraper"}
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
 
-    base = getattr(module, "BASE_URL", None) or getattr(module, "BASE", "https://www.sabina.com")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+        result["import"] = {"ok": True, "module_file": getattr(module, "__file__", None)}
+    except Exception as exc:
+        result["import"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
+
+    base = getattr(module, "BASE_URL", "https://www.sabina.com")
     search_url = getattr(module, "SEARCH_URL", base.rstrip("/") + "/es/buscar")
     headers = getattr(module, "HEADERS", HEADERS)
+    discover = getattr(module, "discover_product_urls", None)
+
+    if not callable(discover):
+        result["discovery_contract"] = {"ok": False, "error": "discover_product_urls_missing"}
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
 
     for q in queries:
         qr = {"query": q, "http": {}, "discovery": {}}
+
         t0 = time.monotonic()
         try:
-            r = requests.get(
+            response = requests.get(
                 search_url,
                 params={"search_query": q},
                 headers=headers,
-                timeout=(2.5, 7.0),
+                timeout=(2.5, 10.0),
                 allow_redirects=True,
             )
-            html = r.text or ""
+            html = response.text or ""
             qr["http"] = {
                 "ok": True,
-                "status": r.status_code,
-                "requested_url": r.url,
+                "status": response.status_code,
+                "requested_url": response.url,
                 "elapsed_sec": round(time.monotonic() - t0, 3),
-                "bytes": len(r.content),
+                "bytes": len(response.content),
                 "query_occurrences": html.casefold().count(q.casefold()),
-                "classification": "http_error" if r.status_code >= 400 else "http_response_received",
+                "classification": (
+                    "http_error" if response.status_code >= 400
+                    else "empty_http_body" if not html
+                    else "http_response_received"
+                ),
             }
-            r.close()
+            response.close()
         except requests.Timeout as exc:
             qr["http"] = {"ok": False, "classification": "timeout", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
         except requests.RequestException as exc:
             qr["http"] = {"ok": False, "classification": "request_error", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
 
-        discover = getattr(module, "discover_product_urls", None) if module else None
-        if not callable(discover):
-            qr["discovery"] = {"ok": False, "classification": "missing_discover_product_urls"}
-        else:
-            holder = {}
-            def _run_discovery():
-                try:
-                    holder["value"] = discover(q)
-                except Exception as exc:
-                    holder["error"] = f"{type(exc).__name__}: {exc}"
+        # Production discovery uses a Session. The previous diagnostic called
+        # discover_product_urls(q), which is invalid for the deployed scraper.
+        session = requests.Session()
+        try:
+            session.headers.update(headers)
+            t0 = time.monotonic()
+            discovered = discover(session, q)
+            qr["discovery"] = {
+                "ok": True,
+                "elapsed_sec": round(time.monotonic() - t0, 3),
+                "type": type(discovered).__name__,
+                "count": len(discovered) if isinstance(discovered, list) else None,
+                "urls": discovered[:50] if isinstance(discovered, list) else discovered,
+            }
+        except requests.Timeout as exc:
+            qr["discovery"] = {"ok": False, "classification": "timeout", "error": f"{type(exc).__name__}: {exc}"}
+        except requests.RequestException as exc:
+            qr["discovery"] = {"ok": False, "classification": "request_error", "error": f"{type(exc).__name__}: {exc}"}
+        except Exception as exc:
+            qr["discovery"] = {"ok": False, "classification": "scraper_exception", "error": f"{type(exc).__name__}: {exc}"}
+        finally:
+            session.close()
 
-            thread = __import__("threading").Thread(target=_run_discovery, daemon=True)
-            t1 = time.monotonic()
-            thread.start()
-            thread.join(timeout=12.0)
-            if thread.is_alive():
-                qr["discovery"] = {
-                    "ok": False,
-                    "classification": "diagnostic_timeout",
-                    "elapsed_sec": round(time.monotonic()-t1, 3),
-                    "error": "discover_product_urls did not return within 12s",
-                }
-            elif "error" in holder:
-                qr["discovery"] = {
-                    "ok": False,
-                    "classification": "scraper_exception",
-                    "elapsed_sec": round(time.monotonic()-t1, 3),
-                    "error": holder["error"],
-                }
-            else:
-                value = holder.get("value")
-                qr["discovery"] = {
-                    "ok": True,
-                    "classification": "urls_found" if value else "verified_empty",
-                    "elapsed_sec": round(time.monotonic()-t1, 3),
-                    "type": type(value).__name__,
-                    "count": len(value) if isinstance(value, list) else None,
-                    "urls": value[:50] if isinstance(value, list) else value,
-                }
+        result["query_results"].append(qr)
 
-        out["query_results"].append(qr)
-
-    out["elapsed_sec"] = round(time.monotonic() - started, 3)
-    return out
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
 
 @router.get("/diagnose-deloox-catalog")
 def diagnose_deloox_precise(q: str = Query("Liquid Brun")):
