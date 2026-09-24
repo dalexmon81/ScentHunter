@@ -32,6 +32,7 @@ PRODUCT_PATH_RE = re.compile(
     re.I,
 )
 
+
 IGNORED_QUERY_WORDS = {
     "eau", "de", "parfum", "perfume", "edp", "edt",
     "extrait", "spray", "for", "by", "ml", "pour",
@@ -653,205 +654,449 @@ def availability_from_product_page(soup, jsonld_offer=None):
     return "unknown", "sabina_html_availability"
 
 def discover_product_urls(session, query):
-    """Discover query-relevant product URLs from Sabina's search page.
-
-    Sabina's search page can contain unrelated product links. Candidates are
-    therefore filtered using generic query/URL/anchor evidence only.
-    Technical failures are raised; an empty list is returned only after a
-    successful search response has been inspected.
     """
-    def collect(response):
-        soup = BeautifulSoup(response.text, "html.parser")
-        candidates = []
-        seen = set()
-        tokens = query_tokens(query)
-        query_norm = norm(query)
-        query_compact = query_norm.replace(" ", "")
+    Generic Sabina catalog discovery.
 
-        def score_candidate(url, anchor_text="", surrounding_text=""):
-            if not is_product_url(url):
-                return -1
+    Discovery stages:
+    1. Fetch the search page.
+    2. Extract product URLs from anchors, attributes and embedded data.
+    3. Preserve the surrounding candidate context.
+    4. Score relevance using the complete context.
+    5. Return only relevant product URLs.
 
-            evidence = norm(" ".join((
-                anchor_text or "",
-                surrounding_text or "",
-                urlparse(url).path,
-            )))
-
-            evidence_compact = evidence.replace(" ", "")
-            if query_norm and (
-                query_norm in evidence
-                or (query_compact and query_compact in evidence_compact)
-            ):
-                return 100 + 20 * len(tokens)
-
-            matched = sum(1 for token in tokens if token in evidence)
-            if tokens and matched < len(tokens):
-                return -1
-            return matched * 20
-
-        def add(raw, anchor_text="", surrounding_text=""):
-            absolute = normalise_url(raw, response.url)
-            if not absolute or absolute in seen:
-                return
-
-            score = score_candidate(
-                absolute,
-                anchor_text=anchor_text,
-                surrounding_text=surrounding_text,
-            )
-            if score < 0:
-                return
-
-            seen.add(absolute)
-            candidates.append((score, absolute))
-
-        for anchor in soup.find_all("a", href=True):
-            parent = anchor
-            for _ in range(3):
-                if parent.parent is None:
-                    break
-                parent = parent.parent
-
-            anchor_text = clean(anchor.get_text(" ", strip=True))
-            surrounding = clean(
-                parent.get_text(" ", strip=True)
-                if parent is not None else ""
-            )
-
-            add(
-                anchor.get("href"),
-                anchor_text=anchor_text,
-                surrounding_text=surrounding[:1200],
-            )
-
-        decoded = (
-            response.text
-            .replace("\\/", "/")
-            .replace("\\u002F", "/")
-        )
-
-        for match in re.finditer(
-            r'https?://(?:www\.)?sabina\.com/'
-            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-            decoded,
-            re.I,
-        ):
-            add(match.group(0))
-
-        for match in re.finditer(
-            r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-            decoded,
-            re.I,
-        ):
-            add(match.group(0))
-
-        # Some Sabina search responses serialize product links inside
-        # JavaScript/JSON structures without exposing them as normal hrefs.
-        # Recover any Sabina localized product URL generically, then apply
-        # the exact same query-relevance scoring.
-        for match in re.finditer(
-            r'(?:https?:)?//(?:www\.)?sabina\.com/'
-            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+?'
-            r'/\d+-[^"\'<>\s\\]+?\.html(?:\?[^"\'<>\s\\]*)?',
-            decoded,
-            re.I,
-        ):
-            add(match.group(0))
-
-        # Final generic form for serialized relative URLs where the
-        # category segment is encoded differently but the product path
-        # remains identifiable by its numeric product id and .html suffix.
-        for match in re.finditer(
-            r'(?<![A-Za-z0-9])/(?:[^/"\'<>\s\\]+/)+'
-            r'\d+-[^/"\'<>\s\\]+\.html(?:\?[^"\'<>\s\\]*)?',
-            decoded,
-            re.I,
-        ):
-            add(match.group(0))
-
-        candidates.sort(key=lambda item: (-item[0], item[1]))
-        return [url for _, url in candidates[:MAX_CANDIDATES]]
-
-    response = session.get(
-        SEARCH_URL,
-        params={"search_query": query},
-        headers=HEADERS,
-        timeout=TIMEOUT,
-        allow_redirects=True,
-    )
+    Product identity is deliberately not decided here.
+    Final verification remains in extract_product_page()
+    and canonical identity remains the responsibility of ProductMatcher.
+    """
 
     try:
-        if response.status_code >= 400:
-            raise requests.HTTPError(
-                f"Sabina search HTTP {response.status_code}",
-                response=response,
-            )
-        urls = collect(response)
-    finally:
-        response.close()
+        response = session.get(
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return []
 
-    if urls:
-        return urls
+    if response.status_code >= 400:
+        return []
 
-    # Generic sitemap fallback only after a healthy search response with no
-    # query-relevant product links.
-    sitemap_candidates = (
-        BASE_URL + "/1_index_sitemap.xml",
-        BASE_URL + "/sitemap.xml",
-    )
+    html = response.text or ""
+    soup = BeautifulSoup(html, "html.parser")
+
     tokens = query_tokens(query)
-    sitemap_seen = set()
+    query_norm = norm(query)
+    query_compact = query_norm.replace(" ", "")
 
-    for sitemap_url in sitemap_candidates:
-        try:
-            response = session.get(
-                sitemap_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
+    candidates = {}
+    sequence = 0
+
+    def add_candidate(raw_url, context="", source="unknown"):
+        nonlocal sequence
+
+        absolute = normalise_url(raw_url, response.url)
+
+        if not absolute or not is_product_url(absolute):
+            return
+
+        context = clean(context)
+
+        key = absolute
+        existing = candidates.get(key)
+
+        if existing:
+            existing["context"] = clean(
+                f'{existing["context"]} {context}'
             )
-        except requests.RequestException:
+            existing["sources"].add(source)
+            existing["score"] = max(
+                existing["score"],
+                score_candidate(
+                    key,
+                    existing["context"],
+                ),
+            )
+            return
+
+        score = score_candidate(
+            key,
+            context,
+        )
+
+        candidates[key] = {
+            "url": key,
+            "context": context,
+            "source": source,
+            "sources": {source},
+            "score": score,
+            "order": sequence,
+        }
+
+        sequence += 1
+
+    def score_candidate(url, context):
+        """
+        Relevance is calculated from the complete candidate context.
+
+        The URL is evidence, but never the only evidence.
+        """
+
+        if not is_product_url(url):
+            return -1
+
+        evidence = norm(
+            " ".join(
+                (
+                    context or "",
+                    urlparse(url).path,
+                )
+            )
+        )
+
+        evidence_compact = evidence.replace(" ", "")
+
+        if query_norm and query_norm in evidence:
+            return 100 + (20 * len(tokens))
+
+        if (
+            query_compact
+            and query_compact in evidence_compact
+        ):
+            return 95 + (20 * len(tokens))
+
+        if not tokens:
+            return 0
+
+        matched = sum(
+            1
+            for token in tokens
+            if token in evidence
+        )
+
+        if matched == len(tokens):
+            return 80 + (10 * matched)
+
+        # Do not accept a candidate merely because one token matches.
+        # This prevents broad queries from returning unrelated products.
+        return -1
+
+    def node_context(node):
+        """
+        Collect all generic evidence associated with one HTML node:
+        visible text, attributes, data-* values and nearby card text.
+        """
+
+        parts = []
+
+        if node.name:
+            parts.append(node.get_text(" ", strip=True))
+
+        for key, value in node.attrs.items():
+            if isinstance(value, (list, tuple)):
+                value = " ".join(str(item) for item in value)
+
+            if value:
+                parts.append(str(value))
+
+        # Prefer the nearest product/card-like container.
+        parent = node
+        for _ in range(5):
+            parent = parent.parent
+
+            if not parent or not getattr(parent, "name", None):
+                break
+
+            classes = " ".join(
+                parent.get("class", [])
+            ).lower()
+
+            identifiers = " ".join(
+                (
+                    str(parent.get("id", "")),
+                    classes,
+                )
+            ).lower()
+
+            if any(
+                marker in identifiers
+                for marker in (
+                    "product",
+                    "product-miniature",
+                    "product-item",
+                    "product-card",
+                    "item-product",
+                    "search",
+                    "result",
+                    "listing",
+                )
+            ):
+                text = parent.get_text(" ", strip=True)
+
+                if text:
+                    parts.append(text)
+
+                break
+
+        return clean(" ".join(parts))
+
+    def extract_urls_from_text(text):
+        """
+        Extract absolute and relative product URLs from raw HTML,
+        JSON and JavaScript, including escaped slash variants.
+        """
+
+        if not text:
+            return []
+
+        decoded = str(text)
+
+        replacements = (
+            ("\\\\/", "/"),
+            ("\\\\u002F", "/"),
+            ("\\\\u002f", "/"),
+            ("&amp;", "&"),
+            ("\\/", "/"),
+        )
+
+        for old, new in replacements:
+            decoded = decoded.replace(old, new)
+
+        patterns = (
+            re.compile(
+                r'https?://(?:www\.)?sabina\.com'
+                r'/(?:es|it|fr|en|de|nl|pt)/'
+                r'[^"\'<>\s\\]+',
+                re.I,
+            ),
+            re.compile(
+                r'/(?:es|it|fr|en|de|nl|pt)/'
+                r'[^"\'<>\s\\]+',
+                re.I,
+            ),
+        )
+
+        found = []
+
+        for pattern in patterns:
+            found.extend(
+                match.group(0)
+                for match in pattern.finditer(decoded)
+            )
+
+        return found
+
+    # ------------------------------------------------------------
+    # 1. Normal anchors
+    # ------------------------------------------------------------
+
+    for anchor in soup.find_all("a"):
+        href = anchor.get("href")
+
+        if not href:
             continue
 
-        try:
-            if response.status_code >= 400:
+        context = node_context(anchor)
+
+        add_candidate(
+            href,
+            context=context,
+            source="anchor",
+        )
+
+    # ------------------------------------------------------------
+    # 2. Product-like HTML nodes and data-* attributes
+    # ------------------------------------------------------------
+
+    product_nodes = soup.select(
+        "[data-product-url], "
+        "[data-url], "
+        "[data-href], "
+        "[data-link], "
+        "[data-product], "
+        "[data-product-id], "
+        "[data-id], "
+        "[itemtype*='Product'], "
+        "[itemscope]"
+    )
+
+    for node in product_nodes:
+        context = node_context(node)
+
+        raw_values = []
+
+        for key, value in node.attrs.items():
+            key_norm = str(key).lower()
+
+            if isinstance(value, (list, tuple)):
+                value = " ".join(str(item) for item in value)
+
+            if not value:
                 continue
 
-            sitemap_text = response.text.replace("\\/", "/")
-            for raw in re.findall(
-                r"<loc>\s*(.*?)\s*</loc>",
-                sitemap_text,
-                re.I | re.S,
+            if (
+                key_norm in {
+                    "href",
+                    "data-product-url",
+                    "data-url",
+                    "data-href",
+                    "data-link",
+                    "data-product",
+                    "data-json",
+                    "data-state",
+                }
+                or "url" in key_norm
+                or "href" in key_norm
+                or "link" in key_norm
+                or "json" in key_norm
+                or "state" in key_norm
             ):
-                url = normalise_url(raw)
-                if (
-                    not url
-                    or url in sitemap_seen
-                    or not is_product_url(url)
-                ):
-                    continue
+                raw_values.append(str(value))
 
-                sitemap_seen.add(url)
-                url_norm = norm(url)
-                url_compact = url_norm.replace(" ", "")
+        for raw_value in raw_values:
+            for raw_url in extract_urls_from_text(raw_value):
+                add_candidate(
+                    raw_url,
+                    context=context,
+                    source="data_attribute",
+                )
 
-                if tokens and not (
-                    all(token in url_norm for token in tokens)
-                    or (query_compact and query_compact in url_compact)
-                ):
-                    continue
+            # A data attribute can itself be a plain relative URL.
+            add_candidate(
+                raw_value,
+                context=context,
+                source="data_attribute",
+            )
 
-                urls.append(url)
-                if len(urls) >= MAX_CANDIDATES:
-                    return urls[:MAX_CANDIDATES]
-        finally:
-            response.close()
+    # ------------------------------------------------------------
+    # 3. JSON-LD, inline JSON and JavaScript
+    # ------------------------------------------------------------
 
-        if urls:
-            return urls[:MAX_CANDIDATES]
+    for script in soup.find_all("script"):
+        script_text = script.string or script.get_text()
 
-    return []
+        if not script_text:
+            continue
+
+        script_context = clean(script_text)
+
+        # Add the complete script as evidence. This is important when
+        # title and URL exist in the same serialized object.
+        for raw_url in extract_urls_from_text(script_text):
+            add_candidate(
+                raw_url,
+                context=script_context,
+                source="embedded_data",
+            )
+
+        # Parse JSON objects where possible and associate title/name
+        # with URL fields before falling back to raw script context.
+        try:
+            parsed = json.loads(script_text)
+        except (TypeError, ValueError):
+            parsed = None
+
+        def walk_json(value, inherited_context=""):
+            if isinstance(value, dict):
+                local_parts = [inherited_context]
+
+                for key, item in value.items():
+                    if key.lower() in {
+                        "name",
+                        "title",
+                        "productname",
+                        "description",
+                        "brand",
+                        "sku",
+                        "url",
+                        "link",
+                        "href",
+                    }:
+                        local_parts.append(str(item))
+
+                local_context = clean(
+                    " ".join(local_parts)
+                )
+
+                for key, item in value.items():
+                    if isinstance(item, str):
+                        for raw_url in extract_urls_from_text(item):
+                            add_candidate(
+                                raw_url,
+                                context=local_context,
+                                source="json_object",
+                            )
+
+                        add_candidate(
+                            item,
+                            context=local_context,
+                            source="json_object",
+                        )
+
+                    elif isinstance(item, (dict, list)):
+                        walk_json(
+                            item,
+                            inherited_context=local_context,
+                        )
+
+            elif isinstance(value, list):
+                for item in value:
+                    walk_json(
+                        item,
+                        inherited_context=inherited_context,
+                    )
+
+        if parsed is not None:
+            walk_json(parsed)
+
+    # ------------------------------------------------------------
+    # 4. Generic raw HTML fallback
+    # ------------------------------------------------------------
+
+    for raw_url in extract_urls_from_text(html):
+        # Preserve a bounded local context around the URL instead of
+        # passing the entire HTML to the relevance scorer.
+        position = html.find(raw_url)
+
+        if position < 0:
+            context = html
+        else:
+            start = max(0, position - 1200)
+            end = min(
+                len(html),
+                position + len(raw_url) + 1200,
+            )
+            context = html[start:end]
+
+        add_candidate(
+            raw_url,
+            context=context,
+            source="raw_html",
+        )
+
+    # ------------------------------------------------------------
+    # 5. Rank and return relevant candidates
+    # ------------------------------------------------------------
+
+    ranked = [
+        candidate
+        for candidate in candidates.values()
+        if candidate["score"] >= 0
+    ]
+
+    ranked.sort(
+        key=lambda item: (
+            -item["score"],
+            item["order"],
+        )
+    )
+
+    return [
+        candidate["url"]
+        for candidate in ranked[:MAX_CANDIDATES]
+    ]
+
 
 
 def _offer_list(product):
