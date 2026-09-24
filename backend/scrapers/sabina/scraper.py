@@ -1264,12 +1264,87 @@ def search(query):
 
 
 def search_stream(query, emit=None):
-    rows = search(query)
+    """
+    Return the common ScentHunter scraper contract.
+
+    When a callback is supplied, rows are emitted exactly as before, but the
+    function ALSO returns the structured report required by the current
+    backend contract. Returning None here is a contract violation because
+    the backend uses the return value to classify the store result.
+    """
+    query = clean(query)
+
+    if not query:
+        report = {
+            "status": "success",
+            "verified": True,
+            "results": [],
+            "error": None,
+            "details": {"reason": "empty_query", "count": 0},
+        }
+        return report
+
+    try:
+        rows = search(query)
+    except requests.Timeout as exc:
+        return {
+            "status": "timeout",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.ConnectionError as exc:
+        return {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.RequestException as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+
     if callable(emit):
         for row in rows:
             emit(row)
-        return None
-    return iter(rows)
+
+    if rows:
+        return {
+            "status": "success",
+            "verified": True,
+            "results": rows,
+            "error": None,
+            "details": {"count": len(rows)},
+        }
+
+    # The existing discovery function returns [] both for a genuinely empty
+    # search and for some technical discovery failures. Therefore an empty
+    # result is NOT claimed as verified NOT_FOUND here.
+    return {
+        "status": "partial",
+        "verified": False,
+        "results": [],
+        "error": None,
+        "details": {
+            "count": 0,
+            "reason": "empty_search_not_authoritatively_verified",
+        },
+    }
 
 
 # Compatibility with the generic main.py interface.
