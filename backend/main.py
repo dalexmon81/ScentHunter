@@ -1304,13 +1304,24 @@ def diagnostic_runtime():
                 "errors":dict(job.get("errors",{})),
             })
 
+    current_frames=sys._current_frames()
     threads=[]
     for t in threading.enumerate():
-        threads.append({
+        item={
             "name":t.name,
+            "ident":t.ident,
             "alive":t.is_alive(),
             "daemon":t.daemon,
-        })
+        }
+        if t.name.startswith("scenthunter-store-") or t.name.startswith("scenthunter-search-"):
+            frame=current_frames.get(t.ident)
+            if frame is not None:
+                try:
+                    import traceback
+                    item["stack"]=traceback.format_stack(frame)[-20:]
+                except Exception as exc:
+                    item["stack_error"]=f"{type(exc).__name__}: {exc}"
+        threads.append(item)
 
     store_threads=[t for t in threads if t["name"].startswith("scenthunter-store-")]
     search_threads=[t for t in threads if t["name"].startswith("scenthunter-search-")]
