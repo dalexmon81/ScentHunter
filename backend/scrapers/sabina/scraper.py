@@ -1,6 +1,5 @@
 import json
 import html
-import html
 import re
 import unicodedata
 from urllib.parse import urljoin, urlparse, unquote
@@ -746,9 +745,10 @@ def _discover_from_sitemaps(session, query):
     return [url for _, url in candidates[:MAX_CANDIDATES]]
 
 
-CATALOG_FALLBACK_MAX_SEEDS = 20
-CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 48
-CATALOG_FALLBACK_MAX_REQUESTS = 120
+CATALOG_FALLBACK_MAX_SEEDS = 6
+CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 36
+CATALOG_FALLBACK_MAX_REQUESTS = 72
+CATALOG_FALLBACK_WORKERS = 12
 
 
 def _catalog_query_matches(text, query):
@@ -765,9 +765,7 @@ def _catalog_product_urls_from_page(soup, query, base_url):
 
     for anchor in soup.find_all("a", href=True):
         absolute = normalise_url(anchor.get("href"), base_url)
-        if not absolute or not is_product_url(absolute):
-            continue
-        if absolute in seen:
+        if not absolute or not is_product_url(absolute) or absolute in seen:
             continue
 
         anchor_text = clean(anchor.get_text(" ", strip=True))
@@ -788,10 +786,7 @@ def _catalog_product_urls_from_page(soup, query, base_url):
             norm(unquote(urlparse(absolute).path)),
         )
 
-        if (
-            query_compact
-            and query_compact in path_compact
-        ) or _catalog_query_matches(anchor_text, query):
+        if (query_compact and query_compact in path_compact) or _catalog_query_matches(anchor_text, query):
             seen.add(absolute)
             urls.append(absolute)
 
@@ -802,9 +797,6 @@ def _catalog_seed_urls_from_homepage(soup, base_url):
     """Discover retailer category/brand landing pages from the live homepage."""
     seeds = []
     seen = set()
-
-    # Department/category links are a generic store mechanism. No product,
-    # brand, SKU or price is embedded here.
     priority_words = (
         "perfume", "perfumes", "parfum", "fragrance", "fragrances",
         "cosmetic", "cosmetica", "makeup", "maquillaje", "beauty",
@@ -820,16 +812,11 @@ def _catalog_seed_urls_from_homepage(soup, base_url):
         if parsed.netloc.lower() not in {"sabina.com", "www.sabina.com"}:
             continue
         path = parsed.path.rstrip("/")
-        if not path or path in {"", "/es", "/es/"}:
-            continue
-        if "." in path.rsplit("/", 1)[-1]:
+        if not path or path in {"", "/es", "/es/"} or "." in path.rsplit("/", 1)[-1]:
             continue
         text = clean(anchor.get_text(" ", strip=True))
-        score = 0
         normalized = norm(f"{text} {path}")
-        for word in priority_words:
-            if word in normalized:
-                score += 10
+        score = sum(10 for word in priority_words if word in normalized)
         if re.search(r"/es/(?:\d+-|\d+_)", path, re.I):
             score += 5
         candidates.append((score, absolute))
@@ -841,23 +828,39 @@ def _catalog_seed_urls_from_homepage(soup, base_url):
         seeds.append(url)
         if len(seeds) >= CATALOG_FALLBACK_MAX_SEEDS:
             break
-
     return seeds
 
 
 def _catalog_page_urls(seed, max_pages):
-    """Generate Sabina's generic pagination form (?p=N)."""
+    """Generate the retailer's observed generic pagination form (?p=N)."""
     parsed = urlparse(seed)
     base = parsed._replace(query="", fragment="")
     root = base.geturl()
-    return [
-        root if page == 1 else root + "?p=" + str(page)
-        for page in range(1, max_pages + 1)
-    ]
+    return [root if page == 1 else root + "?p=" + str(page) for page in range(1, max_pages + 1)]
+
+
+def _fetch_catalog_page(page_url):
+    try:
+        response = requests.get(
+            page_url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return None
+    if response.status_code >= 400:
+        return None
+    return response
 
 
 def _discover_from_catalog_pages(session, query):
-    """Generic catalog fallback for stores whose product sitemap is empty."""
+    """Generic catalog fallback for stores whose product sitemap is empty.
+
+    The crawl is bounded and parallelized because Sabina's catalog contains
+    thousands of products. It searches only retailer category pages discovered
+    from the live homepage and never embeds product-specific knowledge.
+    """
     try:
         response = session.get(
             urljoin(BASE_URL, "/es/"),
@@ -876,50 +879,38 @@ def _discover_from_catalog_pages(session, query):
     if not seeds:
         return []
 
+    page_urls = []
+    for seed in seeds:
+        page_urls.extend(_catalog_page_urls(seed, CATALOG_FALLBACK_MAX_PAGES_PER_SEED))
+        if len(page_urls) >= CATALOG_FALLBACK_MAX_REQUESTS:
+            page_urls = page_urls[:CATALOG_FALLBACK_MAX_REQUESTS]
+            break
+
     found = []
     seen_products = set()
-    requests_used = 0
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    for seed in seeds:
-        for page_url in _catalog_page_urls(
-            seed,
-            CATALOG_FALLBACK_MAX_PAGES_PER_SEED,
-        ):
-            if requests_used >= CATALOG_FALLBACK_MAX_REQUESTS:
-                return found[:MAX_CANDIDATES]
-            requests_used += 1
-
-            try:
-                page_response = session.get(
-                    page_url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
+    with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
+        futures = {executor.submit(_fetch_catalog_page, url): url for url in page_urls}
+        for future in as_completed(futures):
+            page_response = future.result()
+            if page_response is None:
                 continue
-
-            if page_response.status_code >= 400:
-                continue
-
-            page_soup = BeautifulSoup(
-                page_response.text,
-                "html.parser",
-            )
+            page_soup = BeautifulSoup(page_response.text, "html.parser")
             for product_url in _catalog_product_urls_from_page(
-                page_soup,
-                query,
-                page_response.url,
+                page_soup, query, page_response.url
             ):
                 if product_url in seen_products:
                     continue
                 seen_products.add(product_url)
                 found.append(product_url)
                 if len(found) >= MAX_CANDIDATES:
-                    return found
+                    for pending in futures:
+                        if not pending.done():
+                            pending.cancel()
+                    return found[:MAX_CANDIDATES]
 
-    return found
-
+    return found[:MAX_CANDIDATES]
 
 def discover_product_urls(session, query):
     """
