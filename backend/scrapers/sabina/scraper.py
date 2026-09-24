@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 7
+TIMEOUT = 10
 MAX_CANDIDATES = 12
 
 HEADERS = {
@@ -653,27 +653,72 @@ def availability_from_product_page(soup, jsonld_offer=None):
     return "unknown", "sabina_html_availability"
 
 def discover_product_urls(session, query):
-    """Discover product URLs using Sabina's runtime search, then a bounded
-    generic sitemap fallback.
+    """Discover query-relevant product URLs from Sabina's search page.
 
-    Technical failures are raised so the backend can distinguish ERROR/
-    UNAVAILABLE from a verified empty search. An empty list is returned only
-    after at least one successful discovery surface has been inspected.
+    Sabina's search page can contain unrelated product links. Candidates are
+    therefore filtered using generic query/URL/anchor evidence only.
+    Technical failures are raised; an empty list is returned only after a
+    successful search response has been inspected.
     """
     def collect(response):
         soup = BeautifulSoup(response.text, "html.parser")
-        urls = []
+        candidates = []
         seen = set()
+        tokens = query_tokens(query)
+        query_norm = norm(query)
 
-        def add(raw):
+        def score_candidate(url, anchor_text="", surrounding_text=""):
+            if not is_product_url(url):
+                return -1
+
+            evidence = norm(" ".join((
+                anchor_text or "",
+                surrounding_text or "",
+                urlparse(url).path,
+            )))
+
+            if query_norm and query_norm in evidence:
+                return 100 + 20 * len(tokens)
+
+            matched = sum(1 for token in tokens if token in evidence)
+            if tokens and matched < len(tokens):
+                return -1
+            return matched * 20
+
+        def add(raw, anchor_text="", surrounding_text=""):
             absolute = normalise_url(raw, response.url)
-            if not absolute or not is_product_url(absolute) or absolute in seen:
+            if not absolute or absolute in seen:
                 return
+
+            score = score_candidate(
+                absolute,
+                anchor_text=anchor_text,
+                surrounding_text=surrounding_text,
+            )
+            if score < 0:
+                return
+
             seen.add(absolute)
-            urls.append(absolute)
+            candidates.append((score, absolute))
 
         for anchor in soup.find_all("a", href=True):
-            add(anchor.get("href"))
+            parent = anchor
+            for _ in range(3):
+                if parent.parent is None:
+                    break
+                parent = parent.parent
+
+            anchor_text = clean(anchor.get_text(" ", strip=True))
+            surrounding = clean(
+                parent.get_text(" ", strip=True)
+                if parent is not None else ""
+            )
+
+            add(
+                anchor.get("href"),
+                anchor_text=anchor_text,
+                surrounding_text=surrounding[:1200],
+            )
 
         decoded = (
             response.text
@@ -696,22 +741,16 @@ def discover_product_urls(session, query):
         ):
             add(match.group(0))
 
-        return urls[:MAX_CANDIDATES]
+        candidates.sort(key=lambda item: (-item[0], item[1]))
+        return [url for _, url in candidates[:MAX_CANDIDATES]]
 
-    # Primary: the live Sabina search surface. One request only; do not
-    # chain several speculative search endpoints when this one is healthy.
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.Timeout:
-        raise
-    except requests.RequestException:
-        raise
+    response = session.get(
+        SEARCH_URL,
+        params={"search_query": query},
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
+    )
 
     try:
         if response.status_code >= 400:
@@ -719,7 +758,6 @@ def discover_product_urls(session, query):
                 f"Sabina search HTTP {response.status_code}",
                 response=response,
             )
-
         urls = collect(response)
     finally:
         response.close()
@@ -727,16 +765,14 @@ def discover_product_urls(session, query):
     if urls:
         return urls
 
-    # Generic fallback: inspect the site's XML sitemap index. This is used
-    # only when the search page was successfully fetched but exposed no
-    # product links. No product/brand/URL is hardcoded here.
+    # Generic sitemap fallback only after a healthy search response with no
+    # query-relevant product links.
     sitemap_candidates = (
         BASE_URL + "/1_index_sitemap.xml",
         BASE_URL + "/sitemap.xml",
     )
     tokens = query_tokens(query)
     sitemap_seen = set()
-    inspected = False
 
     for sitemap_url in sitemap_candidates:
         try:
@@ -752,28 +788,35 @@ def discover_product_urls(session, query):
         try:
             if response.status_code >= 400:
                 continue
-            inspected = True
-            text = response.text.replace("\\/", "/")
-            for raw in re.findall(r"<loc>\s*(.*?)\s*</loc>", text, re.I | re.S):
+
+            sitemap_text = response.text.replace("\\/", "/")
+            for raw in re.findall(
+                r"<loc>\s*(.*?)\s*</loc>",
+                sitemap_text,
+                re.I | re.S,
+            ):
                 url = normalise_url(raw)
-                if not url or url in sitemap_seen:
+                if (
+                    not url
+                    or url in sitemap_seen
+                    or not is_product_url(url)
+                ):
                     continue
+
                 sitemap_seen.add(url)
-                if is_product_url(url):
-                    if not tokens or all(token in norm(url) for token in tokens):
-                        urls.append(url)
-                        if len(urls) >= MAX_CANDIDATES:
-                            return urls[:MAX_CANDIDATES]
+                url_norm = norm(url)
+
+                if tokens and not all(token in url_norm for token in tokens):
+                    continue
+
+                urls.append(url)
+                if len(urls) >= MAX_CANDIDATES:
+                    return urls[:MAX_CANDIDATES]
         finally:
             response.close()
 
         if urls:
             return urls[:MAX_CANDIDATES]
-
-    # Successful search + successful sitemap inspection with no matching
-    # product URL is a genuine verified empty discovery.
-    if inspected or response is not None:
-        return []
 
     return []
 
@@ -1377,17 +1420,17 @@ def search_stream(query, emit=None):
             "details": {"count": len(rows)},
         }
 
-    # discover_product_urls() raises on technical request failures. Reaching
-    # this point with no rows therefore means discovery completed normally and
-    # verified that no matching product URL was found.
+    # The existing discovery function returns [] both for a genuinely empty
+    # search and for some technical discovery failures. Therefore an empty
+    # result is NOT claimed as verified NOT_FOUND here.
     return {
-        "status": "success",
-        "verified": True,
+        "status": "partial",
+        "verified": False,
         "results": [],
         "error": None,
         "details": {
             "count": 0,
-            "reason": "verified_empty_discovery",
+            "reason": "empty_search_not_authoritatively_verified",
         },
     }
 
