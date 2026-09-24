@@ -660,18 +660,23 @@ def _catalog_query_tokens(query):
     return [token for token in re.findall(r"[a-z0-9]+", norm(query)) if token]
 
 def _catalog_candidate_score(url, query):
-    tokens = _catalog_query_tokens(query)
-    if not tokens:
+    # The sitemap is a catalog index. Do not score individual short tokens
+    # independently: product IDs and unrelated slug words can create false
+    # matches (for example query tokens such as "9" or "pm").
+    query_norm = norm(query)
+    if not query_norm:
         return 0
+
     path = norm(unquote(urlparse(url).path))
     compact_path = re.sub(r"[^a-z0-9]+", "", path)
-    compact_query = re.sub(r"[^a-z0-9]+", "", norm(query))
-    score = 0
-    if compact_query and compact_query in compact_path:
-        score += 100
-    matched = sum(1 for token in tokens if token in path or token in compact_path)
-    score += matched * 10
-    return score if matched == len(tokens) else 0
+    compact_query = re.sub(r"[^a-z0-9]+", "", query_norm)
+
+    # Require the complete normalized query to occur in the product slug/path,
+    # allowing only punctuation/space differences.
+    if not compact_query or compact_query not in compact_path:
+        return 0
+
+    return 100 + len(compact_query)
 
 def _discover_from_sitemaps(session, query):
     """Generic catalog fallback discovered from the site's robots/sitemaps."""
