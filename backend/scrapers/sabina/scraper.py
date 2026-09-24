@@ -746,8 +746,7 @@ def _discover_from_sitemaps(session, query):
 
 
 CATALOG_FALLBACK_MAX_SEEDS = 6
-CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 36
-CATALOG_FALLBACK_MAX_REQUESTS = 72
+CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 48
 CATALOG_FALLBACK_WORKERS = 12
 
 
@@ -857,9 +856,10 @@ def _fetch_catalog_page(page_url):
 def _discover_from_catalog_pages(session, query):
     """Generic catalog fallback for stores whose product sitemap is empty.
 
-    The crawl is bounded and parallelized because Sabina's catalog contains
-    thousands of products. It searches only retailer category pages discovered
-    from the live homepage and never embeds product-specific knowledge.
+    Crawl each discovered catalog seed independently. This is important for
+    large catalogs: a global request cap can consume all requests on the
+    first few seeds before reaching a valid pagination branch. The seed order
+    is already generic and derived from the live retailer navigation.
     """
     try:
         response = session.get(
@@ -879,38 +879,54 @@ def _discover_from_catalog_pages(session, query):
     if not seeds:
         return []
 
-    page_urls = []
-    for seed in seeds:
-        page_urls.extend(_catalog_page_urls(seed, CATALOG_FALLBACK_MAX_PAGES_PER_SEED))
-        if len(page_urls) >= CATALOG_FALLBACK_MAX_REQUESTS:
-            page_urls = page_urls[:CATALOG_FALLBACK_MAX_REQUESTS]
-            break
-
-    found = []
-    seen_products = set()
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
-        futures = {executor.submit(_fetch_catalog_page, url): url for url in page_urls}
-        for future in as_completed(futures):
-            page_response = future.result()
-            if page_response is None:
-                continue
-            page_soup = BeautifulSoup(page_response.text, "html.parser")
-            for product_url in _catalog_product_urls_from_page(
-                page_soup, query, page_response.url
-            ):
-                if product_url in seen_products:
-                    continue
-                seen_products.add(product_url)
-                found.append(product_url)
-                if len(found) >= MAX_CANDIDATES:
-                    for pending in futures:
-                        if not pending.done():
-                            pending.cancel()
-                    return found[:MAX_CANDIDATES]
+    # Search one seed completely before moving to the next. Each seed is a
+    # real catalog/category/brand surface discovered from Sabina itself.
+    # No product-specific path is introduced here.
+    for seed in seeds:
+        page_urls = _catalog_page_urls(
+            seed,
+            CATALOG_FALLBACK_MAX_PAGES_PER_SEED,
+        )
+        found = []
+        seen_products = set()
 
-    return found[:MAX_CANDIDATES]
+        with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
+            futures = {
+                executor.submit(_fetch_catalog_page, url): url
+                for url in page_urls
+            }
+
+            for future in as_completed(futures):
+                page_response = future.result()
+                if page_response is None:
+                    continue
+
+                page_soup = BeautifulSoup(
+                    page_response.text,
+                    "html.parser",
+                )
+                for product_url in _catalog_product_urls_from_page(
+                    page_soup,
+                    query,
+                    page_response.url,
+                ):
+                    if product_url in seen_products:
+                        continue
+                    seen_products.add(product_url)
+                    found.append(product_url)
+
+                    if len(found) >= MAX_CANDIDATES:
+                        for pending in futures:
+                            if not pending.done():
+                                pending.cancel()
+                        return found[:MAX_CANDIDATES]
+
+        if found:
+            return found[:MAX_CANDIDATES]
+
+    return []
 
 def discover_product_urls(session, query):
     """
