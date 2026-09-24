@@ -1,9 +1,8 @@
 import json
+import html
 import re
 import unicodedata
-import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, unquote
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,8 +13,6 @@ BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
 TIMEOUT = 10
 MAX_CANDIDATES = 12
-SITEMAP_INDEX_URL = BASE_URL + "/sitemap_index_shop_1.xml"
-SITEMAP_WORKERS = 4
 
 HEADERS = {
     "User-Agent": (
@@ -656,350 +653,184 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
+SITEMAP_FALLBACK_MAX_INDEXES = 20
+SITEMAP_FALLBACK_MAX_URLS_PER_INDEX = 50000
+
+def _catalog_query_tokens(query):
+    return [token for token in re.findall(r"[a-z0-9]+", norm(query)) if token]
+
+def _catalog_candidate_score(url, query):
+    tokens = _catalog_query_tokens(query)
+    if not tokens:
+        return 0
+    path = norm(unquote(urlparse(url).path))
+    compact_path = re.sub(r"[^a-z0-9]+", "", path)
+    compact_query = re.sub(r"[^a-z0-9]+", "", norm(query))
+    score = 0
+    if compact_query and compact_query in compact_path:
+        score += 100
+    matched = sum(1 for token in tokens if token in path or token in compact_path)
+    score += matched * 10
+    return score if matched == len(tokens) else 0
+
+def _discover_from_sitemaps(session, query):
+    """Generic catalog fallback discovered from the site's robots/sitemaps."""
+    sitemap_urls = []
+    seen_sitemaps = set()
+
+    def add_sitemap(url):
+        absolute = normalise_url(url, BASE_URL)
+        if absolute and absolute not in seen_sitemaps:
+            seen_sitemaps.add(absolute)
+            sitemap_urls.append(absolute)
+
+    try:
+        robots = session.get(
+            urljoin(BASE_URL, "/robots.txt"),
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if robots.status_code < 400:
+            for line in robots.text.splitlines():
+                if line.lower().startswith("sitemap:"):
+                    add_sitemap(line.split(":", 1)[1].strip())
+    except requests.RequestException:
+        pass
+
+    if not sitemap_urls:
+        add_sitemap(urljoin(BASE_URL, "/sitemap_index_shop_1.xml"))
+
+    queue = list(sitemap_urls[:SITEMAP_FALLBACK_MAX_INDEXES])
+    product_candidates = []
+    visited = set()
+
+    while queue and len(visited) < SITEMAP_FALLBACK_MAX_INDEXES:
+        sitemap = queue.pop(0)
+        if sitemap in visited:
+            continue
+        visited.add(sitemap)
+        try:
+            response = session.get(
+                sitemap,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+        if response.status_code >= 400:
+            continue
+
+        locations = re.findall(r"<loc>\s*(.*?)\s*</loc>", response.text, re.I | re.S)
+        if not locations:
+            continue
+
+        for raw in locations[:SITEMAP_FALLBACK_MAX_URLS_PER_INDEX]:
+            location = html.unescape(raw.strip())
+            if location.lower().endswith((".xml", ".xml.gz")):
+                add_sitemap(location)
+                if location not in visited and location not in queue:
+                    queue.append(location)
+                continue
+            absolute = normalise_url(location, sitemap)
+            if not absolute or not is_product_url(absolute):
+                continue
+            score = _catalog_candidate_score(absolute, query)
+            if score:
+                product_candidates.append((score, absolute))
+
+        if product_candidates:
+            product_candidates.sort(key=lambda item: (-item[0], item[1]))
+            return [url for _, url in product_candidates[:MAX_CANDIDATES]]
+
+    product_candidates.sort(key=lambda item: (-item[0], item[1]))
+    return [url for _, url in product_candidates[:MAX_CANDIDATES]]
+
 def discover_product_urls(session, query):
     """
-    Generic Sabina catalog discovery.
-
-    Discovery order:
-      1. Sabina's normal search endpoint with the runtime query.
-      2. Generic normalized query forms when the storefront search rejects
-         punctuation/spacing that is otherwise present in the product URL.
-      3. Sabina's public PrestaShop sitemap index as the catalog fallback.
-
-    No product, brand, SKU, price or product URL is hard-coded here.
+    Discover product URLs through Sabina's normal search surface, then
+    fall back to the store's generic catalog/sitemap when search returns
+    no product URLs. No product, brand, SKU, price or URL is hard-coded.
     """
-
-    def query_variants(value):
-        cleaned = clean(value)
-        normalized = norm(cleaned)
-        tokens = normalized.split()
-        variants = []
-
-        for candidate in (
-            cleaned,
-            normalized,
-            "".join(tokens),
-            "-".join(tokens),
-        ):
-            candidate = clean(candidate)
-            if candidate and candidate.lower() not in {
-                item.lower() for item in variants
-            }:
-                variants.append(candidate)
-
-        return variants
-
-    def score_candidate(url, context, search_query):
-        if not is_product_url(url):
-            return -1
-
-        tokens = query_tokens(search_query)
-        query_norm = norm(search_query)
-        query_compact = re.sub(r"[^a-z0-9]", "", query_norm)
-        evidence = norm(
-            " ".join((context or "", urlparse(url).path))
+    try:
+        response = session.get(
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
         )
-        evidence_compact = re.sub(
-            r"[^a-z0-9]",
-            "",
-            evidence,
-        )
-
-        if query_norm and query_norm in evidence:
-            return 100 + (20 * len(tokens))
-
-        if query_compact and query_compact in evidence_compact:
-            return 95 + (20 * len(tokens))
-
-        if not tokens:
-            return 0
-
-        matched = 0
-        for token in tokens:
-            compact = re.sub(r"[^a-z0-9]", "", token)
-            if token in evidence or (
-                compact and compact in evidence_compact
-            ):
-                matched += 1
-
-        return 80 + (10 * matched) if matched == len(tokens) else -1
-
-    def extract_urls_from_text(text):
-        if not text:
-            return []
-
-        decoded = str(text)
-        for old, new in (
-            ("\\\\u002F", "/"),
-            ("\\\\u002f", "/"),
-            ("\\\\/", "/"),
-            ("\\/", "/"),
-            ("&amp;", "&"),
-        ):
-            decoded = decoded.replace(old, new)
-
-        patterns = (
-            re.compile(
-                r'https?://(?:www\.)?sabina\.com'
-                r'/(?:es|it|fr|en|de|nl|pt)/'
-                r'[^"\'<>\s\\]+',
-                re.I,
-            ),
-            re.compile(
-                r'/(?:es|it|fr|en|de|nl|pt)/'
-                r'[^"\'<>\s\\]+',
-                re.I,
-            ),
-        )
-
-        urls = []
-        for pattern in patterns:
-            urls.extend(
-                match.group(0)
-                for match in pattern.finditer(decoded)
-            )
-        return urls
-
-    def collect_search_page(search_query):
-        try:
-            response = session.get(
-                SEARCH_URL,
-                params={"search_query": search_query},
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            return []
-
-        if response.status_code >= 400:
-            return []
-
-        html = response.text or ""
-        soup = BeautifulSoup(html, "html.parser")
-        candidates = {}
-        sequence = 0
-
-        def add(raw_url, context="", source="unknown"):
-            nonlocal sequence
-            absolute = normalise_url(raw_url, response.url)
-            if not absolute or not is_product_url(absolute):
-                return
-
-            context = clean(context)
-            score = score_candidate(
-                absolute,
-                context,
-                search_query,
-            )
-            if score < 0:
-                return
-
-            existing = candidates.get(absolute)
-            if existing:
-                existing["score"] = max(existing["score"], score)
-                existing["context"] = clean(
-                    f'{existing["context"]} {context}'
-                )
-                return
-
-            candidates[absolute] = {
-                "url": absolute,
-                "score": score,
-                "context": context,
-                "source": source,
-                "order": sequence,
-            }
-            sequence += 1
-
-        def node_context(node):
-            parts = [node.get_text(" ", strip=True)]
-            for key, value in node.attrs.items():
-                if isinstance(value, (list, tuple)):
-                    value = " ".join(str(item) for item in value)
-                if value:
-                    parts.append(str(value))
-
-            parent = node
-            for _ in range(5):
-                parent = parent.parent
-                if not parent or not getattr(parent, "name", None):
-                    break
-                identifiers = " ".join(
-                    (
-                        str(parent.get("id", "")),
-                        " ".join(parent.get("class", [])),
-                    )
-                ).lower()
-                if any(
-                    marker in identifiers
-                    for marker in (
-                        "product", "product-item", "product-card",
-                        "item-product", "search", "result", "listing",
-                    )
-                ):
-                    parts.append(parent.get_text(" ", strip=True))
-                    break
-            return clean(" ".join(parts))
-
-        for anchor in soup.find_all("a", href=True):
-            add(
-                anchor.get("href"),
-                node_context(anchor),
-                "anchor",
-            )
-
-        product_nodes = soup.select(
-            "[data-product-url], [data-url], [data-href], [data-link], "
-            "[data-product], [data-product-id], [data-id], "
-            "[itemtype*='Product'], [itemscope]"
-        )
-        for node in product_nodes:
-            context = node_context(node)
-            for key, value in node.attrs.items():
-                if isinstance(value, (list, tuple)):
-                    value = " ".join(str(item) for item in value)
-                if not value:
-                    continue
-                key_norm = str(key).lower()
-                if not (
-                    key_norm in {
-                        "href", "data-product-url", "data-url",
-                        "data-href", "data-link", "data-product",
-                        "data-json", "data-state",
-                    }
-                    or any(
-                        marker in key_norm
-                        for marker in ("url", "href", "link", "json", "state")
-                    )
-                ):
-                    continue
-                for raw_url in extract_urls_from_text(value):
-                    add(
-                        raw_url,
-                        f"{context} {value}",
-                        "data_attribute",
-                    )
-                add(
-                    value,
-                    f"{context} {value}",
-                    "data_attribute",
-                )
-
-        decoded = html
-        for old, new in (
-            ("\\\\u002F", "/"),
-            ("\\\\u002f", "/"),
-            ("\\\\/", "/"),
-            ("\\/", "/"),
-        ):
-            decoded = decoded.replace(old, new)
-
-        for raw_url in extract_urls_from_text(decoded):
-            position = decoded.find(raw_url)
-            context = decoded[
-                max(0, position - 1200):
-                min(len(decoded), position + len(raw_url) + 1200)
-            ] if position >= 0 else decoded
-            add(raw_url, context, "raw_html")
-
-        ranked = sorted(
-            candidates.values(),
-            key=lambda item: (-item["score"], item["order"]),
-        )
-        return [item["url"] for item in ranked[:MAX_CANDIDATES]]
-
-    # Normal search first. Additional forms are only a generic recovery for
-    # storefront search tokenization; they are never tied to a known product.
-    for search_query in query_variants(query):
-        urls = collect_search_page(search_query)
-        if urls:
-            return urls
-
-    def parse_xml_locations(payload):
-        try:
-            root = ET.fromstring(payload)
-        except (ET.ParseError, TypeError, ValueError):
-            return []
-
-        locations = []
-        for node in root.iter():
-            if node.tag.rsplit("}", 1)[-1].lower() != "loc":
-                continue
-            value = clean(node.text)
-            if value:
-                locations.append(value)
-        return locations
-
-    def fetch_sitemap(url):
-        try:
-            response = session.get(
-                url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            return None
-        if response.status_code >= 400:
-            return None
-        return response.content or b""
-
-    # The sitemap index is the generic catalog surface exposed by Sabina's
-    # PrestaShop installation. We discover child sitemaps dynamically rather
-    # than guessing product URLs or IDs.
-    index_payload = fetch_sitemap(SITEMAP_INDEX_URL)
-    if not index_payload:
+    except requests.RequestException:
         return []
 
-    locations = parse_xml_locations(index_payload)
-    child_sitemaps = [
-        url for url in locations
-        if url.lower().endswith((".xml", ".xml.gz"))
-    ]
+    if response.status_code >= 400:
+        return []
 
-    product_urls = []
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
 
-    def scan_sitemap(url):
-        payload = fetch_sitemap(url)
-        if not payload:
-            return []
+    urls = []
+    seen = set()
 
-        if url.lower().endswith(".gz"):
-            import gzip
-            try:
-                payload = gzip.decompress(payload)
-            except OSError:
-                return []
+    def add(raw):
+        absolute = normalise_url(
+            raw,
+            response.url,
+        )
 
-        return [
-            normalise_url(value)
-            for value in parse_xml_locations(payload)
-            if is_product_url(normalise_url(value))
-        ]
+        if not absolute:
+            return
 
-    # Scan sitemap chunks concurrently. Query matching happens locally on the
-    # URL path, so no additional product-page requests are needed at this stage.
-    with ThreadPoolExecutor(max_workers=SITEMAP_WORKERS) as executor:
-        futures = [
-            executor.submit(scan_sitemap, url)
-            for url in child_sitemaps
-        ]
-        for future in as_completed(futures):
-            try:
-                urls = future.result()
-            except Exception:
-                urls = []
-            for url in urls:
-                if not url or url in product_urls:
-                    continue
-                path_text = urlparse(url).path
-                if score_candidate(url, path_text, query) >= 0:
-                    product_urls.append(url)
-                    if len(product_urls) >= MAX_CANDIDATES:
-                        return product_urls[:MAX_CANDIDATES]
+        if not is_product_url(absolute):
+            return
 
-    return product_urls[:MAX_CANDIDATES]
+        if absolute in seen:
+            return
+
+        seen.add(absolute)
+        urls.append(absolute)
+
+    # First source: normal product links.
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
+        add(anchor.get("href"))
+
+    # Second source: product URLs embedded in the returned HTML/JSON.
+    decoded = (
+        response.text
+        .replace("\\/", "/")
+        .replace("\\u002F", "/")
+    )
+
+    for match in re.finditer(
+        r'https?://(?:www\.)?sabina\.com/'
+        r'(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
+
+    for match in re.finditer(
+        r'/(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
+
+    if urls:
+        return urls[:MAX_CANDIDATES]
+
+    # Sabina can legitimately answer HTTP 200 with an empty search result.
+    # That is not enough to classify the product as NOT_FOUND. Verify the
+    # store catalog generically before giving up.
+    return _discover_from_sitemaps(session, query)
 
 
 def _offer_list(product):
