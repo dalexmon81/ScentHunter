@@ -312,6 +312,14 @@ class CatalogProduct:
 
 
 class ProductMatcher:
+    _URL_CONCENTRATION_TOKENS = frozenset(
+        {
+            "edp", "edt", "edc", "eau_fraiche",
+            "extrait", "parfum", "parfum_intense",
+            "edp_intense", "edt_intense",
+        }
+    )
+
     GTIN_KEYS = (
         "gtin", "ean", "ean13", "ean_code", "barcode", "upc",
     )
@@ -542,6 +550,42 @@ class ProductMatcher:
 
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
+
+        # Precompute immutable URL-identity data once per catalog product.
+        # A search can score the same catalog against many offers; rebuilding
+        # normalized aliases and concentration metadata for every offer was
+        # unnecessarily expensive and could monopolize a store worker.
+        self._url_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
+        for product in self.catalog:
+            product_cache: List[Tuple[Any, ...]] = []
+            catalog_identity_tokens = frozenset(
+                self._url_catalog_identity_text(product.name).split()
+            )
+            product_concentration = self._product_concentration(product)
+            for alias in (product.name, *product.aliases):
+                candidate = self._url_catalog_identity_text(alias)
+                if not candidate:
+                    continue
+                c_tokens = frozenset(candidate.split())
+                identity_candidate = " ".join(
+                    token
+                    for token in candidate.split()
+                    if token not in self._URL_CONCENTRATION_TOKENS
+                    or token in catalog_identity_tokens
+                )
+                identity_c_tokens = frozenset(identity_candidate.split())
+                if not identity_c_tokens:
+                    continue
+                product_cache.append(
+                    (
+                        alias,
+                        c_tokens,
+                        identity_candidate,
+                        identity_c_tokens,
+                        product_concentration,
+                    )
+                )
+            self._url_product_cache[id(product)] = tuple(product_cache)
 
     @staticmethod
     def _normalize_family_registry(
@@ -1593,79 +1637,76 @@ class ProductMatcher:
             return ""
         return concentration or inferred
 
-    @classmethod
-    def _url_candidate_score(
-        cls,
+    @staticmethod
+    def _prepare_offer_url_context(
         offer: Dict[str, Any],
-        product: CatalogProduct,
-    ) -> Tuple[float, str]:
-        best = 0.0
-        best_specificity = -1
-        matched_alias = ""
-
-        for raw_url in cls._offer_url_identity_texts(offer):
-            # Ignore the host.  The path/slug is the identity-bearing part.
+    ) -> Tuple[Tuple[Tuple[Tuple[str, ...], ...], ...], Tuple[str, ...]]:
+        prepared_urls: List[Tuple[Tuple[str, ...], ...]] = []
+        for raw_url in ProductMatcher._offer_url_identity_texts(offer):
             path = raw_url.split("/", 1)[1] if "/" in raw_url else raw_url
             segments = [segment for segment in path.split("/") if segment]
             if not segments:
                 segments = [path]
 
-            # Compare the complete product slug first.
+            variants: List[Tuple[str, ...]] = []
             for raw_variant in segments[-1:] + [path]:
-                url_name = cls._url_identity_text(raw_variant)
+                url_name = ProductMatcher._url_identity_text(raw_variant)
                 if not url_name:
                     continue
-                url_tokens_list = url_name.split()
-                if not url_tokens_list:
-                    continue
+                tokens = tuple(url_name.split())
+                if tokens:
+                    variants.append((raw_variant, *tokens))
+            if variants:
+                prepared_urls.append(tuple(variants))
 
-                brand_tokens = ProductMatcher._offer_brand(offer).split()
+        return tuple(prepared_urls), tuple(
+            ProductMatcher._offer_brand(offer).split()
+        )
 
-                for alias in (product.name, *product.aliases):
-                    candidate = cls._url_catalog_identity_text(alias)
-                    if not candidate:
-                        continue
-                    c_tokens = set(candidate.split())
-                    url_concentration = normalize_concentration(raw_variant)
-                    product_concentration = cls._product_concentration(product)
+    def _url_candidate_score(
+        self,
+        offer: Dict[str, Any],
+        product: CatalogProduct,
+        url_context: Optional[
+            Tuple[Tuple[Tuple[Tuple[str, ...], ...], ...], Tuple[str, ...]]
+        ] = None,
+    ) -> Tuple[float, str]:
+        best = 0.0
+        best_specificity = -1
+        matched_alias = ""
 
-                    # Concentration is scored separately from the core identity.
-                    # This keeps a real variant token such as ``Infinite`` more
-                    # important than an appended EDP/EDT descriptor.
-                    identity_candidate = candidate
-                    concentration_tokens = {
-                        "edp", "edt", "edc", "eau_fraiche",
-                        "extrait", "parfum", "parfum_intense",
-                        "edp_intense", "edt_intense",
-                    }
-                    # A concentration token can itself be part of the
-                    # canonical product identity when the concentration token is part of
-                    # the product's canonical name.
-                    # Remove concentration descriptors only when they are
-                    # NOT identity-bearing in the catalog name.  Otherwise a
-                    # specific catalog identity collapses to the generic
-                    # family and loses the specificity tie-break.
-                    catalog_identity_tokens = set(
-                        cls._url_catalog_identity_text(product.name).split()
-                    )
-                    identity_candidate = " ".join(
-                        token
-                        for token in identity_candidate.split()
-                        if token not in concentration_tokens
-                        or token in catalog_identity_tokens
-                    )
+        if url_context is None:
+            url_context = self._prepare_offer_url_context(offer)
 
-                    # Remove URL/domain boilerplate and brand tokens that are
-                    # not part of this catalog identity.  This keeps the
-                    # comparison generic while preserving overlapping words
-                    # such as "Boss" when they are actually part of the name.
-                    candidate_url_tokens = list(url_tokens_list)
-                    generic_url_tokens = {
-                        "www", "http", "https", "produit", "product",
-                        "products", "prodotto", "producto", "html", "aspx",
-                    }
+        prepared_urls, brand_tokens = url_context
+        product_cache = self._url_product_cache.get(id(product), ())
+        if not product_cache:
+            return 0.0, ""
+
+        generic_url_tokens = {
+            "www", "http", "https", "produit", "product",
+            "products", "prodotto", "producto", "html", "aspx",
+        }
+        concentration_tokens = self._URL_CONCENTRATION_TOKENS
+
+        for url_variants in prepared_urls:
+            for variant_data in url_variants:
+                raw_variant = variant_data[0]
+                url_tokens_list = list(variant_data[1:])
+                url_concentration = normalize_concentration(raw_variant)
+
+                for (
+                    alias,
+                    c_tokens,
+                    identity_candidate,
+                    identity_c_tokens,
+                    product_concentration,
+                ) in product_cache:
+                    # Remove URL/domain boilerplate and brand tokens using the
+                    # exact same generic rules as the previous implementation.
                     candidate_url_tokens = [
-                        token for token in candidate_url_tokens
+                        token
+                        for token in url_tokens_list
                         if token not in generic_url_tokens and not token.isdigit()
                     ]
                     counts = Counter(candidate_url_tokens)
@@ -1678,13 +1719,9 @@ class ProductMatcher:
                         token for token in candidate_url_tokens
                         if counts[token] > 0
                     ]
-                    n_tokens = set(candidate_url_tokens)
-                    if not n_tokens:
+                    if not candidate_url_tokens:
                         continue
-                    # Keep a concentration token in the URL when the
-                    # candidate product uses that token as part of its own
-                    # identity. For a generic product, the same URL token remains
-                    # descriptive and is removed.
+
                     identity_candidate_token_set = set(identity_candidate.split())
                     identity_url = " ".join(
                         token
@@ -1693,46 +1730,34 @@ class ProductMatcher:
                         or token in identity_candidate_token_set
                     )
 
-                    # Recompute the lexical score on core identity tokens first.
-                    # Concentration descriptors are then used only as a secondary
-                    # discriminator, so a specific variant token cannot be drowned
-                    # out by an EDP/EDT phrase.
-                    identity_c_tokens = set(identity_candidate.split())
                     identity_url_tokens = set(identity_url.split())
+                    identity_c_tokens_work = set(identity_c_tokens)
                     for token in brand_tokens:
-                        identity_c_tokens.discard(token)
+                        identity_c_tokens_work.discard(token)
                         identity_url_tokens.discard(token)
-                    if not identity_c_tokens or not identity_url_tokens:
+                    if not identity_c_tokens_work or not identity_url_tokens:
                         continue
 
-                    inter = len(identity_url_tokens & identity_c_tokens)
+                    inter = len(identity_url_tokens & identity_c_tokens_work)
                     if not inter:
                         continue
-                    recall = inter / len(identity_c_tokens)
+                    recall = inter / len(identity_c_tokens_work)
                     precision = inter / len(identity_url_tokens)
                     score = (
                         2 * recall * precision / (recall + precision)
                         if recall + precision
                         else 0.0
                     )
-                    if identity_url_tokens == identity_c_tokens:
+                    if identity_url_tokens == identity_c_tokens_work:
                         score = 1.0
 
-                    # Explicit concentration agreement is a small positive signal;
-                    # explicit disagreement is a strong negative signal.  Empty
-                    # catalog concentration remains neutral because some verified
-                    # catalog rows intentionally omit it.
                     if url_concentration and product_concentration:
                         if url_concentration == product_concentration:
                             score += 0.03
                         else:
                             score *= 0.65
 
-                    # When two candidates have the same core score, prefer the one
-                    # whose non-concentration identity is more specific.  This is
-                    # generic: a more specific identity beats a shorter family identity
-                    # identity when the URL explicitly contains ``Infinite``.
-                    specificity = len(identity_c_tokens)
+                    specificity = len(identity_c_tokens_work)
                     if (
                         score > best
                         or (abs(score - best) < 0.03 and specificity > best_specificity)
@@ -1829,6 +1854,11 @@ class ProductMatcher:
             eligible.append(product)
             eligible_ids.add(product.catalog_id)
 
+        # Normalize the offer URL and brand tokens once. The URL scorer is
+        # evaluated against many catalog products, so repeating this work per
+        # product needlessly multiplies regex and string-processing cost.
+        url_context = self._prepare_offer_url_context(offer)
+
         # Query scope is deliberately compact, but a retailer URL can contain
         # a more specific identity than the scraped/display name.  In that
         # situation the URL must be allowed to discover the stronger catalog
@@ -1844,7 +1874,7 @@ class ProductMatcher:
                 brand = normalize(product.brand)
                 if offer_brand != brand and offer_brand not in brand and brand not in offer_brand:
                     continue
-                url_score, _ = self._url_candidate_score(offer, product)
+                url_score, _ = self._url_candidate_score(offer, product, url_context)
                 if url_score >= 0.72:
                     eligible.append(product)
                     eligible_ids.add(product.catalog_id)
@@ -1854,7 +1884,7 @@ class ProductMatcher:
         # all candidates so an exact generic name cannot defeat a more specific
         # variant found in the URL.
         url_matches = [
-            (product, *self._url_candidate_score(offer, product))
+            (product, *self._url_candidate_score(offer, product, url_context))
             for product in eligible
         ]
         best_url_product = None
@@ -1986,13 +2016,17 @@ class ProductMatcher:
                 best_text_score = score
                 best_text_specificity = specificity
 
+        # Normalize the offer URL and brand tokens once for the catalog-wide
+        # URL scoring pass.
+        url_context = self._prepare_offer_url_context(offer)
+
         # URL evidence is independent of retailer and can discover a stronger
         # catalog identity than the scraped name.
         best_url_product: Optional[CatalogProduct] = None
         best_url_score = 0.0
         best_url_specificity = -1
         for product in eligible:
-            score, _alias = self._url_candidate_score(offer, product)
+            score, _alias = self._url_candidate_score(offer, product, url_context)
             specificity = len(
                 set(self._variant_specificity_key(product.name, product.brand).split())
             )
