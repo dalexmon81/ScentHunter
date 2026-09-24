@@ -1001,19 +1001,15 @@ async function searchPerfume(){
       if(currentOpenProductKey){
         const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
         if(gi>=0){
-          // Do not replace the open detail DOM while the search is still
-          // receiving progressive results. On iPhone/Safari a polling update
-          // could replace the format card between touch and click, making
-          // the format appear non-clickable. Refresh the open detail only
-          // after the final payload is available.
-          if(final){
-            if(currentOpenSizeKey!==null){
-              const selected=getSizeGroups(groups[gi]).find(s=>String(s.size)===String(currentOpenSizeKey));
-              if(selected) openSize(gi,currentOpenSizeKey);
-              else openProduct(gi);
-            }else{
-              openProduct(gi);
-            }
+          // Keep the open detail live while store results arrive.
+          // Preserve the current product/format keys so every new
+          // backend snapshot immediately refreshes the visible offers.
+          if(currentOpenSizeKey!==null){
+            const selected=getSizeGroups(groups[gi]).find(s=>String(s.size)===String(currentOpenSizeKey));
+            if(selected) openSize(gi,currentOpenSizeKey);
+            else openProduct(gi);
+          }else{
+            openProduct(gi);
           }
         }else if(final){
           // The product disappeared from the final resolved payload; return
