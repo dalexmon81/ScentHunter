@@ -656,17 +656,6 @@ def availability_from_product_page(soup, jsonld_offer=None):
 def discover_product_urls(session, query):
     """
     Generic Sabina catalog discovery.
-
-    Discovery stages:
-    1. Fetch the search page.
-    2. Extract product URLs from anchors, attributes and embedded data.
-    3. Preserve the surrounding candidate context.
-    4. Score relevance using the complete context.
-    5. Return only relevant product URLs.
-
-    Product identity is deliberately not decided here.
-    Final verification remains in extract_product_page()
-    and canonical identity remains the responsibility of ProductMatcher.
     """
 
     try:
@@ -688,152 +677,133 @@ def discover_product_urls(session, query):
 
     tokens = query_tokens(query)
     query_norm = norm(query)
-    query_compact = query_norm.replace(" ", "")
+    query_compact = re.sub(r"[^a-z0-9]", "", query_norm)
 
     candidates = {}
     sequence = 0
 
-    def add_candidate(raw_url, context="", source="unknown"):
-        nonlocal sequence
+    def score_candidate(url, context):
+        if not is_product_url(url):
+            return -1
 
-        absolute = normalise_url(raw_url, response.url)
-
-        if not absolute or not is_product_url(absolute):
-            return
-
-        context = clean(context)
-
-        key = absolute
-        existing = candidates.get(key)
-
-        if existing:
-            existing["context"] = clean(
-                f'{existing["context"]} {context}'
-            )
-            existing["sources"].add(source)
-            existing["score"] = max(
-                existing["score"],
-                score_candidate(
-                    key,
-                    existing["context"],
-                ),
-            )
-            return
-
-        score = score_candidate(
-            key,
-            context,
-        )
-
-        candidates[key] = {
-            "url": key,
-            "context": context,
-            "source": source,
-            "sources": {source},
-            "score": score,
-            "order": sequence,
-        }
-
-        sequence += 1
-
-        def score_candidate(url, context):
-            """
-            Generic relevance scoring.
-
-            Matching is performed against:
-            - visible candidate text;
-            - HTML attributes;
-            - embedded JSON/JavaScript;
-            - URL path;
-            - compact forms without separators.
-            """
-
-            if not is_product_url(url):
-                return -1
-
-            raw_evidence = " ".join(
+        evidence = norm(
+            " ".join(
                 (
                     context or "",
                     urlparse(url).path,
                 )
             )
+        )
 
-            evidence = norm(raw_evidence)
+        evidence_compact = re.sub(
+            r"[^a-z0-9]",
+            "",
+            evidence,
+        )
 
-            evidence_compact = re.sub(
+        if query_norm and query_norm in evidence:
+            return 100 + (20 * len(tokens))
+
+        if query_compact and query_compact in evidence_compact:
+            return 95 + (20 * len(tokens))
+
+        if not tokens:
+            return 0
+
+        matched = 0
+
+        for token in tokens:
+            token_compact = re.sub(
                 r"[^a-z0-9]",
                 "",
-                evidence,
+                token,
             )
 
-            query_compact_local = re.sub(
-                r"[^a-z0-9]",
-                "",
-                query_norm,
+            if token in evidence:
+                matched += 1
+            elif token_compact and token_compact in evidence_compact:
+                matched += 1
+
+        if matched == len(tokens):
+            return 80 + (10 * matched)
+
+        return -1
+
+    def add_candidate(raw_url, context="", source="unknown"):
+        nonlocal sequence
+
+        absolute = normalise_url(
+            raw_url,
+            response.url,
+        )
+
+        if not absolute or not is_product_url(absolute):
+            return
+
+        context = clean(context)
+        score = score_candidate(
+            absolute,
+            context,
+        )
+
+        existing = candidates.get(absolute)
+
+        if existing:
+            existing["context"] = clean(
+                f'{existing["context"]} {context}'
             )
+            existing["score"] = max(
+                existing["score"],
+                score_candidate(
+                    absolute,
+                    existing["context"],
+                ),
+            )
+            existing["sources"].add(source)
+            return
 
-            if query_norm and query_norm in evidence:
-                return 100 + (20 * len(tokens))
+        candidates[absolute] = {
+            "url": absolute,
+            "context": context,
+            "score": score,
+            "source": source,
+            "sources": {source},
+            "order": sequence,
+        }
 
-            if (
-               query_compact_local
-               and query_compact_local in evidence_compact
-            ):
-               return 95 + (20 * len(tokens))
-
-            if not tokens:
-               return 0
-
-            matched = 0
-
-            for token in tokens:
-                token_compact = re.sub(
-                    r"[^a-z0-9]",
-                    "",
-                    token,
-                )
-
-                if token in evidence:
-                    matched += 1
-                    continue
-
-                if (
-                    token_compact
-                    and token_compact in evidence_compact
-                ):
-                    matched += 1
-
-           if matched == len(tokens):
-               return 80 + (10 * matched)
-
-           return -1
-
-
+        sequence += 1
 
     def node_context(node):
-        """
-        Collect all generic evidence associated with one HTML node:
-        visible text, attributes, data-* values and nearby card text.
-        """
-
         parts = []
 
         if node.name:
-            parts.append(node.get_text(" ", strip=True))
+            parts.append(
+                node.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
 
         for key, value in node.attrs.items():
             if isinstance(value, (list, tuple)):
-                value = " ".join(str(item) for item in value)
+                value = " ".join(
+                    str(item)
+                    for item in value
+                )
 
             if value:
                 parts.append(str(value))
 
-        # Prefer the nearest product/card-like container.
         parent = node
+
         for _ in range(5):
             parent = parent.parent
 
-            if not parent or not getattr(parent, "name", None):
+            if not parent or not getattr(
+                parent,
+                "name",
+                None,
+            ):
                 break
 
             classes = " ".join(
@@ -851,7 +821,6 @@ def discover_product_urls(session, query):
                 marker in identifiers
                 for marker in (
                     "product",
-                    "product-miniature",
                     "product-item",
                     "product-card",
                     "item-product",
@@ -860,37 +829,33 @@ def discover_product_urls(session, query):
                     "listing",
                 )
             ):
-                text = parent.get_text(" ", strip=True)
-
-                if text:
-                    parts.append(text)
-
+                parts.append(
+                    parent.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
                 break
 
         return clean(" ".join(parts))
 
     def extract_urls_from_text(text):
-        """
-        Extract absolute and relative product URLs from raw HTML,
-        JSON and JavaScript, including escaped slash variants.
-        """
-
         if not text:
             return []
 
         decoded = str(text)
 
-        replacements = (
-    ("\\\\u002F", "/"),
-    ("\\\\u002f", "/"),
-    ("\\\\/", "/"),
-    ("\\/", "/"),
-    ("&amp;", "&"),
-)
-
-
-        for old, new in replacements:
-            decoded = decoded.replace(old, new)
+        for old, new in (
+            ("\\\\u002F", "/"),
+            ("\\\\u002f", "/"),
+            ("\\\\/", "/"),
+            ("\\/", "/"),
+            ("&amp;", "&"),
+        ):
+            decoded = decoded.replace(
+                old,
+                new,
+            )
 
         patterns = (
             re.compile(
@@ -906,37 +871,25 @@ def discover_product_urls(session, query):
             ),
         )
 
-        found = []
+        urls = []
 
         for pattern in patterns:
-            found.extend(
+            urls.extend(
                 match.group(0)
                 for match in pattern.finditer(decoded)
             )
 
-        return found
+        return urls
 
-    # ------------------------------------------------------------
-    # 1. Normal anchors
-    # ------------------------------------------------------------
-
-    for anchor in soup.find_all("a"):
-        href = anchor.get("href")
-
-        if not href:
-            continue
-
-        context = node_context(anchor)
-
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
         add_candidate(
-            href,
-            context=context,
+            anchor.get("href"),
+            context=node_context(anchor),
             source="anchor",
         )
-
-    # ------------------------------------------------------------
-    # 2. Product-like HTML nodes and data-* attributes
-    # ------------------------------------------------------------
 
     product_nodes = soup.select(
         "[data-product-url], "
@@ -953,18 +906,19 @@ def discover_product_urls(session, query):
     for node in product_nodes:
         context = node_context(node)
 
-        raw_values = []
-
         for key, value in node.attrs.items():
             key_norm = str(key).lower()
 
             if isinstance(value, (list, tuple)):
-                value = " ".join(str(item) for item in value)
+                value = " ".join(
+                    str(item)
+                    for item in value
+                )
 
             if not value:
                 continue
 
-            if (
+            key_is_url_like = (
                 key_norm in {
                     "href",
                     "data-product-url",
@@ -980,27 +934,23 @@ def discover_product_urls(session, query):
                 or "link" in key_norm
                 or "json" in key_norm
                 or "state" in key_norm
-            ):
-                raw_values.append(str(value))
+            )
 
-        for raw_value in raw_values:
-            for raw_url in extract_urls_from_text(raw_value):
+            if not key_is_url_like:
+                continue
+
+            for raw_url in extract_urls_from_text(value):
                 add_candidate(
                     raw_url,
-                    context=context,
+                    context=f"{context} {value}",
                     source="data_attribute",
                 )
 
-            # A data attribute can itself be a plain relative URL.
             add_candidate(
-                raw_value,
-                context=context,
+                value,
+                context=f"{context} {value}",
                 source="data_attribute",
             )
-
-    # ------------------------------------------------------------
-    # 3. JSON-LD, inline JSON and JavaScript
-    # ------------------------------------------------------------
 
     for script in soup.find_all("script"):
         script_text = script.string or script.get_text()
@@ -1008,30 +958,28 @@ def discover_product_urls(session, query):
         if not script_text:
             continue
 
-        script_context = clean(script_text)
-
-        # Add the complete script as evidence. This is important when
-        # title and URL exist in the same serialized object.
         for raw_url in extract_urls_from_text(script_text):
             add_candidate(
                 raw_url,
-                context=script_context,
+                context=script_text,
                 source="embedded_data",
             )
 
-        # Parse JSON objects where possible and associate title/name
-        # with URL fields before falling back to raw script context.
         try:
             parsed = json.loads(script_text)
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
             parsed = None
 
         def walk_json(value, inherited_context=""):
             if isinstance(value, dict):
-                local_parts = [inherited_context]
+                parts = [inherited_context]
 
                 for key, item in value.items():
-                    if key.lower() in {
+                    if str(key).lower() in {
                         "name",
                         "title",
                         "productname",
@@ -1042,13 +990,13 @@ def discover_product_urls(session, query):
                         "link",
                         "href",
                     }:
-                        local_parts.append(str(item))
+                        parts.append(str(item))
 
                 local_context = clean(
-                    " ".join(local_parts)
+                    " ".join(parts)
                 )
 
-                for key, item in value.items():
+                for item in value.values():
                     if isinstance(item, str):
                         for raw_url in extract_urls_from_text(item):
                             add_candidate(
@@ -1057,56 +1005,56 @@ def discover_product_urls(session, query):
                                 source="json_object",
                             )
 
-                        add_candidate(
-                            item,
-                            context=local_context,
-                            source="json_object",
-                        )
-
                     elif isinstance(item, (dict, list)):
                         walk_json(
                             item,
-                            inherited_context=local_context,
+                            local_context,
                         )
 
             elif isinstance(value, list):
                 for item in value:
                     walk_json(
                         item,
-                        inherited_context=inherited_context,
+                        inherited_context,
                     )
 
         if parsed is not None:
             walk_json(parsed)
 
-    # ------------------------------------------------------------
-    # 4. Generic raw HTML fallback
-    # ------------------------------------------------------------
+    decoded_html = html
 
-    for raw_url in extract_urls_from_text(html):
-        # Preserve a bounded local context around the URL instead of
-        # passing the entire HTML to the relevance scorer.
-        position = html.find(raw_url)
+    for old, new in (
+        ("\\\\u002F", "/"),
+        ("\\\\u002f", "/"),
+        ("\\\\/", "/"),
+        ("\\/", "/"),
+    ):
+        decoded_html = decoded_html.replace(
+            old,
+            new,
+        )
 
-        if position < 0:
-            context = html
-        else:
-            start = max(0, position - 1200)
+    for raw_url in extract_urls_from_text(decoded_html):
+        position = decoded_html.find(raw_url)
+
+        if position >= 0:
+            start = max(
+                0,
+                position - 1200,
+            )
             end = min(
-                len(html),
+                len(decoded_html),
                 position + len(raw_url) + 1200,
             )
-            context = html[start:end]
+            context = decoded_html[start:end]
+        else:
+            context = decoded_html
 
         add_candidate(
             raw_url,
             context=context,
             source="raw_html",
         )
-
-    # ------------------------------------------------------------
-    # 5. Rank and return relevant candidates
-    # ------------------------------------------------------------
 
     ranked = [
         candidate
@@ -1120,29 +1068,12 @@ def discover_product_urls(session, query):
             item["order"],
         )
     )
-    print(
-    "SABINA_DISCOVERY",
-    {
-        "query": query,
-        "total_candidates": len(candidates),
-        "relevant_candidates": len(ranked),
-        "candidates": [
-            {
-                "url": item["url"],
-                "score": item["score"],
-                "source": item["source"],
-                "context": item["context"][:300],
-            }
-            for item in ranked[:MAX_CANDIDATES]
-        ],
-    },
-    flush=True,
-)
 
     return [
         candidate["url"]
         for candidate in ranked[:MAX_CANDIDATES]
     ]
+
 
 
 
