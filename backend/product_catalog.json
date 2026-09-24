@@ -351,25 +351,7 @@
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-am-pour-femme"
       ],
-      "canonical_name": "9 AM",
-      "canonical_image": "https://fr.afnan.com/cdn/shop/files/9AM-01_1.jpg?v=1727787260&width=1080"
-    },
-    {
-      "product_id": "SH-FAMILY-9AM-003",
-      "brand_id": "BR-2ef1c0509245",
-      "brand_name": "Afnan",
-      "family_name": "9 AM Pour Femme",
-      "concentration": "",
-      "gender": "Donna",
-      "aliases": [
-        "Afnan 9 AM Pour Femme",
-        "9 AM Pour Femme",
-        "9AM Pour Femme"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza aggiunta per completare la famiglia Afnan 9 AM.",
-      "verification_sources": [],
-      "canonical_name": "9 AM",
+      "canonical_name": "9 AM - Pour Femme",
       "canonical_image": "https://fr.afnan.com/cdn/shop/files/9AM-01_1.jpg?v=1727787260&width=1080"
     },
     {
@@ -415,7 +397,7 @@
       "product_id": "SH-0067",
       "brand_id": "BR-2ef1c0509245",
       "brand_name": "Afnan",
-      "family_name": "9 PM - Pour Femme",
+      "family_name": "9 PM Pour Femme",
       "concentration": "Eau de Parfum",
       "gender": "Donna",
       "aliases": [
@@ -424,35 +406,17 @@
         "9 PM Pour Femme",
         "9PM Pour Femme",
         "9pm Purple Femme",
-        "Afnan 9pm Purple Femme"
+        "Afnan 9pm Purple Femme",
+        "9 PM For Her",
+        "Afnan 9 PM For Her",
+        "9PM For Her"
       ],
       "source_status": "verificato",
       "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-pm-pour-femme"
       ],
-      "canonical_name": "9 PM",
-      "canonical_image": "https://afnan.com/cdn/shop/files/9PM-01_1.jpg?v=1727708684&width=1080"
-    },
-    {
-      "product_id": "SH-FAMILY-9PM-001",
-      "brand_id": "BR-2ef1c0509245",
-      "brand_name": "Afnan",
-      "family_name": "9 PM Pour Femme",
-      "concentration": "",
-      "gender": "Donna",
-      "aliases": [
-        "Afnan 9 PM Pour Femme",
-        "9 PM Pour Femme",
-        "9PM Pour Femme",
-        "9 PM Purple Femme",
-        "9PM Purple Femme",
-        "Purple Femme"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza aggiunta per completare la famiglia Afnan 9 PM; include alias di ricerca.",
-      "verification_sources": [],
-      "canonical_name": "9 PM",
+      "canonical_name": "9 PM Pour Femme",
       "canonical_image": "https://afnan.com/cdn/shop/files/9PM-01_1.jpg?v=1727708684&width=1080"
     },
     {
@@ -519,63 +483,6 @@
         "https://be.afnan.com/products/9-pm-rebel"
       ],
       "canonical_name": "9 PM Rebel",
-      "canonical_image": "https://fr.afnan.com/cdn/shop/files/Untitled_design_51.png?v=1737009612&width=1080"
-    },
-    {
-      "product_id": "CAT-3b2e55e73badc9b0",
-      "brand_id": "BR-2ef1c0509245",
-      "brand_name": "Afnan",
-      "family_name": "9PM Elixir",
-      "concentration": "Extrait de Parfum",
-      "gender": null,
-      "aliases": [
-        "Afnan - 9 PM Elixir",
-        "Afnan 9 PM Elixir"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://fr.afnan.com/products/9-pm-elixir"
-      ],
-      "canonical_name": "9PM Elixir",
-      "canonical_image": "https://afnan.com/cdn/shop/files/9PM_ELIXIR-1.png?v=1753259405&width=2000"
-    },
-    {
-      "product_id": "CAT-4a698c9b080e5582",
-      "brand_id": "BR-2ef1c0509245",
-      "brand_name": "Afnan",
-      "family_name": "9PM Night Out",
-      "concentration": "Extrait de Parfum",
-      "gender": null,
-      "aliases": [
-        "Afnan - 9 PM Night Out",
-        "Afnan 9 PM Night Out"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://sk.afnan.com/products/9pm-night-out"
-      ],
-      "canonical_name": "9PM Night Out",
-      "canonical_image": "https://fr.afnan.com/cdn/shop/files/72.png?v=1768480022&width=2000"
-    },
-    {
-      "product_id": "CAT-c613a4a6a76106eb",
-      "brand_id": "BR-2ef1c0509245",
-      "brand_name": "Afnan",
-      "family_name": "9PM Rebel",
-      "concentration": "Eau de Parfum",
-      "gender": null,
-      "aliases": [
-        "Afnan - 9 PM Rebel",
-        "Afnan 9 PM Rebel"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://be.afnan.com/products/9-pm-rebel"
-      ],
-      "canonical_name": "9PM Rebel",
       "canonical_image": "https://fr.afnan.com/cdn/shop/files/Untitled_design_51.png?v=1737009612&width=1080"
     },
     {
@@ -865,7 +772,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Afnan.html"
       ],
-      "canonical_name": "Historic Olmeda",
+      "canonical_name": "Historic Olmeda Pour Homme",
       "canonical_image": "https://fr.afnan.com/cdn/shop/files/Historic-Olmeda-01.png?v=1770011210&width=2000"
     },
     {
@@ -1983,7 +1890,7 @@
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
       "verification_sources": [],
-      "canonical_name": "Club de Nuit Intense",
+      "canonical_name": "Club de Nuit Intense Man",
       "canonical_image": "https://cdn.shopify.com/s/files/1/0594/0360/0065/products/armaf-club-de-nuit-intense-man-edp-bottle.jpg?v=1777147382"
     },
     {
@@ -2003,7 +1910,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Armaf.html"
       ],
-      "canonical_name": "Club de Nuit Intense",
+      "canonical_name": "Club de Nuit Intense Woman",
       "canonical_image": "https://armaf.com/cdn/shop/files/Q-106DCLUBDENUITINTENSE_M_FIF_900x_f04752b1-087d-4206-8985-e13e96c5896d.webp?v=1762289750&width=900"
     },
     {
@@ -2103,7 +2010,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Armaf.html"
       ],
-      "canonical_name": "Odyssey",
+      "canonical_name": "Odyssey Homme",
       "canonical_image": "https://cdn.shopify.com/s/files/1/0798/6898/5693/files/Odyssey-Homme-Perfume-100ml-EDP-Armaf-182865252.png?v=1768259926"
     },
     {
@@ -2725,7 +2632,7 @@
       "verification_sources": [
         "https://www.parfumo.com/Perfumes/Azzaro/Club_Men"
       ],
-      "canonical_name": "Club",
+      "canonical_name": "Club Men",
       "canonical_image": "https://i.ebayimg.com/images/g/OfwAAOSwCU9feQzV/s-l960.jpg"
     },
     {
@@ -2811,24 +2718,6 @@
       "canonical_image": "https://cdn03.plentymarkets.com/ea1mg3k08t8u/item/images/5799/full/Azzaro-Pure-Lavender-Eau-de-Toilette-Spray-75-ml-910311-5799_1.jpg"
     },
     {
-      "product_id": "SH-0011",
-      "brand_id": "BR-980b6ab81163",
-      "brand_name": "Azzaro",
-      "family_name": "The Most Wanted",
-      "concentration": "Eau de Parfum Intense",
-      "gender": null,
-      "aliases": [
-        "Azzaro The Most Wanted",
-        "Azzaro The Most Wanted Eau de Parfum Intense",
-        "The Most Wanted Eau de Parfum Intense"
-      ],
-      "source_status": "verificato",
-      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": [],
-      "canonical_name": "The Most Wanted",
-      "canonical_image": "https://m.media-amazon.com/images/I/61g0mT0sLWL._AC_SL1500_.jpg"
-    },
-    {
       "product_id": "SH-AUTO-0002",
       "brand_id": "BR-980b6ab81163",
       "brand_name": "Azzaro",
@@ -2845,7 +2734,7 @@
       "verification_sources": [
         "https://www.azzaro.com/en/fragrances/azzaro-the-most-wanted/eau-de-parfum-intense"
       ],
-      "canonical_name": "The Most Wanted",
+      "canonical_name": "The Most Wanted Eau de Parfum Intense",
       "canonical_image": "https://f.nooncdn.com/p/pzsku/ZCF5C530CABC60EED1B47Z/45/_/1779791593/9999e74c-68ee-4159-9bfb-e7afaecf5105.jpg"
     },
     {
@@ -2866,7 +2755,7 @@
       "verification_sources": [
         "https://www.azzaro.com/en/fragrances/azzaro-the-most-wanted/eau-de-toilette-intense"
       ],
-      "canonical_name": "The Most Wanted",
+      "canonical_name": "The Most Wanted Eau de Toilette Intense",
       "canonical_image": "https://immagini.trovaprezzi.it/prodotti/azzaro_the_most_wanted_eau_de_toilette_intense.jpg"
     },
     {
@@ -2905,7 +2794,7 @@
       "verification_sources": [
         "https://www.parfumo.com/Parfums/Azzaro/Twin_for_Women"
       ],
-      "canonical_name": "Twin",
+      "canonical_name": "Twin Women",
       "canonical_image": "https://cdn.notinoimg.com/detail_main_lq/azzaro/azztwim_aedt10_01/twin-men___130417.jpg"
     },
     {
@@ -2925,7 +2814,7 @@
       "verification_sources": [
         "https://www.parfumo.com/Parfums/Azzaro/Visit_for_Men_Eau_de_Toilette"
       ],
-      "canonical_name": "Visit",
+      "canonical_name": "Visit for Men",
       "canonical_image": "https://sykz.fr/cdn/shop/files/SHOPIFYIMAGE_1_b23d3e50-2603-42a5-8b05-4e7d249ddfab.png?v=1774339726"
     },
     {
@@ -3258,7 +3147,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "Hero",
+      "canonical_name": "Hero Eau de Parfum",
       "canonical_image": "https://assets.burberry.com/is/image/Burberryltd/9CB5B4CF-55ED-43E8-BD76-70F39A9AD29E?%24BBY_V3_SL_1%24=&hei=1500&wid=1501"
     },
     {
@@ -3318,7 +3207,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "London",
+      "canonical_name": "London for Men",
       "canonical_image": "https://onlinepharmacy.ie/cdn/shop/files/burberry-london-mens-eau-de-toilette-100ml-fragrance-310.webp?v=1768226716"
     },
     {
@@ -3338,7 +3227,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "London",
+      "canonical_name": "London for Women",
       "canonical_image": "https://magees.ie/site/uploads/sys_products/1095/burberrylonmdonedp100ml.webp"
     },
     {
@@ -3478,7 +3367,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "Touch",
+      "canonical_name": "Touch for Men",
       "canonical_image": "https://cdn.notinoimg.com/detail_main_lq/burberry/3614227748729_01-o/touch-for-men___260216.jpg"
     },
     {
@@ -3498,7 +3387,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "Touch",
+      "canonical_name": "Touch for Women",
       "canonical_image": "https://cdn.shop-apotheke.com/images/mp/prod/a6d11eb4fe3f4cc386391919f3514c27"
     },
     {
@@ -3518,7 +3407,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "Weekend",
+      "canonical_name": "Weekend for Men",
       "canonical_image": "https://assets.burberry.com/is/image/Burberryltd/AF1EC2C4-7C5F-4F3C-AB49-48D7B3D42CE0?%24BBY_V3_SL_1%24=&hei=1500&wid=1501"
     },
     {
@@ -3538,7 +3427,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Burberry.html"
       ],
-      "canonical_name": "Weekend",
+      "canonical_name": "Weekend for Women",
       "canonical_image": "https://assets.burberry.com/is/image/Burberryltd/36129F7B-5F6A-45DC-89B1-F62E13490104?%24BBY_V3_SL_1%24=&hei=1500&wid=1501"
     },
     {
@@ -3560,7 +3449,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designer/Bvlgari.html"
       ],
-      "canonical_name": "Aqva",
+      "canonical_name": "Aqva Pour Homme",
       "canonical_image": "https://perfumerackph.com/cdn/shop/products/AqvaHomme.jpg?v=1616102649&width=533"
     },
     {
@@ -4021,7 +3910,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "CK Everyone",
+      "canonical_name": "CK Everyone Eau de Parfum",
       "canonical_image": "https://i5.walmartimages.com/asr/2450552e-b214-4150-9f84-09af45eb95b1.0f255356714f0a33d1143111f4be54bd.jpeg?odnBg=FFFFFF&odnHeight=612&odnWidth=612"
     },
     {
@@ -4061,7 +3950,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Contradiction",
+      "canonical_name": "Contradiction for Men",
       "canonical_image": "https://perfumeschile.cl/cdn/shop/files/Calvin-Klein-Contradiction-For-Men-perfume.jpg?v=1706244478&width=1024"
     },
     {
@@ -4081,7 +3970,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Contradiction",
+      "canonical_name": "Contradiction for Women",
       "canonical_image": "https://media.myaster.com/images/products/1069853/calvin-klein-contradiction-eau-de-parfum-for-women-100ml/1069853-1.jpg?fit=bounds&width=840"
     },
     {
@@ -4141,7 +4030,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Escape",
+      "canonical_name": "Escape for Men",
       "canonical_image": "https://theperfumeshop.pk/wp-content/uploads/2023/11/Escape-Men-By-Calvin-Klein-the-perfume-shop-pk-1.jpg"
     },
     {
@@ -4161,7 +4050,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Escape",
+      "canonical_name": "Escape for Women",
       "canonical_image": "https://cdn.notinoimg.com/detail_main_lq/calvin-klein/cakescw_aedp20_03-o/escape___130108.jpg"
     },
     {
@@ -4181,7 +4070,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Eternity",
+      "canonical_name": "Eternity for Men",
       "canonical_image": "https://i.makeupstore.de/l/l5/l5qpmxwxteyg.jpg"
     },
     {
@@ -4201,7 +4090,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Eternity",
+      "canonical_name": "Eternity for Women",
       "canonical_image": "https://emiratesfragrance.com/cdn/shop/files/Calvin-Klein-Eternity-Eau-de-Parfum-100ML-for-Women-1_629ec9c5-ef4a-4bb9-9406-6a83175d19d8.jpg?v=1729583693&width=1080"
     },
     {
@@ -4221,7 +4110,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Eternity Air",
+      "canonical_name": "Eternity Air for Men",
       "canonical_image": "https://www.maxaroma.com/productimages/large/UP3614224871284.jpg?ver=1765593301"
     },
     {
@@ -4241,7 +4130,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Eternity Air",
+      "canonical_name": "Eternity Air for Women",
       "canonical_image": "https://s9.pik.ba/galerija/2021-03/13/09/slika-110434-604d1d33e65af-velika.jpg"
     },
     {
@@ -4281,7 +4170,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Euphoria",
+      "canonical_name": "Euphoria Men",
       "canonical_image": "https://cdn.jarrolds.co.uk/products/calvin-klein/27/258/ck-euphoria-w-100ml-edp-cp-1.jpg"
     },
     {
@@ -4301,7 +4190,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Euphoria",
+      "canonical_name": "Euphoria Women",
       "canonical_image": "https://epocacosmeticos.vteximg.com.br/arquivos/ids/1034671/17581381877496.jpg?v=638937350150630000"
     },
     {
@@ -4321,7 +4210,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Obsession",
+      "canonical_name": "Obsession for Men",
       "canonical_image": "https://i.makeup.it/1/1o/1or6lzbqlndr.jpg"
     },
     {
@@ -4341,7 +4230,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Calvin-Klein.html"
       ],
-      "canonical_name": "Obsession",
+      "canonical_name": "Obsession for Women",
       "canonical_image": "https://i.makeup.it/1/1o/1or6lzbqlndr.jpg"
     },
     {
@@ -4381,7 +4270,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Carolina-Herrera.html"
       ],
-      "canonical_name": "212",
+      "canonical_name": "212 Men",
       "canonical_image": "https://f.nooncdn.com/p/pzsku/Z155F221329EB02F1F6BFZ/45/_/1778592033/799a331f-3810-4bc7-90dc-19a82ac89e86.jpg"
     },
     {
@@ -4441,7 +4330,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Carolina-Herrera.html"
       ],
-      "canonical_name": "212 Sexy",
+      "canonical_name": "212 Sexy Men",
       "canonical_image": "https://www.cheprofumo.com/cdn/shop/products/0carolina-herrera-212-men-sexy-100ml-edt-tester_e88b786d-c7ce-402e-a352-8c16cd453bd1.jpg?v=1716050355"
     },
     {
@@ -4481,7 +4370,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Carolina-Herrera.html"
       ],
-      "canonical_name": "212 VIP",
+      "canonical_name": "212 VIP Men",
       "canonical_image": "https://m.media-amazon.com/images/I/61tBqRRdP3L._AC_SL1000_.jpg"
     },
     {
@@ -4621,7 +4510,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Carolina-Herrera.html"
       ],
-      "canonical_name": "CH",
+      "canonical_name": "CH Men",
       "canonical_image": "https://farmalife.vtexassets.com/arquivos/ids/196493/8411061607152.jpg"
     },
     {
@@ -5259,7 +5148,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Chanel.html"
       ],
-      "canonical_name": "Allure",
+      "canonical_name": "Allure Homme",
       "canonical_image": "https://hrd-live.cdn.scayle.cloud/images/078a73227f09cfb993d8937859efdc7c.jpg"
     },
     {
@@ -5750,7 +5639,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Chloe.html"
       ],
-      "canonical_name": "Chloe",
+      "canonical_name": "Chloe Eau de Parfum",
       "canonical_image": "https://cdn.shopify.com/s/files/1/0645/5096/1316/files/d84995a3-4e79-4483-9e62-a7df95e0c20b_700cdebe-c19d-4fe7-85e4-ff02ed639831.jpg?v=1784272462"
     },
     {
@@ -6189,7 +6078,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dior.html"
       ],
-      "canonical_name": "Dior",
+      "canonical_name": "Dior Homme",
       "canonical_image": "https://www.dior.com/dw/image/v2/BGXS_PRD/on/demandware.static/-/Sites-master_dior/default/dw2d4a5f25/Y0996157/Y0996157_C099600156_E01_RHC.jpg?sw=800"
     },
     {
@@ -6317,7 +6206,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dior.html"
       ],
-      "canonical_name": "Fahrenheit",
+      "canonical_name": "Fahrenheit Eau de Parfum",
       "canonical_image": "https://lafarmacia.es/cdn/shop/files/888886160-0_36fb8fe3-8a8c-4232-977e-5d050ca58dcd.jpg?crop=center&height=300&v=1775173433&width=300"
     },
     {
@@ -6399,7 +6288,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dior.html"
       ],
-      "canonical_name": "J'adore",
+      "canonical_name": "J'adore Eau de Parfum",
       "canonical_image": "https://www.munnoshop.com/cdn/shop/products/DIORJADORE-1.png?v=1698072908"
     },
     {
@@ -6519,7 +6408,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dior.html"
       ],
-      "canonical_name": "Sauvage",
+      "canonical_name": "Sauvage Eau de Parfum",
       "canonical_image": "https://fragrancelounge.com/cdn/shop/files/9NUXSlMwzP-1_Product_192338-Dior-Sauvage-Eau-De-Parfum-100ml_56d49c3ef22ac8b698e7b490a7e6e19f805ffdf.jpg?v=1747814974&width=1445"
     },
     {
@@ -7033,7 +6922,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Davidoff.html"
       ],
-      "canonical_name": "Cool Water",
+      "canonical_name": "Cool Water Woman",
       "canonical_image": "https://terrywhitechemmart.com.au/cdn-cgi/image/format%3Dauto/https%3A/images.skulibrary.com/media/sys_master/hbe/h9c/14709495627806.jpg"
     },
     {
@@ -7529,7 +7418,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dolce-Gabbana.html"
       ],
-      "canonical_name": "K",
+      "canonical_name": "K Eau de Parfum",
       "canonical_image": "https://fimgs.net/mdimg/secundar/o.73765.jpg"
     },
     {
@@ -7591,7 +7480,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dolce-Gabbana.html"
       ],
-      "canonical_name": "Light Blue",
+      "canonical_name": "Light Blue Pour Homme",
       "canonical_image": "https://media.ulta.com/i/ulta/2152026?w=600"
     },
     {
@@ -7691,7 +7580,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dolce-Gabbana.html"
       ],
-      "canonical_name": "Q",
+      "canonical_name": "Q Eau de Parfum Intense",
       "canonical_image": "https://www.dolcegabbana.com/dw/image/v2/BKDB_PRD/on/demandware.static/-/Sites-15/default/dw66259751/images/zoom/VP003BVP000_9V000_0.jpg?sh=944&sw=740"
     },
     {
@@ -7731,7 +7620,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dolce-Gabbana.html"
       ],
-      "canonical_name": "The One",
+      "canonical_name": "The One Eau de Parfum",
       "canonical_image": "https://www.beautye.it/cdn/shop/files/8057971180486_1_1_928c2a46-6e3f-40cc-89f1-b8026ad0bb83.jpg?crop=center&height=300&v=1747649783&width=300"
     },
     {
@@ -7751,7 +7640,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Dolce-Gabbana.html"
       ],
-      "canonical_name": "The One",
+      "canonical_name": "The One for Men",
       "canonical_image": "https://www.perfumenz.co.nz/cdn/shop/products/dolce_the_one_edp_mens_1024x1024.jpg?v=1531369002"
     },
     {
@@ -8291,7 +8180,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designer/Giorgio-Armani.html"
       ],
-      "canonical_name": "Armani Code",
+      "canonical_name": "Armani Code Eau de Parfum",
       "canonical_image": "https://img01.ztat.net/article/spp-media-p1/b5f92d7e84ee4255923a1791ddd2c84c/4c13638496f54d28890de687f87ed186.jpg?imwidth=156"
     },
     {
@@ -8710,7 +8599,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Givenchy.html"
       ],
-      "canonical_name": "Gentle",
+      "canonical_name": "Gentleman Eau de Parfum",
       "canonical_image": "https://www.givenchybeauty.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-givenchy-beauty-master/default/dw0e9f4b6a/images/P000338/3274872432520_P000338_GENTLEMAN_EDP_100ML_a_0.png?sh=800&strip=false&sw=800"
     },
     {
@@ -8730,7 +8619,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Givenchy.html"
       ],
-      "canonical_name": "Gentle",
+      "canonical_name": "Gentleman Eau de Parfum Intense",
       "canonical_image": "https://fragrancelord.com/cdn/shop/files/GivenchyGentlemanEauDeParfumIntenseSpray1.jpg?v=1700043390"
     },
     {
@@ -8907,7 +8796,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Givenchy.html"
       ],
-      "canonical_name": "Irresistible",
+      "canonical_name": "Irresistible Eau de Parfum",
       "canonical_image": "https://www.givenchybeauty.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-givenchy-beauty-master/default/dw7e55a64c/images/P000276/Irresistible-Refillable-100ml_Packshot_View-PDM_0.png?sh=800&strip=false&sw=800"
     },
     {
@@ -8947,7 +8836,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Givenchy.html"
       ],
-      "canonical_name": "L'Interdit",
+      "canonical_name": "L'Interdit Eau de Parfum",
       "canonical_image": "https://farma2go.com/cdn/shop/files/54616.jpg?crop=center&height=300&v=1771316708&width=300"
     },
     {
@@ -9087,7 +8976,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Gucci.html"
       ],
-      "canonical_name": "Bloom",
+      "canonical_name": "Bloom Eau de Parfum",
       "canonical_image": "https://praagneek.com/cdn/shop/files/GucciBloomForWomenEDP100ml.jpg?v=1697655144"
     },
     {
@@ -9306,7 +9195,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Gucci.html"
       ],
-      "canonical_name": "Guilty",
+      "canonical_name": "Guilty Eau de Parfum",
       "canonical_image": "https://product-images.metro.ca/images/ha6/hae/17140498071582.jpg"
     },
     {
@@ -9328,7 +9217,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/Designer/Gucci.html"
       ],
-      "canonical_name": "Guilty",
+      "canonical_name": "Guilty Pour Homme",
       "canonical_image": "https://product-images.metro.ca/images/ha6/hae/17140498071582.jpg"
     },
     {
@@ -9567,7 +9456,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/hermes.html"
       ],
-      "canonical_name": "Eau des Merveilles",
+      "canonical_name": "Eau des Merveilles Eau de Parfum",
       "canonical_image": "https://assets.hermes.com/is/image/hermesproduct/eau-des-merveilles-eau-de-parfum--107399V0-worn-2-0-0-800-800_g.jpg"
     },
     {
@@ -9627,7 +9516,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/hermes.html"
       ],
-      "canonical_name": "H24",
+      "canonical_name": "H24 Eau de Parfum",
       "canonical_image": "https://shop.ethosprofumerielauda.com/cdn/shop/products/hermes-h24-edp.jpg?v=1662711452"
     },
     {
@@ -10534,7 +10423,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designer/Hugo-Boss.html"
       ],
-      "canonical_name": "Boss Orange",
+      "canonical_name": "Boss Orange Man",
       "canonical_image": "https://images.hugoboss.com/is/image/boss/hbna58013593_999_22?$large$=&align=1%2C1&fit=crop%2C1&lastModified=1735920368000"
     },
     {
@@ -10634,7 +10523,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designer/Hugo-Boss.html"
       ],
-      "canonical_name": "Hugo",
+      "canonical_name": "Hugo Man",
       "canonical_image": "https://images.hugoboss.com/is/image/boss/hbeu58097780_999_200?%24large%24=&align=1%2C1&bgcolor=ebebeb&fit=crop%2C1&lastModified=1785558089000"
     },
     {
@@ -10654,7 +10543,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designer/Hugo-Boss.html"
       ],
-      "canonical_name": "Hugo",
+      "canonical_name": "Hugo Woman",
       "canonical_image": "https://fimgs.net/mdimg/perfume-thumbs/375x500.570.jpg"
     },
     {
@@ -10896,7 +10785,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Issey-Miyake.html"
       ],
-      "canonical_name": "L'Eau d'Issey",
+      "canonical_name": "L'Eau d'Issey Pour Homme",
       "canonical_image": "https://us.isseymiyake.com/cdn/shop/files/IP55AZ325-01-01_0000_IP55AZ325-01-01_0000_IP55AZ109-01-01_1_d2f264d3-1f95-450a-9dea-6c272a037f3c.jpg?v=1721331566&width=150"
     },
     {
@@ -10916,7 +10805,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Issey-Miyake.html"
       ],
-      "canonical_name": "L'Eau d'Issey",
+      "canonical_name": "L'Eau d'Issey Eau de Parfum",
       "canonical_image": "https://uk.isseymiyake.com/cdn/shop/files/IP45AZ804-m-01.jpg?v=1730224443&width=1946"
     },
     {
@@ -11298,23 +11187,6 @@
       "canonical_image": "https://medias.jeanpaulgaultier.com/cdn-cgi/image/width%3D3840%2Cquality%3D90%2Cformat%3Davif/medias/sys_master/images/h23/h8a/10953474965534/10953474899998/10953474899998.png"
     },
     {
-      "product_id": "AUTO-80d529d2fb4486be",
-      "brand_id": "BR-40da243dc8c5",
-      "brand_name": "Jean Paul Gaultier",
-      "family_name": "Le Beau",
-      "concentration": "Parfum",
-      "gender": null,
-      "aliases": [
-        "Jean Paul Gaultier Le Beau Le Parfum",
-        "Le Beau Le Parfum"
-      ],
-      "source_status": "verificato",
-      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": [],
-      "canonical_name": "Le Beau",
-      "canonical_image": "https://medias.jeanpaulgaultier.com/cdn-cgi/image/width%3D3840%2Cquality%3D90%2Cformat%3Davif/medias/sys_master/images/h71/h13/9530544029726/9530543964190/9530543964190.png"
-    },
-    {
       "product_id": "AUTO-99930ac1f284e75e",
       "brand_id": "BR-40da243dc8c5",
       "brand_name": "Jean Paul Gaultier",
@@ -11323,13 +11195,7 @@
       "gender": null,
       "aliases": [
         "Jean Paul Gaultier Le Beau",
-        "Le Beau",
-        "Jean Paul Gaultier Le Beau Paradise Garden",
-        "Le Beau Paradise Garden",
-        "Jean Paul Gaultier Le Beau Narcisse",
-        "Le Beau Narcisse",
-        "Jean Paul Gaultier Le Beau Flower Edition",
-        "Le Beau Flower Edition"
+        "Le Beau"
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
@@ -11351,7 +11217,7 @@
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza aggiunta per completare la famiglia Le Beau.",
       "verification_sources": [],
-      "canonical_name": "Le Beau Le",
+      "canonical_name": "Le Beau Le Parfum Intense",
       "canonical_image": "https://medias.jeanpaulgaultier.com/cdn-cgi/image/width%3D3840%2Cquality%3D90%2Cformat%3Davif/medias/sys_master/images/h71/h13/9530544029726/9530543964190/9530543964190.png"
     },
     {
@@ -11546,7 +11412,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Jean-Paul-Gaultier.html"
       ],
-      "canonical_name": "Scandal",
+      "canonical_name": "Scandal Pour Homme",
       "canonical_image": "https://cdn.flaconi.at/media/catalog/product/8/4/8435415030908_c.jpg?q=80&r=1Sp0ui&w=1200"
     },
     {
@@ -11748,7 +11614,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Jil-Sander.html"
       ],
-      "canonical_name": "Sander",
+      "canonical_name": "Sander for Men",
       "canonical_image": "https://cdn.notinoimg.com/detail_main_lq/jil-sander/3414200801232_01-o/sander-for-men___130108.jpg"
     },
     {
@@ -11928,7 +11794,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Jil-Sander.html"
       ],
-      "canonical_name": "Sun",
+      "canonical_name": "Sun Men",
       "canonical_image": "https://marktplatz.bild.de/cdn/shop/files/34671a96-2bb3-4875-a3b6-c7d7ca9c0033_image_1.jpg?v=1741101465"
     },
     {
@@ -12886,7 +12752,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Kenzo.html"
       ],
-      "canonical_name": "Flower by Kenzo",
+      "canonical_name": "Flower by Kenzo Eau de Parfum",
       "canonical_image": "https://www.kenzoparfums.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-kenzoparfums-catalog/default/dwb4ca7a94/images/products-images-fbk/FBK%20EDP/FLOWER_BY_KENZO_EAU_DE_PARFUM_REFILLABLE_FRAGRANCE_FOR_HER_100ML_KENZO_PARFUMS.png?sh=525&sm=fit&sw=525"
     },
     {
@@ -13072,7 +12938,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Kenzo.html"
       ],
-      "canonical_name": "L'Eau Kenzo",
+      "canonical_name": "L'Eau Kenzo Pour Femme",
       "canonical_image": "https://www.kenzoparfums.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-kenzoparfums-catalog/default/dw94e93e67/images/products-images-ek/L%27EAU%20POUR%20HOMME/L%27EAU%20POUR%20FEMME/EAU_KENZO_BASEL.png?sh=525&sm=fit&sw=525"
     },
     {
@@ -13094,7 +12960,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Kenzo.html"
       ],
-      "canonical_name": "L'Eau Kenzo",
+      "canonical_name": "L'Eau Kenzo Pour Homme",
       "canonical_image": "https://www.kenzoparfums.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-kenzoparfums-catalog/default/dwa5966968/images/products-images-ek/K015051_1.png?sh=525&sm=fit&sw=525"
     },
     {
@@ -13156,7 +13022,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Kenzo.html"
       ],
-      "canonical_name": "L'Eau Kenzo Hyper Wave",
+      "canonical_name": "L'Eau Kenzo Hyper Wave Pour Homme",
       "canonical_image": "https://www.kenzoparfums.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-kenzoparfums-catalog/default/dw98bea249/images/products-images-ek/HyperWave_ForHim_50ml.png?sh=525&sm=fit&sw=525"
     },
     {
@@ -13196,7 +13062,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Kenzo.html"
       ],
-      "canonical_name": "World",
+      "canonical_name": "World Eau de Parfum",
       "canonical_image": "https://www.kenzoparfums.com/dw/image/v2/BBZW_PRD/on/demandware.static/-/Sites-kenzoparfums-catalog/default/dw99eb9c4e/images/products-images-kh/K013000_1.png?sh=525&sm=fit&sw=525"
     },
     {
@@ -13559,7 +13425,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Lacoste-Fragrances.html"
       ],
-      "canonical_name": "Match Point",
+      "canonical_name": "Match Point Eau de Parfum",
       "canonical_image": "https://sarbaani.com/cdn/shop/files/1000011821096-1000011821095_03-2100.jpg?v=1773912886&width=1946"
     },
     {
@@ -13744,7 +13610,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Lancome.html"
       ],
-      "canonical_name": "Hypnôse",
+      "canonical_name": "Hypnôse Homme",
       "canonical_image": "https://perfumesana.com/5371-thickbox_default/lancome-hypnose-homme-edt-75-ml-spray.jpg"
     },
     {
@@ -15977,7 +15843,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Moschino.html"
       ],
-      "canonical_name": "Friends",
+      "canonical_name": "Friends Men",
       "canonical_image": "https://fimgs.net/mdimg/perfume-thumbs/270x270.731.2x.jpg"
     },
     {
@@ -15997,7 +15863,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Moschino.html"
       ],
-      "canonical_name": "Friends",
+      "canonical_name": "Friends Women",
       "canonical_image": "https://img.kremchik.ua/prd_pic/74/135_f.jpg"
     },
     {
@@ -16159,7 +16025,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Moschino.html"
       ],
-      "canonical_name": "Toy 2",
+      "canonical_name": "Toy 2 Eau de Parfum",
       "canonical_image": "https://static01.galaxus.com/productimages/7/9/7/4/1/4/7/0/5/3/2/4/3/0/0/8/3/019f9525-b984-7091-9ff8-af503ed1463a_720.jpeg"
     },
     {
@@ -16259,7 +16125,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Narciso-Rodriguez.html"
       ],
-      "canonical_name": "Bleu Noir",
+      "canonical_name": "Bleu Noir Eau de Parfum",
       "canonical_image": "https://ss701.liverpool.com.mx/xl/1067090434.jpg"
     },
     {
@@ -16319,7 +16185,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Narciso-Rodriguez.html"
       ],
-      "canonical_name": "For Her",
+      "canonical_name": "For Her Eau de Parfum",
       "canonical_image": "https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters%3Aquality%2890%29/https%3A/admin.vuahanghieu.com/upload/news/content/2026/03/nuoc-hoa-nu-narciso-rodriguez-for-her-eau-de-parfum-100ml-2-jpg-1773032337-09032026115857.jpg"
     },
     {
@@ -18604,7 +18470,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
-      "canonical_name": "Daarej",
+      "canonical_name": "Daarej Pour Homme",
       "canonical_image": "https://rasasistore.com/cdn/shop/files/Daarej_PourHomme_1.jpg?v=1708590931&width=1200"
     },
     {
@@ -18626,7 +18492,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
-      "canonical_name": "Daarej",
+      "canonical_name": "Daarej Pour Femme",
       "canonical_image": "https://rasasistore.com/cdn/shop/files/Daarej_PourFemme_1.jpg?v=1709142718&width=1200"
     },
     {
@@ -18741,7 +18607,12 @@
       "aliases": [
         "Rasasi - Hawas for Her",
         "Rasasi Hawas for Her",
-        "Hawas for Her"
+        "Hawas for Her",
+        "Rasasi Hawas For Her",
+        "Hawas Women",
+        "Hawas pour femme",
+        "Rasasi Hawas Women",
+        "Rasasi Hawas Pour Femme"
       ],
       "source_status": "verificato_nome_canonico",
       "source_notes": "Referenza verificata nel catalogo fragrance del brand/database specialistico.",
@@ -18749,7 +18620,8 @@
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
       "canonical_name": "Hawas for Her",
-      "canonical_image": "https://cdn.shopify.com/s/files/1/0594/0360/0065/products/rasasi-hawas-for-her-perfume-bottle-packshot.jpg?v=1774780005"
+      "canonical_image": "https://cdn.shopify.com/s/files/1/0594/0360/0065/products/rasasi-hawas-for-her-perfume-bottle-packshot.jpg?v=1774780005",
+      "family_id": "rasasi_hawas"
     },
     {
       "product_id": "SH-AUTO-0732",
@@ -18853,7 +18725,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
-      "canonical_name": "La Yuqawam",
+      "canonical_name": "La Yuqawam Homme",
       "canonical_image": "https://rasasistore.com/cdn/shop/files/LaYuqawam_PourHomme_1.jpg?v=1709141054&width=1200"
     },
     {
@@ -18875,7 +18747,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
-      "canonical_name": "La Yuqawam",
+      "canonical_name": "La Yuqawam Pour Femme",
       "canonical_image": "https://rasasistore.com/cdn/shop/files/LaYuqawam_PourFemme_1.jpg?v=1709200683&width=1200"
     },
     {
@@ -18957,7 +18829,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Rasasi.html"
       ],
-      "canonical_name": "Shuhrah",
+      "canonical_name": "Shuhrah Pour Homme",
       "canonical_image": "https://rasasistore.com/cdn/shop/files/Shurah_PourHomme_1.jpg?v=1708591053&width=1200"
     },
     {
@@ -19904,7 +19776,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Creation-E",
+      "canonical_name": "Creation-E Pour Homme",
       "canonical_image": "https://fleekfellows.com/cdn/shop/files/Roja-Creation-E-Pour-Femme-Essence-De-Parfum-100ML-1.webp?crop=center&height=1200&v=1716755039&width=1200"
     },
     {
@@ -19926,7 +19798,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Danger",
+      "canonical_name": "Danger Pour Homme",
       "canonical_image": "https://cdn2.parfumdreams.de/image/product/131919-211699-0-0.webp?box=528"
     },
     {
@@ -19948,7 +19820,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Danger",
+      "canonical_name": "Danger Pour Femme",
       "canonical_image": "https://i.ebayimg.com/images/g/eQAAAOSwF6Fk0hff/s-l1200.jpg"
     },
     {
@@ -20010,7 +19882,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Elysium",
+      "canonical_name": "Elysium Pour Homme",
       "canonical_image": "https://rojaofficial.com/cdn/shop/products/elysium-pour-homme-100ml.png?v=1700568201&width=1200"
     },
     {
@@ -20032,7 +19904,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Elysium",
+      "canonical_name": "Elysium Pour Femme",
       "canonical_image": "https://rojaofficial.com/cdn/shop/products/elysium-pour-femme-100ml.png?v=1700568210&width=1200"
     },
     {
@@ -20074,7 +19946,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Enigma",
+      "canonical_name": "Enigma Pour Homme",
       "canonical_image": "https://www.marcgebauer.com/cdn/shop/files/RojaParfums-ApexEnigmaHomme_Parfum-TheMensCollection-5060270292760-image-1_1024x.webp?v=1764170633"
     },
     {
@@ -20096,7 +19968,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Enigma",
+      "canonical_name": "Enigma Pour Femme",
       "canonical_image": "https://rojaofficial.com/cdn/shop/products/enigma-pour-femme-100ml.png?v=1700568231&width=1200"
     },
     {
@@ -20198,7 +20070,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Roja-Dove.html"
       ],
-      "canonical_name": "Scandal",
+      "canonical_name": "Scandal Pour Homme",
       "canonical_image": "https://rojaofficial.com/cdn/shop/files/Scandal-Pour-Homme-100ml.png?v=1700568288&width=1200"
     },
     {
@@ -20238,7 +20110,7 @@
       "verification_sources": [
         "https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"
       ],
-      "canonical_name": "Theoreme",
+      "canonical_name": "Theoreme Homme",
       "canonical_image": "https://www.fridaycharm.com/cdn/shop/files/the2.jpg?v=1692886170"
     },
     {
@@ -20380,7 +20252,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Salvatore-Ferragamo.html"
       ],
-      "canonical_name": "Ferragamo",
+      "canonical_name": "Ferragamo Uomo",
       "canonical_image": "https://perfumesymarcas.com/wp-content/uploads/2022/08/Perfume-Uomo-De-Salvatore-Ferragamo-Para-Hombre-100-ml.jpg"
     },
     {
@@ -21884,7 +21756,7 @@
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
       "verification_sources": [],
-      "canonical_name": "Born in Roma",
+      "canonical_name": "Born in Roma Uomo",
       "canonical_image": "https://sephora.com.mx/on/demandware.static/-/Sites-masterCatalog_Sephora/es_MX/dwee0d744a/images/hi-res/boletos/Jazmin/VALENTINO/Fragancia-UomoBiromaEDT-3614272761469-B.jpg"
     },
     {
@@ -21906,7 +21778,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Valentino.html"
       ],
-      "canonical_name": "Born in Roma",
+      "canonical_name": "Born in Roma Donna",
       "canonical_image": "https://cdn.shopify.com/s/files/1/0259/7733/products/valentino-donna-born-in-roma_1024x1024.png?v=1622504794"
     },
     {
@@ -21952,7 +21824,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Valentino.html"
       ],
-      "canonical_name": "Born in Roma Coral Fantasy",
+      "canonical_name": "Born in Roma Coral Fantasy Donna",
       "canonical_image": "https://www.mcelhinneys.com/cdn/shop/products/valentino_donna_born_in_roma_coral_fantasy_EDP_50ml_sku_LORLD499_1.jpg?v=1680871969"
     },
     {
@@ -22039,52 +21911,8 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Valentino.html"
       ],
-      "canonical_name": "Born in Roma Intense",
+      "canonical_name": "Born in Roma Intense Donna",
       "canonical_image": "https://888-plus.com/upload/iblock/120/3atuifmr3b2y7eb16cqpq1sqr5ess4y9/52882.750.jpg"
-    },
-    {
-      "product_id": "CAT-6c1cecbbad60c616",
-      "brand_id": "BR-2399d281a15d",
-      "brand_name": "Valentino",
-      "family_name": "Born in Roma Uomo Extradose",
-      "concentration": "Eau de Parfum",
-      "gender": "Uomo",
-      "aliases": [
-        "Born In Roma Extradose",
-        "Born In Roma Uomo Extradose 100 ML",
-        "Born in Roma Uomo Extradose",
-        "Valentino - Born in Roma Uomo Extradose",
-        "Valentino Born in Roma Uomo Extradose"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"
-      ],
-      "canonical_name": "Born in Roma Uomo Extradose",
-      "canonical_image": "https://media.douglas.hu/medias/scpTmj1217076-1-global.png?context=bWFzdGVyfGltYWdlc3w1NTU4MjN8aW1hZ2UvcG5nfGFHWTBMMmd5T0M4Mk5UQTNNak0xNnpJeE1qRTVNQzl6WTNCVWJXb3hNakUzTURjMlh6RmZ2WW1Gc0xuQnVad3xjMjBiOWQ2MzcyOTliMDY3ZmU2OTRhZDI0ZWRiNGFjNjVmZTkwZmE0NGJiYzYyMWY1Yzg4NzdlNWVhYmE5NjVj&grid=true"
-    },
-    {
-      "product_id": "CAT-93f19e2453b780c0",
-      "brand_id": "BR-2399d281a15d",
-      "brand_name": "Valentino",
-      "family_name": "Born in Roma Uomo Intense",
-      "concentration": "Eau de Parfum",
-      "gender": "Uomo",
-      "aliases": [
-        "Born In Roma Uomo Intense 100 ML",
-        "Born in Roma Uomo Eau de Parfum Intense",
-        "Born in Roma Uomo Intense",
-        "Valentino - Born in Roma Uomo Intense",
-        "Valentino Born in Roma Uomo Intense"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"
-      ],
-      "canonical_name": "Born in Roma Uomo Intense",
-      "canonical_image": "https://media.douglas.ee/images/galleries/1747987906_333.jpg"
     },
     {
       "product_id": "SH-0009",
@@ -22125,7 +21953,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Valentino.html"
       ],
-      "canonical_name": "Born in Roma Yellow Dream",
+      "canonical_name": "Born in Roma Yellow Dream Donna",
       "canonical_image": "https://cazanovaonline.mx/cdn/shop/files/valentino-born-in-roma-yellow-dream-donna-100ml-edp.jpg?v=1707941371&width=1200"
     },
     {
@@ -22193,29 +22021,6 @@
       ],
       "canonical_name": "Uomo",
       "canonical_image": "https://media.sephora.eu/content/dam/digital/pim/published/V/VALENTINO/286695/884-media_swatch.jpg?scaleHeight=585&scaleMode=fit&scaleWidth=585"
-    },
-    {
-      "product_id": "CAT-c663aa69839618df",
-      "brand_id": "BR-2399d281a15d",
-      "brand_name": "Valentino",
-      "family_name": "Uomo Born in Roma Coral Fantasy",
-      "concentration": "Eau de Toilette",
-      "gender": "Uomo",
-      "aliases": [
-        "Born In Roma Coral Fantasy For Him",
-        "Born in Roma Uomo Coral Fantasy",
-        "Born in Roma Uomo Coral Fantasy 100 ML",
-        "Valentino - Uomo Born in Roma Coral Fantasy",
-        "Valentino Born in Roma Uomo Coral Fantasy",
-        "Valentino Uomo Born in Roma Coral Fantasy"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-      "verification_sources": [
-        "https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"
-      ],
-      "canonical_name": "Uomo Born in Roma Coral Fantasy",
-      "canonical_image": "https://shop.simon.com/cdn/shop/files/82b4871ab6e2469da64cbc6438a6c4a4.jpg?v=1729278874"
     },
     {
       "product_id": "SH-AUTO-0858",
@@ -22476,7 +22281,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Versace.html"
       ],
-      "canonical_name": "Crystal Noir",
+      "canonical_name": "Crystal Noir Eau de Parfum",
       "canonical_image": "https://www.versace.com/dw/image/v2/BGWN_PRD/on/demandware.static/-/Sites-ver-master-catalog/default/dw5f7a9c2e/100-R702007-R100MLS_RNUL_20_Crystal~Noir~EDP~100~ml-Accessories-Versace-online-store_5_1.jpg?q=85&strip=true&sw=850"
     },
     {
@@ -22538,7 +22343,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Versace.html"
       ],
-      "canonical_name": "Dylan Blue",
+      "canonical_name": "Dylan Blue Pour Femme",
       "canonical_image": "https://www.versace.com/dw/image/v2/BBRD_PRD/on/demandware.static/-/Sites-versace-master-catalog/default/dw7b1c2d4f/100-R721010-R100MLS_RNUL.jpg"
     },
     {
@@ -22627,7 +22432,7 @@
         "https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"
       ],
       "family_id": "versace_eros",
-      "canonical_name": "Eros",
+      "canonical_name": "Eros Pour Femme Eau de Toilette",
       "canonical_image": "https://www.versace.com/dw/image/v2/BGWN_PRD/on/demandware.static/-/Sites-ver-master-catalog/default/dwf589056d/original/90_R750132-R100MLS_RNUL_20_Eros~Pour~Femme~EDT~100~ml-Accessories-Versace-online-store_1_1.jpg?q=85&strip=true&sw=850"
     },
     {
@@ -22649,30 +22454,8 @@
         "https://www.parfum-zentrum.de/versace_v208/"
       ],
       "family_id": "versace_eros",
-      "canonical_name": "Eros",
+      "canonical_name": "Eros Pour Femme Eau de Parfum",
       "canonical_image": "https://www.versace.com/dw/image/v2/BGWN_PRD/on/demandware.static/-/Sites-ver-master-catalog/default/dw6775b47e/original/90_R750032-R100MLS_RNUL_20_Eros~Pour~Femme~EDP~100~ml-Accessories-Versace-online-store_0_1.jpg?q=85&strip=true&sw=850"
-    },
-    {
-      "product_id": "SH-AUTO-0861",
-      "brand_id": "BR-5aa86e0581a0",
-      "brand_name": "Versace",
-      "family_name": "Eros Pour Femme",
-      "concentration": "",
-      "gender": "Donna",
-      "aliases": [
-        "Versace - Eros Pour Femme",
-        "Versace Eros Pour Femme",
-        "Eros Pour Femme",
-        "Versace Eros Pour Women",
-        "Eros Pour Women"
-      ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza verificata nel catalogo fragrance del brand/database specialistico.",
-      "verification_sources": [
-        "https://www.fragrantica.com/designers/Versace.html"
-      ],
-      "canonical_name": "Eros",
-      "canonical_image": "https://www.versace.com/dw/image/v2/BBRD_PRD/on/demandware.static/-/Sites-versace-master-catalog/default/dw7c2d3e4f/100-R702032-R100MLS_RNUL.jpg"
     },
     {
       "product_id": "SH-AUTO-0859",
@@ -23214,7 +22997,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Viktor-Rolf.html"
       ],
-      "canonical_name": "Spicebomb Night Vision",
+      "canonical_name": "Spicebomb Night Vision Eau de Parfum",
       "canonical_image": "https://media.vperfumes.com/products/Viktor-Rolf-Spicebomb-Night-Vision-EDT-For-Men-90ML-1731390082174.webp"
     },
     {
@@ -23256,7 +23039,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Yves-Saint-Laurent.html"
       ],
-      "canonical_name": "L'",
+      "canonical_name": "L'Homme",
       "canonical_image": "https://www.poudrine.com/cdn/shop/files/3365440316560_lhomme-eau-de-toilette-spray_100ml_v2.jpg?v=1741284134"
     },
     {
@@ -23322,7 +23105,7 @@
       "verification_sources": [
         "https://www.fragrantica.com/designers/Yves-Saint-Laurent.html"
       ],
-      "canonical_name": "La Nuit de L'",
+      "canonical_name": "La Nuit de L'Homme",
       "canonical_image": "https://resources.claroshop.com/medios-plazavip/fotos/productos_sears1/original/3018998.jpg"
     },
     {
@@ -23546,7 +23329,7 @@
       "verification_sources": [
         "https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"
       ],
-      "canonical_name": "Y",
+      "canonical_name": "Y Eau de Parfum",
       "canonical_image": "https://beautyhouse.com/cdn/shop/files/01bdmtewnr.jpg?v=1771609989&width=1492"
     },
     {
@@ -27005,7 +26788,7 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1170,
+    "product_count": 1159,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
     "variant_count": 242,
