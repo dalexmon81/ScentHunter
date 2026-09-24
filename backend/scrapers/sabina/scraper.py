@@ -1121,6 +1121,24 @@ def discover_product_urls(session, query):
             item["order"],
         )
     )
+    print(
+    "SABINA_DISCOVERY",
+    {
+        "query": query,
+        "total_candidates": len(candidates),
+        "relevant_candidates": len(ranked),
+        "candidates": [
+            {
+                "url": item["url"],
+                "score": item["score"],
+                "source": item["source"],
+                "context": item["context"][:300],
+            }
+            for item in ranked[:MAX_CANDIDATES]
+        ],
+    },
+    flush=True,
+)
 
     return [
         candidate["url"]
