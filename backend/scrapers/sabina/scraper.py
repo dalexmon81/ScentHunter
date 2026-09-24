@@ -481,6 +481,45 @@ def extract_price_from_html(soup):
             if value is not None and value > 0:
                 return value, "sabina_html_price"
 
+    # Sabina can place the product block outside the common product-container
+    # classes. Anchor the extraction to the H1/product heading and inspect only
+    # its nearest ancestors. This keeps the price product-bound while covering
+    # the current Sabina markup (e.g. "Precio:35,10 €").
+    h1 = soup.select_one("h1")
+    if h1:
+        ancestor = h1
+        for _ in range(6):
+            ancestor = ancestor.parent if ancestor else None
+            if not ancestor:
+                break
+            text_value = clean(ancestor.get_text(" ", strip=True))
+            if not text_value:
+                continue
+
+            match = re.search(
+                r"(?:precio|price|prix|preis)\s*[:\-]?\s*"
+                r"(?:€|eur|\$|usd|£|gbp)?\s*"
+                r"([0-9]{1,4}(?:[.\s][0-9]{3})*(?:,[0-9]{1,2})?|"
+                r"[0-9]{1,4}(?:\.[0-9]{1,2})?)",
+                text_value,
+                re.I,
+            )
+            if match:
+                value = money_to_float(match.group(1))
+                if value is not None and value > 0:
+                    return value, "sabina_h1_product_block"
+
+            # Also support the common inline form without a price label.
+            match = re.search(
+                r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€\s*\([^)]*100\s*ml",
+                text_value,
+                re.I,
+            )
+            if match:
+                value = money_to_float(match.group(1))
+                if value is not None and value > 0:
+                    return value, "sabina_h1_product_block"
+
     return None, None
 
 
@@ -1266,6 +1305,8 @@ def extract_product_page(session, url, query):
             if price is not None
             else ""
         ),
+        "price_num": price,
+        "availability": availability,
         "url": final_url,
         # Unknown is intentionally not converted to false.
         # The main backend must not interpret missing evidence as OOS.
