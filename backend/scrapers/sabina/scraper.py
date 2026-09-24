@@ -1,6 +1,8 @@
 import json
 import re
 import unicodedata
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -12,6 +14,8 @@ BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
 TIMEOUT = 10
 MAX_CANDIDATES = 12
+SITEMAP_INDEX_URL = BASE_URL + "/sitemap_index_shop_1.xml"
+SITEMAP_WORKERS = 4
 
 HEADERS = {
     "User-Agent": (
@@ -31,7 +35,6 @@ PRODUCT_PATH_RE = re.compile(
     r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
     re.I,
 )
-
 
 IGNORED_QUERY_WORDS = {
     "eau", "de", "parfum", "perfume", "edp", "edt",
@@ -656,45 +659,46 @@ def availability_from_product_page(soup, jsonld_offer=None):
 def discover_product_urls(session, query):
     """
     Generic Sabina catalog discovery.
+
+    Discovery order:
+      1. Sabina's normal search endpoint with the runtime query.
+      2. Generic normalized query forms when the storefront search rejects
+         punctuation/spacing that is otherwise present in the product URL.
+      3. Sabina's public PrestaShop sitemap index as the catalog fallback.
+
+    No product, brand, SKU, price or product URL is hard-coded here.
     """
 
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return []
+    def query_variants(value):
+        cleaned = clean(value)
+        normalized = norm(cleaned)
+        tokens = normalized.split()
+        variants = []
 
-    if response.status_code >= 400:
-        return []
+        for candidate in (
+            cleaned,
+            normalized,
+            "".join(tokens),
+            "-".join(tokens),
+        ):
+            candidate = clean(candidate)
+            if candidate and candidate.lower() not in {
+                item.lower() for item in variants
+            }:
+                variants.append(candidate)
 
-    html = response.text or ""
-    soup = BeautifulSoup(html, "html.parser")
+        return variants
 
-    tokens = query_tokens(query)
-    query_norm = norm(query)
-    query_compact = re.sub(r"[^a-z0-9]", "", query_norm)
-
-    candidates = {}
-    sequence = 0
-
-    def score_candidate(url, context):
+    def score_candidate(url, context, search_query):
         if not is_product_url(url):
             return -1
 
+        tokens = query_tokens(search_query)
+        query_norm = norm(search_query)
+        query_compact = re.sub(r"[^a-z0-9]", "", query_norm)
         evidence = norm(
-            " ".join(
-                (
-                    context or "",
-                    urlparse(url).path,
-                )
-            )
+            " ".join((context or "", urlparse(url).path))
         )
-
         evidence_compact = re.sub(
             r"[^a-z0-9]",
             "",
@@ -711,140 +715,20 @@ def discover_product_urls(session, query):
             return 0
 
         matched = 0
-
         for token in tokens:
-            token_compact = re.sub(
-                r"[^a-z0-9]",
-                "",
-                token,
-            )
-
-            if token in evidence:
-                matched += 1
-            elif token_compact and token_compact in evidence_compact:
+            compact = re.sub(r"[^a-z0-9]", "", token)
+            if token in evidence or (
+                compact and compact in evidence_compact
+            ):
                 matched += 1
 
-        if matched == len(tokens):
-            return 80 + (10 * matched)
-
-        return -1
-
-    def add_candidate(raw_url, context="", source="unknown"):
-        nonlocal sequence
-
-        absolute = normalise_url(
-            raw_url,
-            response.url,
-        )
-
-        if not absolute or not is_product_url(absolute):
-            return
-
-        context = clean(context)
-        score = score_candidate(
-            absolute,
-            context,
-        )
-
-        existing = candidates.get(absolute)
-
-        if existing:
-            existing["context"] = clean(
-                f'{existing["context"]} {context}'
-            )
-            existing["score"] = max(
-                existing["score"],
-                score_candidate(
-                    absolute,
-                    existing["context"],
-                ),
-            )
-            existing["sources"].add(source)
-            return
-
-        candidates[absolute] = {
-            "url": absolute,
-            "context": context,
-            "score": score,
-            "source": source,
-            "sources": {source},
-            "order": sequence,
-        }
-
-        sequence += 1
-
-    def node_context(node):
-        parts = []
-
-        if node.name:
-            parts.append(
-                node.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-        for key, value in node.attrs.items():
-            if isinstance(value, (list, tuple)):
-                value = " ".join(
-                    str(item)
-                    for item in value
-                )
-
-            if value:
-                parts.append(str(value))
-
-        parent = node
-
-        for _ in range(5):
-            parent = parent.parent
-
-            if not parent or not getattr(
-                parent,
-                "name",
-                None,
-            ):
-                break
-
-            classes = " ".join(
-                parent.get("class", [])
-            ).lower()
-
-            identifiers = " ".join(
-                (
-                    str(parent.get("id", "")),
-                    classes,
-                )
-            ).lower()
-
-            if any(
-                marker in identifiers
-                for marker in (
-                    "product",
-                    "product-item",
-                    "product-card",
-                    "item-product",
-                    "search",
-                    "result",
-                    "listing",
-                )
-            ):
-                parts.append(
-                    parent.get_text(
-                        " ",
-                        strip=True,
-                    )
-                )
-                break
-
-        return clean(" ".join(parts))
+        return 80 + (10 * matched) if matched == len(tokens) else -1
 
     def extract_urls_from_text(text):
         if not text:
             return []
 
         decoded = str(text)
-
         for old, new in (
             ("\\\\u002F", "/"),
             ("\\\\u002f", "/"),
@@ -852,10 +736,7 @@ def discover_product_urls(session, query):
             ("\\/", "/"),
             ("&amp;", "&"),
         ):
-            decoded = decoded.replace(
-                old,
-                new,
-            )
+            decoded = decoded.replace(old, new)
 
         patterns = (
             re.compile(
@@ -872,226 +753,253 @@ def discover_product_urls(session, query):
         )
 
         urls = []
-
         for pattern in patterns:
             urls.extend(
                 match.group(0)
                 for match in pattern.finditer(decoded)
             )
-
         return urls
 
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
-        add_candidate(
-            anchor.get("href"),
-            context=node_context(anchor),
-            source="anchor",
-        )
-
-    product_nodes = soup.select(
-        "[data-product-url], "
-        "[data-url], "
-        "[data-href], "
-        "[data-link], "
-        "[data-product], "
-        "[data-product-id], "
-        "[data-id], "
-        "[itemtype*='Product'], "
-        "[itemscope]"
-    )
-
-    for node in product_nodes:
-        context = node_context(node)
-
-        for key, value in node.attrs.items():
-            key_norm = str(key).lower()
-
-            if isinstance(value, (list, tuple)):
-                value = " ".join(
-                    str(item)
-                    for item in value
-                )
-
-            if not value:
-                continue
-
-            key_is_url_like = (
-                key_norm in {
-                    "href",
-                    "data-product-url",
-                    "data-url",
-                    "data-href",
-                    "data-link",
-                    "data-product",
-                    "data-json",
-                    "data-state",
-                }
-                or "url" in key_norm
-                or "href" in key_norm
-                or "link" in key_norm
-                or "json" in key_norm
-                or "state" in key_norm
-            )
-
-            if not key_is_url_like:
-                continue
-
-            for raw_url in extract_urls_from_text(value):
-                add_candidate(
-                    raw_url,
-                    context=f"{context} {value}",
-                    source="data_attribute",
-                )
-
-            add_candidate(
-                value,
-                context=f"{context} {value}",
-                source="data_attribute",
-            )
-
-    for script in soup.find_all("script"):
-        script_text = script.string or script.get_text()
-
-        if not script_text:
-            continue
-
-        for raw_url in extract_urls_from_text(script_text):
-            add_candidate(
-                raw_url,
-                context=script_text,
-                source="embedded_data",
-            )
-
+    def collect_search_page(search_query):
         try:
-            parsed = json.loads(script_text)
-        except (
-            TypeError,
-            ValueError,
-            json.JSONDecodeError,
-        ):
-            parsed = None
+            response = session.get(
+                SEARCH_URL,
+                params={"search_query": search_query},
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            return []
 
-        def walk_json(value, inherited_context=""):
-            if isinstance(value, dict):
-                parts = [inherited_context]
+        if response.status_code >= 400:
+            return []
 
-                for key, item in value.items():
-                    if str(key).lower() in {
-                        "name",
-                        "title",
-                        "productname",
-                        "description",
-                        "brand",
-                        "sku",
-                        "url",
-                        "link",
-                        "href",
-                    }:
-                        parts.append(str(item))
+        html = response.text or ""
+        soup = BeautifulSoup(html, "html.parser")
+        candidates = {}
+        sequence = 0
 
-                local_context = clean(
-                    " ".join(parts)
+        def add(raw_url, context="", source="unknown"):
+            nonlocal sequence
+            absolute = normalise_url(raw_url, response.url)
+            if not absolute or not is_product_url(absolute):
+                return
+
+            context = clean(context)
+            score = score_candidate(
+                absolute,
+                context,
+                search_query,
+            )
+            if score < 0:
+                return
+
+            existing = candidates.get(absolute)
+            if existing:
+                existing["score"] = max(existing["score"], score)
+                existing["context"] = clean(
+                    f'{existing["context"]} {context}'
+                )
+                return
+
+            candidates[absolute] = {
+                "url": absolute,
+                "score": score,
+                "context": context,
+                "source": source,
+                "order": sequence,
+            }
+            sequence += 1
+
+        def node_context(node):
+            parts = [node.get_text(" ", strip=True)]
+            for key, value in node.attrs.items():
+                if isinstance(value, (list, tuple)):
+                    value = " ".join(str(item) for item in value)
+                if value:
+                    parts.append(str(value))
+
+            parent = node
+            for _ in range(5):
+                parent = parent.parent
+                if not parent or not getattr(parent, "name", None):
+                    break
+                identifiers = " ".join(
+                    (
+                        str(parent.get("id", "")),
+                        " ".join(parent.get("class", [])),
+                    )
+                ).lower()
+                if any(
+                    marker in identifiers
+                    for marker in (
+                        "product", "product-item", "product-card",
+                        "item-product", "search", "result", "listing",
+                    )
+                ):
+                    parts.append(parent.get_text(" ", strip=True))
+                    break
+            return clean(" ".join(parts))
+
+        for anchor in soup.find_all("a", href=True):
+            add(
+                anchor.get("href"),
+                node_context(anchor),
+                "anchor",
+            )
+
+        product_nodes = soup.select(
+            "[data-product-url], [data-url], [data-href], [data-link], "
+            "[data-product], [data-product-id], [data-id], "
+            "[itemtype*='Product'], [itemscope]"
+        )
+        for node in product_nodes:
+            context = node_context(node)
+            for key, value in node.attrs.items():
+                if isinstance(value, (list, tuple)):
+                    value = " ".join(str(item) for item in value)
+                if not value:
+                    continue
+                key_norm = str(key).lower()
+                if not (
+                    key_norm in {
+                        "href", "data-product-url", "data-url",
+                        "data-href", "data-link", "data-product",
+                        "data-json", "data-state",
+                    }
+                    or any(
+                        marker in key_norm
+                        for marker in ("url", "href", "link", "json", "state")
+                    )
+                ):
+                    continue
+                for raw_url in extract_urls_from_text(value):
+                    add(
+                        raw_url,
+                        f"{context} {value}",
+                        "data_attribute",
+                    )
+                add(
+                    value,
+                    f"{context} {value}",
+                    "data_attribute",
                 )
 
-                for item in value.values():
-                    if isinstance(item, str):
-                        for raw_url in extract_urls_from_text(item):
-                            add_candidate(
-                                raw_url,
-                                context=local_context,
-                                source="json_object",
-                            )
+        decoded = html
+        for old, new in (
+            ("\\\\u002F", "/"),
+            ("\\\\u002f", "/"),
+            ("\\\\/", "/"),
+            ("\\/", "/"),
+        ):
+            decoded = decoded.replace(old, new)
 
-                    elif isinstance(item, (dict, list)):
-                        walk_json(
-                            item,
-                            local_context,
-                        )
+        for raw_url in extract_urls_from_text(decoded):
+            position = decoded.find(raw_url)
+            context = decoded[
+                max(0, position - 1200):
+                min(len(decoded), position + len(raw_url) + 1200)
+            ] if position >= 0 else decoded
+            add(raw_url, context, "raw_html")
 
-            elif isinstance(value, list):
-                for item in value:
-                    walk_json(
-                        item,
-                        inherited_context,
-                    )
-
-        if parsed is not None:
-            walk_json(parsed)
-
-    decoded_html = html
-
-    for old, new in (
-        ("\\\\u002F", "/"),
-        ("\\\\u002f", "/"),
-        ("\\\\/", "/"),
-        ("\\/", "/"),
-    ):
-        decoded_html = decoded_html.replace(
-            old,
-            new,
+        ranked = sorted(
+            candidates.values(),
+            key=lambda item: (-item["score"], item["order"]),
         )
+        return [item["url"] for item in ranked[:MAX_CANDIDATES]]
 
-    for raw_url in extract_urls_from_text(decoded_html):
-        position = decoded_html.find(raw_url)
+    # Normal search first. Additional forms are only a generic recovery for
+    # storefront search tokenization; they are never tied to a known product.
+    for search_query in query_variants(query):
+        urls = collect_search_page(search_query)
+        if urls:
+            return urls
 
-        if position >= 0:
-            start = max(
-                0,
-                position - 1200,
+    def parse_xml_locations(payload):
+        try:
+            root = ET.fromstring(payload)
+        except (ET.ParseError, TypeError, ValueError):
+            return []
+
+        locations = []
+        for node in root.iter():
+            if node.tag.rsplit("}", 1)[-1].lower() != "loc":
+                continue
+            value = clean(node.text)
+            if value:
+                locations.append(value)
+        return locations
+
+    def fetch_sitemap(url):
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
             )
-            end = min(
-                len(decoded_html),
-                position + len(raw_url) + 1200,
-            )
-            context = decoded_html[start:end]
-        else:
-            context = decoded_html
+        except requests.RequestException:
+            return None
+        if response.status_code >= 400:
+            return None
+        return response.content or b""
 
-        add_candidate(
-            raw_url,
-            context=context,
-            source="raw_html",
-        )
-            if query.strip().lower() == "9 pm":
-        print(
-            "SABINA_DEBUG_9PM",
-            {
-                "total_candidates": len(candidates),
-                "all_candidates": [
-                    {
-                        "url": item["url"],
-                        "score": item["score"],
-                        "source": item["source"],
-                        "context": item["context"][:500],
-                    }
-                    for item in candidates.values()
-                ],
-            },
-            flush=True,
-        )
+    # The sitemap index is the generic catalog surface exposed by Sabina's
+    # PrestaShop installation. We discover child sitemaps dynamically rather
+    # than guessing product URLs or IDs.
+    index_payload = fetch_sitemap(SITEMAP_INDEX_URL)
+    if not index_payload:
+        return []
 
-    ranked = [
-        candidate
-        for candidate in candidates.values()
-        if candidate["score"] >= 0
+    locations = parse_xml_locations(index_payload)
+    child_sitemaps = [
+        url for url in locations
+        if url.lower().endswith((".xml", ".xml.gz"))
     ]
 
-    ranked.sort(
-        key=lambda item: (
-            -item["score"],
-            item["order"],
-        )
-    )
+    product_urls = []
 
-    return [
-        candidate["url"]
-        for candidate in ranked[:MAX_CANDIDATES]
-    ]
+    def scan_sitemap(url):
+        payload = fetch_sitemap(url)
+        if not payload:
+            return []
 
+        if url.lower().endswith(".gz"):
+            import gzip
+            try:
+                payload = gzip.decompress(payload)
+            except OSError:
+                return []
 
+        return [
+            normalise_url(value)
+            for value in parse_xml_locations(payload)
+            if is_product_url(normalise_url(value))
+        ]
+
+    # Scan sitemap chunks concurrently. Query matching happens locally on the
+    # URL path, so no additional product-page requests are needed at this stage.
+    with ThreadPoolExecutor(max_workers=SITEMAP_WORKERS) as executor:
+        futures = [
+            executor.submit(scan_sitemap, url)
+            for url in child_sitemaps
+        ]
+        for future in as_completed(futures):
+            try:
+                urls = future.result()
+            except Exception:
+                urls = []
+            for url in urls:
+                if not url or url in product_urls:
+                    continue
+                path_text = urlparse(url).path
+                if score_candidate(url, path_text, query) >= 0:
+                    product_urls.append(url)
+                    if len(product_urls) >= MAX_CANDIDATES:
+                        return product_urls[:MAX_CANDIDATES]
+
+    return product_urls[:MAX_CANDIDATES]
 
 
 def _offer_list(product):
