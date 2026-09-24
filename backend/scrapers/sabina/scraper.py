@@ -745,7 +745,7 @@ def _discover_from_sitemaps(session, query):
     return [url for _, url in candidates[:MAX_CANDIDATES]]
 
 
-CATALOG_FALLBACK_MAX_SEEDS = 6
+CATALOG_FALLBACK_MAX_SEEDS = 8
 CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 48
 CATALOG_FALLBACK_WORKERS = 12
 
@@ -816,8 +816,20 @@ def _catalog_seed_urls_from_homepage(soup, base_url):
         text = clean(anchor.get_text(" ", strip=True))
         normalized = norm(f"{text} {path}")
         score = sum(10 for word in priority_words if word in normalized)
-        if re.search(r"/es/(?:\d+-|\d+_)", path, re.I):
+        numeric_category = bool(re.search(r"/es/(?:\d+-|\d+_)", path, re.I))
+        perfume_surface = any(
+            word in normalized
+            for word in ("perfume", "perfumes", "parfum", "fragrance", "fragancias")
+        )
+        if numeric_category:
             score += 5
+        # ScentHunter searches perfumes: prefer the retailer's actual perfume
+        # catalog surfaces over unrelated cosmetics/hair/jewellery categories.
+        # This is a generic category constraint, not product-specific logic.
+        if numeric_category and perfume_surface:
+            score += 100
+        elif not perfume_surface:
+            continue
         candidates.append((score, absolute))
 
     for _, url in sorted(candidates, key=lambda item: (-item[0], item[1])):
@@ -838,9 +850,9 @@ def _catalog_page_urls(seed, max_pages):
     return [root if page == 1 else root + "?p=" + str(page) for page in range(1, max_pages + 1)]
 
 
-def _fetch_catalog_page(page_url):
+def _fetch_catalog_page(session, page_url):
     try:
-        response = requests.get(
+        response = session.get(
             page_url,
             headers=HEADERS,
             timeout=TIMEOUT,
@@ -894,7 +906,7 @@ def _discover_from_catalog_pages(session, query):
 
         with ThreadPoolExecutor(max_workers=CATALOG_FALLBACK_WORKERS) as executor:
             futures = {
-                executor.submit(_fetch_catalog_page, url): url
+                executor.submit(_fetch_catalog_page, session, url): url
                 for url in page_urls
             }
 
