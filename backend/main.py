@@ -861,8 +861,9 @@ def _new_job(query):
     "started_at": time.time(),
     "completed": False,
 
-    # Individual deduplicated commercial offers.
+    # Individual commercial offers. Derived views are rebuilt outside JOBS_LOCK.
     "offers": [],
+    "offers_revision": 0,
 
     # Canonical grouped products exposed by the API.
     "results": [],
@@ -933,50 +934,75 @@ def _snapshot(job_id):
             ),
         }
 
+AGGREGATION_LOCK = threading.Lock()
+
+def _rebuild_job_view(job_id):
+    """
+    Rebuild derived results outside JOBS_LOCK.
+
+    JOBS_LOCK is deliberately held only for tiny state snapshots/updates.
+    This keeps /search-status responsive while dedupe and identity aggregation
+    are running.
+    """
+    while True:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+            source_offers = list(job.get("offers", []))
+            revision = int(job.get("offers_revision", 0))
+
+        diagnostics = []
+        with AGGREGATION_LOCK:
+            deduped = dedupe_results(source_offers, diagnostics)
+            grouped, unresolved = _aggregate_identity_results(deduped)
+
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+
+            # A new offer arrived while aggregation was running. Do not
+            # overwrite the newer snapshot with stale derived data; retry.
+            if int(job.get("offers_revision", 0)) != revision:
+                continue
+
+            job["offers"] = deduped
+            job["dedupe_diagnostics"] = diagnostics
+            job["results"] = grouped
+            job["unresolved_offers"] = unresolved
+            return
+
 def _publish_result(job_id, row):
+    if not isinstance(row, dict):
+        return
+
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-
         if not job or job.get("completed"):
             return
 
-        if not isinstance(row, dict):
-            return
+        job.setdefault("offers", []).append(row)
+        job["offers_revision"] = int(
+            job.get("offers_revision", 0)
+        ) + 1
 
-        job.setdefault("offers", [])
-        job["offers"].append(row)
-        job["offers"] = dedupe_results(
-            job["offers"],
-            job.setdefault("dedupe_diagnostics", []),
-        )
+    _rebuild_job_view(job_id)
 
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
-
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-
-        print(
-            "SEARCH PUBLISH RESULT "
-            f"job={job_id} "
-            f"store={row.get('store')} "
-            f"groups={len(grouped)} "
-            f"offers={len(job['offers'])}",
-            flush=True,
-        )
+    print(
+        "SEARCH PUBLISH RESULT "
+        f"job={job_id} "
+        f"store={row.get('store')} ",
+        flush=True,
+    )
 
 def _publish_store(job_id, report):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-
         if not job or job.get("completed"):
             return
 
         store = report["store"]
-
         job["stores"][store] = {
             "status": report["status"],
             "verified": bool(report.get("verified")),
@@ -989,76 +1015,95 @@ def _publish_store(job_id, report):
             job["errors"][store] = report["error"]
 
         for item in report.get("results", []):
-            if not isinstance(item, dict):
-                continue
+            if isinstance(item, dict):
+                job.setdefault("offers", []).append(item)
 
-            job.setdefault("offers", [])
-            job["offers"].append(item)
+        if report.get("results"):
+            job["offers_revision"] = int(
+                job.get("offers_revision", 0)
+            ) + len([
+                item for item in report.get("results", [])
+                if isinstance(item, dict)
+            ])
 
-        job["offers"] = dedupe_results(
-            job.get("offers", []),
-            job.setdefault("dedupe_diagnostics", []),
-        )
+    _rebuild_job_view(job_id)
 
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job:
+            groups_count = len(job.get("results", []))
+            offers_count = len(job.get("offers", []))
+        else:
+            groups_count = 0
+            offers_count = 0
 
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-
-        print(
-            "SEARCH PUBLISH "
-            f"job={job_id} "
-            f"store={store} "
-            f"groups={len(grouped)} "
-            f"offers={len(job['offers'])}",
-            flush=True,
-        )
+    print(
+        "SEARCH PUBLISH "
+        f"job={job_id} "
+        f"store={store} "
+        f"groups={groups_count} "
+        f"offers={offers_count}",
+        flush=True,
+    )
 
 def _run_job(job_id,query):
-    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
+    started=time.monotonic()
+    print(
+        f'SEARCH START job={job_id} query={query!r}',
+        flush=True,
+    )
+
     collect_store_reports_isolated(
         query,
         STORES,
         on_report=lambda r:_publish_store(job_id,r),
         on_result=lambda row:_publish_result(job_id,row),
     )
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
 
-    if job:
-        job["offers"] = dedupe_results(
-            job.get("offers", []),
-            job.setdefault("dedupe_diagnostics", []),
-        )
+    # Finalize outside JOBS_LOCK. The lock is used only to take the current
+    # input snapshot and to publish the final derived state.
+    while True:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job:
+                break
+            source_offers = list(job.get("offers", []))
+            revision = int(job.get("offers_revision", 0))
 
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
+        diagnostics = []
+        with AGGREGATION_LOCK:
+            deduped = dedupe_results(source_offers, diagnostics)
+            grouped, unresolved = _aggregate_identity_results(deduped)
+
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job:
+                break
+
+            if int(job.get("offers_revision", 0)) != revision:
+                continue
+
+            job["offers"] = deduped
+            job["dedupe_diagnostics"] = diagnostics
+            job["results"] = grouped
+            job["unresolved_offers"] = unresolved
+            job["completed"] = True
+            job["elapsed"] = round(
+                time.monotonic() - started,
+                3,
             )
-        )
+            elapsed = job["elapsed"]
+            total = len(job["results"])
+            break
 
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-        job["completed"] = True
-        job["elapsed"] = round(
-            time.monotonic() - started,
-            3,
-        )
-
-        elapsed = job["elapsed"]
-        total = len(job["results"])
-    else:
-        elapsed = round(
-            time.monotonic() - started,
-            3,
-        )
+    if not job:
+        elapsed = round(time.monotonic() - started, 3)
         total = 0
 
-    print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
+    print(
+        f'SEARCH END job={job_id} elapsed={elapsed} total={total}',
+        flush=True,
+    )
 
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
