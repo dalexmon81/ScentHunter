@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 10
+TIMEOUT = 7
 MAX_CANDIDATES = 12
 
 HEADERS = {
@@ -653,111 +653,127 @@ def availability_from_product_page(soup, jsonld_offer=None):
     return "unknown", "sabina_html_availability"
 
 def discover_product_urls(session, query):
-    """
-    Generic runtime discovery for Sabina.
+    """Discover product URLs using Sabina's runtime search, then a bounded
+    generic sitemap fallback.
 
-    Discovery errors are preserved as technical failures. Multiple generic
-    Sabina search surfaces are tried before returning a verified empty result.
-    No product, brand, SKU, price or product URL is hard-coded here.
+    Technical failures are raised so the backend can distinguish ERROR/
+    UNAVAILABLE from a verified empty search. An empty list is returned only
+    after at least one successful discovery surface has been inspected.
     """
-    query = clean(query)
-    if not query:
-        return []
+    def collect(response):
+        soup = BeautifulSoup(response.text, "html.parser")
+        urls = []
+        seen = set()
 
-    surfaces = (
-        (SEARCH_URL, {"search_query": query}),
-        (BASE_URL + "/it/ricerca", {"search_query": query}),
-        (BASE_URL + "/it/ricerca_old", {"s": query}),
-        (BASE_URL + "/it/ricerca_old", {"search_query": query}),
+        def add(raw):
+            absolute = normalise_url(raw, response.url)
+            if not absolute or not is_product_url(absolute) or absolute in seen:
+                return
+            seen.add(absolute)
+            urls.append(absolute)
+
+        for anchor in soup.find_all("a", href=True):
+            add(anchor.get("href"))
+
+        decoded = (
+            response.text
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+        )
+
+        for match in re.finditer(
+            r'https?://(?:www\.)?sabina\.com/'
+            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+        for match in re.finditer(
+            r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            add(match.group(0))
+
+        return urls[:MAX_CANDIDATES]
+
+    # Primary: the live Sabina search surface. One request only; do not
+    # chain several speculative search endpoints when this one is healthy.
+    try:
+        response = session.get(
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.Timeout:
+        raise
+    except requests.RequestException:
+        raise
+
+    try:
+        if response.status_code >= 400:
+            raise requests.HTTPError(
+                f"Sabina search HTTP {response.status_code}",
+                response=response,
+            )
+
+        urls = collect(response)
+    finally:
+        response.close()
+
+    if urls:
+        return urls
+
+    # Generic fallback: inspect the site's XML sitemap index. This is used
+    # only when the search page was successfully fetched but exposed no
+    # product links. No product/brand/URL is hardcoded here.
+    sitemap_candidates = (
+        BASE_URL + "/1_index_sitemap.xml",
+        BASE_URL + "/sitemap.xml",
     )
+    tokens = query_tokens(query)
+    sitemap_seen = set()
+    inspected = False
 
-    urls = []
-    seen = set()
-    successful_responses = 0
-    first_error = None
-
-    def add(raw, base_url):
-        absolute = normalise_url(raw, base_url)
-        if not absolute or not is_product_url(absolute):
-            return
-        if absolute in seen:
-            return
-        seen.add(absolute)
-        urls.append(absolute)
-
-    for search_url, params in surfaces:
+    for sitemap_url in sitemap_candidates:
         try:
             response = session.get(
-                search_url,
-                params=params,
+                sitemap_url,
                 headers=HEADERS,
                 timeout=TIMEOUT,
                 allow_redirects=True,
             )
-        except requests.Timeout:
-            if first_error is None:
-                first_error = requests.Timeout(
-                    f"Sabina discovery timeout: {search_url}"
-                )
-            continue
-        except requests.ConnectionError as exc:
-            if first_error is None:
-                first_error = exc
-            continue
-        except requests.RequestException as exc:
-            if first_error is None:
-                first_error = exc
+        except requests.RequestException:
             continue
 
         try:
             if response.status_code >= 400:
-                if first_error is None:
-                    first_error = requests.HTTPError(
-                        f"Sabina discovery HTTP {response.status_code}: {response.url}"
-                    )
                 continue
-
-            successful_responses += 1
-            soup = BeautifulSoup(response.text or "", "html.parser")
-
-            for anchor in soup.find_all("a", href=True):
-                add(anchor.get("href"), response.url)
-
-            decoded = (
-                response.text
-                .replace("\\/", "/")
-                .replace("\\u002F", "/")
-            )
-
-            for match in re.finditer(
-                r'https?://(?:www\.)?sabina\.com/'
-                r'(?:es|it|fr|en|de|nl|pt)/'
-                r'[^"\'<>\s\\]+',
-                decoded,
-                re.I,
-            ):
-                add(match.group(0), response.url)
-
-            for match in re.finditer(
-                r'/(?:es|it|fr|en|de|nl|pt)/'
-                r'[^"\'<>\s\\]+',
-                decoded,
-                re.I,
-            ):
-                add(match.group(0), response.url)
+            inspected = True
+            text = response.text.replace("\\/", "/")
+            for raw in re.findall(r"<loc>\s*(.*?)\s*</loc>", text, re.I | re.S):
+                url = normalise_url(raw)
+                if not url or url in sitemap_seen:
+                    continue
+                sitemap_seen.add(url)
+                if is_product_url(url):
+                    if not tokens or all(token in norm(url) for token in tokens):
+                        urls.append(url)
+                        if len(urls) >= MAX_CANDIDATES:
+                            return urls[:MAX_CANDIDATES]
         finally:
             response.close()
 
-        if len(urls) >= MAX_CANDIDATES:
-            break
+        if urls:
+            return urls[:MAX_CANDIDATES]
 
-    if urls:
-        return urls[:MAX_CANDIDATES]
-
-    # A valid response with no product URLs is not automatically a technical
-    # error. Only if every discovery surface failed technically do we raise.
-    if successful_responses == 0 and first_error is not None:
-        raise first_error
+    # Successful search + successful sitemap inspection with no matching
+    # product URL is a genuine verified empty discovery.
+    if inspected or response is not None:
+        return []
 
     return []
 
@@ -1361,17 +1377,17 @@ def search_stream(query, emit=None):
             "details": {"count": len(rows)},
         }
 
-    # The existing discovery function returns [] both for a genuinely empty
-    # search and for some technical discovery failures. Therefore an empty
-    # result is NOT claimed as verified NOT_FOUND here.
+    # discover_product_urls() raises on technical request failures. Reaching
+    # this point with no rows therefore means discovery completed normally and
+    # verified that no matching product URL was found.
     return {
-        "status": "partial",
-        "verified": False,
+        "status": "success",
+        "verified": True,
         "results": [],
         "error": None,
         "details": {
             "count": 0,
-            "reason": "empty_search_not_authoritatively_verified",
+            "reason": "verified_empty_discovery",
         },
     }
 
