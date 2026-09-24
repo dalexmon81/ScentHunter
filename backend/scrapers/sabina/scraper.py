@@ -745,9 +745,9 @@ def _discover_from_sitemaps(session, query):
     return [url for _, url in candidates[:MAX_CANDIDATES]]
 
 
-CATALOG_FALLBACK_MAX_SEEDS = 8
-CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 48
-CATALOG_FALLBACK_WORKERS = 12
+CATALOG_FALLBACK_MAX_SEEDS = 2
+CATALOG_FALLBACK_MAX_PAGES_PER_SEED = 24
+CATALOG_FALLBACK_WORKERS = 24
 
 
 def _catalog_query_matches(text, query):
