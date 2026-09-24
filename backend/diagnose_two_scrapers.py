@@ -92,121 +92,205 @@ def diagnose_sabina_precise(q: str = Query("Liquid Brun")):
     }
 
 
-@router.get("/diagnose-sabina-runtime")
-def diagnose_sabina_runtime(qs: str = Query("9 PM|Liquid Brun|Hawas")):
-    """Read-only diagnostic of the deployed Sabina discovery path.
+@router.get("/diagnose-sabina-html")
+def diagnose_sabina_html(qs: str = Query("9 PM|Liquid Brun|Hawas")):
+    """Read-only structural inspection of Sabina search HTML.
 
-    IMPORTANT: Sabina's discover_product_urls() contract is
-    discover_product_urls(session, query). The diagnostic must create and
-    pass the same kind of Session used by production search().
+    This endpoint deliberately bypasses production discovery. It shows the
+    real HTML/DOM context around each query occurrence and nearby product
+    URLs/attributes so discovery differences can be diagnosed without
+    adding product-specific rules.
     """
-    import importlib.util
-    import os
+    from bs4 import BeautifulSoup
+    from html import unescape
 
     started = time.monotonic()
     queries = []
     seen = set()
-    for raw in (qs or "").split("|")[:12]:
+
+    for raw in (qs or "").split("|")[:8]:
         q = raw.strip()
         if q and q.casefold() not in seen:
             seen.add(q.casefold())
             queries.append(q)
 
-    scraper_path = os.path.join(
-        os.path.dirname(__file__), "scrapers", "sabina", "scraper.py"
-    )
+    base = "https://www.sabina.com"
+    search_url = base + "/es/buscar"
+
     result = {
         "diagnostic": True,
         "store": "Sabina",
-        "scraper_file": scraper_path,
         "queries": queries,
+        "purpose": (
+            "Read-only inspection of the real Sabina search HTML. "
+            "This endpoint does not call production discovery."
+        ),
         "query_results": [],
     }
 
-    spec = importlib.util.spec_from_file_location(
-        "scent_hunter_sabina_runtime_diag", scraper_path
-    )
-    module = None
-    if spec is None or spec.loader is None:
-        result["import"] = {"ok": False, "error": "Could not load Sabina scraper"}
-        result["elapsed_sec"] = round(time.monotonic() - started, 3)
-        return result
-
-    module = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(module)
-        result["import"] = {"ok": True, "module_file": getattr(module, "__file__", None)}
-    except Exception as exc:
-        result["import"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        result["elapsed_sec"] = round(time.monotonic() - started, 3)
-        return result
-
-    base = getattr(module, "BASE_URL", "https://www.sabina.com")
-    search_url = getattr(module, "SEARCH_URL", base.rstrip("/") + "/es/buscar")
-    headers = getattr(module, "HEADERS", HEADERS)
-    discover = getattr(module, "discover_product_urls", None)
-
-    if not callable(discover):
-        result["discovery_contract"] = {"ok": False, "error": "discover_product_urls_missing"}
-        result["elapsed_sec"] = round(time.monotonic() - started, 3)
-        return result
-
     for q in queries:
-        qr = {"query": q, "http": {}, "discovery": {}}
-
         t0 = time.monotonic()
+
         try:
             response = requests.get(
                 search_url,
                 params={"search_query": q},
-                headers=headers,
-                timeout=(2.5, 10.0),
+                headers=HEADERS,
+                timeout=(2.5, 12.0),
                 allow_redirects=True,
             )
             html = response.text or ""
-            qr["http"] = {
+        except Exception as exc:
+            result["query_results"].append({
+                "query": q,
+                "http": {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                },
+            })
+            continue
+
+        low = html.casefold()
+        qlow = q.casefold()
+        raw_occurrences = []
+
+        # Exact literal occurrences in the raw response.
+        for match in list(re.finditer(re.escape(qlow), low))[:20]:
+            start = max(0, match.start() - 1200)
+            end = min(len(html), match.end() + 1800)
+            raw = html[start:end]
+
+            nearby_urls = []
+
+            # Any common URL-bearing HTML attributes in the local context.
+            for attr_match in re.finditer(
+                r'(?:href|src|data-href|data-url|data-link|content)'
+                r'\s*=\s*["\']([^"\']+)["\']',
+                raw,
+                re.I,
+            ):
+                candidate = unescape(attr_match.group(1))
+                absolute = urljoin(response.url, candidate)
+                if "sabina.com" in absolute.lower():
+                    nearby_urls.append(absolute)
+
+            # Raw absolute/relative Sabina URLs in the same context.
+            for url_match in re.finditer(
+                r'(?:https?:)?//(?:www\.)?sabina\.com/'
+                r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+                raw.replace("\\/", "/"),
+                re.I,
+            ):
+                nearby_urls.append(
+                    urljoin(response.url, unescape(url_match.group(0)))
+                )
+
+            raw_occurrences.append({
+                "offset": match.start(),
+                "context": _compact(raw, 3200),
+                "nearby_urls": list(dict.fromkeys(nearby_urls))[:50],
+            })
+
+        # DOM-level inspection. For each text node containing the query,
+        # walk up several ancestors and expose attributes + links.
+        soup = BeautifulSoup(html, "html.parser")
+        dom_hits = []
+
+        for node in soup.find_all(string=re.compile(re.escape(q), re.I)):
+            parent = node.parent
+            if parent is None:
+                continue
+
+            chain = []
+            current = parent
+
+            for _ in range(6):
+                if current is None or not getattr(current, "name", None):
+                    break
+
+                attrs = {}
+                for key, value in current.attrs.items():
+                    if isinstance(value, (list, tuple)):
+                        value = " ".join(str(v) for v in value)
+                    attrs[key] = str(value)
+
+                links = []
+                if current.name == "a" and current.get("href"):
+                    links.append(
+                        urljoin(response.url, current.get("href"))
+                    )
+
+                for anchor in current.find_all("a", href=True):
+                    links.append(
+                        urljoin(response.url, anchor.get("href"))
+                    )
+
+                chain.append({
+                    "tag": current.name,
+                    "attrs": attrs,
+                    "text": _compact(
+                        current.get_text(" ", strip=True),
+                        1200,
+                    ),
+                    "links": list(dict.fromkeys(links))[:30],
+                })
+
+                current = current.parent
+
+            dom_hits.append({
+                "text": _compact(str(node), 500),
+                "chain": chain,
+            })
+
+            if len(dom_hits) >= 20:
+                break
+
+        # Independent product-like URL extraction. This deliberately does
+        # not apply the current scraper's relevance filter.
+        product_urls = []
+
+        decoded = (
+            html
+            .replace("\\u002F", "/")
+            .replace("\\u002f", "/")
+            .replace("\\/", "/")
+        )
+
+        for match in re.finditer(
+            r'(?:https?:)?//(?:www\.)?sabina\.com/'
+            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            product_urls.append(
+                urljoin(response.url, unescape(match.group(0)))
+            )
+
+        for match in re.finditer(
+            r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
+            decoded,
+            re.I,
+        ):
+            product_urls.append(
+                urljoin(response.url, unescape(match.group(0)))
+            )
+
+        result["query_results"].append({
+            "query": q,
+            "http": {
                 "ok": True,
                 "status": response.status_code,
-                "requested_url": response.url,
+                "url": response.url,
                 "elapsed_sec": round(time.monotonic() - t0, 3),
                 "bytes": len(response.content),
-                "query_occurrences": html.casefold().count(q.casefold()),
-                "classification": (
-                    "http_error" if response.status_code >= 400
-                    else "empty_http_body" if not html
-                    else "http_response_received"
-                ),
-            }
-            response.close()
-        except requests.Timeout as exc:
-            qr["http"] = {"ok": False, "classification": "timeout", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
-        except requests.RequestException as exc:
-            qr["http"] = {"ok": False, "classification": "request_error", "elapsed_sec": round(time.monotonic()-t0,3), "error": f"{type(exc).__name__}: {exc}"}
+                "literal_occurrences": low.count(qlow),
+            },
+            "raw_occurrences": raw_occurrences,
+            "dom_hits": dom_hits,
+            "product_like_urls": list(dict.fromkeys(product_urls))[:100],
+        })
 
-        # Production discovery uses a Session. The previous diagnostic called
-        # discover_product_urls(q), which is invalid for the deployed scraper.
-        session = requests.Session()
-        try:
-            session.headers.update(headers)
-            t0 = time.monotonic()
-            discovered = discover(session, q)
-            qr["discovery"] = {
-                "ok": True,
-                "elapsed_sec": round(time.monotonic() - t0, 3),
-                "type": type(discovered).__name__,
-                "count": len(discovered) if isinstance(discovered, list) else None,
-                "urls": discovered[:50] if isinstance(discovered, list) else discovered,
-            }
-        except requests.Timeout as exc:
-            qr["discovery"] = {"ok": False, "classification": "timeout", "error": f"{type(exc).__name__}: {exc}"}
-        except requests.RequestException as exc:
-            qr["discovery"] = {"ok": False, "classification": "request_error", "error": f"{type(exc).__name__}: {exc}"}
-        except Exception as exc:
-            qr["discovery"] = {"ok": False, "classification": "scraper_exception", "error": f"{type(exc).__name__}: {exc}"}
-        finally:
-            session.close()
-
-        result["query_results"].append(qr)
+        response.close()
 
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
