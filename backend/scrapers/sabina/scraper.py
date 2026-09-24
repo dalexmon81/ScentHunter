@@ -1,6 +1,7 @@
 import json
 import re
 import unicodedata
+import time
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -735,11 +736,13 @@ def _discover_from_sitemaps(session, query):
             brand_urls.append(href)
 
     def scan_brand(url):
+        # Catalog discovery must be bounded independently from product fetches.
+        # A slow brand page must never keep the diagnostic/request hanging.
         try:
             r = requests.get(
                 url,
                 headers=HEADERS,
-                timeout=TIMEOUT,
+                timeout=(2, 3),
                 allow_redirects=True,
             )
         except requests.RequestException:
@@ -772,27 +775,42 @@ def _discover_from_sitemaps(session, query):
     found = []
     seen_products = set()
 
+    executor = None
     try:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = [
-                executor.submit(scan_brand, url)
-                for url in brand_urls[:220]
-            ]
-            for future in as_completed(futures):
-                try:
-                    urls = future.result()
-                except Exception:
-                    urls = []
-                for product_url in urls:
-                    if product_url in seen_products:
-                        continue
-                    seen_products.add(product_url)
-                    found.append(product_url)
-                    if len(found) >= MAX_CANDIDATES:
-                        return found[:MAX_CANDIDATES]
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+        # Do NOT use `with ThreadPoolExecutor(...)`: returning from that
+        # context waits for every outstanding brand request and can make the
+        # endpoint appear to load forever.
+        executor = ThreadPoolExecutor(max_workers=8)
+        futures = [executor.submit(scan_brand, url) for url in brand_urls[:220]]
+        deadline = time.monotonic() + 12.0
+        pending = set(futures)
+        while pending and time.monotonic() < deadline:
+            remaining = max(0.05, deadline - time.monotonic())
+            try:
+                completed = as_completed(pending, timeout=remaining)
+                for future in completed:
+                    pending.discard(future)
+                    try:
+                        urls = future.result()
+                    except Exception:
+                        urls = []
+                    for product_url in urls:
+                        if product_url in seen_products:
+                            continue
+                        seen_products.add(product_url)
+                        found.append(product_url)
+                        if len(found) >= MAX_CANDIDATES:
+                            return found[:MAX_CANDIDATES]
+            except TimeoutError:
+                break
+            if len(found) >= MAX_CANDIDATES:
+                break
     except Exception:
         pass
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     return found[:MAX_CANDIDATES]
 
