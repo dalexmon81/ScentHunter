@@ -930,6 +930,7 @@ def _new_job(query):
             "errors": {},
             "stores": {},
             "dedupe_diagnostics": [],
+            "identity_scope": [],
         }
     return job_id
 
@@ -1017,14 +1018,11 @@ def _snapshot(job_id):
             "offer_count": len(job.get("offers", [])),
             "results": list(job.get("results", [])),
             "unresolved_offers": list(job.get("unresolved_offers", [])),
+            "identity_scope": list(job.get("identity_scope", [])),
             "errors": dict(job.get("errors", {})),
             "stores": dict(job.get("stores", {})),
             "dedupe_diagnostics": list(job.get("dedupe_diagnostics", [])),
         }
-        query = job["query"]
-
-    # ProductMatcher work must never run while JOBS_LOCK is held.
-    payload["identity_scope"] = _identity_scope(query)
     return payload
 
 def _publish_result(job_id, row):
@@ -1105,11 +1103,18 @@ def _run_job(job_id,query):
         job = JOBS.get(job_id)
         cancel_event = job.get("cancel_event") if job else None
 
+    if cancel_event is not None and not cancel_event.is_set():
+        identity_scope = _identity_scope(query)
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if job and not job.get("cancelled"):
+                job["identity_scope"] = list(identity_scope or [])
+
     collect_store_reports_isolated(
         query,
         STORES,
         on_report=lambda r:_publish_store(job_id,r),
-        on_result=lambda row:_publish_result(job_id,row),
+        on_result=None,
         cancel_event=cancel_event,
     )
 
