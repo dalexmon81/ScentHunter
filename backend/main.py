@@ -509,7 +509,6 @@ def _public_offer(item):
         "variant_id": item.get("variant_id"),
         "url": item.get("url") or item.get("product_url"),
         "retailer_image": item.get("image") or item.get("image_url"),
-        "canonical_image": item.get("canonical_image") or "",
         "available": item.get("available"),
         "raw_name": item.get("_raw_name")
             or item.get("name")
@@ -1205,6 +1204,10 @@ def diagnostic_matcher(store: str, q: str):
             'catalog_id': item.get('catalog_id'),
             'canonical_name': item.get('canonical_name'),
             'canonical_brand': item.get('canonical_brand'),
+            'canonical_image': item.get('canonical_image'),
+            'image': item.get('image'),
+            'image_url': item.get('image_url'),
+            'retailer_image': item.get('image') or item.get('image_url'),
             'family': item.get('family'),
             'variant': item.get('variant'),
             'matched_alias': item.get('matched_alias'),
