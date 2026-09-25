@@ -923,6 +923,8 @@ def _new_job(query):
 
     # Offers that were not identifiable with enough certainty.
     "unresolved_offers": [],
+    "identity_scope": [],
+    "identity_scope_ready": False,
 
     "comparisons": [],
     "errors": {},
@@ -933,9 +935,8 @@ def _new_job(query):
     return job_id
 
 def _snapshot(job_id):
-    # IMPORTANT: never hold JOBS_LOCK while running ProductMatcher/catalog work.
-    # The status endpoint is polled frequently by the frontend, so all heavy
-    # identity-scope computation must happen after the lock is released.
+    # IMPORTANT: /search-status must remain a fast read-only endpoint.
+    # Identity scope is computed once by _run_job and cached in the job.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
 
@@ -963,9 +964,11 @@ def _snapshot(job_id):
         errors = dict(job.get("errors", {}))
         stores = dict(job.get("stores", {}))
         dedupe_diagnostics = list(job.get("dedupe_diagnostics", []))
+        identity_scope = list(job.get("identity_scope", []))
 
-    # LOCK RELEASED: ProductMatcher may scan a large catalog here.
-    identity_scope = _identity_scope(query)
+    # IMPORTANT: identity_scope is precomputed once by the job thread.
+    # The HTTP status endpoint must remain fast and must NEVER invoke the
+    # ProductMatcher/catalog scan on every 700 ms polling request.
 
     return {
         "job_id": job_id,
@@ -1078,6 +1081,19 @@ def _run_job(job_id,query):
     with JOBS_LOCK:
         current_job=JOBS.get(job_id)
         cancel_event=current_job.get("cancel_event") if current_job else None
+
+    # Compute the query identity scope ONCE, outside JOBS_LOCK.
+    # This can scan the catalog and is too expensive for /search-status.
+    try:
+        identity_scope = _identity_scope(query)
+    except Exception:
+        identity_scope = []
+
+    with JOBS_LOCK:
+        current_job=JOBS.get(job_id)
+        if current_job and not current_job.get("completed"):
+            current_job["identity_scope"] = list(identity_scope)
+            current_job["identity_scope_ready"] = True
 
     collect_store_reports_isolated(
         query,
