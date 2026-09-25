@@ -18624,24 +18624,28 @@
       "family_id": "rasasi_hawas"
     },
     {
-      "product_id": "SH-AUTO-0732",
+      "product_id": "SH-FAMILY-hawas-eclat",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas for Her Floral",
-      "concentration": "",
+      "family_name": "Hawas Eclat",
+      "concentration": "Eau de Parfum",
       "gender": "Donna",
       "aliases": [
-        "Rasasi - Hawas for Her Floral",
-        "Rasasi Hawas for Her Floral",
-        "Hawas for Her Floral"
+        "Hawas Eclat",
+        "Hawas Éclat",
+        "Hawas For Her Eclat",
+        "Hawas For Her Éclat",
+        "Rasasi Hawas Eclat",
+        "Rasasi Eclat",
+        "Eclat",
+        "Éclat"
       ],
-      "source_status": "verificato_nome_canonico",
-      "source_notes": "Referenza verificata nel catalogo fragrance del brand/database specialistico.",
-      "verification_sources": [
-        "https://www.fragrantica.com/designers/Rasasi.html"
-      ],
-      "canonical_name": "Hawas for Her Floral",
-      "canonical_image": "https://cdn.salla.sa/lGDEen/d56599f3-758b-4b35-b46c-a585e1981126-1000x1000-KCb0Qx515bmniq79zzaFjvTo3yJoOG4MQ6TUE0OV.jpg"
+      "source_status": "verificato_online_2026",
+      "source_notes": "Referenza verificata tramite fonte prodotto online; identità distinta da Hawas for Her.",
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Éclat",
+      "canonical_image": "https://cdn.shopify.com/s/files/1/0561/7854/0608/files/hawas-eclat-by-rasasi-women-perfume-edp-100-ml-rasasi-309337-1171755324.jpg?v=1749216472"
     },
     {
       "product_id": "SH-0001",
@@ -26718,6 +26722,22 @@
         "Afnan Edict Amberythme",
         "Edict Amberythme",
         "EDICT AMBERYTHME"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-hawas-eclat-100",
+      "product_id": "SH-FAMILY-hawas-eclat",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Eclat",
+        "Hawas Éclat",
+        "Hawas For Her Eclat",
+        "Hawas For Her Éclat",
+        "Rasasi Hawas Eclat",
+        "Rasasi Eclat"
       ],
       "store_mappings": []
     },
