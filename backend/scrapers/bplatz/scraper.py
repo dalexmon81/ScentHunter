@@ -209,66 +209,93 @@ def _discover_from_sitemap(session, query, candidates, seen):
 
 
 def discover(session, query):
-    candidates, seen = [], set()
+    """Generic multi-channel discovery; one channel failure never aborts fallbacks."""
+    candidates, seen, errors = [], set(), []
+    discovery_verified = False
 
-    # Shopify predictive search is the primary store-native discovery API.
+    def record(source, exc):
+        text = str(exc)
+        status = next(
+            (x for x in ("timeout", "blocked", "unavailable", "error")
+             if text.startswith(x + ":")),
+            "error",
+        )
+        errors.append({"source": source, "status": status, "error": text})
+
     for params in (
-        {"q": query, "resources[type]": "product", "resources[limit]": 50, "resources[options][unavailable_products]": "show"},
+        {"q": query, "resources[type]": "product", "resources[limit]": 50,
+         "resources[options][unavailable_products]": "show"},
         {"q": query, "resources[type]": "product", "resources[limit]": 50},
     ):
-        data = request_json(session, BASE_URL + "/search/suggest.json", params)
-        products = (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
-        for product in products:
+        try:
+            data = request_json(session, BASE_URL + "/search/suggest.json", params)
+            discovery_verified = True
+            products = (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
+            for product in products:
+                if not isinstance(product, dict):
+                    continue
+                title = product.get("title") or ""
+                vendor = product.get("vendor") or ""
+                url = product.get("url") or product.get("product_url")
+                if matches(f"{title} {vendor}", query):
+                    add_candidate(url, query, candidates, seen)
+        except Exception as exc:
+            record("shopify_predictive_search", exc)
+
+    try:
+        data = request_json(session, BASE_URL + "/search.json",
+                            {"q": query, "type": "product", "limit": 50})
+        discovery_verified = True
+        for product in (data or {}).get("products") or []:
             if not isinstance(product, dict):
                 continue
-            title = product.get("title") or ""
-            vendor = product.get("vendor") or ""
-            url = product.get("url") or product.get("product_url")
-            if matches(f"{title} {vendor}", query):
+            url = product.get("url") or product.get("handle")
+            if url and not str(url).startswith("/") and product.get("handle"):
+                url = "/products/" + str(product["handle"])
+            elif url and not str(url).startswith("/products/") and product.get("handle"):
+                url = "/products/" + str(product["handle"])
+            if matches(f"{product.get('title','')} {product.get('vendor','')} {url or ''}", query):
                 add_candidate(url, query, candidates, seen)
-        if candidates:
-            return candidates[:MAX_CANDIDATES]
+    except Exception as exc:
+        record("shopify_search_json", exc)
 
-    # Shopify JSON search fallback.
-    data = request_json(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
-    for product in (data or {}).get("products") or []:
-        if not isinstance(product, dict):
-            continue
-        url = product.get("url") or product.get("handle")
-        if url and not str(url).startswith("/") and product.get("handle"):
-            url = "/products/" + str(product["handle"])
-        elif url and not str(url).startswith("/products/") and product.get("handle"):
-            url = "/products/" + str(product["handle"])
-        if matches(f"{product.get('title','')} {product.get('vendor','')} {url or ''}", query):
-            add_candidate(url, query, candidates, seen)
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
-
-    # Generic Shopify product catalog fallback.
-    _discover_products_json(session, query, candidates, seen)
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
-
-    # Generic Shopify sitemap fallback.
-    _discover_from_sitemap(session, query, candidates, seen)
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
-
-    # HTML search fallback.
     try:
-        response = session.get(BASE_URL + "/search", params={"q": query, "type": "product"}, headers=HEADERS, timeout=TIMEOUT)
-        if response.status_code < 400:
-            soup = BeautifulSoup(response.text, "html.parser")
-            for anchor in soup.select('a[href*="/products/"]'):
-                text = clean(f"{anchor.get('title','')} {anchor.get_text(' ', strip=True)} {anchor.get('href','')}")
-                if matches(text, query):
-                    add_candidate(anchor.get("href"), query, candidates, seen)
+        _discover_products_json(session, query, candidates, seen)
+        discovery_verified = True
+    except Exception as exc:
+        record("shopify_products_json", exc)
+
+    try:
+        _discover_from_sitemap(session, query, candidates, seen)
+        discovery_verified = True
+    except Exception as exc:
+        record("shopify_sitemap", exc)
+
+    try:
+        response = session.get(
+            BASE_URL + "/search",
+            params={"q": query, "type": "product"},
+            headers=HEADERS, timeout=TIMEOUT,
+        )
+        if response.status_code >= 400:
+            status = ("blocked" if response.status_code in (401, 403, 429)
+                      else "unavailable" if response.status_code >= 500 else "error")
+            raise RuntimeError(f"{status}: HTTP {response.status_code}: {BASE_URL}/search")
+        discovery_verified = True
+        soup = BeautifulSoup(response.text, "html.parser")
+        for anchor in soup.select('a[href*="/products/"]'):
+            text = clean(f"{anchor.get('title','')} {anchor.get_text(' ', strip=True)} {anchor.get('href','')}")
+            if matches(text, query):
+                add_candidate(anchor.get("href"), query, candidates, seen)
         response.close()
-    except requests.RequestException:
-        pass
+    except Exception as exc:
+        try:
+            response.close()
+        except Exception:
+            pass
+        record("html_search", exc)
 
-    return candidates[:MAX_CANDIDATES]
-
+    return candidates[:MAX_CANDIDATES], errors, discovery_verified
 
 def jsonld_product(soup):
     for script in soup.select('script[type="application/ld+json"]'):
@@ -399,8 +426,8 @@ def _search_report(query):
     results, seen = [], set()
     try:
         try:
-            candidates = discover(session, query)
-        except RuntimeError as exc:
+            candidates, discovery_errors, discovery_verified = discover(session, query)
+        except Exception as exc:
             text = str(exc)
             status = next((x for x in ("timeout", "blocked", "unavailable", "error") if text.startswith(x + ":")), "error")
             return {"status": status, "verified": False, "results": [], "error": text, "details": {"verified_empty": False}}
@@ -419,7 +446,19 @@ def _search_report(query):
             results.append(item)
 
         results.sort(key=lambda x: (x.get("available") is not True, x.get("price_num") is None, x.get("price_num") or 999999))
-        return {"status": "success", "verified": True, "results": results, "error": None, "details": {"verified_empty": not bool(results), "candidate_count": len(candidates)}}
+        if results:
+            return {"status": "partial" if discovery_errors else "success", "verified": True,
+                    "results": results, "error": None,
+                    "details": {"verified_empty": False, "candidate_count": len(candidates),
+                                "discovery_verified": discovery_verified, "discovery_errors": discovery_errors}}
+        if discovery_verified:
+            return {"status": "success", "verified": True, "results": [], "error": None,
+                    "details": {"verified_empty": True, "candidate_count": len(candidates),
+                                "discovery_verified": True, "discovery_errors": discovery_errors}}
+        first = discovery_errors[0] if discovery_errors else {"status": "unavailable", "error": "discovery_not_verified"}
+        return {"status": first["status"], "verified": False, "results": [], "error": first["error"],
+                "details": {"verified_empty": False, "candidate_count": len(candidates),
+                            "discovery_verified": False, "discovery_errors": discovery_errors}}
     finally:
         session.close()
 
