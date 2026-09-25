@@ -1106,32 +1106,16 @@ def _run_job(job_id,query):
 
     print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
 
-@app.get('/diagnostic/matcher')
-def diagnostic_matcher(store: str, q: str):
-    """Targeted diagnostic: raw scraper -> clean_result -> ProductMatcher.
-
-    Diagnostic only. It does not publish offers into a search job and does not
-    alter the normal aggregation pipeline.
-    """
+@app.get('/diagnostic/matcher-raw')
+def diagnostic_matcher_raw(store: str, q: str):
+    """Diagnostic-only: raw scraper -> clean_result -> exact matcher payload -> ProductMatcher."""
     machine_store = _normalise_store(store, store)
     query = str(q or '').strip()
 
     if machine_store not in STORES:
-        return {
-            'ok': False,
-            'diagnostic': 'scraper -> clean_result -> ProductMatcher',
-            'store': machine_store,
-            'query': query,
-            'error': f'unknown_store:{machine_store}',
-        }
+        return {'ok': False, 'error': f'unknown_store:{machine_store}', 'store': machine_store, 'query': query}
     if not query:
-        return {
-            'ok': False,
-            'diagnostic': 'scraper -> clean_result -> ProductMatcher',
-            'store': machine_store,
-            'query': query,
-            'error': 'missing_query',
-        }
+        return {'ok': False, 'error': 'missing_query', 'store': machine_store, 'query': query}
 
     raw_rows = []
     stream_return_type = None
@@ -1140,118 +1124,137 @@ def diagnostic_matcher(store: str, q: str):
     try:
         module = importlib.import_module(f'scrapers.{machine_store}.scraper')
         stream = getattr(module, 'search_stream', None)
+
         if callable(stream):
             def on_result(row):
                 if isinstance(row, dict):
                     raw_rows.append(dict(row))
             returned = stream(query, on_result)
             stream_return_type = type(returned).__name__
+
             if returned is not None and not raw_rows:
                 if isinstance(returned, dict):
-                    candidate_rows = returned.get('results')
-                    if candidate_rows is None:
-                        candidate_rows = returned.get('products')
-                    if isinstance(candidate_rows, list):
-                        raw_rows.extend(r for r in candidate_rows if isinstance(r, dict))
+                    rows = returned.get('results')
+                    if rows is None:
+                        rows = returned.get('products')
+                    if isinstance(rows, list):
+                        raw_rows.extend(r for r in rows if isinstance(r, dict))
                 elif isinstance(returned, (list, tuple)):
                     raw_rows.extend(r for r in returned if isinstance(r, dict))
-                else:
-                    try:
-                        raw_rows.extend(r for r in list(returned) if isinstance(r, dict))
-                    except TypeError:
-                        pass
         else:
             search = getattr(module, 'search', None)
             if not callable(search):
                 raise RuntimeError(f'scraper {machine_store} non espone search/search_stream')
             returned = search(query)
             stream_return_type = type(returned).__name__
+
             if isinstance(returned, dict):
-                candidate_rows = returned.get('results')
-                if candidate_rows is None:
-                    candidate_rows = returned.get('products')
-                if isinstance(candidate_rows, list):
-                    raw_rows.extend(r for r in candidate_rows if isinstance(r, dict))
+                rows = returned.get('results')
+                if rows is None:
+                    rows = returned.get('products')
+                if isinstance(rows, list):
+                    raw_rows.extend(r for r in rows if isinstance(r, dict))
             elif isinstance(returned, (list, tuple)):
                 raw_rows.extend(r for r in returned if isinstance(r, dict))
-            else:
-                try:
-                    raw_rows.extend(r for r in list(returned) if isinstance(r, dict))
-                except TypeError:
-                    pass
+
     except Exception as exc:
         stream_error = f'{type(exc).__name__}: {exc}'
 
-    matched = []
-    rejected = []
-    unresolved = []
-    clean_errors = []
-
-    def compact(item):
-        return {
-            'name': item.get('name') or item.get('title'),
-            'brand': item.get('brand'),
-            '_raw_brand': item.get('_raw_brand'),
-            'price': item.get('price'),
-            'price_num': item.get('price_num'),
-            'size_ml': item.get('size_ml'),
-            'url': item.get('url') or item.get('product_url'),
-            'availability': item.get('availability'),
-            'match_status': item.get('_match_status'),
-            'match_method': item.get('match_method'),
-            'match_score': item.get('match_score'),
-            'confidence': item.get('confidence'),
-            'catalog_id': item.get('catalog_id'),
-            'canonical_name': item.get('canonical_name'),
-            'canonical_brand': item.get('canonical_brand'),
-            'family': item.get('family'),
-            'variant': item.get('variant'),
-            'matched_alias': item.get('matched_alias'),
-            'match_error': item.get('_match_error'),
-        }
+    rows = []
 
     for index, raw in enumerate(raw_rows):
+        entry = {
+            'index': index,
+            'raw_scraper': raw,
+            'after_clean_result': None,
+            'matcher_offer': None,
+            'product_matcher_result': None,
+            'clean_error': None,
+            'matcher_error': None,
+        }
+
         try:
             prepared = clean_result(raw, machine_store)
+            entry['after_clean_result'] = prepared
         except Exception as exc:
-            clean_errors.append({
-                'index': index,
-                'error': f'{type(exc).__name__}: {exc}',
-                'raw': raw,
-            })
-            continue
-        if prepared is None:
-            clean_errors.append({'index': index, 'error': 'clean_result_returned_none'})
+            entry['clean_error'] = f'{type(exc).__name__}: {exc}'
+            rows.append(entry)
             continue
 
-        resolved = _resolve_offer_identity(prepared, query)
-        if not isinstance(resolved, dict):
-            rejected.append({'index': index, **compact(prepared)})
+        if not isinstance(prepared, dict):
+            rows.append(entry)
             continue
 
-        payload = {'index': index, **compact(resolved)}
-        if resolved.get('_match_status') == 'matched' and resolved.get('catalog_id'):
-            matched.append(payload)
-        else:
-            unresolved.append(payload)
+        matcher_offer = dict(prepared)
+
+        try:
+            matcher_brand = str(matcher_offer.get("brand") or "").strip()
+            matcher_store_label = "".join(
+                str(STORE_LABELS.get(
+                    _normalise_store(
+                        matcher_offer.get("store") or matcher_offer.get("shop"), ""
+                    ),
+                    _normalise_store(
+                        matcher_offer.get("store") or matcher_offer.get("shop"), ""
+                    ),
+                ) or "")
+                .lower()
+                .replace("-", " ")
+                .split()
+            )
+            matcher_brand_normalized = "".join(
+                matcher_brand.lower().replace("-", " ").split()
+            )
+
+            if matcher_brand_normalized == matcher_store_label or (
+                not matcher_brand_normalized
+                and str(prepared.get("_raw_brand") or "").strip()
+                and "".join(
+                    str(prepared.get("_raw_brand") or "")
+                    .lower()
+                    .replace("-", " ")
+                    .split()
+                ) == matcher_store_label
+            ):
+                matcher_offer["brand"] = ""
+                matcher_offer.pop("manufacturer", None)
+                source = matcher_offer.get("source")
+                if isinstance(source, dict):
+                    clean_source = dict(source)
+                    for key in ("source_brand", "brand", "manufacturer"):
+                        clean_source.pop(key, None)
+                    matcher_offer["source"] = clean_source
+                elif source is not None:
+                    matcher_offer.pop("source", None)
+
+            entry['matcher_offer'] = matcher_offer
+
+            if PRODUCT_MATCHER is None:
+                entry['product_matcher_result'] = {
+                    'match_status': 'unresolved',
+                    'error': 'ProductMatcher unavailable'
+                }
+            else:
+                match_method = getattr(PRODUCT_MATCHER, "match", None)
+                if not callable(match_method):
+                    raise RuntimeError("ProductMatcher non espone match(offer, query)")
+                match = match_method(matcher_offer, query)
+                entry['product_matcher_result'] = match
+
+        except Exception as exc:
+            entry['matcher_error'] = f'{type(exc).__name__}: {exc}'
+
+        rows.append(entry)
 
     return {
         'ok': stream_error is None,
-        'diagnostic': 'scraper -> clean_result -> ProductMatcher',
+        'diagnostic': 'RAW SCRAPER -> clean_result -> matcher_offer -> ProductMatcher',
         'store': machine_store,
         'query': query,
         'stream_return_type': stream_return_type,
         'stream_error': stream_error,
-        'identity_scope_count': len(_identity_scope(query)),
         'raw_count': len(raw_rows),
-        'matched_count': len(matched),
-        'rejected_count': len(rejected),
-        'unresolved_count': len(unresolved),
-        'clean_error_count': len(clean_errors),
-        'matched': matched,
-        'rejected': rejected,
-        'unresolved': unresolved,
-        'clean_errors': clean_errors,
+        'rows': rows,
     }
 
 @app.get('/',include_in_schema=False)
