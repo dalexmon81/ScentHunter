@@ -967,24 +967,43 @@ async function searchStoresProgressive(term,onPartial){
   const empty={query,comparisons:[],results:[],unresolved_offers:[],identity_scope:[],errors:{},stores:{}};
   if(!query)return empty;
   let lastData=empty;
+  const startedAt=Date.now();
+  let jobId="";
   try{
-    const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
-    const jobId=String(start?.job_id||"").trim();
-    if(!jobId)throw new Error("Il backend non ha restituito il job_id");
-    lastData=start;
-    const startedAt=Date.now();
     while(Date.now()-startedAt<180000){
-      const status=await fetchJSONWithTimeout(backend()+"/search-status?job_id="+encodeURIComponent(jobId),15000);
+      const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
+      if(start?.status==="busy"){
+        lastData=start;
+        await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||700)));
+        continue;
+      }
+      jobId=String(start?.job_id||"").trim();
+      if(!jobId)throw new Error("Il backend non ha restituito il job_id");
+      lastData=start;
+      break;
+    }
+    if(!jobId)throw new Error("Il backend non ha liberato la ricerca precedente entro il tempo previsto");
+    while(Date.now()-startedAt<180000){
+      let status;
+      try{
+        status=await fetchJSONWithTimeout(backend()+"/search-status?job_id="+encodeURIComponent(jobId),15000);
+      }catch(pollError){
+        lastData={...lastData,errors:{...(lastData.errors||{}),_poll:String(pollError?.message||pollError)}};
+        await new Promise(resolve=>setTimeout(resolve,700));
+        continue;
+      }
       lastData=status||lastData;
       if(typeof onPartial==="function")onPartial(status||lastData,Boolean(status?.completed));
-      if(status?.completed||status?.status==="completed"||status?.status==="error")return status;
+      if(status?.completed||status?.status==="completed"||status?.status==="error"||status?.status==="cancelled")return status;
       await new Promise(resolve=>setTimeout(resolve,700));
     }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   }catch(error){
     const safe=lastData&&typeof lastData==="object"?lastData:empty;
-    const failed={...safe,query:safe.query||query,errors:{...(safe.errors||{}),_search:String(error?.message||error||"Errore ricerca")},completed:true,status:"completed"};
-    if(typeof onPartial==="function")onPartial(failed,true);
+    const failed={...safe,query:safe.query||query,
+      errors:{...(safe.errors||{}),_search:String(error?.message||error||"Errore ricerca")},
+      completed:Boolean(safe.completed),status:safe.status||"searching"};
+    if(typeof onPartial==="function")onPartial(failed,Boolean(failed.completed));
     return failed;
   }
 }
