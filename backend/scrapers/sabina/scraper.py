@@ -1,7 +1,7 @@
 import json
 import re
 import unicodedata
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -11,8 +11,11 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 10
-MAX_CANDIDATES = 12
+TIMEOUT = 8
+DISCOVERY_TIMEOUT = 8
+PRODUCT_WORKERS = 6
+MAX_CANDIDATES = 16
+MAX_SITEMAP_CANDIDATES = 24
 
 HEADERS = {
     "User-Agent": (
@@ -40,37 +43,7 @@ IGNORED_QUERY_WORDS = {
 
 
 def clean(value):
-    text = re.sub(r"\s+", " ", str(value or "")).strip()
-    # Repair the common UTF-8-as-Windows-1252 mojibake seen in Sabina HTML.
-    if any(marker in text for marker in ("â‚¬", "Ã", "Â")):
-        try:
-            repaired = text.encode("latin1").decode("utf-8")
-            if repaired:
-                text = repaired
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
-    return text
-
-
-def response_html(response):
-    """Decode Sabina HTML from raw bytes so UTF-8 currency/accents are preserved."""
-    content = getattr(response, "content", b"")
-    if content:
-        # Sabina pages are UTF-8; prefer the document charset over requests.text
-        # when the HTTP headers omit or misreport it.
-        try:
-            head = content[:4096].decode("ascii", errors="ignore")
-            match = re.search(r"charset\s*=\s*[\"']?([A-Za-z0-9._-]+)", head, re.I)
-            if match:
-                encoding = match.group(1)
-                try:
-                    return content.decode(encoding, errors="replace")
-                except LookupError:
-                    pass
-            return content.decode("utf-8", errors="replace")
-        except Exception:
-            pass
-    return response.text
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def norm(value):
@@ -463,63 +436,6 @@ def extract_price_from_html(soup):
         if value is not None:
             return value, "sabina_html_price"
 
-    # Sabina currently renders the customer price as plain product text, e.g.
-    # "Precio: 33,20 €". Search product-bound containers for that labelled
-    # value before giving up. This is deliberately generic and does not use
-    # any product-specific number or URL.
-    for container in containers:
-        text_value = clean(container.get_text(" ", strip=True))
-        match = re.search(
-            r"(?:precio|price|prix|preis)\s*[:\-]\s*"
-            r"([0-9]{1,4}(?:[.\s][0-9]{3})*(?:,[0-9]{1,2})?|"
-            r"[0-9]{1,4}(?:\.[0-9]{1,2})?)",
-            text_value,
-            re.I,
-        )
-        if match:
-            value = money_to_float(match.group(1))
-            if value is not None and value > 0:
-                return value, "sabina_html_price"
-
-    # Sabina can place the product block outside the common product-container
-    # classes. Anchor the extraction to the H1/product heading and inspect only
-    # its nearest ancestors. This keeps the price product-bound while covering
-    # the current Sabina markup (e.g. "Precio:35,10 €").
-    h1 = soup.select_one("h1")
-    if h1:
-        ancestor = h1
-        for _ in range(6):
-            ancestor = ancestor.parent if ancestor else None
-            if not ancestor:
-                break
-            text_value = clean(ancestor.get_text(" ", strip=True))
-            if not text_value:
-                continue
-
-            match = re.search(
-                r"(?:precio|price|prix|preis)\s*[:\-]?\s*"
-                r"(?:€|eur|\$|usd|£|gbp)?\s*"
-                r"([0-9]{1,4}(?:[.\s][0-9]{3})*(?:,[0-9]{1,2})?|"
-                r"[0-9]{1,4}(?:\.[0-9]{1,2})?)",
-                text_value,
-                re.I,
-            )
-            if match:
-                value = money_to_float(match.group(1))
-                if value is not None and value > 0:
-                    return value, "sabina_h1_product_block"
-
-            # Also support the common inline form without a price label.
-            match = re.search(
-                r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€\s*\([^)]*100\s*ml",
-                text_value,
-                re.I,
-            )
-            if match:
-                value = money_to_float(match.group(1))
-                if value is not None and value > 0:
-                    return value, "sabina_h1_product_block"
-
     return None, None
 
 
@@ -650,9 +566,8 @@ def availability_from_product_page(soup, jsonld_offer=None):
     ) or [soup]
 
     purchase_words = (
-        "añadir al carrito", "añadir a la cesta", "agregar al carrito",
-        "agregar a la cesta", "comprar", "añadir",
-        "add to cart", "add-to-cart", "add to bag", "buy now",
+        "añadir al carrito", "agregar al carrito", "comprar",
+        "add to cart", "add-to-cart", "buy now",
         "ajouter au panier", "acheter", "in den warenkorb", "jetzt kaufen",
         "acquista", "aggiungi al carrello",
     )
@@ -741,22 +656,69 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     return "unknown", "sabina_html_availability"
 
-def _discover_from_sitemaps(session, query):
-    """Generic Sabina catalog discovery through the public brand index.
-
-    Sabina native search may return HTTP 200 with unrelated product links.
-    The public brand index is therefore the authoritative generic discovery
-    surface used here. No brand, product, SKU, price or URL is hard-coded.
-    """
-    tokens = [token for token in query_tokens(query) if token]
+def _candidate_score(url, anchor_text, query):
+    """Generic relevance score; never contains product-specific rules."""
+    tokens = query_tokens(query)
+    text = norm(f"{anchor_text or ''} {url or ''}")
     if not tokens:
-        return []
+        return 0
 
+    matched = sum(1 for token in tokens if token in text)
+    score = matched * 10
+    if all(token in text for token in tokens):
+        score += 25
+    return score
+
+
+def _extract_search_candidates(response, query):
+    """Extract product URLs and rank them using only runtime query text."""
+    soup = BeautifulSoup(response.text, "html.parser")
+    ranked = {}
+
+    def add(raw, context=""):
+        absolute = normalise_url(raw, response.url)
+        if not absolute or not is_product_url(absolute):
+            return
+        score = _candidate_score(absolute, context, query)
+        previous = ranked.get(absolute)
+        if previous is None or score > previous:
+            ranked[absolute] = score
+
+    for anchor in soup.find_all("a", href=True):
+        label = clean(anchor.get_text(" ", strip=True))
+        context = label
+        parent = anchor.parent
+        if parent:
+            context = clean(parent.get_text(" ", strip=True))[:500]
+        add(anchor.get("href"), context)
+
+    decoded = response.text.replace("\\/", "/").replace("\\u002F", "/")
+    for match in re.finditer(
+        r'https?://(?:www\\.)?sabina\\.com/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0), match.group(0))
+
+    for match in re.finditer(
+        r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0), match.group(0))
+
+    return [url for url, _ in sorted(
+        ranked.items(), key=lambda item: (-item[1], item[0])
+    )]
+
+
+def _sitemap_product_urls(session, query):
+    """Bounded generic sitemap fallback, used only when native search fails."""
     try:
         response = session.get(
-            BASE_URL + "/es/marcas",
+            BASE_URL + "/sitemap.xml",
             headers=HEADERS,
-            timeout=(2, 4),
+            timeout=DISCOVERY_TIMEOUT,
             allow_redirects=True,
         )
     except requests.RequestException:
@@ -765,158 +727,87 @@ def _discover_from_sitemaps(session, query):
     if response.status_code >= 400:
         return []
 
-    soup = BeautifulSoup(response_html(response), "html.parser")
-    brand_entries = []
-    seen_brands = set()
+    soup = BeautifulSoup(response.text, "xml")
+    locs = [clean(loc.get_text()) for loc in soup.find_all("loc")]
+    product_sitemaps = [
+        url for url in locs
+        if "sitemap" in url.lower() and "product" in url.lower()
+    ]
 
-    for anchor in soup.find_all("a", href=True):
-        href = normalise_url(anchor.get("href"), response.url)
-        if not href:
-            continue
-        path = urlparse(href).path
-        if not re.match(r"^/(?:es|it|fr|en|de|nl|pt)/\d+_[^/]+$", path, re.I):
-            continue
-        if href in seen_brands:
-            continue
-        seen_brands.add(href)
-        brand_name = clean(anchor.get_text(" ", strip=True))
-        brand_entries.append((brand_name, href))
+    # Some stores expose product URLs directly in sitemap.xml.
+    direct = [
+        normalise_url(url)
+        for url in locs
+        if is_product_url(normalise_url(url))
+    ]
+    direct = [url for url in direct if query_matches(url, query)]
+    if direct:
+        return list(dict.fromkeys(direct))[:MAX_SITEMAP_CANDIDATES]
 
-    def scan_brand(entry):
-        _brand_name, url = entry
+    if not product_sitemaps:
+        return []
+
+    def fetch_one(url):
+        local_session = requests.Session()
         try:
-            r = requests.get(
+            r = local_session.get(
                 url,
                 headers=HEADERS,
-                timeout=(1.5, 2.5),
+                timeout=DISCOVERY_TIMEOUT,
                 allow_redirects=True,
             )
-        except requests.RequestException:
-            return []
-        try:
             if r.status_code >= 400:
                 return []
-            page_soup = BeautifulSoup(response_html(r), "html.parser")
-            found = []
-            seen = set()
-            for anchor in page_soup.find_all("a", href=True):
-                product_url = normalise_url(anchor.get("href"), r.url)
-                if not product_url or not is_product_url(product_url):
-                    continue
-                label = clean(anchor.get_text(" ", strip=True))
-                haystack = norm(f"{label} {product_url}")
-                if not all(token in haystack for token in tokens):
-                    continue
-                if product_url in seen:
-                    continue
-                seen.add(product_url)
-                found.append(product_url)
-                if len(found) >= MAX_CANDIDATES:
-                    break
-            return found
+            xml = BeautifulSoup(r.text, "xml")
+            result = []
+            for loc in xml.find_all("loc"):
+                candidate = normalise_url(loc.get_text())
+                if candidate and is_product_url(candidate) and query_matches(candidate, query):
+                    result.append(candidate)
+            return result
+        except requests.RequestException:
+            return []
         finally:
-            r.close()
-
-    # Prefer a brand whose visible name itself matches a query token. This is
-    # generic and avoids wasting requests when the user explicitly searches a
-    # brand name, without embedding any store/product-specific knowledge.
-    def brand_priority(entry):
-        name = norm(entry[0])
-        return 0 if any(token in name for token in tokens) else 1
-
-    brand_entries.sort(key=brand_priority)
+            local_session.close()
 
     found = []
-    seen_products = set()
-    deadline = time.monotonic() + 8.0
+    with ThreadPoolExecutor(max_workers=min(4, len(product_sitemaps))) as pool:
+        futures = [pool.submit(fetch_one, url) for url in product_sitemaps[:12]]
+        for future in as_completed(futures):
+            found.extend(future.result())
+            if len(set(found)) >= MAX_SITEMAP_CANDIDATES:
+                break
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-
-    # Scan small bounded batches. Unlike submitting hundreds of requests at
-    # once, this lets us stop immediately after a complete catalog hit while
-    # keeping discovery generic for brands appearing later in the index.
-    batch_size = 16
-    for offset in range(0, len(brand_entries), batch_size):
-        if time.monotonic() >= deadline:
-            break
-        batch = brand_entries[offset:offset + batch_size]
-        executor = ThreadPoolExecutor(max_workers=8)
-        futures = [executor.submit(scan_brand, entry) for entry in batch]
-        try:
-            remaining = max(0.05, deadline - time.monotonic())
-            for future in as_completed(futures, timeout=remaining):
-                try:
-                    urls = future.result()
-                except Exception:
-                    urls = []
-                for product_url in urls:
-                    if product_url in seen_products:
-                        continue
-                    seen_products.add(product_url)
-                    found.append(product_url)
-                    if len(found) >= MAX_CANDIDATES:
-                        return found[:MAX_CANDIDATES]
-        except TimeoutError:
-            pass
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
-
-        if found:
-            return found[:MAX_CANDIDATES]
-
-    return found[:MAX_CANDIDATES]
+    return list(dict.fromkeys(found))[:MAX_SITEMAP_CANDIDATES]
 
 
 def discover_product_urls(session, query):
-    """Generic Sabina discovery: authoritative catalog first, native search fallback."""
-    # Sabina's native search can return unrelated HTTP-200 product links.
-    # Use the generic catalog surface first; only fall back to native search
-    # when the catalog cannot verify any product.
-    catalog_urls = _discover_from_sitemaps(session, query)
-    if catalog_urls:
-        return catalog_urls[:MAX_CANDIDATES]
+    """
+    Generic Sabina discovery.
 
-    found = []
-    seen = set()
+    Primary path: Sabina native search, with query-based candidate ranking.
+    Fallback: bounded product sitemap discovery.
+    No brand/product/SKU-specific rules are used.
+    """
     try:
         response = session.get(
             SEARCH_URL,
             params={"search_query": query},
             headers=HEADERS,
-            timeout=TIMEOUT,
+            timeout=DISCOVERY_TIMEOUT,
             allow_redirects=True,
         )
     except requests.RequestException:
-        response = None
+        return []
 
-    if response is not None and response.status_code < 400:
-        soup = BeautifulSoup(response_html(response), "html.parser")
+    if response.status_code < 400:
+        candidates = _extract_search_candidates(response, query)
+        if candidates:
+            return candidates[:MAX_CANDIDATES]
 
-        def add(raw):
-            absolute = normalise_url(raw, response.url)
-            if not absolute or not is_product_url(absolute):
-                return
-            if absolute not in seen:
-                seen.add(absolute)
-                found.append(absolute)
-
-        for anchor in soup.find_all("a", href=True):
-            add(anchor.get("href"))
-
-        decoded = response_html(response).replace("\\/", "/").replace("\\u002F", "/")
-        for match in re.finditer(
-            r'https?://(?:www\.)?sabina\.com/'
-            r'(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-            decoded, re.I,
-        ):
-            add(match.group(0))
-        for match in re.finditer(
-            r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
-            decoded, re.I,
-        ):
-            add(match.group(0))
-
-    return found[:MAX_CANDIDATES]
+    # Native search returned no usable candidates. Use only a bounded,
+    # generic sitemap fallback rather than scanning brand indexes.
+    return _sitemap_product_urls(session, query)[:MAX_CANDIDATES]
 
 
 def _offer_list(product):
@@ -1016,7 +907,7 @@ def extract_product_page(session, url, query):
         return None
 
     soup = BeautifulSoup(
-        response_html(response),
+        response.text,
         "html.parser",
     )
 
@@ -1061,14 +952,7 @@ def extract_product_page(session, url, query):
         title,
     )
 
-    # Sabina's visible customer price is the authoritative commercial value.
-    # JSON-LD can lag behind the rendered page or expose a reference/variant
-    # price, so read the product-bound visible price first and use JSON-LD only
-    # as a fallback.
-    price, price_source = extract_price_from_html(soup)
-
-    # Select the offer belonging to this exact product/format only when the
-    # visible product price is unavailable.
+    # Select price from the offer belonging to this exact product/format.
     offer = _select_product_offer(
         product or {},
         final_url,
@@ -1076,14 +960,17 @@ def extract_product_page(session, url, query):
         size_ml,
     )
 
+    price = (
+        money_to_float(offer.get("price"))
+        if isinstance(offer, dict)
+        else None
+    )
+    price_source = "sabina_jsonld"
+
+    # If JSON-LD has no usable price, use the product-page HTML fallback.
+    # This fallback deliberately ignores struck-through/reference prices.
     if price is None:
-        price = (
-            money_to_float(offer.get("price"))
-            if isinstance(offer, dict)
-            else None
-        )
-        if price is not None:
-            price_source = "sabina_jsonld"
+        price, price_source = extract_price_from_html(soup)
 
     currency = (
         clean(offer.get("priceCurrency"))
@@ -1299,17 +1186,12 @@ def extract_product_page(session, url, query):
 
         "name": title,
         "brand": brand,
-        # Keep the human-readable price ASCII-safe because the deployed
-        # diagnostic path has previously re-encoded the euro glyph.
-        # price_num remains the authoritative numeric value.
         "price": (
             f"{price:.2f}".replace(".", ",")
             + " €"
             if price is not None
             else ""
         ),
-        "price_num": price,
-        "availability": availability,
         "url": final_url,
         # Unknown is intentionally not converted to false.
         # The main backend must not interpret missing evidence as OOS.
@@ -1338,7 +1220,7 @@ def _fallback_extract_product_page(session, url, query):
         final_url = normalise_url(response.url)
         if not final_url or not is_product_url(final_url):
             return None
-        soup = BeautifulSoup(response_html(response), "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
     finally:
         response.close()
 
@@ -1368,7 +1250,7 @@ def _fallback_extract_product_page(session, url, query):
     normalized = norm(page_text)
     if any(marker in normalized for marker in ("fecha de disponibilidad", "avísame", "notificarme", "notify me")):
         availability = "out_of_stock"
-    elif any(marker in normalized for marker in ("añadir al carrito", "añadir a la cesta", "agregar al carrito", "agregar a la cesta", "comprar", "add to cart", "add to bag", "buy now")):
+    elif any(marker in normalized for marker in ("añadir al carrito", "agregar al carrito", "comprar", "add to cart", "buy now")):
         availability = "in_stock"
     else:
         availability = "unknown"
@@ -1398,6 +1280,24 @@ def _fallback_extract_product_page(session, url, query):
     }
 
 
+def _fetch_candidate(url, query):
+    # One Session per worker avoids sharing requests.Session across threads.
+    local_session = requests.Session()
+    try:
+        product = extract_product_page(local_session, url, query)
+        if product:
+            return product
+
+        try:
+            return _fallback_extract_product_page(local_session, url, query)
+        except Exception:
+            return None
+    except Exception:
+        return None
+    finally:
+        local_session.close()
+
+
 def search(query):
     query = clean(query)
 
@@ -1407,50 +1307,40 @@ def search(query):
     session = requests.Session()
 
     try:
-        candidate_urls = discover_product_urls(
-            session,
-            query,
-        )
+        candidate_urls = discover_product_urls(session, query)
+        if not candidate_urls:
+            return []
 
         results = []
         seen = set()
 
-        for url in candidate_urls:
-            try:
-                product = extract_product_page(
-                    session,
-                    url,
-                    query,
+        # Product pages are independent. Fetch them concurrently so one slow
+        # product cannot consume the entire store timeout budget.
+        with ThreadPoolExecutor(
+            max_workers=min(PRODUCT_WORKERS, len(candidate_urls))
+        ) as pool:
+            futures = {
+                pool.submit(_fetch_candidate, url, query): url
+                for url in candidate_urls[:MAX_CANDIDATES]
+            }
+
+            for future in as_completed(futures):
+                product = future.result()
+                if not product:
+                    continue
+
+                product_id = (
+                    product.get("identity", {})
+                    .get("store_product_id", {})
+                    .get("value")
                 )
-            except Exception:
-                product = None
+                key = product_id or product.get("url")
 
-            if not product:
-                try:
-                    product = _fallback_extract_product_page(
-                        session,
-                        url,
-                        query,
-                    )
-                except Exception:
-                    product = None
+                if key in seen:
+                    continue
 
-            if not product:
-                continue
-
-            product_id = (
-                product.get("identity", {})
-                .get("store_product_id", {})
-                .get("value")
-            )
-
-            key = product_id or product.get("url")
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-            results.append(product)
+                seen.add(key)
+                results.append(product)
 
         return results
 
