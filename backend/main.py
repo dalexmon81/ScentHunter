@@ -509,6 +509,7 @@ def _public_offer(item):
         "variant_id": item.get("variant_id"),
         "url": item.get("url") or item.get("product_url"),
         "retailer_image": item.get("image") or item.get("image_url"),
+        "canonical_image": item.get("canonical_image") or "",
         "available": item.get("available"),
         "raw_name": item.get("_raw_name")
             or item.get("name")
@@ -542,30 +543,15 @@ def _aggregate_identity_results(offers):
             ).strip()
 
             if catalog_id not in groups:
-                canonical_brand = (
-                    offer.get("canonical_brand")
-                    or offer.get("brand")
-                    or ""
-                )
-                canonical_name = (
-                    offer.get("canonical_name")
-                    or offer.get("name")
-                    or ""
-                )
-                display_name = canonical_name
-                if canonical_brand and canonical_name:
-                    display_name = f"{canonical_brand} — {canonical_name}"
-                elif canonical_brand:
-                    display_name = canonical_brand
-
                 groups[catalog_id] = {
                     "catalog_id": catalog_id,
-                    "brand": canonical_brand,
-                    "name": display_name,
+                    "brand": offer.get("brand"),
+                    "name": offer.get("canonical_name") or offer.get("name"),
                     "family": offer.get("family"),
                     "variant": offer.get("variant"),
-                    "canonical_name": canonical_name,
-                    "canonical_brand": canonical_brand,
+                    "canonical_name": offer.get(
+                        "canonical_name"
+                    ),
                     "image": offer.get("canonical_image") or "",
                     "offers": [],
                 }
