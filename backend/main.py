@@ -883,44 +883,55 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,ca
 JOBS={}; JOBS_LOCK=threading.Lock()
 
 def _cancel_active_jobs():
+    """Cancel active jobs immediately at the logical/API level.
+
+    Scraper subprocesses receive the cancellation event and are killed by their
+    existing subprocess supervisor. We do not wait here: /search-start must stay
+    responsive and the cancelled job is made unable to publish into the new job.
+    """
     with JOBS_LOCK:
-        active=[job for job in JOBS.values() if not job.get("completed")]
-    for job in active:
-        event=job.get("cancel_event")
-        if event is not None:
-            event.set()
+        active=[]
+        for job in JOBS.values():
+            if job.get("completed"):
+                continue
+            active.append(job)
+            event=job.get("cancel_event")
+            if event is not None:
+                event.set()
+            job["completed"] = True
+            job["status"] = "cancelled"
+            job["cancelled_at"] = time.time()
     if active:
         print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}",flush=True)
+    return len(active)
 
 def _new_job(query):
     job_id=uuid.uuid4().hex
-    with JOBS_LOCK: JOBS[job_id] = {
-    "job_id": job_id,
-    "query": query,
-    "started_at": time.time(),
-    "completed": False,
-    "cancel_event": threading.Event(),
-
-    # Individual deduplicated commercial offers.
-    "offers": [],
-
-    # Canonical grouped products exposed by the API.
-    "results": [],
-
-    # Offers that were not identifiable with enough certainty.
-    "unresolved_offers": [],
-
-    "comparisons": [],
-    "errors": {},
-    "stores": {},
-}
-
+    job={
+        "job_id": job_id,
+        "query": query,
+        "started_at": time.time(),
+        "completed": False,
+        "status": "searching",
+        "cancel_event": threading.Event(),
+        "offers": [],
+        "offers_revision": 0,
+        "results": [],
+        "unresolved_offers": [],
+        "comparisons": [],
+        "errors": {},
+        "stores": {},
+        "dedupe_diagnostics": [],
+    }
+    with JOBS_LOCK:
+        JOBS[job_id]=job
     return job_id
 
 def _snapshot(job_id):
+    # JOBS_LOCK is intentionally held only for cheap state copies. No matching,
+    # dedupe or other expensive work is performed while the global lock is held.
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
-
+        job=JOBS.get(job_id)
         if not job:
             return {
                 "job_id": job_id,
@@ -932,137 +943,103 @@ def _snapshot(job_id):
                 "results": [],
                 "unresolved_offers": [],
                 "identity_scope": [],
-                        "errors": {
-                    "job": "job_not_found"
-                },
+                "errors": {"job": "job_not_found"},
                 "stores": {},
             }
-
-        results = list(
-            job.get("results", [])
-        )
-
-        offers = list(
-            job.get("offers", [])
-        )
-
-        return {
+        query=job["query"]
+        snapshot={
             "job_id": job["job_id"],
-            "query": job["query"],
-            "completed": job["completed"],
-            "status": job.get("status") or (
-                "completed"
-                if job["completed"]
-                else "searching"
-            ),
-            "count": len(results),
-            "offer_count": len(offers),
-            "results": results,
-            "unresolved_offers": list(
-                job.get("unresolved_offers", [])
-            ),
-            "identity_scope": _identity_scope(job["query"]),
-            "errors": dict(
-                job.get("errors", {})
-            ),
-             "stores": dict(
-                job.get("stores", {})
-            ),
-            "dedupe_diagnostics": list(
-                job.get("dedupe_diagnostics", [])
-            ),
+            "query": query,
+            "completed": bool(job.get("completed")),
+            "status": job.get("status") or ("completed" if job.get("completed") else "searching"),
+            "count": len(job.get("results", [])),
+            "offer_count": len(job.get("offers", [])),
+            "results": list(job.get("results", [])),
+            "unresolved_offers": list(job.get("unresolved_offers", [])),
+            "identity_scope": [],
+            "errors": dict(job.get("errors", {})),
+            "stores": dict(job.get("stores", {})),
+            "dedupe_diagnostics": list(job.get("dedupe_diagnostics", [])),
         }
+    snapshot["identity_scope"] = list(_identity_scope(query))
+    return snapshot
 
 def _publish_result(job_id, row):
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
+    """Append a streamed offer only.
 
+    The old implementation ran dedupe + ProductMatcher aggregation for every
+    single result while holding JOBS_LOCK. That made /search-status and a new
+    /search-start wait behind large searches. Aggregation now happens once per
+    completed store and once at final job completion.
+    """
+    if not isinstance(row, dict):
+        return
+    with JOBS_LOCK:
+        job=JOBS.get(job_id)
         if not job or job.get("completed"):
             return
-
-        if not isinstance(row, dict):
-            return
-
-        job.setdefault("offers", [])
-        job["offers"].append(row)
-        job["offers"] = dedupe_results(
-            job["offers"],
-            job.setdefault("dedupe_diagnostics", []),
-        )
-
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
-
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-
-        print(
-            "SEARCH PUBLISH RESULT "
-            f"job={job_id} "
-            f"store={row.get('store')} "
-            f"groups={len(grouped)} "
-            f"offers={len(job['offers'])}",
-            flush=True,
-        )
+        job.setdefault("offers", []).append(row)
+        job["offers_revision"]=int(job.get("offers_revision",0))+1
 
 def _publish_store(job_id, report):
+    # Update cheap store state and copy the current offers while holding the
+    # registry lock. Expensive matching is performed after releasing the lock.
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
-
+        job=JOBS.get(job_id)
         if not job or job.get("completed"):
             return
 
-        store = report["store"]
-
-        job["stores"][store] = {
+        store=report["store"]
+        job["stores"][store]={
             "status": report["status"],
             "verified": bool(report.get("verified")),
             "elapsed": report["elapsed"],
             "count": report["count"],
             "details": dict(report.get("details") or {}),
         }
-
         if report.get("error"):
-            job["errors"][store] = report["error"]
+            job["errors"][store]=report["error"]
 
+        # The worker returns the complete store result list too. Add it as a
+        # safety net; dedupe makes this idempotent with streamed rows.
         for item in report.get("results", []):
-            if not isinstance(item, dict):
-                continue
+            if isinstance(item, dict):
+                job.setdefault("offers", []).append(item)
+        offers=list(job.get("offers", []))
+        offers_revision=int(job.get("offers_revision",0))
 
-            job.setdefault("offers", [])
-            job["offers"].append(item)
+    diagnostics=[]
+    offers=dedupe_results(offers, diagnostics)
+    grouped, unresolved=_aggregate_identity_results(offers)
 
-        job["offers"] = dedupe_results(
-            job.get("offers", []),
-            job.setdefault("dedupe_diagnostics", []),
-        )
+    # A newer search may have cancelled this job while aggregation was running.
+    # In that case this stale worker is forbidden to publish anything.
+    with JOBS_LOCK:
+        job=JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        if int(job.get("offers_revision",0)) != offers_revision:
+            # New streamed rows arrived while matching was running. Do not
+            # overwrite newer state with an older snapshot; final aggregation
+            # will include every row.
+            return
+        job["offers"]=offers
+        job["dedupe_diagnostics"]=diagnostics
+        job["results"]=grouped
+        job["unresolved_offers"]=unresolved
+        total_offers=len(offers)
+        total_groups=len(grouped)
 
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
-
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-
-        print(
-            "SEARCH PUBLISH "
-            f"job={job_id} "
-            f"store={store} "
-            f"groups={len(grouped)} "
-            f"offers={len(job['offers'])}",
-            flush=True,
-        )
+    print(f"SEARCH PUBLISH job={job_id} store={store} groups={total_groups} offers={total_offers}",flush=True)
 
 def _run_job(job_id,query):
-    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
+    started=time.monotonic()
+    print(f'SEARCH START job={job_id} query={query!r}',flush=True)
+
     with JOBS_LOCK:
         current_job=JOBS.get(job_id)
-    cancel_event=current_job.get("cancel_event") if current_job else None
+        cancel_event=current_job.get("cancel_event") if current_job else None
+
     collect_store_reports_isolated(
         query,
         STORES,
@@ -1070,41 +1047,37 @@ def _run_job(job_id,query):
         on_result=lambda row:_publish_result(job_id,row),
         cancel_event=cancel_event,
     )
+
+    # Final aggregation is deliberately outside JOBS_LOCK.
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
+        job=JOBS.get(job_id)
+        if not job or job.get("completed"):
+            # Cancelled jobs are already logically dead. Their scraper threads
+            # may still be winding down, but can no longer publish into the API.
+            return
+        offers=list(job.get("offers", []))
 
-    if job:
-        job["offers"] = dedupe_results(
-            job.get("offers", []),
-            job.setdefault("dedupe_diagnostics", []),
-        )
+    diagnostics=[]
+    offers=dedupe_results(offers, diagnostics)
+    grouped, unresolved=_aggregate_identity_results(offers)
+    cancelled=bool(cancel_event and cancel_event.is_set())
 
-        grouped, unresolved = (
-            _aggregate_identity_results(
-                job["offers"]
-            )
-        )
-
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
-        cancelled=bool(job.get("cancel_event") and job["cancel_event"].is_set())
-        job["completed"] = True
-        job["status"] = "cancelled" if cancelled else "completed"
-        job["elapsed"] = round(
-            time.monotonic() - started,
-            3,
-        )
-
-        elapsed = job["elapsed"]
-        total = len(job["results"])
-    else:
-        elapsed = round(
-            time.monotonic() - started,
-            3,
-        )
-        total = 0
+    with JOBS_LOCK:
+        job=JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        job["offers"]=offers
+        job["dedupe_diagnostics"]=diagnostics
+        job["results"]=grouped
+        job["unresolved_offers"]=unresolved
+        job["completed"]=True
+        job["status"]="cancelled" if cancelled else "completed"
+        job["elapsed"]=round(time.monotonic()-started,3)
+        elapsed=job["elapsed"]
+        total=len(job["results"])
 
     print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
+
 
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
