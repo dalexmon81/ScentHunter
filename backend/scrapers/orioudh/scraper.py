@@ -207,6 +207,7 @@ def _discovery(session: requests.Session, query: str):
     urls = []
     seen = set()
     errors = []
+    discovery_verified = False
 
     for search_query in queries:
         try:
@@ -220,6 +221,7 @@ def _discovery(session: requests.Session, query: str):
                     "resources[options][unavailable_products]": "show",
                 },
             )
+            discovery_verified = True
         except StoreRequestError as exc:
             errors.append(exc)
             continue
@@ -267,6 +269,7 @@ def _discovery(session: requests.Session, query: str):
             response.close()
             errors.append(StoreRequestError("error", f"HTTP {code}", http_status=code))
         elif response.ok:
+            discovery_verified = True
             soup = BeautifulSoup(response.text, "html.parser")
             for anchor in soup.select('a[href*="/products/"]'):
                 product_url = urljoin(
@@ -312,6 +315,7 @@ def _discovery(session: requests.Session, query: str):
             response.close()
             errors.append(StoreRequestError("error", f"HTTP {code}", http_status=code))
         elif response.ok:
+            discovery_verified = True
             try:
                 data = response.json()
             except (ValueError, TypeError) as exc:
@@ -340,7 +344,7 @@ def _discovery(session: requests.Session, query: str):
     except requests.RequestException as exc:
         errors.append(StoreRequestError("error", str(exc)))
 
-    return urls, errors
+    return urls, errors, discovery_verified
 
 def _raw_offer(
     product: Dict[str, Any],
@@ -455,7 +459,7 @@ def search(query: str) -> List[Dict[str, Any]]:
 
     session = requests.Session()
     try:
-        urls, discovery_errors = _discovery(session, query)
+        urls, discovery_errors, discovery_verified = _discovery(session, query)
         results = []
         seen = set()
 
@@ -479,6 +483,7 @@ def search(query: str) -> List[Dict[str, Any]]:
         # Keep transport information available to search_stream without
         # changing the commercial offer rows themselves.
         search._last_discovery_errors = discovery_errors
+        search._last_discovery_verified = discovery_verified
         return results
     finally:
         session.close()
