@@ -192,6 +192,7 @@ def _discover_from_sitemap(session, query, urls, seen):
 
 def discover(session, query):
     urls, seen, errors = [], set(), []
+    discovery_verified = False
 
     def record(source, exc):
         errors.append({"source": source, "status": exc.status, "error": str(exc)})
@@ -203,6 +204,7 @@ def discover(session, query):
         ):
             try:
                 r = _get(session, BASE_URL + "/search/suggest.json", params)
+                discovery_verified = True
                 try:
                     data = r.json()
                     products = (((data.get("resources") or {}).get("results") or {}).get("products") or [])
@@ -216,6 +218,7 @@ def discover(session, query):
 
         try:
             r = _get(session, BASE_URL + "/search.json", {"q": query, "type": "product", "limit": 50})
+            discovery_verified = True
             try:
                 for p in r.json().get("products") or []:
                     if not isinstance(p, dict):
@@ -235,16 +238,19 @@ def discover(session, query):
 
         try:
             _discover_products_json(session, query, urls, seen)
+            discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_products_json", exc)
 
         try:
             _discover_from_sitemap(session, query, urls, seen)
+            discovery_verified = True
         except StoreRequestError as exc:
             record("shopify_sitemap", exc)
 
         try:
             r = _get(session, BASE_URL + "/search", {"q": query, "type": "product"})
+            discovery_verified = True
             try:
                 soup = BeautifulSoup(r.text, "html.parser")
                 for a in soup.select('a[href*="/products/"]'):
@@ -257,7 +263,7 @@ def discover(session, query):
     except Exception as exc:
         errors.append({"source": "discovery", "status": "error", "error": f"{type(exc).__name__}: {exc}"})
 
-    return urls[:MAX_CANDIDATES], errors
+    return urls[:MAX_CANDIDATES], errors, discovery_verified
 
 
 def product_json(session, url):
@@ -303,17 +309,7 @@ def _search_report(query):
     results, seen = [], set()
     fetch_errors = []
     try:
-        urls, discovery_errors = discover(session, query)
-        if not urls and discovery_errors:
-            error = discovery_errors[0]
-            return {
-                "status": error["status"],
-                "verified": False,
-                "results": [],
-                "error": error["error"],
-                "details": {"verified_empty": False, "discovery_errors": discovery_errors},
-            }
-
+        urls, discovery_errors, discovery_verified = discover(session, query)
         for url in urls:
             try:
                 data = product_json(session, url)
@@ -338,18 +334,29 @@ def _search_report(query):
             status, verified, error = "partial", True, None
         elif results:
             status, verified, error = "success", True, None
-        elif errors:
-            error = errors[0]
-            return {"status": error["status"], "verified": False, "results": [], "error": error["error"], "details": {"verified_empty": False, "errors": errors}}
-        else:
+        elif urls and fetch_errors:
+            first = fetch_errors[0]
+            status, verified, error = first["status"], False, first["error"]
+        elif discovery_verified:
             status, verified, error = "success", True, None
+        elif errors:
+            first = errors[0]
+            status, verified, error = first["status"], False, first["error"]
+        else:
+            status, verified, error = "unavailable", False, "discovery_not_verified"
 
         return {
             "status": status,
             "verified": verified,
             "results": results,
             "error": error,
-            "details": {"verified_empty": not results and not errors, "candidate_count": len(urls), "errors": errors},
+            "details": {
+                "verified_empty": not results and discovery_verified and not fetch_errors,
+                "candidate_count": len(urls),
+                "discovery_verified": discovery_verified,
+                "discovery_errors": discovery_errors,
+                "fetch_errors": fetch_errors,
+            },
         }
     finally:
         session.close()
