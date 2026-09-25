@@ -11,11 +11,11 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 8
-DISCOVERY_TIMEOUT = 8
+TIMEOUT = 7
+DISCOVERY_TIMEOUT = 7
 PRODUCT_WORKERS = 6
-MAX_CANDIDATES = 16
-MAX_SITEMAP_CANDIDATES = 24
+MAX_CANDIDATES = 8
+MAX_SITEMAP_CANDIDATES = 8
 
 HEADERS = {
     "User-Agent": (
@@ -772,7 +772,7 @@ def _sitemap_product_urls(session, query):
 
     found = []
     with ThreadPoolExecutor(max_workers=min(4, len(product_sitemaps))) as pool:
-        futures = [pool.submit(fetch_one, url) for url in product_sitemaps[:12]]
+        futures = [pool.submit(fetch_one, url) for url in product_sitemaps[:4]]
         for future in as_completed(futures):
             found.extend(future.result())
             if len(set(found)) >= MAX_SITEMAP_CANDIDATES:
@@ -1282,18 +1282,20 @@ def _fallback_extract_product_page(session, url, query):
 
 def _fetch_candidate(url, query):
     # One Session per worker avoids sharing requests.Session across threads.
+    # IMPORTANT: do not issue a second HTTP request merely because the rich
+    # parser returned None. That doubled the worst-case product-page budget
+    # and could push this scraper past Main's 45s store timeout.
     local_session = requests.Session()
     try:
-        product = extract_product_page(local_session, url, query)
-        if product:
-            return product
-
         try:
-            return _fallback_extract_product_page(local_session, url, query)
+            return extract_product_page(local_session, url, query)
         except Exception:
-            return None
-    except Exception:
-        return None
+            # The fallback is allowed only when the parser itself raises; it
+            # must never be used as a second request after a normal rejection.
+            try:
+                return _fallback_extract_product_page(local_session, url, query)
+            except Exception:
+                return None
     finally:
         local_session.close()
 
