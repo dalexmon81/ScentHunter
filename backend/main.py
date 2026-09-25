@@ -8,7 +8,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-APP_VERSION = '4.2-linear-store-contract'
+APP_VERSION = '4.3-search-lifecycle-fix'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # Read-only scraper diagnostics. This module does not participate in normal search.
@@ -893,17 +893,30 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,ca
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
-def _cancel_active_jobs():
+def _cancel_active_jobs(wait_timeout=12.0):
+    """Cancel active jobs and wait for their search threads to finish."""
     _runtime_diag_event('cancel_active_jobs_enter')
     with JOBS_LOCK:
-        active=[job for job in JOBS.values() if not job.get("completed")]
-    for job in active:
+        active=[(job_id,job) for job_id,job in JOBS.items() if not job.get("completed")]
+    for job_id,job in active:
         event=job.get("cancel_event")
         if event is not None:
             event.set()
     if active:
         print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}",flush=True)
-    _runtime_diag_event("cancel_active_jobs_exit", active_jobs=len(active))
+    deadline=time.monotonic()+max(0.0,float(wait_timeout))
+    still_active=[]
+    for job_id,job in active:
+        done=job.get("done_event")
+        if done is None:
+            still_active.append(job_id)
+            continue
+        remaining=max(0.0,deadline-time.monotonic())
+        if not done.wait(timeout=remaining):
+            still_active.append(job_id)
+    _runtime_diag_event("cancel_active_jobs_exit",active_jobs=len(active),still_active=still_active)
+    return still_active
+
 
 def _new_job(query):
     _runtime_diag_event('new_job_enter', query=str(query))
@@ -914,6 +927,8 @@ def _new_job(query):
     "started_at": time.time(),
     "completed": False,
     "cancel_event": threading.Event(),
+    "done_event": threading.Event(),
+    "aggregate_lock": threading.Lock(),
 
     # Individual deduplicated commercial offers.
     "offers": [],
@@ -999,9 +1014,10 @@ def _publish_result(job_id, row):
         offers = list(job["offers"])
         diagnostics = job.setdefault("dedupe_diagnostics", [])
 
-    # Heavy dedupe + ProductMatcher work happens outside JOBS_LOCK.
-    deduped = dedupe_results(offers, diagnostics)
-    grouped, unresolved = _aggregate_identity_results(deduped)
+    # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
+    with job.get("aggregate_lock", threading.Lock()):
+        deduped = dedupe_results(offers, diagnostics)
+        grouped, unresolved = _aggregate_identity_results(deduped)
 
     # Re-acquire briefly and publish only if this job is still the same active job.
     with JOBS_LOCK:
@@ -1052,9 +1068,10 @@ def _publish_store(job_id, report):
         offers = list(job.get("offers", []))
         diagnostics = job.setdefault("dedupe_diagnostics", [])
 
-    # Heavy dedupe + ProductMatcher work happens outside JOBS_LOCK.
-    deduped = dedupe_results(offers, diagnostics)
-    grouped, unresolved = _aggregate_identity_results(deduped)
+    # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
+    with job.get("aggregate_lock", threading.Lock()):
+        deduped = dedupe_results(offers, diagnostics)
+        grouped, unresolved = _aggregate_identity_results(deduped)
 
     # Publish the computed snapshot with a short lock.
     with JOBS_LOCK:
@@ -1074,13 +1091,15 @@ def _publish_store(job_id, report):
         flush=True,
     )
 
-def _run_job(job_id,query):
+def _run_job_impl(job_id,query):
     _runtime_diag_event('job_thread_start', job_id=job_id, query=str(query))
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
+    done_event=None
 
     with JOBS_LOCK:
         current_job=JOBS.get(job_id)
         cancel_event=current_job.get("cancel_event") if current_job else None
+        done_event=current_job.get("done_event") if current_job else None
 
     # Compute the query identity scope ONCE, outside JOBS_LOCK.
     # This can scan the catalog and is too expensive for /search-status.
@@ -1094,6 +1113,17 @@ def _run_job(job_id,query):
         if current_job and not current_job.get("completed"):
             current_job["identity_scope"] = list(identity_scope)
             current_job["identity_scope_ready"] = True
+
+    if cancel_event is not None and cancel_event.is_set():
+        with JOBS_LOCK:
+            current_job=JOBS.get(job_id)
+            if current_job:
+                current_job["completed"]=True
+                current_job["status"]="cancelled"
+                current_job["elapsed"]=round(time.monotonic()-started,3)
+        if done_event is not None: done_event.set()
+        _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
+        return
 
     collect_store_reports_isolated(
         query,
@@ -1115,9 +1145,10 @@ def _run_job(job_id,query):
         diagnostics = job.setdefault("dedupe_diagnostics", [])
         cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
 
-    # Final heavy work is deliberately outside JOBS_LOCK.
-    deduped = dedupe_results(offers, diagnostics)
-    grouped, unresolved = _aggregate_identity_results(deduped)
+    # Final heavy work is serialized per job, but never under JOBS_LOCK.
+    with job.get("aggregate_lock", threading.Lock()):
+        deduped = dedupe_results(offers, diagnostics)
+        grouped, unresolved = _aggregate_identity_results(deduped)
     elapsed = round(time.monotonic() - started, 3)
 
     with JOBS_LOCK:
@@ -1135,6 +1166,34 @@ def _run_job(job_id,query):
 
     _runtime_diag_event('job_thread_end', job_id=job_id, query=str(query), elapsed=elapsed, total=total)
     print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
+    if done_event is not None: done_event.set()
+    _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
+
+def _run_job(job_id,query):
+    try:
+        _run_job_impl(job_id,query)
+    except Exception as exc:
+        elapsed=0.0
+        with JOBS_LOCK:
+            job=JOBS.get(job_id)
+            if job:
+                elapsed=round(time.time()-float(job.get("started_at",time.time())),3)
+                job.setdefault("errors",{})["job"]=f"{type(exc).__name__}: {exc}"
+                job["completed"]=True
+                job["status"]="error"
+                job["elapsed"]=elapsed
+                done_event=job.get("done_event")
+            else:
+                done_event=None
+        _runtime_diag_event('job_thread_exception',job_id=job_id,query=str(query),elapsed=elapsed,error=f"{type(exc).__name__}: {exc}")
+        if done_event is not None: done_event.set()
+    finally:
+        with JOBS_LOCK:
+            job=JOBS.get(job_id)
+            done_event=job.get("done_event") if job else None
+        if done_event is not None:
+            done_event.set()
+        _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
 
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
@@ -1534,8 +1593,15 @@ def health():
 def search_start(q:str):
     _runtime_diag_event('http_search_start_enter', query=str(q or ''))
     query=str(q or '').strip()
-    if not query: return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{},'stores':{}}
-    _cancel_active_jobs()
+    if not query:
+        return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{},'stores':{}}
+    still_active=_cancel_active_jobs(wait_timeout=12.0)
+    if still_active:
+        payload={'job_id':'','query':query,'completed':False,'status':'busy','count':0,'offer_count':0,'results':[],
+                 'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{'job':'previous_search_still_stopping'},
+                 'stores':{},'retry_after_ms':500}
+        _runtime_diag_event('http_search_start_busy',query=query,still_active=still_active)
+        return payload
     job_id=_new_job(query)
     threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start()
     snap=_snapshot(job_id)
