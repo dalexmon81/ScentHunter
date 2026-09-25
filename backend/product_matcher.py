@@ -1177,6 +1177,35 @@ class ProductMatcher:
             # a generic family name paired with a more specific URL remain contaminated.
             # This is generic family-level logic: no retailer or product is
             # hard-coded here.
+            # URL audience tokens are intentionally ignored by
+            # ``_variant_specificity_key()``. Therefore a URL such as
+            # ``...hawas-women...`` cannot distinguish ``Hawas for Her``
+            # from ``Hawas for Him``: both reduce to the same identity key
+            # (``hawas``). In that situation URL evidence is non-discriminative
+            # and must not override an exact/normalized variant resolved from
+            # the product name. Otherwise the first equally-scored family
+            # variant can win arbitrarily and a requested ``for Her`` offer can
+            # be rejected as ``for Him`` later by ``_match_family()``.
+            url_is_nondiscriminative = False
+            if name_variant is not None and url_best is not None:
+                name_identity_key = self._variant_specificity_key(
+                    name_variant.get("canonical_name", ""),
+                    family.get("brand", ""),
+                )
+                url_identity_key = self._variant_specificity_key(
+                    url_best.get("canonical_name", ""),
+                    family.get("brand", ""),
+                )
+                if (
+                    name_variant.get("canonical_name") != url_best.get("canonical_name")
+                    and name_identity_key
+                    and name_identity_key == url_identity_key
+                ):
+                    url_is_nondiscriminative = True
+
+            if url_is_nondiscriminative:
+                return name_variant
+
             if name_variant is None or (
                 url_best_score >= 0.72
                 and url_best_score - name_url_score >= 0.20
