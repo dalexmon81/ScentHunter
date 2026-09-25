@@ -701,10 +701,12 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
     process=None; rows=[]; worker_status=None; worker_verified=None; worker_error=None; worker_details={}
     try:
+        _runtime_diag_event('worker_spawn_attempt', store=store, query=str(query), timeout=timeout)
         process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=False,bufsize=0,start_new_session=(os.name!='nt'))
         deadline=time.monotonic()+timeout; stdout_buffer=b''
         while True:
             if cancel_event is not None and cancel_event.is_set():
+                _runtime_diag_event('worker_cancelled', store=store, pid=getattr(process,'pid',None))
                 _kill_process_tree(process)
                 try: process.communicate(timeout=2)
                 except Exception: pass
@@ -792,12 +794,14 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
             public_status=status
         return {'store':store,'status':public_status,'elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error,'details':worker_details,'verified':verified}
     except subprocess.TimeoutExpired:
+        _runtime_diag_event('worker_timeout', store=store, pid=getattr(process,'pid',None), timeout=timeout)
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=2)
             except Exception: pass
         return _empty_report(store,status='timeout',elapsed=round(time.monotonic()-started,3),error=f'store_timeout_{timeout:.0f}s') | {'verified':False}
     except Exception as exc:
+        _runtime_diag_event('worker_exception', store=store, pid=getattr(process,'pid',None), error=f'{type(exc).__name__}: {exc}')
         if process is not None:
             _kill_process_tree(process)
             try: process.communicate(timeout=1)
@@ -828,6 +832,7 @@ def _run_store_subprocess(store, query, on_result=None, cancel_event=None):
     return second
 
 def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None):
+    _runtime_diag_event('store_thread_start', store=store, query=str(query))
     print(f'STORE START store={store} query={query!r}',flush=True)
     semaphore=LIGHT_SEMAPHORE; lane='light'
     if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
@@ -844,9 +849,11 @@ def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None
             if time.monotonic() >= wait_deadline and not acquired:
                 break
         if not acquired:
+            _runtime_diag_event('store_lane_timeout', store=store, lane=lane)
             report=_empty_report(store,error=f'{lane}_lane_unavailable')
             print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
         waited=round(time.monotonic()-wait,3)
+        _runtime_diag_event('store_lane_acquired', store=store, lane=lane, waited=waited, available=getattr(semaphore,'_value',None))
         if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
     try: report=_run_store_subprocess(store,query,on_result=on_result,cancel_event=cancel_event)
     finally:
@@ -855,9 +862,11 @@ def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None
         if str(report.get('error','')).startswith('store_timeout_'): print(f"STORE TIMEOUT store={store} timeout={report['error']}",flush=True)
         else: print(f"STORE ERROR store={store} error={report.get('error')}",flush=True)
     print(f"STORE END store={store} status={report.get('status')} elapsed={report.get('elapsed')} count={report.get('count')}",flush=True)
+    _runtime_diag_event('store_thread_end', store=store, status=report.get('status'), elapsed=report.get('elapsed'), count=report.get('count'))
     on_report(report)
 
 def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,cancel_event=None):
+    _runtime_diag_event('collect_enter', query=str(query), stores=list(stores))
     requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
     def publish(report):
         with lock: reports[report['store']]=report
@@ -869,6 +878,7 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,ca
     for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
     unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
+        _runtime_diag_event('collect_unfinished', stores=unfinished)
         print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}',flush=True)
         if cancel_event is not None:
             cancel_event.set()
@@ -878,60 +888,54 @@ def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,ca
                 t.join(timeout=max(0.0,cancel_deadline-time.monotonic()))
         with lock:
             for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
+    _runtime_diag_event('collect_exit', query=str(query), returned_stores=list(reports.keys()), unfinished=unfinished)
     return [reports[s] for s in requested if s in reports]
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
 def _cancel_active_jobs():
-    """Cancel active jobs immediately at the logical/API level.
-
-    Scraper subprocesses receive the cancellation event and are killed by their
-    existing subprocess supervisor. We do not wait here: /search-start must stay
-    responsive and the cancelled job is made unable to publish into the new job.
-    """
+    _runtime_diag_event('cancel_active_jobs_enter')
     with JOBS_LOCK:
-        active=[]
-        for job in JOBS.values():
-            if job.get("completed"):
-                continue
-            active.append(job)
-            event=job.get("cancel_event")
-            if event is not None:
-                event.set()
-            job["completed"] = True
-            job["status"] = "cancelled"
-            job["cancelled_at"] = time.time()
+        active=[job for job in JOBS.values() if not job.get("completed")]
+    for job in active:
+        event=job.get("cancel_event")
+        if event is not None:
+            event.set()
     if active:
         print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}",flush=True)
-    return len(active)
+    _runtime_diag_event("cancel_active_jobs_exit", active_jobs=len(active))
 
 def _new_job(query):
+    _runtime_diag_event('new_job_enter', query=str(query))
     job_id=uuid.uuid4().hex
-    job={
-        "job_id": job_id,
-        "query": query,
-        "started_at": time.time(),
-        "completed": False,
-        "status": "searching",
-        "cancel_event": threading.Event(),
-        "offers": [],
-        "offers_revision": 0,
-        "results": [],
-        "unresolved_offers": [],
-        "comparisons": [],
-        "errors": {},
-        "stores": {},
-        "dedupe_diagnostics": [],
-    }
-    with JOBS_LOCK:
-        JOBS[job_id]=job
+    with JOBS_LOCK: JOBS[job_id] = {
+    "job_id": job_id,
+    "query": query,
+    "started_at": time.time(),
+    "completed": False,
+    "cancel_event": threading.Event(),
+
+    # Individual deduplicated commercial offers.
+    "offers": [],
+
+    # Canonical grouped products exposed by the API.
+    "results": [],
+
+    # Offers that were not identifiable with enough certainty.
+    "unresolved_offers": [],
+
+    "comparisons": [],
+    "errors": {},
+    "stores": {},
+}
+
+    _runtime_diag_event('new_job_exit', job_id=job_id, query=str(query))
     return job_id
 
 def _snapshot(job_id):
-    # JOBS_LOCK is intentionally held only for cheap state copies. No matching,
-    # dedupe or other expensive work is performed while the global lock is held.
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
+        job = JOBS.get(job_id)
+
         if not job:
             return {
                 "job_id": job_id,
@@ -943,103 +947,138 @@ def _snapshot(job_id):
                 "results": [],
                 "unresolved_offers": [],
                 "identity_scope": [],
-                "errors": {"job": "job_not_found"},
+                        "errors": {
+                    "job": "job_not_found"
+                },
                 "stores": {},
             }
-        query=job["query"]
-        snapshot={
+
+        results = list(
+            job.get("results", [])
+        )
+
+        offers = list(
+            job.get("offers", [])
+        )
+
+        return {
             "job_id": job["job_id"],
-            "query": query,
-            "completed": bool(job.get("completed")),
-            "status": job.get("status") or ("completed" if job.get("completed") else "searching"),
-            "count": len(job.get("results", [])),
-            "offer_count": len(job.get("offers", [])),
-            "results": list(job.get("results", [])),
-            "unresolved_offers": list(job.get("unresolved_offers", [])),
-            "identity_scope": [],
-            "errors": dict(job.get("errors", {})),
-            "stores": dict(job.get("stores", {})),
-            "dedupe_diagnostics": list(job.get("dedupe_diagnostics", [])),
+            "query": job["query"],
+            "completed": job["completed"],
+            "status": job.get("status") or (
+                "completed"
+                if job["completed"]
+                else "searching"
+            ),
+            "count": len(results),
+            "offer_count": len(offers),
+            "results": results,
+            "unresolved_offers": list(
+                job.get("unresolved_offers", [])
+            ),
+            "identity_scope": _identity_scope(job["query"]),
+            "errors": dict(
+                job.get("errors", {})
+            ),
+             "stores": dict(
+                job.get("stores", {})
+            ),
+            "dedupe_diagnostics": list(
+                job.get("dedupe_diagnostics", [])
+            ),
         }
-    snapshot["identity_scope"] = list(_identity_scope(query))
-    return snapshot
 
 def _publish_result(job_id, row):
-    """Append a streamed offer only.
-
-    The old implementation ran dedupe + ProductMatcher aggregation for every
-    single result while holding JOBS_LOCK. That made /search-status and a new
-    /search-start wait behind large searches. Aggregation now happens once per
-    completed store and once at final job completion.
-    """
-    if not isinstance(row, dict):
-        return
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
+        job = JOBS.get(job_id)
+
         if not job or job.get("completed"):
             return
-        job.setdefault("offers", []).append(row)
-        job["offers_revision"]=int(job.get("offers_revision",0))+1
+
+        if not isinstance(row, dict):
+            return
+
+        job.setdefault("offers", [])
+        job["offers"].append(row)
+        job["offers"] = dedupe_results(
+            job["offers"],
+            job.setdefault("dedupe_diagnostics", []),
+        )
+
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
+            )
+        )
+
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+
+        print(
+            "SEARCH PUBLISH RESULT "
+            f"job={job_id} "
+            f"store={row.get('store')} "
+            f"groups={len(grouped)} "
+            f"offers={len(job['offers'])}",
+            flush=True,
+        )
 
 def _publish_store(job_id, report):
-    # Update cheap store state and copy the current offers while holding the
-    # registry lock. Expensive matching is performed after releasing the lock.
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
+        job = JOBS.get(job_id)
+
         if not job or job.get("completed"):
             return
 
-        store=report["store"]
-        job["stores"][store]={
+        store = report["store"]
+
+        job["stores"][store] = {
             "status": report["status"],
             "verified": bool(report.get("verified")),
             "elapsed": report["elapsed"],
             "count": report["count"],
             "details": dict(report.get("details") or {}),
         }
+
         if report.get("error"):
-            job["errors"][store]=report["error"]
+            job["errors"][store] = report["error"]
 
-        # The worker returns the complete store result list too. Add it as a
-        # safety net; dedupe makes this idempotent with streamed rows.
         for item in report.get("results", []):
-            if isinstance(item, dict):
-                job.setdefault("offers", []).append(item)
-        offers=list(job.get("offers", []))
-        offers_revision=int(job.get("offers_revision",0))
+            if not isinstance(item, dict):
+                continue
 
-    diagnostics=[]
-    offers=dedupe_results(offers, diagnostics)
-    grouped, unresolved=_aggregate_identity_results(offers)
+            job.setdefault("offers", [])
+            job["offers"].append(item)
 
-    # A newer search may have cancelled this job while aggregation was running.
-    # In that case this stale worker is forbidden to publish anything.
-    with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job or job.get("completed"):
-            return
-        if int(job.get("offers_revision",0)) != offers_revision:
-            # New streamed rows arrived while matching was running. Do not
-            # overwrite newer state with an older snapshot; final aggregation
-            # will include every row.
-            return
-        job["offers"]=offers
-        job["dedupe_diagnostics"]=diagnostics
-        job["results"]=grouped
-        job["unresolved_offers"]=unresolved
-        total_offers=len(offers)
-        total_groups=len(grouped)
+        job["offers"] = dedupe_results(
+            job.get("offers", []),
+            job.setdefault("dedupe_diagnostics", []),
+        )
 
-    print(f"SEARCH PUBLISH job={job_id} store={store} groups={total_groups} offers={total_offers}",flush=True)
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
+            )
+        )
+
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+
+        print(
+            "SEARCH PUBLISH "
+            f"job={job_id} "
+            f"store={store} "
+            f"groups={len(grouped)} "
+            f"offers={len(job['offers'])}",
+            flush=True,
+        )
 
 def _run_job(job_id,query):
-    started=time.monotonic()
-    print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-
+    _runtime_diag_event('job_thread_start', job_id=job_id, query=str(query))
+    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
     with JOBS_LOCK:
         current_job=JOBS.get(job_id)
-        cancel_event=current_job.get("cancel_event") if current_job else None
-
+    cancel_event=current_job.get("cancel_event") if current_job else None
     collect_store_reports_isolated(
         query,
         STORES,
@@ -1047,37 +1086,42 @@ def _run_job(job_id,query):
         on_result=lambda row:_publish_result(job_id,row),
         cancel_event=cancel_event,
     )
-
-    # Final aggregation is deliberately outside JOBS_LOCK.
     with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job or job.get("completed"):
-            # Cancelled jobs are already logically dead. Their scraper threads
-            # may still be winding down, but can no longer publish into the API.
-            return
-        offers=list(job.get("offers", []))
+        job = JOBS.get(job_id)
 
-    diagnostics=[]
-    offers=dedupe_results(offers, diagnostics)
-    grouped, unresolved=_aggregate_identity_results(offers)
-    cancelled=bool(cancel_event and cancel_event.is_set())
+    if job:
+        job["offers"] = dedupe_results(
+            job.get("offers", []),
+            job.setdefault("dedupe_diagnostics", []),
+        )
 
-    with JOBS_LOCK:
-        job=JOBS.get(job_id)
-        if not job or job.get("completed"):
-            return
-        job["offers"]=offers
-        job["dedupe_diagnostics"]=diagnostics
-        job["results"]=grouped
-        job["unresolved_offers"]=unresolved
-        job["completed"]=True
-        job["status"]="cancelled" if cancelled else "completed"
-        job["elapsed"]=round(time.monotonic()-started,3)
-        elapsed=job["elapsed"]
-        total=len(job["results"])
+        grouped, unresolved = (
+            _aggregate_identity_results(
+                job["offers"]
+            )
+        )
 
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+        cancelled=bool(job.get("cancel_event") and job["cancel_event"].is_set())
+        job["completed"] = True
+        job["status"] = "cancelled" if cancelled else "completed"
+        job["elapsed"] = round(
+            time.monotonic() - started,
+            3,
+        )
+
+        elapsed = job["elapsed"]
+        total = len(job["results"])
+    else:
+        elapsed = round(
+            time.monotonic() - started,
+            3,
+        )
+        total = 0
+
+    _runtime_diag_event('job_thread_end', job_id=job_id, query=str(query), elapsed=elapsed, total=total)
     print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
-
 
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
@@ -1320,18 +1364,170 @@ def diagnostic_runtime():
         "worker_processes":_runtime_subprocesses(),
     }
 
+
+# ============================================================================
+# DEEP RUNTIME DIAGNOSTIC (READ-ONLY / NO SEARCH BEHAVIOUR CHANGES)
+# ============================================================================
+from collections import deque
+
+_RUNTIME_DIAG = deque(maxlen=1000)
+_RUNTIME_DIAG_LOCK = threading.Lock()
+_RUNTIME_DIAG_STARTED = time.time()
+
+def _runtime_diag_event(event, **data):
+    item = {
+        "ts": round(time.time(), 3),
+        "age_sec": round(time.time() - _RUNTIME_DIAG_STARTED, 3),
+        "event": str(event),
+        **data,
+    }
+    try:
+        with _RUNTIME_DIAG_LOCK:
+            _RUNTIME_DIAG.append(item)
+    except Exception:
+        pass
+
+def _runtime_diag_memory():
+    out = {}
+    try:
+        with open("/proc/self/status", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith(("VmRSS:", "VmSize:", "Threads:")):
+                    k, v = line.split(":", 1)
+                    out[k] = v.strip()
+    except Exception:
+        pass
+    return out
+
+def _runtime_diag_stacks():
+    frames = sys._current_frames()
+    result = []
+    for t in threading.enumerate():
+        if not (
+            t.name.startswith("scenthunter-store-")
+            or t.name.startswith("scenthunter-search-")
+            or t.name.startswith("AnyIO")
+            or t.name.startswith("ThreadPoolExecutor")
+        ):
+            continue
+        item = {
+            "name": t.name,
+            "ident": t.ident,
+            "alive": t.is_alive(),
+            "daemon": t.daemon,
+        }
+        frame = frames.get(t.ident)
+        if frame is not None:
+            try:
+                import traceback as _tb
+                item["stack"] = _tb.format_stack(frame)[-18:]
+            except Exception as exc:
+                item["stack_error"] = f"{type(exc).__name__}: {exc}"
+        result.append(item)
+    return result
+
+@app.get("/diagnostic/runtime-deep")
+def diagnostic_runtime_deep():
+    """
+    Deep read-only runtime probe.
+    Crucially, it NEVER blocks waiting for JOBS_LOCK: it first reports whether
+    the lock is currently locked, then tries it only for 50 ms.
+    """
+    now = time.time()
+    lock_locked = False
+    jobs_snapshot = None
+    lock_acquired = False
+
+    try:
+        lock_locked = bool(JOBS_LOCK.locked())
+    except Exception:
+        lock_locked = None
+
+    try:
+        lock_acquired = JOBS_LOCK.acquire(timeout=0.05)
+    except Exception:
+        lock_acquired = False
+
+    if lock_acquired:
+        try:
+            jobs_snapshot = []
+            for job_id, job in JOBS.items():
+                jobs_snapshot.append({
+                    "job_id": job_id,
+                    "query": job.get("query"),
+                    "completed": bool(job.get("completed")),
+                    "status": job.get("status"),
+                    "age_sec": round(now - float(job.get("started_at", now)), 3),
+                    "offer_count": len(job.get("offers", [])),
+                    "result_count": len(job.get("results", [])),
+                    "store_count": len(job.get("stores", {})),
+                    "stores": dict(job.get("stores", {})),
+                    "errors": dict(job.get("errors", {})),
+                })
+        finally:
+            JOBS_LOCK.release()
+
+    with _RUNTIME_DIAG_LOCK:
+        events = list(_RUNTIME_DIAG)
+
+    return {
+        "diagnostic": "runtime-deep-read-only-v1",
+        "timestamp": now,
+        "pid": os.getpid(),
+        "ppid": os.getppid(),
+        "app_version": APP_VERSION,
+        "jobs_lock": {
+            "locked_when_checked": lock_locked,
+            "acquired_within_50ms": lock_acquired,
+        },
+        "jobs": jobs_snapshot,
+        "job_count": len(jobs_snapshot) if jobs_snapshot is not None else None,
+        "active_jobs": (
+            sum(1 for j in jobs_snapshot if not j["completed"])
+            if jobs_snapshot is not None else None
+        ),
+        "threads": {
+            "total": threading.active_count(),
+            "all": [
+                {"name": t.name, "ident": t.ident, "alive": t.is_alive(), "daemon": t.daemon}
+                for t in threading.enumerate()
+            ],
+            "stacks": _runtime_diag_stacks(),
+        },
+        "semaphores": {
+            "light": {
+                "available": getattr(LIGHT_SEMAPHORE, "_value", None),
+                "capacity": LIGHT_WORKERS,
+            },
+            "network": {
+                "available": getattr(NETWORK_SEMAPHORE, "_value", None),
+                "capacity": NETWORK_WORKERS,
+            },
+            "browser": {
+                "available": getattr(BROWSER_SEMAPHORE, "_value", None),
+                "capacity": BROWSER_WORKERS,
+            },
+        },
+        "worker_processes": _runtime_subprocesses(),
+        "memory": _runtime_diag_memory(),
+        "events": events[-500:],
+    }
+
 @app.get('/health')
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
 @app.get('/search-start')
 def search_start(q:str):
+    _runtime_diag_event('http_search_start_enter', query=str(q or ''))
     query=str(q or '').strip()
     if not query: return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{},'stores':{}}
     _cancel_active_jobs()
     job_id=_new_job(query)
     threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start()
-    return _snapshot(job_id)
+    snap=_snapshot(job_id)
+    _runtime_diag_event('http_search_start_exit', job_id=job_id, completed=bool(snap.get('completed')), count=snap.get('count'))
+    return snap
 
 @app.get('/search-status/{job_id}')
 def search_status_path(job_id:str): return _snapshot(job_id)
