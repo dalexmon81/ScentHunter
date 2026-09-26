@@ -1003,8 +1003,8 @@ async function searchStoresProgressive(term,onPartial){
   // Job terminato (ok, cancellato o errore)
   // Mostra stato e interrompi il polling
   return;
-}
-
+      }
+    }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   } catch (error) {
   const safe = typeof lastData === 'object' ? lastData : empty;
@@ -1061,14 +1061,19 @@ async function searchPerfume(){
       const hasUnverified=storeEntries.some(v=>v?.verified===false || ["error","timeout","blocked","unavailable"].includes(String(v?.status||"").toLowerCase()));
       const hasErrors=Boolean(data&&data.errors&&Object.keys(data.errors).length);
       if(final){
-        if(groups.length && (hasUnverified||hasErrors)){
-          statusBox.textContent=`${groups.length}${groups.length===1?" prodotto trovato":" prodotti trovati"} — ricerca parziale: alcuni store non sono stati verificati.`;
-        }else if(groups.length){
-          statusBox.textContent=`Ricerca completata: ${groups.length} ${groups.length===1?"prodotto":"prodotti"} trovati.`;
-        }else if(hasUnverified||hasErrors){
-          statusBox.textContent="Ricerca non verificata: alcuni store non hanno potuto essere controllati.";
+        const status = String(data?.status || "").toLowerCase();
+        if(status === "completed"){
+          statusBox.textContent =
+            data?.count + " prodotti trovati";
+        }else if(status === "cancelled"){
+          statusBox.textContent =
+            "Ricerca cancellata (nessun risultato)";
+        }else if(status === "error"){
+          statusBox.textContent =
+            "Errore nella ricerca";
         }else{
-          statusBox.textContent="Nessun risultato trovato.";
+          statusBox.textContent =
+            "Ricerca in corso...";
         }
       }
     };
