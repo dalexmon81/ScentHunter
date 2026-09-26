@@ -471,9 +471,10 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.be/category/1075750/mens-perfume.html',
     ),
 }
-HTML_MAX_PAGES = 800
+HTML_MAX_PAGES = 300
 HTML_MAX_DEPTH = 5
 HTML_WORKERS = 12
+DISCOVERY_HARD_TIMEOUT = 240
 
 
 def _html_product_url(store, raw_url, base_url):
@@ -554,7 +555,7 @@ def _fetch_html_page(store, url):
         return url, url, None, f'{type(exc).__name__}:{exc}'
 
 
-def _discover_html_catalog(store, seeds):
+def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
     queued=set()
     visited=set()
@@ -572,7 +573,7 @@ def _discover_html_catalog(store, seeds):
     for seed in seeds:
         add(seed,0)
 
-    while queue and len(visited) < HTML_MAX_PAGES:
+    while queue and len(visited) < HTML_MAX_PAGES and (deadline is None or time.time() < deadline):
         batch=[]
         while queue and len(batch)<HTML_WORKERS and len(visited)+len(batch)<HTML_MAX_PAGES:
             item=queue.pop(0)
@@ -618,23 +619,31 @@ def _discover_html_catalog(store, seeds):
     }
 
 
+def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
+    conn = db()
+    now = time.time()
+    conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+       VALUES(?,?,?,?,?,?,?)
+       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+       started_at=excluded.started_at,finished_at=excluded.finished_at,
+       discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+       error=excluded.error""",
+       (store, status, started_at if started_at is not None else now, finished_at,
+        discovered_count, fetched_count, error))
+    conn.commit(); conn.close()
+
+
 def discover_store(store):
-    """Build/update one persistent URL catalog.
-
-    Discovery order is deliberately layered:
-      1) robots-declared/standard sitemaps
-      2) sitemap tree expansion
-      3) retailer category/brand/navigation crawl if sitemap discovery is empty
-
-    The fallback is catalog discovery, not the user's search query.
-    """
+    """Build/update one persistent URL catalog with durable progress state."""
     started_at=time.time()
+    # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
+    _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     roots,robots_diagnostics=_seed_sitemaps(store)
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
     sitemap_successes=0; sitemap_url_entries=0
 
-    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS:
+    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and (time.time()-started_at)<DISCOVERY_HARD_TIMEOUT:
         batch=[]
         while queue and len(batch)<SYNC_WORKERS*4:
             sm,depth=queue.pop(0)
@@ -664,7 +673,7 @@ def discover_store(store):
     # Critical: zero sitemap URLs is not a NOT_FOUND condition. Use the
     # retailer's public catalog/navigation surfaces before declaring empty.
     if not product_urls and store in HTML_DISCOVERY_SEEDS:
-        fallback=_discover_html_catalog(store,HTML_DISCOVERY_SEEDS[store])
+        fallback=_discover_html_catalog(store,HTML_DISCOVERY_SEEDS[store], started_at + DISCOVERY_HARD_TIMEOUT)
         product_urls.update(fallback['product_urls'])
 
     diagnostics={
@@ -672,6 +681,7 @@ def discover_store(store):
         'successes':sitemap_successes,
         'entries':sitemap_url_entries,
         'errors':len(sitemap_errors),
+        'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
     }
     status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
 
@@ -958,6 +968,20 @@ def refresh_candidates(rows):
 
 def sync_all():
     results = {}
+    # Persist a state for all stores before workers start. A slow store is
+    # immediately visible as queued/running instead of falsely NOT_SYNCED.
+    now = time.time()
+    conn = db()
+    with conn:
+        for store in STORES:
+            conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+               error=excluded.error""",
+               (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
+    conn.close()
     with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
         futures = {pool.submit(discover_store, store): store for store in STORES}
         for future in as_completed(futures):
