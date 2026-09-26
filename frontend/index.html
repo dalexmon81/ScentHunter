@@ -1075,7 +1075,7 @@ async function searchPerfume(){
   searchButton.classList.remove('searching');
   searchButton.textContent = 'INIZIA LA RICERCA';
 }
-
+}
 
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
