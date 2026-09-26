@@ -865,57 +865,94 @@ def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None
     _runtime_diag_event('store_thread_end', store=store, status=report.get('status'), elapsed=report.get('elapsed'), count=report.get('count'))
     on_report(report)
 
-def collect_store_reports_isolated(query,stores,on_report=None,on_result=None,cancel_event=None):
-    _runtime_diag_event('collect_enter', query=str(query), stores=list(stores))
-    requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
+def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
+    requested = list(stores)
+    reports = {}
+    lock = threading.Lock()
+    threads = []
+
     def publish(report):
-        with lock: reports[report['store']]=report
-        if callable(on_report): on_report(report)
+        with lock:
+            reports[report['store']] = report
+        if callable(on_report):
+            on_report(report)
+
     for store in requested:
-        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result,cancel_event),daemon=True,name=f'scenthunter-store-{store}')
-        t.start(); threads.append(t)
-    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
-    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
-    unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
+        t = threading.Thread(
+            target=_run_controlled_store,
+            args=(store, query, publish, on_result, cancel_event),
+            daemon=True,
+            name=f'scenthunter-store-{store}'
+        )
+        t.start()
+        threads.append(t)
+
+    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+    for t in threads:
+        t.join(timeout=max(0.0, deadline - time.monotonic()))
+
+    unfinished = [
+        t.name.rsplit('scenthunter-store-', 1)[-1]
+        for t in threads
+        if t.is_alive()
+    ]
+
     if unfinished:
-        _runtime_diag_event('collect_unfinished', stores=unfinished)
-        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}',flush=True)
+        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}', flush=True)
         if cancel_event is not None:
             cancel_event.set()
-        cancel_deadline=time.monotonic()+3.0
+        cancel_deadline = time.monotonic() + 3.0
         for t in threads:
             if t.is_alive():
-                t.join(timeout=max(0.0,cancel_deadline-time.monotonic()))
-        with lock:
-            for store in unfinished: reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
-    _runtime_diag_event('collect_exit', query=str(query), returned_stores=list(reports.keys()), unfinished=unfinished)
+                t.join(timeout=max(0.0, cancel_deadline - time.monotonic()))
+
+    with lock:
+        for store in unfinished:
+            reports.setdefault(
+                store,
+                _empty_report(store, elapsed=JOB_TIMEOUT_SECONDS, error='job_timeout')
+            )
+
     return [reports[s] for s in requested if s in reports]
+
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
-def _cancel_active_jobs(wait_timeout=12.0):
+def _cancel_active_jobs(wait_timeout=60.0):
     """Cancel active jobs and wait for their search threads to finish."""
     _runtime_diag_event('cancel_active_jobs_enter')
     with JOBS_LOCK:
-        active=[(job_id,job) for job_id,job in JOBS.items() if not job.get("completed")]
-    for job_id,job in active:
-        event=job.get("cancel_event")
+        active = [
+            job for job in JOBS.values()
+            if not job.get("completed") and not job.get("done_event", threading.Event()).is_set()
+        ]
+
+    if not active:
+        _runtime_diag_event('cancel_active_jobs_no_active')
+        return
+
+    for job in active:
+        event = job.get("cancel_event")
         if event is not None:
             event.set()
-    if active:
-        print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}",flush=True)
-    deadline=time.monotonic()+max(0.0,float(wait_timeout))
-    still_active=[]
-    for job_id,job in active:
-        done=job.get("done_event")
-        if done is None:
-            still_active.append(job_id)
+
+    print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}", flush=True)
+
+    deadline = time.monotonic() + wait_timeout
+    for job in active:
+        done_event = job.get("done_event")
+        if done_event is None:
             continue
-        remaining=max(0.0,deadline-time.monotonic())
-        if not done.wait(timeout=remaining):
-            still_active.append(job_id)
-    _runtime_diag_event("cancel_active_jobs_exit",active_jobs=len(active),still_active=still_active)
-    return still_active
+        remaining = max(0.0, deadline - time.monotonic())
+        if not done_event.wait(remaining):
+            print(
+                f"SEARCH CANCEL TIMEOUT job={job.get('job_id')} "
+                f"waited={round(wait_timeout, 2)}",
+                flush=True,
+            )
+
+    _runtime_diag_event('cancel_active_jobs_done')
+
 
 
 def _new_job(query):
