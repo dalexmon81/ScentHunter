@@ -402,7 +402,25 @@ def clean_result(item, store):
                 result["size_ml"] = parsed
                 break
 
-    if "price_num" not in result:
+    # Generic structured-offer fallback. Some scrapers expose the same
+    # commercial price inside an ``offer`` object as well as (or instead of)
+    # the legacy top-level fields. Flatten only the generic price fields here;
+    # no product/store-specific rule is involved.
+    nested_offer = result.get("offer")
+    if isinstance(nested_offer, dict):
+        if result.get("price") in (None, ""):
+            nested_price = nested_offer.get("price")
+            if nested_price not in (None, ""):
+                result["price"] = nested_price
+        if result.get("price_num") in (None, ""):
+            nested_price_num = nested_offer.get("price_num")
+            if nested_price_num in (None, ""):
+                nested_price_num = nested_offer.get("price")
+            parsed_nested = _safe_float(nested_price_num)
+            if parsed_nested is not None:
+                result["price_num"] = parsed_nested
+
+    if "price_num" not in result or result.get("price_num") in (None, ""):
         parsed = _safe_float(result.get("price"))
 
         if parsed is not None:
@@ -1263,7 +1281,19 @@ def _run_job(job_id, query):
                     current_job["results"] = grouped
                     current_job["unresolved_offers"] = unresolved
                     current_job["completed"] = True
-                    current_job["status"] = "cancelled" if cancelled else "completed"
+                    if cancelled:
+                        # A cancellation can race with already-published store
+                        # results. Never describe a non-empty result set as
+                        # "cancelled (no results)"; preserve the distinction
+                        # for the frontend so it can show the available data
+                        # honestly without pretending every store completed.
+                        current_job["status"] = (
+                            "cancelled_with_results"
+                            if grouped
+                            else "cancelled"
+                        )
+                    else:
+                        current_job["status"] = "completed"
                     current_job["elapsed"] = elapsed
                     total = len(grouped)
                 else:
