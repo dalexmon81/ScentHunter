@@ -994,9 +994,17 @@ async function searchStoresProgressive(term,onPartial){
       }
       lastData=status||lastData;
       if(typeof onPartial==="function")onPartial(status||lastData,Boolean(status?.completed));
-      if(status?.completed||status?.status==="completed"||status?.status==="error"||status?.status==="cancelled")return status;
-      await new Promise(resolve=>setTimeout(resolve,700));
-    }
+      if (
+  status?.completed &&
+  (status?.status === 'completed' ||
+   status?.status === 'cancelled' ||
+   status?.status === 'error')
+) {
+  // Job terminato (ok, cancellato o errore)
+  // Mostra stato e interrompi il polling
+  return;
+}
+
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   } catch (error) {
   const safe = typeof lastData === 'object' ? lastData : empty;
