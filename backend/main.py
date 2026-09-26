@@ -1029,14 +1029,18 @@ def _snapshot(job_id):
     }
 
 def _publish_result(job_id, row):
-    if not isinstance(row, dict):
-        return
-
-    # Keep the critical section tiny: only mutate/copy shared job state.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
+
         if not job or job.get("completed"):
             return
+
+        if job.get("done_event") and job["done_event"].is_set():
+            return
+
+        if not isinstance(row, dict):
+            return
+
         job.setdefault("offers", [])
         job["offers"].append(row)
         offers = list(job["offers"])
@@ -1066,16 +1070,17 @@ def _publish_result(job_id, row):
     )
 
 def _publish_store(job_id, report):
-    if not isinstance(report, dict):
-        return
-
-    store = report["store"]
-
-    # First update the lightweight store status and copy the current offers.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
+
         if not job or job.get("completed"):
             return
+
+        if job.get("done_event") and job["done_event"].is_set():
+            return
+
+        store = report["store"]
+
 
         job["stores"][store] = {
             "status": report["status"],
