@@ -1006,6 +1006,7 @@ async function searchStoresProgressive(term,onPartial){
       if (
   status?.completed &&
   (status?.status === 'completed' ||
+   status?.status === 'completed_with_store_issues' ||
    status?.status === 'cancelled_with_results' ||
    status?.status === 'cancelled' ||
    status?.status === 'error')
@@ -1078,9 +1079,22 @@ async function searchPerfume(){
       const hasErrors=Boolean(data&&data.errors&&Object.keys(data.errors).length);
       if(final){
         const status = String(data?.status || "").toLowerCase();
-        if(status === "completed"){
+        if(status === "completed_with_store_issues"){
+          const count=Number(data?.count||groups.length||0);
           statusBox.textContent =
-            data?.count + " prodotti trovati";
+            count > 0
+              ? `${count} prodotti trovati — alcuni negozi non verificati`
+              : "0 prodotti verificati — alcuni negozi non hanno potuto essere verificati";
+        }else if(status === "completed"){
+          const count=Number(data?.count||groups.length||0);
+          // Defensive fallback for older backend states.
+          statusBox.textContent = hasUnverified
+            ? (
+                count > 0
+                  ? `${count} prodotti trovati — alcuni negozi non verificati`
+                  : "0 prodotti verificati — alcuni negozi non hanno potuto essere verificati"
+              )
+            : `${count} prodotti trovati`;
         }else if(status === "cancelled_with_results"){
           statusBox.textContent =
             `${Number(data?.count||groups.length||0)} prodotti trovati — ricerca interrotta`;
