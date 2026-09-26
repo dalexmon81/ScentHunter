@@ -8,7 +8,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-APP_VERSION = '4.3-search-lifecycle-fix'
+APP_VERSION = '4.4-search-store-state-fix'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # Read-only scraper diagnostics. This module does not participate in normal search.
@@ -1281,19 +1281,35 @@ def _run_job(job_id, query):
                     current_job["results"] = grouped
                     current_job["unresolved_offers"] = unresolved
                     current_job["completed"] = True
+
+                    # A completed job can still contain stores that were not
+                    # authoritatively verified. This is NOT the same as a
+                    # verified zero-result search, so expose a distinct final
+                    # status instead of silently presenting "0 products".
+                    store_issues = [
+                        report for report in reports
+                        if (
+                            not bool(report.get("verified"))
+                            or str(report.get("status") or "").lower()
+                            in {"error", "timeout", "blocked", "unavailable"}
+                        )
+                    ]
+
                     if cancelled:
                         # A cancellation can race with already-published store
                         # results. Never describe a non-empty result set as
-                        # "cancelled (no results)"; preserve the distinction
-                        # for the frontend so it can show the available data
-                        # honestly without pretending every store completed.
+                        # "cancelled (no results)".
                         current_job["status"] = (
                             "cancelled_with_results"
                             if grouped
                             else "cancelled"
                         )
+                    elif store_issues:
+                        current_job["status"] = "completed_with_store_issues"
                     else:
                         current_job["status"] = "completed"
+
+                    current_job["store_issue_count"] = len(store_issues)
                     current_job["elapsed"] = elapsed
                     total = len(grouped)
                 else:
