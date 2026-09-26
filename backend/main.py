@@ -10,7 +10,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 
-from catalog_engine_v5 import STORES, STORE_LABELS, db, search_local, refresh_candidates, store_status, sync_all
+from catalog_engine import STORES, STORE_LABELS, db, search_local, refresh_candidates, store_status, sync_all
 
 APP_VERSION = '5.0-catalog-first'
 BASE_DIR = Path(__file__).resolve().parent
