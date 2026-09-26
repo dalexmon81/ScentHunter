@@ -488,7 +488,14 @@ def _public_offer(item):
     Return only commercial retailer data.
     """
     canonical_name = item.get("canonical_name") or item.get("name") or item.get("title")
-    canonical_brand = item.get("brand") or item.get("canonical_brand") or item.get("manufacturer")
+    # Canonical identity must win over retailer/source brand metadata.
+    # The matcher resolves canonical_brand separately from the retailer's
+    # raw brand; using item["brand"] first caused inconsistent display.
+    canonical_brand = (
+        item.get("canonical_brand")
+        or item.get("brand")
+        or item.get("manufacturer")
+    )
 
     return {
         # Canonical identity is deliberately repeated on every public offer.
@@ -544,7 +551,14 @@ def _aggregate_identity_results(offers):
             if catalog_id not in groups:
                 groups[catalog_id] = {
                     "catalog_id": catalog_id,
-                    "brand": offer.get("brand"),
+                    "brand": (
+                        offer.get("canonical_brand")
+                        or offer.get("brand")
+                    ),
+                    "canonical_brand": (
+                        offer.get("canonical_brand")
+                        or offer.get("brand")
+                    ),
                     "name": offer.get("canonical_name") or offer.get("name"),
                     "family": offer.get("family"),
                     "variant": offer.get("variant"),
