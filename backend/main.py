@@ -919,35 +919,26 @@ def _cancel_active_jobs(wait_timeout=12.0):
 
 
 def _new_job(query):
-    _runtime_diag_event('new_job_enter', query=str(query))
-    job_id=uuid.uuid4().hex
-    with JOBS_LOCK: JOBS[job_id] = {
-    "job_id": job_id,
-    "query": query,
-    "started_at": time.time(),
-    "completed": False,
-    "cancel_event": threading.Event(),
-    "done_event": threading.Event(),
-    "aggregate_lock": threading.Lock(),
-
-    # Individual deduplicated commercial offers.
-    "offers": [],
-
-    # Canonical grouped products exposed by the API.
-    "results": [],
-
-    # Offers that were not identifiable with enough certainty.
-    "unresolved_offers": [],
-    "identity_scope": [],
-    "identity_scope_ready": False,
-
-    "comparisons": [],
-    "errors": {},
-    "stores": {},
-}
-
-    _runtime_diag_event('new_job_exit', job_id=job_id, query=str(query))
+    job_id = uuid.uuid4().hex
+    with JOBS_LOCK:
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "started_at": time.time(),
+            "completed": False,
+            "cancel_event": threading.Event(),
+            "done_event": threading.Event(),
+            "offers": [],
+            "results": [],
+            "unresolved_offers": [],
+            "comparisons": [],
+            "errors": {},
+            "stores": {},
+            "store_threads": [],
+            "thread": None,
+        }
     return job_id
+
 
 def _snapshot(job_id):
     # IMPORTANT: /search-status must remain a fast read-only endpoint.
