@@ -392,6 +392,13 @@ function normalizePerfumeName(v){
 function displayPerfumeName(name,brand){
   const b=normalizePerfumeName(brand||"");
   let n=String(name||"").replace(/\s+/g," ").trim();
+  // Canonical display is BRAND - NAME. If an upstream source already
+  // included the same brand prefix, remove it to prevent duplication.
+  if(b){
+    const rawBrand=String(brand||"").replace(/\s+/g," ").trim();
+    const escapedBrand=rawBrand.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    n=n.replace(new RegExp("^\\s*"+escapedBrand+"\\s*[-–—:|]\\s*","i"),"").trim();
+  }
   // Le indicazioni Dames/Heren/Damen/Herren sono rumore commerciale
   // anche nel nome visualizzato: la normalizzazione della chiave da sola
   // non basta, perché la prima offerta può diventare il titolo della scheda.
@@ -758,7 +765,8 @@ function shGroupData(data){
     const offers=(Array.isArray(group.offers)?group.offers:[]).map(offer=>({
       ...offer,
       catalog_id:offer.catalog_id||group.catalog_id||"",
-      brand:offer.brand||group.brand||"",
+      brand:offer.canonical_brand||offer.brand||group.canonical_brand||group.brand||"",
+      canonical_brand:offer.canonical_brand||group.canonical_brand||group.brand||offer.brand||"",
       name:offer.canonical_name||offer.name||group.canonical_name||group.name||"",
       canonical_name:offer.canonical_name||group.canonical_name||group.name||"",
       family:offer.family||group.family||"",
@@ -768,7 +776,8 @@ function shGroupData(data){
     const image=String(group.image||"").trim();
     return {
       catalog_id:String(group.catalog_id||"").trim(),
-      brand:String(group.brand||"").trim(),
+      brand:String(group.canonical_brand||group.brand||"").trim(),
+      canonical_brand:String(group.canonical_brand||group.brand||"").trim(),
       name:String(group.canonical_name||group.name||"").trim(),
       canonical_name:String(group.canonical_name||group.name||"").trim(),
       family:String(group.family||"").trim(),
