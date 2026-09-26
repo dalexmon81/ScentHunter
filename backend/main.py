@@ -1679,23 +1679,36 @@ def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
 @app.get('/search-start')
-def search_start(q:str):
-    _runtime_diag_event('http_search_start_enter', query=str(q or ''))
-    query=str(q or '').strip()
+def search_start(q: str):
+    query = str(q or '').strip()
     if not query:
-        return {'job_id':'','query':'','completed':True,'status':'completed','count':0,'results':[],'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{},'stores':{}}
-    still_active=_cancel_active_jobs(wait_timeout=12.0)
-    if still_active:
-        payload={'job_id':'','query':query,'completed':False,'status':'busy','count':0,'offer_count':0,'results':[],
-                 'unresolved_offers':[],'identity_scope':[],'comparisons':[],'errors':{'job':'previous_search_still_stopping'},
-                 'stores':{},'retry_after_ms':500}
-        _runtime_diag_event('http_search_start_busy',query=query,still_active=still_active)
-        return payload
-    job_id=_new_job(query)
-    threading.Thread(target=_run_job,args=(job_id,query),daemon=True,name=f'scenthunter-search-{job_id[:8]}').start()
-    snap=_snapshot(job_id)
-    _runtime_diag_event('http_search_start_exit', job_id=job_id, completed=bool(snap.get('completed')), count=snap.get('count'))
-    return snap
+        return {
+            'job_id': '',
+            'query': '',
+            'completed': True,
+            'status': 'completed',
+            'count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {},
+            'stores': {},
+        }
+
+    # Cancellazione handshake vera
+    _cancel_active_jobs(wait_timeout=60.0)
+
+    job_id = _new_job(query)
+    threading.Thread(
+        target=_run_job,
+        args=(job_id, query),
+        daemon=True,
+        name=f'scenthunter-search-{job_id[:8]}'
+    ).start()
+
+    return _snapshot(job_id)
+
 
 @app.get('/search-status/{job_id}')
 def search_status_path(job_id:str): return _snapshot(job_id)
