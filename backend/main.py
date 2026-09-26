@@ -1197,31 +1197,87 @@ def _run_job_impl(job_id,query):
     if done_event is not None: done_event.set()
     _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
 
-def _run_job(job_id,query):
+def _run_job(job_id, query):
+    started = time.monotonic()
+    print(f'SEARCH START job={job_id} query={query!r}', flush=True)
+
+    job = None
+    cancel_event = None
+    store_threads = []
+
     try:
-        _run_job_impl(job_id,query)
+        with JOBS_LOCK:
+            current_job = JOBS.get(job_id)
+            if current_job is None:
+                print(f'SEARCH END job={job_id} elapsed={round(time.monotonic() - started, 3)} total=0 (job_not_found)', flush=True)
+                return
+
+            current_job["thread"] = threading.current_thread()
+            cancel_event = current_job.get("cancel_event")
+            job = current_job
+
+        def on_report(r):
+            _publish_store(job_id, r)
+
+        def on_result(row):
+            _publish_result(job_id, row)
+
+        reports = collect_store_reports_isolated(
+            query,
+            STORES,
+            on_report=on_report,
+            on_result=on_result,
+            cancel_event=cancel_event,
+            job_id=job_id,
+        )
+
+        # Registriamo i thread store nel job (per diagnosi / eventuali cleanup futuri)
+        with JOBS_LOCK:
+            if job is not None:
+                job["store_threads"] = [
+                    t for t in threading.enumerate()
+                    if t.name.startswith("scenthunter-store-")
+                ]
+
+        with JOBS_LOCK:
+            if job is None:
+                return
+            job["offers"] = dedupe_results(
+                job.get("offers", []),
+                job.setdefault("dedupe_diagnostics", []),
+            )
+            grouped, unresolved = _aggregate_identity_results(job["offers"])
+            job["results"] = grouped
+            job["unresolved_offers"] = unresolved
+
+            cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
+            job["completed"] = True
+            job["status"] = "cancelled" if cancelled else "completed"
+            job["elapsed"] = round(time.monotonic() - started, 3)
+
+            elapsed = job["elapsed"]
+            total = len(job["results"])
+
     except Exception as exc:
-        elapsed=0.0
+        print(f'SEARCH ERROR job={job_id} {type(exc).__name__}: {exc}', flush=True)
         with JOBS_LOCK:
-            job=JOBS.get(job_id)
-            if job:
-                elapsed=round(time.time()-float(job.get("started_at",time.time())),3)
-                job.setdefault("errors",{})["job"]=f"{type(exc).__name__}: {exc}"
-                job["completed"]=True
-                job["status"]="error"
-                job["elapsed"]=elapsed
-                done_event=job.get("done_event")
-            else:
-                done_event=None
-        _runtime_diag_event('job_thread_exception',job_id=job_id,query=str(query),elapsed=elapsed,error=f"{type(exc).__name__}: {exc}")
-        if done_event is not None: done_event.set()
+            if job is not None:
+                job["completed"] = True
+                job["status"] = "error"
+                job.setdefault("errors", {})["job"] = f"{type(exc).__name__}: {exc}"
+                job["elapsed"] = round(time.monotonic() - started, 3)
+                elapsed = job["elapsed"]
+                total = len(job.get("results", []))
     finally:
+        # Finalizzazione definitiva: done_event
         with JOBS_LOCK:
-            job=JOBS.get(job_id)
-            done_event=job.get("done_event") if job else None
-        if done_event is not None:
-            done_event.set()
-        _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
+            if job is not None:
+                done_event = job.get("done_event")
+                if done_event is not None:
+                    done_event.set()
+
+        print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}', flush=True)
+
 
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
