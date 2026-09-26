@@ -154,7 +154,17 @@ def freshen(rows):
 
 def do_search(query):
     started=time.monotonic()
-    local=search_local(query, per_store=10)
+    search_terms = []
+    if MATCHER is not None:
+        try:
+            method = getattr(MATCHER, 'catalog_search_terms', None)
+            if callable(method):
+                search_terms = method(query) or []
+        except Exception as exc:
+            print(f'CATALOG_SEARCH_TERMS_ERROR {type(exc).__name__}: {exc}', flush=True)
+    is_family_expansion = len(search_terms) > 1
+    candidate_limit = 32 if is_family_expansion else 12
+    local=search_local(query, per_store=candidate_limit, search_terms=search_terms or None)
     candidate_by_store={k:0 for k in STORES}
     for row in local:
         candidate_by_store[row.get('store_key')]=candidate_by_store.get(row.get('store_key'),0)+1
