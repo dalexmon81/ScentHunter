@@ -810,25 +810,45 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
 
 
 def _run_store_subprocess(store, query, on_result=None, cancel_event=None):
-    """Retry results that are not safely classified by the store contract."""
+    """Retry only an unverified search result, never a technical failure.
+
+    A technical failure (timeout/error/blocked/unavailable/cancelled) is already
+    an authoritative store failure for this attempt. Retrying it here can make
+    one store occupy its lane for another 45 seconds and, with the 2-slot light
+    lane, starve the other stores until the 125s job deadline cancels them.
+    """
     first=_run_store_subprocess_once(store,query,on_result=on_result,cancel_event=cancel_event)
     fs=first.get('status'); fv=bool(first.get('verified')); fc=int(first.get('count') or 0)
+
+    # IMPORTANT: technical failures are NOT retried. This restores the old
+    # lifecycle behaviour and prevents a slow/blocked store from monopolising
+    # a lane and cascading cancellation into other stores.
+    if fs in {'timeout','error','blocked','unavailable','cancelled'}:
+        first['attempts']=1
+        return first
+
     if fv and (fs in {'ok','no_match'} or (fs=='partial' and fc>0)):
         first['attempts']=1
         return first
+
+    # Only ambiguous/unverified search outcomes are eligible for one retry.
     print(f"STORE RETRY store={store} query={query!r} reason={fs} verified={fv} count={fc}",flush=True)
     base_timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     retry_timeout=max(12.0,min(base_timeout*0.75,45.0))
     second=_run_store_subprocess_once(store,query,on_result=on_result,timeout_override=retry_timeout,cancel_event=cancel_event)
     second['attempts']=2; second['first_attempt_status']=fs; second['first_attempt_verified']=fv
     ss=second.get('status'); sv=bool(second.get('verified')); sc=int(second.get('count') or 0)
+
     if ss=='no_match' and sv:
         second['status']='no_match'; second['verified']=True; second['error']=None; return second
     if ss=='ok' and sv: return second
     if ss=='partial' and sv and sc>0: return second
+
     second['verified']=False
-    if ss not in {'error','timeout','blocked','unavailable'}: second['status']='unavailable'
-    if not second.get('error'): second['error']=f"store_unverified_after_retry:{second.get('status')}"
+    if ss not in {'error','timeout','blocked','unavailable','cancelled'}:
+        second['status']='unavailable'
+    if not second.get('error'):
+        second['error']=f"store_unverified_after_retry:{second.get('status')}"
     return second
 
 def _run_controlled_store(store,query,on_report,on_result=None,cancel_event=None):
@@ -918,8 +938,13 @@ def collect_store_reports_isolated(query, stores, on_report=None, on_result=None
 
 JOBS={}; JOBS_LOCK=threading.Lock()
 
-def _cancel_active_jobs(wait_timeout=60.0):
-    """Cancel active jobs and wait for their search threads to finish."""
+def _cancel_active_jobs(wait_timeout=2.5):
+    """Request cancellation and wait briefly for active search jobs to finish.
+
+    /search-start must remain responsive.  A previous search is cancelled first,
+    but if its thread has not reached its done_event within the short handshake
+    window, the caller must return ``busy`` rather than blocking the HTTP request.
+    """
     _runtime_diag_event('cancel_active_jobs_enter')
     with JOBS_LOCK:
         active = [
@@ -929,7 +954,7 @@ def _cancel_active_jobs(wait_timeout=60.0):
 
     if not active:
         _runtime_diag_event('cancel_active_jobs_no_active')
-        return
+        return True
 
     for job in active:
         event = job.get("cancel_event")
@@ -938,20 +963,24 @@ def _cancel_active_jobs(wait_timeout=60.0):
 
     print(f"SEARCH CANCEL REQUEST active_jobs={len(active)}", flush=True)
 
-    deadline = time.monotonic() + wait_timeout
+    deadline = time.monotonic() + max(0.1, float(wait_timeout))
+    all_done = True
     for job in active:
         done_event = job.get("done_event")
         if done_event is None:
+            all_done = False
             continue
         remaining = max(0.0, deadline - time.monotonic())
-        if not done_event.wait(remaining):
+        if remaining <= 0 or not done_event.wait(remaining):
+            all_done = False
             print(
-                f"SEARCH CANCEL TIMEOUT job={job.get('job_id')} "
+                f"SEARCH CANCEL HANDSHAKE PENDING job={job.get('job_id')} "
                 f"waited={round(wait_timeout, 2)}",
                 flush=True,
             )
 
-    _runtime_diag_event('cancel_active_jobs_done')
+    _runtime_diag_event('cancel_active_jobs_done', all_done=all_done, active_jobs=len(active))
+    return all_done
 
 
 
@@ -965,6 +994,7 @@ def _new_job(query):
             "completed": False,
             "cancel_event": threading.Event(),
             "done_event": threading.Event(),
+            "aggregate_lock": threading.Lock(),
             "offers": [],
             "results": [],
             "unresolved_offers": [],
@@ -1029,36 +1059,46 @@ def _snapshot(job_id):
     }
 
 def _publish_result(job_id, row):
+    if not isinstance(row, dict):
+        return
+
+    # Serialize the entire per-job snapshot/update cycle.  The lock is acquired
+    # BEFORE taking the offers snapshot, otherwise two concurrent store threads
+    # could compute from different snapshots and a stale computation could
+    # overwrite a newer one.  JOBS_LOCK is held only for short mutations.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-
         if not job or job.get("completed"):
             return
-
         if job.get("done_event") and job["done_event"].is_set():
             return
+        aggregate_lock = job.get("aggregate_lock")
 
-        if not isinstance(row, dict):
-            return
+    if aggregate_lock is None:
+        return
 
-        job.setdefault("offers", [])
-        job["offers"].append(row)
-        offers = list(job["offers"])
-        diagnostics = job.setdefault("dedupe_diagnostics", [])
+    with aggregate_lock:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+            if job.get("done_event") and job["done_event"].is_set():
+                return
+            job.setdefault("offers", []).append(row)
+            offers = list(job["offers"])
+            diagnostics = job.setdefault("dedupe_diagnostics", [])
 
-    # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
-    with job.get("aggregate_lock", threading.Lock()):
+        # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
         deduped = dedupe_results(offers, diagnostics)
         grouped, unresolved = _aggregate_identity_results(deduped)
 
-    # Re-acquire briefly and publish only if this job is still the same active job.
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job or job.get("completed"):
-            return
-        job["offers"] = deduped
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+            job["offers"] = deduped
+            job["results"] = grouped
+            job["unresolved_offers"] = unresolved
 
     print(
         "SEARCH PUBLISH RESULT "
@@ -1070,50 +1110,60 @@ def _publish_result(job_id, row):
     )
 
 def _publish_store(job_id, report):
+    store = report["store"]
+
+    # Serialize the store snapshot/update cycle for this job.  This prevents a
+    # slower aggregation from publishing an older offers snapshot after a
+    # newer store report has already arrived.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-
         if not job or job.get("completed"):
             return
-
         if job.get("done_event") and job["done_event"].is_set():
             return
+        aggregate_lock = job.get("aggregate_lock")
 
-        store = report["store"]
+    if aggregate_lock is None:
+        return
 
+    with aggregate_lock:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+            if job.get("done_event") and job["done_event"].is_set():
+                return
 
-        job["stores"][store] = {
-            "status": report["status"],
-            "verified": bool(report.get("verified")),
-            "elapsed": report["elapsed"],
-            "count": report["count"],
-            "details": dict(report.get("details") or {}),
-        }
+            job["stores"][store] = {
+                "status": report["status"],
+                "verified": bool(report.get("verified")),
+                "elapsed": report["elapsed"],
+                "count": report["count"],
+                "details": dict(report.get("details") or {}),
+            }
 
-        if report.get("error"):
-            job["errors"][store] = report["error"]
+            if report.get("error"):
+                job["errors"][store] = report["error"]
 
-        for item in report.get("results", []):
-            if isinstance(item, dict):
-                job.setdefault("offers", [])
-                job["offers"].append(item)
+            for item in report.get("results", []):
+                if isinstance(item, dict):
+                    job.setdefault("offers", []).append(item)
 
-        offers = list(job.get("offers", []))
-        diagnostics = job.setdefault("dedupe_diagnostics", [])
+            offers = list(job.get("offers", []))
+            diagnostics = job.setdefault("dedupe_diagnostics", [])
 
-    # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
-    with job.get("aggregate_lock", threading.Lock()):
+        # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
         deduped = dedupe_results(offers, diagnostics)
         grouped, unresolved = _aggregate_identity_results(deduped)
 
-    # Publish the computed snapshot with a short lock.
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job or job.get("completed"):
-            return
-        job["offers"] = deduped
-        job["results"] = grouped
-        job["unresolved_offers"] = unresolved
+        # Publish the computed snapshot with a short lock.
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("completed"):
+                return
+            job["offers"] = deduped
+            job["results"] = grouped
+            job["unresolved_offers"] = unresolved
 
     print(
         "SEARCH PUBLISH "
@@ -1124,83 +1174,9 @@ def _publish_store(job_id, report):
         flush=True,
     )
 
-def _run_job_impl(job_id,query):
-    _runtime_diag_event('job_thread_start', job_id=job_id, query=str(query))
-    started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    done_event=None
-
-    with JOBS_LOCK:
-        current_job=JOBS.get(job_id)
-        cancel_event=current_job.get("cancel_event") if current_job else None
-        done_event=current_job.get("done_event") if current_job else None
-
-    # Compute the query identity scope ONCE, outside JOBS_LOCK.
-    # This can scan the catalog and is too expensive for /search-status.
-    try:
-        identity_scope = _identity_scope(query)
-    except Exception:
-        identity_scope = []
-
-    with JOBS_LOCK:
-        current_job=JOBS.get(job_id)
-        if current_job and not current_job.get("completed"):
-            current_job["identity_scope"] = list(identity_scope)
-            current_job["identity_scope_ready"] = True
-
-    if cancel_event is not None and cancel_event.is_set():
-        with JOBS_LOCK:
-            current_job=JOBS.get(job_id)
-            if current_job:
-                current_job["completed"]=True
-                current_job["status"]="cancelled"
-                current_job["elapsed"]=round(time.monotonic()-started,3)
-        if done_event is not None: done_event.set()
-        _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
-        return
-
-    collect_store_reports_isolated(
-        query,
-        STORES,
-        on_report=lambda r:_publish_store(job_id,r),
-        on_result=lambda row:_publish_result(job_id,row),
-        cancel_event=cancel_event,
-    )
-
-    # Copy the final offer set while holding the lock only briefly.
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job:
-            elapsed = round(time.monotonic() - started, 3)
-            total = 0
-            _runtime_diag_event('job_thread_end', job_id=job_id, query=str(query), elapsed=elapsed, total=total)
-            return
-        offers = list(job.get("offers", []))
-        diagnostics = job.setdefault("dedupe_diagnostics", [])
-        cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
-
-    # Final heavy work is serialized per job, but never under JOBS_LOCK.
-    with job.get("aggregate_lock", threading.Lock()):
-        deduped = dedupe_results(offers, diagnostics)
-        grouped, unresolved = _aggregate_identity_results(deduped)
-    elapsed = round(time.monotonic() - started, 3)
-
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if job:
-            job["offers"] = deduped
-            job["results"] = grouped
-            job["unresolved_offers"] = unresolved
-            job["completed"] = True
-            job["status"] = "cancelled" if cancelled else "completed"
-            job["elapsed"] = elapsed
-            total = len(grouped)
-        else:
-            total = 0
-
-    _runtime_diag_event('job_thread_end', job_id=job_id, query=str(query), elapsed=elapsed, total=total)
-    print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}',flush=True)
-    if done_event is not None: done_event.set()
-    _runtime_diag_event('job_thread_done_signal',job_id=job_id,query=str(query))
+def _run_job_impl(job_id, query):
+    """Compatibility wrapper; the single authoritative lifecycle is _run_job."""
+    return _run_job(job_id, query)
 
 def _run_job(job_id, query):
     started = time.monotonic()
@@ -1209,6 +1185,8 @@ def _run_job(job_id, query):
     job = None
     cancel_event = None
     store_threads = []
+    elapsed = 0.0
+    total = 0
 
     try:
         with JOBS_LOCK:
@@ -1244,24 +1222,38 @@ def _run_job(job_id, query):
                     if t.name.startswith("scenthunter-store-")
                 ]
 
+        # Copy only the mutable inputs while holding JOBS_LOCK.  Dedupe and
+        # ProductMatcher aggregation can be expensive and MUST remain outside
+        # the global job lock, otherwise /search-status and /search-start can
+        # block behind matcher/catalog work.
         with JOBS_LOCK:
             if job is None:
-                return
-            job["offers"] = dedupe_results(
-                job.get("offers", []),
-                job.setdefault("dedupe_diagnostics", []),
-            )
-            grouped, unresolved = _aggregate_identity_results(job["offers"])
-            job["results"] = grouped
-            job["unresolved_offers"] = unresolved
+                elapsed = round(time.monotonic() - started, 3)
+                total = 0
+            else:
+                offers = list(job.get("offers", []))
+                diagnostics = job.setdefault("dedupe_diagnostics", [])
+                cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
 
-            cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
-            job["completed"] = True
-            job["status"] = "cancelled" if cancelled else "completed"
-            job["elapsed"] = round(time.monotonic() - started, 3)
+        if job is not None:
+            with job.get("aggregate_lock"):
+                deduped = dedupe_results(offers, diagnostics)
+                grouped, unresolved = _aggregate_identity_results(deduped)
 
-            elapsed = job["elapsed"]
-            total = len(job["results"])
+            elapsed = round(time.monotonic() - started, 3)
+
+            with JOBS_LOCK:
+                current_job = JOBS.get(job_id)
+                if current_job is not None:
+                    current_job["offers"] = deduped
+                    current_job["results"] = grouped
+                    current_job["unresolved_offers"] = unresolved
+                    current_job["completed"] = True
+                    current_job["status"] = "cancelled" if cancelled else "completed"
+                    current_job["elapsed"] = elapsed
+                    total = len(grouped)
+                else:
+                    total = 0
 
     except Exception as exc:
         print(f'SEARCH ERROR job={job_id} {type(exc).__name__}: {exc}', flush=True)
@@ -1696,8 +1688,25 @@ def search_start(q: str):
             'stores': {},
         }
 
-    # Cancellazione handshake vera
-    _cancel_active_jobs(wait_timeout=60.0)
+    # Cancellation handshake must never block the HTTP request for a full
+    # store/job timeout.  If the previous job is still shutting down, the
+    # frontend can retry /search-start after a short delay.
+    if not _cancel_active_jobs(wait_timeout=2.5):
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 700,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'job': 'previous_search_still_stopping'},
+            'stores': {},
+        }
 
     job_id = _new_job(query)
     threading.Thread(
