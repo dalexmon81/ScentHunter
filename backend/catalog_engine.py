@@ -452,85 +452,244 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
     return status, new_count, error
 
 
-def discover_store(store):
-    """Build/update one persistent URL catalog from the retailer's public sitemaps."""
-    started_at = time.time()
-    roots, robots_diagnostics = _seed_sitemaps(store)
-    queue = [(url, 0) for url in roots]
-    queued = set(roots)
-    visited = set()
-    product_urls = {}
-    sitemap_errors = []
-    sitemap_successes = 0
-    sitemap_url_entries = 0
 
-    while queue and len(visited) < MAX_SITEMAPS_PER_STORE and len(product_urls) < MAX_TOTAL_DISCOVERED_URLS:
-        batch = []
-        while queue and len(batch) < SYNC_WORKERS * 4:
-            sm, depth = queue.pop(0)
-            if sm in visited:
-                continue
-            visited.add(sm)
-            batch.append((sm, depth))
+# HTML catalog-discovery fallback. This is NOT user-query search. It is a
+# background crawl of the retailer's own category/brand/navigation surfaces,
+# used only when sitemap discovery yields no usable product URLs.
+HTML_DISCOVERY_SEEDS = {
+    'easycosmetic': (
+        'https://www.easycosmetic.de/',
+        'https://www.easycosmetic.de/parfum',
+        'https://www.easycosmetic.de/alle-marken',
+    ),
+    'deloox': (
+        'https://www.deloox.com/',
+        'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
+        'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
+        'https://www.deloox.be/en/category/1103659/fragrances.html',
+        'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/category/1075750/mens-perfume.html',
+    ),
+}
+HTML_MAX_PAGES = 800
+HTML_MAX_DEPTH = 5
+HTML_WORKERS = 12
 
-        if not batch:
-            continue
 
-        with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(batch))) as pool:
-            futures = {pool.submit(_fetch_sitemap, store, sm): (sm, depth) for sm, depth in batch}
-            for future in as_completed(futures):
-                sm, depth = futures[future]
-                try:
-                    _source, final, entries, error = future.result()
+def _html_product_url(store, raw_url, base_url):
+    if not raw_url:
+        return None
+    absolute = urllib.parse.urljoin(base_url, raw_url).split('#', 1)[0]
+    p = urllib.parse.urlparse(absolute)
+    if p.scheme not in ('http', 'https'):
+        return None
+    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
+    if p.netloc.lower() not in allowed_hosts:
+        return None
+    path = p.path or '/'
+    low = path.lower()
+    if store == 'easycosmetic':
+        if not low.endswith('.aspx'):
+            return None
+        if any(x in low for x in ('/suche', '/service', '/kontakt', '/impressum', '/datenschutz', '/agb', '/versand', '/zahlung', '/marken', '/alle-marken', '/faq/')):
+            return None
+        return absolute
+    if store == 'deloox':
+        if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
+            return absolute
+        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
+            return absolute
+        return None
+    return absolute if _looks_product(absolute) else None
+
+
+def _html_listing_url(store, raw_url, base_url, label=''):
+    if not raw_url:
+        return None
+    absolute = urllib.parse.urljoin(base_url, raw_url).split('#', 1)[0]
+    p = urllib.parse.urlparse(absolute)
+    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
+    if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
+        return None
+    path = p.path.lower()
+    text = norm(f'{path} {p.query} {label}')
+    if any(x in path for x in ('/login', '/account', '/cart', '/checkout', '/service', '/kontakt', '/impressum', '/datenschutz', '/agb', '/versand', '/zahlung', '/faq/')):
+        return None
+    if path.endswith(('.jpg','.jpeg','.png','.gif','.svg','.webp','.pdf','.css','.js')):
+        return None
+    if store == 'easycosmetic':
+        # Brand/category pages are commonly one or two path components; the
+        # explicit perfume/brand roots are the important catalog surfaces.
+        if path.endswith('.aspx'):
+            return None
+        if any(k in text for k in ('page ', 'seite ', 'offset ', 'parfum', 'marken', 'brand', 'category', 'kategorie')):
+            return absolute
+        parts=[x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 2:
+            return absolute
+        return None
+    if store == 'deloox':
+        if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
+            return absolute
+        if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
+            return absolute
+        parts=[x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 3 and not path.endswith('.html'):
+            return absolute
+        return None
+    return None
+
+
+def _fetch_html_page(store, url):
+    try:
+        resp = _http_fetch(url, timeout=HTTP_TIMEOUT)
+        if resp['status'] >= 400 or not resp['data']:
+            return url, resp['url'], None, _diagnostic(resp, url)
+        data = resp['data']
+        ctype = (resp.get('content_type') or '').lower()
+        if 'html' not in ctype and not re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
+            return url, resp['url'], None, f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
+        return url, resp['url'], data, None
+    except Exception as exc:
+        return url, url, None, f'{type(exc).__name__}:{exc}'
+
+
+def _discover_html_catalog(store, seeds):
+    queue=[]
+    queued=set()
+    visited=set()
+    product_urls={}
+    errors=[]
+    successes=0
+
+    def add(url, depth):
+        if not url or len(queued) >= HTML_MAX_PAGES * 2:
+            return
+        key=url.split('#',1)[0]
+        if key not in queued and key not in visited and depth <= HTML_MAX_DEPTH:
+            queued.add(key); queue.append((key,depth))
+
+    for seed in seeds:
+        add(seed,0)
+
+    while queue and len(visited) < HTML_MAX_PAGES:
+        batch=[]
+        while queue and len(batch)<HTML_WORKERS and len(visited)+len(batch)<HTML_MAX_PAGES:
+            item=queue.pop(0)
+            if item[0] in visited: continue
+            visited.add(item[0]); batch.append(item)
+        if not batch: continue
+        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(batch))) as pool:
+            futures={pool.submit(_fetch_html_page,store,u):(u,d) for u,d in batch}
+            for f in as_completed(futures):
+                requested,depth=futures[f]
+                try: _requested,final,data,error=f.result()
                 except Exception as exc:
-                    final, entries = sm, []
-                    error = f'EXCEPTION:{type(exc).__name__}:{exc}'
-
+                    errors.append(f'{requested} -> {type(exc).__name__}:{exc}'); continue
                 if error:
-                    sitemap_errors.append(f'{sm} -> {error}')
-                    continue
-
-                sitemap_successes += 1
-                sitemap_url_entries += len(entries)
-
-                for kind, raw_url, lastmod in entries:
-                    if not raw_url:
+                    errors.append(f'{requested} -> {error}'); continue
+                successes+=1
+                soup=BeautifulSoup(data,'html.parser')
+                # Product URLs are collected directly from links and common
+                # data attributes. No product name/brand/price is embedded.
+                for a in soup.find_all('a',href=True):
+                    href=a.get('href'); label=a.get_text(' ',strip=True)
+                    product=_html_product_url(store,href,final or requested)
+                    if product:
+                        product_urls[product]=''
                         continue
-                    absolute = urllib.parse.urljoin(final or sm, raw_url.strip())
-                    if kind == 'sitemap':
-                        if depth + 1 <= MAX_SITEMAP_DEPTH and absolute not in queued:
-                            queued.add(absolute)
-                            queue.append((absolute, depth + 1))
-                    elif _looks_product(absolute):
-                        product_urls[absolute] = lastmod or ''
-                        if len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS:
-                            break
-
-    diagnostics = {
-        'visited': len(visited),
-        'successes': sitemap_successes,
-        'entries': sitemap_url_entries,
-        'errors': len(sitemap_errors),
-    }
-    status, count, error = _save_discovery(store, product_urls, started_at, diagnostics)
-
-    # Keep the error field useful without flooding /catalog-status.
-    compact_errors = sitemap_errors[:12]
-    if not error and compact_errors:
-        error = 'sitemap_warnings=' + ' | '.join(compact_errors)
-        conn = db()
-        conn.execute('UPDATE sync_state SET error=? WHERE store=?', (error, store))
-        conn.commit()
-        conn.close()
+                    listing=_html_listing_url(store,href,final or requested,label)
+                    if listing:
+                        add(listing,depth+1)
+                for node in soup.find_all(True):
+                    for attr in ('data-url','data-href','data-link','data-product-url','data-product-link','data-target'):
+                        raw=node.get(attr)
+                        if not raw: continue
+                        product=_html_product_url(store,raw,final or requested)
+                        if product: product_urls[product]=''; continue
+                        listing=_html_listing_url(store,raw,final or requested,node.get_text(' ',strip=True)[:300])
+                        if listing: add(listing,depth+1)
 
     return {
-        'count': count,
-        'status': status,
-        'visited_sitemaps': len(visited),
-        'sitemap_successes': sitemap_successes,
-        'xml_entries': sitemap_url_entries,
-        'robots': robots_diagnostics[:8],
-        'errors': compact_errors,
+        'product_urls':product_urls,
+        'visited':len(visited),
+        'successes':successes,
+        'errors':errors[:20],
+    }
+
+
+def discover_store(store):
+    """Build/update one persistent URL catalog.
+
+    Discovery order is deliberately layered:
+      1) robots-declared/standard sitemaps
+      2) sitemap tree expansion
+      3) retailer category/brand/navigation crawl if sitemap discovery is empty
+
+    The fallback is catalog discovery, not the user's search query.
+    """
+    started_at=time.time()
+    roots,robots_diagnostics=_seed_sitemaps(store)
+    queue=[(url,0) for url in roots]
+    queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
+    sitemap_successes=0; sitemap_url_entries=0
+
+    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS:
+        batch=[]
+        while queue and len(batch)<SYNC_WORKERS*4:
+            sm,depth=queue.pop(0)
+            if sm in visited: continue
+            visited.add(sm); batch.append((sm,depth))
+        if not batch: continue
+        with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS,len(batch))) as pool:
+            futures={pool.submit(_fetch_sitemap,store,sm):(sm,depth) for sm,depth in batch}
+            for f in as_completed(futures):
+                sm,depth=futures[f]
+                try: _source,final,entries,error=f.result()
+                except Exception as exc:
+                    final,entries=sm,[]; error=f'EXCEPTION:{type(exc).__name__}:{exc}'
+                if error:
+                    sitemap_errors.append(f'{sm} -> {error}'); continue
+                sitemap_successes+=1; sitemap_url_entries+=len(entries)
+                for kind,raw_url,lastmod in entries:
+                    absolute=urllib.parse.urljoin(final or sm,raw_url.strip()) if raw_url else ''
+                    if kind=='sitemap':
+                        if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
+                            queued.add(absolute); queue.append((absolute,depth+1))
+                    elif _looks_product(absolute):
+                        product_urls[absolute]=lastmod or ''
+                        if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS: break
+
+    fallback=None
+    # Critical: zero sitemap URLs is not a NOT_FOUND condition. Use the
+    # retailer's public catalog/navigation surfaces before declaring empty.
+    if not product_urls and store in HTML_DISCOVERY_SEEDS:
+        fallback=_discover_html_catalog(store,HTML_DISCOVERY_SEEDS[store])
+        product_urls.update(fallback['product_urls'])
+
+    diagnostics={
+        'visited':len(visited),
+        'successes':sitemap_successes,
+        'entries':sitemap_url_entries,
+        'errors':len(sitemap_errors),
+    }
+    status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
+
+    details=[]
+    if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if fallback is not None:
+        details.append(f'html_fallback=visited:{fallback["visited"]};successes:{fallback["successes"]};products:{len(fallback["product_urls"])}')
+        if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+    final_error=' | '.join(details) if details else error
+    conn=db()
+    conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
+    conn.commit(); conn.close()
+
+    return {
+        'count':count,'status':status,'visited_sitemaps':len(visited),
+        'sitemap_successes':sitemap_successes,'xml_entries':sitemap_url_entries,
+        'robots':robots_diagnostics[:8],'errors':sitemap_errors[:12],
+        'html_fallback':fallback,
     }
 
 
