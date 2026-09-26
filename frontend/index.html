@@ -998,14 +998,21 @@ async function searchStoresProgressive(term,onPartial){
       await new Promise(resolve=>setTimeout(resolve,700));
     }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
-  }catch(error){
-    const safe=lastData&&typeof lastData==="object"?lastData:empty;
-    const failed={...safe,query:safe.query||query,
-      errors:{...(safe.errors||{}),_search:String(error?.message||error||"Errore ricerca")},
-      completed:Boolean(safe.completed),status:safe.status||"searching"};
-    if(typeof onPartial==="function")onPartial(failed,Boolean(failed.completed));
-    return failed;
-  }
+  } catch (error) {
+  const safe = typeof lastData === 'object' ? lastData : empty;
+  const failed = {
+    ...safe,
+    query: safe.query || query,
+    errors: {
+      ...(safe.errors || {}),
+      search: error?.message || 'Errore ricerca'
+    },
+    completed: false,
+    status: 'error'
+  };
+  if (typeof onPartial === 'function') onPartial(failed, true);
+  return failed;
+}
 }
 
 async function searchPerfume(){
