@@ -1437,6 +1437,30 @@ class ProductMatcher:
 
         return self._match_generic(offer, query, started)
 
+    def catalog_search_terms(self, query: str) -> List[str]:
+        """Return canonical identity terms useful for retailer URL discovery.
+
+        This is discovery/ranking telemetry only. It never accepts or rejects
+        an offer and ProductMatcher.match() remains the sole identity decision.
+        For a known family it exposes the family variants so a broad family
+        query cannot be truncated to the first alphabetic URLs in a sitemap.
+        """
+        query = str(query or "").strip()
+        if not query:
+            return []
+        terms = [query]
+        family = self._family_for_query(query)
+        if family is not None:
+            for variant in family.get("variants") or []:
+                canonical = str(variant.get("canonical_name") or "").strip()
+                if canonical and canonical not in terms:
+                    terms.append(canonical)
+                for alias in variant.get("aliases") or []:
+                    alias = str(alias or "").strip()
+                    if alias and alias not in terms:
+                        terms.append(alias)
+        return terms[:80]
+
     def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
         """Return compact, JSON-safe identity candidates for diagnostics.
 
