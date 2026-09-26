@@ -1001,8 +1001,9 @@ async function searchStoresProgressive(term,onPartial){
    status?.status === 'error')
 ) {
   // Job terminato (ok, cancellato o errore)
-  // Mostra stato e interrompi il polling
-  return;
+  // Restituisce l'ultimo stato al chiamante, così renderData()
+  // non riceve undefined e non cancella risultati/stato finale.
+  return status || lastData;
       }
     }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
