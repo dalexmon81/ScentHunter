@@ -1066,10 +1066,16 @@ async function searchPerfume(){
     };
     const data=await searchStoresProgressive(q,renderData);
     renderData(data,true);
-  }catch(e){
-    console.error(e);statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
-  }finally{searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA";}
+  } catch (e) {
+  console.error(e);
+  statusBox.textContent = String(e?.message) || 'Impossibile completare la ricerca.';
+  // Non forziamo completed:true: il backend decide quando un job è terminato.
+} finally {
+  searchButton.disabled = false;
+  searchButton.classList.remove('searching');
+  searchButton.textContent = 'INIZIA LA RICERCA';
 }
+
 
 searchButton.addEventListener("click",searchPerfume);
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume();}});
