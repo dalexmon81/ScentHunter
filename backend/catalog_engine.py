@@ -982,10 +982,25 @@ def refresh_url(store, url):
         return None
 
 
-def search_local(query, per_store=12):
+def search_local(query, per_store=12, search_terms=None):
+    """Search the local URL catalog without calling retailer search endpoints.
+
+    ``search_terms`` may contain canonical identity variants supplied by the
+    central ProductMatcher. They are used only to rank/discover URLs; actual
+    identity acceptance remains exclusively in ProductMatcher.
+    """
     ts = tokens(query)
     if not ts:
         return []
+
+    terms = []
+    for value in (search_terms or [query]):
+        value = str(value or '').strip()
+        vt = tokens(value)
+        if vt and vt not in terms:
+            terms.append(vt)
+    if not terms:
+        terms = [ts]
 
     conn = db()
     rows = []
@@ -996,14 +1011,33 @@ def search_local(query, per_store=12):
         ).fetchall()
         scored = []
         for r in candidates:
-            s = r['slug']
-            score = sum(1 for t in ts if t in s)
-            if score == len(ts):
-                score += 10
-            if score >= len(ts):
-                scored.append((score, r['url']))
-        scored.sort(key=lambda x: (-x[0], x[1]))
-        for _, url in scored[:per_store]:
+            slug = r['slug'] or ''
+            best = 0
+            best_specificity = 0
+            for term_tokens in terms:
+                overlap = sum(1 for t in term_tokens if t in slug)
+                if overlap == len(term_tokens):
+                    score = 100 + len(term_tokens)
+                else:
+                    score = overlap
+                if score > best or (score == best and len(term_tokens) > best_specificity):
+                    best = score
+                    best_specificity = len(term_tokens)
+            if best >= len(ts):
+                scored.append((best, best_specificity, r['url']))
+
+        scored.sort(key=lambda x: (-x[0], -x[1], x[2]))
+        selected = []
+        seen_urls = set()
+        for _, _, url in scored:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            selected.append(url)
+            if len(selected) >= per_store:
+                break
+
+        for url in selected:
             row = conn.execute(
                 'SELECT * FROM store_products WHERE store=? AND url=?',
                 (store, url),
