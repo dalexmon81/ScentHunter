@@ -76,6 +76,17 @@ DISCOVERY_BASES = {
 }
 
 USER_AGENT = 'ScentHunterBot/7.0 (+price-comparison; catalog indexing)'
+EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                           'AppleWebKit/537.36 (KHTML, like Gecko) '
+                           'Chrome/131.0.0.0 Safari/537.36')
+EASY_COSMETIC_HEADERS = {
+    'User-Agent': EASY_COSMETIC_USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+}
 HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
@@ -157,7 +168,15 @@ def _decode_body(data, url=''):
 
 def _http_fetch(url, timeout=HTTP_TIMEOUT):
     """Fetch with redirects, compression handling and diagnostics."""
-    response = _session().get(url, timeout=timeout, allow_redirects=True)
+    parsed = urllib.parse.urlparse(url)
+    if parsed.netloc.lower() in {'easycosmetic.de', 'www.easycosmetic.de'}:
+        # Easycosmetic serves the public storefront to normal browser clients
+        # but can stall requests carrying an identifying bot user-agent.
+        # Use the same browser-class headers as the production Easycosmetic
+        # scraper. This is transport only; discovery remains generic.
+        response = _session().get(url, headers=EASY_COSMETIC_HEADERS, timeout=timeout, allow_redirects=True)
+    else:
+        response = _session().get(url, timeout=timeout, allow_redirects=True)
     data = _decode_body(response.content, response.url or url)
     content_type = response.headers.get('Content-Type', '')
     content_encoding = response.headers.get('Content-Encoding', '')
@@ -462,6 +481,11 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/parfum',
         'https://www.easycosmetic.de/alle-marken',
         'https://www.easycosmetic.de/parfum-marken',
+        'https://www.easycosmetic.de/damenparfum',
+        'https://www.easycosmetic.de/herrenparfum',
+        'https://www.easycosmetic.de/unisex-parfum',
+        'https://www.easycosmetic.de/luxusparfum',
+        'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
         'https://www.deloox.com/',
@@ -475,7 +499,7 @@ HTML_DISCOVERY_SEEDS = {
 HTML_MAX_PAGES = 300
 HTML_MAX_DEPTH = 5
 HTML_WORKERS = 12
-DISCOVERY_HARD_TIMEOUT = 240
+DISCOVERY_HARD_TIMEOUT = 300
 
 
 def _html_product_url(store, raw_url, base_url):
@@ -542,7 +566,7 @@ def _html_listing_url(store, raw_url, base_url, label=''):
     return None
 
 
-def _browser_fetch_html(url, timeout_ms=25000):
+def _browser_fetch_html(url, timeout_ms=15000):
     """Browser fallback for storefronts that stall normal HTTP clients."""
     try:
         from playwright.sync_api import sync_playwright
