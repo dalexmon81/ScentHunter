@@ -461,6 +461,7 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/',
         'https://www.easycosmetic.de/parfum',
         'https://www.easycosmetic.de/alle-marken',
+        'https://www.easycosmetic.de/parfum-marken',
     ),
     'deloox': (
         'https://www.deloox.com/',
@@ -541,18 +542,53 @@ def _html_listing_url(store, raw_url, base_url, label=''):
     return None
 
 
+def _browser_fetch_html(url, timeout_ms=25000):
+    """Browser fallback for storefronts that stall normal HTTP clients."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        return None, f'PLAYWRIGHT_UNAVAILABLE:{type(exc).__name__}:{exc}'
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+                    locale='de-DE',
+                )
+                page.goto(url, wait_until='domcontentloaded', timeout=timeout_ms)
+                html = page.content()
+                final = page.url
+                if not html:
+                    return None, 'BROWSER_EMPTY_BODY'
+                return (final, html.encode('utf-8', 'ignore')), None
+            finally:
+                browser.close()
+    except Exception as exc:
+        return None, f'BROWSER_{type(exc).__name__}:{exc}'
+
+
 def _fetch_html_page(store, url):
     try:
         resp = _http_fetch(url, timeout=HTTP_TIMEOUT)
-        if resp['status'] >= 400 or not resp['data']:
-            return url, resp['url'], None, _diagnostic(resp, url)
-        data = resp['data']
-        ctype = (resp.get('content_type') or '').lower()
-        if 'html' not in ctype and not re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
-            return url, resp['url'], None, f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
-        return url, resp['url'], data, None
+        if resp['status'] < 400 and resp['data']:
+            data = resp['data']
+            ctype = (resp.get('content_type') or '').lower()
+            if 'html' in ctype or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
+                return url, resp['url'], data, None
+            http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
+        else:
+            http_error = _diagnostic(resp, url)
     except Exception as exc:
-        return url, url, None, f'{type(exc).__name__}:{exc}'
+        http_error = f'{type(exc).__name__}:{exc}'
+
+    if store == 'easycosmetic':
+        browser_result, browser_error = _browser_fetch_html(url)
+        if browser_result:
+            final, data = browser_result
+            return url, final, data, None
+        return url, url, None, f'HTTP={http_error};{browser_error}'
+    return url, url, None, http_error
 
 
 def _discover_html_catalog(store, seeds, deadline=None):
@@ -683,7 +719,24 @@ def discover_store(store):
         'errors':len(sitemap_errors),
         'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
     }
-    status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
+    # Zero successful catalog-page fetches means access/discovery failure,
+    # not an empty retailer catalog. Never report EMPTY in that situation.
+    if not product_urls and fallback is not None and fallback['successes'] == 0 and fallback['errors']:
+        now = time.time()
+        detail = 'catalog_access_failed; ' + ' | '.join(fallback['errors'][:8])
+        conn = db()
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
+        )
+        conn.commit(); conn.close()
+        status,count,error='DISCOVERY_ERROR',0,detail
+    else:
+        status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
 
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
