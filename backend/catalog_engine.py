@@ -1,8 +1,36 @@
-# ScentHunter V5 - catalog-first store index
-# Search never calls retailer search endpoints. Retailer discovery is a background/indexing job.
-import json, re, sqlite3, threading, time, unicodedata, urllib.parse, urllib.request, urllib.robotparser, importlib, gzip, xml.etree.ElementTree as ET
-from pathlib import Path
+# ScentHunter V7 - catalog-first store index
+#
+# Design contract:
+#   STORE DISCOVERY -> STORE CATALOG -> LOCAL SEARCH -> PRODUCT PAGE REFRESH
+#
+# Search never calls a retailer search endpoint. Discovery is a background job.
+# This module keeps the public interface used by main.py stable:
+#   STORES, STORE_LABELS, db, search_local, refresh_candidates,
+#   store_status, sync_all
+#
+# V7 focuses on discovery reliability and observability. It separates:
+#   1) HTTP transport
+#   2) sitemap discovery
+#   3) XML parsing
+#   4) generic URL admission
+#   5) catalog persistence
+#
+# No product-specific URLs, names, prices or matching rules are embedded here.
+
+import gzip
+import importlib
+import json
+import re
+import sqlite3
+import threading
+import time
+import unicodedata
+import urllib.parse
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+import requests
 from bs4 import BeautifulSoup
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -16,21 +44,27 @@ STORES = {
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
     'easycosmetic': 'https://www.easycosmetic.de',
-    # Deloox exposes multiple localized hosts; the indexer starts from the primary site.
     'deloox': 'https://www.deloox.com',
 }
 
-STORE_LABELS = {k: ''.join(x.capitalize() for x in k.replace('-', ' ').split()) for k in STORES}
-STORE_LABELS.update({'parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','easycosmetic':'Easycosmetic','bplatz':'Bplatz','deloox':'Deloox','sabina':'Sabina','orioudh':'Orioudh'})
+STORE_LABELS = {
+    k: ''.join(x.capitalize() for x in k.replace('-', ' ').split())
+    for k in STORES
+}
+STORE_LABELS.update({
+    'parfumcity': 'ParfumCity',
+    'parfumzentrum': 'ParfumZentrum',
+    'perfumemarket': 'PerfumeMarket',
+    'easycosmetic': 'Easycosmetic',
+    'bplatz': 'Bplatz',
+    'deloox': 'Deloox',
+    'sabina': 'Sabina',
+    'orioudh': 'Orioudh',
+})
 
-USER_AGENT = 'ScentHunterBot/5.0 (+price-comparison; catalog indexing)'
-HTTP_TIMEOUT = 10
-MAX_SITEMAPS_PER_STORE = 500
-MAX_URLS_PER_SITEMAP = 50000
-MAX_SITEMAP_DEPTH = 8
-SITEMAP_TIMEOUT = 10
-
-# Store-level discovery configuration only: public storefront hosts.
+# Store-level discovery configuration only: official storefront hosts.
+# Deloox has several official localized hosts; trying all of them is still
+# catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'deloox': (
         'https://www.deloox.com',
@@ -40,13 +74,37 @@ DISCOVERY_BASES = {
         'https://www.deloox.es',
     ),
 }
+
+USER_AGENT = 'ScentHunterBot/7.0 (+price-comparison; catalog indexing)'
+HTTP_TIMEOUT = 15
+SITEMAP_TIMEOUT = 20
+REFRESH_TIMEOUT = 10
+
 SYNC_WORKERS = 8
 REFRESH_WORKERS = 8
-REFRESH_TIMEOUT = 8
 
-# Generic product URL signals. These are intentionally not product-specific.
-NON_PRODUCT_PATH = re.compile(r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|brand|brands|marca|marque|sitemap|login|account|cart|checkout|blog|news|tag|tags)(?:/|$)', re.I)
-PRODUCT_EXT = re.compile(r'\.(?:html?|php)$', re.I)
+# Sitemap protocol limits are per discovered sitemap, not a product limit.
+MAX_SITEMAPS_PER_STORE = 1000
+MAX_SITEMAP_DEPTH = 10
+MAX_URLS_PER_SITEMAP = 50000
+MAX_TOTAL_DISCOVERED_URLS = 250000
+
+# A single failed/partial discovery must never wipe a previously valid catalog.
+# If a new catalog is implausibly smaller than the existing one, retain the old
+# catalog and expose the result as DISCOVERY_PARTIAL instead.
+MIN_REPLACEMENT_RATIO = 0.10
+MIN_REPLACEMENT_ABSOLUTE = 100
+
+# Generic product URL signals. Product-vs-category is still decided after page
+# fetch; this only removes obvious non-product endpoints from a sitemap.
+NON_PRODUCT_PATH = re.compile(
+    r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
+    r'categories|brand|brands|marca|marque|sitemap|login|account|cart|'
+    r'checkout|blog|news|tag|tags|help|faq)(?:/|$)',
+    re.I,
+)
+
+_thread_local = threading.local()
 
 
 def norm(s):
@@ -68,14 +126,74 @@ def url_slug(url):
     return norm(path)
 
 
+def _session():
+    session = getattr(_thread_local, 'session', None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': USER_AGENT,
+            'Accept': 'text/xml, application/xml, application/xhtml+xml, text/html;q=0.9, */*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.8,*;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+        })
+        _thread_local.session = session
+    return session
+
+
+def _decode_body(data, url=''):
+    """Decode gzip by magic bytes too, because servers often mislabel it."""
+    if not data:
+        return b''
+    raw = bytes(data)
+    if raw[:2] == b'\x1f\x8b' or str(url).lower().split('?', 1)[0].endswith('.gz'):
+        try:
+            return gzip.decompress(raw)
+        except Exception:
+            # requests normally already decompresses gzip. If it did, keep raw.
+            pass
+    return raw
+
+
+def _http_fetch(url, timeout=HTTP_TIMEOUT):
+    """Fetch with redirects, compression handling and diagnostics."""
+    response = _session().get(url, timeout=timeout, allow_redirects=True)
+    data = _decode_body(response.content, response.url or url)
+    content_type = response.headers.get('Content-Type', '')
+    content_encoding = response.headers.get('Content-Encoding', '')
+    return {
+        'status': int(response.status_code),
+        'url': response.url or url,
+        'data': data,
+        'content_type': content_type,
+        'content_encoding': content_encoding,
+        'length': len(data),
+        'headers': dict(response.headers),
+    }
+
+
 def http_get(url, timeout=HTTP_TIMEOUT):
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': '*/*'})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.status, r.geturl(), r.read()
+    """Compatibility wrapper retained for page refresh code and tests."""
+    r = _http_fetch(url, timeout=timeout)
+    return r['status'], r['url'], r['data']
+
+
+def _diagnostic(resp, requested_url):
+    if not resp:
+        return 'NO_RESPONSE'
+    status = resp.get('status')
+    final = resp.get('url') or requested_url
+    ctype = (resp.get('content_type') or '').split(';', 1)[0].strip().lower()
+    length = resp.get('length', 0)
+    if status >= 400:
+        return f'HTTP_{status};final={final};type={ctype or "?"};bytes={length}'
+    if not resp.get('data'):
+        return f'EMPTY_BODY;status={status};final={final};type={ctype or "?"}'
+    return f'OK;status={status};final={final};type={ctype or "?"};bytes={length}'
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn = sqlite3.connect(DB_PATH, timeout=60)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA synchronous=NORMAL')
@@ -83,13 +201,13 @@ def db():
         store TEXT NOT NULL, url TEXT NOT NULL, slug TEXT NOT NULL,
         lastmod TEXT, discovered_at REAL NOT NULL, active INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY(store,url))''')
-    conn.execute('''CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)')
     conn.execute('''CREATE TABLE IF NOT EXISTS store_products(
         store TEXT NOT NULL, url TEXT NOT NULL, name TEXT, brand TEXT, image TEXT,
         sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
         price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
         PRIMARY KEY(store,url))''')
-    conn.execute('''CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
     conn.execute('''CREATE TABLE IF NOT EXISTS sync_state(
         store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
         discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)''')
@@ -101,51 +219,56 @@ def _discovery_bases(store):
     return tuple(dict.fromkeys(DISCOVERY_BASES.get(store, (STORES[store],))))
 
 
+def _standard_sitemap_roots(base):
+    """Generic sitemap candidates. robots.txt remains the primary source."""
+    base = base.rstrip('/')
+    names = (
+        'sitemap.xml',
+        'sitemap_index.xml',
+        'sitemap-index.xml',
+        'sitemaps.xml',
+        'sitemap.xml.gz',
+        'sitemap_index.xml.gz',
+        'sitemap-index.xml.gz',
+        # A few legitimate platforms expose these names instead of sitemap.xml.
+        'sitemapa.xml',
+        'sitemapi.xml',
+    )
+    return [f'{base}/{name}' for name in names] + [f'{base}/v/sitemap.xml']
+
+
 def _seed_sitemaps(store):
-    """Discover public sitemap roots from robots.txt plus standard names."""
+    """Collect sitemap roots from robots.txt plus generic standard candidates."""
     roots = []
+    robots_diagnostics = []
     for base in _discovery_bases(store):
         base = base.rstrip('/')
-        roots.extend((
-            base + '/sitemap.xml',
-            base + '/sitemap_index.xml',
-            base + '/sitemap-index.xml',
-            base + '/sitemaps.xml',
-        ))
+        roots.extend(_standard_sitemap_roots(base))
+        robots_url = base + '/robots.txt'
         try:
-            status, final, data = http_get(base + '/robots.txt', timeout=5)
-            if status < 400:
-                text = data.decode('utf-8', 'ignore')
-                roots.extend(re.findall(
-                    r'(?im)^\s*sitemap\s*:\s*(https?://[^\s#]+)', text
-                ))
-        except Exception:
-            continue
-    return list(dict.fromkeys(roots))
-
-
-def _decode_sitemap(data, url=''):
-    """Decode XML sitemap payloads, including gzip and mislabeled gzip."""
-    if not data:
-        return b''
-    raw = bytes(data)
-    if raw[:2] == b'\x1f\x8b' or str(url).lower().split('?', 1)[0].endswith('.gz'):
-        try:
-            return gzip.decompress(raw)
-        except Exception:
-            pass
-    return raw
+            resp = _http_fetch(robots_url, timeout=8)
+            robots_diagnostics.append(_diagnostic(resp, robots_url))
+            if resp['status'] < 400 and resp['data']:
+                text = resp['data'].decode('utf-8', 'ignore')
+                # robots directives are case-insensitive in practice.
+                for raw in re.findall(r'(?im)^\s*sitemap\s*:\s*(\S+)', text):
+                    raw = raw.strip().strip('<>')
+                    if raw:
+                        roots.append(urllib.parse.urljoin(robots_url, raw))
+        except Exception as exc:
+            robots_diagnostics.append(f'{type(exc).__name__}:{exc}')
+    return list(dict.fromkeys(roots)), robots_diagnostics
 
 
 def _xml_local(tag):
     return str(tag or '').rsplit('}', 1)[-1].lower()
 
 
-def _parse_xml_urls(data, url=''):
-    """Parse sitemapindex/urlset independent of XML namespaces."""
-    raw = _decode_sitemap(data, url)
+def _parse_xml_entries(data, url=''):
+    """Return [(kind, loc, lastmod)] for sitemapindex or urlset."""
+    raw = _decode_body(data, url)
     if not raw:
-        return []
+        return [], 'EMPTY_XML'
 
     try:
         root = ET.fromstring(raw)
@@ -158,14 +281,14 @@ def _parse_xml_urls(data, url=''):
                 loc = ''
                 lastmod = ''
                 for child in list(node):
-                    child_kind = _xml_local(child.tag)
-                    if child_kind == 'loc':
+                    ck = _xml_local(child.tag)
+                    if ck == 'loc':
                         loc = (child.text or '').strip()
-                    elif child_kind == 'lastmod':
+                    elif ck == 'lastmod':
                         lastmod = (child.text or '').strip()
                 if loc:
                     out.append(('sitemap', loc, lastmod))
-            return out
+            return out, None if out else 'EMPTY_SITEMAP_INDEX'
 
         if kind == 'urlset':
             out = []
@@ -175,43 +298,45 @@ def _parse_xml_urls(data, url=''):
                 loc = ''
                 lastmod = ''
                 for child in list(node):
-                    child_kind = _xml_local(child.tag)
-                    if child_kind == 'loc':
+                    ck = _xml_local(child.tag)
+                    if ck == 'loc':
                         loc = (child.text or '').strip()
-                    elif child_kind == 'lastmod':
+                    elif ck == 'lastmod':
                         lastmod = (child.text or '').strip()
                 if loc:
                     out.append(('url', loc, lastmod))
-            return out
-    except Exception:
-        pass
+            return out, None if out else 'EMPTY_URLSET'
 
-    try:
-        soup = BeautifulSoup(raw, 'xml')
-        if soup.find('sitemapindex') or soup.find('sitemap'):
+        return [], f'XML_ROOT_{kind or "UNKNOWN"}'
+    except ET.ParseError as exc:
+        # BeautifulSoup is only a fallback for malformed-but-readable XML.
+        try:
+            soup = BeautifulSoup(raw, 'xml')
+            if soup.find('sitemapindex') or soup.find('sitemap'):
+                out = []
+                for node in soup.find_all('sitemap'):
+                    loc = node.find('loc')
+                    if loc and loc.get_text(strip=True):
+                        last = node.find('lastmod')
+                        out.append(('sitemap', loc.get_text(strip=True), last.get_text(strip=True) if last else ''))
+                if out:
+                    return out, None
             out = []
-            for node in soup.find_all('sitemap'):
+            for node in soup.find_all('url'):
                 loc = node.find('loc')
                 if loc and loc.get_text(strip=True):
                     last = node.find('lastmod')
-                    out.append(('sitemap', loc.get_text(strip=True),
-                                last.get_text(strip=True) if last else ''))
+                    out.append(('url', loc.get_text(strip=True), last.get_text(strip=True) if last else ''))
             if out:
-                return out
-        out = []
-        for node in soup.find_all('url'):
-            loc = node.find('loc')
-            if loc and loc.get_text(strip=True):
-                last = node.find('lastmod')
-                out.append(('url', loc.get_text(strip=True),
-                            last.get_text(strip=True) if last else ''))
-        return out
-    except Exception:
-        return []
+                return out, None
+        except Exception:
+            pass
+        return [], f'XML_PARSE_ERROR:{type(exc).__name__}'
+    except Exception as exc:
+        return [], f'XML_PARSE_ERROR:{type(exc).__name__}'
 
 
 def _looks_product(url):
-    """Broad URL admission; product-vs-category is decided after page fetch."""
     p = urllib.parse.urlparse(url)
     if p.scheme not in ('http', 'https') or p.fragment:
         return False
@@ -220,25 +345,117 @@ def _looks_product(url):
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
-    return len(url_slug(url).split()) >= 2
+    # Query-only product URLs are accepted if the path is meaningful.
+    slug = url_slug(url)
+    return len(slug.split()) >= 2
 
 
 def _fetch_sitemap(store, sm):
     try:
-        status, final, data = http_get(sm, timeout=SITEMAP_TIMEOUT)
+        resp = _http_fetch(sm, timeout=SITEMAP_TIMEOUT)
+        status = resp['status']
+        final = resp['url'] or sm
         if status >= 400:
-            return sm, final, [], f'HTTP {status}'
-        entries = _parse_xml_urls(data, final or sm)
-        if not entries:
-            return sm, final, [], 'empty_or_unparseable_xml'
+            return sm, final, [], _diagnostic(resp, sm)
+
+        data = resp['data']
+        # Detect HTML/WAF responses before XML parsing. Some sites return HTTP 200
+        # with an anti-bot page for sitemap URLs.
+        ctype = (resp.get('content_type') or '').lower()
+        sample = data[:512].lstrip().lower() if data else b''
+        looks_html = (
+            'text/html' in ctype or
+            sample.startswith(b'<!doctype html') or
+            sample.startswith(b'<html') or
+            b'<html' in sample[:200]
+        )
+        if looks_html:
+            return sm, final, [], f'HTML_RESPONSE;status={status};type={ctype or "?"};bytes={len(data)};final={final}'
+
+        entries, parse_error = _parse_xml_entries(data, final)
+        if parse_error:
+            return sm, final, [], f'{parse_error};status={status};type={ctype or "?"};bytes={len(data)};final={final}'
         return sm, final, entries, None
+    except requests.RequestException as exc:
+        return sm, sm, [], f'HTTP_EXCEPTION:{type(exc).__name__}:{exc}'
     except Exception as exc:
-        return sm, sm, [], f'{type(exc).__name__}: {exc}'
+        return sm, sm, [], f'EXCEPTION:{type(exc).__name__}:{exc}'
+
+
+def _existing_count(store):
+    conn = db()
+    try:
+        return int(conn.execute(
+            'SELECT COUNT(*) c FROM store_urls WHERE store=? AND active=1', (store,)
+        ).fetchone()['c'])
+    finally:
+        conn.close()
+
+
+def _save_discovery(store, product_urls, started_at, diagnostics):
+    now = time.time()
+    new_count = len(product_urls)
+    old_count = _existing_count(store)
+
+    # Never replace a known catalog with a suspiciously tiny transient result.
+    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
+        conn = db()
+        detail = (
+            f'partial_catalog_rejected;old={old_count};new={new_count};'
+            f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
+            f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
+        )
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
+        )
+        conn.commit()
+        conn.close()
+        return 'DISCOVERY_PARTIAL', new_count, detail
+
+    conn = db()
+    with conn:
+        if new_count:
+            conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
+            for url, lastmod in product_urls.items():
+                conn.execute(
+                    '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                       slug=excluded.slug,lastmod=excluded.lastmod,
+                       discovered_at=excluded.discovered_at,active=1''',
+                    (store, url, url_slug(url), lastmod, now),
+                )
+            status = 'DISCOVERY_OK'
+            error = None
+        else:
+            status = 'DISCOVERY_EMPTY'
+            error = (
+                f'no_product_urls;visited={diagnostics["visited"]};'
+                f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
+                f'errors={diagnostics["errors"]}'
+            )
+
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, status, started_at, now, new_count, 0, error),
+        )
+    conn.close()
+    return status, new_count, error
 
 
 def discover_store(store):
-    """Build a persistent URL catalog from the retailer's public sitemap tree."""
-    roots = _seed_sitemaps(store)
+    """Build/update one persistent URL catalog from the retailer's public sitemaps."""
+    started_at = time.time()
+    roots, robots_diagnostics = _seed_sitemaps(store)
     queue = [(url, 0) for url in roots]
     queued = set(roots)
     visited = set()
@@ -247,7 +464,7 @@ def discover_store(store):
     sitemap_successes = 0
     sitemap_url_entries = 0
 
-    while queue and len(visited) < MAX_SITEMAPS_PER_STORE:
+    while queue and len(visited) < MAX_SITEMAPS_PER_STORE and len(product_urls) < MAX_TOTAL_DISCOVERED_URLS:
         batch = []
         while queue and len(batch) < SYNC_WORKERS * 4:
             sm, depth = queue.pop(0)
@@ -255,241 +472,328 @@ def discover_store(store):
                 continue
             visited.add(sm)
             batch.append((sm, depth))
+
         if not batch:
             continue
 
         with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(batch))) as pool:
-            futures = {pool.submit(_fetch_sitemap, store, sm): (sm, depth)
-                       for sm, depth in batch}
+            futures = {pool.submit(_fetch_sitemap, store, sm): (sm, depth) for sm, depth in batch}
             for future in as_completed(futures):
                 sm, depth = futures[future]
                 try:
                     _source, final, entries, error = future.result()
                 except Exception as exc:
                     final, entries = sm, []
-                    error = f'{type(exc).__name__}: {exc}'
+                    error = f'EXCEPTION:{type(exc).__name__}:{exc}'
 
                 if error:
-                    sitemap_errors.append(f'{sm}: {error}')
+                    sitemap_errors.append(f'{sm} -> {error}')
                     continue
 
                 sitemap_successes += 1
                 sitemap_url_entries += len(entries)
 
-                for kind, url, lastmod in entries:
-                    if not url:
+                for kind, raw_url, lastmod in entries:
+                    if not raw_url:
                         continue
-                    absolute = urllib.parse.urljoin(final or sm, url)
+                    absolute = urllib.parse.urljoin(final or sm, raw_url.strip())
                     if kind == 'sitemap':
                         if depth + 1 <= MAX_SITEMAP_DEPTH and absolute not in queued:
                             queued.add(absolute)
                             queue.append((absolute, depth + 1))
                     elif _looks_product(absolute):
                         product_urls[absolute] = lastmod or ''
+                        if len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS:
+                            break
 
-                if len(product_urls) >= MAX_URLS_PER_SITEMAP * 2:
-                    queue.clear()
-                    break
+    diagnostics = {
+        'visited': len(visited),
+        'successes': sitemap_successes,
+        'entries': sitemap_url_entries,
+        'errors': len(sitemap_errors),
+    }
+    status, count, error = _save_discovery(store, product_urls, started_at, diagnostics)
 
-    now = time.time()
-    conn = db()
-
-    if product_urls:
-        with conn:
-            conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
-            for url, lastmod in product_urls.items():
-                conn.execute(
-                    """INSERT INTO store_urls
-                       (store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                       slug=excluded.slug,lastmod=excluded.lastmod,
-                       discovered_at=excluded.discovered_at,active=1""", 
-                    (store, url, url_slug(url), lastmod, now)
-                )
-            conn.execute(
-                """INSERT INTO sync_state
-                   (store,status,started_at,finished_at,discovered_count,
-                    fetched_count,error)
-                   VALUES(?,?,?,?,?,?,?)
-                   ON CONFLICT(store) DO UPDATE SET
-                   status=excluded.status,finished_at=excluded.finished_at,
-                   discovered_count=excluded.discovered_count,error=excluded.error""", 
-                (store, 'DISCOVERY_OK', now, now, len(product_urls), 0, None)
-            )
-    else:
-        detail = (
-            f'no_product_urls; sitemap_successes={sitemap_successes}; '
-            f'visited={len(visited)}; xml_entries={sitemap_url_entries}; '
-            f'errors={len(sitemap_errors)}'
-        )
-        conn.execute(
-            """INSERT INTO sync_state
-               (store,status,started_at,finished_at,discovered_count,
-                fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET
-               status=excluded.status,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error""", 
-            (store, 'DISCOVERY_EMPTY', now, now, 0, 0, detail)
-        )
+    # Keep the error field useful without flooding /catalog-status.
+    compact_errors = sitemap_errors[:12]
+    if not error and compact_errors:
+        error = 'sitemap_warnings=' + ' | '.join(compact_errors)
+        conn = db()
+        conn.execute('UPDATE sync_state SET error=? WHERE store=?', (error, store))
         conn.commit()
+        conn.close()
 
-    conn.close()
     return {
-        'count': len(product_urls),
-        'status': 'DISCOVERY_OK' if product_urls else 'DISCOVERY_EMPTY',
+        'count': count,
+        'status': status,
         'visited_sitemaps': len(visited),
         'sitemap_successes': sitemap_successes,
         'xml_entries': sitemap_url_entries,
-        'errors': sitemap_errors[:20],
+        'robots': robots_diagnostics[:8],
+        'errors': compact_errors,
     }
 
+
 def _jsonld(soup):
-    products=[]
+    products = []
     for script in soup.select('script[type="application/ld+json"]'):
-        raw=script.string or script.get_text()
-        try: data=json.loads(raw)
-        except Exception: continue
-        stack=data if isinstance(data,list) else [data]
+        raw = script.string or script.get_text()
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        stack = data if isinstance(data, list) else [data]
         while stack:
-            x=stack.pop()
-            if isinstance(x,list): stack.extend(x); continue
-            if not isinstance(x,dict): continue
-            typ=x.get('@type'); types=typ if isinstance(typ,list) else [typ]
-            if any(str(t).lower()=='product' for t in types): products.append(x)
+            x = stack.pop()
+            if isinstance(x, list):
+                stack.extend(x)
+                continue
+            if not isinstance(x, dict):
+                continue
+            typ = x.get('@type')
+            types = typ if isinstance(typ, list) else [typ]
+            if any(str(t).lower() == 'product' for t in types):
+                products.append(x)
             for v in x.values():
-                if isinstance(v,(dict,list)): stack.append(v)
+                if isinstance(v, (dict, list)):
+                    stack.append(v)
     return products
 
 
 def _num(v):
-    if v is None or v=='': return None
-    try: return float(v)
-    except Exception: pass
-    s=re.sub(r'[^0-9,.\-]','',str(v))
+    if v is None or v == '':
+        return None
+    try:
+        return float(v)
+    except Exception:
+        pass
+    s = re.sub(r'[^0-9,.\-]', '', str(v))
     if ',' in s and '.' in s:
-        if s.rfind(',')>s.rfind('.'): s=s.replace('.','').replace(',','.')
-        else: s=s.replace(',','')
-    elif ',' in s: s=s.replace(',','.')
-    try:return float(s)
-    except:return None
+        if s.rfind(',') > s.rfind('.'):
+            s = s.replace('.', '').replace(',', '.')
+        else:
+            s = s.replace(',', '')
+    elif ',' in s:
+        s = s.replace(',', '.')
+    try:
+        return float(s)
+    except Exception:
+        return None
 
 
 def _first_offer(p):
-    offers=p.get('offers') if isinstance(p,dict) else None
-    if isinstance(offers,dict): return offers
-    if isinstance(offers,list):
+    offers = p.get('offers') if isinstance(p, dict) else None
+    if isinstance(offers, dict):
+        return offers
+    if isinstance(offers, list):
         for o in offers:
-            if isinstance(o,dict) and (_num(o.get('price')) is not None or o.get('availability')): return o
+            if isinstance(o, dict) and (_num(o.get('price')) is not None or o.get('availability')):
+                return o
     return {}
 
 
-def parse_product(store,url,data):
-    soup=BeautifulSoup(data,'html.parser')
-    h1=soup.find('h1')
-    h1text=h1.get_text(' ',strip=True) if h1 else ''
-    products=_jsonld(soup)
-    p=products[0] if products else {}
-    name=str(p.get('name') or h1text or '').strip()
-    if not name: return None
-    brand=p.get('brand')
-    if isinstance(brand,dict): brand=brand.get('name')
-    offer=_first_offer(p)
-    price=_num(offer.get('price'))
-    currency=str(offer.get('priceCurrency') or 'EUR')
-    availability=str(offer.get('availability') or '').lower()
-    if 'instock' in availability or 'limitedavailability' in availability or 'onlineonly' in availability: availability='in_stock'
-    elif any(x in availability for x in ('outofstock','soldout','discontinued')): availability='out_of_stock'
-    elif 'preorder' in availability: availability='preorder'
-    else: availability='unknown'
-    image=p.get('image')
-    if isinstance(image,list): image=image[0] if image else None
-    if isinstance(image,dict): image=image.get('url') or image.get('contentUrl')
+def parse_product(store, url, data):
+    soup = BeautifulSoup(data, 'html.parser')
+    h1 = soup.find('h1')
+    h1text = h1.get_text(' ', strip=True) if h1 else ''
+    products = _jsonld(soup)
+    p = products[0] if products else {}
+    name = str(p.get('name') or h1text or '').strip()
+    if not name:
+        return None
+    brand = p.get('brand')
+    if isinstance(brand, dict):
+        brand = brand.get('name')
+    offer = _first_offer(p)
+    price = _num(offer.get('price'))
+    currency = str(offer.get('priceCurrency') or 'EUR')
+    availability = str(offer.get('availability') or '').lower()
+    if 'instock' in availability or 'limitedavailability' in availability or 'onlineonly' in availability:
+        availability = 'in_stock'
+    elif any(x in availability for x in ('outofstock', 'soldout', 'discontinued')):
+        availability = 'out_of_stock'
+    elif 'preorder' in availability:
+        availability = 'preorder'
+    else:
+        availability = 'unknown'
+    image = p.get('image')
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get('url') or image.get('contentUrl')
     return {
-        'store':STORE_LABELS[store],'store_key':store,'url':url,'name':name,'brand':str(brand or '').strip(),
-        'image':image,'sku':str(p.get('sku') or '').strip(),'gtin':str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
-        'mpn':str(p.get('mpn') or '').strip(),'price_num':price,'price':price,'currency':currency,
-        'availability':availability,'available': True if availability=='in_stock' else False if availability=='out_of_stock' else None,
-        'fetched_at':time.time()
+        'store': STORE_LABELS[store],
+        'store_key': store,
+        'url': url,
+        'name': name,
+        'brand': str(brand or '').strip(),
+        'image': image,
+        'sku': str(p.get('sku') or '').strip(),
+        'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
+        'mpn': str(p.get('mpn') or '').strip(),
+        'price_num': price,
+        'price': price,
+        'currency': currency,
+        'availability': availability,
+        'available': True if availability == 'in_stock' else False if availability == 'out_of_stock' else None,
+        'fetched_at': time.time(),
     }
 
 
-def refresh_url(store,url):
+def _secondary_store_parser(store, final_url, original_url):
+    """Use an existing store parser only as a product-page parser fallback."""
     try:
-        status,final,data=http_get(url,timeout=REFRESH_TIMEOUT)
-        if status>=400: raise RuntimeError(f'HTTP {status}')
-        item=parse_product(store,final,data)
+        module = importlib.import_module(f'scrapers.{store}.scraper')
+        parser = getattr(module, 'extract_product_page', None)
+        if not callable(parser):
+            return None
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            parsed = parser(session, final_url, url_slug(final_url))
+        finally:
+            session.close()
+        if not isinstance(parsed, dict):
+            return None
+
+        identity = parsed.get('identity') or {}
+        def identity_value(key):
+            value = identity.get(key)
+            if isinstance(value, dict):
+                return value.get('value')
+            return value
+
+        offer = parsed.get('offer') or {}
+        price = parsed.get('price_num')
+        if price is None:
+            price = offer.get('price')
+        return {
+            'store': STORE_LABELS[store],
+            'store_key': store,
+            'url': parsed.get('url') or final_url or original_url,
+            'name': parsed.get('name') or parsed.get('title') or '',
+            'brand': parsed.get('brand') or '',
+            'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
+            'sku': parsed.get('sku') or identity_value('sku') or '',
+            'gtin': parsed.get('gtin') or identity_value('gtin') or '',
+            'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+            'price_num': price,
+            'price': price,
+            'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
+            'availability': parsed.get('availability') or offer.get('availability') or 'unknown',
+            'available': parsed.get('available'),
+            'fetched_at': time.time(),
+        }
+    except Exception:
+        return None
+
+
+def refresh_url(store, url):
+    try:
+        status, final, data = http_get(url, timeout=REFRESH_TIMEOUT)
+        if status >= 400:
+            raise RuntimeError(f'HTTP {status}')
+
+        item = parse_product(store, final, data)
         if not item:
-            # Store-specific parser is a SECONDARY product-page parser only.
-            # Discovery remains catalog-first and never calls the retailer search endpoint.
-            try:
-                module=importlib.import_module(f'scrapers.{store}.scraper')
-                parser=getattr(module,'extract_product_page',None)
-                if callable(parser):
-                    import requests
-                    session=requests.Session()
-                    parsed=parser(session, final, url_slug(final))
-                    session.close()
-                    if isinstance(parsed,dict):
-                        item={
-                            'store':STORE_LABELS[store], 'store_key':store, 'url':parsed.get('url') or final,
-                            'name':parsed.get('name') or parsed.get('title') or '',
-                            'brand':parsed.get('brand') or '', 'image':parsed.get('image') or (parsed.get('source') or {}).get('image'),
-                            'sku':parsed.get('sku') or ((parsed.get('identity') or {}).get('sku') or {}).get('value') if isinstance((parsed.get('identity') or {}).get('sku'),dict) else parsed.get('sku'),
-                            'gtin':parsed.get('gtin') or ((parsed.get('identity') or {}).get('gtin') or {}).get('value') if isinstance((parsed.get('identity') or {}).get('gtin'),dict) else parsed.get('gtin'),
-                            'mpn':parsed.get('mpn') or ((parsed.get('identity') or {}).get('mpn') or {}).get('value') if isinstance((parsed.get('identity') or {}).get('mpn'),dict) else parsed.get('mpn'),
-                            'price_num':parsed.get('price_num') if parsed.get('price_num') is not None else (parsed.get('offer') or {}).get('price'),
-                            'price':parsed.get('price_num') if parsed.get('price_num') is not None else (parsed.get('offer') or {}).get('price'),
-                            'currency':parsed.get('currency') or (parsed.get('offer') or {}).get('currency') or 'EUR',
-                            'availability':parsed.get('availability') or (parsed.get('offer') or {}).get('availability') or 'unknown',
-                            'available':parsed.get('available'), 'fetched_at':time.time()
-                        }
-                if not item or not item.get('name'):
-                    item=None
-            except Exception:
-                item=None
-        if not item: raise RuntimeError('product_parser_not_found')
-        conn=db()
-        conn.execute('''INSERT INTO store_products(store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,price,currency,availability,fetched_at,fetch_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(store,url) DO UPDATE SET name=excluded.name,brand=excluded.brand,image=excluded.image,sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,price=excluded.price,currency=excluded.currency,availability=excluded.availability,fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''', (store,url,item['name'],item['brand'],item['image'],item['sku'],item['gtin'],item['mpn'],None,None,None,item['price_num'],item['currency'],item['availability'],item['fetched_at'],'OK'))
-        conn.commit();conn.close();return item
-    except Exception as e:
-        conn=db();conn.execute('INSERT INTO store_products(store,url,fetched_at,fetch_status) VALUES(?,?,?,?) ON CONFLICT(store,url) DO UPDATE SET fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status',(store,url,time.time(),'ERROR:'+type(e).__name__));conn.commit();conn.close();return None
+            item = _secondary_store_parser(store, final, url)
+        if not item or not item.get('name'):
+            raise RuntimeError('product_parser_not_found')
+
+        conn = db()
+        conn.execute(
+            '''INSERT INTO store_products(
+                store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
+                price,currency,availability,fetched_at,fetch_status)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(store,url) DO UPDATE SET
+                name=excluded.name,brand=excluded.brand,image=excluded.image,
+                sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                price=excluded.price,currency=excluded.currency,
+                availability=excluded.availability,fetched_at=excluded.fetched_at,
+                fetch_status=excluded.fetch_status''',
+            (
+                store, url, item.get('name'), item.get('brand'), item.get('image'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('price_num'), item.get('currency'), item.get('availability'),
+                item.get('fetched_at'), 'OK',
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return item
+    except Exception as exc:
+        conn = db()
+        conn.execute(
+            '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+               VALUES(?,?,?,?)
+               ON CONFLICT(store,url) DO UPDATE SET
+               fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+            (store, url, time.time(), 'ERROR:' + type(exc).__name__),
+        )
+        conn.commit()
+        conn.close()
+        return None
 
 
 def search_local(query, per_store=12):
-    ts=tokens(query)
-    if not ts:return []
-    conn=db(); rows=[]
+    ts = tokens(query)
+    if not ts:
+        return []
+
+    conn = db()
+    rows = []
     for store in STORES:
-        # URL/slug discovery is local. No network call occurs here.
-        candidates=conn.execute('SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1', (store,)).fetchall()
-        scored=[]
+        candidates = conn.execute(
+            'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
+            (store,),
+        ).fetchall()
+        scored = []
         for r in candidates:
-            s=r['slug']; score=sum(1 for t in ts if t in s)
-            if score==len(ts): score+=10
-            if score>=len(ts): scored.append((score,r['url']))
-        scored.sort(key=lambda x:(-x[0],x[1]))
-        for _,url in scored[:per_store]:
-            row=conn.execute('SELECT * FROM store_products WHERE store=? AND url=?',(store,url)).fetchone()
+            s = r['slug']
+            score = sum(1 for t in ts if t in s)
+            if score == len(ts):
+                score += 10
+            if score >= len(ts):
+                scored.append((score, r['url']))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        for _, url in scored[:per_store]:
+            row = conn.execute(
+                'SELECT * FROM store_products WHERE store=? AND url=?',
+                (store, url),
+            ).fetchone()
             if row:
-                item=dict(row); item['price_num']=item.get('price'); item['store']=STORE_LABELS[store]; item['store_key']=store; rows.append(item)
+                item = dict(row)
+                item['price_num'] = item.get('price')
+                item['store'] = STORE_LABELS[store]
+                item['store_key'] = store
+                rows.append(item)
             else:
-                rows.append({'store':STORE_LABELS[store],'store_key':store,'url':url,'name':url_slug(url),'_needs_refresh':True})
-    conn.close();return rows
+                rows.append({
+                    'store': STORE_LABELS[store],
+                    'store_key': store,
+                    'url': url,
+                    'name': url_slug(url),
+                    '_needs_refresh': True,
+                })
+    conn.close()
+    return rows
 
 
 def refresh_candidates(rows):
-    jobs=[(r['store_key'],r['url']) for r in rows if r.get('_needs_refresh')]
-    out=[]
-    if not jobs:return out
-    with ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS,len(jobs))) as pool:
-        futures=[pool.submit(refresh_url,s,u) for s,u in jobs]
-        for f in as_completed(futures):
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
+    if not jobs:
+        return []
+    out = []
+    with ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs))) as pool:
+        futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+        for future in as_completed(futures):
             try:
-                x=f.result()
-                if x:out.append(x)
-            except Exception:pass
+                item = future.result()
+                if item:
+                    out.append(item)
+            except Exception:
+                pass
     return out
 
 
@@ -497,41 +801,57 @@ def sync_all():
     results = {}
     with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
         futures = {pool.submit(discover_store, store): store for store in STORES}
-        for future, store in futures.items():
+        for future in as_completed(futures):
+            store = futures[future]
             try:
                 results[store] = future.result()
             except Exception as exc:
+                now = time.time()
                 results[store] = {
                     'count': 0,
                     'status': 'DISCOVERY_ERROR',
                     'error': f'{type(exc).__name__}: {exc}',
                 }
                 conn = db()
-                now = time.time()
                 conn.execute(
-                    """INSERT INTO sync_state
-                       (store,status,started_at,finished_at,discovered_count,
-                        fetched_count,error)
+                    '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                        VALUES(?,?,?,?,?,?,?)
-                       ON CONFLICT(store) DO UPDATE SET
-                       status=excluded.status,finished_at=excluded.finished_at,
-                       error=excluded.error""", 
-                    (store, 'DISCOVERY_ERROR', now, now, 0, 0,
-                     f'{type(exc).__name__}: {exc}')
+                       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+                       finished_at=excluded.finished_at,error=excluded.error''',
+                    (store, 'DISCOVERY_ERROR', now, now, 0, 0, f'{type(exc).__name__}: {exc}'),
                 )
                 conn.commit()
                 conn.close()
     return results
 
-def store_status():
-    conn=db(); now=time.time();out={}
-    for store in STORES:
-        r=conn.execute('SELECT * FROM sync_state WHERE store=?',(store,)).fetchone()
-        count=conn.execute('SELECT COUNT(*) c FROM store_urls WHERE store=? AND active=1',(store,)).fetchone()['c']
-        fetched=conn.execute('SELECT COUNT(*) c FROM store_products WHERE store=? AND fetch_status="OK"',(store,)).fetchone()['c']
-        derived_status = (r['status'] if r else ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED'))
-        out[store]={'status':derived_status,'indexed_urls':count,'fetched_products':fetched,'finished_at':r['finished_at'] if r else None,'age_sec':(now-r['finished_at']) if r and r['finished_at'] else None,'error':r['error'] if r else None}
-    conn.close();return out
 
-if __name__=='__main__':
-    print(sync_all())
+def store_status():
+    conn = db()
+    now = time.time()
+    out = {}
+    for store in STORES:
+        r = conn.execute('SELECT * FROM sync_state WHERE store=?', (store,)).fetchone()
+        count = conn.execute(
+            'SELECT COUNT(*) c FROM store_urls WHERE store=? AND active=1', (store,)
+        ).fetchone()['c']
+        fetched = conn.execute(
+            'SELECT COUNT(*) c FROM store_products WHERE store=? AND fetch_status="OK"', (store,)
+        ).fetchone()['c']
+        derived_status = (
+            r['status'] if r else
+            ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED')
+        )
+        out[store] = {
+            'status': derived_status,
+            'indexed_urls': count,
+            'fetched_products': fetched,
+            'finished_at': r['finished_at'] if r else None,
+            'age_sec': (now - r['finished_at']) if r and r['finished_at'] else None,
+            'error': r['error'] if r else None,
+        }
+    conn.close()
+    return out
+
+
+if __name__ == '__main__':
+    print(json.dumps(sync_all(), indent=2, ensure_ascii=False))
