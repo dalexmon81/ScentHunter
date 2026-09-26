@@ -1006,6 +1006,7 @@ async function searchStoresProgressive(term,onPartial){
       if (
   status?.completed &&
   (status?.status === 'completed' ||
+   status?.status === 'cancelled_with_results' ||
    status?.status === 'cancelled' ||
    status?.status === 'error')
 ) {
@@ -1034,6 +1035,11 @@ async function searchStoresProgressive(term,onPartial){
 }
 
 async function searchPerfume(){
+  // Prevent a second Enter/click from starting another job while the current
+  // search is still active. /search-start intentionally cancels an older job,
+  // so duplicate client requests can otherwise cancel a valid search and leave
+  // its already-rendered results labelled as "Ricerca cancellata".
+  if(searchButton.disabled)return;
   const q=queryInput.value.trim();
   if(!q){statusBox.textContent="Cerca un profumo per confrontare i prezzi.";resultsBox.innerHTML="";unresolvedBox.innerHTML="";errorsBox.innerHTML="";return;}
   searchButton.disabled=true;searchButton.classList.add("searching");searchButton.textContent="CERCO…";
@@ -1075,6 +1081,9 @@ async function searchPerfume(){
         if(status === "completed"){
           statusBox.textContent =
             data?.count + " prodotti trovati";
+        }else if(status === "cancelled_with_results"){
+          statusBox.textContent =
+            `${Number(data?.count||groups.length||0)} prodotti trovati — ricerca interrotta`;
         }else if(status === "cancelled"){
           statusBox.textContent =
             "Ricerca cancellata (nessun risultato)";
