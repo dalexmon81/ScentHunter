@@ -10,7 +10,12 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
-SEARCH_URL = BASE_URL + "/es/buscar"
+# Generic native-search endpoints. No product/brand-specific routes.
+SEARCH_ENDPOINTS = (
+    (BASE_URL + "/it/ricerca", {"controller": "search", "s": True}),
+    (BASE_URL + "/it/search", {"controller": "search", "s": True}),
+    (BASE_URL + "/es/buscar", {"search_query": True}),
+)
 TIMEOUT = 7
 DISCOVERY_TIMEOUT = 7
 PRODUCT_WORKERS = 6
@@ -415,7 +420,7 @@ def extract_price_from_html(soup):
         text_value = clean(container.get_text(" ", strip=True))
 
         labelled = re.search(
-            r"(?:precio|price|prix|preis)\s*[:\-]\s*"
+            r"(?:prezzo|precio|price|prix|preis)\s*[:\-]\s*"
             r"((?:€|eur|\$|usd|£|gbp)\s*)?"
             r"([0-9][0-9\s.,]*)\s*"
             r"(?:€|eur|\$|usd|£|gbp)?",
@@ -785,22 +790,30 @@ def discover_product_urls(session, query):
     """
     Generic Sabina discovery.
 
-    Primary path: Sabina native search, with query-based candidate ranking.
-    Fallback: bounded product sitemap discovery.
-    No brand/product/SKU-specific rules are used.
+    Try the retailer's known generic native-search routes in sequence. Each
+    route is driven only by the runtime query; there are no product/brand/SKU
+    exceptions. If all native routes fail to produce candidates, use the
+    bounded generic sitemap fallback.
     """
-    try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=DISCOVERY_TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return []
+    for endpoint, param_template in SEARCH_ENDPOINTS:
+        params = {
+            key: (query if value is True else value)
+            for key, value in param_template.items()
+        }
+        try:
+            response = session.get(
+                endpoint,
+                params=params,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
 
-    if response.status_code < 400:
+        if response.status_code >= 400:
+            continue
+
         candidates = _extract_search_candidates(response, query)
         if candidates:
             return candidates[:MAX_CANDIDATES]
