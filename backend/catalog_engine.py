@@ -982,62 +982,50 @@ def refresh_url(store, url):
         return None
 
 
-def search_local(query, per_store=12, search_terms=None):
-    """Search the local URL catalog without calling retailer search endpoints.
+def search_local(query, per_store=32, search_terms=None):
+    """Search the persistent retailer catalog; never call a retailer endpoint.
 
-    ``search_terms`` may contain canonical identity variants supplied by the
-    central ProductMatcher. They are used only to rank/discover URLs; actual
-    identity acceptance remains exclusively in ProductMatcher.
+    ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
+    Identity acceptance is still performed later by ProductMatcher.match().
+    ``per_store=None`` or a non-positive value means no artificial candidate cap.
     """
-    ts = tokens(query)
-    if not ts:
+    raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
+    terms = []
+    for value in raw_terms:
+        value = str(value or '').strip()
+        if value and value not in terms:
+            terms.append(value)
+    if not terms:
         return []
 
-    terms = []
-    for value in (search_terms or [query]):
-        value = str(value or '').strip()
-        vt = tokens(value)
-        if vt and vt not in terms:
-            terms.append(vt)
-    if not terms:
-        terms = [ts]
+    token_sets = [tokens(term) for term in terms]
+    token_sets = [ts for ts in token_sets if ts]
+    if not token_sets:
+        return []
 
     conn = db()
     rows = []
+    unlimited = per_store is None or int(per_store) <= 0
     for store in STORES:
         candidates = conn.execute(
             'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
             (store,),
         ).fetchall()
-        scored = []
+        scored = {}
         for r in candidates:
-            slug = r['slug'] or ''
-            best = 0
-            best_specificity = 0
-            for term_tokens in terms:
-                overlap = sum(1 for t in term_tokens if t in slug)
-                if overlap == len(term_tokens):
-                    score = 100 + len(term_tokens)
-                else:
-                    score = overlap
-                if score > best or (score == best and len(term_tokens) > best_specificity):
-                    best = score
-                    best_specificity = len(term_tokens)
-            if best >= len(ts):
-                scored.append((best, best_specificity, r['url']))
-
-        scored.sort(key=lambda x: (-x[0], -x[1], x[2]))
-        selected = []
-        seen_urls = set()
-        for _, _, url in scored:
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
-            selected.append(url)
-            if len(selected) >= per_store:
-                break
-
-        for url in selected:
+            slug = str(r['slug'] or '').lower()
+            best_score = 0
+            for ts in token_sets:
+                score = sum(1 for t in ts if t in slug)
+                if score == len(ts):
+                    score += 10
+                if score >= len(ts):
+                    best_score = max(best_score, score)
+            if best_score > 0:
+                scored[r['url']] = best_score
+        ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
+        selected = ordered if unlimited else ordered[:int(per_store)]
+        for url, _score in selected:
             row = conn.execute(
                 'SELECT * FROM store_products WHERE store=? AND url=?',
                 (store, url),
