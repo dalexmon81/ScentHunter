@@ -732,3 +732,251 @@ def scrape(query):
 def search_perfumemarket(query):
     """Compatibility alias for callers using the store-specific name."""
     return search(query)
+
+
+def _pm_money_to_float(value):
+    if value in (None, ""):
+        return None
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+
+    text = re.sub(r"[^\d,.\-]", "", str(value))
+
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(",", ".")
+
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _pm_jsonld_objects(soup):
+    objects = []
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+
+            objects.append(item)
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    return objects
+
+
+def _pm_find_product_jsonld(objects):
+    for obj in objects:
+        raw_type = obj.get("@type")
+        types = raw_type if isinstance(raw_type, list) else [raw_type]
+        normalized = {str(value or "").strip().lower() for value in types}
+        if "product" in normalized:
+            return obj
+    return {}
+
+
+def _pm_extract_offer(product):
+    offers = product.get("offers")
+    if isinstance(offers, dict):
+        return offers
+
+    if isinstance(offers, list):
+        for offer in offers:
+            if isinstance(offer, dict) and _pm_money_to_float(offer.get("price")) is not None:
+                return offer
+        for offer in offers:
+            if isinstance(offer, dict):
+                return offer
+
+    return {}
+
+
+def _pm_extract_brand(product, title):
+    brand = product.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+
+    brand = str(brand or "").strip()
+    if brand:
+        return brand
+
+    words = str(title or "").split()
+    return words[0].strip() if words else ""
+
+
+def _pm_extract_image(product, response_url):
+    image = product.get("image")
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get("url") or image.get("contentUrl")
+    if not image:
+        return None
+    return urljoin(response_url, str(image))
+
+
+def _pm_extract_availability(product, offer, soup):
+    values = []
+    for source in (offer.get("availability"), product.get("availability")):
+        if source:
+            values.append(str(source))
+
+    text = " ".join(values).lower()
+    if any(marker in text for marker in ("outofstock", "out of stock", "sold out", "soldout", "unavailable")):
+        return "out_of_stock"
+    if any(marker in text for marker in ("preorder", "pre-order", "pre order")):
+        return "preorder"
+    if any(marker in text for marker in ("instock", "in stock")):
+        return "in_stock"
+
+    # Do not treat the generic word "available" in arbitrary page text as
+    # proof of stock; it can occur in unrelated content.
+    page_text = soup.get_text(" ", strip=True).lower()
+    if re.search(r"\bavailable\b", page_text) and not re.search(r"\bunavailable\b", page_text):
+        return "in_stock"
+
+    return "unknown"
+
+
+def extract_product_page(session, url, query):
+    """Parse a PerfumeMarket product page generically.
+
+    This is intentionally independent of any perfume, brand, product URL,
+    price or other product-specific exception. It uses Shopify/JSON-LD data
+    first and product-bound HTML fields as fallbacks.
+    """
+    try:
+        response = session.get(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            timeout=15,
+            allow_redirects=True,
+        )
+    except requests.RequestException as exc:
+        print(f"PERFUMEMARKET PRODUCT FETCH ERROR: {type(exc).__name__}: {exc} | {url}")
+        return None
+
+    if response.status_code >= 400:
+        print(f"PERFUMEMARKET PRODUCT HTTP ERROR: {response.status_code} | {url}")
+        return None
+
+    final_url = (response.url or url).split("?", 1)[0].rstrip("/")
+    if "/products/" not in final_url.lower():
+        return None
+
+    soup = BeautifulSoup(response.text or "", "html.parser")
+    product = _pm_find_product_jsonld(_pm_jsonld_objects(soup))
+
+    h1 = soup.select_one("h1")
+    h1_text = h1.get_text(" ", strip=True) if h1 else ""
+    title = str(product.get("name") or h1_text or "").strip()
+    if not title:
+        return None
+
+    brand = _pm_extract_brand(product, title)
+
+    if query and not _query_matches(f"{title} {brand} {final_url}", query):
+        return None
+
+    offer = _pm_extract_offer(product)
+    price = _pm_money_to_float(offer.get("price"))
+    if price is None:
+        price = _pm_money_to_float(product.get("price"))
+
+    if price is None:
+        for selector in (
+            '[itemprop="price"]',
+            'meta[property="product:price:amount"]',
+            'meta[itemprop="price"]',
+            '.price',
+            '.product-price',
+            '.current-price',
+            '[class*="price"]',
+        ):
+            node = soup.select_one(selector)
+            if not node:
+                continue
+            raw = node.get("content") or node.get("value") or node.get_text(" ", strip=True)
+            price = _pm_money_to_float(raw)
+            if price is not None:
+                break
+
+    if price is None:
+        return None
+
+    currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
+    availability = _pm_extract_availability(product, offer, soup)
+    image = _pm_extract_image(product, response.url)
+
+    sku = str(product.get("sku") or "").strip()
+    gtin = str(
+        product.get("gtin13")
+        or product.get("gtin12")
+        or product.get("gtin14")
+        or product.get("gtin")
+        or ""
+    ).strip()
+    mpn = str(product.get("mpn") or "").strip()
+
+    return {
+        "store": STORE,
+        "name": title,
+        "brand": brand,
+        "url": final_url,
+        "image": image,
+        "sku": sku,
+        "gtin": gtin,
+        "mpn": mpn,
+        "price_num": price,
+        "price": price,
+        "currency": currency,
+        "availability": availability,
+        "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
+        "source": {
+            "url": final_url,
+            "name": title,
+            "brand": brand,
+            "image": image,
+        },
+        "identity": {
+            "sku": {"value": sku, "source": "shopify_jsonld"} if sku else None,
+            "gtin": {"value": gtin, "source": "shopify_jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "shopify_jsonld"} if mpn else None,
+        },
+        "offer": {
+            "price": price,
+            "currency": currency,
+            "availability": availability,
+        },
+        "fetched_at": time.time(),
+    }
