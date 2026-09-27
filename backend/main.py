@@ -15,6 +15,7 @@ from pathlib import Path
 try:
     from catalog_engine import (
         search_local as catalog_search_local,
+        refresh_candidates as catalog_refresh_candidates,
         store_status as catalog_store_status,
         hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
@@ -24,13 +25,14 @@ try:
 except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
     catalog_search_local = None
+    catalog_refresh_candidates = None
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.6-persistent-hydration-queue'
+APP_VERSION = '5.7-catalog-targeted-refresh'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
@@ -70,9 +72,9 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 2,
-            'workers': 2,
-            'pause_seconds': 0.5,
+            'batch_size': 8,
+            'workers': 8,
+            'pause_seconds': 0.25,
         },
         daemon=True,
         name='scenthunter-catalog-hydration',
@@ -1069,10 +1071,40 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         print(f'CATALOG SEARCH ERROR: {type(exc).__name__}: {exc}', flush=True)
         raw_rows = []
 
-    # SEARCH IS READ-ONLY: missing catalog pages are handled exclusively by
-    # the persistent background hydration queue. Never perform network fetches
-    # or refresh_url() from a user search.
+    # The catalog decides WHICH URLs are relevant. For the query-selected
+    # candidates that are not hydrated yet, perform a short targeted fetch.
+    # This is deliberately not retailer discovery and never calls a retailer
+    # search endpoint. Background hydration continues independently.
     refreshed = []
+    if callable(catalog_refresh_candidates):
+        try:
+            refresh_budget = min(8.0, max(0.25, float(os.environ.get(
+                'CATALOG_REFRESH_BUDGET_SECONDS', '8'
+            ))))
+            refresh_deadline = started + refresh_budget
+            requested = [
+                row for row in raw_rows
+                if isinstance(row, dict) and row.get('_needs_refresh')
+            ]
+            if requested:
+                refreshed = catalog_refresh_candidates(
+                    requested,
+                    cancel_event=cancel_event,
+                    deadline=refresh_deadline,
+                    max_workers=min(8, max(1, len(stores))),
+                ) or []
+                print(
+                    f'CATALOG TARGETED REFRESH requested={len(requested)} '
+                    f'returned={len(refreshed)}',
+                    flush=True,
+                )
+        except Exception as exc:
+            print(
+                f'CATALOG TARGETED REFRESH UNAVAILABLE: '
+                f'{type(exc).__name__}: {exc}',
+                flush=True,
+            )
+
     refreshed_by_key = {}
     for item in refreshed:
         if not isinstance(item, dict):
