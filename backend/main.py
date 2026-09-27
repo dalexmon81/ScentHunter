@@ -20,6 +20,7 @@ try:
         hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
+        db as catalog_db,
     )
     CATALOG_ENGINE_AVAILABLE = True
 except Exception as exc:
@@ -29,6 +30,7 @@ except Exception as exc:
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
+    catalog_db = None
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
@@ -2396,6 +2398,35 @@ def catalog_status_endpoint():
             'hydration_started': _CATALOG_HYDRATION_STARTED,
             'stores': statuses,
         }
+
+
+@app.get('/catalog/hydration-errors')
+def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
+    """Read-only diagnostic view of recent hydration errors."""
+    store_key = str(store or '').strip().lower()
+    if store_key not in STORES:
+        return {'error': f'unknown_store:{store_key}', 'stores': STORES}
+    limit_value = max(1, min(int(limit or 20), 100))
+    if not callable(catalog_db):
+        return {'store': store_key, 'errors': [], 'error': 'catalog_db_unavailable'}
+    conn = catalog_db()
+    try:
+        rows = conn.execute(
+            """SELECT store,url,state,attempts,last_error,last_http_status,
+                              last_started_at,last_finished_at,available_at
+                       FROM hydration_queue
+                       WHERE store=? AND state IN ('ERROR','DEAD')
+                       ORDER BY last_finished_at DESC, attempts DESC
+                       LIMIT ?""",
+            (store_key, limit_value),
+        ).fetchall()
+        return {
+            'store': store_key,
+            'count': len(rows),
+            'errors': [dict(row) for row in rows],
+        }
+    finally:
+        conn.close()
 
 
 @app.get('/catalog/hydration-status')
