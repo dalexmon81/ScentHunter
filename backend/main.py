@@ -382,7 +382,7 @@ _NON_FRAGRANCE_TITLE_RE = re.compile(
     r"(?:^|[^a-z0-9])(?:gift\s*set|set\s*regalo|coffret|cofre|estuche|"
     r"discovery\s*set|sample(?:s)?|sample\s*set|mystery\s*box|beauty\s*box|"
     r"gift\s*box|bundle|pack\s*regalo|duo|trio|kit|case|set|"
-    r"decant(?:s)?|tester(?:s)?|testeur(?:s)?)(?:[^a-z0-9]|$)",
+    r"decant(?:s)?|tester(?:s)?|testeur(?:s)?|probe(?:s)?|proben|proef(?:je|jes)?|pröbchen|échantillon(?:s)?|muestra(?:s)?)(?:[^a-z0-9]|$)",
     re.I,
 )
 
