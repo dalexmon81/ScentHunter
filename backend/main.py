@@ -18,6 +18,7 @@ try:
         refresh_candidates as catalog_refresh_candidates,
         store_status as catalog_store_status,
         sync_all as catalog_sync_all,
+        catalog_hydration_loop,
     )
     CATALOG_ENGINE_AVAILABLE = True
 except Exception as exc:
@@ -26,9 +27,10 @@ except Exception as exc:
     catalog_refresh_candidates = None
     catalog_store_status = None
     catalog_sync_all = None
+    catalog_hydration_loop = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.4-catalog-bootstrap-nonblocking'
+APP_VERSION = '5.5-catalog-background-hydration'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
@@ -39,6 +41,8 @@ _CATALOG_BOOTSTRAP_STARTED = False
 _CATALOG_BOOTSTRAP_RUNNING = False
 _CATALOG_BOOTSTRAP_DONE = False
 _CATALOG_BOOTSTRAP_ERROR = None
+_CATALOG_HYDRATION_STARTED = False
+_CATALOG_HYDRATION_STOP = threading.Event()
 
 def _catalog_is_ready():
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
@@ -53,6 +57,28 @@ def _catalog_is_ready():
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
 
+def _start_catalog_hydration():
+    global _CATALOG_HYDRATION_STARTED
+    with _CATALOG_BOOTSTRAP_LOCK:
+        if _CATALOG_HYDRATION_STARTED:
+            return
+        if not callable(catalog_hydration_loop):
+            print('CATALOG HYDRATION SKIP: catalog_engine has no hydrator', flush=True)
+            return
+        _CATALOG_HYDRATION_STARTED = True
+    threading.Thread(
+        target=catalog_hydration_loop,
+        kwargs={
+            'stop_event': _CATALOG_HYDRATION_STOP,
+            'batch_size': 64,
+            'workers': 8,
+            'pause_seconds': 1.0,
+        },
+        daemon=True,
+        name='scenthunter-catalog-hydration',
+    ).start()
+
+
 def _catalog_bootstrap_worker():
     global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -62,6 +88,7 @@ def _catalog_bootstrap_worker():
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
             raise RuntimeError('catalog_engine_unavailable')
         result = catalog_sync_all()
+        _start_catalog_hydration()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_DONE = ready
@@ -90,6 +117,7 @@ def _start_catalog_bootstrap():
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
         print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
+        _start_catalog_hydration()
         return
     threading.Thread(
         target=_catalog_bootstrap_worker,
@@ -2035,6 +2063,24 @@ def diagnostic_runtime_deep():
 @app.get('/health')
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
+
+@app.get('/catalog-status')
+def catalog_status_endpoint():
+    """Read-only catalog/discovery/hydration status for diagnostics."""
+    try:
+        statuses = catalog_store_status() if callable(catalog_store_status) else {}
+    except Exception as exc:
+        statuses = {'_error': f'{type(exc).__name__}:{exc}'}
+    with _CATALOG_BOOTSTRAP_LOCK:
+        return {
+            'bootstrap_started': _CATALOG_BOOTSTRAP_STARTED,
+            'bootstrap_running': _CATALOG_BOOTSTRAP_RUNNING,
+            'bootstrap_done': _CATALOG_BOOTSTRAP_DONE,
+            'bootstrap_error': _CATALOG_BOOTSTRAP_ERROR,
+            'hydration_started': _CATALOG_HYDRATION_STARTED,
+            'stores': statuses,
+        }
+
 
 @app.get('/search-start')
 def search_start(q: str):
