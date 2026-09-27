@@ -727,6 +727,13 @@ def _aggregate_identity_results(offers):
         ).lower()
 
         if status == "matched" and offer.get("catalog_id"):
+            # Final generic publication guard: non-fragrance commercial rows
+            # (samples, testers, gift sets, bundles, cosmetics, etc.) must
+            # never enter public offer groups even if an upstream path marked
+            # them as matched.
+            if _is_non_fragrance_offer(offer):
+                continue
+
             catalog_id = str(
                 offer.get("catalog_id")
             ).strip()
