@@ -1241,10 +1241,12 @@ def _ensure_hydration_queue():
                 """SELECT u.store,u.url
                    FROM store_urls u
                    WHERE u.active=1
-                     AND NOT EXISTS (
-                         SELECT 1 FROM hydration_queue q
-                         WHERE q.store=u.store AND q.url=u.url
-                     )"""
+                     AND (
+    SELECT COUNT(*)
+    FROM hydration_queue p
+    WHERE p.store=q.store
+      AND p.state='PROCESSING'
+) < 2"""
             ).fetchall()
             for r in rows:
                 existing = conn.execute(
