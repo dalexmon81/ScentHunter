@@ -220,54 +220,75 @@ def _diagnostic(resp, requested_url):
     return f'OK;status={status};final={final};type={ctype or "?"};bytes={length}'
 
 
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMA_READY = False
+
+
+def _ensure_schema(conn):
+    """Create/migrate the catalog schema once per process.
+
+    Search and hydration connections share the same SQLite file. Running
+    CREATE TABLE/INDEX and switching journal mode on every connection creates
+    avoidable schema-lock contention and can make /search appear to hang while
+    background hydration is writing. Schema setup is therefore serialized and
+    executed only once after process start.
+    """
+    global _SCHEMA_READY
+    if _SCHEMA_READY:
+        return
+    with _SCHEMA_LOCK:
+        if _SCHEMA_READY:
+            return
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_urls(
+            store TEXT NOT NULL, url TEXT NOT NULL, slug TEXT NOT NULL,
+            lastmod TEXT, discovered_at REAL NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY(store,url))""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_products(
+            store TEXT NOT NULL, url TEXT NOT NULL, name TEXT, brand TEXT, image TEXT,
+            sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
+            price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
+            PRIMARY KEY(store,url))""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
+            store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
+            discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS hydration_queue(
+            store TEXT NOT NULL,
+            url TEXT NOT NULL,
+            state TEXT NOT NULL DEFAULT 'PENDING',
+            attempts INTEGER NOT NULL DEFAULT 0,
+            available_at REAL NOT NULL DEFAULT 0,
+            leased_until REAL,
+            lease_token TEXT,
+            first_seen_at REAL NOT NULL,
+            last_started_at REAL,
+            last_finished_at REAL,
+            last_error TEXT,
+            last_http_status INTEGER,
+            PRIMARY KEY(store,url)
+        )""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS hydration_scheduler(
+            id INTEGER PRIMARY KEY CHECK(id=1),
+            last_store_index INTEGER NOT NULL DEFAULT 0
+        )""")
+        conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
+        conn.commit()
+        _SCHEMA_READY = True
+
+
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=60)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=15000')
+    _ensure_schema(conn)
     conn.execute('PRAGMA synchronous=NORMAL')
-    conn.execute('''CREATE TABLE IF NOT EXISTS store_urls(
-        store TEXT NOT NULL, url TEXT NOT NULL, slug TEXT NOT NULL,
-        lastmod TEXT, discovered_at REAL NOT NULL, active INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY(store,url))''')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)')
-    conn.execute('''CREATE TABLE IF NOT EXISTS store_products(
-        store TEXT NOT NULL, url TEXT NOT NULL, name TEXT, brand TEXT, image TEXT,
-        sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
-        price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
-        PRIMARY KEY(store,url))''')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
-    conn.execute('''CREATE TABLE IF NOT EXISTS sync_state(
-        store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
-        discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)''')
-
-    # Durable hydration work queue. Discovery populates this table; background
-    # workers consume it independently of user searches.
-    conn.execute('''CREATE TABLE IF NOT EXISTS hydration_queue(
-        store TEXT NOT NULL,
-        url TEXT NOT NULL,
-        state TEXT NOT NULL DEFAULT 'PENDING',
-        attempts INTEGER NOT NULL DEFAULT 0,
-        available_at REAL NOT NULL DEFAULT 0,
-        leased_until REAL,
-        lease_token TEXT,
-        first_seen_at REAL NOT NULL,
-        last_started_at REAL,
-        last_finished_at REAL,
-        last_error TEXT,
-        last_http_status INTEGER,
-        PRIMARY KEY(store,url)
-    )''')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
-    conn.execute('''CREATE TABLE IF NOT EXISTS hydration_scheduler(
-        id INTEGER PRIMARY KEY CHECK(id=1),
-        last_store_index INTEGER NOT NULL DEFAULT 0
-    )''')
-    conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
-
-    conn.commit()
     return conn
 
 
@@ -1038,6 +1059,15 @@ def search_local(query, per_store=32, search_terms=None):
     ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
     Identity acceptance is still performed later by ProductMatcher.match().
     ``per_store=None`` or a non-positive value means no artificial candidate cap.
+
+    The catalog can contain tens of thousands of URLs per store.  Never scan
+    every URL once for every search term: family-expanded queries can contain
+    dozens of terms and that turns a simple search into an O(URLs * terms)
+    Python loop.  Build a lightweight in-memory token posting index for the
+    current store and evaluate only URLs that contain the rarest token of a
+    search term.  This preserves the exact whole-token matching semantics and
+    deterministic ranking while making broad family queries bounded by the
+    relevant URLs rather than the entire catalog.
     """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
@@ -1048,35 +1078,57 @@ def search_local(query, per_store=32, search_terms=None):
     if not terms:
         return []
 
-    token_sets = [tokens(term) for term in terms]
-    token_sets = [ts for ts in token_sets if ts]
+    token_sets = []
+    for term in terms:
+        ts = tuple(tokens(term))
+        if ts:
+            token_sets.append(ts)
     if not token_sets:
         return []
 
     conn = db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
+
     for store in STORES:
         candidates = conn.execute(
             'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
             (store,),
         ).fetchall()
-        scored = {}
+
+        # Inverted index: token -> URLs containing that token.  We also keep
+        # the token set per URL so the final score uses exact whole-token
+        # membership, never arbitrary substring matching.
+        postings = {}
+        url_tokens = {}
         for r in candidates:
-            slug = str(r['slug'] or '').lower()
-            best_score = 0
-            # Match whole slug tokens, not arbitrary substrings.  A query
-            # for "Hawas" must not discover "Al Ghawas" merely because
-            # "hawas" is contained inside "ghawas".
-            slug_tokens = set(slug.split())
-            for ts in token_sets:
-                score = sum(1 for t in ts if t in slug_tokens)
+            url = r['url']
+            slug_tokens = set(str(r['slug'] or '').lower().split())
+            url_tokens[url] = slug_tokens
+            for token in slug_tokens:
+                postings.setdefault(token, []).append(url)
+
+        # Each search term is evaluated only through its rarest token.  A URL
+        # can therefore be scored for a family variant only when it contains
+        # at least one token that the variant actually requires.
+        term_anchors = []
+        for ts in token_sets:
+            anchor = min(ts, key=lambda token: len(postings.get(token, ())))
+            if postings.get(anchor):
+                term_anchors.append((ts, anchor))
+
+        scored = {}
+        for ts, anchor in term_anchors:
+            for url in postings.get(anchor, ()):
+                slug_tokens = url_tokens.get(url, set())
+                score = sum(1 for token in ts if token in slug_tokens)
                 if score == len(ts):
+                    # Preserve the previous ranking contract: complete term
+                    # matches receive the same +10 bonus.
                     score += 10
-                if score >= len(ts):
-                    best_score = max(best_score, score)
-            if best_score > 0:
-                scored[r['url']] = best_score
+                    if score > scored.get(url, 0):
+                        scored[url] = score
+
         ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
         selected = ordered if unlimited else ordered[:int(per_store)]
         for url, _score in selected:
@@ -1098,6 +1150,7 @@ def search_local(query, per_store=32, search_terms=None):
                     'name': url_slug(url),
                     '_needs_refresh': True,
                 })
+
     conn.close()
     return rows
 
