@@ -72,7 +72,7 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 8,
+            'batch_size': 16,
             'workers': 8,
             'pause_seconds': 0.25,
         },
