@@ -1241,12 +1241,10 @@ def _ensure_hydration_queue():
                 """SELECT u.store,u.url
                    FROM store_urls u
                    WHERE u.active=1
-                     AND (
-    SELECT COUNT(*)
-    FROM hydration_queue p
-    WHERE p.store=q.store
-      AND p.state='PROCESSING'
-) < 2"""
+                     AND NOT EXISTS (
+                         SELECT 1 FROM hydration_queue q
+                         WHERE q.store=u.store AND q.url=u.url
+                     )"""
             ).fetchall()
             for r in rows:
                 existing = conn.execute(
@@ -1302,7 +1300,7 @@ def _hydration_store_order(conn):
 
 
 def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
-    """Atomically claim one ready URL, with at most one active task per store."""
+    """Atomically claim one ready URL, with at most two active tasks per store."""
     now = time.time()
     token = uuid.uuid4().hex
     conn = db()
@@ -1333,10 +1331,12 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      AND u.active=1
                      AND q.state IN ('PENDING','ERROR')
                      AND q.available_at <= ?
-                     AND NOT EXISTS (
-                         SELECT 1 FROM hydration_queue p
-                         WHERE p.store=q.store AND p.state='PROCESSING'
-                     )
+                     AND (
+                         SELECT COUNT(*)
+                         FROM hydration_queue p
+                         WHERE p.store=q.store
+                           AND p.state='PROCESSING'
+                     ) < 2
                    ORDER BY
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
