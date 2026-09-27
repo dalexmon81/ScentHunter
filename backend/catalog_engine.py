@@ -1567,12 +1567,20 @@ def _hydrate_one_task(task):
 def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
     """Process a small durable queue batch.
 
+    Queue initialization/backfill is deliberately not part of this hot loop.
+    The queue is initialized once by catalog_hydration_loop() at startup, while
+    discovery writes newly discovered URLs directly into hydration_queue.
     The queue itself owns concurrency/fairness. At most one task per store is
     claimed, while the global worker count stays small enough for the 1 GB /
     shared-CPU Fly machine.
     """
-    _ensure_hydration_queue()
+    # Do not call _ensure_hydration_queue() here.
+    #
+    # That function scans the whole active catalog and backfills missing queue
+    # rows. Running it before every small hydration batch causes repeated
+    # catalog-wide SQLite work and contends with user searches.
     recover_stale_tasks()
+
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
