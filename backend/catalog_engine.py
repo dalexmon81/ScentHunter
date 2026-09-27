@@ -26,6 +26,7 @@ import threading
 import time
 import unicodedata
 import urllib.parse
+import os
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -34,7 +35,7 @@ import requests
 from bs4 import BeautifulSoup
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / 'store_catalog.sqlite3'
+DB_PATH = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(BASE_DIR / 'store_catalog.sqlite3'))).expanduser()
 
 STORES = {
     'bplatz': 'https://en.bplatz.de',
@@ -212,6 +213,7 @@ def _diagnostic(resp, requested_url):
 
 
 def db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=60)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
@@ -1048,21 +1050,49 @@ def search_local(query, per_store=32, search_terms=None):
     return rows
 
 
-def refresh_candidates(rows):
+def refresh_candidates(rows, cancel_event=None):
+    """Refresh only catalog candidates that do not yet have page data.
+
+    Cancellation is cooperative: pending futures are cancelled immediately and
+    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT.
+    The executor is not waited on during cancellation, so a superseded search
+    can finalize and a new search can start without inheriting the old wait.
+    """
     jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
     if not jobs:
         return []
     out = []
-    with ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs))) as pool:
-        futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
-        for future in as_completed(futures):
-            try:
-                item = future.result()
-                if item:
-                    out.append(item)
-            except Exception:
-                pass
-    return out
+    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    cancelled = False
+    try:
+        pending = set(futures)
+        while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            done = [future for future in list(pending) if future.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for future in done:
+                pending.discard(future)
+                try:
+                    item = future.result()
+                    if item:
+                        out.append(item)
+                except Exception:
+                    pass
+        if cancelled:
+            return out
+        return out
+    finally:
+        # Never make a cancelled user search wait for all old refresh workers.
+        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
+        # own DB connections when finished.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
 def sync_all():
