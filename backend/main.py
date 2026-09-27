@@ -1250,11 +1250,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             matched_rows.append(resolved)
             if resolved.get('_match_status') != 'matched' or not resolved.get('catalog_id'):
                 unresolved_count += 1
-            if callable(on_result):
-                try:
-                    on_result(resolved)
-                except Exception:
-                    pass
+            # Catalog-first search publishes the complete store batch through
+            # on_report below. Do not aggregate once per product.
 
         status_info = statuses.get(store) if isinstance(statuses, dict) else None
         status_info = status_info if isinstance(status_info, dict) else {}
@@ -1424,6 +1421,7 @@ def _new_job(query):
             "query": query,
             "started_at": time.time(),
             "completed": False,
+            "status": "searching",
             "cancel_event": threading.Event(),
             "done_event": threading.Event(),
             "aggregate_lock": threading.Lock(),
@@ -1491,120 +1489,61 @@ def _snapshot(job_id):
     }
 
 def _publish_result(job_id, row):
+    """Append one offer to the job without doing expensive aggregation.
+
+    Normal catalog-first searches already resolve identity before publishing.
+    Re-running dedupe + ProductMatcher aggregation for every single offer made
+    broad searches progressively slower and could keep the job alive for minutes.
+    Final aggregation is performed once by _run_job after all stores finish.
+    """
     if not isinstance(row, dict):
         return
 
-    # Serialize the entire per-job snapshot/update cycle.  The lock is acquired
-    # BEFORE taking the offers snapshot, otherwise two concurrent store threads
-    # could compute from different snapshots and a stale computation could
-    # overwrite a newer one.  JOBS_LOCK is held only for short mutations.
     with JOBS_LOCK:
         job = JOBS.get(job_id)
         if not job or job.get("completed"):
             return
         if job.get("done_event") and job["done_event"].is_set():
             return
-        aggregate_lock = job.get("aggregate_lock")
+        job.setdefault("offers", []).append(row)
 
-    if aggregate_lock is None:
-        return
-
-    with aggregate_lock:
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if not job or job.get("completed"):
-                return
-            if job.get("done_event") and job["done_event"].is_set():
-                return
-            job.setdefault("offers", []).append(row)
-            offers = list(job["offers"])
-            diagnostics = job.setdefault("dedupe_diagnostics", [])
-
-        # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
-        deduped = dedupe_results(offers, diagnostics)
-        grouped, unresolved = _aggregate_identity_results(deduped)
-
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if not job or job.get("completed"):
-                return
-            job["offers"] = deduped
-            job["results"] = grouped
-            job["unresolved_offers"] = unresolved
-
-    print(
-        "SEARCH PUBLISH RESULT "
-        f"job={job_id} "
-        f"store={row.get('store')} "
-        f"groups={len(grouped)} "
-        f"offers={len(deduped)}",
-        flush=True,
-    )
 
 def _publish_store(job_id, report):
-    store = report["store"]
+    """Publish one completed store report without running aggregation.
 
-    # Serialize the store snapshot/update cycle for this job.  This prevents a
-    # slower aggregation from publishing an older offers snapshot after a
-    # newer store report has already arrived.
+    Store reports are the authoritative batch boundary for the catalog-first
+    search path. Keep this operation short: it only updates job state.
+    Dedupe and identity grouping happen once, after all reports are returned.
+    """
+    if not isinstance(report, dict):
+        return
+
+    store = report.get("store")
+    if not store:
+        return
+
     with JOBS_LOCK:
         job = JOBS.get(job_id)
         if not job or job.get("completed"):
             return
         if job.get("done_event") and job["done_event"].is_set():
             return
-        aggregate_lock = job.get("aggregate_lock")
 
-    if aggregate_lock is None:
-        return
+        job["stores"][store] = {
+            "status": report.get("status"),
+            "verified": bool(report.get("verified")),
+            "elapsed": report.get("elapsed", 0.0),
+            "count": report.get("count", 0),
+            "details": dict(report.get("details") or {}),
+        }
 
-    with aggregate_lock:
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if not job or job.get("completed"):
-                return
-            if job.get("done_event") and job["done_event"].is_set():
-                return
+        if report.get("error"):
+            job["errors"][store] = report["error"]
 
-            job["stores"][store] = {
-                "status": report["status"],
-                "verified": bool(report.get("verified")),
-                "elapsed": report["elapsed"],
-                "count": report["count"],
-                "details": dict(report.get("details") or {}),
-            }
+        for item in report.get("results", []):
+            if isinstance(item, dict):
+                job.setdefault("offers", []).append(item)
 
-            if report.get("error"):
-                job["errors"][store] = report["error"]
-
-            for item in report.get("results", []):
-                if isinstance(item, dict):
-                    job.setdefault("offers", []).append(item)
-
-            offers = list(job.get("offers", []))
-            diagnostics = job.setdefault("dedupe_diagnostics", [])
-
-        # Heavy aggregation is serialized per job, but never under JOBS_LOCK.
-        deduped = dedupe_results(offers, diagnostics)
-        grouped, unresolved = _aggregate_identity_results(deduped)
-
-        # Publish the computed snapshot with a short lock.
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if not job or job.get("completed"):
-                return
-            job["offers"] = deduped
-            job["results"] = grouped
-            job["unresolved_offers"] = unresolved
-
-    print(
-        "SEARCH PUBLISH "
-        f"job={job_id} "
-        f"store={store} "
-        f"groups={len(grouped)} "
-        f"offers={len(deduped)}",
-        flush=True,
-    )
 
 def _run_job_impl(job_id, query):
     """Compatibility wrapper; the single authoritative lifecycle is _run_job."""
@@ -1645,6 +1584,11 @@ def _run_job(job_id, query):
             cancel_event=cancel_event,
             job_id=job_id,
         )
+        print(
+            f"SEARCH COLLECTED job={job_id} query={query!r} "
+            f"stores={len(reports or [])} elapsed={round(time.monotonic() - started, 3)}",
+            flush=True,
+        )
 
         # Registriamo i thread store nel job (per diagnosi / eventuali cleanup futuri)
         with JOBS_LOCK:
@@ -1668,9 +1612,17 @@ def _run_job(job_id, query):
                 cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
 
         if job is not None:
-            with job.get("aggregate_lock"):
-                deduped = dedupe_results(offers, diagnostics)
-                grouped, unresolved = _aggregate_identity_results(deduped)
+            if cancel_event is not None and cancel_event.is_set():
+                print(
+                    f"SEARCH FINALIZE AFTER CANCEL job={job_id}",
+                    flush=True,
+                )
+
+            # Aggregate exactly once after every store report has arrived.
+            # This is the only expensive dedupe/identity pass for a normal
+            # catalog-first search.
+            deduped = dedupe_results(offers, diagnostics)
+            grouped, unresolved = _aggregate_identity_results(deduped)
 
             elapsed = round(time.monotonic() - started, 3)
 
