@@ -1122,28 +1122,76 @@ def hydration_pending_counts():
 
 
 def hydrate_catalog_batch(max_urls=64, workers=8, deadline=None, stores=None):
-    """Hydrate a bounded batch of discovered product URLs in background."""
+    """Hydrate a fair, persistent batch of discovered product URLs.
+
+    Important behavior:
+      - never-attempted URLs are always preferred over previous ERROR rows;
+      - the batch is distributed across stores so one large retailer cannot
+        monopolize the background hydrator;
+      - previous errors are left recorded for diagnostics and are retried only
+        after every never-attempted URL has had a chance to be hydrated.
+    """
     allowed = list(stores) if stores else list(STORES)
     if not allowed:
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
+    # Give every store a fair share of each background batch. This prevents
+    # Easycosmetic/ParfumZentrum from starving smaller stores such as Sabina.
+    total = max(1, int(max_urls))
+    quota = max(1, total // len(allowed))
+    remainder = total - (quota * len(allowed))
+
+    jobs = []
     conn = db()
     try:
-        placeholders = ','.join('?' for _ in allowed)
-        sql = f"""SELECT u.store,u.url
-                  FROM store_urls u
-                  LEFT JOIN store_products p
-                    ON p.store=u.store AND p.url=u.url
-                  WHERE u.active=1
-                    AND u.store IN ({placeholders})
-                    AND (p.url IS NULL OR p.fetch_status != "OK")
-                  ORDER BY u.discovered_at DESC
-                  LIMIT ?"""
-        rows = conn.execute(sql, [*allowed, int(max_urls)]).fetchall()
+        for index, store in enumerate(allowed):
+            limit = quota + (1 if index < remainder else 0)
+            rows = conn.execute(
+                """SELECT u.store,u.url
+                   FROM store_urls u
+                   LEFT JOIN store_products p
+                     ON p.store=u.store AND p.url=u.url
+                   WHERE u.active=1
+                     AND u.store=?
+                     AND p.url IS NULL
+                   ORDER BY u.discovered_at ASC
+                   LIMIT ?""",
+                (store, int(limit)),
+            ).fetchall()
+            jobs.extend((r['store'], r['url']) for r in rows)
     finally:
         conn.close()
 
-    jobs = [(r['store'], r['url']) for r in rows]
+    # If a store has no never-attempted URLs, use its old errors only after
+    # giving every store its first-pass opportunity. This keeps the catalog
+    # growing instead of retrying the same failing URLs forever.
+    if len(jobs) < total:
+        remaining_slots = total - len(jobs)
+        conn = db()
+        try:
+            for store in allowed:
+                if remaining_slots <= 0:
+                    break
+                rows = conn.execute(
+                    """SELECT u.store,u.url
+                       FROM store_urls u
+                       JOIN store_products p
+                         ON p.store=u.store AND p.url=u.url
+                       WHERE u.active=1
+                         AND u.store=?
+                         AND p.fetch_status LIKE 'ERROR:%'
+                       ORDER BY p.fetched_at ASC
+                       LIMIT ?""",
+                    (store, int(remaining_slots)),
+                ).fetchall()
+                for r in rows:
+                    jobs.append((r['store'], r['url']))
+                    remaining_slots -= 1
+                    if remaining_slots <= 0:
+                        break
+        finally:
+            conn.close()
+
     if not jobs:
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
@@ -1176,7 +1224,6 @@ def hydrate_catalog_batch(max_urls=64, workers=8, deadline=None, stores=None):
         return {'selected': len(jobs), 'fetched': fetched, 'errors': errors}
     finally:
         pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
-
 
 def catalog_hydration_loop(stop_event, batch_size=64, workers=8, pause_seconds=1.0):
     """Continuously hydrate discovered product pages without blocking searches."""
