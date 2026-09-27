@@ -28,8 +28,74 @@ except Exception as exc:
     catalog_sync_all = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.2-catalog-first-nonblocking'
+APP_VERSION = '5.3-catalog-bootstrap'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
+
+# The persistent catalog lives on the Fly volume. A new volume starts empty,
+# so discovery must be bootstrapped in the background when the application
+# starts. Normal user searches never run discovery themselves.
+_CATALOG_BOOTSTRAP_LOCK = threading.Lock()
+_CATALOG_BOOTSTRAP_STARTED = False
+_CATALOG_BOOTSTRAP_RUNNING = False
+_CATALOG_BOOTSTRAP_DONE = False
+_CATALOG_BOOTSTRAP_ERROR = None
+
+def _catalog_is_ready():
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
+        return False
+    try:
+        statuses = catalog_store_status() or {}
+        return any(
+            int((statuses.get(store) or {}).get('indexed_urls') or 0) > 0
+            for store in STORES
+        )
+    except Exception as exc:
+        print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return False
+
+def _catalog_bootstrap_worker():
+    global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
+    with _CATALOG_BOOTSTRAP_LOCK:
+        _CATALOG_BOOTSTRAP_RUNNING = True
+    print('CATALOG BOOTSTRAP START: persistent catalog is empty; starting background discovery', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
+            raise RuntimeError('catalog_engine_unavailable')
+        result = catalog_sync_all()
+        ready = _catalog_is_ready()
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_DONE = ready
+            _CATALOG_BOOTSTRAP_ERROR = None if ready else 'catalog_bootstrap_finished_without_indexed_stores'
+        print(
+            f'CATALOG BOOTSTRAP END ready={ready} stores={len(result or {})}',
+            flush=True,
+        )
+    except Exception as exc:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_ERROR = f'{type(exc).__name__}:{exc}'
+        print(f'CATALOG BOOTSTRAP ERROR: {type(exc).__name__}: {exc}', flush=True)
+    finally:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_RUNNING = False
+
+@app.on_event('startup')
+def _start_catalog_bootstrap():
+    global _CATALOG_BOOTSTRAP_STARTED
+    with _CATALOG_BOOTSTRAP_LOCK:
+        if _CATALOG_BOOTSTRAP_STARTED:
+            return
+        _CATALOG_BOOTSTRAP_STARTED = True
+    if _catalog_is_ready():
+        with _CATALOG_BOOTSTRAP_LOCK:
+            global _CATALOG_BOOTSTRAP_DONE
+            _CATALOG_BOOTSTRAP_DONE = True
+        print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
+        return
+    threading.Thread(
+        target=_catalog_bootstrap_worker,
+        daemon=True,
+        name='scenthunter-catalog-bootstrap',
+    ).start()
 
 # Read-only scraper diagnostics. This module does not participate in normal search.
 try:
@@ -1048,10 +1114,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     except Exception as exc:
         print(f'CATALOG STATUS ERROR: {type(exc).__name__}: {exc}', flush=True)
 
-    # A completely empty catalog means discovery has not been run yet. In that
-    # bootstrap state, preserve the original isolated scraper path instead of
-    # returning a false zero-result search. As soon as at least one store is
-    # indexed, the catalog-first path becomes authoritative.
+    # A completely empty catalog means the background bootstrap has not
+    # indexed any store yet. Normal searches must wait for that bootstrap;
+    # they must never trigger retailer discovery or the legacy live scraper.
     indexed_total = sum(
         int((statuses.get(store) or {}).get('indexed_urls') or 0)
         for store in stores
@@ -1061,9 +1126,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         for store in stores:
             report = _empty_report(
                 store,
-                status='catalog_not_ready',
+                status='catalog_bootstrapping',
                 elapsed=time.monotonic() - started,
-                error='catalog_not_ready',
+                error='catalog_bootstrapping',
             ) | {
                 'verified': False,
                 'details': {
@@ -1990,6 +2055,43 @@ def search_start(q: str):
             'identity_scope': [],
             'comparisons': [],
             'errors': {},
+            'stores': {},
+        }
+
+    # A fresh Fly volume starts empty. Wait for background catalog discovery
+    # instead of starting a search that can only return zero results.
+    if not _catalog_is_ready():
+        with _CATALOG_BOOTSTRAP_LOCK:
+            bootstrap_running = _CATALOG_BOOTSTRAP_RUNNING
+            bootstrap_error = _CATALOG_BOOTSTRAP_ERROR
+        if bootstrap_error and not bootstrap_running:
+            return {
+                'job_id': '',
+                'query': query,
+                'completed': True,
+                'status': 'error',
+                'count': 0,
+                'offer_count': 0,
+                'results': [],
+                'unresolved_offers': [],
+                'identity_scope': [],
+                'comparisons': [],
+                'errors': {'catalog': bootstrap_error},
+                'stores': {},
+            }
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 1500,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': 'catalog_bootstrapping'},
             'stores': {},
         }
 
