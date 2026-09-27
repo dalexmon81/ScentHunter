@@ -1382,6 +1382,67 @@ class ProductMatcher:
 
         return self._build_family_result(offer, family, variant)
 
+    @staticmethod
+    def _query_offer_relevance(query: str, offer: Dict[str, Any]) -> float:
+        """Score whether a raw offer is relevant to the user's query.
+
+        Generic matching must not be allowed to turn an unrelated candidate
+        into a result merely because that candidate exists in the central
+        catalog.  Relevance is derived only from the query and the offer's
+        product identity fields; it never depends on a retailer or product
+        exception.
+
+        The comparison treats the offer brand and product name as one identity
+        phrase, which allows queries such as "Valentino Born in Roma" to match
+        an offer whose brand is "Valentino" and name is "Born in Roma".
+        """
+        query_key = catalog_variant_key(query)
+        if not query_key:
+            return 0.0
+
+        values = [
+            first_value(offer, ProductMatcher.NAME_KEYS),
+            first_value(offer, ProductMatcher.BRAND_KEYS),
+        ]
+        source = _nested_source(offer)
+        values.extend(
+            [
+                first_value(source, ("source_name", "name", "title")),
+                first_value(source, ("source_brand", "brand", "manufacturer")),
+            ]
+        )
+        identity = catalog_variant_key(" ".join(v for v in values if v))
+        if not identity:
+            return 0.0
+
+        query_tokens = set(query_key.split())
+        identity_tokens = set(identity.split())
+        if not query_tokens or not identity_tokens:
+            return 0.0
+
+        # Small grammatical/merchandising words carry no product identity.
+        stop_tokens = {
+            "a", "al", "alla", "and", "by", "da", "de", "del", "della",
+            "di", "du", "e", "for", "from", "il", "in", "la", "le", "of",
+            "per", "pour", "the", "un", "una", "uno",
+        }
+        query_tokens -= stop_tokens
+        identity_tokens -= stop_tokens
+        if not query_tokens:
+            return 0.0
+
+        intersection = len(query_tokens & identity_tokens)
+        if intersection == len(query_tokens):
+            return 1.0
+
+        recall = intersection / len(query_tokens)
+        precision = intersection / len(identity_tokens) if identity_tokens else 0.0
+        return (
+            2 * recall * precision / (recall + precision)
+            if recall + precision
+            else 0.0
+        )
+
     def match(
         self,
         offer: Dict[str, Any],
@@ -1436,6 +1497,24 @@ class ProductMatcher:
                 flush=True,
             )
             return result
+
+        # Generic queries still need a hard relevance gate before identity
+        # matching.  Without this gate, an unrelated retailer candidate can
+        # win solely because its name/URL happens to match a catalog product.
+        # The query is checked against the offer's own brand/name evidence,
+        # while family-registry searches continue through the stricter family
+        # resolver above.  No retailer or product is hard-coded here.
+        query_score = self._query_offer_relevance(query, offer)
+        if query_score < 0.72:
+            elapsed_ms = (time.perf_counter() - started) * 1000.0
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                f"method=query_scope score={query_score:.4f} "
+                f"elapsed_ms={elapsed_ms:.1f}",
+                flush=True,
+            )
+            return None
 
         return self._match_generic(offer, query, started)
 
