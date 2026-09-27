@@ -1,5 +1,4 @@
-# fly.toml app configuration file generated for scenthunter
-# Persistent catalog database on Fly Volume
+# ScentHunter Fly.io configuration
 
 app = 'scenthunter'
 primary_region = 'ams'
@@ -20,7 +19,6 @@ primary_region = 'ams'
 [mounts]
   source = 'scenthunter_data'
   destination = '/data'
-  initial_size = '1gb'
 
 [[vm]]
   memory = '1gb'
