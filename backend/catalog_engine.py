@@ -119,8 +119,8 @@ MIN_REPLACEMENT_ABSOLUTE = 100
 # fetch; this only removes obvious non-product endpoints from a sitemap.
 NON_PRODUCT_PATH = re.compile(
     r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
-    r'categories|brand|brands|marca|marque|sitemap|login|account|cart|'
-    r'checkout|blog|news|tag|tags|help|faq)(?:/|$)',
+    r'categories|collection|collections|brand|brands|marca|marque|sitemap|'
+    r'login|account|cart|checkout|blog|news|tag|tags|help|faq)(?:/|$)',
     re.I,
 )
 
@@ -1237,6 +1237,25 @@ def _ensure_hydration_queue():
     conn = db()
     try:
         with conn:
+            # Older catalog versions could accidentally persist category/listing
+            # URLs (for example Shopify /collections/... pages) as product URLs.
+            # Remove those invalid catalog entries before rebuilding the durable
+            # hydration queue. This is generic and applies to every store.
+            invalid_rows = conn.execute(
+                "SELECT store,url FROM store_urls WHERE active=1"
+            ).fetchall()
+            for r in invalid_rows:
+                if _looks_product(r['url']):
+                    continue
+                conn.execute(
+                    "DELETE FROM hydration_queue WHERE store=? AND url=?",
+                    (r['store'], r['url']),
+                )
+                conn.execute(
+                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                    (r['store'], r['url']),
+                )
+
             rows = conn.execute(
                 """SELECT u.store,u.url
                    FROM store_urls u
