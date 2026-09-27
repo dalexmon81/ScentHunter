@@ -779,8 +779,9 @@ class ProductMatcher:
             offer.get("product_name"),
             offer.get("brand"),
             offer.get("url"),
-            offer.get("image"),
-            offer.get("image_url"),
+            # Image/CDN URLs are presentation metadata, not product identity.
+            # In particular, dimensions such as "375x500" must never be
+            # interpreted by the generic multipack detector as "375 x".
             offer.get("image_alt"),
             offer.get("alt"),
         ]
@@ -1380,30 +1381,6 @@ class ProductMatcher:
 
         return self._build_family_result(offer, family, variant)
 
-    @staticmethod
-    def rejection_reason(offer: Dict[str, Any]) -> Optional[str]:
-        """Return an explicit non-publish rejection reason, if any.
-
-        This is status/telemetry only. It does not perform identity matching
-        and does not duplicate catalog or family resolution rules.
-        ``match()`` remains the sole owner of identity decisions.
-        """
-        if not isinstance(offer, dict):
-            return None
-
-        identity_text = " ".join(
-            str(offer.get(key) or "")
-            for key in ("name", "title", "product_name")
-        )
-        if re.search(
-            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
-            identity_text,
-            flags=re.I,
-        ):
-            return "sample_or_tester"
-
-        return None
-
     def match(
         self,
         offer: Dict[str, Any],
@@ -1423,12 +1400,15 @@ class ProductMatcher:
             str(offer.get(key) or "")
             for key in ("name", "title", "product_name")
         )
-        reject_reason = self.rejection_reason(offer)
-        if reject_reason is not None:
+        if re.search(
+            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
+            identity_text,
+            flags=re.I,
+        ):
             print(
                 "SCENTHUNTER: MATCHER_REJECTED "
                 f"store={store!r} name={raw_name!r} "
-                f"method={reject_reason}",
+                "method=sample_or_tester",
                 flush=True,
             )
             return None
