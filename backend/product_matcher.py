@@ -1402,7 +1402,7 @@ class ProductMatcher:
             for key in ("name", "title", "product_name")
         )
         if re.search(
-            r"\b(?:sample|samples|decant|decants|tester|testeur|testers)\b",
+            r"\b(?:sample|samples|probe|probes|proben|proef|proefje|proefjes|pröbchen|échantillon|échantillons|muestra|muestras|decant|decants|tester|testeur|testers)\b",
             identity_text,
             flags=re.I,
         ):
