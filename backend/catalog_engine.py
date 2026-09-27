@@ -94,7 +94,6 @@ REFRESH_TIMEOUT = 10
 
 SYNC_WORKERS = 8
 REFRESH_WORKERS = 8
-REFRESH_SEARCH_BUDGET = 8.0
 
 # Sitemap protocol limits are per discovered sitemap, not a product limit.
 MAX_SITEMAPS_PER_STORE = 1000
@@ -1052,78 +1051,53 @@ def search_local(query, per_store=32, search_terms=None):
 
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
-    """Refresh a bounded set of catalog candidates without blocking a search indefinitely.
+    """Refresh only catalog candidates that do not yet have page data.
 
-    The catalog remains the source of truth for URL discovery. Product-page
-    refresh is allowed only for candidates selected by the caller and has a
-    hard cooperative deadline. Pending futures are cancelled when the deadline
-    expires; already-running HTTP requests finish on their own bounded timeout.
+    Cancellation is cooperative and the optional deadline is a hard search
+    budget. Pending futures are cancelled when either condition is reached;
+    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
+    but the executor is never waited on after cancellation/deadline expiry.
     """
-    jobs = []
-    seen = set()
-    for row in rows or []:
-        if not isinstance(row, dict) or not row.get('_needs_refresh'):
-            continue
-        store = str(row.get('store_key') or '').strip()
-        url = str(row.get('url') or row.get('product_url') or '').strip()
-        key = (store, url)
-        if store and url and key not in seen:
-            seen.add(key)
-            jobs.append(key)
-
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
     if not jobs:
         return []
-
-    if deadline is None:
-        deadline = time.monotonic() + REFRESH_SEARCH_BUDGET
-
-    # A single shared pool prevents every concurrent user search from creating
-    # another group of network workers. This is important on the 1-CPU Fly VM.
-    global _REFRESH_POOL
-    try:
-        pool = _REFRESH_POOL
-    except NameError:
-        _REFRESH_POOL = ThreadPoolExecutor(max_workers=REFRESH_WORKERS, thread_name_prefix='catalog-refresh')
-        pool = _REFRESH_POOL
-
-    futures = {}
-    for store, url in jobs:
-        if cancel_event is not None and cancel_event.is_set():
-            break
-        if time.monotonic() >= deadline:
-            break
-        try:
-            future = pool.submit(refresh_url, store, url)
-            futures[future] = (store, url)
-        except Exception:
-            continue
-
     out = []
-    pending = set(futures)
-    while pending:
-        if cancel_event is not None and cancel_event.is_set():
-            for future in pending:
-                future.cancel()
-            break
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            for future in pending:
-                future.cancel()
-            break
-        done = [future for future in list(pending) if future.done()]
-        if not done:
-            time.sleep(min(0.05, remaining))
-            continue
-        for future in done:
-            pending.discard(future)
-            try:
-                item = future.result()
-                if item:
-                    out.append(item)
-            except Exception:
-                pass
-
-    return out
+    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    cancelled = False
+    try:
+        pending = set(futures)
+        while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            if deadline is not None and time.monotonic() >= float(deadline):
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            done = [future for future in list(pending) if future.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for future in done:
+                pending.discard(future)
+                try:
+                    item = future.result()
+                    if item:
+                        out.append(item)
+                except Exception:
+                    pass
+        if cancelled:
+            return out
+        return out
+    finally:
+        # Never make a cancelled user search wait for all old refresh workers.
+        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
+        # own DB connections when finished.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
 def sync_all():
