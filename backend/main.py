@@ -11,12 +11,12 @@ from pathlib import Path
 
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
-# catalog and refreshes only selected product pages.
+# catalog. Product-page hydration is a separate durable background queue.
 try:
     from catalog_engine import (
         search_local as catalog_search_local,
-        refresh_candidates as catalog_refresh_candidates,
         store_status as catalog_store_status,
+        hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
     )
@@ -24,13 +24,13 @@ try:
 except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
     catalog_search_local = None
-    catalog_refresh_candidates = None
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
+    catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.5-catalog-background-hydration'
+APP_VERSION = '5.6-persistent-hydration-queue'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
@@ -70,9 +70,9 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 64,
-            'workers': 8,
-            'pause_seconds': 1.0,
+            'batch_size': 2,
+            'workers': 2,
+            'pause_seconds': 0.5,
         },
         daemon=True,
         name='scenthunter-catalog-hydration',
@@ -1069,36 +1069,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         print(f'CATALOG SEARCH ERROR: {type(exc).__name__}: {exc}', flush=True)
         raw_rows = []
 
-    # Product-page refresh is deliberately bounded. A user search must never
-    # wait for an entire retailer catalog to be hydrated. We refresh only a
-    # small number of missing pages per store and stop after a hard budget.
-    # Already-fetched catalog rows are returned immediately.
-    refresh_rows = []
-    per_store_refresh = {store: 0 for store in stores}
-    for row in raw_rows:
-        if not isinstance(row, dict) or not row.get('_needs_refresh'):
-            continue
-        store_key = _normalise_store(row.get('store_key') or row.get('store') or row.get('shop'), '')
-        if store_key not in per_store_refresh:
-            continue
-        if per_store_refresh[store_key] >= CATALOG_REFRESH_PER_STORE:
-            continue
-        refresh_rows.append(row)
-        per_store_refresh[store_key] += 1
-
+    # SEARCH IS READ-ONLY: missing catalog pages are handled exclusively by
+    # the persistent background hydration queue. Never perform network fetches
+    # or refresh_url() from a user search.
     refreshed = []
-    if refresh_rows and callable(catalog_refresh_candidates):
-        if cancel_event is not None and cancel_event.is_set():
-            return []
-        try:
-            refreshed = catalog_refresh_candidates(
-                refresh_rows,
-                cancel_event=cancel_event,
-                deadline=time.monotonic() + CATALOG_REFRESH_BUDGET_SECONDS,
-            ) or []
-        except Exception as exc:
-            print(f'CATALOG REFRESH ERROR: {type(exc).__name__}: {exc}', flush=True)
-
     refreshed_by_key = {}
     for item in refreshed:
         if not isinstance(item, dict):
@@ -2079,6 +2053,25 @@ def catalog_status_endpoint():
             'bootstrap_error': _CATALOG_BOOTSTRAP_ERROR,
             'hydration_started': _CATALOG_HYDRATION_STARTED,
             'stores': statuses,
+        }
+
+
+@app.get('/catalog/hydration-status')
+def catalog_hydration_status_endpoint():
+    """Detailed persistent hydration queue status, read-only."""
+    try:
+        statuses = catalog_hydration_status() if callable(catalog_hydration_status) else {}
+        return {
+            'workers': 2,
+            'max_workers_per_store': 1,
+            'statuses': statuses,
+        }
+    except Exception as exc:
+        return {
+            'workers': 2,
+            'max_workers_per_store': 1,
+            'statuses': {},
+            'error': f'{type(exc).__name__}:{exc}',
         }
 
 
