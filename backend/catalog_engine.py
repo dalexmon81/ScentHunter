@@ -963,51 +963,55 @@ def parse_product(store, url, data):
 
 
 def _secondary_store_parser(store, final_url, original_url):
-    """Use an existing store parser only as a product-page parser fallback."""
-    try:
-        module = importlib.import_module(f'scrapers.{store}.scraper')
-        parser = getattr(module, 'extract_product_page', None)
-        if not callable(parser):
-            return None
-        session = requests.Session()
-        session.headers.update({'User-Agent': USER_AGENT})
-        try:
-            parsed = parser(session, final_url, url_slug(final_url))
-        finally:
-            session.close()
-        if not isinstance(parsed, dict):
-            return None
+    """Use an existing store parser only as a product-page parser fallback.
 
-        identity = parsed.get('identity') or {}
-        def identity_value(key):
-            value = identity.get(key)
-            if isinstance(value, dict):
-                return value.get('value')
-            return value
-
-        offer = parsed.get('offer') or {}
-        price = parsed.get('price_num')
-        if price is None:
-            price = offer.get('price')
-        return {
-            'store': STORE_LABELS[store],
-            'store_key': store,
-            'url': parsed.get('url') or final_url or original_url,
-            'name': parsed.get('name') or parsed.get('title') or '',
-            'brand': parsed.get('brand') or '',
-            'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
-            'sku': parsed.get('sku') or identity_value('sku') or '',
-            'gtin': parsed.get('gtin') or identity_value('gtin') or '',
-            'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-            'price_num': price,
-            'price': price,
-            'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
-            'availability': parsed.get('availability') or offer.get('availability') or 'unknown',
-            'available': parsed.get('available'),
-            'fetched_at': time.time(),
-        }
-    except Exception:
+    Parser exceptions are deliberately propagated. The hydration layer must
+    preserve the real exception instead of collapsing it into the old opaque
+    ``ERROR:RuntimeError`` record.
+    """
+    module = importlib.import_module(f'scrapers.{store}.scraper')
+    parser = getattr(module, 'extract_product_page', None)
+    if not callable(parser):
         return None
+
+    session = requests.Session()
+    session.headers.update({'User-Agent': USER_AGENT})
+    try:
+        parsed = parser(session, final_url, url_slug(final_url))
+    finally:
+        session.close()
+
+    if not isinstance(parsed, dict):
+        return None
+
+    identity = parsed.get('identity') or {}
+    def identity_value(key):
+        value = identity.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
+    offer = parsed.get('offer') or {}
+    price = parsed.get('price_num')
+    if price is None:
+        price = offer.get('price')
+    return {
+        'store': STORE_LABELS[store],
+        'store_key': store,
+        'url': parsed.get('url') or final_url or original_url,
+        'name': parsed.get('name') or parsed.get('title') or '',
+        'brand': parsed.get('brand') or '',
+        'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
+        'sku': parsed.get('sku') or identity_value('sku') or '',
+        'gtin': parsed.get('gtin') or identity_value('gtin') or '',
+        'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'price_num': price,
+        'price': price,
+        'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
+        'availability': parsed.get('availability') or offer.get('availability') or 'unknown',
+        'available': parsed.get('available'),
+        'fetched_at': time.time(),
+    }
 
 
 def refresh_url(store, url):
@@ -1079,7 +1083,12 @@ def refresh_url(store, url):
                VALUES(?,?,?,?)
                ON CONFLICT(store,url) DO UPDATE SET
                fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
-            (store, url, time.time(), 'ERROR:' + type(exc).__name__),
+            (
+                store,
+                url,
+                time.time(),
+                'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else ''),
+            ),
         )
         conn.commit()
         conn.close()
@@ -1546,7 +1555,7 @@ def _hydrate_one_task(task):
         finally:
             conn.close()
 
-        match = re.search(r'HTTP\s+(\d+)', detail)
+        match = re.search(r'(?:HTTP\s+|http_status=)(\d+)', detail)
         http_status = int(match.group(1)) if match else None
         _queue_mark_error(task, detail, http_status=http_status)
         return False
