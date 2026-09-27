@@ -1672,7 +1672,17 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
-        text = re.sub(r"\b(?:man|men|woman|women|unisex)\b.*$", " ", text)
+        # Audience labels are merchandising metadata, not an instruction to
+        # discard every identity token that follows them.  The previous
+        # suffix-based rule turned "Hawas Women Eclat" into just "Hawas",
+        # destroying the variant identity and allowing the first generic
+        # Hawas variant (Hawas for Him) to win.
+        text = re.sub(
+            r"\b(?:man|men|woman|women|unisex)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
         text = re.sub(r"\bz\d+\b.*$", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
