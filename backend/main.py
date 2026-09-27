@@ -28,7 +28,7 @@ except Exception as exc:
     catalog_sync_all = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.1-catalog-first-preserved-main'
+APP_VERSION = '5.2-catalog-first-stable-search'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # Read-only scraper diagnostics. This module does not participate in normal search.
@@ -58,6 +58,94 @@ JOB_TIMEOUT_SECONDS = 125.0
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
 BROWSER_SEMAPHORE = threading.Semaphore(BROWSER_WORKERS)
+
+# Catalog lifecycle is deliberately separate from user searches.  The catalog
+# is built in the background and persisted by catalog_engine; a user search
+# never falls back to the slow legacy retailer-scraper pipeline.
+CATALOG_SYNC_LOCK = threading.Lock()
+CATALOG_SYNC_THREAD = None
+CATALOG_SYNC_STARTED_AT = None
+CATALOG_SYNC_LAST_RESULT = None
+
+def _catalog_status_snapshot():
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
+        return {
+            'available': False,
+            'ready': False,
+            'indexed_total': 0,
+            'running': False,
+            'statuses': {},
+        }
+    try:
+        statuses = catalog_store_status() or {}
+    except Exception as exc:
+        print(f'CATALOG STATUS SNAPSHOT ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return {
+            'available': True,
+            'ready': False,
+            'indexed_total': 0,
+            'running': False,
+            'statuses': {},
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+    indexed_total = sum(
+        int((statuses.get(store) or {}).get('indexed_urls') or 0)
+        for store in STORES
+        if isinstance(statuses, dict)
+    )
+    running_states = {'DISCOVERY_QUEUED', 'DISCOVERY_RUNNING'}
+    running = any(
+        str((statuses.get(store) or {}).get('status') or '').upper() in running_states
+        for store in STORES
+        if isinstance(statuses, dict)
+    )
+    return {
+        'available': True,
+        'ready': indexed_total > 0,
+        'indexed_total': indexed_total,
+        'running': running,
+        'statuses': statuses,
+    }
+
+def _catalog_sync_worker():
+    global CATALOG_SYNC_LAST_RESULT, CATALOG_SYNC_THREAD
+    try:
+        if callable(catalog_sync_all):
+            print('CATALOG BOOTSTRAP START', flush=True)
+            result = catalog_sync_all()
+            CATALOG_SYNC_LAST_RESULT = result
+            print(f'CATALOG BOOTSTRAP END stores={len(result or {})}', flush=True)
+        else:
+            CATALOG_SYNC_LAST_RESULT = {'error': 'catalog_sync_unavailable'}
+    except Exception as exc:
+        CATALOG_SYNC_LAST_RESULT = {'error': f'{type(exc).__name__}: {exc}'}
+        print(f'CATALOG BOOTSTRAP ERROR: {type(exc).__name__}: {exc}', flush=True)
+    finally:
+        with CATALOG_SYNC_LOCK:
+            CATALOG_SYNC_THREAD = None
+
+def _ensure_catalog_sync():
+    global CATALOG_SYNC_THREAD, CATALOG_SYNC_STARTED_AT
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
+        return False
+    with CATALOG_SYNC_LOCK:
+        if CATALOG_SYNC_THREAD is not None and CATALOG_SYNC_THREAD.is_alive():
+            return True
+        CATALOG_SYNC_STARTED_AT = time.time()
+        CATALOG_SYNC_THREAD = threading.Thread(
+            target=_catalog_sync_worker,
+            daemon=True,
+            name='scenthunter-catalog-sync',
+        )
+        CATALOG_SYNC_THREAD.start()
+        return True
+
+@app.on_event('startup')
+def _startup_catalog_sync():
+    # Never block application startup on retailer discovery.  The first search
+    # receives BUSY until at least one persistent catalog index exists.
+    _ensure_catalog_sync()
 
 def _safe_float(value):
     try:
@@ -978,7 +1066,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if cancel_event is not None and cancel_event.is_set():
             return []
         try:
-            refreshed = catalog_refresh_candidates(raw_rows) or []
+            refreshed = catalog_refresh_candidates(raw_rows, cancel_event=cancel_event) or []
         except Exception as exc:
             print(f'CATALOG REFRESH ERROR: {type(exc).__name__}: {exc}', flush=True)
 
@@ -1092,61 +1180,43 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     return [reports_by_store[s] for s in stores if s in reports_by_store]
 
 
+def _catalog_failure_reports(stores, error):
+    reports = []
+    for store in stores:
+        report = _empty_report(store, status='unavailable', elapsed=0.0, error=error)
+        report['verified'] = False
+        report['details'] = {'source': 'persistent_catalog', 'catalog_error': error}
+        reports.append(report)
+    return reports
+
 def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
     requested = list(stores)
+
+    # Normal user search is catalog-only.  The legacy scraper pipeline remains
+    # available to the dedicated diagnostics, but it is never an automatic
+    # fallback for /search-start or /search.  This is what prevents a slow
+    # catalog/bootstrap problem from turning into six 60-75 second timeouts.
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id)
+            return _collect_catalog_reports_isolated(
+                query, requested, on_report=on_report, on_result=on_result,
+                cancel_event=cancel_event, job_id=job_id
+            )
         except Exception as exc:
-            print(f'CATALOG PRIMARY PATH ERROR: {type(exc).__name__}: {exc}', flush=True)
-            # Fall through to the pre-existing isolated scraper implementation.
-    reports = {}
-    lock = threading.Lock()
-    threads = []
+            error = f'catalog_search_error:{type(exc).__name__}:{exc}'
+            print(f'CATALOG PRIMARY PATH ERROR: {error}', flush=True)
+            reports = _catalog_failure_reports(requested, error)
+            for report in reports:
+                if callable(on_report):
+                    on_report(report)
+            return reports
 
-    def publish(report):
-        with lock:
-            reports[report['store']] = report
+    error = 'catalog_engine_unavailable'
+    reports = _catalog_failure_reports(requested, error)
+    for report in reports:
         if callable(on_report):
             on_report(report)
-
-    for store in requested:
-        t = threading.Thread(
-            target=_run_controlled_store,
-            args=(store, query, publish, on_result, cancel_event),
-            daemon=True,
-            name=f'scenthunter-store-{store}'
-        )
-        t.start()
-        threads.append(t)
-
-    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
-    for t in threads:
-        t.join(timeout=max(0.0, deadline - time.monotonic()))
-
-    unfinished = [
-        t.name.rsplit('scenthunter-store-', 1)[-1]
-        for t in threads
-        if t.is_alive()
-    ]
-
-    if unfinished:
-        print(f'SEARCH SUPERVISORS CANCELLING stores={unfinished}', flush=True)
-        if cancel_event is not None:
-            cancel_event.set()
-        cancel_deadline = time.monotonic() + 3.0
-        for t in threads:
-            if t.is_alive():
-                t.join(timeout=max(0.0, cancel_deadline - time.monotonic()))
-
-    with lock:
-        for store in unfinished:
-            reports.setdefault(
-                store,
-                _empty_report(store, elapsed=JOB_TIMEOUT_SECONDS, error='job_timeout')
-            )
-
-    return [reports[s] for s in requested if s in reports]
+    return reports
 
 
 JOBS={}; JOBS_LOCK=threading.Lock()
@@ -1916,47 +1986,49 @@ def search_start(q: str):
     query = str(q or '').strip()
     if not query:
         return {
-            'job_id': '',
-            'query': '',
-            'completed': True,
-            'status': 'completed',
-            'count': 0,
-            'results': [],
-            'unresolved_offers': [],
-            'identity_scope': [],
-            'comparisons': [],
-            'errors': {},
-            'stores': {},
+            'job_id': '', 'query': '', 'completed': True, 'status': 'completed',
+            'count': 0, 'results': [], 'unresolved_offers': [],
+            'identity_scope': [], 'comparisons': [], 'errors': {}, 'stores': {},
         }
 
-    # Cancellation handshake must never block the HTTP request for a full
-    # store/job timeout.  If the previous job is still shutting down, the
-    # frontend can retry /search-start after a short delay.
+    catalog = _catalog_status_snapshot()
+    if not catalog.get('available'):
+        return {
+            'job_id': '', 'query': query, 'completed': True, 'status': 'error',
+            'count': 0, 'offer_count': 0, 'results': [], 'unresolved_offers': [],
+            'identity_scope': [], 'comparisons': [],
+            'errors': {'catalog': 'catalog_engine_unavailable'}, 'stores': {},
+        }
+
+    # Bootstrap/rebuild happens outside the search lifecycle.  Do not start a
+    # search until the persistent catalog has at least one indexed store.
+    if not catalog.get('ready'):
+        _ensure_catalog_sync()
+        return {
+            'job_id': '', 'query': query, 'completed': False, 'status': 'busy',
+            'retry_after_ms': 1200, 'count': 0, 'offer_count': 0,
+            'results': [], 'unresolved_offers': [], 'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': 'catalog_bootstrap_in_progress'},
+            'stores': catalog.get('statuses') or {},
+        }
+
+    # A previous search is cancelled before a new one starts.  The handshake is
+    # deliberately short; a slow worker must never block the HTTP request.
     if not _cancel_active_jobs(wait_timeout=2.5):
         return {
-            'job_id': '',
-            'query': query,
-            'completed': False,
-            'status': 'busy',
-            'retry_after_ms': 700,
-            'count': 0,
-            'offer_count': 0,
-            'results': [],
-            'unresolved_offers': [],
-            'identity_scope': [],
+            'job_id': '', 'query': query, 'completed': False, 'status': 'busy',
+            'retry_after_ms': 700, 'count': 0, 'offer_count': 0,
+            'results': [], 'unresolved_offers': [], 'identity_scope': [],
             'comparisons': [],
-            'errors': {'job': 'previous_search_still_stopping'},
-            'stores': {},
+            'errors': {'job': 'previous_search_still_stopping'}, 'stores': {},
         }
 
     job_id = _new_job(query)
     threading.Thread(
-        target=_run_job,
-        args=(job_id, query),
-        daemon=True,
+        target=_run_job, args=(job_id, query), daemon=True,
         name=f'scenthunter-search-{job_id[:8]}'
     ).start()
-
     return _snapshot(job_id)
 
 
