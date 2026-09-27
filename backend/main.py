@@ -308,7 +308,29 @@ def _resolve_offer_identity(result, query):
         return output
 
     if not isinstance(match, dict):
-        # ``None`` is the ProductMatcher's explicit unresolved/rejected result.
+        # ``None`` can mean an ordinary unresolved identity or an intentional
+        # non-publish rejection. Ask the same central matcher for the explicit
+        # rejection reason instead of duplicating its rules in main.py.
+        rejection_method = getattr(PRODUCT_MATCHER, "rejection_reason", None)
+        rejection_reason = None
+        if callable(rejection_method):
+            try:
+                rejection_reason = rejection_method(matcher_offer)
+            except Exception as exc:
+                print(
+                    f"PRODUCT_MATCHER_REJECTION_STATUS_ERROR: {type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+
+        if rejection_reason:
+            output.update({
+                "_match_status": "rejected",
+                "_reject_reason": rejection_reason,
+                "catalog_id": None,
+                "canonical_name": None,
+            })
+            return output
+
         output.update({
             "_match_status": "unresolved",
             "catalog_id": None,
@@ -894,6 +916,8 @@ def _run_store_subprocess_once(store, query, on_result=None, timeout_override=No
                             continue
                         resolved=_resolve_offer_identity(prepared,query)
                         if resolved is None: continue
+                        if resolved.get('_match_status') == 'rejected':
+                            continue
                         if _is_non_fragrance_offer(resolved):
                             continue
                         rows.append(resolved)
@@ -1184,6 +1208,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 continue
             resolved = _resolve_offer_identity(prepared, query)
             if not isinstance(resolved, dict):
+                continue
+            if resolved.get('_match_status') == 'rejected':
                 continue
             if _is_non_fragrance_offer(resolved):
                 continue
@@ -1806,6 +1832,8 @@ def diagnostic_matcher(store: str, q: str):
         payload = {'index': index, **compact(resolved)}
         if resolved.get('_match_status') == 'matched' and resolved.get('catalog_id'):
             matched.append(payload)
+        elif resolved.get('_match_status') == 'rejected':
+            rejected.append(payload)
         else:
             unresolved.append(payload)
 
@@ -1827,6 +1855,88 @@ def diagnostic_matcher(store: str, q: str):
         'unresolved': unresolved,
         'clean_errors': clean_errors,
     }
+
+
+@app.get('/diagnostic/match-offer')
+def diagnostic_match_offer(
+    store: str,
+    q: str,
+    name: str,
+    brand: str = '',
+    url: str = '',
+    size_ml: str = '',
+):
+    """Instant, network-free identity diagnostic.
+
+    This endpoint deliberately bypasses scraper discovery. It feeds one
+    controlled offer through clean_result -> ProductMatcher so identity bugs
+    can be isolated from sitemap/search/network problems.
+    """
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+    raw_offer = {
+        'store': machine_store,
+        'name': str(name or '').strip(),
+        'brand': str(brand or '').strip(),
+        'url': str(url or '').strip(),
+    }
+    if str(size_ml or '').strip():
+        raw_offer['size_ml'] = str(size_ml).strip()
+
+    if machine_store not in STORES:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': f'unknown_store:{machine_store}',
+            'offer': raw_offer,
+        }
+    if not query:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': 'missing_query',
+            'offer': raw_offer,
+        }
+    if not raw_offer['name']:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': 'missing_name',
+            'offer': raw_offer,
+        }
+
+    try:
+        prepared = clean_result(raw_offer, machine_store)
+        if prepared is None:
+            return {
+                'ok': False,
+                'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+                'error': 'clean_result_returned_none',
+                'offer': raw_offer,
+            }
+
+        resolved = _resolve_offer_identity(prepared, query)
+        return {
+            'ok': True,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'store': machine_store,
+            'query': query,
+            'input': {
+                'name': prepared.get('name'),
+                'brand': prepared.get('brand'),
+                'url': prepared.get('url'),
+                'size_ml': prepared.get('size_ml'),
+            },
+            'result': compact(resolved) if isinstance(resolved, dict) else None,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'controlled offer -> clean_result -> ProductMatcher',
+            'error': f'{type(exc).__name__}: {exc}',
+            'offer': raw_offer,
+        }
+
 
 @app.get('/',include_in_schema=False)
 def root():
