@@ -94,10 +94,10 @@ SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
 SYNC_WORKERS = 8
-REFRESH_WORKERS = 2
+REFRESH_WORKERS = 8
 
 # Persistent hydration queue configuration.
-HYDRATION_WORKERS = 2
+HYDRATION_WORKERS = 8
 HYDRATION_LEASE_SECONDS = 120.0
 HYDRATION_MAX_ATTEMPTS = 8
 HYDRATION_BACKOFF_SECONDS = (60.0, 300.0, 1800.0, 7200.0, 21600.0, 86400.0)
@@ -1098,54 +1098,131 @@ def search_local(query, per_store=32, search_terms=None):
     return rows
 
 
-def refresh_candidates(rows, cancel_event=None, deadline=None):
-    """Refresh only catalog candidates that do not yet have page data.
+def refresh_candidates(rows, cancel_event=None, deadline=None, max_workers=8):
+    """Targeted, fair refresh for query-selected catalog candidates.
 
-    Cancellation is cooperative and the optional deadline is a hard search
-    budget. Pending futures are cancelled when either condition is reached;
-    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
-    but the executor is never waited on after cancellation/deadline expiry.
+    The persistent catalog remains the source of discovery.  A user search may
+    refresh only the URLs already selected by search_local; it never performs
+    retailer discovery.  Work is scheduled fairly by store so one retailer
+    cannot consume the whole search budget before the others get a chance.
+
+    One URL per store is fetched in each wave.  Waves run concurrently and
+    continue until all selected candidates are resolved or the caller's
+    cancellation/deadline is reached.
     """
-    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
-    if not jobs:
+    jobs_by_store = {}
+    seen = set()
+
+    for row in rows or []:
+        if not isinstance(row, dict) or not row.get('_needs_refresh'):
+            continue
+        store = str(row.get('store_key') or row.get('store') or '').strip()
+        url = str(row.get('url') or row.get('product_url') or '').strip()
+        if not store or not url:
+            continue
+        key = (store, url)
+        if key in seen:
+            continue
+        seen.add(key)
+        jobs_by_store.setdefault(store, []).append(url)
+
+    if not jobs_by_store:
         return []
+
+    # Deterministic ordering makes diagnostics reproducible.
+    for store in jobs_by_store:
+        jobs_by_store[store] = list(dict.fromkeys(jobs_by_store[store]))
+
     out = []
-    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
-    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    worker_limit = max(1, min(int(max_workers or 1), REFRESH_WORKERS, len(jobs_by_store)))
     cancelled = False
+
     try:
-        pending = set(futures)
-        while pending:
+        while jobs_by_store:
             if cancel_event is not None and cancel_event.is_set():
                 cancelled = True
-                for future in pending:
-                    future.cancel()
                 break
             if deadline is not None and time.monotonic() >= float(deadline):
                 cancelled = True
-                for future in pending:
-                    future.cancel()
                 break
-            done = [future for future in list(pending) if future.done()]
-            if not done:
-                time.sleep(0.05)
-                continue
-            for future in done:
-                pending.discard(future)
-                try:
-                    item = future.result()
-                    if item:
-                        out.append(item)
-                except Exception:
-                    pass
-        if cancelled:
-            return out
-        return out
+
+            # Fair wave: at most one candidate per store.
+            wave = []
+            for store in sorted(list(jobs_by_store)):
+                urls = jobs_by_store.get(store) or []
+                if not urls:
+                    jobs_by_store.pop(store, None)
+                    continue
+                wave.append((store, urls.pop(0)))
+                if not urls:
+                    jobs_by_store.pop(store, None)
+                if len(wave) >= worker_limit:
+                    break
+
+            if not wave:
+                break
+
+            pool = ThreadPoolExecutor(max_workers=min(worker_limit, len(wave)))
+            futures = {
+                pool.submit(refresh_url, store, url): (store, url)
+                for store, url in wave
+            }
+            try:
+                pending = set(futures)
+                while pending:
+                    if cancel_event is not None and cancel_event.is_set():
+                        cancelled = True
+                        for future in pending:
+                            future.cancel()
+                        break
+                    if deadline is not None and time.monotonic() >= float(deadline):
+                        cancelled = True
+                        for future in pending:
+                            future.cancel()
+                        break
+
+                    done = [future for future in list(pending) if future.done()]
+                    if not done:
+                        time.sleep(0.02)
+                        continue
+
+                    for future in done:
+                        pending.discard(future)
+                        try:
+                            item = future.result()
+                        except Exception as exc:
+                            print(
+                                f'CATALOG TARGETED REFRESH ERROR '
+                                f'store={futures[future][0]} '
+                                f'url={futures[future][1]} '
+                                f'error={type(exc).__name__}: {exc}',
+                                flush=True,
+                            )
+                            continue
+                        if item:
+                            store, url = futures[future]
+                            item = dict(item)
+                            item.setdefault('store_key', store)
+                            item.setdefault('url', url)
+                            out.append(item)
+
+                    if cancelled:
+                        break
+            finally:
+                pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
+
+            if cancelled:
+                break
+
     finally:
-        # Never make a cancelled user search wait for all old refresh workers.
-        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
-        # own DB connections when finished.
-        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
+        if cancelled:
+            print(
+                f'CATALOG TARGETED REFRESH STOPPED '
+                f'returned={len(out)}',
+                flush=True,
+            )
+
+    return out
 
 
 def hydration_pending_counts():
@@ -1444,7 +1521,7 @@ def _hydrate_one_task(task):
         return False
 
 
-def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
+def hydrate_catalog_batch(max_urls=8, workers=HYDRATION_WORKERS, deadline=None, stores=None):
     """Process a small durable queue batch.
 
     The queue itself owns concurrency/fairness. At most one task per store is
@@ -1493,7 +1570,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
         pool.shutdown(wait=True)
 
 
-def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
+def catalog_hydration_loop(stop_event, batch_size=8, workers=HYDRATION_WORKERS, pause_seconds=0.25):
     """Continuously hydrate discovered product pages in the background."""
     _ensure_hydration_queue()
     recovered = recover_stale_tasks()
