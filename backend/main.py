@@ -2404,13 +2404,13 @@ def catalog_hydration_status_endpoint():
     try:
         statuses = catalog_hydration_status() if callable(catalog_hydration_status) else {}
         return {
-            'workers': 2,
+            'workers': 8,
             'max_workers_per_store': 1,
             'statuses': statuses,
         }
     except Exception as exc:
         return {
-            'workers': 2,
+            'workers': 8,
             'max_workers_per_store': 1,
             'statuses': {},
             'error': f'{type(exc).__name__}:{exc}',
