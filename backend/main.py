@@ -331,6 +331,31 @@ def _resolve_offer_identity(result, query):
             })
             return output
 
+        # A known family query has a closed identity scope: ProductMatcher is
+        # authoritative for the registered variants of that family. If an
+        # offer reaches this point without resolving, it is not a member of
+        # the requested family and must not leak into `unresolved_offers`.
+        # This is generic family-scope handling; it contains no product or
+        # retailer-specific exceptions.
+        family_resolver = getattr(PRODUCT_MATCHER, "_family_for_query", None)
+        if callable(family_resolver):
+            try:
+                requested_family = family_resolver(str(query or "").strip())
+            except Exception as exc:
+                requested_family = None
+                print(
+                    f"PRODUCT_MATCHER_FAMILY_SCOPE_ERROR: {type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+            if requested_family is not None:
+                output.update({
+                    "_match_status": "rejected",
+                    "_reject_reason": "outside_query_family",
+                    "catalog_id": None,
+                    "canonical_name": None,
+                })
+                return output
+
         output.update({
             "_match_status": "unresolved",
             "catalog_id": None,
@@ -357,9 +382,7 @@ _NON_FRAGRANCE_TITLE_RE = re.compile(
     r"(?:^|[^a-z0-9])(?:gift\s*set|set\s*regalo|coffret|cofre|estuche|"
     r"discovery\s*set|sample(?:s)?|sample\s*set|mystery\s*box|beauty\s*box|"
     r"gift\s*box|bundle|pack\s*regalo|duo|trio|kit|case|set|"
-    r"decant(?:s)?|tester(?:s)?|testeur(?:s)?|probe(?:n)?|"
-    r"muestra(?:s)?|échantillon(?:s)?|echantillon(?:s)?|"
-    r"campione(?:s)?|campioncino(?:i)?|prova(?:s)?)(?:[^a-z0-9]|$)",
+    r"decant(?:s)?|tester(?:s)?|testeur(?:s)?)(?:[^a-z0-9]|$)",
     re.I,
 )
 
@@ -702,9 +725,6 @@ def _aggregate_identity_results(offers):
             offer.get("_match_status")
             or "unresolved"
         ).lower()
-
-        if status == "rejected":
-            continue
 
         if status == "matched" and offer.get("catalog_id"):
             catalog_id = str(
