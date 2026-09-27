@@ -120,7 +120,9 @@ MIN_REPLACEMENT_ABSOLUTE = 100
 NON_PRODUCT_PATH = re.compile(
     r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
     r'categories|collection|collections|brand|brands|marca|marque|sitemap|'
-    r'login|account|cart|checkout|blog|news|tag|tags|help|faq)(?:/|$)',
+    r'login|account|cart|checkout|blog|news|tag|tags|help|faq|pages|'
+    r'privacy|privacy-policy|terms|terms-of-service|refund|returns|shipping|'
+    r'contact|about|legal|policies)(?:/|$)',
     re.I,
 )
 
@@ -416,6 +418,9 @@ def _parse_xml_entries(data, url=''):
 def _looks_product(url):
     p = urllib.parse.urlparse(url)
     if p.scheme not in ('http', 'https') or p.fragment:
+        return False
+    path_lower = urllib.parse.unquote(p.path).lower().rstrip('/')
+    if path_lower in ('/robots.txt', '/humans.txt', '/ads.txt', '/security.txt', '/llms.txt', '/agents.md'):
         return False
     if NON_PRODUCT_PATH.search(p.path):
         return False
