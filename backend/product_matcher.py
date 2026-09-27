@@ -961,6 +961,7 @@ class ProductMatcher:
         if name_variant is None:
             editorial_tokens = {
                 "men", "women", "man", "woman", "heren", "dames",
+                "unisex", "unisexe",
                 "by", "perfume", "parfum", "fragrance",
             }
             stripped_tokens = [
