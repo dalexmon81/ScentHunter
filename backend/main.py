@@ -28,7 +28,7 @@ except Exception as exc:
     catalog_sync_all = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.3-catalog-bootstrap'
+APP_VERSION = '5.4-catalog-bootstrap-nonblocking'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
@@ -1068,10 +1068,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 cancel_event=cancel_event,
                 deadline=time.monotonic() + CATALOG_REFRESH_BUDGET_SECONDS,
             ) or []
-        except TypeError:
-            # Compatibility with an older catalog_engine signature. Still pass
-            # only the bounded subset, never the complete candidate list.
-            refreshed = catalog_refresh_candidates(refresh_rows) or []
         except Exception as exc:
             print(f'CATALOG REFRESH ERROR: {type(exc).__name__}: {exc}', flush=True)
 
