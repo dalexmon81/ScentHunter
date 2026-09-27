@@ -1100,6 +1100,125 @@ def refresh_candidates(rows, cancel_event=None, deadline=None):
         pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
+def hydration_pending_counts():
+    """Return per-store counts of discovered URLs whose product page is not yet hydrated."""
+    conn = db()
+    out = {}
+    try:
+        for store in STORES:
+            row = conn.execute(
+                """SELECT COUNT(*) c
+                   FROM store_urls u
+                   LEFT JOIN store_products p
+                     ON p.store=u.store AND p.url=u.url
+                   WHERE u.store=? AND u.active=1
+                     AND (p.url IS NULL OR p.fetch_status != "OK")""",
+                (store,),
+            ).fetchone()
+            out[store] = int(row['c'] if row else 0)
+    finally:
+        conn.close()
+    return out
+
+
+def hydrate_catalog_batch(max_urls=64, workers=8, deadline=None, stores=None):
+    """Hydrate a bounded batch of discovered product URLs in background."""
+    allowed = list(stores) if stores else list(STORES)
+    if not allowed:
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
+    conn = db()
+    try:
+        placeholders = ','.join('?' for _ in allowed)
+        sql = f"""SELECT u.store,u.url
+                  FROM store_urls u
+                  LEFT JOIN store_products p
+                    ON p.store=u.store AND p.url=u.url
+                  WHERE u.active=1
+                    AND u.store IN ({placeholders})
+                    AND (p.url IS NULL OR p.fetch_status != "OK")
+                  ORDER BY u.discovered_at DESC
+                  LIMIT ?"""
+        rows = conn.execute(sql, [*allowed, int(max_urls)]).fetchall()
+    finally:
+        conn.close()
+
+    jobs = [(r['store'], r['url']) for r in rows]
+    if not jobs:
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
+    fetched = 0
+    errors = 0
+    pool = ThreadPoolExecutor(max_workers=max(1, min(int(workers), len(jobs))))
+    futures = {pool.submit(refresh_url, store, url): (store, url) for store, url in jobs}
+    pending = set(futures)
+    cancelled = False
+    try:
+        while pending:
+            if deadline is not None and time.monotonic() >= float(deadline):
+                cancelled = True
+                for f in pending:
+                    f.cancel()
+                break
+            done = [f for f in list(pending) if f.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for f in done:
+                pending.discard(f)
+                try:
+                    if f.result():
+                        fetched += 1
+                    else:
+                        errors += 1
+                except Exception:
+                    errors += 1
+        return {'selected': len(jobs), 'fetched': fetched, 'errors': errors}
+    finally:
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
+
+
+def catalog_hydration_loop(stop_event, batch_size=64, workers=8, pause_seconds=1.0):
+    """Continuously hydrate discovered product pages without blocking searches."""
+    print(
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers}',
+        flush=True,
+    )
+    while stop_event is None or not stop_event.is_set():
+        try:
+            result = hydrate_catalog_batch(
+                max_urls=batch_size,
+                workers=workers,
+                deadline=time.monotonic() + max(30.0, float(REFRESH_TIMEOUT) + 5.0),
+            )
+            if result.get('selected', 0) == 0:
+                if stop_event is not None:
+                    stop_event.wait(max(5.0, float(pause_seconds)))
+                else:
+                    time.sleep(max(5.0, float(pause_seconds)))
+                continue
+            print(
+                'CATALOG HYDRATION BATCH '
+                f"selected={result.get('selected')} "
+                f"fetched={result.get('fetched')} "
+                f"errors={result.get('errors')}",
+                flush=True,
+            )
+            if stop_event is not None:
+                stop_event.wait(max(0.1, float(pause_seconds)))
+            else:
+                time.sleep(max(0.1, float(pause_seconds)))
+        except Exception as exc:
+            print(
+                f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            if stop_event is not None:
+                stop_event.wait(5.0)
+            else:
+                time.sleep(5.0)
+
+
 def sync_all():
     results = {}
     # Persist a state for all stores before workers start. A slow store is
@@ -1158,10 +1277,21 @@ def store_status():
             r['status'] if r else
             ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED')
         )
+        pending = conn.execute(
+            '''SELECT COUNT(*) c
+               FROM store_urls u
+               LEFT JOIN store_products p
+                 ON p.store=u.store AND p.url=u.url
+               WHERE u.store=? AND u.active=1
+                 AND (p.url IS NULL OR p.fetch_status != "OK")''',
+            (store,),
+        ).fetchone()['c']
         out[store] = {
             'status': derived_status,
             'indexed_urls': count,
             'fetched_products': fetched,
+            'pending_hydration': int(pending),
+            'hydration_ratio': round((fetched / count), 4) if count else 0.0,
             'finished_at': r['finished_at'] if r else None,
             'age_sec': (now - r['finished_at']) if r and r['finished_at'] else None,
             'error': r['error'] if r else None,
