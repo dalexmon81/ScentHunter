@@ -1927,7 +1927,27 @@ def diagnostic_match_offer(
                 'url': prepared.get('url'),
                 'size_ml': prepared.get('size_ml'),
             },
-            'result': compact(resolved) if isinstance(resolved, dict) else None,
+            'result': {
+                'name': resolved.get('name') or resolved.get('title'),
+                'brand': resolved.get('brand'),
+                '_raw_brand': resolved.get('_raw_brand'),
+                'url': resolved.get('url') or resolved.get('product_url'),
+                'size_ml': resolved.get('size_ml'),
+                'match_status': resolved.get('_match_status'),
+                'reject_reason': resolved.get('_reject_reason'),
+                'match_method': resolved.get('match_method'),
+                'match_score': resolved.get('match_score'),
+                'confidence': resolved.get('confidence'),
+                'catalog_id': resolved.get('catalog_id'),
+                'canonical_name': resolved.get('canonical_name'),
+                'canonical_brand': resolved.get('canonical_brand'),
+                'canonical_image': resolved.get('canonical_image'),
+                'image': resolved.get('image'),
+                'image_url': resolved.get('image_url'),
+                'retailer_image': resolved.get('image') or resolved.get('image_url'),
+                'family': resolved.get('family'),
+                'variant': resolved.get('variant'),
+            } if isinstance(resolved, dict) else None,
         }
     except Exception as exc:
         return {
