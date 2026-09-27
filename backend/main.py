@@ -1958,177 +1958,153 @@ def diagnostic_match_offer(
         }
 
 
-@app.get('/diagnostic/scraper-offer')
-def diagnostic_scraper_offer(
-    store: str,
-    q: str,
-    url: str,
-):
-    """Run one exact product URL through the real scraper -> clean_result -> ProductMatcher path.
+@app.get('/diagnostic/scraper-offer-compare')
+def diagnostic_scraper_offer_compare(store: str, q: str, url: str):
+    """Read-only differential diagnostic for one real scraper product URL.
 
-    This deliberately bypasses catalog discovery and retailer search discovery.
-    It fetches only the supplied product URL, builds the offer with the actual
-    deployed scraper's product_json/make_item functions, then runs the same
-    normalization and identity resolution used by the backend.
+    Runs the exact deployed scraper path, then compares the complete cleaned
+    offer with a minimal offer and with versions where one top-level field is
+    removed. It never publishes offers and never changes normal search logic.
     """
     machine_store = _normalise_store(store, store)
     query = str(q or '').strip()
     product_url = str(url or '').strip()
+    diagnostic_name = 'exact scraper product URL -> product_json -> make_item -> clean_result -> differential ProductMatcher'
 
     if machine_store not in STORES:
-        return {
-            'ok': False,
-            'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-            'error': f'unknown_store:{machine_store}',
-        }
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': f'unknown_store:{machine_store}'}
     if not query:
-        return {
-            'ok': False,
-            'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-            'error': 'missing_query',
-        }
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'missing_query'}
     if not product_url:
-        return {
-            'ok': False,
-            'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-            'error': 'missing_url',
-        }
+        return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'missing_url'}
 
     session = None
+
+    def match_snapshot(offer):
+        if not isinstance(offer, dict) or PRODUCT_MATCHER is None:
+            return {'match_status': 'unavailable', 'catalog_id': None, 'canonical_name': None,
+                    'canonical_brand': None, 'match_method': None, 'match_score': None}
+        try:
+            match = PRODUCT_MATCHER.match(offer, query)
+            if not isinstance(match, dict):
+                return {'match_status': 'unresolved', 'catalog_id': None, 'canonical_name': None,
+                        'canonical_brand': None, 'match_method': None, 'match_score': None}
+            return {'match_status': 'matched', 'catalog_id': match.get('catalog_id'),
+                    'canonical_name': match.get('canonical_name'),
+                    'canonical_brand': match.get('canonical_brand'),
+                    'match_method': match.get('match_method'), 'match_score': match.get('match_score')}
+        except Exception as exc:
+            return {'match_status': 'error', 'error': f'{type(exc).__name__}: {exc}'}
+
+    def compact(offer):
+        return {
+            'keys': sorted(str(k) for k in offer.keys()),
+            'name': offer.get('name'), 'brand': offer.get('brand'),
+            '_raw_brand': offer.get('_raw_brand'), 'url': offer.get('url'),
+            'size_ml': offer.get('size_ml'), 'store': offer.get('store'),
+            'source': offer.get('source'), 'identity': offer.get('identity'),
+            'attributes': offer.get('attributes'), 'offer': offer.get('offer'),
+            'provenance': offer.get('provenance'),
+        }
+
     try:
         module = load_scraper(machine_store)
         base_url = str(getattr(module, 'BASE_URL', '') or '').rstrip('/')
         if base_url and not product_url.lower().startswith(base_url.lower() + '/products/'):
-            return {
-                'ok': False,
-                'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-                'error': 'url_not_allowed_for_store',
-                'store': machine_store,
-                'base_url': base_url,
-                'url': product_url,
-            }
+            return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'url_not_allowed_for_store',
+                    'store': machine_store, 'base_url': base_url, 'url': product_url}
 
         product_json_method = getattr(module, 'product_json', None)
         make_item_method = getattr(module, 'make_item', None)
         if not callable(product_json_method) or not callable(make_item_method):
-            return {
-                'ok': False,
-                'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-                'error': 'scraper_missing_product_json_or_make_item',
-            }
+            return {'ok': False, 'diagnostic': diagnostic_name,
+                    'error': 'scraper_missing_product_json_or_make_item'}
 
         import requests
         session = requests.Session()
         data = product_json_method(session, product_url)
         if not isinstance(data, dict):
-            return {
-                'ok': False,
-                'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-                'error': 'empty_product_json',
-                'store': machine_store,
-                'query': query,
-                'url': product_url,
-            }
+            return {'ok': False, 'diagnostic': diagnostic_name, 'error': 'empty_product_json',
+                    'store': machine_store, 'query': query, 'url': product_url}
 
         variants = data.get('variants') or []
         raw_items = []
         for variant in variants:
             if not isinstance(variant, dict):
                 continue
-            try:
-                item = make_item_method(data, variant, product_url, query)
-            except Exception as exc:
-                return {
-                    'ok': False,
-                    'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-                    'error': f'make_item:{type(exc).__name__}: {exc}',
-                    'store': machine_store,
-                    'query': query,
-                    'url': product_url,
-                }
+            item = make_item_method(data, variant, product_url, query)
             if isinstance(item, dict):
                 raw_items.append(item)
 
         inspected = []
-        for raw_item in raw_items:
+        for index, raw_item in enumerate(raw_items):
             prepared = clean_result(raw_item, machine_store)
             if not isinstance(prepared, dict):
-                inspected.append({
-                    'raw': {
-                        'name': raw_item.get('name'),
-                        'brand': raw_item.get('brand'),
-                        'url': raw_item.get('url'),
-                        'size_ml': raw_item.get('size_ml'),
-                        'source_name': (raw_item.get('source') or {}).get('source_name')
-                        if isinstance(raw_item.get('source'), dict) else None,
-                        'source_brand': (raw_item.get('source') or {}).get('source_brand')
-                        if isinstance(raw_item.get('source'), dict) else None,
-                    },
-                    'clean_error': 'clean_result_returned_none',
-                })
+                inspected.append({'index': index, 'error': 'clean_result_returned_none',
+                                  'raw_keys': sorted(str(k) for k in raw_item.keys())})
                 continue
 
+            direct_full = match_snapshot(prepared)
             resolved = _resolve_offer_identity(prepared, query)
+
+            minimal = {
+                'store': prepared.get('store') or machine_store,
+                'name': prepared.get('name'), 'brand': prepared.get('brand') or '',
+                'url': prepared.get('url') or '',
+            }
+            if prepared.get('size_ml') not in (None, ''):
+                minimal['size_ml'] = prepared.get('size_ml')
+            minimal_match = match_snapshot(clean_result(minimal, machine_store))
+
+            differential = []
+            core_keys = {'store', 'name', 'brand', '_raw_name', '_raw_brand', 'url', 'size_ml'}
+            for key in sorted(prepared.keys(), key=str):
+                if key in core_keys:
+                    continue
+                reduced = dict(prepared)
+                reduced.pop(key, None)
+                differential.append({'removed_key': key, **match_snapshot(reduced)})
+
             inspected.append({
+                'index': index,
                 'raw': {
-                    'name': raw_item.get('name'),
-                    'brand': raw_item.get('brand'),
-                    'url': raw_item.get('url'),
-                    'size_ml': raw_item.get('size_ml'),
-                    'source_name': (raw_item.get('source') or {}).get('source_name')
-                    if isinstance(raw_item.get('source'), dict) else None,
-                    'source_brand': (raw_item.get('source') or {}).get('source_brand')
-                    if isinstance(raw_item.get('source'), dict) else None,
+                    'name': raw_item.get('name'), 'brand': raw_item.get('brand'),
+                    'url': raw_item.get('url'), 'size_ml': raw_item.get('size_ml'),
+                    'source': raw_item.get('source'), 'identity': raw_item.get('identity'),
+                    'attributes': raw_item.get('attributes'), 'offer': raw_item.get('offer'),
+                    'provenance': raw_item.get('provenance'),
                 },
-                'clean': {
-                    'name': prepared.get('name'),
-                    'brand': prepared.get('brand'),
-                    '_raw_name': prepared.get('_raw_name'),
-                    '_raw_brand': prepared.get('_raw_brand'),
-                    'url': prepared.get('url'),
-                    'size_ml': prepared.get('size_ml'),
-                    'store': prepared.get('store'),
+                'clean': compact(prepared),
+                'tests': {
+                    'direct_full_clean_offer': direct_full,
+                    'authoritative_resolve_offer_identity': {
+                        'match_status': resolved.get('_match_status') if isinstance(resolved, dict) else None,
+                        'catalog_id': resolved.get('catalog_id') if isinstance(resolved, dict) else None,
+                        'canonical_name': resolved.get('canonical_name') if isinstance(resolved, dict) else None,
+                        'canonical_brand': resolved.get('canonical_brand') if isinstance(resolved, dict) else None,
+                        'match_method': resolved.get('match_method') if isinstance(resolved, dict) else None,
+                        'match_score': resolved.get('match_score') if isinstance(resolved, dict) else None,
+                        'match_error': resolved.get('_match_error') if isinstance(resolved, dict) else None,
+                    },
+                    'minimal_controlled_shape': minimal_match,
                 },
-                'result': {
-                    'match_status': resolved.get('_match_status') if isinstance(resolved, dict) else None,
-                    'reject_reason': resolved.get('_reject_reason') if isinstance(resolved, dict) else None,
-                    'match_method': resolved.get('match_method') if isinstance(resolved, dict) else None,
-                    'match_score': resolved.get('match_score') if isinstance(resolved, dict) else None,
-                    'catalog_id': resolved.get('catalog_id') if isinstance(resolved, dict) else None,
-                    'canonical_name': resolved.get('canonical_name') if isinstance(resolved, dict) else None,
-                    'canonical_brand': resolved.get('canonical_brand') if isinstance(resolved, dict) else None,
-                    'match_error': resolved.get('_match_error') if isinstance(resolved, dict) else None,
-                } if isinstance(resolved, dict) else None,
+                'top_level_differential': differential,
             })
 
-        return {
-            'ok': True,
-            'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-            'store': machine_store,
-            'query': query,
-            'url': product_url,
-            'product_title': data.get('title'),
-            'product_vendor': data.get('vendor'),
-            'variant_count': len(variants),
-            'item_count': len(raw_items),
-            'items': inspected,
-        }
+        return {'ok': True, 'diagnostic': diagnostic_name, 'store': machine_store,
+                'query': query, 'url': product_url, 'product_title': data.get('title'),
+                'product_vendor': data.get('vendor'), 'variant_count': len(variants),
+                'item_count': len(raw_items), 'items': inspected}
     except Exception as exc:
-        return {
-            'ok': False,
-            'diagnostic': 'exact scraper product URL -> product_json -> make_item -> clean_result -> ProductMatcher',
-            'error': f'{type(exc).__name__}: {exc}',
-            'store': machine_store,
-            'query': query,
-            'url': product_url,
-        }
+        return {'ok': False, 'diagnostic': diagnostic_name,
+                'error': f'{type(exc).__name__}: {exc}', 'store': machine_store,
+                'query': query, 'url': product_url}
     finally:
         if session is not None:
             try:
                 session.close()
             except Exception:
                 pass
-
 
 @app.get('/',include_in_schema=False)
 def root():
