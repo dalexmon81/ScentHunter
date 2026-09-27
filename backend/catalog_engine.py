@@ -1016,11 +1016,39 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
+        # Keep the first HTTP response as the primary source of truth.
+        # The secondary store parser is allowed to fetch again only as a
+        # fallback, but a failed fallback must no longer collapse into the
+        # opaque generic RuntimeError that previously hid the real cause.
         item = parse_product(store, final, data)
-        if not item:
+        primary_ok = bool(item and item.get('name'))
+        secondary_ok = False
+        if not primary_ok:
             item = _secondary_store_parser(store, final, url)
+            secondary_ok = bool(item and item.get('name'))
+
         if not item or not item.get('name'):
-            raise RuntimeError('product_parser_not_found')
+            h1_text = ''
+            jsonld_count = 0
+            try:
+                soup = BeautifulSoup(data or b'', 'html.parser')
+                h1 = soup.find('h1')
+                h1_text = h1.get_text(' ', strip=True)[:180] if h1 else ''
+                jsonld_count = len(_jsonld(soup))
+            except Exception:
+                pass
+            detail = (
+                'product_parser_not_found'
+                f';http_status={status}'
+                f';bytes={len(data or b'')}'
+                f';final={final}'
+                f';primary_parser={"ok" if primary_ok else "none"}'
+                f';secondary_parser={"ok" if secondary_ok else "none"}'
+                f';jsonld_products={jsonld_count}'
+                f';h1={h1_text!r}'
+            )
+            print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
+            raise RuntimeError(detail)
 
         conn = db()
         conn.execute(
