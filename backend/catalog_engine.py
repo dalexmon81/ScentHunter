@@ -893,6 +893,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
     sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
+    deloox_page_size = 24
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -930,18 +931,14 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
-
-        # Keep track of products found on THIS catalog page. Deloox currently
-        # exposes 24 products per page and loads the next block through
-        # pagination rather than a normal anchor href.
-        page_product_urls = set()
+        page_product_count = 0
 
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
-                page_product_urls.add(product)
+                page_product_count += 1
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
@@ -960,6 +957,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     continue
                 product = _html_product_url('deloox', raw, base)
                 if product:
+                    if product not in product_urls:
+                        page_product_count += 1
                     product_urls[product] = ''
                     continue
                 listing = _html_listing_url('deloox', raw, base, label)
@@ -977,6 +976,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
                 product = _html_product_url('deloox', absolute, base)
                 if product:
+                    if product not in product_urls:
+                        page_product_count += 1
                     product_urls[product] = ''
                     continue
                 listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
@@ -993,24 +994,20 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 if listing:
                     add(listing, depth + 1, requested)
 
-        # Deloox's category pages currently show 24 products at a time and
-        # expose the remaining products through its "load more" pagination.
-        # The same catalog page is addressable directly with ?page=N. Follow
-        # that retailer-owned pagination only when this page is full.
-        #
-        # This is deliberately inside Deloox discovery: it does not touch
-        # search_local(), the matcher, scoring, cache invalidation, hydration,
-        # or any other store.
-        if len(page_product_urls) >= 24:
+        # Deloox currently exposes 24 products per catalog page and loads the
+        # following block through its own ?page=N URL. When the current page
+        # contains a full block, queue only the immediately following page.
+        # This affects Deloox discovery only; no search/matcher/cache code is
+        # involved.
+        if page_product_count >= deloox_page_size:
             parsed = urllib.parse.urlparse(base)
             query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             try:
-                current_page = int(query.get('page', ['1'])[-1])
+                current_page = max(1, int(query.get('page', ['1'])[-1]))
             except (TypeError, ValueError):
                 current_page = 1
-            current_page = max(1, current_page)
             query['page'] = [str(current_page + 1)]
-            next_page = urllib.parse.urlunparse((
+            next_url = urllib.parse.urlunparse((
                 parsed.scheme,
                 parsed.netloc,
                 parsed.path,
@@ -1018,7 +1015,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 urllib.parse.urlencode(query, doseq=True),
                 parsed.fragment,
             ))
-            add(next_page, depth + 1, 'deloox_load_more')
+            add(next_url, depth + 1, 'deloox_pagination')
 
     # Parallel batches are deliberately bounded by the same HTML worker pool
     # used by the generic crawler. The queue itself remains priority-ordered,
