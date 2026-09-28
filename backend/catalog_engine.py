@@ -579,17 +579,16 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Use the primary .com storefront as well as localized storefront
-        # surfaces. The .com/en catalog is the verified public catalog surface
-        # for Deloox; these are broad category roots, never product-specific.
+        # Primary .com catalog surfaces. These are broad, retailer-owned
+        # category/index pages; no product or brand is hard-coded here.
         'https://www.deloox.com/',
         'https://www.deloox.com/en/',
         'https://www.deloox.com/en/category/1103659/fragrances.html',
-        'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
-        'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
-        'https://www.deloox.be/en/category/1103659/fragrances.html',
-        'https://www.deloox.be/category/1075660/womens-perfume.html',
-        'https://www.deloox.be/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/category/1063858/brands.html',
+        'https://www.deloox.com/category/1000003/fragrances.html',
+        'https://www.deloox.com/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
