@@ -904,6 +904,43 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 except Exception:
                     pass
 
+                # Some modern retailers keep catalog navigation/filter targets
+                # inside JavaScript state or JSON blobs instead of real <a>
+                # elements. Deloox uses this pattern for parts of its category
+                # and brand navigation. Extract only URLs belonging to the
+                # retailer's own discovery hosts, then run them through the same
+                # generic product/listing classifiers above. This is not a
+                # product/query rule and does not depend on Liquid Brun, a brand,
+                # or any other requested perfume.
+                try:
+                    raw_html = data.decode('utf-8', 'ignore')
+                    host_patterns = {
+                        urllib.parse.urlparse(base).netloc.lower()
+                        for base in _discovery_bases(store)
+                    }
+                    candidates = set()
+                    for match in re.finditer(
+                        r'https?://[^\"\'\s<>\\]+|(?:(?:/en|/it|/de|/fr|/nl|/es)/[^\"\'\s<>\\]+)',
+                        raw_html,
+                        re.I,
+                    ):
+                        raw = match.group(0).replace('\\/', '/')
+                        absolute = urllib.parse.urljoin(page_base, raw).split('#', 1)[0]
+                        parsed = urllib.parse.urlparse(absolute)
+                        if parsed.netloc.lower() not in host_patterns:
+                            continue
+                        candidates.add(absolute)
+                    for raw in candidates:
+                        product=_html_product_url(store,raw,page_base)
+                        if product:
+                            product_urls[product]=''
+                            continue
+                        listing=_html_listing_url(store,raw,page_base,'embedded_navigation')
+                        if listing:
+                            add(listing,depth+1,requested)
+                except Exception:
+                    pass
+
     return {
         'product_urls':product_urls,
         'visited':len(visited),
