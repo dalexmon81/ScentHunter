@@ -47,7 +47,7 @@ STORES = {
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
     'easycosmetic': 'https://www.easycosmetic.de',
-    'deloox': 'https://www.deloox.com',
+    'deloox': 'https://www.deloox.be',
 }
 
 STORE_LABELS = {
@@ -70,11 +70,7 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'deloox': (
-        'https://www.deloox.com',
         'https://www.deloox.be',
-        'https://www.deloox.nl',
-        'https://www.deloox.lu',
-        'https://www.deloox.es',
     ),
 }
 
@@ -634,27 +630,25 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/luxusparfum',
         'https://www.easycosmetic.de/neuheiten',
     ),
-    'deloox': tuple(
-        # Deloox publishes its catalog through multiple official localized
-        # storefront hosts. Use generic catalog/navigation surfaces as seeds;
-        # the crawler follows the retailer's own graph from there.
-        base.rstrip('/') + path
-        for base in DISCOVERY_BASES['deloox']
-        for path in (
-            '/',
-            '/en/',
-            '/en/category/1103659/fragrances.html',
-            '/en/category/1063858/brands.html',
-            '/en/category/1000003/fragrances.html',
-            '/en/category/1000054/mens-fragrances.html',
-            '/en/category/1075750/mens-perfume.html',
-            '/en/category/1075660/womens-perfume.html',
-            '/category/1063858/brands.html',
-            '/category/1000003/fragrances.html',
-            '/category/1000054/mens-fragrances.html',
-            '/category/1075750/mens-perfume.html',
-            '/category/1075660/womens-perfume.html',
-        )
+    'deloox': (
+        # Primary Belgian catalog surfaces. These are broad, retailer-owned
+        # category/index pages; no product or brand is hard-coded here.
+        'https://www.deloox.be/',
+        'https://www.deloox.be/en/',
+        'https://www.deloox.be/en/category/1103659/fragrances.html',
+        # English catalog indexes are distinct public surfaces on Deloox;
+        # keep both localized and legacy category roots so the brand/category
+        # graph can reach deeper English product categories generically.
+        'https://www.deloox.be/en/category/1063858/brands.html',
+        'https://www.deloox.be/en/category/1000003/fragrances.html',
+        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/category/1063858/brands.html',
+        'https://www.deloox.be/category/1000003/fragrances.html',
+        'https://www.deloox.be/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -904,26 +898,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https'):
+        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
             return
-
-        # Deloox operates several official localized storefront hosts.
-        # Discovery must follow all configured Deloox hosts instead of
-        # silently restricting the catalog graph to www.deloox.com.
-        allowed_hosts = {
-            urllib.parse.urlparse(base).netloc.lower()
-            for base in DISCOVERY_BASES.get('deloox', ())
-            if urllib.parse.urlparse(base).netloc
-        }
-        if p.netloc.lower() not in allowed_hosts:
-            return
-
-        # Reuse the canonical Deloox URL admission rule. This accepts the
-        # retailer's localized product path forms (/product/, /produit/,
-        # /producto/, /prodotto/) and valid .html product URLs.
-        product = _html_product_url('deloox', key, key)
-        if product:
-            product_urls[product] = ''
+        path = p.path.lower()
+        if '/product/' in path:
+            product = _html_product_url('deloox', key, key)
+            if product:
+                product_urls[product] = ''
             return
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
@@ -1146,8 +1127,8 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # and brand navigation. Extract only URLs belonging to the
                 # retailer's own discovery hosts, then run them through the same
                 # generic product/listing classifiers above. This is not a
-                # product/query rule and does not depend on a requested product,
-                # brand, or search term.
+                # product/query rule and does not depend on Liquid Brun, a brand,
+                # or any other requested perfume.
                 try:
                     raw_html = data.decode('utf-8', 'ignore')
                     # Deloox embeds some catalog routes in escaped JSON/JS
