@@ -632,24 +632,10 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Primary Belgian catalog surfaces. These are broad, retailer-owned
-        # category/index pages; no product or brand is hard-coded here.
+        # Current Belgian catalog entry points. Keep this generic: no product,
+        # brand or user-query URL is hard-coded into catalog discovery.
         'https://www.deloox.be/',
-        'https://www.deloox.be/en/',
-        'https://www.deloox.be/en/category/1103659/fragrances.html',
-        # English catalog indexes are distinct public surfaces on Deloox;
-        # keep both localized and legacy category roots so the brand/category
-        # graph can reach deeper English product categories generically.
-        'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/categorie/1000003/parfum.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
