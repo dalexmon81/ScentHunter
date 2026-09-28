@@ -16,6 +16,7 @@ try:
     from catalog_engine import (
         search_local as catalog_search_local,
         refresh_candidates as catalog_refresh_candidates,
+        discover_store as catalog_discover_store,
         store_status as catalog_store_status,
         hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
@@ -27,6 +28,7 @@ except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
     catalog_search_local = None
     catalog_refresh_candidates = None
+    catalog_discover_store = None
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
@@ -47,6 +49,18 @@ _CATALOG_BOOTSTRAP_DONE = False
 _CATALOG_BOOTSTRAP_ERROR = None
 _CATALOG_HYDRATION_STARTED = False
 _CATALOG_HYDRATION_STOP = threading.Event()
+
+# Controlled operational resync for stores whose persistent catalog needs to
+# be rebuilt without touching the normal search path. This is deliberately
+# limited to the two stores currently being repaired.
+_CATALOG_RESYNC_LOCK = threading.Lock()
+_CATALOG_RESYNC_RUNNING = False
+_CATALOG_RESYNC_JOB_ID = None
+_CATALOG_RESYNC_STARTED_AT = None
+_CATALOG_RESYNC_FINISHED_AT = None
+_CATALOG_RESYNC_RESULT = {}
+_CATALOG_RESYNC_ERROR = None
+_CATALOG_RESYNC_STORES = ('sabina', 'deloox')
 
 def _catalog_is_ready():
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
@@ -108,6 +122,135 @@ def _catalog_bootstrap_worker():
     finally:
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_RUNNING = False
+
+def _catalog_targeted_resync_worker(job_id):
+    global _CATALOG_RESYNC_RUNNING, _CATALOG_RESYNC_FINISHED_AT
+    global _CATALOG_RESYNC_RESULT, _CATALOG_RESYNC_ERROR
+
+    results = {}
+    error = None
+    print(
+        f'CATALOG TARGETED RESYNC START job={job_id} stores={list(_CATALOG_RESYNC_STORES)}',
+        flush=True,
+    )
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+
+        # Run the two repairs serially. This avoids adding a second burst of
+        # network/SQLite pressure while the normal hydration workers continue.
+        for store in _CATALOG_RESYNC_STORES:
+            try:
+                result = catalog_discover_store(store)
+                results[store] = result
+                print(
+                    f'CATALOG TARGETED RESYNC STORE={store} '
+                    f'status={result.get("status") if isinstance(result, dict) else "unknown"} '
+                    f'count={result.get("count") if isinstance(result, dict) else "?"}',
+                    flush=True,
+                )
+            except Exception as exc:
+                results[store] = {
+                    'status': 'DISCOVERY_ERROR',
+                    'count': 0,
+                    'error': f'{type(exc).__name__}:{exc}',
+                }
+                print(
+                    f'CATALOG TARGETED RESYNC STORE ERROR={store}: '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+        _CATALOG_RESYNC_RESULT = results
+    except Exception as exc:
+        error = f'{type(exc).__name__}:{exc}'
+        _CATALOG_RESYNC_ERROR = error
+        print(f'CATALOG TARGETED RESYNC ERROR: {error}', flush=True)
+    finally:
+        _CATALOG_RESYNC_ERROR = error
+        _CATALOG_RESYNC_FINISHED_AT = time.time()
+        with _CATALOG_RESYNC_LOCK:
+            _CATALOG_RESYNC_RUNNING = False
+        print(f'CATALOG TARGETED RESYNC END job={job_id}', flush=True)
+
+
+@app.get('/catalog/resync-sabina-deloox')
+def catalog_resync_sabina_deloox_endpoint():
+    """Start the controlled Sabina+Deloox catalog discovery repair."""
+    global _CATALOG_RESYNC_RUNNING, _CATALOG_RESYNC_JOB_ID
+    global _CATALOG_RESYNC_STARTED_AT, _CATALOG_RESYNC_FINISHED_AT
+    global _CATALOG_RESYNC_RESULT, _CATALOG_RESYNC_ERROR
+
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+        return {
+            'ok': False,
+            'error': 'catalog_discovery_unavailable',
+            'stores': list(_CATALOG_RESYNC_STORES),
+        }
+
+    with _CATALOG_RESYNC_LOCK:
+        if _CATALOG_RESYNC_RUNNING:
+            return {
+                'ok': False,
+                'status': 'already_running',
+                'job_id': _CATALOG_RESYNC_JOB_ID,
+                'stores': list(_CATALOG_RESYNC_STORES),
+            }
+
+        job_id = uuid.uuid4().hex[:12]
+        _CATALOG_RESYNC_RUNNING = True
+        _CATALOG_RESYNC_JOB_ID = job_id
+        _CATALOG_RESYNC_STARTED_AT = time.time()
+        _CATALOG_RESYNC_FINISHED_AT = None
+        _CATALOG_RESYNC_RESULT = {}
+        _CATALOG_RESYNC_ERROR = None
+
+    threading.Thread(
+        target=_catalog_targeted_resync_worker,
+        args=(job_id,),
+        daemon=True,
+        name='scenthunter-catalog-targeted-resync',
+    ).start()
+
+    return {
+        'ok': True,
+        'status': 'started',
+        'job_id': job_id,
+        'stores': list(_CATALOG_RESYNC_STORES),
+        'status_endpoint': f'/catalog/resync-sabina-deloox-status?job_id={job_id}',
+        'note': 'Discovery runs in background and does not run inside /search.',
+    }
+
+
+@app.get('/catalog/resync-sabina-deloox-status')
+def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
+    """Read-only status for the controlled Sabina+Deloox resync."""
+    with _CATALOG_RESYNC_LOCK:
+        running = _CATALOG_RESYNC_RUNNING
+        current_job = _CATALOG_RESYNC_JOB_ID
+        started = _CATALOG_RESYNC_STARTED_AT
+        finished = _CATALOG_RESYNC_FINISHED_AT
+        result = dict(_CATALOG_RESYNC_RESULT)
+        error = _CATALOG_RESYNC_ERROR
+
+    if job_id and current_job and job_id != current_job:
+        return {
+            'ok': False,
+            'status': 'job_not_current',
+            'requested_job_id': job_id,
+            'current_job_id': current_job,
+        }
+
+    return {
+        'ok': True,
+        'status': 'running' if running else ('finished' if current_job else 'idle'),
+        'job_id': current_job,
+        'stores': list(_CATALOG_RESYNC_STORES),
+        'started_at': started,
+        'finished_at': finished,
+        'error': error,
+        'results': result,
+    }
+
 
 @app.on_event('startup')
 def _start_catalog_bootstrap():
