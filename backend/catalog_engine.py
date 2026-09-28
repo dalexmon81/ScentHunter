@@ -772,14 +772,16 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Keep catalog navigation ahead of generic site navigation. Directory
-    # roots such as a retailer's brand index are especially valuable because
-    # they lead to the actual brand/category catalog graph in very few hops.
-    if re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
+    # Prefer actual fragrance catalog surfaces before the much larger brand
+    # index. On Deloox the brand index exposes hundreds of brand/category
+    # links; visiting those first can exhaust the crawl budget before the
+    # fragrance catalog graph is traversed. This is URL-structure based only:
+    # no product name, brand name, product id, or user query is used.
+    if any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
         score = 0
-    elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
-        score = 1
     elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
+        score = 1
+    elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
         score = 2
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
