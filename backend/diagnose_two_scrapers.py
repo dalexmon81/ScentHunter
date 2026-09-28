@@ -311,16 +311,24 @@ def diagnose_discovery_trace(
     max_sitemaps: int = Query(1000, ge=1, le=5000),
     max_samples: int = Query(30, ge=1, le=200),
 ):
-    """Read-only replay of catalog_engine sitemap discovery for Sabina/Deloox."""
+    """Read-only replay of catalog_engine discovery decisions for Sabina/Deloox.
+
+    This endpoint intentionally does not execute the HTML crawl. It replays the
+    sitemap phase in memory and reports the exact condition under which the
+    CURRENT catalog_engine.py would enter the HTML fallback, including the
+    configured threshold. This keeps the diagnostic fast and prevents a
+    diagnostic request from accidentally becoming a production discovery job.
+    """
     started = time.monotonic()
     query = str(q or "").strip() or "Liquid Brun"
     result = {
-        "diagnostic": "generic-discovery-trace-v2",
+        "diagnostic": "generic-discovery-trace-v3",
         "ok": True,
         "query": query,
         "purpose": (
-            "read-only replay of catalog_engine sitemap discovery in memory; "
-            "no DB writes, no production search, no hydration, no ProductMatcher"
+            "read-only replay of catalog_engine sitemap discovery and the "
+            "current HTML-fallback decision; no DB writes, no production "
+            "search, no hydration, no ProductMatcher, no HTML crawl"
         ),
         "stores": {},
     }
@@ -329,6 +337,9 @@ def diagnose_discovery_trace(
         import catalog_engine as ce
 
         wanted = set(ce.tokens(query))
+        fallback_threshold = int(
+            getattr(ce, "HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD", 0) or 0
+        )
 
         for store in ("sabina", "deloox"):
             store_started = time.monotonic()
@@ -355,10 +366,11 @@ def diagnose_discovery_trace(
             sitemap_index_entries = 0
             product_entries = 0
             query_token_hits = {token: 0 for token in sorted(wanted)}
+            effective_limit = min(max_sitemaps, ce.MAX_SITEMAPS_PER_STORE)
 
             while (
                 queue
-                and len(visited) < min(max_sitemaps, ce.MAX_SITEMAPS_PER_STORE)
+                and len(visited) < effective_limit
                 and len(product_urls) < ce.MAX_TOTAL_DISCOVERED_URLS
                 and (time.monotonic() - store_started) < ce.DISCOVERY_HARD_TIMEOUT
             ):
@@ -411,9 +423,7 @@ def diagnose_discovery_trace(
                                 if (
                                     depth + 1 <= ce.MAX_SITEMAP_DEPTH
                                     and absolute not in queued
-                                    and len(visited) + len(queue) < min(
-                                        max_sitemaps, ce.MAX_SITEMAPS_PER_STORE
-                                    )
+                                    and len(visited) + len(queue) < effective_limit
                                 ):
                                     queued.add(absolute)
                                     queue.append((absolute, depth + 1))
@@ -424,6 +434,7 @@ def diagnose_discovery_trace(
 
                             product_urls.add(absolute)
                             product_entries += 1
+
                             if len(product_samples) < max_samples:
                                 product_samples.append(absolute)
 
@@ -436,11 +447,39 @@ def diagnose_discovery_trace(
                                 if token in normalized_url:
                                     query_token_hits[token] += 1
 
-            limit = min(max_sitemaps, ce.MAX_SITEMAPS_PER_STORE)
-            reached_limit = len(visited) >= limit
+            reached_limit = len(visited) >= effective_limit
             timed_out = (
                 time.monotonic() - store_started
             ) >= ce.DISCOVERY_HARD_TIMEOUT
+
+            sitemap_count = len(product_urls)
+
+            if fallback_threshold > 0:
+                fallback_runs = sitemap_count < fallback_threshold
+                fallback_rule = (
+                    f"RUNS when sitemap product URL count ({sitemap_count}) "
+                    f"is below HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD "
+                    f"({fallback_threshold})"
+                )
+                fallback_status = (
+                    "RUNS_BELOW_THRESHOLD"
+                    if fallback_runs
+                    else "SKIPPED_ABOVE_THRESHOLD"
+                )
+            else:
+                fallback_runs = sitemap_count == 0
+                fallback_rule = (
+                    "RUNS only when sitemap product URL count is zero "
+                    "(deployed catalog_engine has no threshold constant)"
+                )
+                fallback_status = (
+                    "RUNS_ZERO_SITEMAP_PRODUCTS"
+                    if fallback_runs
+                    else "SKIPPED_NONZERO_SITEMAP_PRODUCTS"
+                )
+
+            seeds = getattr(ce, "HTML_DISCOVERY_SEEDS", {})
+            store_seeds = list(seeds.get(store, ()) or ())
 
             result["stores"][store] = {
                 "ok": True,
@@ -452,30 +491,31 @@ def diagnose_discovery_trace(
                 "sitemap_error_samples": sitemap_errors[:max_samples],
                 "xml_entries_seen": xml_entries,
                 "sitemap_index_entries": sitemap_index_entries,
-                "product_urls_seen": len(product_urls),
+                "product_urls_seen": sitemap_count,
                 "product_entries_seen": product_entries,
                 "query_tokens": sorted(wanted),
                 "query_url_hits": len(query_hits),
                 "query_url_hit_samples": query_hits[:max_samples],
                 "query_token_hit_counts": query_token_hits,
                 "product_url_samples": product_samples[:max_samples],
+                "html_fallback": {
+                    "threshold": fallback_threshold,
+                    "seed_count": len(store_seeds),
+                    "seeds": store_seeds[:20],
+                    "decision": fallback_status,
+                    "rule": fallback_rule,
+                    "would_execute_in_production_discovery": fallback_runs,
+                    "note": (
+                        "This diagnostic reports the decision only; it does "
+                        "not execute the HTML crawl or write its results."
+                    ),
+                },
                 "replay_limits": {
                     "requested_max_sitemaps": max_sitemaps,
-                    "effective_max_sitemaps": limit,
+                    "effective_max_sitemaps": effective_limit,
                     "reached_sitemap_limit": reached_limit,
                     "timed_out": timed_out,
                 },
-                "current_code_html_fallback_condition": (
-                    "RUNS" if not product_urls else "SKIPPED"
-                ),
-                "current_code_html_fallback_reason": (
-                    "no product URLs were admitted by sitemap discovery"
-                    if not product_urls
-                    else (
-                        "at least one product URL was admitted by sitemap discovery, "
-                        "so discover_store() skips _discover_html_catalog()"
-                    )
-                ),
                 "elapsed_sec": round(time.monotonic() - store_started, 3),
             }
 
