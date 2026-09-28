@@ -1165,20 +1165,37 @@ def search_local(query, per_store=32, search_terms=None):
                 url_tokens = cached['url_tokens']
             else:
                 candidates = conn.execute(
-                    'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
+                    '''SELECT u.url,u.slug,u.lastmod,
+                              p.name AS product_name,
+                              p.brand AS product_brand
+                       FROM store_urls u
+                       LEFT JOIN store_products p
+                         ON p.store=u.store
+                        AND p.url=u.url
+                        AND p.fetch_status='OK'
+                       WHERE u.store=? AND u.active=1''',
                     (store,),
                 ).fetchall()
 
-                # Inverted index: token -> URLs containing that token.  We also
-                # keep the token set per URL so the final score uses exact
-                # whole-token membership, never arbitrary substring matching.
+                # Inverted index: token -> URLs containing that token.
+                # Keep the existing fast rarest-token architecture, but also
+                # index the hydrated product name/brand. This is essential for
+                # retailers whose product URLs do not contain the product name.
                 new_postings = {}
                 new_url_tokens = {}
                 for r in candidates:
                     url = r['url']
-                    slug_tokens = set(str(r['slug'] or '').lower().split())
-                    new_url_tokens[url] = slug_tokens
-                    for token in slug_tokens:
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in (
+                            'slug',
+                            'product_name',
+                            'product_brand',
+                        )
+                    )
+                    combined_tokens = set(norm(search_text).split())
+                    new_url_tokens[url] = combined_tokens
+                    for token in combined_tokens:
                         new_postings.setdefault(token, []).append(url)
 
                 postings = new_postings
