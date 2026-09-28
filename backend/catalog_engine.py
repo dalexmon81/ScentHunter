@@ -634,25 +634,15 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/luxusparfum',
         'https://www.easycosmetic.de/neuheiten',
     ),
-    'deloox': (
-        # Primary .com catalog surfaces. These are broad, retailer-owned
-        # category/index pages; no product or brand is hard-coded here.
-        'https://www.deloox.com/',
-        'https://www.deloox.com/en/',
-        'https://www.deloox.com/en/category/1103659/fragrances.html',
-        # English catalog indexes are distinct public surfaces on Deloox;
-        # keep both localized and legacy category roots so the brand/category
-        # graph can reach deeper English product categories generically.
-        'https://www.deloox.com/en/category/1063858/brands.html',
-        'https://www.deloox.com/en/category/1000003/fragrances.html',
-        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/category/1063858/brands.html',
-        'https://www.deloox.com/category/1000003/fragrances.html',
-        'https://www.deloox.com/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/category/1075660/womens-perfume.html',
+    'deloox': tuple(
+        # Deloox publishes the catalog through multiple official localized
+        # storefront hosts. Start from the generic root surfaces on every
+        # configured host; the crawler then follows the retailer's own
+        # category/brand/navigation graph. No product, brand, or query is
+        # hard-coded here.
+        base.rstrip('/') + path
+        for base in DISCOVERY_BASES['deloox']
+        for path in ('/', '/en/')
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -893,10 +883,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
     sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
-    # Deloox category pages currently expose 24 products per page.
-    # When the retailer hides the next-page URL behind its load-more control,
-    # the public ?page=N route is still directly addressable.
-    page_size = 24
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -906,13 +892,26 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.com':
+        if p.scheme not in ('http', 'https'):
             return
-        path = p.path.lower()
-        if '/product/' in path:
-            product = _html_product_url('deloox', key, key)
-            if product:
-                product_urls[product] = ''
+
+        # Deloox operates several official localized storefront hosts.
+        # Discovery must follow all configured Deloox hosts instead of
+        # silently restricting the catalog graph to www.deloox.com.
+        allowed_hosts = {
+            urllib.parse.urlparse(base).netloc.lower()
+            for base in DISCOVERY_BASES.get('deloox', ())
+            if urllib.parse.urlparse(base).netloc
+        }
+        if p.netloc.lower() not in allowed_hosts:
+            return
+
+        # Reuse the canonical Deloox URL admission rule. This accepts the
+        # retailer's localized product path forms (/product/, /produit/,
+        # /producto/, /prodotto/) and valid .html product URLs.
+        product = _html_product_url('deloox', key, key)
+        if product:
+            product_urls[product] = ''
             return
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
@@ -934,14 +933,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
-        page_product_count = 0
 
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
             if product:
-                if product not in product_urls:
-                    page_product_count += 1
                 product_urls[product] = ''
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
@@ -961,8 +957,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     continue
                 product = _html_product_url('deloox', raw, base)
                 if product:
-                    if product not in product_urls:
-                        page_product_count += 1
                     product_urls[product] = ''
                     continue
                 listing = _html_listing_url('deloox', raw, base, label)
@@ -980,8 +974,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
                 product = _html_product_url('deloox', absolute, base)
                 if product:
-                    if product not in product_urls:
-                        page_product_count += 1
                     product_urls[product] = ''
                     continue
                 listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
@@ -989,28 +981,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     add(listing, depth + 1, requested)
         except Exception:
             pass
-
-        # Deloox uses a client-side 'load more' control on category pages.
-        # Its next URL is not always exposed as href/data-* metadata. A full
-        # 24-product page is therefore a reliable signal to queue the next
-        # public page route without depending on any product/query value.
-        if page_product_count >= page_size:
-            parsed = urllib.parse.urlparse(base)
-            query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
-            try:
-                current_page = max(1, int(query.get('page', ['1'])[-1]))
-            except (TypeError, ValueError):
-                current_page = 1
-            query['page'] = [str(current_page + 1)]
-            next_url = urllib.parse.urlunparse((
-                parsed.scheme,
-                parsed.netloc,
-                parsed.path,
-                parsed.params,
-                urllib.parse.urlencode(query, doseq=True),
-                parsed.fragment,
-            ))
-            add(next_url, depth + 1, 'deloox_load_more_pagination')
 
         for node in soup.find_all(['a', 'link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
