@@ -635,14 +635,26 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': tuple(
-        # Deloox publishes the catalog through multiple official localized
-        # storefront hosts. Start from the generic root surfaces on every
-        # configured host; the crawler then follows the retailer's own
-        # category/brand/navigation graph. No product, brand, or query is
-        # hard-coded here.
+        # Deloox publishes its catalog through multiple official localized
+        # storefront hosts. Use generic catalog/navigation surfaces as seeds;
+        # the crawler follows the retailer's own graph from there.
         base.rstrip('/') + path
         for base in DISCOVERY_BASES['deloox']
-        for path in ('/', '/en/')
+        for path in (
+            '/',
+            '/en/',
+            '/en/category/1103659/fragrances.html',
+            '/en/category/1063858/brands.html',
+            '/en/category/1000003/fragrances.html',
+            '/en/category/1000054/mens-fragrances.html',
+            '/en/category/1075750/mens-perfume.html',
+            '/en/category/1075660/womens-perfume.html',
+            '/category/1063858/brands.html',
+            '/category/1000003/fragrances.html',
+            '/category/1000054/mens-fragrances.html',
+            '/category/1075750/mens-perfume.html',
+            '/category/1075660/womens-perfume.html',
+        )
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -1134,8 +1146,8 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # and brand navigation. Extract only URLs belonging to the
                 # retailer's own discovery hosts, then run them through the same
                 # generic product/listing classifiers above. This is not a
-                # product/query rule and does not depend on Liquid Brun, a brand,
-                # or any other requested perfume.
+                # product/query rule and does not depend on a requested product,
+                # brand, or search term.
                 try:
                     raw_html = data.decode('utf-8', 'ignore')
                     # Deloox embeds some catalog routes in escaped JSON/JS
