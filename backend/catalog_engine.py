@@ -225,6 +225,14 @@ def _diagnostic(resp, requested_url):
 _SCHEMA_LOCK = threading.Lock()
 _SCHEMA_READY = False
 
+# search_local() is called on every user search.  Rebuilding the token/posting
+# index from every active store URL on every call is unnecessarily expensive,
+# especially while the background hydration workers are parsing product pages.
+# Keep one immutable index per store and refresh it only when the active catalog
+# signature changes (count or discovery timestamp).
+_LOCAL_SEARCH_INDEX_CACHE = {}
+_LOCAL_SEARCH_INDEX_LOCK = threading.Lock()
+
 
 def _ensure_schema(conn):
     """Create/migrate the catalog schema once per process.
@@ -1133,22 +1141,53 @@ def search_local(query, per_store=32, search_terms=None):
     unlimited = per_store is None or int(per_store) <= 0
 
     for store in STORES:
-        candidates = conn.execute(
-            'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
+        # The catalog changes in the background, so do not assume an index is
+        # valid forever.  Count + latest discovery timestamp is a cheap
+        # signature that changes when discovery replaces/adds/deactivates
+        # catalog rows.  This avoids rebuilding tens of thousands of URL tokens
+        # on every user search while keeping the index generic and fresh.
+        signature_row = conn.execute(
+            '''SELECT COUNT(*) AS active_count,
+                      COALESCE(MAX(discovered_at), 0) AS latest_discovery
+               FROM store_urls
+               WHERE store=? AND active=1''',
             (store,),
-        ).fetchall()
+        ).fetchone()
+        signature = (
+            int(signature_row['active_count'] or 0),
+            float(signature_row['latest_discovery'] or 0),
+        )
 
-        # Inverted index: token -> URLs containing that token.  We also keep
-        # the token set per URL so the final score uses exact whole-token
-        # membership, never arbitrary substring matching.
-        postings = {}
-        url_tokens = {}
-        for r in candidates:
-            url = r['url']
-            slug_tokens = set(str(r['slug'] or '').lower().split())
-            url_tokens[url] = slug_tokens
-            for token in slug_tokens:
-                postings.setdefault(token, []).append(url)
+        with _LOCAL_SEARCH_INDEX_LOCK:
+            cached = _LOCAL_SEARCH_INDEX_CACHE.get(store)
+            if cached and cached['signature'] == signature:
+                postings = cached['postings']
+                url_tokens = cached['url_tokens']
+            else:
+                candidates = conn.execute(
+                    'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
+                    (store,),
+                ).fetchall()
+
+                # Inverted index: token -> URLs containing that token.  We also
+                # keep the token set per URL so the final score uses exact
+                # whole-token membership, never arbitrary substring matching.
+                new_postings = {}
+                new_url_tokens = {}
+                for r in candidates:
+                    url = r['url']
+                    slug_tokens = set(str(r['slug'] or '').lower().split())
+                    new_url_tokens[url] = slug_tokens
+                    for token in slug_tokens:
+                        new_postings.setdefault(token, []).append(url)
+
+                postings = new_postings
+                url_tokens = new_url_tokens
+                _LOCAL_SEARCH_INDEX_CACHE[store] = {
+                    'signature': signature,
+                    'postings': postings,
+                    'url_tokens': url_tokens,
+                }
 
         # Each search term is evaluated only through its rarest token.  A URL
         # can therefore be scored for a family variant only when it contains
@@ -1580,7 +1619,6 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
     recover_stale_tasks()
-
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
