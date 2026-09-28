@@ -827,8 +827,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
     product_urls = {}
     errors = []
     sequence = 0
-    max_pages = min(500, HTML_MAX_PAGES)
-    max_depth = min(8, HTML_MAX_DEPTH)
+    max_pages = min(800, HTML_MAX_PAGES)
+    max_depth = min(10, HTML_MAX_DEPTH)
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -1393,7 +1393,8 @@ def discover_store(store):
     if (
         store in HTML_DISCOVERY_SEEDS
         and (
-            len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            store == 'deloox'
+            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
     ):
