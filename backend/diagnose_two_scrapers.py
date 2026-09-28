@@ -305,6 +305,188 @@ def diagnose_sabina_discovery_trace(q: str = Query("9 PM")):
         return out
 
 
+@router.get("/diagnose-discovery-trace")
+def diagnose_discovery_trace(
+    q: str = Query("Liquid Brun"),
+    max_sitemaps: int = Query(1000, ge=1, le=5000),
+    max_samples: int = Query(30, ge=1, le=200),
+):
+    """Read-only replay of catalog_engine sitemap discovery for Sabina/Deloox."""
+    started = time.monotonic()
+    query = str(q or "").strip() or "Liquid Brun"
+    result = {
+        "diagnostic": "generic-discovery-trace-v2",
+        "ok": True,
+        "query": query,
+        "purpose": (
+            "read-only replay of catalog_engine sitemap discovery in memory; "
+            "no DB writes, no production search, no hydration, no ProductMatcher"
+        ),
+        "stores": {},
+    }
+
+    try:
+        import catalog_engine as ce
+
+        wanted = set(ce.tokens(query))
+
+        for store in ("sabina", "deloox"):
+            store_started = time.monotonic()
+            try:
+                roots, robots_diag = ce._seed_sitemaps(store)
+            except Exception as exc:
+                result["stores"][store] = {
+                    "ok": False,
+                    "stage": "seed_sitemaps",
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "elapsed_sec": round(time.monotonic() - store_started, 3),
+                }
+                continue
+
+            queue = [(url, 0) for url in roots]
+            queued = set(roots)
+            visited = set()
+            product_urls = set()
+            query_hits = []
+            product_samples = []
+            sitemap_errors = []
+            sitemap_successes = 0
+            xml_entries = 0
+            sitemap_index_entries = 0
+            product_entries = 0
+            query_token_hits = {token: 0 for token in sorted(wanted)}
+
+            while (
+                queue
+                and len(visited) < min(max_sitemaps, ce.MAX_SITEMAPS_PER_STORE)
+                and len(product_urls) < ce.MAX_TOTAL_DISCOVERED_URLS
+                and (time.monotonic() - store_started) < ce.DISCOVERY_HARD_TIMEOUT
+            ):
+                batch = []
+                while queue and len(batch) < ce.SYNC_WORKERS * 4:
+                    sm, depth = queue.pop(0)
+                    if sm in visited:
+                        continue
+                    visited.add(sm)
+                    batch.append((sm, depth))
+                if not batch:
+                    continue
+
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(ce.SYNC_WORKERS, len(batch))
+                ) as pool:
+                    futures = {
+                        pool.submit(ce._fetch_sitemap, store, sm): (sm, depth)
+                        for sm, depth in batch
+                    }
+                    for future in concurrent.futures.as_completed(futures):
+                        sm, depth = futures[future]
+                        try:
+                            _source, final, entries, error = future.result()
+                        except Exception as exc:
+                            final, entries = sm, []
+                            error = f"EXCEPTION:{type(exc).__name__}:{exc}"
+
+                        if error:
+                            sitemap_errors.append({
+                                "sitemap": sm,
+                                "depth": depth,
+                                "error": error,
+                            })
+                            continue
+
+                        sitemap_successes += 1
+                        xml_entries += len(entries)
+
+                        for kind, raw_url, lastmod in entries:
+                            absolute = (
+                                urljoin(final or sm, raw_url.strip())
+                                if raw_url else ""
+                            )
+                            if not absolute:
+                                continue
+
+                            if kind == "sitemap":
+                                sitemap_index_entries += 1
+                                if (
+                                    depth + 1 <= ce.MAX_SITEMAP_DEPTH
+                                    and absolute not in queued
+                                    and len(visited) + len(queue) < min(
+                                        max_sitemaps, ce.MAX_SITEMAPS_PER_STORE
+                                    )
+                                ):
+                                    queued.add(absolute)
+                                    queue.append((absolute, depth + 1))
+                                continue
+
+                            if not ce._looks_product(absolute):
+                                continue
+
+                            product_urls.add(absolute)
+                            product_entries += 1
+                            if len(product_samples) < max_samples:
+                                product_samples.append(absolute)
+
+                            normalized_url = set(ce.tokens(absolute))
+                            if wanted and wanted.issubset(normalized_url):
+                                if len(query_hits) < max_samples:
+                                    query_hits.append(absolute)
+
+                            for token in wanted:
+                                if token in normalized_url:
+                                    query_token_hits[token] += 1
+
+            limit = min(max_sitemaps, ce.MAX_SITEMAPS_PER_STORE)
+            reached_limit = len(visited) >= limit
+            timed_out = (
+                time.monotonic() - store_started
+            ) >= ce.DISCOVERY_HARD_TIMEOUT
+
+            result["stores"][store] = {
+                "ok": True,
+                "roots_found": len(roots),
+                "robots_diagnostics": robots_diag[:20],
+                "sitemaps_visited": len(visited),
+                "sitemaps_successful": sitemap_successes,
+                "sitemap_errors": len(sitemap_errors),
+                "sitemap_error_samples": sitemap_errors[:max_samples],
+                "xml_entries_seen": xml_entries,
+                "sitemap_index_entries": sitemap_index_entries,
+                "product_urls_seen": len(product_urls),
+                "product_entries_seen": product_entries,
+                "query_tokens": sorted(wanted),
+                "query_url_hits": len(query_hits),
+                "query_url_hit_samples": query_hits[:max_samples],
+                "query_token_hit_counts": query_token_hits,
+                "product_url_samples": product_samples[:max_samples],
+                "replay_limits": {
+                    "requested_max_sitemaps": max_sitemaps,
+                    "effective_max_sitemaps": limit,
+                    "reached_sitemap_limit": reached_limit,
+                    "timed_out": timed_out,
+                },
+                "current_code_html_fallback_condition": (
+                    "RUNS" if not product_urls else "SKIPPED"
+                ),
+                "current_code_html_fallback_reason": (
+                    "no product URLs were admitted by sitemap discovery"
+                    if not product_urls
+                    else (
+                        "at least one product URL was admitted by sitemap discovery, "
+                        "so discover_store() skips _discover_html_catalog()"
+                    )
+                ),
+                "elapsed_sec": round(time.monotonic() - store_started, 3),
+            }
+
+    except Exception as exc:
+        result["ok"] = False
+        result["error"] = f"{type(exc).__name__}: {exc}"
+
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
+
+
 # ============================================================================
 # FAST CATALOG-FIRST DIAGNOSTIC
 # ============================================================================
