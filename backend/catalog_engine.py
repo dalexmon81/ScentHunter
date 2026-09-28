@@ -18,7 +18,6 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
-import html
 import heapq
 import importlib
 import json
@@ -632,10 +631,12 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Current Belgian catalog entry points. Keep this generic: no product,
-        # brand or user-query URL is hard-coded into catalog discovery.
+        # Current Belgian catalog/navigation surfaces. Keep these generic:
+        # they expose the retailer's category and brand graph without
+        # hard-coding a product, brand, query or product id.
         'https://www.deloox.be/',
         'https://www.deloox.be/categorie/1000003/parfum.html',
+        'https://www.deloox.be/categorie/1063858/marques.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -944,15 +945,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     add(listing, depth + 1, requested)
 
         try:
-            # Deloox embeds navigation/product data inside HTML/JSON with
-            # HTML entities (for example &quot;) and JSON-style escaped slashes.
-            # Decode those representations before extracting URLs. Without this
-            # normalization the old regex could swallow an entire JSON fragment
-            # into one bogus URL (e.g. ...Pleasures&quot;,&quot;list&quot;...), while
-            # valid embedded catalog links could remain invisible to discovery.
-            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
-            raw_html = raw_html.replace('\\/', '/')
-            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
             for match in re.finditer(
                 r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
                 raw_html,
