@@ -631,24 +631,10 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Primary Belgian catalog surfaces. These are broad, retailer-owned
-        # category/index pages; no product or brand is hard-coded here.
+        # Current generic Belgian catalog entry points. These are retailer-owned
+        # navigation surfaces; no product, brand or query is hard-coded here.
         'https://www.deloox.be/',
-        'https://www.deloox.be/en/',
-        'https://www.deloox.be/en/category/1103659/fragrances.html',
-        # English catalog indexes are distinct public surfaces on Deloox;
-        # keep both localized and legacy category roots so the brand/category
-        # graph can reach deeper English product categories generically.
-        'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/categorie/1000003/parfum.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -748,6 +734,11 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'deloox':
+        # Deloox homepage is a real catalog/navigation entry point. Allow it
+        # so discovery can reach the current category graph instead of relying
+        # on obsolete hard-coded category IDs.
+        if path in ('', '/'):
+            return absolute
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
