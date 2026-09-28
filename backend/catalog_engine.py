@@ -584,6 +584,14 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/',
         'https://www.deloox.com/en/',
         'https://www.deloox.com/en/category/1103659/fragrances.html',
+        # English catalog indexes are distinct public surfaces on Deloox;
+        # keep both localized and legacy category roots so the brand/category
+        # graph can reach deeper English product categories generically.
+        'https://www.deloox.com/en/category/1063858/brands.html',
+        'https://www.deloox.com/en/category/1000003/fragrances.html',
+        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
         'https://www.deloox.com/category/1063858/brands.html',
         'https://www.deloox.com/category/1000003/fragrances.html',
         'https://www.deloox.com/category/1000054/mens-fragrances.html',
@@ -1378,9 +1386,14 @@ def discover_store(store):
     # This is retailer-specific discovery logic only; it never uses the query.
     deloox_graph = None
     if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
+        # Do not let the retailer-specific graph consume the entire discovery
+        # deadline. Deloox's sitemap is unreliable, so the generic HTML graph
+        # must always retain execution time to traverse additional catalog
+        # surfaces. The two crawlers are complementary, not alternatives.
+        deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
         deloox_graph = _discover_deloox_catalog(
             list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
-            started_at + DISCOVERY_HARD_TIMEOUT,
+            started_at + deloox_graph_budget,
         )
         product_urls.update(deloox_graph['product_urls'])
 
