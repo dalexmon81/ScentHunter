@@ -579,11 +579,25 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.be/category/1075660/womens-perfume.html',
         'https://www.deloox.be/category/1075750/mens-perfume.html',
     ),
+    'sabina': (
+        'https://www.sabina.com/it/',
+        'https://www.sabina.com/it/6-profumi-di-donna',
+        'https://www.sabina.com/it/7-profumi-da-uomo',
+        'https://www.sabina.com/it/30-profumi-donna',
+        'https://www.sabina.com/it/31-profumi-uomo',
+        'https://www.sabina.com/it/890-profumeria-di-nicchia',
+        'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
+    ),
 }
 HTML_MAX_PAGES = 300
 HTML_MAX_DEPTH = 5
 HTML_WORKERS = 12
 DISCOVERY_HARD_TIMEOUT = 300
+
+# A sitemap can be technically valid yet represent only a tiny slice of the
+# retailer catalog. When a store has an HTML catalog surface, supplement very
+# small sitemap discoveries instead of treating them as complete.
+HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
 
 
 def _html_product_url(store, raw_url, base_url):
@@ -608,6 +622,14 @@ def _html_product_url(store, raw_url, base_url):
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return absolute
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
+            return absolute
+        return None
+    if store == 'sabina':
+        # Sabina product pages use a numeric product id followed by a slug and
+        # end in .html. Listing/navigation pages use different URL shapes
+        # such as /it/31-profumi-uomo or /it/l/.... This is URL-shape
+        # classification only; no perfume/product name is embedded here.
+        if re.search(r'/\d+-[^/]+\.html$', low, re.I):
             return absolute
         return None
     return absolute if _looks_product(absolute) else None
@@ -645,6 +667,20 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         parts=[x for x in path.split('/') if x]
         if 1 <= len(parts) <= 3 and not path.endswith('.html'):
+            return absolute
+        return None
+    if store == 'sabina':
+        # Sabina catalog/navigation pages are crawlable without a query
+        # endpoint. Product pages are excluded here because _html_product_url
+        # handles their numeric-id .html shape.
+        if path.endswith('.html'):
+            return None
+        if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
+            return absolute
+        if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
+            return absolute
+        parts=[x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 3:
             return absolute
         return None
     return None
@@ -814,10 +850,21 @@ def discover_store(store):
                         if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS: break
 
     fallback=None
-    # Critical: zero sitemap URLs is not a NOT_FOUND condition. Use the
-    # retailer's public catalog/navigation surfaces before declaring empty.
-    if not product_urls and store in HTML_DISCOVERY_SEEDS:
-        fallback=_discover_html_catalog(store,HTML_DISCOVERY_SEEDS[store], started_at + DISCOVERY_HARD_TIMEOUT)
+    # Critical: a non-zero sitemap result is not automatically a complete
+    # catalog. Some retailers expose only a small navigation subset through
+    # sitemap roots while their public category pages contain the real catalog.
+    # Supplement small sitemap discoveries from the retailer's own HTML
+    # navigation surfaces. This is generic and never depends on the requested
+    # perfume/product name.
+    if (
+        store in HTML_DISCOVERY_SEEDS
+        and len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+    ):
+        fallback=_discover_html_catalog(
+            store,
+            HTML_DISCOVERY_SEEDS[store],
+            started_at + DISCOVERY_HARD_TIMEOUT,
+        )
         product_urls.update(fallback['product_urls'])
 
     diagnostics={
