@@ -61,6 +61,132 @@ _CATALOG_RESYNC_FINISHED_AT = None
 _CATALOG_RESYNC_RESULT = {}
 _CATALOG_RESYNC_ERROR = None
 _CATALOG_RESYNC_STORES = ('sabina', 'deloox')
+# Isolated Deloox operational resync. This endpoint intentionally bypasses
+# Sabina so Deloox can be rebuilt and measured independently.
+_DELOOX_RESYNC_LOCK = threading.Lock()
+_DELOOX_RESYNC_RUNNING = False
+_DELOOX_RESYNC_JOB_ID = None
+_DELOOX_RESYNC_STARTED_AT = None
+_DELOOX_RESYNC_FINISHED_AT = None
+_DELOOX_RESYNC_RESULT = {}
+_DELOOX_RESYNC_ERROR = None
+
+
+def _deloox_resync_worker(job_id):
+    global _DELOOX_RESYNC_RUNNING, _DELOOX_RESYNC_FINISHED_AT
+    global _DELOOX_RESYNC_RESULT, _DELOOX_RESYNC_ERROR
+
+    result = {}
+    error = None
+    print(f'CATALOG DELOOX RESYNC START job={job_id}', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+
+        result = catalog_discover_store('deloox')
+        if not isinstance(result, dict):
+            result = {'status': 'finished', 'result': result}
+
+        print(
+            f'CATALOG DELOOX RESYNC END job={job_id} '
+            f'status={result.get("status", "unknown")} '
+            f'count={result.get("count", "?")}',
+            flush=True,
+        )
+    except Exception as exc:
+        error = f'{type(exc).__name__}:{exc}'
+        result = {
+            'status': 'DISCOVERY_ERROR',
+            'count': 0,
+            'error': error,
+        }
+        print(f'CATALOG DELOOX RESYNC ERROR job={job_id}: {error}', flush=True)
+    finally:
+        with _DELOOX_RESYNC_LOCK:
+            _DELOOX_RESYNC_RESULT = result
+            _DELOOX_RESYNC_ERROR = error
+            _DELOOX_RESYNC_FINISHED_AT = time.time()
+            _DELOOX_RESYNC_RUNNING = False
+
+
+@app.get('/catalog/resync-deloox')
+def catalog_resync_deloox_endpoint():
+    """Start an isolated Deloox-only catalog discovery run."""
+    global _DELOOX_RESYNC_RUNNING, _DELOOX_RESYNC_JOB_ID
+    global _DELOOX_RESYNC_STARTED_AT, _DELOOX_RESYNC_FINISHED_AT
+    global _DELOOX_RESYNC_RESULT, _DELOOX_RESYNC_ERROR
+
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+        return {
+            'ok': False,
+            'error': 'catalog_discovery_unavailable',
+            'store': 'deloox',
+        }
+
+    with _DELOOX_RESYNC_LOCK:
+        if _DELOOX_RESYNC_RUNNING:
+            return {
+                'ok': False,
+                'status': 'already_running',
+                'job_id': _DELOOX_RESYNC_JOB_ID,
+                'store': 'deloox',
+            }
+
+        job_id = uuid.uuid4().hex[:12]
+        _DELOOX_RESYNC_RUNNING = True
+        _DELOOX_RESYNC_JOB_ID = job_id
+        _DELOOX_RESYNC_STARTED_AT = time.time()
+        _DELOOX_RESYNC_FINISHED_AT = None
+        _DELOOX_RESYNC_RESULT = {}
+        _DELOOX_RESYNC_ERROR = None
+
+    threading.Thread(
+        target=_deloox_resync_worker,
+        args=(job_id,),
+        daemon=True,
+        name='scenthunter-catalog-deloox-resync',
+    ).start()
+
+    return {
+        'ok': True,
+        'status': 'started',
+        'job_id': job_id,
+        'store': 'deloox',
+        'status_endpoint': f'/catalog/resync-deloox-status?job_id={job_id}',
+        'note': 'Deloox-only discovery runs in background and does not run inside /search.',
+    }
+
+
+@app.get('/catalog/resync-deloox-status')
+def catalog_resync_deloox_status_endpoint(job_id: str = ''):
+    """Read-only status for the isolated Deloox discovery run."""
+    with _DELOOX_RESYNC_LOCK:
+        running = _DELOOX_RESYNC_RUNNING
+        current_job = _DELOOX_RESYNC_JOB_ID
+        started = _DELOOX_RESYNC_STARTED_AT
+        finished = _DELOOX_RESYNC_FINISHED_AT
+        result = dict(_DELOOX_RESYNC_RESULT)
+        error = _DELOOX_RESYNC_ERROR
+
+    if job_id and current_job and job_id != current_job:
+        return {
+            'ok': False,
+            'status': 'job_not_current',
+            'requested_job_id': job_id,
+            'current_job_id': current_job,
+        }
+
+    return {
+        'ok': True,
+        'status': 'running' if running else ('finished' if current_job else 'idle'),
+        'job_id': current_job,
+        'store': 'deloox',
+        'started_at': started,
+        'finished_at': finished,
+        'error': error,
+        'result': result,
+    }
+
 
 def _catalog_is_ready():
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
