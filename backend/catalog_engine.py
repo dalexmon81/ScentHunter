@@ -914,17 +914,26 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # or any other requested perfume.
                 try:
                     raw_html = data.decode('utf-8', 'ignore')
+                    # Deloox embeds some catalog routes in escaped JSON/JS
+                    # strings (https:\/\/www... or \/category/...).
+                    # Normalize only URL escaping before extracting candidates.
+                    raw_html = raw_html.replace('\\/', '/')
                     host_patterns = {
                         urllib.parse.urlparse(base).netloc.lower()
                         for base in _discovery_bases(store)
                     }
                     candidates = set()
+                    # Accept both absolute same-site URLs and root-relative
+                    # routes. Root-relative routes are important when Deloox
+                    # stores generic category/brand navigation in JS state
+                    # instead of an <a href>. The normal classifiers below
+                    # still decide whether each route is a product or listing.
                     for match in re.finditer(
-                        r'https?://[^\"\'\s<>\\]+|(?:(?:/en|/it|/de|/fr|/nl|/es)/[^\"\'\s<>\\]+)',
+                        r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
                         raw_html,
                         re.I,
                     ):
-                        raw = match.group(0).replace('\\/', '/')
+                        raw = match.group(0)
                         absolute = urllib.parse.urljoin(page_base, raw).split('#', 1)[0]
                         parsed = urllib.parse.urlparse(absolute)
                         if parsed.netloc.lower() not in host_patterns:
