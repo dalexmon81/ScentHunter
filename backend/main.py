@@ -1195,12 +1195,20 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         item['shop'] = item['store']
         grouped_raw[store_key].append(item)
 
+    # Do not query catalog_store_status() on the normal populated-search path.
+    # That function performs a catalog-wide LEFT JOIN to calculate pending
+    # hydration and can contend with the background hydration writers on
+    # SQLite. catalog_search_local() has already searched every configured
+    # store, so a non-empty raw_rows result proves that the catalog contains
+    # searchable data. We only need the full status query for the exceptional
+    # empty-catalog/bootstrap case.
     statuses = {}
-    try:
-        if callable(catalog_store_status):
-            statuses = catalog_store_status() or {}
-    except Exception as exc:
-        print(f'CATALOG STATUS ERROR: {type(exc).__name__}: {exc}', flush=True)
+    if not raw_rows:
+        try:
+            if callable(catalog_store_status):
+                statuses = catalog_store_status() or {}
+        except Exception as exc:
+            print(f'CATALOG STATUS ERROR: {type(exc).__name__}: {exc}', flush=True)
 
     # A completely empty catalog means the background bootstrap has not
     # indexed any store yet. Normal searches must wait for that bootstrap;
@@ -1210,7 +1218,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         for store in stores
         if isinstance(statuses, dict)
     )
-    if indexed_total <= 0:
+    if not raw_rows and indexed_total <= 0:
         for store in stores:
             report = _empty_report(
                 store,
@@ -1255,8 +1263,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
 
         status_info = statuses.get(store) if isinstance(statuses, dict) else None
         status_info = status_info if isinstance(status_info, dict) else {}
-        indexed = int(status_info.get('indexed_urls') or 0)
-        fetched = int(status_info.get('fetched_products') or 0)
+        # On the populated search path, avoid another catalog-wide status
+        # query. A store with candidate rows is necessarily indexed; the
+        # exact global hydration counters are not required to resolve results.
+        indexed = int(status_info.get('indexed_urls') or (1 if store_rows else 0))
+        fetched = int(status_info.get('fetched_products') or len(store_rows))
         if matched_rows:
             status, verified, error = 'success', True, None
         elif pending_by_store.get(store, 0) > 0:
