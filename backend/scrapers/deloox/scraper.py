@@ -795,7 +795,7 @@ def _discover_from_search(session, query):
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
 
-def _category_product_line_links(html, query):
+def _category_product_line_links(html, query, base_url=None):
     """Extract generic category/filter links whose visible text matches query.
 
     This is not product-specific: it simply uses the store's own category/filter
@@ -806,6 +806,7 @@ def _category_product_line_links(html, query):
     if not q_tokens:
         return []
 
+    base_url = clean(base_url or BASE_URL)
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
@@ -816,7 +817,7 @@ def _category_product_line_links(html, query):
         context = f"{label} {href}"
         if not q_tokens.issubset(tokens(context)):
             continue
-        url = urljoin(BASE_URL, href).split("#")[0]
+        url = urljoin(base_url, href).split("#")[0]
         parsed = urlparse(url)
         if parsed.netloc.lower() not in DELOOX_HOSTS:
             continue
@@ -868,7 +869,7 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
         # Then follow retailer-provided category/filter links that match the
         # query.  This is the missing path for Deloox product-line categories.
         related = []
-        for candidate in _category_product_line_links(html, query):
+        for candidate in _category_product_line_links(html, query, base_url=base):
             if candidate not in category_seen:
                 category_seen.add(candidate)
                 related.append(candidate)
@@ -1082,6 +1083,7 @@ def diagnose_search(session, query):
         filter_urls = _category_product_line_links(
             r.text,
             query,
+            base_url=f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}",
         )
 
         entry["filter_urls"] = filter_urls[:20]
