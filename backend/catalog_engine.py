@@ -856,6 +856,197 @@ def _discover_html_catalog(store, seeds, deadline=None):
     }
 
 
+
+def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
+    """READ-ONLY trace of the generic HTML discovery graph."""
+    store = str(store or '').strip().lower()
+    if store not in HTML_DISCOVERY_SEEDS:
+        return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
+                'error': f'html_discovery_not_configured:{store}', 'store': store}
+
+    try:
+        max_pages = max(1, min(int(max_pages or 120), HTML_MAX_PAGES))
+    except Exception:
+        max_pages = 120
+    try:
+        max_depth = max(0, min(int(max_depth if max_depth is not None else HTML_MAX_DEPTH), HTML_MAX_DEPTH))
+    except Exception:
+        max_depth = HTML_MAX_DEPTH
+    try:
+        max_events = max(50, min(int(max_events or 500), 2000))
+    except Exception:
+        max_events = 500
+
+    required_tokens = tokens(query)
+    queue, queued, visited = [], set(), set()
+    events, errors = [], []
+    product_urls, listing_urls = set(), set()
+    query_url_hits, query_page_hits = [], []
+
+    def has_tokens(value):
+        value = norm(value)
+        return bool(required_tokens) and all(t in value for t in required_tokens)
+
+    def add(url, depth, source=''):
+        if not url:
+            return False
+        key = url.split('#', 1)[0]
+        if key in queued or key in visited or depth > max_depth:
+            return False
+        if len(queued) >= max_pages * 2:
+            return False
+        queued.add(key)
+        queue.append((key, depth, source))
+        if has_tokens(key) and len(query_url_hits) < 100:
+            query_url_hits.append({'url': key, 'depth': depth, 'source': source})
+        return True
+
+    seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
+    for seed in seeds:
+        add(seed, 0, 'configured_seed')
+
+    started = time.time()
+    successes = 0
+
+    while queue and len(visited) < max_pages and (time.time() - started) < DISCOVERY_HARD_TIMEOUT:
+        requested, depth, source = queue.pop(0)
+        if requested in visited:
+            continue
+        visited.add(requested)
+        try:
+            _requested, final, data, error = _fetch_html_page(store, requested)
+        except Exception as exc:
+            final, data, error = requested, None, f'{type(exc).__name__}:{exc}'
+
+        event = {'url': requested, 'final_url': final, 'depth': depth,
+                 'source': source, 'status': 'ERROR' if error else 'OK'}
+
+        if error:
+            event['error'] = error
+            errors.append(f'{requested} -> {error}')
+            if len(events) < max_events:
+                events.append(event)
+            continue
+
+        successes += 1
+        soup = BeautifulSoup(data, 'html.parser')
+        page_text = soup.get_text(' ', strip=True)
+        page_hit = has_tokens(page_text)
+        if page_hit and len(query_page_hits) < 100:
+            query_page_hits.append({'url': requested, 'final_url': final,
+                                    'depth': depth, 'bytes': len(data or b'')})
+
+        relevant, product_count, listing_count = [], 0, 0
+
+        def report(kind, url, label='', queued_now=None, attribute=None):
+            if not (has_tokens(url) or has_tokens(label)):
+                return
+            item = {'kind': kind, 'url': url, 'label': label[:200], 'token_hit': True}
+            if queued_now is not None:
+                item['queued'] = bool(queued_now)
+            if attribute:
+                item['attribute'] = attribute
+            relevant.append(item)
+
+        for a in soup.find_all('a', href=True):
+            href, label = a.get('href'), a.get_text(' ', strip=True)
+            product = _html_product_url(store, href, final or requested)
+            if product:
+                product_urls.add(product)
+                product_count += 1
+                report('product', product, label)
+                continue
+            listing = _html_listing_url(store, href, final or requested, label)
+            if listing:
+                listing_urls.add(listing)
+                queued_now = add(listing, depth + 1, requested)
+                listing_count += 1
+                report('listing', listing, label, queued_now)
+
+        navigation_attrs = (
+            'data-url','data-href','data-link','data-product-url',
+            'data-product-link','data-target','data-next-url','data-next',
+            'data-load-more-url','data-pagination-url'
+        )
+        for node in soup.find_all(True):
+            label = node.get_text(' ', strip=True)[:300]
+            for attr in navigation_attrs:
+                raw = node.get(attr)
+                if not raw:
+                    continue
+                product = _html_product_url(store, raw, final or requested)
+                if product:
+                    product_urls.add(product)
+                    product_count += 1
+                    report('product_attribute', product, label, attribute=attr)
+                    continue
+                listing = _html_listing_url(store, raw, final or requested, label)
+                if listing:
+                    listing_urls.add(listing)
+                    queued_now = add(listing, depth + 1, requested)
+                    listing_count += 1
+                    report('listing_attribute', listing, label, queued_now, attr)
+
+        for node in soup.find_all('link', href=True):
+            rel = ' '.join(node.get('rel') or []).lower()
+            if 'next' not in rel:
+                continue
+            listing = _html_listing_url(store, node.get('href'), final or requested, 'next')
+            if listing:
+                listing_urls.add(listing)
+                queued_now = add(listing, depth + 1, requested)
+                listing_count += 1
+                report('rel_next', listing, 'next', queued_now)
+
+        try:
+            for item in _jsonld(soup):
+                product = _html_product_url(store, item.get('url'), final or requested)
+                if product:
+                    product_urls.add(product)
+                    product_count += 1
+                    report('jsonld_product', product)
+        except Exception:
+            pass
+
+        event.update({'bytes': len(data or b''), 'token_page_hit': page_hit,
+                      'product_links': product_count, 'listing_links': listing_count,
+                      'queue_size_after': len(queue)})
+        if relevant:
+            event['query_relevant_links'] = relevant[:100]
+        if len(events) < max_events:
+            events.append(event)
+
+    return {
+        'ok': True,
+        'diagnostic': 'html-discovery-trace-read-only-v1',
+        'store': store,
+        'query': query,
+        'required_tokens': required_tokens,
+        'production_search_called': False,
+        'database_written': False,
+        'parameters': {'max_pages': max_pages, 'max_depth': max_depth, 'max_events': max_events},
+        'seeds': seeds,
+        'visited': len(visited),
+        'successes': successes,
+        'errors_count': len(errors),
+        'errors': errors[:50],
+        'queue_remaining': len(queue),
+        'product_urls_found': len(product_urls),
+        'listing_urls_seen': len(listing_urls),
+        'query_url_hits': query_url_hits,
+        'query_page_hits': query_page_hits,
+        'query_relevant_events': [
+            e for e in events if e.get('token_page_hit') or e.get('query_relevant_links')
+        ][:100],
+        'events': events,
+        'elapsed_sec': round(time.time() - started, 3),
+        'diagnosis': (
+            'TRACE_COMPLETE: se la categoria/brand page compare come link ma non viene '
+            'accodata, controllare _html_listing_url; se non compare, il problema è '
+            'nella superficie di navigazione raggiunta dai seed.'
+        ),
+    }
+
 def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
     conn = db()
     now = time.time()
