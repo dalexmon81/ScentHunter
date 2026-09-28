@@ -803,6 +803,121 @@ def _html_discovery_priority(store, url, depth, source=''):
     # break ties between otherwise equivalent catalog surfaces.
     return (score, depth, len(path), url)
 
+def _discover_deloox_catalog(seeds, deadline=None):
+    """Discover Deloox products through its public category graph.
+
+    Deloox exposes a large amount of catalog navigation in category pages,
+    while sitemap endpoints are frequently unavailable.  The generic crawler
+    is still used elsewhere, but Deloox gets this retailer-level traversal so
+    category/brand navigation is not lost to generic URL classification.
+
+    No product name, brand name, product id, or search query is used here.
+    """
+    queue = []
+    queued = set()
+    visited = set()
+    product_urls = {}
+    errors = []
+    sequence = 0
+    max_pages = min(500, HTML_MAX_PAGES)
+    max_depth = min(8, HTML_MAX_DEPTH)
+
+    def add(url, depth, source=''):
+        nonlocal sequence
+        if not url or depth > max_depth or len(queued) >= max_pages * 8:
+            return
+        key = url.split('#', 1)[0]
+        if key in queued or key in visited:
+            return
+        p = urllib.parse.urlparse(key)
+        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.com':
+            return
+        path = p.path.lower()
+        # This adapter follows catalog surfaces only. Product URLs are
+        # collected, not recursively crawled here.
+        if '/product/' in path:
+            product = _html_product_url('deloox', key, key)
+            if product:
+                product_urls[product] = ''
+            return
+        if not re.search(r'/(?:category|brand|brands)(?:/|$)', path, re.I):
+            return
+        sequence += 1
+        priority = _html_discovery_priority('deloox', key, depth, source)
+        heapq.heappush(queue, (priority, sequence, key, depth, source))
+        queued.add(key)
+
+    # Start only from broad, retailer-owned catalog surfaces already present in
+    # configuration. Nothing here depends on the requested perfume.
+    for seed in seeds:
+        add(seed, 0, 'configured_seed')
+
+    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
+        _priority, _sequence, requested, depth, source = heapq.heappop(queue)
+        if requested in visited:
+            continue
+        visited.add(requested)
+        try:
+            _requested, final, data, error = _fetch_html_page('deloox', requested)
+        except Exception as exc:
+            final, data, error = requested, None, f'{type(exc).__name__}:{exc}'
+        if error:
+            errors.append(f'{requested} -> {error}')
+            continue
+
+        soup = BeautifulSoup(data, 'html.parser')
+        base = final or requested
+
+        # Direct product anchors are the authoritative product discovery path.
+        for a in soup.find_all('a', href=True):
+            raw = a.get('href')
+            product = _html_product_url('deloox', raw, base)
+            if product:
+                product_urls[product] = ''
+                continue
+            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
+            if listing:
+                add(listing, depth + 1, requested)
+
+        # Deloox also stores category/product routes in embedded navigation
+        # state. Reuse the same classifiers; this remains query-independent.
+        try:
+            raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
+            for match in re.finditer(
+                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                raw_html,
+                re.I,
+            ):
+                raw = match.group(0)
+                absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
+                product = _html_product_url('deloox', absolute, base)
+                if product:
+                    product_urls[product] = ''
+                    continue
+                listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
+                if listing:
+                    add(listing, depth + 1, requested)
+        except Exception:
+            pass
+
+        # Follow standard pagination/load-more links where the retailer exposes
+        # them as URLs. Product links on each page are collected above.
+        for node in soup.find_all(['a', 'link'], href=True):
+            rel = ' '.join(node.get('rel') or []).lower()
+            href = node.get('href')
+            if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
+                listing = _html_listing_url('deloox', href, base, 'pagination')
+                if listing:
+                    add(listing, depth + 1, requested)
+
+    return {
+        'product_urls': product_urls,
+        'visited': len(visited),
+        'successes': len(visited) - len(errors),
+        'errors': errors[:20],
+    }
+
+
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
     queued=set()
@@ -1216,6 +1331,17 @@ def discover_store(store):
                             html_sitemap_seeds.add(listing)
 
     fallback=None
+    # Deloox has a reliable public category graph but unreliable sitemap
+    # endpoints. Traverse that graph directly before the generic HTML fallback.
+    # This is retailer-specific discovery logic only; it never uses the query.
+    deloox_graph = None
+    if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
+        deloox_graph = _discover_deloox_catalog(
+            list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
+            started_at + DISCOVERY_HARD_TIMEOUT,
+        )
+        product_urls.update(deloox_graph['product_urls'])
+
     # Critical: a non-zero sitemap result is not automatically a complete
     # catalog. Some retailers expose only a small navigation subset through
     # sitemap roots while their public category pages contain the real catalog.
@@ -1269,6 +1395,13 @@ def discover_store(store):
 
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if deloox_graph is not None:
+        details.append(
+            f'deloox_category_graph=visited:{deloox_graph["visited"]};'
+            f'successes:{deloox_graph["successes"]};products:{len(deloox_graph["product_urls"])}'
+        )
+        if deloox_graph['errors']:
+            details.append('deloox_graph_errors=' + ' | '.join(deloox_graph['errors'][:4]))
     if fallback is not None:
         details.append(
             f'html_fallback=visited:{fallback["visited"]};'
