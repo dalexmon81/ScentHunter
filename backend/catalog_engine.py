@@ -610,6 +610,9 @@ HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
 DISCOVERY_HARD_TIMEOUT = 300
+# Reserve time for HTML catalog discovery instead of allowing a slow sitemap
+# phase to consume the entire discovery window.
+SITEMAP_DISCOVERY_TIMEOUT = 45
 
 # A sitemap can be technically valid yet represent only a tiny slice of the
 # retailer catalog. When a store has an HTML catalog surface, supplement very
@@ -1129,7 +1132,11 @@ def discover_store(store):
     html_sitemap_seeds=set()
     sitemap_successes=0; sitemap_url_entries=0
 
-    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and (time.time()-started_at)<DISCOVERY_HARD_TIMEOUT:
+    sitemap_deadline = min(
+        started_at + DISCOVERY_HARD_TIMEOUT,
+        time.time() + max(5.0, float(SITEMAP_DISCOVERY_TIMEOUT)),
+    )
+    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and time.time() < sitemap_deadline:
         batch=[]
         while queue and len(batch)<SYNC_WORKERS*4:
             sm,depth=queue.pop(0)
@@ -1174,10 +1181,14 @@ def discover_store(store):
         html_seeds=list(dict.fromkeys(
             list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
         ))
+        # Give HTML discovery its own remaining budget. A retailer with a
+        # slow/broken sitemap must still get a real chance to expose its
+        # catalog through public category/navigation pages.
+        remaining = max(30.0, DISCOVERY_HARD_TIMEOUT - (time.time() - started_at))
         fallback=_discover_html_catalog(
             store,
             html_seeds,
-            started_at + DISCOVERY_HARD_TIMEOUT,
+            time.time() + remaining,
         )
         product_urls.update(fallback['product_urls'])
 
