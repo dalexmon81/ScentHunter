@@ -1224,7 +1224,10 @@ def discover_store(store):
     # perfume/product name.
     if (
         store in HTML_DISCOVERY_SEEDS
-        and len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+        and (
+            len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
+        )
     ):
         html_seeds=list(dict.fromkeys(
             list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
