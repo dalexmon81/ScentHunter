@@ -856,7 +856,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
     }
 
 
-
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     store = str(store or '').strip().lower()
