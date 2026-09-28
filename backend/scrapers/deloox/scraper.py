@@ -830,50 +830,130 @@ def _category_product_line_links(html, query):
 
 
 def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
-    """Bounded generic category fallback after search has failed."""
+    """Bounded generic category fallback after search has failed.
+
+    Deloox exposes query-specific category/filter pages from its normal
+    fragrance category navigation (for example a category whose slug matches
+    the requested product line).  The previous implementation ignored those
+    links and only followed explicit ``page=`` links from the generic category
+    pages.  That can permanently miss a valid product when the retailer puts
+    the matching product behind its category/filter navigation.
+
+    This remains generic: the requested query is only used to select retailer
+    navigation links; _candidate_product_urls() and _product() remain the
+    product discovery/validation authorities.
+    """
     urls = []
     seen = set()
-    for page_url in _category_pages()[:12]:
-        try:
-            r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        pages = [r.url]
-        soup = BeautifulSoup(r.text, "html.parser")
+    category_seen = set()
+
+    def add_product(url):
+        if not url or url in seen:
+            return False
+        seen.add(url)
+        urls.append(url)
+        return len(urls) >= max_urls
+
+    def crawl_page(page_url, html, base):
+        # First inspect products directly visible on this page.
+        for product_url in _candidate_product_urls(
+            html,
+            query,
+            base_url=base,
+            accept_all_products=True,
+        ):
+            if add_product(product_url):
+                return True
+
+        # Then follow retailer-provided category/filter links that match the
+        # query.  This is the missing path for Deloox product-line categories.
+        related = []
+        for candidate in _category_product_line_links(html, query):
+            if candidate not in category_seen:
+                category_seen.add(candidate)
+                related.append(candidate)
+
+        for candidate in related[:32]:
+            try:
+                page = session.get(
+                    candidate,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400 or not page.text:
+                continue
+            candidate_base = f"{urlparse(page.url).scheme}://{urlparse(page.url).netloc}"
+            for product_url in _candidate_product_urls(
+                page.text,
+                query,
+                base_url=candidate_base,
+                accept_all_products=True,
+            ):
+                if add_product(product_url):
+                    return True
+
+        # Finally follow the explicit pagination links exposed by the page.
+        # This remains bounded and does not assume a retailer-specific API.
+        soup = BeautifulSoup(html, "html.parser")
+        pages = []
         for a in soup.find_all("a", href=True):
             href = clean(a.get("href"))
-            if "page=" not in href.lower():
+            if not href or "page=" not in href.lower():
                 continue
-            u = urljoin(base, href)
+            u = urljoin(base, href).split("#")[0]
             if u not in pages:
                 pages.append(u)
             if len(pages) >= 8:
                 break
 
         for current_url in pages:
-            if current_url == r.url:
-                html = r.text
-            else:
-                try:
-                    page = session.get(current_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-                    if page.status_code >= 400:
-                        continue
-                    html = page.text
-                except requests.RequestException:
-                    continue
+            try:
+                page = session.get(
+                    current_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400 or not page.text:
+                continue
+            current_base = f"{urlparse(page.url).scheme}://{urlparse(page.url).netloc}"
             for product_url in _candidate_product_urls(
-                html, query, base_url=base, accept_all_products=True
+                page.text,
+                query,
+                base_url=current_base,
+                accept_all_products=True,
             ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
-                        return urls
-    return urls
+                if add_product(product_url):
+                    return True
 
+        return False
+
+    for page_url in _category_pages()[:12]:
+        if page_url in category_seen:
+            continue
+        category_seen.add(page_url)
+        try:
+            r = session.get(
+                page_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400 or not r.text:
+            continue
+
+        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+        if crawl_page(r.url, r.text, base):
+            break
+
+    return urls[:max_urls]
 
 def _discover(session, q):
     """Generic deterministic discovery with search as the primary surface.
