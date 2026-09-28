@@ -692,6 +692,13 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
             return absolute
+        # Some retailer filters are query-only links on an existing catalog
+        # path. Treat generic filter/navigation keys as catalog surfaces.
+        if re.search(
+            r'(?:^|&)(?:brand|brands|manufacturer|manufacturers|category|categories|filter|filters|facet|facets|attribute|attributes|gender|collection)=',
+            p.query, re.I,
+        ):
+            return absolute
         parts=[x for x in path.split('/') if x]
         if 1 <= len(parts) <= 3 and not path.endswith('.html'):
             return absolute
@@ -807,9 +814,10 @@ def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox products through its public category graph.
 
     Deloox exposes a large amount of catalog navigation in category pages,
-    while sitemap endpoints are frequently unavailable.  The generic crawler
-    is still used elsewhere, but Deloox gets this retailer-level traversal so
-    category/brand navigation is not lost to generic URL classification.
+    while sitemap endpoints are frequently unavailable. The crawler therefore
+    traverses the retailer-owned catalog graph directly. Fetches are performed
+    in bounded parallel batches so one slow/large Deloox page cannot consume
+    the entire discovery deadline.
 
     No product name, brand name, product id, or search query is used here.
     """
@@ -833,18 +841,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.com':
             return
         path = p.path.lower()
-        # This adapter follows catalog surfaces only. Product URLs are
-        # collected, not recursively crawled here.
         if '/product/' in path:
             product = _html_product_url('deloox', key, key)
             if product:
                 product_urls[product] = ''
             return
-        # Keep every same-site URL that the normal listing classifier
-        # recognizes. Deloox's catalog graph is not guaranteed to expose all
-        # category/brand levels under a single fixed path family. The shared
-        # classifier remains responsible for excluding product/account/etc.
-        # URLs, so this traversal does not need a second path taxonomy.
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
@@ -853,28 +854,19 @@ def _discover_deloox_catalog(seeds, deadline=None):
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
-    # Start only from broad, retailer-owned catalog surfaces already present in
-    # configuration. Nothing here depends on the requested perfume.
     for seed in seeds:
         add(seed, 0, 'configured_seed')
 
-    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
-        _priority, _sequence, requested, depth, source = heapq.heappop(queue)
-        if requested in visited:
-            continue
-        visited.add(requested)
-        try:
-            _requested, final, data, error = _fetch_html_page('deloox', requested)
-        except Exception as exc:
-            final, data, error = requested, None, f'{type(exc).__name__}:{exc}'
+    def process_page(requested, depth, source, result):
+        """Collect products and enqueue catalog/navigation URLs from one page."""
+        _requested, final, data, error = result
         if error:
             errors.append(f'{requested} -> {error}')
-            continue
+            return
 
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
 
-        # Direct product anchors are the authoritative product discovery path.
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
@@ -885,8 +877,25 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if listing:
                 add(listing, depth + 1, requested)
 
-        # Deloox also stores category/product routes in embedded navigation
-        # state. Reuse the same classifiers; this remains query-independent.
+        for node in soup.find_all(True):
+            label = node.get_text(' ', strip=True)[:300]
+            for attr in (
+                'value', 'data-value', 'data-filter-url', 'data-option-url',
+                'data-redirect-url', 'data-url', 'data-href', 'data-link',
+                'data-next-url', 'data-next', 'data-load-more-url',
+                'data-pagination-url',
+            ):
+                raw = node.get(attr)
+                if not raw:
+                    continue
+                product = _html_product_url('deloox', raw, base)
+                if product:
+                    product_urls[product] = ''
+                    continue
+                listing = _html_listing_url('deloox', raw, base, label)
+                if listing:
+                    add(listing, depth + 1, requested)
+
         try:
             raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
             for match in re.finditer(
@@ -906,8 +915,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         except Exception:
             pass
 
-        # Follow standard pagination/load-more links where the retailer exposes
-        # them as URLs. Product links on each page are collected above.
         for node in soup.find_all(['a', 'link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             href = node.get('href')
@@ -915,6 +922,35 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 listing = _html_listing_url('deloox', href, base, 'pagination')
                 if listing:
                     add(listing, depth + 1, requested)
+
+    # Parallel batches are deliberately bounded by the same HTML worker pool
+    # used by the generic crawler. The queue itself remains priority-ordered,
+    # so high-value catalog surfaces are still preferred without serializing
+    # the network I/O.
+    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
+        batch = []
+        while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
+            _priority, _sequence, url, depth, source = heapq.heappop(queue)
+            if url in visited:
+                continue
+            visited.add(url)
+            batch.append((url, depth, source))
+        if not batch:
+            continue
+
+        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
+            futures = {
+                pool.submit(_fetch_html_page, 'deloox', url): (url, depth, source)
+                for url, depth, source in batch
+            }
+            for future in as_completed(futures):
+                requested, depth, source = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
+                    continue
+                process_page(requested, depth, source, result)
 
     return {
         'product_urls': product_urls,
