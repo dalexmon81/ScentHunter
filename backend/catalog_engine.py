@@ -432,6 +432,12 @@ def _looks_product(url):
         return False
     if NON_PRODUCT_PATH.search(p.path):
         return False
+    # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
+    # products. They can look like products to the generic slug heuristic
+    # because their slugs contain multiple words, so exclude them here while
+    # keeping the generic heuristic unchanged for the other stores.
+    if re.match(r'^/[a-z]{2}/(?:l|s)(?:/|$)', p.path, re.I):
+        return False
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
@@ -572,7 +578,12 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
+        # Use the primary .com storefront as well as localized storefront
+        # surfaces. The .com/en catalog is the verified public catalog surface
+        # for Deloox; these are broad category roots, never product-specific.
         'https://www.deloox.com/',
+        'https://www.deloox.com/en/',
+        'https://www.deloox.com/en/category/1103659/fragrances.html',
         'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
         'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
@@ -587,10 +598,16 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/31-profumi-uomo',
         'https://www.sabina.com/it/890-profumeria-di-nicchia',
         'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
+        # Broad Arabic-fragrance landing surface exposed by Sabina's own
+        # sitemap. It is a catalog/navigation surface, not a product query.
+        'https://www.sabina.com/it/l/profumi-arabi',
     ),
 }
-HTML_MAX_PAGES = 300
-HTML_MAX_DEPTH = 5
+# HTML discovery is background catalog work, not request-time search. The old
+# 300-page/5-level ceiling could stop before the retailer's real catalog
+# pagination/navigation surface was exhausted.
+HTML_MAX_PAGES = 800
+HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
 DISCOVERY_HARD_TIMEOUT = 300
 
@@ -773,23 +790,63 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 soup=BeautifulSoup(data,'html.parser')
                 # Product URLs are collected directly from links and common
                 # data attributes. No product name/brand/price is embedded.
+                page_base=final or requested
+
+                # Normal anchors are the primary catalog graph.
                 for a in soup.find_all('a',href=True):
                     href=a.get('href'); label=a.get_text(' ',strip=True)
-                    product=_html_product_url(store,href,final or requested)
+                    product=_html_product_url(store,href,page_base)
                     if product:
                         product_urls[product]=''
                         continue
-                    listing=_html_listing_url(store,href,final or requested,label)
+                    listing=_html_listing_url(store,href,page_base,label)
                     if listing:
                         add(listing,depth+1)
+
+                # Many modern storefronts put pagination/load-more targets in
+                # attributes instead of normal hrefs. Follow these generic
+                # navigation attributes; never use the user's query here.
+                navigation_attrs=(
+                    'data-url','data-href','data-link','data-product-url',
+                    'data-product-link','data-target','data-next-url',
+                    'data-next','data-load-more-url','data-pagination-url',
+                )
                 for node in soup.find_all(True):
-                    for attr in ('data-url','data-href','data-link','data-product-url','data-product-link','data-target'):
+                    for attr in navigation_attrs:
                         raw=node.get(attr)
-                        if not raw: continue
-                        product=_html_product_url(store,raw,final or requested)
-                        if product: product_urls[product]=''; continue
-                        listing=_html_listing_url(store,raw,final or requested,node.get_text(' ',strip=True)[:300])
-                        if listing: add(listing,depth+1)
+                        if not raw:
+                            continue
+                        product=_html_product_url(store,raw,page_base)
+                        if product:
+                            product_urls[product]=''
+                            continue
+                        listing=_html_listing_url(
+                            store,raw,page_base,
+                            node.get_text(' ',strip=True)[:300],
+                        )
+                        if listing:
+                            add(listing,depth+1)
+
+                # Explicit rel=next is a standard pagination mechanism and is
+                # easy to miss when it lives in <head> rather than in an <a>.
+                for node in soup.find_all('link',href=True):
+                    rel=' '.join(node.get('rel') or []).lower()
+                    if 'next' not in rel:
+                        continue
+                    listing=_html_listing_url(store,node.get('href'),page_base,'next')
+                    if listing:
+                        add(listing,depth+1)
+
+                # Product JSON-LD is another standard storefront surface. It
+                # gives us product URLs without depending on CSS/DOM layout.
+                try:
+                    for item in _jsonld(soup):
+                        raw_url=item.get('url')
+                        product=_html_product_url(store,raw_url,page_base)
+                        if product:
+                            product_urls[product]=''
+                except Exception:
+                    pass
 
     return {
         'product_urls':product_urls,
@@ -821,6 +878,10 @@ def discover_store(store):
     roots,robots_diagnostics=_seed_sitemaps(store)
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
+    # Some retailers publish navigation/landing URLs in their sitemap instead
+    # of real product URLs. Keep those URLs as generic HTML-discovery seeds
+    # rather than discarding them after the sitemap pass.
+    html_sitemap_seeds=set()
     sitemap_successes=0; sitemap_url_entries=0
 
     while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and (time.time()-started_at)<DISCOVERY_HARD_TIMEOUT:
@@ -847,7 +908,12 @@ def discover_store(store):
                             queued.add(absolute); queue.append((absolute,depth+1))
                     elif _looks_product(absolute):
                         product_urls[absolute]=lastmod or ''
-                        if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS: break
+                        if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
+                            break
+                    elif store in HTML_DISCOVERY_SEEDS:
+                        listing=_html_listing_url(store,absolute,final or sm,'sitemap')
+                        if listing:
+                            html_sitemap_seeds.add(listing)
 
     fallback=None
     # Critical: a non-zero sitemap result is not automatically a complete
@@ -860,9 +926,12 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
     ):
+        html_seeds=list(dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
+        ))
         fallback=_discover_html_catalog(
             store,
-            HTML_DISCOVERY_SEEDS[store],
+            html_seeds,
             started_at + DISCOVERY_HARD_TIMEOUT,
         )
         product_urls.update(fallback['product_urls'])
@@ -896,7 +965,12 @@ def discover_store(store):
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
     if fallback is not None:
-        details.append(f'html_fallback=visited:{fallback["visited"]};successes:{fallback["successes"]};products:{len(fallback["product_urls"])}')
+        details.append(
+            f'html_fallback=visited:{fallback["visited"]};'
+            f'successes:{fallback["successes"]};'
+            f'products:{len(fallback["product_urls"])};'
+            f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
+        )
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
     final_error=' | '.join(details) if details else error
     conn=db()
