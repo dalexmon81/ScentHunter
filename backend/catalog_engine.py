@@ -18,6 +18,7 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
+import heapq
 import importlib
 import json
 import re
@@ -662,7 +663,12 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         return None
     path = p.path.lower()
     text = norm(f'{path} {p.query} {label}')
-    if any(x in path for x in ('/login', '/account', '/cart', '/checkout', '/service', '/kontakt', '/impressum', '/datenschutz', '/agb', '/versand', '/zahlung', '/faq/')):
+    if any(x in path for x in (
+        '/login', '/account', '/cart', '/checkout', '/service', '/kontakt',
+        '/impressum', '/datenschutz', '/agb', '/versand', '/zahlung', '/faq/',
+        '/wishlist', '/customer-service', '/shopping-cart', '/my-account',
+        '/order/', '/customer/', '/help/',
+    )):
         return None
     if path.endswith(('.jpg','.jpeg','.png','.gif','.svg','.webp','.pdf','.css','.js')):
         return None
@@ -752,6 +758,42 @@ def _fetch_html_page(store, url):
     return url, url, None, http_error
 
 
+
+def _html_discovery_priority(store, url, depth, source=''):
+    """Return a generic crawl priority; lower values are visited first.
+
+    The HTML catalog fallback can discover thousands of links from a single
+    storefront page. FIFO traversal lets utility pages and unrelated site
+    surfaces consume the queue before the retailer's product/category graph is
+    explored. This score only uses URL structure, never the requested product
+    name, brand, price, or a store-specific product exception.
+    """
+    p = urllib.parse.urlparse(url)
+    path = (p.path or '/').lower()
+    text = norm(f'{path} {p.query}')
+
+    # Keep catalog navigation ahead of generic site navigation. Directory
+    # roots such as a retailer's brand index are especially valuable because
+    # they lead to the actual brand/category catalog graph in very few hops.
+    if re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
+        score = 0
+    elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
+        score = 1
+    elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
+        score = 2
+    elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
+        score = 3
+    elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
+        score = 4
+    elif path in ('/', '') or path.rstrip('/') in ('/en', '/it', '/de', '/fr', '/nl', '/es'):
+        score = 8
+    else:
+        score = 6
+
+    # Deeper pages are still valid, but breadth-first behavior should only
+    # break ties between otherwise equivalent catalog surfaces.
+    return (score, depth, len(path), url)
+
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
     queued=set()
@@ -759,28 +801,33 @@ def _discover_html_catalog(store, seeds, deadline=None):
     product_urls={}
     errors=[]
     successes=0
+    sequence=0
 
-    def add(url, depth):
+    def add(url, depth, source=''):
+        nonlocal sequence
         if not url or len(queued) >= HTML_MAX_PAGES * 2:
             return
         key=url.split('#',1)[0]
         if key not in queued and key not in visited and depth <= HTML_MAX_DEPTH:
-            queued.add(key); queue.append((key,depth))
+            sequence += 1
+            priority=_html_discovery_priority(store, key, depth, source)
+            heapq.heappush(queue, (priority, sequence, key, depth, source))
+            queued.add(key)
 
     for seed in seeds:
-        add(seed,0)
+        add(seed,0,'configured_seed')
 
     while queue and len(visited) < HTML_MAX_PAGES and (deadline is None or time.time() < deadline):
         batch=[]
         while queue and len(batch)<HTML_WORKERS and len(visited)+len(batch)<HTML_MAX_PAGES:
-            item=queue.pop(0)
-            if item[0] in visited: continue
-            visited.add(item[0]); batch.append(item)
+            _priority, _sequence, url, depth, source = heapq.heappop(queue)
+            if url in visited: continue
+            visited.add(url); batch.append((url,depth,source))
         if not batch: continue
         with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(batch))) as pool:
-            futures={pool.submit(_fetch_html_page,store,u):(u,d) for u,d in batch}
+            futures={pool.submit(_fetch_html_page,store,u):(u,d,source) for u,d,source in batch}
             for f in as_completed(futures):
-                requested,depth=futures[f]
+                requested,depth,source=futures[f]
                 try: _requested,final,data,error=f.result()
                 except Exception as exc:
                     errors.append(f'{requested} -> {type(exc).__name__}:{exc}'); continue
@@ -801,7 +848,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         continue
                     listing=_html_listing_url(store,href,page_base,label)
                     if listing:
-                        add(listing,depth+1)
+                        add(listing,depth+1,requested)
 
                 # Many modern storefronts put pagination/load-more targets in
                 # attributes instead of normal hrefs. Follow these generic
@@ -825,7 +872,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
                             node.get_text(' ',strip=True)[:300],
                         )
                         if listing:
-                            add(listing,depth+1)
+                            add(listing,depth+1,requested)
 
                 # Explicit rel=next is a standard pagination mechanism and is
                 # easy to miss when it lives in <head> rather than in an <a>.
@@ -835,7 +882,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         continue
                     listing=_html_listing_url(store,node.get('href'),page_base,'next')
                     if listing:
-                        add(listing,depth+1)
+                        add(listing,depth+1,requested)
 
                 # Product JSON-LD is another standard storefront surface. It
                 # gives us product URLs without depending on CSS/DOM layout.
@@ -880,6 +927,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     queue, queued, visited = [], set(), set()
     events, errors = [], []
     product_urls, listing_urls = set(), set()
+    sequence = 0
     query_url_hits, query_page_hits = [], []
 
     def has_tokens(value):
@@ -887,6 +935,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         return bool(required_tokens) and all(t in value for t in required_tokens)
 
     def add(url, depth, source=''):
+        nonlocal sequence
         if not url:
             return False
         key = url.split('#', 1)[0]
@@ -894,8 +943,10 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             return False
         if len(queued) >= max_pages * 2:
             return False
+        sequence += 1
+        priority = _html_discovery_priority(store, key, depth, source)
+        heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
-        queue.append((key, depth, source))
         if has_tokens(key) and len(query_url_hits) < 100:
             query_url_hits.append({'url': key, 'depth': depth, 'source': source})
         return True
@@ -908,7 +959,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     successes = 0
 
     while queue and len(visited) < max_pages and (time.time() - started) < DISCOVERY_HARD_TIMEOUT:
-        requested, depth, source = queue.pop(0)
+        _priority, _sequence, requested, depth, source = heapq.heappop(queue)
         if requested in visited:
             continue
         visited.add(requested)
