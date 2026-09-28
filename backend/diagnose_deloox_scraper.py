@@ -4,61 +4,66 @@ import requests
 
 router = APIRouter()
 
-UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-HEADERS = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"}
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+HEADERS = {
+    "User-Agent": UA,
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+}
 
 @router.get("/diagnose-deloox-scraper")
 def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
-    """
-    READ-ONLY diagnostic of the deployed Deloox scraper.
-
-    Calls the scraper's own diagnose_search() function directly.
-    Does NOT call production search(), catalog search, ProductMatcher,
-    hydration, catalog writes, cache invalidation, or resync.
-    """
     started = time.monotonic()
     query = str(q or "").strip() or "Liquid Brun"
-
     out = {
-        "diagnostic": "deloox-scraper-direct-v1",
+        "diagnostic": "deloox-scraper-discover-v2",
         "ok": False,
         "store": "Deloox",
         "query": query,
-        "purpose": (
-            "direct read-only execution of the deployed Deloox scraper "
-            "diagnose_search(); no production search, catalog writes, "
-            "ProductMatcher, hydration or resync"
-        ),
+        "purpose": "direct read-only execution of deployed Deloox _discover(); real production discovery path, without ProductMatcher, catalog writes, hydration or resync",
     }
-
+    session = None
     try:
         from scrapers.deloox import scraper
-
-        out["scraper_module"] = getattr(scraper, "__file__", None)
-        out["discover_function"] = getattr(
-            getattr(scraper, "diagnose_search", None), "__name__", None
-        )
-
-        fn = getattr(scraper, "diagnose_search", None)
-        if fn is None:
-            out["error"] = "diagnose_search not found in deployed Deloox scraper"
+        discover = getattr(scraper, "_discover", None)
+        if discover is None:
+            out["error"] = "_discover not found in deployed Deloox scraper"
             return out
-
+        out["scraper_module"] = getattr(scraper, "__file__", None)
+        out["discover_function"] = getattr(discover, "__name__", None)
+        out["category_function"] = getattr(getattr(scraper, "_discover_from_categories", None), "__name__", None)
+        out["hierarchy_function"] = getattr(getattr(scraper, "_category_navigation_links", None), "__name__", None)
         session = requests.Session()
         session.headers.update(getattr(scraper, "HEADERS", HEADERS))
-
-        try:
-            report = fn(session, query)
-        finally:
-            session.close()
-
+        candidates = discover(session, query)
+        out["candidates"] = list(candidates or [])[:100]
+        out["candidate_count"] = len(candidates or [])
+        state = getattr(scraper, "_LAST_DISCOVERY_STATE", None)
+        if isinstance(state, dict):
+            out["discovery_state"] = dict(state)
+        product_fn = getattr(scraper, "_product", None)
+        validated = []
+        validation_errors = []
+        if product_fn:
+            for url in (candidates or [])[:80]:
+                try:
+                    r = session.get(url, headers=getattr(scraper, "HEADERS", HEADERS), timeout=getattr(scraper, "TIMEOUT", (3.5, 8.0)), allow_redirects=True)
+                    if r.status_code >= 400:
+                        continue
+                    item = product_fn(r.url or url, r.text, query)
+                    if item:
+                        validated.append(item)
+                except Exception as exc:
+                    validation_errors.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
+        out["validated_products"] = validated
+        out["validation_error_count"] = len(validation_errors)
+        out["validation_errors"] = validation_errors[:20]
         out["ok"] = True
-        out["report"] = report
         return out
-
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
         return out
-
     finally:
+        if session is not None:
+            session.close()
         out["elapsed_sec"] = round(time.monotonic() - started, 3)
