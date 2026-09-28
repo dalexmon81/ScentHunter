@@ -21,16 +21,10 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 
-# Deloox exposes the same retailer through country/language storefronts.
-# Discovery starts with the storefronts that currently expose the public
-# search/category surfaces, then falls back to the generic .com surface.
+# Production storefront used by ScentHunter.
 BASE_URL = "https://www.deloox.be"
 DELOOX_BASE_URLS = (
-    "https://www.deloox.com",
     "https://www.deloox.be",
-    "https://www.deloox.nl",
-    "https://www.deloox.lu",
-    "https://www.deloox.es",
 )
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
@@ -46,11 +40,8 @@ HEADERS = {
     "Accept-Language": "en-GB,en;q=0.9",
 }
 DELOOX_HOSTS = {
-    "deloox.lu", "www.deloox.lu",
-    "deloox.be", "www.deloox.be",
-    "deloox.com", "www.deloox.com",
-    "deloox.nl", "www.deloox.nl",
-    "deloox.es", "www.deloox.es",
+    "deloox.be",
+    "www.deloox.be",
 }
 
 # Discovery state is diagnostic/contract state only. It never decides identity.
@@ -795,17 +786,17 @@ def _discover_from_search(session, query):
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
 
-def _category_product_line_links(html, query, base_url=None):
-    """Extract retailer category/filter links whose visible text matches query.
+def _category_product_line_links(html, query):
+    """Extract generic category/filter links whose visible text matches query.
 
-    This is a navigation mechanism only. Product identity remains the job of
-    _product() after a product URL has been discovered.
+    This is not product-specific: it simply uses the store's own category/filter
+    navigation as a discovery surface and lets _product() validate the final
+    product page.
     """
     q_tokens = tokens(query)
     if not q_tokens:
         return []
 
-    base_url = clean(base_url or BASE_URL)
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
@@ -816,163 +807,64 @@ def _category_product_line_links(html, query, base_url=None):
         context = f"{label} {href}"
         if not q_tokens.issubset(tokens(context)):
             continue
-        url = urljoin(base_url, href).split("#")[0]
+        url = urljoin(BASE_URL, href).split("#")[0]
         parsed = urlparse(url)
         if parsed.netloc.lower() not in DELOOX_HOSTS:
             continue
-        if re.search(r"/(?:category|categorie|categoria|catégorie)/", parsed.path, re.I):
+        # Category/filter discovery only. Never treat this URL as a product
+        # unless _candidate_product_urls() later identifies a product URL.
+        if re.search(r"/(?:category|categorie|categoria)/", parsed.path, re.I):
             if url not in seen:
                 seen.add(url)
                 found.append(url)
     return found[:MAX_CANDIDATES]
 
 
-def _category_navigation_links(html, base_url=None):
-    """Extract generic category links for bounded hierarchy traversal.
-
-    Deloox can expose a product line several category levels below a generic
-    fragrance landing page. This function follows only retailer category URLs;
-    it does not infer products, brands, variants, prices or identity.
-    """
-    base_url = clean(base_url or BASE_URL)
-    soup = BeautifulSoup(html, "html.parser")
-    found = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = clean(a.get("href"))
-        if not href:
-            continue
-        url = urljoin(base_url, href).split("#")[0].split("?")[0]
-        parsed = urlparse(url)
-        if parsed.netloc.lower() not in DELOOX_HOSTS:
-            continue
-        if not re.search(r"/(?:category|categorie|categoria|catégorie)/", parsed.path, re.I):
-            continue
-        if url in seen:
-            continue
-        seen.add(url)
-        label = clean(a.get_text(" ", strip=True))
-        found.append((url, label))
-
-    return found
-
-
 def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
-    """Bounded generic category-hierarchy discovery after search fails.
-
-    The retailer may hide a matching product several category levels below a
-    generic fragrance page. We therefore traverse a small, bounded category
-    graph supplied by Deloox itself. Query-specific category links are still
-    prioritized, while a limited breadth-first traversal prevents arbitrary
-    hardcoded product/brand rules.
-    """
-    products = []
-    seen_products = set()
-    visited_pages = set()
-    queued = set()
-
-    # Keep this fallback deliberately bounded. It runs only after public search
-    # produced no candidates, so normal successful searches remain unchanged.
-    MAX_CATEGORY_PAGES = 48
-    MAX_CATEGORY_DEPTH = 3
-    MAX_CHILD_LINKS_PER_PAGE = 40
-
-    queue = [(url, 0) for url in _category_pages()[:12]]
-    for url, _depth in queue:
-        queued.add(url)
-
-    def add_products(html, final_url):
-        base = f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}"
-        candidates = _candidate_product_urls(
-            html,
-            query,
-            base_url=base,
-            accept_all_products=True,
-        )
-        for product_url in candidates:
-            if product_url not in seen_products:
-                seen_products.add(product_url)
-                products.append(product_url)
-                if len(products) >= max_urls:
-                    return True
-        return False
-
-    while queue and len(visited_pages) < MAX_CATEGORY_PAGES:
-        current_url, depth = queue.pop(0)
-        if current_url in visited_pages:
-            continue
-        visited_pages.add(current_url)
-
+    """Bounded generic category fallback after search has failed."""
+    urls = []
+    seen = set()
+    for page_url in _category_pages()[:12]:
         try:
-            r = session.get(
-                current_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
+            r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         except requests.RequestException:
             continue
-
-        if r.status_code >= 400 or not r.text:
+        if r.status_code >= 400:
             continue
-
-        final_url = r.url
-        if add_products(r.text, final_url):
-            return products[:max_urls]
-
-        base = f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}"
-
-        # First prioritize category/filter links whose own label or URL
-        # contains the complete query. These are the cheapest high-signal path.
-        prioritized = _category_product_line_links(
-            r.text,
-            query,
-            base_url=base,
-        )
-        for child in prioritized:
-            if child not in visited_pages and child not in queued:
-                queued.add(child)
-                queue.insert(0, (child, depth + 1))
-
-        if depth >= MAX_CATEGORY_DEPTH:
-            continue
-
-        # Then continue through the retailer's ordinary category hierarchy.
-        # Do not assume a brand or product name: every child comes from Deloox.
-        children = _category_navigation_links(r.text, base_url=base)
-        if prioritized:
-            priority_set = set(prioritized)
-            children.sort(key=lambda item: 0 if item[0] in priority_set else 1)
-
-        added = 0
-        for child_url, _label in children:
-            if child_url in visited_pages or child_url in queued:
-                continue
-            queued.add(child_url)
-            queue.append((child_url, depth + 1))
-            added += 1
-            if added >= MAX_CHILD_LINKS_PER_PAGE:
-                break
-
-        # Follow a small number of explicit pagination links on each visited
-        # category page. Pagination is generic and bounded.
+        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+        pages = [r.url]
         soup = BeautifulSoup(r.text, "html.parser")
-        page_links = []
         for a in soup.find_all("a", href=True):
             href = clean(a.get("href"))
             if "page=" not in href.lower():
                 continue
-            u = urljoin(base, href).split("#")[0]
-            if u not in page_links and u not in visited_pages and u not in queued:
-                page_links.append(u)
-            if len(page_links) >= 4:
+            u = urljoin(base, href)
+            if u not in pages:
+                pages.append(u)
+            if len(pages) >= 8:
                 break
-        for u in page_links:
-            queued.add(u)
-            queue.append((u, depth))
 
-    return products[:max_urls]
+        for current_url in pages:
+            if current_url == r.url:
+                html = r.text
+            else:
+                try:
+                    page = session.get(current_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                    if page.status_code >= 400:
+                        continue
+                    html = page.text
+                except requests.RequestException:
+                    continue
+            for product_url in _candidate_product_urls(
+                html, query, base_url=base, accept_all_products=True
+            ):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls
+    return urls
+
 
 def _discover(session, q):
     """Generic deterministic discovery with search as the primary surface.
