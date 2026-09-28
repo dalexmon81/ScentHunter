@@ -840,7 +840,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if product:
                 product_urls[product] = ''
             return
-        if not re.search(r'/(?:category|brand|brands)(?:/|$)', path, re.I):
+        # Keep every same-site URL that the normal listing classifier
+        # recognizes. Deloox's catalog graph is not guaranteed to expose all
+        # category/brand levels under a single fixed path family. The shared
+        # classifier remains responsible for excluding product/account/etc.
+        # URLs, so this traversal does not need a second path taxonomy.
+        listing = _html_listing_url('deloox', key, key, source)
+        if not listing:
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
