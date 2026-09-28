@@ -115,6 +115,15 @@ MAX_TOTAL_DISCOVERED_URLS = 250000
 MIN_REPLACEMENT_RATIO = 0.10
 MIN_REPLACEMENT_ABSOLUTE = 100
 
+# Optional non-authoritative metadata from public retailer catalog feeds.
+# Product-page hydration remains authoritative for price, availability and offers.
+DISCOVERY_METADATA_ENDPOINTS = {
+    'bplatz': '/products.json',
+    'parfumcity': '/products.json',
+}
+DISCOVERY_METADATA_MAX_PAGES = 12
+DISCOVERY_METADATA_PAGE_SIZE = 250
+
 # Generic product URL signals. Product-vs-category is still decided after page
 # fetch; this only removes obvious non-product endpoints from a sitemap.
 NON_PRODUCT_PATH = re.compile(
@@ -262,6 +271,21 @@ def _ensure_schema(conn):
             price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
             PRIMARY KEY(store,url))""")
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_url_metadata(
+            store TEXT NOT NULL,
+            url TEXT NOT NULL,
+            name TEXT,
+            brand TEXT,
+            size_ml REAL,
+            sku TEXT,
+            gtin TEXT,
+            mpn TEXT,
+            source TEXT NOT NULL,
+            discovered_at REAL NOT NULL,
+            PRIMARY KEY(store,url)
+        )""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_url_metadata_store_name ON store_url_metadata(store,name)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_url_metadata_store_brand ON store_url_metadata(store,brand)')
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
             store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
             discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
@@ -472,6 +496,87 @@ def _fetch_sitemap(store, sm):
         return sm, sm, [], f'EXCEPTION:{type(exc).__name__}:{exc}'
 
 
+
+def _discover_shopify_metadata(store, product_urls):
+    """Read generic Shopify catalog metadata without hydrating product pages.
+
+    Discovery metadata is only a search aid. Product-page hydration remains
+    authoritative for price, availability, image and final offer data.
+    """
+    endpoint = DISCOVERY_METADATA_ENDPOINTS.get(store)
+    if not endpoint or not product_urls:
+        return {}, None
+    base = STORES[store].rstrip('/')
+    wanted = set(product_urls)
+    found = {}
+    errors = []
+    for page in range(1, DISCOVERY_METADATA_MAX_PAGES + 1):
+        url = base + endpoint
+        try:
+            request_url = url + f'?limit={DISCOVERY_METADATA_PAGE_SIZE}&page={page}'
+            resp = _http_fetch(request_url, timeout=HTTP_TIMEOUT)
+            if resp['status'] >= 400:
+                errors.append(_diagnostic(resp, request_url))
+                break
+            try:
+                data = json.loads(resp['data'].decode('utf-8', 'ignore'))
+            except Exception as exc:
+                errors.append(f'JSON_PARSE:{type(exc).__name__}')
+                break
+            products = data.get('products') if isinstance(data, dict) else None
+            if not isinstance(products, list) or not products:
+                break
+            for product in products:
+                if not isinstance(product, dict):
+                    continue
+                handle = str(product.get('handle') or '').strip()
+                if not handle:
+                    continue
+                product_url = urllib.parse.urljoin(base + '/', '/products/' + handle).rstrip('/')
+                if product_url not in wanted:
+                    continue
+                variants = product.get('variants') or []
+                variant = variants[0] if isinstance(variants, list) and variants else {}
+                found[product_url] = {
+                    'name': str(product.get('title') or '').strip() or None,
+                    'brand': str(product.get('vendor') or '').strip() or None,
+                    'size_ml': None,
+                    'sku': str(variant.get('sku') or '').strip() or None,
+                    'gtin': str(variant.get('barcode') or '').strip() or None,
+                    'mpn': str(variant.get('mpn') or '').strip() or None,
+                    'source': 'shopify_products_json',
+                }
+            if len(products) < DISCOVERY_METADATA_PAGE_SIZE:
+                break
+        except Exception as exc:
+            errors.append(f'{type(exc).__name__}:{exc}')
+            break
+    if not found and errors:
+        return {}, ';'.join(errors[:3])
+    return found, (';'.join(errors[:3]) if errors else None)
+
+
+def _save_discovery_metadata(conn, store, metadata, discovered_at):
+    if not metadata:
+        return
+    for url, item in metadata.items():
+        conn.execute(
+            '''INSERT INTO store_url_metadata(
+                   store,url,name,brand,size_ml,sku,gtin,mpn,source,discovered_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(store,url) DO UPDATE SET
+                   name=excluded.name, brand=excluded.brand,
+                   size_ml=excluded.size_ml, sku=excluded.sku,
+                   gtin=excluded.gtin, mpn=excluded.mpn,
+                   source=excluded.source, discovered_at=excluded.discovered_at''',
+            (
+                store, url, item.get('name'), item.get('brand'),
+                item.get('size_ml'), item.get('sku'), item.get('gtin'),
+                item.get('mpn'), item.get('source') or 'discovery', discovered_at,
+            ),
+        )
+
+
 def _existing_count(store):
     conn = db()
     try:
@@ -482,7 +587,7 @@ def _existing_count(store):
         conn.close()
 
 
-def _save_discovery(store, product_urls, started_at, diagnostics):
+def _save_discovery(store, product_urls, started_at, diagnostics, metadata=None):
     now = time.time()
     new_count = len(product_urls)
     old_count = _existing_count(store)
@@ -511,6 +616,7 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
     with conn:
         if new_count:
             conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
+            _save_discovery_metadata(conn, store, metadata, now)
             for url, lastmod in product_urls.items():
                 conn.execute(
                     '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
@@ -844,13 +950,20 @@ def discover_store(store):
         conn.commit(); conn.close()
         status,count,error='DISCOVERY_ERROR',0,detail
     else:
-        status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
+        discovery_metadata, metadata_error = _discover_shopify_metadata(
+            store, product_urls
+        )
+        status,count,error=_save_discovery(
+            store, product_urls, started_at, diagnostics, metadata=discovery_metadata
+        )
 
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
     if fallback is not None:
         details.append(f'html_fallback=visited:{fallback["visited"]};successes:{fallback["successes"]};products:{len(fallback["product_urls"])}')
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+    if metadata_error:
+        details.append('metadata_warnings=' + metadata_error)
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
@@ -1147,11 +1260,23 @@ def search_local(query, per_store=32, search_terms=None):
         # catalog rows.  This avoids rebuilding tens of thousands of URL tokens
         # on every user search while keeping the index generic and fresh.
         signature_row = conn.execute(
-            '''SELECT COUNT(*) AS active_count,
-                      COALESCE(MAX(discovered_at), 0) AS latest_discovery
-               FROM store_urls
-               WHERE store=? AND active=1''',
-            (store,),
+            '''SELECT
+                      (SELECT COUNT(*) FROM store_urls
+                       WHERE store=? AND active=1) AS active_count,
+                      MAX(
+                          COALESCE(
+                              (SELECT MAX(discovered_at) FROM store_urls u2
+                               WHERE u2.store=? AND u2.active=1),
+                              0
+                          ),
+                          COALESCE(
+                              (SELECT MAX(discovered_at)
+                               FROM store_url_metadata m2
+                               WHERE m2.store=?),
+                              0
+                          )
+                      ) AS latest_discovery''',
+            (store, store, store),
         ).fetchone()
         signature = (
             int(signature_row['active_count'] or 0),
@@ -1165,7 +1290,17 @@ def search_local(query, per_store=32, search_terms=None):
                 url_tokens = cached['url_tokens']
             else:
                 candidates = conn.execute(
-                    'SELECT url,slug,lastmod FROM store_urls WHERE store=? AND active=1',
+                    '''SELECT u.url,u.slug,u.lastmod,
+                              m.name AS discovery_name,
+                              m.brand AS discovery_brand,
+                              m.size_ml AS discovery_size_ml,
+                              m.sku AS discovery_sku,
+                              m.gtin AS discovery_gtin,
+                              m.mpn AS discovery_mpn
+                       FROM store_urls u
+                       LEFT JOIN store_url_metadata m
+                         ON m.store=u.store AND m.url=u.url
+                       WHERE u.store=? AND u.active=1''',
                     (store,),
                 ).fetchall()
 
@@ -1177,7 +1312,16 @@ def search_local(query, per_store=32, search_terms=None):
                 for r in candidates:
                     url = r['url']
                     slug_tokens = set(str(r['slug'] or '').lower().split())
-                    new_url_tokens[url] = slug_tokens
+                    metadata_text = ' '.join(
+                        str(r[key] or '')
+                        for key in (
+                            'discovery_name',
+                            'discovery_brand',
+                            'discovery_size_ml',
+                        )
+                    )
+                    metadata_tokens = set(norm(metadata_text).split())
+                    new_url_tokens[url] = slug_tokens | metadata_tokens
                     for token in slug_tokens:
                         new_postings.setdefault(token, []).append(url)
 
@@ -1224,13 +1368,30 @@ def search_local(query, per_store=32, search_terms=None):
                 item['store_key'] = store
                 rows.append(item)
             else:
-                rows.append({
+                meta = conn.execute(
+                    '''SELECT name,brand,size_ml,sku,gtin,mpn
+                       FROM store_url_metadata
+                       WHERE store=? AND url=?''',
+                    (store, url),
+                ).fetchone()
+                item = {
                     'store': STORE_LABELS[store],
                     'store_key': store,
                     'url': url,
-                    'name': url_slug(url),
+                    'name': (
+                        meta['name']
+                        if meta and meta['name']
+                        else url_slug(url)
+                    ),
                     '_needs_refresh': True,
-                })
+                    'discovery_metadata': True,
+                }
+                if meta:
+                    for key in ('brand', 'size_ml', 'sku', 'gtin', 'mpn'):
+                        value = meta[key]
+                        if value not in (None, ''):
+                            item[key] = value
+                rows.append(item)
 
     conn.close()
     return rows
