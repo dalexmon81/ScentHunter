@@ -1147,15 +1147,30 @@ def search_local(query, per_store=32, search_terms=None):
         # catalog rows.  This avoids rebuilding tens of thousands of URL tokens
         # on every user search while keeping the index generic and fresh.
         signature_row = conn.execute(
-            '''SELECT COUNT(*) AS active_count,
-                      COALESCE(MAX(discovered_at), 0) AS latest_discovery
+            '''SELECT
+                   COUNT(*) AS active_count,
+                   COALESCE(MAX(discovered_at), 0) AS latest_discovery,
+                   COALESCE(
+                       (SELECT COUNT(*)
+                        FROM store_products p2
+                        WHERE p2.store=? AND p2.fetch_status='OK'),
+                       0
+                   ) AS hydrated_count,
+                   COALESCE(
+                       (SELECT MAX(COALESCE(fetched_at, 0))
+                        FROM store_products p3
+                        WHERE p3.store=? AND p3.fetch_status='OK'),
+                       0
+                   ) AS latest_hydration
                FROM store_urls
                WHERE store=? AND active=1''',
-            (store,),
+            (store, store, store),
         ).fetchone()
         signature = (
             int(signature_row['active_count'] or 0),
             float(signature_row['latest_discovery'] or 0),
+            int(signature_row['hydrated_count'] or 0),
+            float(signature_row['latest_hydration'] or 0),
         )
 
         with _LOCAL_SEARCH_INDEX_LOCK:
