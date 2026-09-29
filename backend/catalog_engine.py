@@ -18,6 +18,7 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
+import html
 import heapq
 import importlib
 import json
@@ -888,11 +889,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         p = urllib.parse.urlparse(key)
         if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
             return
-        path = p.path.lower()
-        # A URL can arrive directly through a navigation/data attribute. Do not
-        # rely on one English URL segment here: Deloox product pages use
-        # /produit/<id>/..., and _html_product_url is the single classifier
-        # that already knows the supported product URL shapes.
         product = _html_product_url('deloox', key, key)
         if product:
             product_urls[product] = ''
@@ -928,92 +924,81 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if listing:
                 add(listing, depth + 1, requested)
 
-        # Product JSON-LD is a second, standard storefront surface. It is
-        # especially useful when the visible product card is rendered without
-        # a normal href. Identity is still only the URL classifier here.
-        try:
-            for item in _jsonld(soup):
-                product = _html_product_url('deloox', item.get('url'), base)
-                if product:
-                    product_urls[product] = ''
-        except Exception:
-            pass
+        # Deloox category pages use a generic "load more" control rather than
+        # ordinary numbered pagination. The control is sometimes represented by
+        # data-* attributes and sometimes by an endpoint embedded in the page's
+        # JSON/JavaScript state. Treat those URLs as ordinary catalog navigation;
+        # never infer a product identity from them.
+        load_more_words = (
+            'charger plus', 'load more', 'meer laden', 'mehr laden',
+            'toon meer', 'show more', 'carica altro', 'ver más',
+            'voir plus',
+        )
 
-        # Deloox currently exposes large category result sets through a
-        # "load more" UI. The public category URLs also support ?page=N, but
-        # the next page is not always present as a normal <a href> or rel=next.
-        # When a category page is full, enqueue its next numbered page. This is
-        # structural catalog pagination only: no product name, brand, query or
-        # product id is used. Pagination keeps the same crawl depth because it
-        # is continuation of the same catalog surface, not a new navigation
-        # branch.
-        try:
-            parsed_base = urllib.parse.urlparse(base)
-            if '/categorie/' in (parsed_base.path or '').lower():
-                page_product_count = sum(
-                    1 for a in soup.find_all('a', href=True)
-                    if _html_product_url('deloox', a.get('href'), base)
-                )
-                if page_product_count >= 20:
-                    qs = urllib.parse.parse_qs(parsed_base.query, keep_blank_values=True)
-                    current_page = 1
-                    raw_page = qs.get('page', [None])[0]
-                    if raw_page is not None and str(raw_page).isdigit():
-                        current_page = max(1, int(raw_page))
-                    qs['page'] = [str(current_page + 1)]
-                    next_query = urllib.parse.urlencode(qs, doseq=True)
-                    next_url = urllib.parse.urlunparse((
-                        parsed_base.scheme,
-                        parsed_base.netloc,
-                        parsed_base.path,
-                        parsed_base.params,
-                        next_query,
-                        '',
-                    ))
-                    listing = _html_listing_url(
-                        'deloox', next_url, base, 'generated_pagination'
-                    )
-                    if listing:
-                        add(listing, depth, requested)
-        except Exception:
-            pass
+        def collect_deloox_navigation(raw, label=''):
+            if not raw:
+                return
+            value = html.unescape(str(raw)).replace('\\/', '/').strip()
+            if not value:
+                return
+            product = _html_product_url('deloox', value, base)
+            if product:
+                product_urls[product] = ''
+                return
+            listing = _html_listing_url('deloox', value, base, label)
+            if listing:
+                add(listing, depth + 1, requested)
 
         for node in soup.find_all(True):
-            label = node.get_text(' ', strip=True)[:300]
+            label = node.get_text(' ', strip=True)[:500]
+            label_norm = norm(label)
+            # Common URL-bearing attributes used by load-more/pagination
+            # controls and client-side catalog components.
             for attr in (
                 'value', 'data-value', 'data-filter-url', 'data-option-url',
                 'data-redirect-url', 'data-url', 'data-href', 'data-link',
                 'data-product-url', 'data-product-link', 'data-target',
                 'data-href-url', 'data-next-url', 'data-next',
-                'data-load-more-url', 'data-pagination-url',
+                'data-next-page', 'data-page-url', 'data-load-more-url',
+                'data-loadmore-url', 'data-load-more', 'data-pagination-url',
+                'data-ajax-url', 'data-endpoint', 'data-fetch-url',
+                'data-request-url', 'data-api-url', 'data-url-next',
             ):
                 raw = node.get(attr)
-                if not raw:
-                    continue
-                product = _html_product_url('deloox', raw, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', raw, base, label)
-                if listing:
-                    add(listing, depth + 1, requested)
+                if raw:
+                    collect_deloox_navigation(raw, label)
 
+            # If this is explicitly a "load more" control, also inspect its
+            # enclosing form/action and nearby hidden inputs. This is generic
+            # HTML navigation extraction and does not depend on any product.
+            if any(word in label_norm for word in load_more_words):
+                parent = node
+                for _ in range(3):
+                    parent = getattr(parent, 'parent', None)
+                    if parent is None:
+                        break
+                    action = parent.get('action') if hasattr(parent, 'get') else None
+                    if action:
+                        collect_deloox_navigation(action, label)
+                    for hidden in parent.find_all('input', type='hidden'):
+                        value = hidden.get('value')
+                        if value:
+                            collect_deloox_navigation(value, label)
+
+        # Deloox also embeds navigation state as HTML-escaped JSON. Decode
+        # entities before applying the generic URL extractor; otherwise values
+        # such as /...&quot;,&quot;page&quot;... can be admitted as malformed paths.
         try:
-            raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
+            raw_html = html.unescape(
+                data.decode('utf-8', 'ignore').replace('\\/', '/')
+            )
             for match in re.finditer(
-                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~%?=&:-]+/){1,}[^\"'\s<>\\]+",
                 raw_html,
                 re.I,
             ):
-                raw = match.group(0)
-                absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
-                product = _html_product_url('deloox', absolute, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
-                if listing:
-                    add(listing, depth + 1, requested)
+                raw = match.group(0).rstrip('.,;')
+                collect_deloox_navigation(raw, 'embedded_navigation')
         except Exception:
             pass
 
