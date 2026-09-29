@@ -749,6 +749,9 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'deloox':
+        # The Deloox homepage is the root of the catalog graph.
+        if path in ('', '/'):
+            return absolute
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
