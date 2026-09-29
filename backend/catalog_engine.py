@@ -752,6 +752,15 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         # structural label `html_anchor`. This keeps the crawler generic while
         # preventing JSON fragments such as /Davidoff/Profumi from becoming the
         # discovery graph.
+        # Load-more controls can point to a same-host continuation endpoint
+        # that is not itself named category/parfum.  The caller marks these
+        # explicitly so ordinary utility/API URLs are not added to the crawl.
+        if label in ('load_more', 'pagination'):
+            if p.query or path.endswith('.html'):
+                return absolute
+            parts = [x for x in path.split('/') if x]
+            if 1 <= len(parts) <= 4:
+                return absolute
         if label == 'html_anchor':
             if path.endswith('.html'):
                 return absolute
@@ -994,9 +1003,36 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 if product:
                     product_urls[product] = ''
                     continue
-                listing = _html_listing_url('deloox', raw, base, label)
+                attr_label = 'load_more' if attr in (
+                    'data-next-url', 'data-next', 'data-load-more-url',
+                    'data-pagination-url',
+                ) else label
+                listing = _html_listing_url('deloox', raw, base, attr_label)
                 if listing:
                     add(listing, depth + 1, requested)
+
+        # Some Deloox load-more controls keep the continuation URL inside
+        # an onclick/data-handler JavaScript attribute rather than in a
+        # dedicated data-* attribute. Extract only same-host path-like URLs
+        # from actual element attributes; this is structural and query-free.
+        for node in soup.find_all(True):
+            for attr_name, attr_value in node.attrs.items():
+                if attr_name == 'class' or attr_name == 'id' or not attr_value:
+                    continue
+                values = attr_value if isinstance(attr_value, list) else [attr_value]
+                for value in values:
+                    if not isinstance(value, str):
+                        continue
+                    if not re.search(r'load.?more|next|pagination|page', value, re.I):
+                        continue
+                    for match in re.finditer(
+                        r'(?:https?://[^\"\'\s<>]+|/[^\"\'\s<>]+)',
+                        value, re.I,
+                    ):
+                        raw = html.unescape(match.group(0)).replace('\\/', '/')
+                        listing = _html_listing_url('deloox', raw, base, 'load_more')
+                        if listing:
+                            add(listing, depth + 1, requested)
 
         try:
             raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
