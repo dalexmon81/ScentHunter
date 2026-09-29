@@ -742,11 +742,19 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             p.query, re.I,
         ):
             return absolute
-        # Deloox.be catalog navigation must come from explicit catalog
-        # routes or pagination/filter URLs. Do not treat arbitrary paths
-        # such as /Davidoff/Profumi as catalog pages: those paths are also
-        # emitted by embedded analytics/JSON payloads and can generate large
-        # numbers of false 404 requests.
+        # Deloox.be also exposes navigation/brand surfaces whose paths do not
+        # contain a literal category/brand keyword. They must be admitted when
+        # they come from a real HTML anchor, but NOT when they are extracted from
+        # embedded analytics/JSON text. The caller marks real anchors with the
+        # structural label `html_anchor`. This keeps the crawler generic while
+        # preventing JSON fragments such as /Davidoff/Profumi from becoming the
+        # discovery graph.
+        if label == 'html_anchor':
+            if path.endswith('.html'):
+                return absolute
+            parts = [x for x in path.split('/') if x]
+            if 1 <= len(parts) <= 3:
+                return absolute
         if path.endswith('.html') and re.search(
             r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)',
             path, re.I,
@@ -833,14 +841,38 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Catalog index pages are high-value navigation surfaces because they
-    # expose the next level of category/brand pages. This is structural only:
-    # no specific retailer brand, product name, product id, or user query is used.
-    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    # Deloox exposes a very large brand index. Its links are useful, but if
+    # they are given the same priority as the main category graph, the queue
+    # spends its first crawl budget walking the brand index alphabetically.
+    # Keep the priority structural and generic: category/pagination surfaces
+    # first, brand index/brand pages afterwards. No product/query matching is
+    # involved.
+    if store == 'deloox':
+        is_category = bool(re.search(
+            r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)',
+            path, re.I,
+        ))
+        is_pagination = bool(re.search(
+            r'(?:^|[?&])(page|pagina|offset|start|p)=', p.query, re.I,
+        ))
+        is_brand_index = bool(re.search(
+            r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I,
+        ))
+        if is_category or is_pagination:
+            score = 0
+        elif is_brand_index:
+            score = 5
+        elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
+            score = 4
+        elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
+            score = 3
+        elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
+            score = 2
+        else:
+            score = 6
+    # Generic priority for the other stores is unchanged.
+    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
-    # Prefer actual fragrance catalog surfaces before unrelated site sections.
-    # This is URL-structure based only: no product name, brand name, product
-    # id, or user query is used.
     elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
         score = 1
     elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
@@ -927,7 +959,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if product:
                 product_urls[product] = ''
                 continue
-            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
+            listing = _html_listing_url('deloox', raw, base, 'html_anchor')
             if listing:
                 add(listing, depth + 1, requested)
 
