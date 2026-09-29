@@ -168,6 +168,156 @@ def diagnose_deloox_catalog_discovery():
         out["elapsed_sec"] = round(time.monotonic() - started, 3)
 
 
+@router.get("/diagnose-deloox-hydration-target")
+def diagnose_deloox_hydration_target():
+    """Hydrate only the two verified Liquid Brun Deloox URLs already in catalog.
+
+    This is a targeted operational diagnostic: no discovery, no resync,
+    no ProductMatcher and no production search. It uses catalog_engine's
+    normal refresh_url() path and changes only the targeted queue/product rows.
+    """
+    started = time.monotonic()
+    targets = [
+        "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html",
+        "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+    ]
+    out = {
+        "diagnostic": "deloox-hydration-target-v1",
+        "ok": False,
+        "store": "deloox",
+        "resync": False,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "targets": targets,
+        "results": [],
+    }
+
+    try:
+        import uuid
+        import catalog_engine
+
+        db_fn = getattr(catalog_engine, "db", None)
+        refresh_url = getattr(catalog_engine, "refresh_url", None)
+        if not callable(db_fn) or not callable(refresh_url):
+            out["error"] = "catalog_hydration_functions_unavailable"
+            return out
+
+        for url in targets:
+            token = uuid.uuid4().hex
+            conn = db_fn()
+            claimed = False
+            try:
+                with conn:
+                    row = conn.execute(
+                        "SELECT state, attempts FROM hydration_queue WHERE store=? AND url=?",
+                        ("deloox", url),
+                    ).fetchone()
+                    if not row:
+                        out["results"].append({"url": url, "status": "NOT_IN_QUEUE"})
+                        continue
+
+                    previous_state = str(row["state"] or "")
+                    if previous_state == "DONE":
+                        out["results"].append({"url": url, "status": "ALREADY_DONE"})
+                        continue
+
+                    updated = conn.execute(
+                        """
+                        UPDATE hydration_queue
+                        SET state='PROCESSING', lease_token=?, leased_until=?,
+                            last_started_at=?, attempts=COALESCE(attempts,0)+1
+                        WHERE store=? AND url=? AND state IN ('PENDING','ERROR')
+                        """,
+                        (token, time.time() + 180, time.time(), "deloox", url),
+                    ).rowcount
+                    claimed = updated == 1
+            finally:
+                conn.close()
+
+            if not claimed:
+                out["results"].append({
+                    "url": url,
+                    "status": "NOT_CLAIMED",
+                    "reason": "queue row is currently PROCESSING or another non-claimable state",
+                })
+                continue
+
+            try:
+                item = refresh_url("deloox", url)
+                if item and item.get("name"):
+                    conn = db_fn()
+                    try:
+                        with conn:
+                            conn.execute(
+                                """
+                                UPDATE hydration_queue
+                                SET state='DONE', leased_until=NULL, lease_token=NULL,
+                                    last_finished_at=?, last_error=NULL, last_http_status=NULL
+                                WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'
+                                """,
+                                (time.time(), "deloox", url, token),
+                            )
+                    finally:
+                        conn.close()
+                    out["results"].append({
+                        "url": url,
+                        "status": "DONE",
+                        "name": item.get("name"),
+                        "brand": item.get("brand"),
+                        "size_ml": item.get("size_ml"),
+                    })
+                else:
+                    conn = db_fn()
+                    try:
+                        row = conn.execute(
+                            "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
+                            ("deloox", url),
+                        ).fetchone()
+                        detail = str(row["fetch_status"]) if row and row["fetch_status"] else "product_parser_not_found"
+                        with conn:
+                            conn.execute(
+                                """
+                                UPDATE hydration_queue
+                                SET state='ERROR', available_at=?, leased_until=NULL,
+                                    lease_token=NULL, last_finished_at=?, last_error=?
+                                WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'
+                                """,
+                                (time.time() + 60, time.time(), detail[:1000], "deloox", url, token),
+                            )
+                    finally:
+                        conn.close()
+                    out["results"].append({"url": url, "status": "ERROR", "detail": detail})
+            except Exception as exc:
+                conn = db_fn()
+                try:
+                    with conn:
+                        conn.execute(
+                            """
+                            UPDATE hydration_queue
+                            SET state='ERROR', available_at=?, leased_until=NULL,
+                                lease_token=NULL, last_finished_at=?, last_error=?
+                            WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'
+                            """,
+                            (time.time() + 60, time.time(), f"{type(exc).__name__}: {exc}"[:1000], "deloox", url, token),
+                        )
+                finally:
+                    conn.close()
+                out["results"].append({
+                    "url": url,
+                    "status": "ERROR",
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+        out["ok"] = True
+        out["diagnosis"] = "TARGETED_DELOOX_HYDRATION_EXECUTED"
+        return out
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
+    finally:
+        out["elapsed_sec"] = round(time.monotonic() - started, 3)
+
+
 @router.get("/catalog-gap-repair-deloox")
 def catalog_gap_repair_deloox(q: str = Query(..., min_length=2)):
     """
