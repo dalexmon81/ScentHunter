@@ -65,19 +65,10 @@ STORE_LABELS.update({
     'orioudh': 'Orioudh',
 })
 
-# Store-level discovery configuration only: official storefront hosts.
-# Deloox has several official localized hosts; trying all of them is still
-# catalog discovery, not product-specific logic.
+# Store-level discovery configuration only: Deloox.be.
 DISCOVERY_BASES = {
     'deloox': (
-        # Official Deloox storefront hosts. Discovery may traverse any of
-        # these localized catalog surfaces; this is host-level configuration,
-        # not product-specific logic.
         'https://www.deloox.be',
-        'https://www.deloox.com',
-        'https://www.deloox.lu',
-        'https://www.deloox.nl',
-        'https://www.deloox.es',
     ),
 }
 
@@ -638,14 +629,9 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Generic catalog/navigation roots across Deloox's official
-        # localized storefronts. No product, brand, query or product id is
-        # embedded here.
         'https://www.deloox.be/',
         'https://www.deloox.be/categorie/1000003/parfum.html',
         'https://www.deloox.be/categorie/1063858/marques.html',
-        'https://www.deloox.com/en',
-        'https://www.deloox.com/en/category/1000003/fragrances.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -756,18 +742,11 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             p.query, re.I,
         ):
             return absolute
-        # Deloox catalog routes can be deeper than three path components
-        # (for example localized category pages under /en/category/<id>/...).
-        # Keep the admission structural: exclude obvious product/static
-        # resources, but do not truncate valid catalog navigation solely
-        # because the URL has a deeper path.
-        parts=[x for x in path.split('/') if x]
-        if 1 <= len(parts) <= 8 and not path.endswith((
-            '.html', '.xml', '.json', '.txt'
-        )):
-            return absolute
-        # .html catalog pages are valid when they are reached through a
-        # recognized catalog route such as /category/ or /brand/.
+        # Deloox.be catalog navigation must come from explicit catalog
+        # routes or pagination/filter URLs. Do not treat arbitrary paths
+        # such as /Davidoff/Profumi as catalog pages: those paths are also
+        # emitted by embedded analytics/JSON payloads and can generate large
+        # numbers of false 404 requests.
         if path.endswith('.html') and re.search(
             r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)',
             path, re.I,
@@ -979,6 +958,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 re.I,
             ):
                 raw = match.group(0)
+                # Embedded analytics/JSON often contains URL-looking fragments
+                # followed by HTML entities such as &quot;,&quot;list... Reject
+                # those fragments instead of enqueueing them as real pages.
+                if any(token in raw.lower() for token in ('&quot;', '&#34;', '&apos;', '&#39;')):
+                    continue
                 absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
                 product = _html_product_url('deloox', absolute, base)
                 if product:
