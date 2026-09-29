@@ -70,7 +70,14 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'deloox': (
+        # Official Deloox storefront hosts. Discovery may traverse any of
+        # these localized catalog surfaces; this is host-level configuration,
+        # not product-specific logic.
         'https://www.deloox.be',
+        'https://www.deloox.com',
+        'https://www.deloox.lu',
+        'https://www.deloox.nl',
+        'https://www.deloox.es',
     ),
 }
 
@@ -631,12 +638,14 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Current Belgian catalog/navigation surfaces. Keep these generic:
-        # they expose the retailer's category and brand graph without
-        # hard-coding a product, brand, query or product id.
+        # Generic catalog/navigation roots across Deloox's official
+        # localized storefronts. No product, brand, query or product id is
+        # embedded here.
         'https://www.deloox.be/',
         'https://www.deloox.be/categorie/1000003/parfum.html',
         'https://www.deloox.be/categorie/1063858/marques.html',
+        'https://www.deloox.com/en',
+        'https://www.deloox.com/en/category/1000003/fragrances.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -747,8 +756,22 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             p.query, re.I,
         ):
             return absolute
+        # Deloox catalog routes can be deeper than three path components
+        # (for example localized category pages under /en/category/<id>/...).
+        # Keep the admission structural: exclude obvious product/static
+        # resources, but do not truncate valid catalog navigation solely
+        # because the URL has a deeper path.
         parts=[x for x in path.split('/') if x]
-        if 1 <= len(parts) <= 3 and not path.endswith('.html'):
+        if 1 <= len(parts) <= 8 and not path.endswith((
+            '.html', '.xml', '.json', '.txt'
+        )):
+            return absolute
+        # .html catalog pages are valid when they are reached through a
+        # recognized catalog route such as /category/ or /brand/.
+        if path.endswith('.html') and re.search(
+            r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)',
+            path, re.I,
+        ):
             return absolute
         return None
     if store == 'sabina':
@@ -848,7 +871,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
     elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
-        score = 1
+        score = 4
     elif path in ('/', '') or path.rstrip('/') in ('/en', '/it', '/de', '/fr', '/nl', '/es'):
         score = 8
     else:
@@ -886,7 +909,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
+        allowed_hosts = {
+            urllib.parse.urlparse(base).netloc.lower()
+            for base in _discovery_bases('deloox')
+        }
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
         path = p.path.lower()
         if '/product/' in path:
