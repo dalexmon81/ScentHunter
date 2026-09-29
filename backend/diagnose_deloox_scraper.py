@@ -318,6 +318,59 @@ def diagnose_deloox_hydration_target():
         out["elapsed_sec"] = round(time.monotonic() - started, 3)
 
 
+@router.get("/diagnose-catalog-search-pipeline")
+def diagnose_catalog_search_pipeline(q: str = Query("Liquid Brun")):
+    """READ-ONLY trace of catalog search -> clean_result -> ProductMatcher."""
+    started = time.monotonic()
+    query = str(q or "").strip() or "Liquid Brun"
+    out = {"diagnostic":"catalog-search-pipeline-read-only-v1","ok":False,"query":query,"production_search_called":False,"resync":False,"writes":False,"stores":{}}
+    try:
+        import catalog_engine
+        import main as main_module
+        search_local = getattr(catalog_engine, "search_local", None)
+        clean_result_fn = getattr(main_module, "clean_result", None)
+        resolve_fn = getattr(main_module, "_resolve_offer_identity", None)
+        terms_fn = getattr(main_module, "_catalog_search_terms", None)
+        if not callable(search_local) or not callable(clean_result_fn) or not callable(resolve_fn):
+            out["error"]="required_pipeline_functions_unavailable"; return out
+        terms = list(terms_fn(query) or []) if callable(terms_fn) else []
+        if not terms: terms=[query]
+        candidate_limit=min(128,max(64,len(terms)*2)) if len(terms)>1 else 64
+        raw_rows=list(search_local(query,per_store=candidate_limit,search_terms=terms) or [])
+        out.update({"search_terms":terms,"candidate_limit":candidate_limit,"catalog_search_row_count":len(raw_rows)})
+        for store in ("deloox","sabina"):
+            out["stores"][store]={"catalog_rows":[],"clean_rows":[],"matched_rows":[],"rejected_rows":[],"unresolved_rows":[]}
+        for index,raw in enumerate(raw_rows):
+            if not isinstance(raw,dict): continue
+            store_key=str(raw.get("store_key") or raw.get("store") or raw.get("shop") or "").strip().lower()
+            if store_key not in out["stores"]: continue
+            compact={"index":index,"url":raw.get("url") or raw.get("product_url"),"name":raw.get("name"),"brand":raw.get("brand"),"size_ml":raw.get("size_ml"),"fetch_status":raw.get("fetch_status"),"_needs_refresh":raw.get("_needs_refresh"),"price":raw.get("price"),"availability":raw.get("availability")}
+            out["stores"][store_key]["catalog_rows"].append(compact)
+            try: prepared=clean_result_fn(raw,store_key)
+            except Exception as exc:
+                out["stores"][store_key]["clean_rows"].append({**compact,"clean_error":f"{type(exc).__name__}: {exc}"}); continue
+            if not isinstance(prepared,dict):
+                out["stores"][store_key]["clean_rows"].append({**compact,"clean_result":None}); continue
+            clean={"url":prepared.get("url") or prepared.get("product_url"),"name":prepared.get("name"),"brand":prepared.get("brand"),"_raw_name":prepared.get("_raw_name"),"_raw_brand":prepared.get("_raw_brand"),"size_ml":prepared.get("size_ml"),"price":prepared.get("price"),"availability":prepared.get("availability")}
+            out["stores"][store_key]["clean_rows"].append(clean)
+            try: resolved=resolve_fn(prepared,query)
+            except Exception as exc:
+                out["stores"][store_key]["unresolved_rows"].append({**clean,"resolve_error":f"{type(exc).__name__}: {exc}"}); continue
+            if not isinstance(resolved,dict):
+                out["stores"][store_key]["unresolved_rows"].append({**clean,"resolve_result":None}); continue
+            match={"url":resolved.get("url") or resolved.get("product_url"),"name":resolved.get("name") or resolved.get("title"),"brand":resolved.get("brand"),"size_ml":resolved.get("size_ml"),"match_status":resolved.get("_match_status"),"reject_reason":resolved.get("_reject_reason"),"match_method":resolved.get("match_method"),"match_score":resolved.get("match_score"),"catalog_id":resolved.get("catalog_id"),"canonical_name":resolved.get("canonical_name"),"canonical_brand":resolved.get("canonical_brand"),"match_error":resolved.get("_match_error")}
+            if resolved.get("_match_status")=="matched" and resolved.get("catalog_id"): out["stores"][store_key]["matched_rows"].append(match)
+            elif resolved.get("_match_status")=="rejected": out["stores"][store_key]["rejected_rows"].append(match)
+            else: out["stores"][store_key]["unresolved_rows"].append(match)
+        for store,data in out["stores"].items():
+            for k in ("catalog_rows","clean_rows","matched_rows","rejected_rows","unresolved_rows"): data[k.replace("_rows","_count")]=len(data[k])
+        out["ok"]=True
+        out["diagnosis"]="PIPELINE_REACHED_MATCHER" if any(out["stores"][s]["matched_count"] for s in out["stores"]) else "PIPELINE_LOST_ROWS_BEFORE_MATCHER_OR_MATCHER_REJECTED"
+        return out
+    except Exception as exc:
+        out["error"]=f"{type(exc).__name__}: {exc}"; return out
+    finally: out["elapsed_sec"]=round(time.monotonic()-started,3)
+
 @router.get("/catalog-gap-repair-deloox")
 def catalog_gap_repair_deloox(q: str = Query(..., min_length=2)):
     """
