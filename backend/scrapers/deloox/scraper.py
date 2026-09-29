@@ -30,7 +30,7 @@ TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
 MAX_RESULTS = 80
 MAX_SEARCH_PAGES = 10
-MAX_SEARCH_CANDIDATES = 16
+MAX_SEARCH_CANDIDATES = MAX_CANDIDATES
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -717,16 +717,17 @@ def _search_endpoints(query):
 
 
 def _discover_from_search(session, query):
-    """Primary Deloox discovery across localized public search surfaces.
+    """Primary Deloox discovery with bounded pagination.
 
-    The old scraper relied on one storefront (/chercher.html on .be).  The
-    current Deloox catalogue is exposed through multiple localized storefronts,
-    and a valid product can therefore be invisible from one search surface
-    while present on another.  We probe a bounded set concurrently, inspect the
-    complete returned HTML, and stop discovery as soon as relevant candidates
-    are found.
+    Deloox serves search results in pages.  A successful first page is therefore
+    not the complete discovery result.  After the first successful search
+    surface is found, follow its numbered ``page`` parameter until no new
+    product URLs are returned or MAX_SEARCH_PAGES is reached.
+
+    This remains generic: no product, brand, SKU or variant is encoded here.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
+    from urllib.parse import parse_qsl, urlencode, urlunparse
 
     query = clean(query)
     if not query:
@@ -736,6 +737,7 @@ def _discover_from_search(session, query):
     candidates = {}
     successful_pages = 0
     failed_pages = 0
+    selected_endpoint = None
 
     def fetch(endpoint):
         try:
@@ -749,10 +751,8 @@ def _discover_from_search(session, query):
         except requests.RequestException:
             return endpoint, None
 
-    # One bounded wave: at most 13 requests, all sharing the same per-request
-    # timeout.  We do not paginate until a storefront has actually returned
-    # candidates, and in normal operation the first successful candidate set
-    # ends the discovery work.
+    # Keep the existing bounded parallel probe for the public search surfaces.
+    # Pagination starts only after one surface has returned relevant products.
     with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
         for future in as_completed(futures):
@@ -775,8 +775,54 @@ def _discover_from_search(session, query):
                 candidates[url] = True
 
             if found:
-                # We already have the retailer's own relevant product links.
-                # No category/sitemap crawl is needed in this pass.
+                selected_endpoint = r.url
+                break
+
+    # Follow the same successful search surface.  The loop is bounded and stops
+    # immediately when a page produces no new relevant product URLs.
+    if selected_endpoint:
+        parsed = urlparse(selected_endpoint)
+        params = parse_qsl(parsed.query, keep_blank_values=True)
+
+        def page_url(page_number):
+            page_params = [
+                (key, value)
+                for key, value in params
+                if key.lower() != "page"
+            ]
+            page_params.append(("page", str(page_number)))
+            return urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                urlencode(page_params, doseq=True),
+                "",
+            ))
+
+        for page_number in range(2, MAX_SEARCH_PAGES + 1):
+            endpoint = page_url(page_number)
+            _endpoint, r = fetch(endpoint)
+
+            if r is None or r.status_code >= 400 or not r.text:
+                failed_pages += 1
+                break
+
+            successful_pages += 1
+            base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+            found = _candidate_product_urls(
+                r.text,
+                query,
+                discovery_query=query,
+                accept_all_products=False,
+                base_url=base,
+            )
+
+            before = len(candidates)
+            for url in found:
+                candidates[url] = True
+
+            if len(candidates) == before:
                 break
 
     global _LAST_DISCOVERY_STATE
@@ -785,6 +831,7 @@ def _discover_from_search(session, query):
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
+
 
 def _category_product_line_links(html, query):
     """Extract generic category/filter links whose visible text matches query.
