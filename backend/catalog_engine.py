@@ -854,6 +854,18 @@ def _html_discovery_priority(store, url, depth, source=''):
     else:
         score = 6
 
+    # Deloox brand pages are all category URLs. Using URL length as the
+    # final ordering key causes the crawler to visit a biased subset of brands
+    # before later brands such as Rasasi. For Deloox brand/category surfaces,
+    # order by the normalized path itself; this follows the retailer's own
+    # alphabetical brand navigation without naming or privileging any brand.
+    if store == 'deloox' and re.search(
+        r'/categorie/\d+/[^/]*(?:-parfum|parfums?|fragrance|geur)\.html$',
+        path,
+        re.I,
+    ):
+        return (score, depth, 0, path)
+
     # Deeper pages are still valid, but breadth-first behavior should only
     # break ties between otherwise equivalent catalog surfaces.
     return (score, depth, len(path), url)
