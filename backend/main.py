@@ -201,6 +201,70 @@ def _catalog_is_ready():
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
 
+def _run_deloox_catalog_migration_once():
+    """One-time startup migration for the Deloox persistent catalog.
+
+    The normal search path is strictly read-only with respect to retailer
+    discovery. This migration runs once after deployment so a stale Deloox
+    catalog created by the obsolete discovery seeds can be replaced by the
+    current generic Deloox discovery graph. It is intentionally separate from
+    /search and does not call any retailer search endpoint.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store) or not callable(catalog_db):
+        return
+
+    conn = None
+    try:
+        conn = catalog_db()
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS catalog_migrations(
+                   key TEXT PRIMARY KEY,
+                   completed_at REAL NOT NULL,
+                   result TEXT
+               )"""
+        )
+        row = conn.execute(
+            "SELECT key FROM catalog_migrations WHERE key=?",
+            ('deloox_current_discovery_v1',),
+        ).fetchone()
+        if row:
+            return
+        conn.commit()
+    except Exception as exc:
+        print(f'DELOOX CATALOG MIGRATION CHECK ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return
+    finally:
+        if conn is not None:
+            conn.close()
+
+    print('DELOOX CATALOG MIGRATION START: rebuilding persistent Deloox URL catalog once', flush=True)
+    try:
+        result = catalog_discover_store('deloox')
+        status = str((result or {}).get('status') or '') if isinstance(result, dict) else ''
+        count = int((result or {}).get('count') or 0) if isinstance(result, dict) else 0
+        if status not in {'READY', 'INDEXED', 'DISCOVERY_OK', 'DISCOVERY_PARTIAL'} or count <= 0:
+            print(
+                f'DELOOX CATALOG MIGRATION NOT MARKED COMPLETE: status={status} count={count}',
+                flush=True,
+            )
+            return
+
+        conn = catalog_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO catalog_migrations(key,completed_at,result) VALUES(?,?,?)",
+            ('deloox_current_discovery_v1', time.time(), json.dumps(result, ensure_ascii=False, default=str)),
+        )
+        conn.commit()
+        print(
+            f'DELOOX CATALOG MIGRATION END: status={status} count={count}',
+            flush=True,
+        )
+    except Exception as exc:
+        print(f'DELOOX CATALOG MIGRATION ERROR: {type(exc).__name__}: {exc}', flush=True)
+    finally:
+        if conn is not None:
+            conn.close()
+
 def _start_catalog_hydration():
     global _CATALOG_HYDRATION_STARTED
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -386,6 +450,14 @@ def _start_catalog_bootstrap():
             return
         _CATALOG_BOOTSTRAP_STARTED = True
     if _catalog_is_ready():
+        # The persistent catalog is already populated, but Deloox may still
+        # contain URLs from the obsolete discovery graph. Run the one-time
+        # migration in the background; normal search remains read-only.
+        threading.Thread(
+            target=_run_deloox_catalog_migration_once,
+            daemon=True,
+            name='scenthunter-deloox-catalog-migration',
+        ).start()
         with _CATALOG_BOOTSTRAP_LOCK:
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
@@ -402,8 +474,6 @@ def _start_catalog_bootstrap():
 try:
     from diagnose_two_scrapers import router as diagnose_two_scrapers_router
     app.include_router(diagnose_two_scrapers_router)
-    from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
-    app.include_router(diagnose_deloox_scraper_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
