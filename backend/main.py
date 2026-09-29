@@ -201,69 +201,52 @@ def _catalog_is_ready():
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
 
-def _run_deloox_catalog_migration_once():
-    """One-time startup migration for the Deloox persistent catalog.
 
-    The normal search path is strictly read-only with respect to retailer
-    discovery. This migration runs once after deployment so a stale Deloox
-    catalog created by the obsolete discovery seeds can be replaced by the
-    current generic Deloox discovery graph. It is intentionally separate from
-    /search and does not call any retailer search endpoint.
+def _deloox_catalog_needs_bootstrap():
+    """Return True until the current Deloox catalog bootstrap migration succeeds.
+
+    This fixes the original bootstrap bug: other stores already having URLs
+    caused application startup to skip Deloox forever. The marker is written
+    only after the normal catalog discovery function has successfully persisted
+    a Deloox catalog. User search remains read-only and no retailer search API is
+    involved.
     """
-    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store) or not callable(catalog_db):
-        return
-
-    conn = None
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return False
     try:
         conn = catalog_db()
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS catalog_migrations(
-                   key TEXT PRIMARY KEY,
-                   completed_at REAL NOT NULL,
-                   result TEXT
-               )"""
-        )
-        row = conn.execute(
-            "SELECT key FROM catalog_migrations WHERE key=?",
-            ('deloox_current_discovery_v1',),
-        ).fetchone()
-        if row:
-            return
-        conn.commit()
+        try:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS catalog_bootstrap_migrations ("
+                "migration_id TEXT PRIMARY KEY, completed_at REAL NOT NULL)"
+            )
+            row = conn.execute(
+                "SELECT 1 FROM catalog_bootstrap_migrations WHERE migration_id=?",
+                ('deloox-persistent-catalog-v1',),
+            ).fetchone()
+            conn.commit()
+            return row is None
+        finally:
+            conn.close()
     except Exception as exc:
         print(f'DELOOX CATALOG MIGRATION CHECK ERROR: {type(exc).__name__}: {exc}', flush=True)
-        return
-    finally:
-        if conn is not None:
-            conn.close()
+        return False
 
-    print('DELOOX CATALOG MIGRATION START: rebuilding persistent Deloox URL catalog once', flush=True)
+
+def _mark_deloox_catalog_bootstrap_complete():
+    conn = catalog_db()
     try:
-        result = catalog_discover_store('deloox')
-        status = str((result or {}).get('status') or '') if isinstance(result, dict) else ''
-        count = int((result or {}).get('count') or 0) if isinstance(result, dict) else 0
-        if status not in {'READY', 'INDEXED', 'DISCOVERY_OK', 'DISCOVERY_PARTIAL'} or count <= 0:
-            print(
-                f'DELOOX CATALOG MIGRATION NOT MARKED COMPLETE: status={status} count={count}',
-                flush=True,
-            )
-            return
-
-        conn = catalog_db()
         conn.execute(
-            "INSERT OR REPLACE INTO catalog_migrations(key,completed_at,result) VALUES(?,?,?)",
-            ('deloox_current_discovery_v1', time.time(), json.dumps(result, ensure_ascii=False, default=str)),
+            "CREATE TABLE IF NOT EXISTS catalog_bootstrap_migrations ("
+            "migration_id TEXT PRIMARY KEY, completed_at REAL NOT NULL)"
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO catalog_bootstrap_migrations(migration_id,completed_at) VALUES(?,?)",
+            ('deloox-persistent-catalog-v1', time.time()),
         )
         conn.commit()
-        print(
-            f'DELOOX CATALOG MIGRATION END: status={status} count={count}',
-            flush=True,
-        )
-    except Exception as exc:
-        print(f'DELOOX CATALOG MIGRATION ERROR: {type(exc).__name__}: {exc}', flush=True)
     finally:
-        if conn is not None:
-            conn.close()
+        conn.close()
 
 def _start_catalog_hydration():
     global _CATALOG_HYDRATION_STARTED
@@ -312,6 +295,38 @@ def _catalog_bootstrap_worker():
     finally:
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_RUNNING = False
+
+def _deloox_catalog_bootstrap_worker():
+    global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
+    with _CATALOG_BOOTSTRAP_LOCK:
+        _CATALOG_BOOTSTRAP_RUNNING = True
+    print('CATALOG BOOTSTRAP START: Deloox catalog missing; running normal discovery', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+        result = catalog_discover_store('deloox')
+        ready = False
+        if isinstance(result, dict):
+            ready = str(result.get('status') or '').upper() == 'DISCOVERY_OK' and int(result.get('count') or 0) > 0
+        if not ready:
+            raise RuntimeError(f'deloox_discovery_not_ready:{result}')
+        _mark_deloox_catalog_bootstrap_complete()
+        _start_catalog_hydration()
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_DONE = True
+            _CATALOG_BOOTSTRAP_ERROR = None
+        print(
+            f'CATALOG BOOTSTRAP END: Deloox discovery status={result.get("status")} count={result.get("count")}',
+            flush=True,
+        )
+    except Exception as exc:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_ERROR = f'{type(exc).__name__}:{exc}'
+        print(f'CATALOG BOOTSTRAP ERROR: {type(exc).__name__}: {exc}', flush=True)
+    finally:
+        with _CATALOG_BOOTSTRAP_LOCK:
+            _CATALOG_BOOTSTRAP_RUNNING = False
+
 
 def _catalog_targeted_resync_worker(job_id):
     global _CATALOG_RESYNC_RUNNING, _CATALOG_RESYNC_FINISHED_AT
@@ -449,15 +464,21 @@ def _start_catalog_bootstrap():
         if _CATALOG_BOOTSTRAP_STARTED:
             return
         _CATALOG_BOOTSTRAP_STARTED = True
-    if _catalog_is_ready():
-        # The persistent catalog is already populated, but Deloox may still
-        # contain URLs from the obsolete discovery graph. Run the one-time
-        # migration in the background; normal search remains read-only.
+
+    # The persistent catalog is shared by all stores. The old readiness check
+    # treated any indexed store as proof that bootstrap was complete, which
+    # left Deloox permanently stuck at its old catalog. Repair only Deloox here
+    # when its own catalog is absent; normal search remains read-only.
+    if _deloox_catalog_needs_bootstrap():
+        print('CATALOG BOOTSTRAP: Deloox catalog missing; starting Deloox discovery', flush=True)
         threading.Thread(
-            target=_run_deloox_catalog_migration_once,
+            target=_deloox_catalog_bootstrap_worker,
             daemon=True,
-            name='scenthunter-deloox-catalog-migration',
+            name='scenthunter-deloox-catalog-bootstrap',
         ).start()
+        return
+
+    if _catalog_is_ready():
         with _CATALOG_BOOTSTRAP_LOCK:
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
