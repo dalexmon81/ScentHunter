@@ -854,18 +854,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     else:
         score = 6
 
-    # Deloox brand pages are all category URLs. Using URL length as the
-    # final ordering key causes the crawler to visit a biased subset of brands
-    # before later brands such as Rasasi. For Deloox brand/category surfaces,
-    # order by the normalized path itself; this follows the retailer's own
-    # alphabetical brand navigation without naming or privileging any brand.
-    if store == 'deloox' and re.search(
-        r'/categorie/\d+/[^/]*(?:-parfum|parfums?|fragrance|geur)\.html$',
-        path,
-        re.I,
-    ):
-        return (score, depth, 0, path)
-
     # Deeper pages are still valid, but breadth-first behavior should only
     # break ties between otherwise equivalent catalog surfaces.
     return (score, depth, len(path), url)
@@ -911,6 +899,17 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
+        # Preserve Deloox's own brand-index order. The marques index is an
+        # ordered navigation surface; re-sorting those links by URL length
+        # changes the retailer's traversal order and can starve later brands.
+        source_url, _, source_meta = (source or '').partition('|anchor_label=')
+        source_path = urllib.parse.urlparse(source_url).path.lower()
+        if (
+            urllib.parse.urlparse(source_url).netloc.lower() == 'www.deloox.be'
+            and re.search(r'/categorie/1063858/marques(?:\.html)?$', source_path)
+            and source_meta
+        ):
+            priority = (0, depth, 0)
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
@@ -935,7 +934,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
-                add(listing, depth + 1, requested)
+                add(listing, depth + 1, f"{requested}|anchor_label={a.get_text(' ', strip=True)[:120]}")
 
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
