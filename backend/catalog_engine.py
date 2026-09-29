@@ -889,10 +889,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
             return
         path = p.path.lower()
-        if '/product/' in path:
-            product = _html_product_url('deloox', key, key)
-            if product:
-                product_urls[product] = ''
+        # A URL can arrive directly through a navigation/data attribute. Do not
+        # rely on one English URL segment here: Deloox product pages use
+        # /produit/<id>/..., and _html_product_url is the single classifier
+        # that already knows the supported product URL shapes.
+        product = _html_product_url('deloox', key, key)
+        if product:
+            product_urls[product] = ''
             return
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
@@ -925,13 +928,64 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if listing:
                 add(listing, depth + 1, requested)
 
+        # Product JSON-LD is a second, standard storefront surface. It is
+        # especially useful when the visible product card is rendered without
+        # a normal href. Identity is still only the URL classifier here.
+        try:
+            for item in _jsonld(soup):
+                product = _html_product_url('deloox', item.get('url'), base)
+                if product:
+                    product_urls[product] = ''
+        except Exception:
+            pass
+
+        # Deloox currently exposes large category result sets through a
+        # "load more" UI. The public category URLs also support ?page=N, but
+        # the next page is not always present as a normal <a href> or rel=next.
+        # When a category page is full, enqueue its next numbered page. This is
+        # structural catalog pagination only: no product name, brand, query or
+        # product id is used. Pagination keeps the same crawl depth because it
+        # is continuation of the same catalog surface, not a new navigation
+        # branch.
+        try:
+            parsed_base = urllib.parse.urlparse(base)
+            if '/categorie/' in (parsed_base.path or '').lower():
+                page_product_count = sum(
+                    1 for a in soup.find_all('a', href=True)
+                    if _html_product_url('deloox', a.get('href'), base)
+                )
+                if page_product_count >= 20:
+                    qs = urllib.parse.parse_qs(parsed_base.query, keep_blank_values=True)
+                    current_page = 1
+                    raw_page = qs.get('page', [None])[0]
+                    if raw_page is not None and str(raw_page).isdigit():
+                        current_page = max(1, int(raw_page))
+                    qs['page'] = [str(current_page + 1)]
+                    next_query = urllib.parse.urlencode(qs, doseq=True)
+                    next_url = urllib.parse.urlunparse((
+                        parsed_base.scheme,
+                        parsed_base.netloc,
+                        parsed_base.path,
+                        parsed_base.params,
+                        next_query,
+                        '',
+                    ))
+                    listing = _html_listing_url(
+                        'deloox', next_url, base, 'generated_pagination'
+                    )
+                    if listing:
+                        add(listing, depth, requested)
+        except Exception:
+            pass
+
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
             for attr in (
                 'value', 'data-value', 'data-filter-url', 'data-option-url',
                 'data-redirect-url', 'data-url', 'data-href', 'data-link',
-                'data-next-url', 'data-next', 'data-load-more-url',
-                'data-pagination-url',
+                'data-product-url', 'data-product-link', 'data-target',
+                'data-href-url', 'data-next-url', 'data-next',
+                'data-load-more-url', 'data-pagination-url',
             ):
                 raw = node.get(attr)
                 if not raw:
