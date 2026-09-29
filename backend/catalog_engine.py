@@ -854,9 +854,22 @@ def _html_discovery_priority(store, url, depth, source=''):
     else:
         score = 6
 
+    # Deloox's brand index exposes a very large set of sibling brand pages.
+    # A plain URL sort walks them alphabetically, so a bounded crawl can keep
+    # consuming A/B/C... pages and never reach later brands such as Rasasi.
+    # Spread Deloox brand-category siblings across their leading slug letter.
+    # This is structural only: it never inspects the requested query/product.
+    spread_bucket = 0
+    if store == 'deloox':
+        last_segment = path.rstrip('/').rsplit('/', 1)[-1]
+        if re.search(r'^/categorie/\d+/[^/]+-parfum\.html$', path, re.I):
+            m = re.search(r'([a-z0-9])', last_segment, re.I)
+            if m:
+                spread_bucket = ord(m.group(1).lower())
+
     # Deeper pages are still valid, but breadth-first behavior should only
     # break ties between otherwise equivalent catalog surfaces.
-    return (score, depth, len(path), url)
+    return (score, depth, spread_bucket, len(path), url)
 
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox products through its public category graph.
