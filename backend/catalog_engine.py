@@ -18,6 +18,7 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
+import html
 import heapq
 import importlib
 import json
@@ -65,7 +66,9 @@ STORE_LABELS.update({
     'orioudh': 'Orioudh',
 })
 
-# Store-level discovery configuration only: Deloox.be.
+# Store-level discovery configuration only: official storefront hosts.
+# Deloox has several official localized hosts; trying all of them is still
+# catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'deloox': (
         'https://www.deloox.be',
@@ -629,9 +632,24 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
+        # Primary Belgian catalog surfaces. These are broad, retailer-owned
+        # category/index pages; no product or brand is hard-coded here.
         'https://www.deloox.be/',
-        'https://www.deloox.be/categorie/1000003/parfum.html',
-        'https://www.deloox.be/categorie/1063858/marques.html',
+        'https://www.deloox.be/en/',
+        'https://www.deloox.be/en/category/1103659/fragrances.html',
+        # English catalog indexes are distinct public surfaces on Deloox;
+        # keep both localized and legacy category roots so the brand/category
+        # graph can reach deeper English product categories generically.
+        'https://www.deloox.be/en/category/1063858/brands.html',
+        'https://www.deloox.be/en/category/1000003/fragrances.html',
+        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/category/1063858/brands.html',
+        'https://www.deloox.be/category/1000003/fragrances.html',
+        'https://www.deloox.be/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -731,9 +749,6 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'deloox':
-        # Filter/API endpoints are navigation mechanics, not catalog surfaces.
-        if re.search(r'/categorie/(?:api|filter)(?:/|$)', path, re.I) or path.rstrip('/').endswith('/filtrer'):
-            return None
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
@@ -745,32 +760,8 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             p.query, re.I,
         ):
             return absolute
-        # Deloox.be also exposes navigation/brand surfaces whose paths do not
-        # contain a literal category/brand keyword. They must be admitted when
-        # they come from a real HTML anchor, but NOT when they are extracted from
-        # embedded analytics/JSON text. The caller marks real anchors with the
-        # structural label `html_anchor`. This keeps the crawler generic while
-        # preventing JSON fragments such as /Davidoff/Profumi from becoming the
-        # discovery graph.
-        # Load-more controls can point to a same-host continuation endpoint
-        # that is not itself named category/parfum.  The caller marks these
-        # explicitly so ordinary utility/API URLs are not added to the crawl.
-        if label in ('load_more', 'pagination'):
-            if p.query or path.endswith('.html'):
-                return absolute
-            parts = [x for x in path.split('/') if x]
-            if 1 <= len(parts) <= 4:
-                return absolute
-        if label == 'html_anchor':
-            if path.endswith('.html'):
-                return absolute
-            parts = [x for x in path.split('/') if x]
-            if 1 <= len(parts) <= 3:
-                return absolute
-        if path.endswith('.html') and re.search(
-            r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)',
-            path, re.I,
-        ):
+        parts=[x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 3 and not path.endswith('.html'):
             return absolute
         return None
     if store == 'sabina':
@@ -853,51 +844,14 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Deloox exposes a very large brand index. Its links are useful, but if
-    # they are given the same priority as the main category graph, the queue
-    # spends its first crawl budget walking the brand index alphabetically.
-    # Keep the priority structural and generic: category/pagination surfaces
-    # first, brand index/brand pages afterwards. No product/query matching is
-    # involved.
-    if store == 'deloox':
-        is_category = bool(re.search(
-            r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)',
-            path, re.I,
-        ))
-        is_pagination = bool(re.search(
-            r'(?:^|[?&])(page|pagina|offset|start|p)=', p.query, re.I,
-        ))
-        is_brand_index = bool(re.search(
-            r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I,
-        ))
-        # Pagination is the actual continuation of the catalog surface and
-        # must outrank brand/category navigation discovered on the same page.
-        # Deloox exposes a very large brand graph under /categorie/<id>/...,
-        # so treating every /categorie/ URL equally starves the paginated
-        # catalog. This remains purely structural and query-independent.
-        if is_pagination:
-            score = -2
-        elif is_category:
-            # Technical filter/API surfaces are not catalog pages.
-            if re.search(r'/categorie/(?:api|filter)(?:/|$)', path, re.I) or path.rstrip('/').endswith('/filtrer'):
-                score = 7
-            elif is_brand_index:
-                score = 5
-            else:
-                score = 4
-        elif is_brand_index:
-            score = 5
-        elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
-            score = 4
-        elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
-            score = 3
-        elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
-            score = 2
-        else:
-            score = 6
-    # Generic priority for the other stores is unchanged.
-    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    # Catalog index pages are high-value navigation surfaces because they
+    # expose the next level of category/brand pages. This is structural only:
+    # no specific retailer brand, product name, product id, or user query is used.
+    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
+    # Prefer actual fragrance catalog surfaces before unrelated site sections.
+    # This is URL-structure based only: no product name, brand name, product
+    # id, or user query is used.
     elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
         score = 1
     elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
@@ -945,11 +899,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        allowed_hosts = {
-            urllib.parse.urlparse(base).netloc.lower()
-            for base in _discovery_bases('deloox')
-        }
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
+        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
             return
         path = p.path.lower()
         if '/product/' in path:
@@ -984,7 +934,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if product:
                 product_urls[product] = ''
                 continue
-            listing = _html_listing_url('deloox', raw, base, 'html_anchor')
+            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
                 add(listing, depth + 1, requested)
 
@@ -1003,50 +953,20 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 if product:
                     product_urls[product] = ''
                     continue
-                attr_label = 'load_more' if attr in (
-                    'data-next-url', 'data-next', 'data-load-more-url',
-                    'data-pagination-url',
-                ) else label
-                listing = _html_listing_url('deloox', raw, base, attr_label)
+                listing = _html_listing_url('deloox', raw, base, label)
                 if listing:
                     add(listing, depth + 1, requested)
 
-        # Some Deloox load-more controls keep the continuation URL inside
-        # an onclick/data-handler JavaScript attribute rather than in a
-        # dedicated data-* attribute. Extract only same-host path-like URLs
-        # from actual element attributes; this is structural and query-free.
-        for node in soup.find_all(True):
-            for attr_name, attr_value in node.attrs.items():
-                if attr_name == 'class' or attr_name == 'id' or not attr_value:
-                    continue
-                values = attr_value if isinstance(attr_value, list) else [attr_value]
-                for value in values:
-                    if not isinstance(value, str):
-                        continue
-                    if not re.search(r'load.?more|next|pagination|page', value, re.I):
-                        continue
-                    for match in re.finditer(
-                        r'(?:https?://[^\"\'\s<>]+|/[^\"\'\s<>]+)',
-                        value, re.I,
-                    ):
-                        raw = html.unescape(match.group(0)).replace('\\/', '/')
-                        listing = _html_listing_url('deloox', raw, base, 'load_more')
-                        if listing:
-                            add(listing, depth + 1, requested)
-
         try:
-            raw_html = data.decode('utf-8', 'ignore').replace('\\/', '/')
+            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
+            raw_html = raw_html.replace('\\/', '/')
+            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
             for match in re.finditer(
                 r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
                 raw_html,
                 re.I,
             ):
                 raw = match.group(0)
-                # Embedded analytics/JSON often contains URL-looking fragments
-                # followed by HTML entities such as &quot;,&quot;list... Reject
-                # those fragments instead of enqueueing them as real pages.
-                if any(token in raw.lower() for token in ('&quot;', '&#34;', '&apos;', '&#39;')):
-                    continue
                 absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
                 product = _html_product_url('deloox', absolute, base)
                 if product:
