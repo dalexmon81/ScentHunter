@@ -731,6 +731,9 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'deloox':
+        # Filter/API endpoints are navigation mechanics, not catalog surfaces.
+        if re.search(r'/categorie/(?:api|filter)(?:/|$)', path, re.I) or path.rstrip('/').endswith('/filtrer'):
+            return None
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
@@ -858,8 +861,21 @@ def _html_discovery_priority(store, url, depth, source=''):
         is_brand_index = bool(re.search(
             r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I,
         ))
-        if is_category or is_pagination:
-            score = 0
+        # Pagination is the actual continuation of the catalog surface and
+        # must outrank brand/category navigation discovered on the same page.
+        # Deloox exposes a very large brand graph under /categorie/<id>/...,
+        # so treating every /categorie/ URL equally starves the paginated
+        # catalog. This remains purely structural and query-independent.
+        if is_pagination:
+            score = -2
+        elif is_category:
+            # Technical filter/API surfaces are not catalog pages.
+            if re.search(r'/categorie/(?:api|filter)(?:/|$)', path, re.I) or path.rstrip('/').endswith('/filtrer'):
+                score = 7
+            elif is_brand_index:
+                score = 5
+            else:
+                score = 4
         elif is_brand_index:
             score = 5
         elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
