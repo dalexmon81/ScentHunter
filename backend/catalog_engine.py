@@ -861,15 +861,13 @@ def _html_discovery_priority(store, url, depth, source=''):
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox products through its public category graph.
 
-    Deloox exposes a very large brand/category navigation surface. A simple
-    global priority queue can exhaust the discovery budget on the first part
-    of that surface (for example, many A/B brand pages) before reaching later
-    brands. This crawler therefore keeps a small round-robin frontier for
-    brand/category pages while retaining the existing priority queue for other
-    catalog surfaces.
+    Deloox exposes a large amount of catalog navigation in category pages,
+    while sitemap endpoints are frequently unavailable. The crawler therefore
+    traverses the retailer-owned catalog graph directly. Fetches are performed
+    in bounded parallel batches so one slow/large Deloox page cannot consume
+    the entire discovery deadline.
 
-    The scheduling rule is structural only. It never uses the requested
-    search query, a product name, a specific brand name, price, or product id.
+    No product name, brand name, product id, or search query is used here.
     """
     queue = []
     queued = set()
@@ -879,46 +877,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
     sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
-
-    # Deloox exposes thousands of brand/category links from its brand index.
-    # Keep those links in deterministic first-letter buckets and consume the
-    # buckets round-robin. This prevents the discovery budget from being
-    # consumed by one alphabetical prefix before the rest of the catalog is
-    # reached. The bucket is derived only from URL structure.
-    brand_buckets = {}
-    brand_bucket_order = []
-    brand_rr_cursor = 0
-
-    def brand_bucket(url):
-        p = urllib.parse.urlparse(url)
-        path = (p.path or '').rstrip('/')
-        leaf = path.rsplit('/', 1)[-1]
-        leaf = re.sub(r'\.html?$', '', leaf, flags=re.I)
-        leaf = re.sub(r'^\d+-', '', leaf)
-        match = re.search(r'[a-z]', leaf, re.I)
-        return match.group(0).lower() if match else '#'
-
-    def is_brand_surface(url):
-        p = urllib.parse.urlparse(url)
-        path = (p.path or '').lower()
-        return bool(re.search(
-            r'/(?:brand|brands|marque|marques|marca|marcas|marken)(?:/|$)',
-            path,
-            re.I,
-        )) or bool(re.search(
-            r'/categorie/\d+/[^/]*(?:-parfum|parfums?|fragrance|geur)\.html$',
-            path,
-            re.I,
-        ))
-
-    def enqueue_brand(url, depth, source):
-        nonlocal sequence
-        bucket = brand_bucket(url)
-        if bucket not in brand_buckets:
-            brand_buckets[bucket] = []
-            brand_bucket_order.append(bucket)
-            brand_bucket_order.sort()
-        brand_buckets[bucket].append((sequence, url, depth, source))
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -930,27 +888,19 @@ def _discover_deloox_catalog(seeds, deadline=None):
         p = urllib.parse.urlparse(key)
         if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
             return
-
-        # Product classification must happen before listing classification for
-        # every Deloox product URL shape, including /produit/<id>/... URLs.
-        product = _html_product_url('deloox', key, key)
-        if product:
-            product_urls[product] = ''
-            queued.add(key)
+        path = p.path.lower()
+        if '/product/' in path:
+            product = _html_product_url('deloox', key, key)
+            if product:
+                product_urls[product] = ''
             return
-
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
-
         sequence += 1
-        queued.add(key)
-        if is_brand_surface(key):
-            enqueue_brand(key, depth, source)
-            return
-
         priority = _html_discovery_priority('deloox', key, depth, source)
         heapq.heappush(queue, (priority, sequence, key, depth, source))
+        queued.add(key)
 
     for seed in seeds:
         add(seed, 0, 'configured_seed')
@@ -1016,57 +966,23 @@ def _discover_deloox_catalog(seeds, deadline=None):
         for node in soup.find_all(['a', 'link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             href = node.get('href')
-            if 'next' in rel or re.search(
-                r'(?:page|pagina|offset|start|p)=',
-                urllib.parse.urlparse(href or '').query,
-                re.I,
-            ):
+            if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
                 listing = _html_listing_url('deloox', href, base, 'pagination')
                 if listing:
                     add(listing, depth + 1, requested)
 
-    def pop_brand():
-        nonlocal brand_rr_cursor
-        if not brand_bucket_order:
-            return None
-        count = len(brand_bucket_order)
-        for _ in range(count):
-            bucket = brand_bucket_order[brand_rr_cursor % count]
-            brand_rr_cursor = (brand_rr_cursor + 1) % count
-            items = brand_buckets.get(bucket)
-            if items:
-                _seq, url, depth, source = items.pop(0)
-                return url, depth, source
-        return None
-
-    while (
-        (queue or any(brand_buckets.get(b) for b in brand_bucket_order))
-        and len(visited) < max_pages
-        and (deadline is None or time.time() < deadline)
-    ):
+    # Parallel batches are deliberately bounded by the same HTML worker pool
+    # used by the generic crawler. The queue itself remains priority-ordered,
+    # so high-value catalog surfaces are still preferred without serializing
+    # the network I/O.
+    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
-
-        # First consume brand/category surfaces round-robin. With the normal
-        # 12-worker batch this reaches every populated first-letter bucket
-        # before any bucket can dominate the discovery budget.
-        while len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            item = pop_brand()
-            if item is None:
-                break
-            url, depth, source = item
-            if url in visited:
-                continue
-            visited.add(url)
-            batch.append((url, depth, source))
-
-        # Fill any remaining worker slots with the normal priority queue.
         while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
             _priority, _sequence, url, depth, source = heapq.heappop(queue)
             if url in visited:
                 continue
             visited.add(url)
             batch.append((url, depth, source))
-
         if not batch:
             continue
 
@@ -1090,6 +1006,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
+
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
