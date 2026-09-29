@@ -899,17 +899,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
-        # Preserve Deloox's own brand-index order. The marques index is an
-        # ordered navigation surface; re-sorting those links by URL length
-        # changes the retailer's traversal order and can starve later brands.
-        source_url, _, source_meta = (source or '').partition('|anchor_label=')
-        source_path = urllib.parse.urlparse(source_url).path.lower()
-        if (
-            urllib.parse.urlparse(source_url).netloc.lower() == 'www.deloox.be'
-            and re.search(r'/categorie/1063858/marques(?:\.html)?$', source_path)
-            and source_meta
-        ):
-            priority = (0, depth, 0)
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
@@ -934,7 +923,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
-                add(listing, depth + 1, f"{requested}|anchor_label={a.get_text(' ', strip=True)[:120]}")
+                add(listing, depth + 1, requested)
 
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
