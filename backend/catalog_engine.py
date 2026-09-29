@@ -848,7 +848,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
     elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
-        score = 4
+        score = 1
     elif path in ('/', '') or path.rstrip('/') in ('/en', '/it', '/de', '/fr', '/nl', '/es'):
         score = 8
     else:
