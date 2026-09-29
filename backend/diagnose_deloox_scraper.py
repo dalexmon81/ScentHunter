@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 import time
 import requests
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 router = APIRouter()
 
@@ -69,6 +70,213 @@ def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
         out["validation_errors"] = validation_errors[:20]
         out["ok"] = True
         return out
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
+    finally:
+        if session is not None:
+            session.close()
+        out["elapsed_sec"] = round(time.monotonic() - started, 3)
+
+
+
+@router.get("/diagnose-deloox-search-pagination")
+def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
+    """
+    READ-ONLY diagnostic of Deloox search pagination.
+
+    This does NOT change the production scraper. It explicitly fetches search
+    pages 1, 2 and 3 from the same .be /chercher.html surface used by the
+    deployed scraper, then compares the product URLs visible on those pages
+    with the URLs returned by the deployed _discover().
+
+    No catalog writes, hydration, ProductMatcher, production search or resync.
+    """
+    started = time.monotonic()
+    query = str(q or "").strip() or "Hawas"
+    out = {
+        "diagnostic": "deloox-search-pagination-v1",
+        "ok": False,
+        "store": "Deloox",
+        "query": query,
+        "purpose": (
+            "read-only proof of whether Deloox search pagination exposes "
+            "additional product URLs that deployed _discover() does not return"
+        ),
+        "writes": False,
+        "resync": False,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "catalog_written": False,
+        "base_surface": "https://www.deloox.be/chercher.html",
+        "pages": [],
+    }
+
+    session = None
+    try:
+        from scrapers.deloox import scraper
+
+        session = requests.Session()
+        session.headers.update(getattr(scraper, "HEADERS", HEADERS))
+
+        base_url = getattr(scraper, "BASE_URL", BASE_URL).rstrip("/")
+        search_url = f"{base_url}/chercher.html?q={quote_plus(query)}"
+
+        # Page 1 is fetched first because Deloox can append a CSRF token to
+        # the effective URL. We preserve that token when constructing pages 2/3.
+        r1 = session.get(
+            search_url,
+            headers=getattr(scraper, "HEADERS", HEADERS),
+            timeout=getattr(scraper, "TIMEOUT", TIMEOUT),
+            allow_redirects=True,
+        )
+
+        def page_url_from(first_url, page_no, query_value):
+            parts = urlsplit(first_url)
+            params = parse_qs(parts.query, keep_blank_values=True)
+            params["q"] = [query_value]
+            params["page"] = [str(page_no)]
+            # urlencode preserves the CSRF token and any other retailer-issued
+            # query parameters returned by page 1.
+            return urlunsplit((
+                parts.scheme,
+                parts.netloc,
+                parts.path,
+                urlencode(params, doseq=True),
+                "",
+            ))
+
+        def extract_page(page_no, requested_url, response, query_value):
+            entry = {
+                "page": page_no,
+                "requested_url": requested_url,
+                "final_url": getattr(response, "url", None),
+                "status": getattr(response, "status_code", None),
+                "bytes": len(getattr(response, "content", b"") or b""),
+                "ok_http": bool(response is not None and response.status_code < 400),
+                "candidate_count": 0,
+                "product_urls": [],
+            }
+
+            if response is None or response.status_code >= 400 or not response.text:
+                return entry
+
+            base = f"{urlsplit(response.url).scheme}://{urlsplit(response.url).netloc}"
+            candidate_fn = getattr(scraper, "_candidate_product_urls", None)
+
+            if callable(candidate_fn):
+                found = candidate_fn(
+                    response.text,
+                    query_value,
+                    discovery_query=query_value,
+                    accept_all_products=False,
+                    base_url=base,
+                )
+            else:
+                # The deployed scraper is expected to expose this helper.
+                # Do not silently substitute another discovery implementation.
+                found = []
+
+            entry["product_urls"] = list(dict.fromkeys(found or []))
+            entry["candidate_count"] = len(entry["product_urls"])
+            return entry
+
+        page1 = extract_page(1, search_url, r1, query)
+        out["pages"].append(page1)
+
+        # Build page 2/3 from the actual effective page-1 URL, preserving any
+        # CSRF token or other query parameters the retailer supplied.
+        page2_url = page_url_from(r1.url or search_url, 2, query)
+        page3_url = page_url_from(r1.url or search_url, 3, query)
+
+        r2 = session.get(
+            page2_url,
+            headers=getattr(scraper, "HEADERS", HEADERS),
+            timeout=getattr(scraper, "TIMEOUT", TIMEOUT),
+            allow_redirects=True,
+        )
+        page2 = extract_page(2, page2_url, r2, query)
+        out["pages"].append(page2)
+
+        r3 = session.get(
+            page3_url,
+            headers=getattr(scraper, "HEADERS", HEADERS),
+            timeout=getattr(scraper, "TIMEOUT", TIMEOUT),
+            allow_redirects=True,
+        )
+        page3 = extract_page(3, page3_url, r3, query)
+
+        # Some Deloox pagination links encode the query with a trailing space
+        # (e.g. "Hawas+"). If the canonical page=3 URL has no products, test
+        # that retailer-generated variant as a diagnostic only.
+        if page3["candidate_count"] == 0 and query:
+            page3_space_url = page_url_from(
+                r1.url or search_url, 3, query + " "
+            )
+            if page3_space_url != page3_url:
+                r3b = session.get(
+                    page3_space_url,
+                    headers=getattr(scraper, "HEADERS", HEADERS),
+                    timeout=getattr(scraper, "TIMEOUT", TIMEOUT),
+                    allow_redirects=True,
+                )
+                page3_space = extract_page(
+                    3, page3_space_url, r3b, query + " "
+                )
+                page3["fallback_trailing_space"] = page3_space
+                if page3_space["candidate_count"] > 0:
+                    page3 = page3_space
+
+        out["pages"].append(page3)
+
+        page_urls = []
+        for entry in out["pages"]:
+            page_urls.extend(entry.get("product_urls") or [])
+
+        unique_page_urls = list(dict.fromkeys(page_urls))
+
+        discover = getattr(scraper, "_discover", None)
+        if discover is None:
+            out["error"] = "_discover not found in deployed Deloox scraper"
+            return out
+
+        # This is the exact deployed discovery path, still read-only.
+        discover_candidates = list(discover(session, query) or [])
+        discover_set = set(discover_candidates)
+        page_set = set(unique_page_urls)
+
+        out["page_product_total"] = len(page_urls)
+        out["unique_product_urls_pages_1_to_3"] = len(unique_page_urls)
+        out["deployed_discover_candidate_count"] = len(discover_candidates)
+        out["deployed_discover_candidates"] = discover_candidates[:100]
+        out["missing_from_deployed_discover"] = [
+            url for url in unique_page_urls if url not in discover_set
+        ][:100]
+        out["discover_only_urls"] = [
+            url for url in discover_candidates if url not in page_set
+        ][:100]
+
+        out["comparison"] = {
+            "page_1_candidates": out["pages"][0]["candidate_count"],
+            "page_2_candidates": out["pages"][1]["candidate_count"],
+            "page_3_candidates": out["pages"][2]["candidate_count"],
+            "pages_1_to_3_unique": len(unique_page_urls),
+            "discover_candidates": len(discover_candidates),
+            "missing_from_discover": len(page_set - discover_set),
+        }
+
+        if len(page_set - discover_set) > 0:
+            out["diagnosis"] = "PAGINATION_NOT_FOLLOWED_BY_DISCOVER"
+        else:
+            out["diagnosis"] = "NO_PAGINATION_GAP_PROVEN"
+
+        state = getattr(scraper, "_LAST_DISCOVERY_STATE", None)
+        if isinstance(state, dict):
+            out["discovery_state_after_discover"] = dict(state)
+
+        out["ok"] = True
+        return out
+
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
         return out
