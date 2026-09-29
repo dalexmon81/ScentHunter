@@ -201,53 +201,6 @@ def _catalog_is_ready():
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
 
-
-def _deloox_catalog_needs_bootstrap():
-    """Return True until the current Deloox catalog bootstrap migration succeeds.
-
-    This fixes the original bootstrap bug: other stores already having URLs
-    caused application startup to skip Deloox forever. The marker is written
-    only after the normal catalog discovery function has successfully persisted
-    a Deloox catalog. User search remains read-only and no retailer search API is
-    involved.
-    """
-    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
-        return False
-    try:
-        conn = catalog_db()
-        try:
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS catalog_bootstrap_migrations ("
-                "migration_id TEXT PRIMARY KEY, completed_at REAL NOT NULL)"
-            )
-            row = conn.execute(
-                "SELECT 1 FROM catalog_bootstrap_migrations WHERE migration_id=?",
-                ('deloox-persistent-catalog-v1',),
-            ).fetchone()
-            conn.commit()
-            return row is None
-        finally:
-            conn.close()
-    except Exception as exc:
-        print(f'DELOOX CATALOG MIGRATION CHECK ERROR: {type(exc).__name__}: {exc}', flush=True)
-        return False
-
-
-def _mark_deloox_catalog_bootstrap_complete():
-    conn = catalog_db()
-    try:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS catalog_bootstrap_migrations ("
-            "migration_id TEXT PRIMARY KEY, completed_at REAL NOT NULL)"
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO catalog_bootstrap_migrations(migration_id,completed_at) VALUES(?,?)",
-            ('deloox-persistent-catalog-v1', time.time()),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
 def _start_catalog_hydration():
     global _CATALOG_HYDRATION_STARTED
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -295,38 +248,6 @@ def _catalog_bootstrap_worker():
     finally:
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_RUNNING = False
-
-def _deloox_catalog_bootstrap_worker():
-    global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
-    with _CATALOG_BOOTSTRAP_LOCK:
-        _CATALOG_BOOTSTRAP_RUNNING = True
-    print('CATALOG BOOTSTRAP START: Deloox catalog missing; running normal discovery', flush=True)
-    try:
-        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
-            raise RuntimeError('catalog_discovery_unavailable')
-        result = catalog_discover_store('deloox')
-        ready = False
-        if isinstance(result, dict):
-            ready = str(result.get('status') or '').upper() == 'DISCOVERY_OK' and int(result.get('count') or 0) > 0
-        if not ready:
-            raise RuntimeError(f'deloox_discovery_not_ready:{result}')
-        _mark_deloox_catalog_bootstrap_complete()
-        _start_catalog_hydration()
-        with _CATALOG_BOOTSTRAP_LOCK:
-            _CATALOG_BOOTSTRAP_DONE = True
-            _CATALOG_BOOTSTRAP_ERROR = None
-        print(
-            f'CATALOG BOOTSTRAP END: Deloox discovery status={result.get("status")} count={result.get("count")}',
-            flush=True,
-        )
-    except Exception as exc:
-        with _CATALOG_BOOTSTRAP_LOCK:
-            _CATALOG_BOOTSTRAP_ERROR = f'{type(exc).__name__}:{exc}'
-        print(f'CATALOG BOOTSTRAP ERROR: {type(exc).__name__}: {exc}', flush=True)
-    finally:
-        with _CATALOG_BOOTSTRAP_LOCK:
-            _CATALOG_BOOTSTRAP_RUNNING = False
-
 
 def _catalog_targeted_resync_worker(job_id):
     global _CATALOG_RESYNC_RUNNING, _CATALOG_RESYNC_FINISHED_AT
@@ -464,20 +385,6 @@ def _start_catalog_bootstrap():
         if _CATALOG_BOOTSTRAP_STARTED:
             return
         _CATALOG_BOOTSTRAP_STARTED = True
-
-    # The persistent catalog is shared by all stores. The old readiness check
-    # treated any indexed store as proof that bootstrap was complete, which
-    # left Deloox permanently stuck at its old catalog. Repair only Deloox here
-    # when its own catalog is absent; normal search remains read-only.
-    if _deloox_catalog_needs_bootstrap():
-        print('CATALOG BOOTSTRAP: Deloox catalog missing; starting Deloox discovery', flush=True)
-        threading.Thread(
-            target=_deloox_catalog_bootstrap_worker,
-            daemon=True,
-            name='scenthunter-deloox-catalog-bootstrap',
-        ).start()
-        return
-
     if _catalog_is_ready():
         with _CATALOG_BOOTSTRAP_LOCK:
             global _CATALOG_BOOTSTRAP_DONE
@@ -495,6 +402,8 @@ def _start_catalog_bootstrap():
 try:
     from diagnose_two_scrapers import router as diagnose_two_scrapers_router
     app.include_router(diagnose_two_scrapers_router)
+    from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
+    app.include_router(diagnose_deloox_scraper_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
