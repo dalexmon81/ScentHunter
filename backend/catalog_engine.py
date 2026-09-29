@@ -854,11 +854,8 @@ def _html_discovery_priority(store, url, depth, source=''):
     else:
         score = 6
 
-    # Deloox exposes hundreds of sibling brand pages from one brand index.
-    # A static A/B/C... score is NOT fair: it still exhausts the early letters
-    # before ever reaching later brands such as Rasasi. The actual round-robin
-    # slot is assigned by _discover_deloox_catalog when a sibling is enqueued;
-    # this helper only returns the structural base priority.
+    # Deeper pages are still valid, but breadth-first behavior should only
+    # break ties between otherwise equivalent catalog surfaces.
     return (score, depth, len(path), url)
 
 def _discover_deloox_catalog(seeds, deadline=None):
@@ -878,11 +875,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
     product_urls = {}
     errors = []
     sequence = 0
-    # Per-leading-letter counters let the brand index be consumed in a true
-    # round-robin: first A/B/C... sibling, then second A/B/C... sibling, etc.
-    # This prevents a bounded crawl from spending its whole budget on A-brands
-    # while still keeping discovery completely query-independent.
-    brand_round_counts = {}
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
 
@@ -907,25 +899,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
-
-        # Only brand-category siblings get round-robin treatment. We derive the
-        # bucket from the URL slug, never from the user's search query. The
-        # tuple is ordered as: structural priority, depth, round, letter, ...
-        # so the first sibling of each leading letter is visited before the
-        # second sibling of any one letter.
-        round_slot = 0
-        letter_rank = 0
-        if re.search(r'^/categorie/\d+/[^/]+-parfum\.html$', path, re.I):
-            last_segment = path.rstrip('/').rsplit('/', 1)[-1]
-            m = re.search(r'([a-z0-9])', last_segment, re.I)
-            if m:
-                letter = m.group(1).lower()
-                letter_rank = ord(letter)
-                round_slot = brand_round_counts.get(letter, 0)
-                brand_round_counts[letter] = round_slot + 1
-
-        queue_priority = (priority[0], priority[1], round_slot, letter_rank, priority[2], priority[3])
-        heapq.heappush(queue, (queue_priority, sequence, key, depth, source))
+        heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
     for seed in seeds:
