@@ -1272,7 +1272,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
     No DB writes, no production search, no hydration, no resync.
     """
     store = str(store or '').strip().lower()
-    diagnostic = 'html-discovery-trace-read-only-v5-dom-product-funnel'
+    diagnostic = 'html-discovery-trace-read-only-block-trace'
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': diagnostic, 'error': f'html_discovery_not_configured:{store}', 'store': store}
 
@@ -1450,10 +1450,12 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             page_product_urls = []
 
             try:
-                # Exact/near-exact text nodes. We report the smallest useful
-                # element plus a bounded outerHTML/text sample so the real
-                # product-card structure can be identified.
+                # Exact/near-exact text nodes. Keep the ORIGINAL BeautifulSoup
+                # node in a parallel list. Do not reconstruct the node later
+                # from truncated text: that can select the wrong node or fail
+                # completely on long text nodes.
                 seen_nodes = set()
+                dom_token_nodes = []
                 for node in soup.find_all(string=True):
                     txt = ' '.join(str(node).split())
                     if not txt:
@@ -1465,7 +1467,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                     parent = node.parent
                     if parent is None:
                         continue
-                    key = (str(parent.name), txt[:300])
+                    key = (id(node), str(parent.name))
                     if key in seen_nodes:
                         continue
                     seen_nodes.add(key)
@@ -1475,28 +1477,21 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                         'tokens_hit': [t for t in required_tokens if t in nt],
                         'outer_html': str(parent)[:1800],
                     })
+                    dom_token_nodes.append(node)
                     if len(dom_token_hits) >= 100:
                         break
 
-                # TARGETED BLOCK TRACE: start from the exact DOM node that
-                # contains at least two query tokens and walk only its
-                # ancestors. This is deliberately narrower than proximity
-                # matching: we want the URL belonging to the same product
-                # card, not an unrelated category link elsewhere on the page.
+                # TARGETED BLOCK TRACE: walk upward from the EXACT original
+                # DOM node. This reveals the real product-card relationship
+                # without proximity guessing and without re-parsing text.
                 dom_target_blocks = []
-                for hit in dom_token_hits[:30]:
-                    # Re-find the smallest matching text node/element.
-                    target_text = hit.get('text', '')
-                    found = None
-                    for node in soup.find_all(string=True):
-                        if ' '.join(str(node).split()) == target_text:
-                            found = node.parent
-                            break
+                for hit, node in list(zip(dom_token_hits, dom_token_nodes))[:30]:
+                    found = node.parent
                     if found is None:
                         continue
                     ancestors = []
                     cur = found
-                    for level in range(0, 6):
+                    for level in range(0, 8):
                         if cur is None:
                             break
                         attrs = {}
@@ -1507,7 +1502,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                                 attrs[attr] = val
                         links = []
                         if hasattr(cur, 'find_all'):
-                            for a in cur.find_all('a', href=True, limit=30):
+                            for a in cur.find_all('a', href=True, limit=50):
                                 links.append({
                                     'href': a.get('href'),
                                     'text': ' '.join(a.get_text(' ', strip=True).split())[:300],
@@ -1515,15 +1510,15 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                         ancestors.append({
                             'level': level,
                             'tag': getattr(cur, 'name', None),
-                            'text': ' '.join(cur.get_text(' ', strip=True).split())[:1200],
+                            'text': ' '.join(cur.get_text(' ', strip=True).split())[:1500],
                             'attrs': attrs,
                             'links': links,
-                            'outer_html': str(cur)[:2500],
+                            'outer_html': str(cur)[:3000],
                         })
                         cur = getattr(cur, 'parent', None)
                     dom_target_blocks.append({
                         'tokens_hit': hit.get('tokens_hit', []),
-                        'text': target_text[:500],
+                        'text': hit.get('text', ''),
                         'ancestors': ancestors,
                     })
                     if len(dom_target_blocks) >= 10:
