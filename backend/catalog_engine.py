@@ -1442,15 +1442,42 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                     if raw:
                         add_candidate('query_attribute', raw, own, attr, context)
 
-            # JSON-LD: only objects whose serialized content contains all
-            # tokens; then inspect their URL field exactly.
-            for obj in _jsonld(soup):
+            # JSON-LD: self-contained diagnostic parsing. This deliberately
+            # does not depend on a module-level _jsonld helper.
+            for node in soup.find_all('script'):
+                script_type = str(node.get('type') or '').lower()
+                if 'ld+json' not in script_type:
+                    continue
+                raw_json = node.string or node.get_text()
+                if not raw_json:
+                    continue
                 try:
-                    blob = norm(json.dumps(obj, ensure_ascii=False))
+                    payload = json.loads(raw_json)
                 except Exception:
-                    blob = norm(str(obj))
-                if has_tokens(blob) and obj.get('url'):
-                    add_candidate('query_jsonld', obj.get('url'), str(obj.get('name') or obj.get('title') or ''), 'url', blob[:1200])
+                    continue
+                stack = list(payload) if isinstance(payload, list) else [payload]
+                while stack:
+                    obj = stack.pop()
+                    if isinstance(obj, list):
+                        stack.extend(obj)
+                        continue
+                    if not isinstance(obj, dict):
+                        continue
+                    try:
+                        blob = norm(json.dumps(obj, ensure_ascii=False))
+                    except Exception:
+                        blob = norm(str(obj))
+                    if has_tokens(blob) and obj.get('url'):
+                        add_candidate(
+                            'query_jsonld',
+                            obj.get('url'),
+                            str(obj.get('name') or obj.get('title') or ''),
+                            'url',
+                            blob[:1200],
+                        )
+                    for value in obj.values():
+                        if isinstance(value, (dict, list)):
+                            stack.append(value)
 
             # Embedded URLs: same extraction family as production, but filtered
             # immediately by the surrounding raw-text window containing the
