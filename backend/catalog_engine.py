@@ -926,15 +926,14 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
-        # The page-level fair ordering is deliberately carried into the
-        # persistent priority queue.  Previously heapq received the full
-        # structural priority tuple (score, depth, path-length, url), which
-        # re-sorted the fair fan-out immediately after it was created.  That
-        # made _fair_catalog_links() effectively useless on large Deloox
-        # indexes and allowed lexical/path ordering to starve branches.
-        # Keep the generic structural score first, then use insertion sequence
-        # as the tie-breaker so the already-fair page order is preserved.
-        heap_priority = (priority[0], priority[1], sequence)
+        # The discovery-priority helper also returns the URL as its final
+        # tie-breaker. That is useful for deterministic generic ordering, but
+        # it defeats the fair-ordering sequence here: the heap compares the
+        # URL before it ever reaches `sequence`, so one lexical branch can
+        # starve other catalog branches until the page budget is exhausted.
+        # Keep only the structural priority fields and let `sequence` provide
+        # the actual FIFO tie-breaker between equivalent catalog branches.
+        heap_priority = (priority[0], priority[1], priority[2])
         heapq.heappush(queue, (heap_priority, sequence, key, depth, source))
         queued.add(key)
 
