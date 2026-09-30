@@ -953,16 +953,12 @@ def _discover_deloox_catalog(seeds, deadline=None):
         add(seed, 0, 'configured_seed')
 
     def add_listing_fanout(items, next_depth, source):
-        # Preserve structural diversity at insertion time. Unlike the previous
-        # implementation, no later heap sort can undo this ordering.
-        local = {}
+        # Every discovered catalog URL gets its own scheduling branch. This
+        # prevents a huge alphabetic bucket (for example all "r..." brand
+        # pages) from hiding later URLs such as another brand/category.
+        # Preserve the exact DOM discovery order; do not sort by URL.
         for item in items:
-            url = item[0]
-            bkey = branch_key(url)
-            local.setdefault(bkey, []).append(item)
-        for bkey in sorted(local):
-            for item in local[bkey]:
-                add(item[0], next_depth, item[2] if len(item) > 2 else source, bkey)
+            add(item[0], next_depth, item[2] if len(item) > 2 else source, item[0])
 
     def process_page(requested, depth, source, result):
         _requested, final, data, error = result
