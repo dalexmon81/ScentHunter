@@ -242,7 +242,8 @@ def _product_url_tokens(url):
     m = re.search(r"/(?:produit|product|producto|prodotto)/\d+/([^/?#]+)", path)
     if not m:
         return set()
-    raw = re.sub(r"[-_]+", " ", m.group(1))
+    raw = re.sub(r"\.(?:html?|php)$", "", m.group(1), flags=re.I)
+    raw = re.sub(r"[-_]+", " ", raw)
     ignored = {
         "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
         "100", "75", "50", "30", "ml", "cl", "spray", "for", "him",
