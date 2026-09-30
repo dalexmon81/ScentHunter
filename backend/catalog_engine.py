@@ -88,6 +88,18 @@ EASY_COSMETIC_HEADERS = {
     'Pragma': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
 }
+DELOOX_USER_AGENT = (
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+)
+DELOOX_HEADERS = {
+    'User-Agent': DELOOX_USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-GB,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+}
 HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
@@ -179,12 +191,22 @@ def _decode_body(data, url=''):
 def _http_fetch(url, timeout=HTTP_TIMEOUT):
     """Fetch with redirects, compression handling and diagnostics."""
     parsed = urllib.parse.urlparse(url)
-    if parsed.netloc.lower() in {'easycosmetic.de', 'www.easycosmetic.de'}:
+    host = parsed.netloc.lower()
+    if host in {'easycosmetic.de', 'www.easycosmetic.de'}:
         # Easycosmetic serves the public storefront to normal browser clients
         # but can stall requests carrying an identifying bot user-agent.
         # Use the same browser-class headers as the production Easycosmetic
         # scraper. This is transport only; discovery remains generic.
         response = _session().get(url, headers=EASY_COSMETIC_HEADERS, timeout=timeout, allow_redirects=True)
+    elif host in {
+        'deloox.be', 'www.deloox.be',
+        'deloox.com', 'www.deloox.com',
+        'deloox.nl', 'www.deloox.nl',
+    }:
+        # Deloox exposes its catalog graph to browser-class requests. Keep
+        # catalog discovery generic, but use the same browser request profile
+        # as the production Deloox scraper instead of ScentHunterBot/7.0.
+        response = _session().get(url, headers=DELOOX_HEADERS, timeout=timeout, allow_redirects=True)
     else:
         response = _session().get(url, timeout=timeout, allow_redirects=True)
     data = _decode_body(response.content, response.url or url)
