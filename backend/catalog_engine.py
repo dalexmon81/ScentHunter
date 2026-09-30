@@ -1272,7 +1272,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
     No DB writes, no production search, no hydration, no resync.
     """
     store = str(store or '').strip().lower()
-    diagnostic = 'html-discovery-trace-read-only-block-trace'
+    diagnostic = 'html-discovery-trace-read-only-filter-mechanism'
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': diagnostic, 'error': f'html_discovery_not_configured:{store}', 'store': store}
 
@@ -1448,6 +1448,134 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             dom_token_hits = []
             script_token_hits = []
             page_product_urls = []
+            filter_mechanism = {
+                'target_filter_nodes': [],
+                'inline_handler_hits': [],
+                'script_hits': [],
+                'external_script_hits': [],
+            }
+
+            try:
+                # GENERIC FILTER-MECHANISM TRACE: Deloox facets can be
+                # represented by data-prpid/data-pvalue-id without an href.
+                # Capture the actual node, nearby event attributes, and the
+                # JS source that implements the filter. Read-only only.
+                target_filter_nodes = []
+                target_pvalue_ids = set()
+                for node in soup.find_all(True):
+                    attrs = getattr(node, 'attrs', {}) or {}
+                    if not attrs.get('data-pvalue-id'):
+                        continue
+                    own = ' '.join(node.get_text(' ', strip=True).split())
+                    if not has_tokens(own):
+                        continue
+                    target_pvalue_ids.add(str(attrs.get('data-pvalue-id')))
+                    selected = {}
+                    for attr in ('data-prpid','data-pvalue-id','data-track','data-filter-id',
+                                 'onclick','class','id','title','data-url','data-href',
+                                 'data-link','data-filter-url','data-option-url'):
+                        val = node.get(attr)
+                        if val:
+                            selected[attr] = val
+                    target_filter_nodes.append({
+                        'tag': node.name,
+                        'text': own[:1000],
+                        'attrs': selected,
+                        'parent_outer_html': str(node.parent)[:4000] if node.parent else '',
+                    })
+                    if len(target_filter_nodes) >= 20:
+                        break
+                filter_mechanism['target_filter_nodes'] = target_filter_nodes
+
+                # Search inline HTML/JS for the exact filter identifiers and
+                # for generic request primitives around them.
+                for script in soup.find_all('script'):
+                    raw_script = script.string or script.get_text() or ''
+                    if not raw_script:
+                        continue
+                    ns = norm(raw_script)
+                    needles = ['data-pvalue-id','data-prpid','j-filter','filter_product-line']
+                    if not any(n in ns for n in needles):
+                        continue
+                    relevant = any(pid in raw_script for pid in target_pvalue_ids) if target_pvalue_ids else True
+                    if not relevant:
+                        continue
+                    request_terms = []
+                    for term in ('fetch(', '$.ajax', '$.get', '$.post', 'XMLHttpRequest',
+                                  '/ajax', '/api/', 'filter', 'facet', 'search'):
+                        if term.lower() in ns:
+                            request_terms.append(term)
+                    filter_mechanism['script_hits'].append({
+                        'type': script.get('type'),
+                        'request_terms': request_terms,
+                        'snippet': raw_script[:12000],
+                    })
+                    if len(filter_mechanism['script_hits']) >= 20:
+                        break
+
+                # If the implementation lives in external storefront JS,
+                # inspect a small number of same-site script assets. This is
+                # read-only and limited to assets referenced by the target page.
+                script_srcs = []
+                for script in soup.find_all('script', src=True):
+                    src = urllib.parse.urljoin(page_base, script.get('src'))
+                    parsed_src = urllib.parse.urlparse(src)
+                    if parsed_src.netloc.lower() != urllib.parse.urlparse(page_base).netloc.lower():
+                        continue
+                    if src not in script_srcs:
+                        script_srcs.append(src)
+                    if len(script_srcs) >= 8:
+                        break
+                for src in script_srcs:
+                    try:
+                        resp = _http_fetch(src, timeout=min(HTTP_TIMEOUT, 8))
+                        raw_js = resp.get('data') or b''
+                        if resp.get('status', 0) >= 400 or not raw_js:
+                            continue
+                        raw_text = raw_js.decode('utf-8', 'ignore')
+                        ns_js = norm(raw_text)
+                        needles = ['data-pvalue-id','data-prpid','j-filter','filter_product-line']
+                        if not any(n in ns_js for n in needles):
+                            continue
+                        request_terms = []
+                        for term in ('fetch(', '$.ajax', '$.get', '$.post', 'XMLHttpRequest',
+                                      '/ajax', '/api/', 'filter', 'facet', 'search'):
+                            if term.lower() in ns_js:
+                                request_terms.append(term)
+                        # Prefer snippets around the exact target pvalue if the
+                        # bundle contains it; otherwise around filter primitives.
+                        positions = [raw_text.find(pid) for pid in target_pvalue_ids if raw_text.find(pid) >= 0]
+                        if not positions:
+                            positions = [min((raw_text.lower().find(n) for n in needles if raw_text.lower().find(n) >= 0), default=0)]
+                        pos = min(positions)
+                        lo = max(0, pos - 2500)
+                        hi = min(len(raw_text), pos + 7000)
+                        filter_mechanism['external_script_hits'].append({
+                            'src': src,
+                            'bytes': len(raw_js),
+                            'request_terms': request_terms,
+                            'snippet': raw_text[lo:hi],
+                        })
+                        if len(filter_mechanism['external_script_hits']) >= 8:
+                            break
+                    except Exception as exc:
+                        continue
+
+                # Capture inline event handlers anywhere in the target block.
+                for node in soup.find_all(True):
+                    attrs = getattr(node, 'attrs', {}) or {}
+                    handlers = {k:v for k,v in attrs.items() if str(k).lower().startswith('on') and v}
+                    if not handlers:
+                        continue
+                    own = ' '.join(node.get_text(' ', strip=True).split())
+                    if has_tokens(own):
+                        filter_mechanism['inline_handler_hits'].append({
+                            'tag': node.name, 'text': own[:500], 'handlers': handlers,
+                        })
+                        if len(filter_mechanism['inline_handler_hits']) >= 20:
+                            break
+            except Exception as exc:
+                filter_mechanism['error'] = f'{type(exc).__name__}:{exc}'
 
             try:
                 # Exact/near-exact text nodes. Keep the ORIGINAL BeautifulSoup
@@ -1593,6 +1721,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                 'page_product_urls': page_product_urls[:300],
                 'page_product_urls_with_all_tokens': [x for x in page_product_urls if x['all_tokens_in_context']],
                 'query_product_hits': [x for x in candidates if x['query_product_hit']],
+                'filter_mechanism': filter_mechanism,
             })
 
     all_candidates = []
@@ -1638,6 +1767,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             'script_token_hits': [x for i in page_inspections for x in i.get('script_token_hits', [])][:30],
             'page_product_urls': [x for i in page_inspections for x in i.get('page_product_urls', [])][:300],
             'page_product_urls_with_all_tokens': [x for i in page_inspections for x in i.get('page_product_urls_with_all_tokens', [])][:100],
+            'filter_mechanism': [i.get('filter_mechanism', {}) for i in page_inspections],
         },
         'diagnosis': diagnosis,
         'elapsed_sec': round(time.time() - started, 2),
