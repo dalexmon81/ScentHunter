@@ -681,12 +681,6 @@ HTML_DISCOVERY_SEEDS = {
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
-
-# Deloox exposes very large category/brand fan-outs. Keep the generic HTML
-# crawler at its existing 800-page contract, but give the dedicated Deloox
-# catalog graph enough budget to traverse all structural branches fairly.
-DELOOX_CATALOG_MAX_PAGES = 1600
-
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -892,34 +886,49 @@ def _html_discovery_priority(store, url, depth, source=''):
     return (score, depth)
 
 def _discover_deloox_catalog(seeds, deadline=None):
-    """Discover Deloox products through its public category graph.
+    """Discover Deloox products through a fair traversal of its public catalog graph.
 
-    Deloox exposes a large amount of catalog navigation in category pages,
-    while sitemap endpoints are frequently unavailable. The crawler therefore
-    traverses the retailer-owned catalog graph directly. Fetches are performed
-    in bounded parallel batches so one slow/large Deloox page cannot consume
-    the entire discovery deadline.
+    Deloox exposes very large category/brand indexes. A single index can fan out
+    into thousands of valid catalog URLs, so a normal heap/priority queue can
+    repeatedly prefer one structural slice and starve other slices before the
+    bounded page budget is exhausted.
 
-    No product name, brand name, product id, or search query is used here.
+    This scheduler is deliberately structural and query-independent: discovered
+    listing URLs are placed into URL buckets and the buckets are visited in true
+    round-robin order. The previous priority heap is intentionally not used
+    here, because it destroyed the interleaving performed by the fan-out
+    classifier.
     """
-    queue = []
+    branch_queues = {}
+    branch_order = []
+    branch_cursor = 0
     queued = set()
     visited = set()
     product_urls = {}
     errors = []
-    sequence = 0
-    max_pages = DELOOX_CATALOG_MAX_PAGES
+    max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
 
-    def add(url, depth, source=''):
-        nonlocal sequence
-        if not url or depth > max_depth or len(queued) >= max_pages * 8:
+    def branch_key(url):
+        p = urllib.parse.urlparse(url)
+        parts = [x for x in (p.path or '').split('/') if x]
+        # For category/brand catalog URLs, the final slug is the most useful
+        # structural branch identifier. This is URL structure only.
+        key = (parts[-1] if parts else p.netloc).lower()
+        return key[0] if key and key[0].isalnum() else '#'
+
+    def add(url, depth, source='', bucket=None):
+        if not url or depth > max_depth:
             return
         key = url.split('#', 1)[0]
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}:
+        allowed_hosts = {
+            urllib.parse.urlparse(x).netloc.lower()
+            for x in _discovery_bases('deloox')
+        }
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
         path = p.path.lower()
         if '/product/' in path:
@@ -930,56 +939,32 @@ def _discover_deloox_catalog(seeds, deadline=None):
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
-        sequence += 1
-        # Deloox has very large category/brand fan-outs. A global URL
-        # priority heap can monopolize the queue with descendants from one
-        # structural branch. Schedule the dedicated catalog graph by depth
-        # first, then by structural URL bucket, so sibling branches receive
-        # deterministic opportunities to be visited.
-        parsed_key = urllib.parse.urlparse(key)
-        path_parts = [p for p in (parsed_key.path or '').split('/') if p]
-        branch_key = (path_parts[-1] if path_parts else parsed_key.netloc).lower()
-        branch_bucket = branch_key[0] if branch_key and branch_key[0].isalnum() else '#'
-        heapq.heappush(queue, (depth, branch_bucket, sequence, key, depth, source))
+        key = listing.split('#', 1)[0]
+        if key in queued or key in visited:
+            return
+        bkey = bucket or branch_key(key)
+        if bkey not in branch_queues:
+            branch_queues[bkey] = []
+            branch_order.append(bkey)
+        branch_queues[bkey].append((key, depth, source))
         queued.add(key)
 
     for seed in seeds:
         add(seed, 0, 'configured_seed')
 
-    def _fair_catalog_links(items):
-        """Interleave large navigation fan-outs by structural URL bucket.
-
-        Deloox brand/category indexes can expose thousands of links from one
-        page. Processing those links in lexical URL order can starve entire
-        parts of the catalog before the page budget expires. Interleaving by
-        the first alphanumeric character of the final path component preserves
-        generic discovery while giving every structural branch an opportunity
-        to be visited.
-        """
-        buckets = {}
+    def add_listing_fanout(items, next_depth, source):
+        # Preserve structural diversity at insertion time. Unlike the previous
+        # implementation, no later heap sort can undo this ordering.
+        local = {}
         for item in items:
             url = item[0]
-            parsed = urllib.parse.urlparse(url)
-            parts = [x for x in (parsed.path or '').split('/') if x]
-            key = (parts[-1] if parts else parsed.netloc).lower()
-            bucket = key[0] if key and key[0].isalnum() else '#'
-            buckets.setdefault(bucket, []).append(item)
-        ordered = []
-        for key in sorted(buckets):
-            buckets[key].sort(key=lambda x: x[0])
-        while buckets:
-            for key in list(sorted(buckets)):
-                values = buckets.get(key)
-                if not values:
-                    buckets.pop(key, None)
-                    continue
-                ordered.append(values.pop(0))
-                if not values:
-                    buckets.pop(key, None)
-        return ordered
+            bkey = branch_key(url)
+            local.setdefault(bkey, []).append(item)
+        for bkey in sorted(local):
+            for item in local[bkey]:
+                add(item[0], next_depth, item[2] if len(item) > 2 else source, bkey)
 
     def process_page(requested, depth, source, result):
-        """Collect products and enqueue catalog/navigation URLs from one page."""
         _requested, final, data, error = result
         if error:
             errors.append(f'{requested} -> {error}')
@@ -987,8 +972,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
-
         anchor_listings = []
+
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
@@ -998,8 +983,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
                 anchor_listings.append((listing, depth + 1, requested))
-        for listing, next_depth, next_source in _fair_catalog_links(anchor_listings):
-            add(listing, next_depth, next_source)
+        add_listing_fanout(anchor_listings, depth + 1, requested)
 
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
@@ -1024,6 +1008,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             raw_html = html.unescape(data.decode('utf-8', 'ignore'))
             raw_html = raw_html.replace('\\/', '/')
             raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            embedded = []
             for match in re.finditer(
                 r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
                 raw_html,
@@ -1037,32 +1022,56 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     continue
                 listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
                 if listing:
-                    add(listing, depth + 1, requested)
+                    embedded.append((listing, depth + 1, requested))
+            add_listing_fanout(embedded, depth + 1, requested)
         except Exception:
             pass
 
+        pagination = []
         for node in soup.find_all(['a', 'link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             href = node.get('href')
             if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
                 listing = _html_listing_url('deloox', href, base, 'pagination')
                 if listing:
-                    add(listing, depth + 1, requested)
+                    pagination.append((listing, depth + 1, requested))
+        add_listing_fanout(pagination, depth + 1, requested)
 
-    # Parallel batches are deliberately bounded by the same HTML worker pool
-    # used by the generic crawler. The queue itself remains priority-ordered,
-    # so high-value catalog surfaces are still preferred without serializing
-    # the network I/O.
-    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
+    def pop_round_robin():
+        nonlocal branch_cursor
+        if not branch_order:
+            return None
+        checked = 0
+        while checked < len(branch_order):
+            if branch_cursor >= len(branch_order):
+                branch_cursor = 0
+            bkey = branch_order[branch_cursor]
+            branch_cursor += 1
+            checked += 1
+            q = branch_queues.get(bkey)
+            if q:
+                item = q.pop(0)
+                if not q:
+                    del branch_queues[bkey]
+                    branch_order.remove(bkey)
+                    if branch_cursor > 0:
+                        branch_cursor -= 1
+                return item
+        return None
+
+    while branch_order and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
-        while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            _depth_key, _branch_bucket, _sequence, url, depth, source = heapq.heappop(queue)
+        while len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
+            item = pop_round_robin()
+            if item is None:
+                break
+            url, depth, source = item
             if url in visited:
                 continue
             visited.add(url)
             batch.append((url, depth, source))
         if not batch:
-            continue
+            break
 
         with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
             futures = {
@@ -1084,7 +1093,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
-
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
