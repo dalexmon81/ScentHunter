@@ -72,7 +72,6 @@ STORE_LABELS.update({
 DISCOVERY_BASES = {
     'deloox': (
         'https://www.deloox.be',
-        'https://www.deloox.com',
     ),
 }
 
@@ -633,34 +632,24 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Broad official catalog surfaces. Both public Deloox hosts are
-        # included because the catalog graph is split across storefronts.
+        # Primary Belgian catalog surfaces. These are broad, retailer-owned
+        # category/index pages; no product or brand is hard-coded here.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
-        'https://www.deloox.com/',
-        'https://www.deloox.com/en/',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
-        'https://www.deloox.com/en/category/1103659/fragrances.html',
+        # English catalog indexes are distinct public surfaces on Deloox;
+        # keep both localized and legacy category roots so the brand/category
+        # graph can reach deeper English product categories generically.
         'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.com/en/category/1063858/brands.html',
         'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.com/en/category/1000003/fragrances.html',
         'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
         'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
         'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.com/category/1063858/brands.html',
         'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.com/category/1000003/fragrances.html',
         'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -883,18 +872,16 @@ def _html_discovery_priority(store, url, depth, source=''):
 
     # Deeper pages are still valid, but breadth-first behavior should only
     # break ties between otherwise equivalent catalog surfaces.
-    return (score, depth)
+    return (score, depth, len(path), url)
 
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox products through its public category graph.
 
-    Deloox exposes a large amount of catalog navigation in category pages,
-    while sitemap endpoints are frequently unavailable. The crawler therefore
-    traverses the retailer-owned catalog graph directly. Fetches are performed
-    in bounded parallel batches so one slow/large Deloox page cannot consume
-    the entire discovery deadline.
-
-    No product name, brand name, product id, or search query is used here.
+    Deloox exposes very large navigation indexes (including thousands of
+    brand/category links) while sitemap endpoints are frequently unavailable.
+    The crawler therefore traverses the retailer-owned catalog graph directly,
+    but uses fair fan-out so one giant index cannot starve the rest of the
+    catalog graph. No product/query-specific information is used.
     """
     queue = []
     queued = set()
@@ -904,6 +891,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
     sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
+    # A single Deloox index can expose thousands of sibling listing URLs.
+    # Keep broad coverage by taking a deterministic, evenly spaced sample
+    # rather than letting lexical heap ordering consume the whole page budget
+    # with the first alphabetical siblings.
+    FAIR_FANOUT = 640
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -913,7 +905,9 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}:
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in {
+            'www.deloox.be', 'deloox.be', 'www.deloox.com', 'deloox.com'
+        }:
             return
         path = p.path.lower()
         if '/product/' in path:
@@ -926,43 +920,44 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return
         sequence += 1
         priority = _html_discovery_priority('deloox', key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
+        heapq.heappush(queue, (priority[0], depth, sequence, key, source))
         queued.add(key)
+
+    def add_fair(listings, depth, source=''):
+        """Enqueue listing links with broad deterministic coverage.
+
+        Small link sets are preserved completely. Very large sibling sets are
+        sampled evenly across their full range so the crawl does not get
+        trapped in the first alphabetical portion of a retailer index.
+        """
+        unique = []
+        seen = set()
+        for item in listings:
+            if not item:
+                continue
+            key = item.split('#', 1)[0]
+            if key in seen or key in queued or key in visited:
+                continue
+            seen.add(key)
+            unique.append(item)
+
+        if len(unique) > FAIR_FANOUT:
+            step = (len(unique) - 1) / float(FAIR_FANOUT - 1)
+            selected = []
+            selected_seen = set()
+            for i in range(FAIR_FANOUT):
+                item = unique[int(round(i * step))]
+                key = item.split('#', 1)[0]
+                if key not in selected_seen:
+                    selected_seen.add(key)
+                    selected.append(item)
+            unique = selected
+
+        for item in unique:
+            add(item, depth, source)
 
     for seed in seeds:
         add(seed, 0, 'configured_seed')
-
-    def _fair_catalog_links(items):
-        """Interleave large navigation fan-outs by structural URL bucket.
-
-        Deloox brand/category indexes can expose thousands of links from one
-        page. Processing those links in lexical URL order can starve entire
-        parts of the catalog before the page budget expires. Interleaving by
-        the first alphanumeric character of the final path component preserves
-        generic discovery while giving every structural branch an opportunity
-        to be visited.
-        """
-        buckets = {}
-        for item in items:
-            url = item[0]
-            parsed = urllib.parse.urlparse(url)
-            parts = [x for x in (parsed.path or '').split('/') if x]
-            key = (parts[-1] if parts else parsed.netloc).lower()
-            bucket = key[0] if key and key[0].isalnum() else '#'
-            buckets.setdefault(bucket, []).append(item)
-        ordered = []
-        for key in sorted(buckets):
-            buckets[key].sort(key=lambda x: x[0])
-        while buckets:
-            for key in list(sorted(buckets)):
-                values = buckets.get(key)
-                if not values:
-                    buckets.pop(key, None)
-                    continue
-                ordered.append(values.pop(0))
-                if not values:
-                    buckets.pop(key, None)
-        return ordered
 
     def process_page(requested, depth, source, result):
         """Collect products and enqueue catalog/navigation URLs from one page."""
@@ -973,8 +968,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
+        listing_links = []
 
-        anchor_listings = []
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
@@ -983,9 +978,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
-                anchor_listings.append((listing, depth + 1, requested))
-        for listing, next_depth, next_source in _fair_catalog_links(anchor_listings):
-            add(listing, next_depth, next_source)
+                listing_links.append(listing)
 
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
@@ -1004,7 +997,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     continue
                 listing = _html_listing_url('deloox', raw, base, label)
                 if listing:
-                    add(listing, depth + 1, requested)
+                    listing_links.append(listing)
 
         try:
             raw_html = html.unescape(data.decode('utf-8', 'ignore'))
@@ -1023,30 +1016,37 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     continue
                 listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
                 if listing:
-                    add(listing, depth + 1, requested)
+                    listing_links.append(listing)
         except Exception:
             pass
 
+        # Pagination is never sampled away: it represents continuation of the
+        # same catalog surface and must remain fully traversable.
+        pagination_links = []
         for node in soup.find_all(['a', 'link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             href = node.get('href')
             if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
                 listing = _html_listing_url('deloox', href, base, 'pagination')
                 if listing:
-                    add(listing, depth + 1, requested)
+                    pagination_links.append(listing)
+
+        for pagination in pagination_links:
+            add(pagination, depth + 1, requested)
+        add_fair(listing_links, depth + 1, requested)
 
     # Parallel batches are deliberately bounded by the same HTML worker pool
-    # used by the generic crawler. The queue itself remains priority-ordered,
-    # so high-value catalog surfaces are still preferred without serializing
-    # the network I/O.
+    # used by the generic crawler. The queue remains structurally prioritized,
+    # but discovery order is now the deterministic tie-breaker instead of URL
+    # lexical order, preventing large indexes from starving later branches.
     while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
         while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            _priority, _sequence, url, depth, source = heapq.heappop(queue)
+            _score, _depth, _sequence, url, source = heapq.heappop(queue)
             if url in visited:
                 continue
             visited.add(url)
-            batch.append((url, depth, source))
+            batch.append((url, _depth, source))
         if not batch:
             continue
 
@@ -1070,7 +1070,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
-
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
