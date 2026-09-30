@@ -2259,6 +2259,21 @@ def refresh_url(store, url):
         return None
 
 
+def _search_db():
+    """Open the catalog database strictly read-only for user-facing search.
+
+    Search must never wait for a discovery/hydration writer to acquire a
+    SQLite write lock. The catalog database is already initialized by the
+    application; a read-only WAL connection is sufficient for search.
+    """
+    uri = f"file:{DB_PATH.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=2)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA query_only=ON')
+    return conn
+
+
 def search_local(query, per_store=32, search_terms=None):
     """Search the persistent retailer catalog without retailer network calls.
 
@@ -2284,7 +2299,7 @@ def search_local(query, per_store=32, search_terms=None):
     if not token_sets:
         return []
 
-    conn = db()
+    conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
 
