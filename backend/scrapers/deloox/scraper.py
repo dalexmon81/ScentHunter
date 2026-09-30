@@ -25,6 +25,7 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
 DELOOX_BASE_URLS = (
     "https://www.deloox.be",
+    "https://www.deloox.nl",
     "https://www.deloox.com",
 )
 TIMEOUT = (3.5, 8.0)
@@ -44,6 +45,8 @@ HEADERS = {
 DELOOX_HOSTS = {
     "deloox.be",
     "www.deloox.be",
+    "deloox.nl",
+    "www.deloox.nl",
     "deloox.com",
     "www.deloox.com",
 }
@@ -233,6 +236,37 @@ def _jsonld(soup):
     return {}
 
 
+def _product_url_tokens(url):
+    """Return meaningful product-name tokens encoded by a retailer URL."""
+    path = urlparse(clean(url)).path.lower()
+    m = re.search(r"/(?:produit|product|producto|prodotto)/\d+/([^/?#]+)", path)
+    if not m:
+        return set()
+    raw = re.sub(r"[-_]+", " ", m.group(1))
+    ignored = {
+        "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
+        "100", "75", "50", "30", "ml", "cl", "spray", "for", "him",
+        "her", "homme", "femme", "men", "women", "unisex",
+    }
+    return {t for t in norm(raw).split() if len(t) > 2 and t not in ignored}
+
+
+def _url_matches_product_name(url, name):
+    """Reject stale retailer URLs whose slug materially disagrees with page name.
+
+    This is generic integrity validation. It prevents a stale URL such as a
+    former product slug from silently becoming a different product when the
+    retailer reuses the underlying product page.
+    """
+    slug_tokens = _product_url_tokens(url)
+    if not slug_tokens:
+        return True
+    name_tokens = tokens(name)
+    # Brand/model tokens may be reordered, but every meaningful slug token
+    # must still be represented by the authoritative product name.
+    return slug_tokens.issubset(name_tokens)
+
+
 def _product(url, html, query):
     soup = BeautifulSoup(html, "html.parser")
     data = _jsonld(soup)
@@ -243,6 +277,13 @@ def _product(url, html, query):
     )
 
     if not name or not matches(name, query):
+        return None
+
+    # The product page is authoritative. If the retailer serves a different
+    # product under a stale/reused URL slug, reject that candidate instead of
+    # silently returning the wrong product. Discovery can then recover the
+    # product from another locale/surface.
+    if not _url_matches_product_name(url, name):
         return None
 
     product_line = ""
@@ -781,10 +822,8 @@ def _discover_from_search(session, query):
                 candidates[url] = True
 
             if found:
-                # Keep collecting successful localized storefronts. Deloox can
-                # expose the same family on different locale surfaces with
-                # different product IDs; one locale may omit a valid variant.
                 selected_endpoint = r.url
+                break
 
     # Follow the same successful search surface.  The loop is bounded and stops
     # immediately when a page produces no new relevant product URLs.
