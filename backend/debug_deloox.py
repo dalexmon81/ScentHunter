@@ -1,613 +1,283 @@
+"""ScentHunter - read-only Deloox real-crawler branch trace.
+
+Temporary diagnostic router. It executes the deployed catalog_engine
+_discover_deloox_catalog() itself and traces the actual nested add/add_fair/
+process_page flow. It never writes the catalog, hydration queue, or sync state.
 """
-ScentHunter — Deloox Born-in-Roma diagnostic.
-
-This is the COMPLETE debug_deloox.py file.
-
-HTTP endpoint:
-    GET /diagnose-deloox-born4
-
-IMPORTANT:
-- Read-only diagnostic.
-- It does NOT call the production Deloox search() function.
-- It does NOT parse the entire Born in Roma catalogue.
-- It only tests the discovery surfaces needed for the four missing variants.
-- Requests are parallelized so the endpoint cannot sit for minutes waiting
-  on sequential Deloox requests.
-"""
-
 from __future__ import annotations
 
-import json
-import re
+import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import quote_plus, urljoin, urlparse
-
-import requests
-from bs4 import BeautifulSoup
-from fastapi import APIRouter
+import traceback
+import urllib.parse
+from fastapi import APIRouter, Query
 
 router = APIRouter()
 
-BASE = "https://www.deloox.be"
-TIMEOUT = (1.0, 2.5)
-MAX_WORKERS = 8
 
-TARGETS = [
-    {
-        "canonical": "Born in Roma Uomo The Gold",
-        "aliases": [
-            "Born in Roma Uomo The Gold",
-            "Born In Roma The Gold Uomo",
-            "Valentino Born In Roma The Gold Uomo",
-            "The Gold Uomo",
-        ],
-        "categories": [
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme.html",
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme.html?page=2",
-        ],
-    },
-    {
-        "canonical": "Born in Roma Uomo Ivory",
-        "aliases": [
-            "Born in Roma Uomo Ivory",
-            "Born In Roma Ivory Uomo",
-            "Valentino Born In Roma Ivory Uomo",
-            "Ivory Uomo",
-        ],
-        "categories": [
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme.html",
-            f"{BASE}/categorie/1075744/eau-de-toilette-homme.html?page=2",
-        ],
-    },
-    {
-        "canonical": "Born in Roma Donna The Gold",
-        "aliases": [
-            "Born in Roma Donna The Gold",
-            "Born In Roma The Gold Donna",
-            "Valentino Born In Roma The Gold Donna",
-            "The Gold Donna",
-        ],
-        "categories": [
-            f"{BASE}/categorie/1075743/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075742/eau-de-parfum-femme.html",
-        ],
-    },
-    {
-        "canonical": "Born in Roma Donna Ivory",
-        "aliases": [
-            "Born in Roma Donna Ivory",
-            "Donna Born in Roma Ivory",
-            "Born In Roma Ivory Donna",
-            "Valentino Donna Born In Roma Ivory",
-            "Ivory Donna",
-        ],
-        "categories": [
-            f"{BASE}/categorie/1075743/eau-de-parfum-femme.html",
-            f"{BASE}/categorie/1075742/eau-de-parfum-femme.html",
-        ],
-    },
-]
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,"
-              "application/json;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-GB,en;q=0.9",
-}
-
-PRODUCT_RE = re.compile(
-    r"(?:https?:\\?/\\?/[^\"'<>\\s]+)?/"
-    r"(?:produit|product|producto|prodotto)/"
-    r"\d+/[^\"'<>\\s?#]+",
-    re.I,
-)
-
-NON_PRODUCT = (
-    "body mist",
-    "body spray",
-    "body lotion",
-    "body cream",
-    "deodorant",
-    "after shave",
-    "aftershave",
-    "shower gel",
-    "hair mist",
-    "hair body mist",
-    "hair and body mist",
-    "body hair mist",
-    "coffret",
-    "cadeau",
-    "gift set",
-    "giftset",
-    "set cadeau",
-    "geschenkset",
-)
+def _norm_url(value: str) -> str:
+    return str(value or "").split("#", 1)[0]
 
 
-def clean(value) -> str:
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+def _has_target(value: str, target: str) -> bool:
+    return str(target or "").strip().lower() in str(value or "").lower()
 
 
-def norm(value) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", clean(value).lower()).strip()
+def _real_deloox_trace(target: str = "Rasasi", max_pages: int = 800, max_depth: int = 8):
+    import catalog_engine as ce
 
+    target = str(target or "Rasasi").strip()
+    if not target:
+        target = "Rasasi"
 
-def tokens(value) -> set[str]:
-    return {x for x in norm(value).split() if len(x) > 1}
-
-
-def request(session: requests.Session, url: str) -> dict:
+    seeds = list(dict.fromkeys(ce.HTML_DISCOVERY_SEEDS.get("deloox", ())))
     started = time.time()
-
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        return {
-            "ok": response.status_code == 200 and bool(response.text),
-            "status": response.status_code,
-            "url": response.url,
-            "bytes": len(response.text or ""),
-            "html": response.text or "",
-            "elapsed": round(time.time() - started, 2),
-            "error": None,
-        }
-
-    except requests.RequestException as exc:
-        return {
-            "ok": False,
-            "status": None,
-            "url": url,
-            "bytes": 0,
-            "html": "",
-            "elapsed": round(time.time() - started, 2),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-
-def is_product_url(url: str) -> bool:
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        return False
-
-    host = parsed.netloc.lower().split(":", 1)[0]
-
-    if host not in {"deloox.be", "www.deloox.be"}:
-        return False
-
-    return bool(
-        re.search(
-            r"/(?:product|produit|producto|prodotto)/\d+/",
-            parsed.path,
-            re.I,
-        )
-    )
-
-
-def normalize_product_url(raw: str) -> str:
-    raw = clean(raw).replace("\\/", "/")
-
-    if not raw:
-        return ""
-
-    if raw.startswith("//"):
-        raw = "https:" + raw
-    elif raw.startswith("/"):
-        raw = urljoin(BASE + "/", raw)
-
-    raw = raw.split("#", 1)[0].split("?", 1)[0]
-
-    return raw if is_product_url(raw) else ""
-
-
-def product_slug(url: str) -> str:
-    try:
-        return clean(urlparse(url).path.rsplit("/", 1)[-1])
-    except Exception:
-        return ""
-
-
-def is_born_product(url: str) -> bool:
-    value = norm(product_slug(url))
-
-    if "born" not in value or "roma" not in value:
-        return False
-
-    return not any(norm(x) in value for x in NON_PRODUCT)
-
-
-def extract_product_urls(html: str) -> list[str]:
-    found = set()
-
-    soup = BeautifulSoup(html or "", "html.parser")
-
-    for anchor in soup.find_all("a", href=True):
-        url = normalize_product_url(anchor.get("href"))
-        if url and not any(
-            norm(x) in norm(product_slug(url))
-            for x in NON_PRODUCT
-        ):
-            found.add(url)
-
-    for raw in PRODUCT_RE.findall(html or ""):
-        url = normalize_product_url(raw)
-        if url:
-            found.add(url)
-
-    return sorted(found)
-
-
-def score_target(url: str, target: dict) -> tuple[float, str]:
-    text = norm(product_slug(url))
-    best = 0.0
-    matched = ""
-
-    for alias in target["aliases"]:
-        wanted = tokens(alias)
-        if not wanted:
-            continue
-
-        hits = sum(token in text for token in wanted)
-        score = hits / len(wanted)
-
-        if {"born", "roma"} <= wanted and {"born", "roma"} <= tokens(text):
-            score += 0.15
-
-        if score > best:
-            best = score
-            matched = alias
-
-    return min(best, 1.0), matched
-
-
-def target_candidates(urls: list[str], target: dict) -> list[dict]:
-    result = []
-
-    for url in urls:
-        if not is_born_product(url):
-            continue
-
-        score, alias = score_target(url, target)
-        slug = product_slug(url)
-
-        words = tokens(slug)
-        distinctive = {"gold", "ivory"} & words
-        gender = {"uomo", "donna"} & words
-
-        if score >= 0.60 or (
-            {"born", "roma"} <= words
-            and distinctive
-            and gender
-        ):
-            result.append({
-                "url": url,
-                "slug": slug,
-                "score": round(score, 3),
-                "matched_alias": alias,
-            })
-
-    result.sort(key=lambda x: (-x["score"], x["url"]))
-    return result
-
-
-def parse_product_page(session: requests.Session, url: str, target: dict) -> dict:
-    response = request(session, url)
-
-    result = {
-        "url": url,
-        "reachable": response["ok"],
-        "status": response["status"],
-        "elapsed": response["elapsed"],
-        "jsonld_names": [],
-        "target_name_match": False,
-        "offers": 0,
-        "error": response["error"],
-    }
-
-    if not response["ok"]:
-        return result
-
-    soup = BeautifulSoup(response["html"], "html.parser")
-
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(script.get_text())
-        except Exception:
-            continue
-
-        stack = list(data) if isinstance(data, list) else [data]
-
-        while stack:
-            item = stack.pop(0)
-
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
-
-            if not isinstance(item, dict):
-                continue
-
-            typ = item.get("@type")
-
-            if typ == "Product" or (
-                isinstance(typ, list) and "Product" in typ
-            ):
-                name = clean(item.get("name"))
-
-                if name:
-                    result["jsonld_names"].append(name)
-
-                    score, _ = score_target(
-                        name.replace(" ", "-"),
-                        target,
-                    )
-
-                    if score >= 0.60:
-                        result["target_name_match"] = True
-
-                offers = item.get("offers")
-
-                if isinstance(offers, dict):
-                    offers = [offers]
-
-                if isinstance(offers, list):
-                    result["offers"] += len(
-                        [x for x in offers if isinstance(x, dict)]
-                    )
-
-            graph = item.get("@graph")
-
-            if isinstance(graph, list):
-                stack.extend(graph)
-
-    return result
-
-
-def parallel_fetch(urls: list[str]) -> dict[str, dict]:
-    results = {}
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(request, requests.Session(), url): url
-            for url in dict.fromkeys(urls)
-        }
-
-        for future in as_completed(futures):
-            url = futures[future]
-
-            try:
-                results[url] = future.result()
-            except Exception as exc:
-                results[url] = {
-                    "ok": False,
-                    "status": None,
-                    "url": url,
-                    "bytes": 0,
-                    "html": "",
-                    "elapsed": 0,
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-
-    return results
-
-
-def run_fast_diagnostic() -> dict:
-    started = time.time()
-
-    # ------------------------------------------------------------
-    # 1. Current production discovery surface:
-    #    /chercher.html?q=Born+in+Roma, pages 1..10.
-    #    Pages are fetched IN PARALLEL, unlike production search().
-    # ------------------------------------------------------------
-    search_urls = []
-
-    for page in range(1, 11):
-        if page == 1:
-            search_urls.append(
-                f"{BASE}/chercher.html?q={quote_plus('Born in Roma')}"
-            )
-        else:
-            search_urls.append(
-                f"{BASE}/chercher.html?q={quote_plus('Born in Roma')}"
-                f"&page={page}"
-            )
-
-    search_responses = parallel_fetch(search_urls)
-
-    search_pages = []
-    search_products = set()
-
-    for page, url in enumerate(search_urls, 1):
-        response = search_responses.get(url, {})
-
-        urls = extract_product_urls(response.get("html", ""))
-
-        born = {
-            x for x in urls
-            if is_born_product(x)
-        }
-
-        search_products.update(born)
-
-        search_pages.append({
-            "page": page,
-            "requested_url": url,
-            "final_url": response.get("url"),
-            "status": response.get("status"),
-            "bytes": response.get("bytes", 0),
-            "elapsed": response.get("elapsed"),
-            "born_urls": sorted(born),
-            "error": response.get("error"),
-        })
-
-    # ------------------------------------------------------------
-    # 2. Category discovery.
-    # ------------------------------------------------------------
-    category_urls = []
-
-    for target in TARGETS:
-        category_urls.extend(target["categories"])
-
-    category_responses = parallel_fetch(category_urls)
-
-    category_products = set()
-    category_pages = []
-
-    for url in dict.fromkeys(category_urls):
-        response = category_responses.get(url, {})
-        urls = extract_product_urls(response.get("html", ""))
-
-        born = {
-            x for x in urls
-            if is_born_product(x)
-        }
-
-        category_products.update(born)
-
-        category_pages.append({
-            "requested_url": url,
-            "final_url": response.get("url"),
-            "status": response.get("status"),
-            "bytes": response.get("bytes", 0),
-            "elapsed": response.get("elapsed"),
-            "born_urls": sorted(born),
-            "error": response.get("error"),
-        })
-
-    # ------------------------------------------------------------
-    # 3. Exact alias searches.
-    #    One page per alias, all aliases in parallel.
-    # ------------------------------------------------------------
-    alias_jobs = []
-
-    for target in TARGETS:
-        for alias in target["aliases"]:
-            alias_jobs.append(
-                (
-                    target["canonical"],
-                    alias,
-                    f"{BASE}/chercher.html?q={quote_plus(alias)}",
-                )
-            )
-
-    alias_responses = parallel_fetch(
-        [job[2] for job in alias_jobs]
-    )
-
-    # ------------------------------------------------------------
-    # 4. Build target-specific candidate sets.
-    # ------------------------------------------------------------
-    all_discovered = sorted(
-        search_products | category_products
-    )
-
-    target_results = {}
-
-    for target in TARGETS:
-        alias_results = []
-        alias_products = set()
-
-        for canonical, alias, url in alias_jobs:
-            if canonical != target["canonical"]:
-                continue
-
-            response = alias_responses.get(url, {})
-            products = {
-                x for x in extract_product_urls(
-                    response.get("html", "")
-                )
-                if is_born_product(x)
-            }
-
-            alias_products.update(products)
-
-            alias_results.append({
-                "query": alias,
-                "requested_url": url,
-                "final_url": response.get("url"),
-                "status": response.get("status"),
-                "bytes": response.get("bytes", 0),
-                "elapsed": response.get("elapsed"),
-                "urls": sorted(products),
-                "error": response.get("error"),
-            })
-
-        candidates = target_candidates(
-            sorted(set(all_discovered) | alias_products),
-            target,
-        )
-
-        # Only parse the top two candidate product pages.
-        parsed = []
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [
-                pool.submit(
-                    parse_product_page,
-                    requests.Session(),
-                    item["url"],
-                    target,
-                )
-                for item in candidates[:2]
-            ]
-
-            for future in futures:
-                try:
-                    parsed.append(future.result())
-                except Exception as exc:
-                    parsed.append({
-                        "error": f"{type(exc).__name__}: {exc}"
-                    })
-
-        target_results[target["canonical"]] = {
-            "found_candidate": bool(candidates),
-            "candidate_url_matches": candidates,
-            "direct_product_parse": parsed,
-            "exact_alias_search": alias_results,
-        }
-
-    return {
-        "diagnostic": "deloox-born-in-roma-4-targets-fast-v3",
+    report = {
+        "diagnostic": "deloox-real-crawler-branch-trace-read-only-v1",
+        "ok": True,
+        "store": "Deloox",
+        "target": target,
         "read_only": True,
         "production_search_called": False,
-        "targets": [x["canonical"] for x in TARGETS],
-        "search_surface": {
-            "pages_checked": 10,
-            "born_product_url_count": len(search_products),
-            "born_product_urls": sorted(search_products),
-            "pages": search_pages,
-        },
-        "category_surface": {
-            "pages_checked": len(set(category_urls)),
-            "born_product_url_count": len(category_products),
-            "born_product_urls": sorted(category_products),
-            "pages": category_pages,
-        },
-        "target_results": target_results,
-        "timing_seconds": round(time.time() - started, 2),
+        "product_matcher_called": False,
+        "database_written": False,
+        "hydration_called": False,
+        "resync_called": False,
+        "catalog_engine_module": getattr(ce, "__file__", None),
+        "discover_function": "_discover_deloox_catalog",
+        "parameters": {"max_pages": max_pages, "max_depth": max_depth},
+        "seeds": seeds,
+        "target_found_in_html": [],
+        "listing_admission": [],
+        "fair_fanout": [],
+        "queue_admission": [],
+        "processed": [],
+        "summary": {},
     }
 
+    target_candidates = []
+    target_seen = set()
+    addfair_calls = 0
+    addfair_target_calls = 0
+    queue_target_seen = set()
+    processed_target_seen = set()
+    eliminated_target_seen = set()
 
-@router.get("/diagnose-deloox-born4")
-def diagnose_deloox_born4():
-    return run_fast_diagnostic()
+    def record_once(bucket, item):
+        key = repr(item)
+        if key in bucket:
+            return False
+        bucket.add(key)
+        return True
+
+    def trace(frame, event, arg):
+        nonlocal addfair_calls, addfair_target_calls
+        name = frame.f_code.co_name
+        if name not in {"process_page", "add_fair", "add", "_discover_deloox_catalog"}:
+            return trace
+
+        loc = frame.f_locals
+
+        # 1/2/3: HTML extraction -> original position -> _html_listing_url result.
+        if name == "process_page":
+            listing_links = loc.get("listing_links")
+            if isinstance(listing_links, list):
+                for idx, value in enumerate(listing_links):
+                    if _has_target(value, target):
+                        key = _norm_url(value)
+                        if key not in target_seen:
+                            target_seen.add(key)
+                            entry = {
+                                "page": loc.get("requested"),
+                                "final": loc.get("final"),
+                                "depth": loc.get("depth"),
+                                "source": loc.get("source"),
+                                "original_position": idx,
+                                "listing_count_at_observation": len(listing_links),
+                                "url": key,
+                                "stage": "listing_links",
+                            }
+                            report["target_found_in_html"].append(entry)
+                            target_candidates.append(key)
+
+        # 4/5: actual add_fair() receives the real listing list and then
+        # performs the real FAIR_FANOUT sampling.
+        if name == "add_fair":
+            listings = loc.get("listings")
+            unique = loc.get("unique")
+            addfair_calls += 1
+
+            if isinstance(listings, list):
+                hits = [
+                    (idx, _norm_url(value))
+                    for idx, value in enumerate(listings)
+                    if _has_target(value, target)
+                ]
+                if hits:
+                    addfair_target_calls += 1
+                    report["fair_fanout"].append({
+                        "event": event,
+                        "phase": "input",
+                        "depth": loc.get("depth"),
+                        "source": loc.get("source"),
+                        "input_count": len(listings),
+                        "target_positions": hits,
+                        "fair_fanout": loc.get("FAIR_FANOUT", 640),
+                    })
+
+            if isinstance(unique, list):
+                hits = [
+                    (idx, _norm_url(value))
+                    for idx, value in enumerate(unique)
+                    if _has_target(value, target)
+                ]
+                if hits:
+                    report["fair_fanout"].append({
+                        "event": event,
+                        "phase": "unique_before_or_after_sampling",
+                        "depth": loc.get("depth"),
+                        "source": loc.get("source"),
+                        "unique_count": len(unique),
+                        "target_positions": hits,
+                        "target_present_after_sampling": True,
+                    })
+
+        # add_fair() does not expose FAIR_FANOUT as a local. Infer it from the
+        # actual function behavior: if input > 640 and target disappears from
+        # unique after line 954, it was eliminated by sampling.
+        if name == "add_fair" and isinstance(loc.get("listings"), list):
+            listings = loc["listings"]
+            target_inputs = [
+                (idx, _norm_url(v))
+                for idx, v in enumerate(listings)
+                if _has_target(v, target)
+            ]
+            unique = loc.get("unique")
+            if target_inputs and isinstance(unique, list):
+                target_unique = [
+                    _norm_url(v) for v in unique if _has_target(v, target)
+                ]
+                if len(listings) > 640 and not target_unique:
+                    for idx, key in target_inputs:
+                        dedupe_key = f"{key}|{idx}|{loc.get('source')}"
+                        if record_once(eliminated_target_seen, dedupe_key):
+                            report["fair_fanout"].append({
+                                "event": event,
+                                "phase": "ELIMINATED_BY_FAIR_FANOUT",
+                                "depth": loc.get("depth"),
+                                "source": loc.get("source"),
+                                "input_count": len(listings),
+                                "target_original_position": idx,
+                                "target_url": key,
+                                "fair_fanout": 640,
+                                "selected": False,
+                            })
+
+        # 6: actual nested add() queue admission. Return events let us inspect
+        # the real queued set after the function body has completed.
+        if name == "add" and _has_target(loc.get("url"), target):
+            url = _norm_url(loc.get("url"))
+            if event == "return":
+                queued = loc.get("queued")
+                visited = loc.get("visited")
+                in_queue = url in queued if isinstance(queued, set) else False
+                already_visited = url in visited if isinstance(visited, set) else False
+                key = f"{url}|{in_queue}|{already_visited}|{loc.get('source')}"
+                if record_once(queue_target_seen, key):
+                    report["queue_admission"].append({
+                        "url": url,
+                        "depth": loc.get("depth"),
+                        "source": loc.get("source"),
+                        "queued": in_queue,
+                        "already_visited": already_visited,
+                        "stage": "add_return",
+                    })
+
+        # 7: after the real crawler completes, final visited/queue state is
+        # inspected below. We deliberately do not alter queue/visited.
+        return trace
+
+    old_trace = sys.gettrace()
+    try:
+        sys.settrace(trace)
+        deadline = time.time() + 120
+        result = ce._discover_deloox_catalog(seeds, deadline)
+    finally:
+        sys.settrace(old_trace)
+
+    # The actual function returns only aggregate state, so the diagnostic
+    # derives the final process/budget conclusion from the traced queue events
+    # and the returned product set. No second crawl is performed.
+    queued_targets = {
+        x["url"] for x in report["queue_admission"] if x.get("queued")
+    }
+    discovered_targets = {
+        x["url"] for x in target_candidates
+    }
+
+    for url in sorted(discovered_targets | queued_targets):
+        processed = False
+        # A target URL appearing as a requested page is observable through the
+        # process_page trace; target pages are the exact URLs the real crawler
+        # fetched, not a synthetic reconstruction.
+        for item in report["target_found_in_html"]:
+            if item.get("page") == url:
+                processed = True
+                break
+        entry = {
+            "url": url,
+            "queued": url in queued_targets,
+            "processed": processed,
+            "conclusion": (
+                "PROCESSED" if processed else
+                "QUEUED_BUT_NOT_PROCESSED_WITHIN_BUDGET" if url in queued_targets else
+                "NOT_QUEUED"
+            ),
+        }
+        report["processed"].append(entry)
+        if processed:
+            processed_target_seen.add(url)
+
+    eliminated = [
+        x for x in report["fair_fanout"]
+        if x.get("phase") == "ELIMINATED_BY_FAIR_FANOUT"
+    ]
+
+    report["summary"] = {
+        "target_found_in_html": bool(report["target_found_in_html"]),
+        "target_html_occurrences": len(report["target_found_in_html"]),
+        "target_passed_to_add_fair": addfair_target_calls > 0,
+        "target_eliminated_by_fair_fanout": bool(eliminated),
+        "target_added_to_queue": any(x.get("queued") for x in report["queue_admission"]),
+        "target_processed": any(x.get("processed") for x in report["processed"]),
+        "target_out_of_budget": any(x.get("conclusion") == "QUEUED_BUT_NOT_PROCESSED_WITHIN_BUDGET" for x in report["processed"]),
+        "add_fair_calls": addfair_calls,
+        "add_fair_target_calls": addfair_target_calls,
+        "crawler_return": {
+            "visited": result.get("visited"),
+            "successes": result.get("successes"),
+            "product_count": len(result.get("product_urls") or {}),
+            "error_count": len(result.get("errors") or []),
+        },
+    }
+    report["elapsed_sec"] = round(time.time() - started, 3)
+    return report
 
 
-if __name__ == "__main__":
-    print(
-        json.dumps(
-            run_fast_diagnostic(),
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+@router.get("/diagnose-deloox-real-branch")
+def diagnose_deloox_real_branch(
+    target: str = Query("Rasasi", min_length=2),
+    max_pages: int = Query(800, ge=1, le=800),
+    max_depth: int = Query(8, ge=0, le=10),
+):
+    try:
+        return _real_deloox_trace(target=target, max_pages=max_pages, max_depth=max_depth)
+    except Exception as exc:
+        return {
+            "diagnostic": "deloox-real-crawler-branch-trace-read-only-v1",
+            "ok": False,
+            "read_only": True,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }
