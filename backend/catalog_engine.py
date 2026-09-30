@@ -72,6 +72,7 @@ STORE_LABELS.update({
 DISCOVERY_BASES = {
     'deloox': (
         'https://www.deloox.be',
+        'https://www.deloox.com',
     ),
 }
 
@@ -632,14 +633,12 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Primary Belgian catalog surfaces. These are broad, retailer-owned
-        # category/index pages; no product or brand is hard-coded here.
+        # Deloox publishes catalog surfaces on more than one official host.
+        # Keep both host surfaces as generic crawler entry points; no product,
+        # brand, or user-query URL is hard-coded here.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
-        # English catalog indexes are distinct public surfaces on Deloox;
-        # keep both localized and legacy category roots so the brand/category
-        # graph can reach deeper English product categories generically.
         'https://www.deloox.be/en/category/1063858/brands.html',
         'https://www.deloox.be/en/category/1000003/fragrances.html',
         'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
@@ -650,6 +649,16 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.be/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
+        # The .com/en catalog is a separate public surface and must be allowed
+        # to seed the same generic category graph.
+        'https://www.deloox.com/',
+        'https://www.deloox.com/en/',
+        'https://www.deloox.com/en/category/1103659/fragrances.html',
+        'https://www.deloox.com/en/category/1063858/brands.html',
+        'https://www.deloox.com/en/category/1000003/fragrances.html',
+        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -902,7 +911,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
+        allowed_hosts = {
+            urllib.parse.urlparse(base).netloc.lower()
+            for base in _discovery_bases('deloox')
+        }
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
         path = p.path.lower()
         if '/product/' in path:
