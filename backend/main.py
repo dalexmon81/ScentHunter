@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid
 try:
-    from product_matcher import ProductMatcher
+    from product_matcher import ProductMatcher, catalog_variant_key
 except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
@@ -555,6 +555,51 @@ def _resolve_offer_identity(result, query):
         match_method = getattr(PRODUCT_MATCHER, "match", None)
         if not callable(match_method):
             raise RuntimeError("ProductMatcher non espone match(offer, query)")
+
+        # Fast path for an exact registered family alias. ProductMatcher remains
+        # the owner of family data and result construction; this only avoids
+        # re-entering its expensive URL-disambiguation loop when the retailer
+        # name already identifies a registered variant exactly.
+        family_resolver = getattr(PRODUCT_MATCHER, "_family_for_query", None)
+        family_builder = getattr(PRODUCT_MATCHER, "_build_family_result", None)
+        family_variant_resolver = getattr(PRODUCT_MATCHER, "_family_variant_for_offer", None)
+        non_fragrance_resolver = getattr(PRODUCT_MATCHER, "_is_non_fragrance_offer", None)
+        if callable(family_resolver) and callable(family_builder):
+            family = family_resolver(str(query or "").strip())
+            if family is not None:
+                if callable(non_fragrance_resolver) and non_fragrance_resolver(matcher_offer):
+                    family = None
+                if family is not None:
+                    offer_brand_resolver = getattr(PRODUCT_MATCHER, "_offer_brand", None)
+                    brand_matcher = getattr(PRODUCT_MATCHER, "_brand_matches", None)
+                    offer_brand = offer_brand_resolver(matcher_offer) if callable(offer_brand_resolver) else ""
+                    family_brand = str(family.get("brand") or "")
+                    brand_ok = True
+                    if offer_brand and callable(brand_matcher):
+                        brand_ok = bool(brand_matcher(offer_brand, family_brand))
+                    raw_name = str(
+                        matcher_offer.get("name")
+                        or matcher_offer.get("title")
+                        or matcher_offer.get("product_name")
+                        or ""
+                    ).strip()
+                    if raw_name and brand_ok:
+                        remove_brand = getattr(PRODUCT_MATCHER, "_remove_brand", None)
+                        candidate = raw_name
+                        if callable(remove_brand):
+                            candidate = remove_brand(candidate, family_brand)
+                        candidate_key = catalog_variant_key(candidate)
+                        exact_variant = None
+                        for variant in family.get("variants") or ():
+                            if candidate_key and candidate_key in (variant.get("normalized_aliases") or ()):
+                                exact_variant = variant
+                                break
+                        if exact_variant is not None:
+                            fast_match = family_builder(matcher_offer, family, exact_variant)
+                            if isinstance(fast_match, dict):
+                                fast_match["_match_status"] = "matched"
+                                fast_match["_reject_reason"] = None
+                                return fast_match
 
         # IMPORTANT: some retailer APIs put their own vendor/store name in
         # nested source metadata. ProductMatcher is allowed to fall back to
