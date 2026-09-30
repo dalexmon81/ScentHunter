@@ -1272,7 +1272,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
     No DB writes, no production search, no hydration, no resync.
     """
     store = str(store or '').strip().lower()
-    diagnostic = 'html-discovery-trace-read-only-v4-raw-token-funnel'
+    diagnostic = 'html-discovery-trace-read-only-v5-dom-product-funnel'
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': diagnostic, 'error': f'html_discovery_not_configured:{store}', 'store': store}
 
@@ -1442,115 +1442,98 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                     if raw:
                         add_candidate('query_attribute', raw, own, attr, context)
 
-            # STAGE 2B: raw-token neighborhood.
-            # The previous stage found zero DOM-associated candidates. Do not
-            # guess the selector; inspect the actual bytes around every token
-            # occurrence and extract only URLs occurring in that neighborhood.
-            raw_token_candidates = []
+            # STAGE 2B (V5): identify the exact DOM/script location of the
+            # target tokens, then inspect product-shaped URLs already present
+            # on that same page. No proximity guessing and no production writes.
+            dom_token_hits = []
+            script_token_hits = []
+            page_product_urls = []
+
             try:
-                raw_html = html.unescape(data.decode('utf-8', 'ignore'))
-                raw_html = raw_html.replace('\\/', '/').replace('\\u002F', '/').replace('\\u002f', '/')
-                url_re2 = re.compile(r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+", re.I)
-                lower_raw = norm(raw_html)
-                positions = []
-                for token in required_tokens:
-                    start = 0
-                    while True:
-                        pos = lower_raw.find(token, start)
-                        if pos < 0:
-                            break
-                        positions.append((pos, token))
-                        start = pos + len(token)
-                        if len(positions) >= 300:
-                            break
-                    if len(positions) >= 300:
+                # Exact/near-exact text nodes. We report the smallest useful
+                # element plus a bounded outerHTML/text sample so the real
+                # product-card structure can be identified.
+                seen_nodes = set()
+                for node in soup.find_all(string=True):
+                    txt = ' '.join(str(node).split())
+                    if not txt:
+                        continue
+                    nt = norm(txt)
+                    hit_count = sum(1 for t in required_tokens if t in nt)
+                    if hit_count < 2:
+                        continue
+                    parent = node.parent
+                    if parent is None:
+                        continue
+                    key = (str(parent.name), txt[:300])
+                    if key in seen_nodes:
+                        continue
+                    seen_nodes.add(key)
+                    dom_token_hits.append({
+                        'tag': parent.name,
+                        'text': txt[:500],
+                        'tokens_hit': [t for t in required_tokens if t in nt],
+                        'outer_html': str(parent)[:1800],
+                    })
+                    if len(dom_token_hits) >= 100:
                         break
-                seen_raw = set()
-                host_patterns = {urllib.parse.urlparse(base).netloc.lower() for base in _discovery_bases(store)}
-                for pos, token in positions:
-                    lo = max(0, pos - 2500)
-                    hi = min(len(raw_html), pos + 2500)
-                    context = raw_html[lo:hi]
-                    for m in url_re2.finditer(context):
-                        raw = m.group(0)
-                        absolute = urllib.parse.urljoin(page_base, raw).split('#', 1)[0]
-                        parsed = urllib.parse.urlparse(absolute)
-                        if parsed.netloc.lower() not in host_patterns:
-                            continue
-                        key = absolute
-                        if key in seen_raw:
-                            continue
-                        seen_raw.add(key)
-                        result = classify_reason(raw, page_base)
-                        raw_token_candidates.append({
-                            'token': token,
-                            'raw_url': raw,
-                            'normalized_url': result['normalized_url'],
-                            'classification': result['classification'],
-                            'reason': result['reason'],
-                            'context': context[max(0, m.start()-350):min(len(context), m.end()+350)],
-                        })
+
+                # Search scripts separately: modern storefronts often keep
+                # product cards/URLs in JSON or hydration state rather than
+                # visible anchors.
+                for script in soup.find_all('script'):
+                    raw_script = script.string or script.get_text() or ''
+                    if not raw_script:
+                        continue
+                    ns = norm(raw_script)
+                    hit_count = sum(1 for t in required_tokens if t in ns)
+                    if hit_count < 2:
+                        continue
+                    positions = []
+                    for token in required_tokens:
+                        pos = ns.find(token)
+                        if pos >= 0:
+                            positions.append((pos, token))
+                    pos = min((x[0] for x in positions), default=0)
+                    lo = max(0, pos - 1200)
+                    hi = min(len(raw_script), pos + 3000)
+                    script_token_hits.append({
+                        'type': script.get('type'),
+                        'tokens_hit': [t for t in required_tokens if t in ns],
+                        'snippet': raw_script[lo:hi],
+                    })
+                    if len(script_token_hits) >= 30:
+                        break
+
+                # IMPORTANT: enumerate product-shaped URLs independently of
+                # token proximity. This answers whether the target page
+                # actually exposes product URLs to the discovery extractor.
+                for a in soup.find_all('a', href=True):
+                    raw = a.get('href')
+                    result = classify_reason(raw, page_base)
+                    if result['classification'] != 'PRODUCT':
+                        continue
+                    label = ' '.join(filter(None, [
+                        a.get_text(' ', strip=True),
+                        a.get('title'), a.get('aria-label'), a.get('data-product-name')
+                    ]))
+                    parent = a.parent
+                    parent_text = parent.get_text(' ', strip=True)[:1200] if parent else ''
+                    grand = parent.parent if parent is not None else None
+                    grand_text = grand.get_text(' ', strip=True)[:1800] if grand else ''
+                    blob = norm(' '.join([label, parent_text, grand_text, result['normalized_url']]))
+                    page_product_urls.append({
+                        'raw_url': raw,
+                        'normalized_url': result['normalized_url'],
+                        'label': label[:500],
+                        'tokens_in_context': [t for t in required_tokens if t in blob],
+                        'all_tokens_in_context': has_tokens(blob),
+                        'context': (label or parent_text or grand_text)[:1800],
+                    })
+                    if len(page_product_urls) >= 300:
+                        break
             except Exception as exc:
-                raw_token_candidates = [{'error': f'{type(exc).__name__}:{exc}'}]
-
-            # JSON-LD: self-contained diagnostic parsing. This deliberately
-            # does not depend on a module-level _jsonld helper.
-            for node in soup.find_all('script'):
-                script_type = str(node.get('type') or '').lower()
-                if 'ld+json' not in script_type:
-                    continue
-                raw_json = node.string or node.get_text()
-                if not raw_json:
-                    continue
-                try:
-                    payload = json.loads(raw_json)
-                except Exception:
-                    continue
-                stack = list(payload) if isinstance(payload, list) else [payload]
-                while stack:
-                    obj = stack.pop()
-                    if isinstance(obj, list):
-                        stack.extend(obj)
-                        continue
-                    if not isinstance(obj, dict):
-                        continue
-                    try:
-                        blob = norm(json.dumps(obj, ensure_ascii=False))
-                    except Exception:
-                        blob = norm(str(obj))
-                    if has_tokens(blob) and obj.get('url'):
-                        add_candidate(
-                            'query_jsonld',
-                            obj.get('url'),
-                            str(obj.get('name') or obj.get('title') or ''),
-                            'url',
-                            blob[:1200],
-                        )
-                    for value in obj.values():
-                        if isinstance(value, (dict, list)):
-                            stack.append(value)
-
-            # Embedded URLs: same extraction family as production, but filtered
-            # immediately by the surrounding raw-text window containing the
-            # complete query. This is the decisive narrowing stage.
-            try:
-                raw_html = html.unescape(data.decode('utf-8', 'ignore'))
-                raw_html = raw_html.replace('\\/', '/').replace('\\u002F', '/').replace('\\u002f', '/')
-                host_patterns = {urllib.parse.urlparse(base).netloc.lower() for base in _discovery_bases(store)}
-                url_re = re.compile(r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+", re.I)
-                for m in url_re.finditer(raw_html):
-                    lo = max(0, m.start() - 900)
-                    hi = min(len(raw_html), m.end() + 900)
-                    context = raw_html[lo:hi]
-                    if not has_tokens(context):
-                        continue
-                    absolute = urllib.parse.urljoin(page_base, m.group(0)).split('#', 1)[0]
-                    parsed = urllib.parse.urlparse(absolute)
-                    if parsed.netloc.lower() not in host_patterns:
-                        continue
-                    add_candidate('query_embedded', m.group(0), '', None, context)
-            except Exception:
-                pass
+                dom_token_hits.append({'error': f'{type(exc).__name__}:{exc}'})
 
             page_inspections.append({
                 'page': query_pages[-1],
@@ -1558,6 +1541,10 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                 'candidates': candidates[:200],
                 'raw_token_candidate_count': len(raw_token_candidates),
                 'raw_token_candidates': raw_token_candidates[:300],
+                'dom_token_hits': dom_token_hits[:100],
+                'script_token_hits': script_token_hits[:30],
+                'page_product_urls': page_product_urls[:300],
+                'page_product_urls_with_all_tokens': [x for x in page_product_urls if x['all_tokens_in_context']],
                 'query_product_hits': [x for x in candidates if x['query_product_hit']],
             })
 
@@ -1600,6 +1587,10 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             'rejected_target_candidates': [x for x in all_candidates if x['classification'] != 'PRODUCT'][:200],
             'page_inspections': page_inspections,
             'raw_token_candidates': [x for i in page_inspections for x in i.get('raw_token_candidates', [])][:300],
+            'dom_token_hits': [x for i in page_inspections for x in i.get('dom_token_hits', [])][:100],
+            'script_token_hits': [x for i in page_inspections for x in i.get('script_token_hits', [])][:30],
+            'page_product_urls': [x for i in page_inspections for x in i.get('page_product_urls', [])][:300],
+            'page_product_urls_with_all_tokens': [x for i in page_inspections for x in i.get('page_product_urls_with_all_tokens', [])][:100],
         },
         'diagnosis': diagnosis,
         'elapsed_sec': round(time.time() - started, 2),
