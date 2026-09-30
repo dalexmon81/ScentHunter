@@ -404,8 +404,8 @@ try:
     app.include_router(diagnose_two_scrapers_router)
     from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
     app.include_router(diagnose_deloox_scraper_router)
-    from diagnose_deloox_catalog_pipeline import router as diagnose_deloox_catalog_pipeline_router
-    app.include_router(diagnose_deloox_catalog_pipeline_router)
+    from debug_deloox import router as debug_deloox_router
+    app.include_router(debug_deloox_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
