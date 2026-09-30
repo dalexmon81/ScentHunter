@@ -684,8 +684,7 @@ HTML_WORKERS = 12
 
 # Deloox exposes very large category/brand fan-outs. Keep the generic HTML
 # crawler at its existing 800-page contract, but give the dedicated Deloox
-# catalog graph enough page budget to traverse beyond the first 800 branches.
-# This is structural discovery only; it does not depend on product/query data.
+# catalog graph enough page budget to traverse the catalog graph structurally.
 DELOOX_CATALOG_MAX_PAGES = 1600
 
 DISCOVERY_HARD_TIMEOUT = 300
@@ -932,8 +931,14 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if not listing:
             return
         sequence += 1
-        priority = _html_discovery_priority('deloox', key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
+        # The dedicated Deloox catalog graph is traversed breadth-first.
+        # Priority scoring is useful for the generic crawler, but here it can
+        # let deeper "high priority" branches from one seed overtake direct
+        # category branches from another seed. With Deloox's very large brand
+        # index, that can starve entire catalog branches before their category
+        # pages are ever fetched. Depth-first queue ordering keeps discovery
+        # structural and gives every seed-derived branch the same opportunity.
+        heapq.heappush(queue, (depth, sequence, key, depth, source))
         queued.add(key)
 
     for seed in seeds:
