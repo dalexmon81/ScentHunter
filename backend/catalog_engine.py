@@ -1272,7 +1272,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
     No DB writes, no production search, no hydration, no resync.
     """
     store = str(store or '').strip().lower()
-    diagnostic = 'html-discovery-trace-read-only-v3-funnel'
+    diagnostic = 'html-discovery-trace-read-only-v4-raw-token-funnel'
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': diagnostic, 'error': f'html_discovery_not_configured:{store}', 'store': store}
 
@@ -1442,6 +1442,57 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                     if raw:
                         add_candidate('query_attribute', raw, own, attr, context)
 
+            # STAGE 2B: raw-token neighborhood.
+            # The previous stage found zero DOM-associated candidates. Do not
+            # guess the selector; inspect the actual bytes around every token
+            # occurrence and extract only URLs occurring in that neighborhood.
+            raw_token_candidates = []
+            try:
+                raw_html = html.unescape(data.decode('utf-8', 'ignore'))
+                raw_html = raw_html.replace('\\/', '/').replace('\\u002F', '/').replace('\\u002f', '/')
+                url_re2 = re.compile(r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+", re.I)
+                lower_raw = norm(raw_html)
+                positions = []
+                for token in required_tokens:
+                    start = 0
+                    while True:
+                        pos = lower_raw.find(token, start)
+                        if pos < 0:
+                            break
+                        positions.append((pos, token))
+                        start = pos + len(token)
+                        if len(positions) >= 300:
+                            break
+                    if len(positions) >= 300:
+                        break
+                seen_raw = set()
+                host_patterns = {urllib.parse.urlparse(base).netloc.lower() for base in _discovery_bases(store)}
+                for pos, token in positions:
+                    lo = max(0, pos - 2500)
+                    hi = min(len(raw_html), pos + 2500)
+                    context = raw_html[lo:hi]
+                    for m in url_re2.finditer(context):
+                        raw = m.group(0)
+                        absolute = urllib.parse.urljoin(page_base, raw).split('#', 1)[0]
+                        parsed = urllib.parse.urlparse(absolute)
+                        if parsed.netloc.lower() not in host_patterns:
+                            continue
+                        key = absolute
+                        if key in seen_raw:
+                            continue
+                        seen_raw.add(key)
+                        result = classify_reason(raw, page_base)
+                        raw_token_candidates.append({
+                            'token': token,
+                            'raw_url': raw,
+                            'normalized_url': result['normalized_url'],
+                            'classification': result['classification'],
+                            'reason': result['reason'],
+                            'context': context[max(0, m.start()-350):min(len(context), m.end()+350)],
+                        })
+            except Exception as exc:
+                raw_token_candidates = [{'error': f'{type(exc).__name__}:{exc}'}]
+
             # JSON-LD: self-contained diagnostic parsing. This deliberately
             # does not depend on a module-level _jsonld helper.
             for node in soup.find_all('script'):
@@ -1505,6 +1556,8 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                 'page': query_pages[-1],
                 'candidate_count': len(candidates),
                 'candidates': candidates[:200],
+                'raw_token_candidate_count': len(raw_token_candidates),
+                'raw_token_candidates': raw_token_candidates[:300],
                 'query_product_hits': [x for x in candidates if x['query_product_hit']],
             })
 
@@ -1546,6 +1599,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             'product_classification_hits': product_classification_hits[:100],
             'rejected_target_candidates': [x for x in all_candidates if x['classification'] != 'PRODUCT'][:200],
             'page_inspections': page_inspections,
+            'raw_token_candidates': [x for i in page_inspections for x in i.get('raw_token_candidates', [])][:300],
         },
         'diagnosis': diagnosis,
         'elapsed_sec': round(time.time() - started, 2),
