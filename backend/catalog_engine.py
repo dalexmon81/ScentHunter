@@ -681,6 +681,13 @@ HTML_DISCOVERY_SEEDS = {
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
+
+# Deloox exposes very large category/brand fan-outs. Keep the generic HTML
+# crawler at its existing 800-page contract, but give the dedicated Deloox
+# catalog graph enough page budget to traverse beyond the first 800 branches.
+# This is structural discovery only; it does not depend on product/query data.
+DELOOX_CATALOG_MAX_PAGES = 1600
+
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -902,7 +909,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
     product_urls = {}
     errors = []
     sequence = 0
-    max_pages = min(800, HTML_MAX_PAGES)
+    max_pages = DELOOX_CATALOG_MAX_PAGES
     max_depth = min(10, HTML_MAX_DEPTH)
 
     def add(url, depth, source=''):
