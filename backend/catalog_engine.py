@@ -1478,6 +1478,57 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                     if len(dom_token_hits) >= 100:
                         break
 
+                # TARGETED BLOCK TRACE: start from the exact DOM node that
+                # contains at least two query tokens and walk only its
+                # ancestors. This is deliberately narrower than proximity
+                # matching: we want the URL belonging to the same product
+                # card, not an unrelated category link elsewhere on the page.
+                dom_target_blocks = []
+                for hit in dom_token_hits[:30]:
+                    # Re-find the smallest matching text node/element.
+                    target_text = hit.get('text', '')
+                    found = None
+                    for node in soup.find_all(string=True):
+                        if ' '.join(str(node).split()) == target_text:
+                            found = node.parent
+                            break
+                    if found is None:
+                        continue
+                    ancestors = []
+                    cur = found
+                    for level in range(0, 6):
+                        if cur is None:
+                            break
+                        attrs = {}
+                        for attr in ('href','data-url','data-href','data-link','data-product-url',
+                                     'data-product-link','data-product','data-id','id','class'):
+                            val = cur.get(attr) if hasattr(cur, 'get') else None
+                            if val:
+                                attrs[attr] = val
+                        links = []
+                        if hasattr(cur, 'find_all'):
+                            for a in cur.find_all('a', href=True, limit=30):
+                                links.append({
+                                    'href': a.get('href'),
+                                    'text': ' '.join(a.get_text(' ', strip=True).split())[:300],
+                                })
+                        ancestors.append({
+                            'level': level,
+                            'tag': getattr(cur, 'name', None),
+                            'text': ' '.join(cur.get_text(' ', strip=True).split())[:1200],
+                            'attrs': attrs,
+                            'links': links,
+                            'outer_html': str(cur)[:2500],
+                        })
+                        cur = getattr(cur, 'parent', None)
+                    dom_target_blocks.append({
+                        'tokens_hit': hit.get('tokens_hit', []),
+                        'text': target_text[:500],
+                        'ancestors': ancestors,
+                    })
+                    if len(dom_target_blocks) >= 10:
+                        break
+
                 # Search scripts separately: modern storefronts often keep
                 # product cards/URLs in JSON or hydration state rather than
                 # visible anchors.
@@ -1542,6 +1593,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
                 'raw_token_candidate_count': len(candidates),
                 'raw_token_candidates': candidates[:300],
                 'dom_token_hits': dom_token_hits[:100],
+                'dom_target_blocks': dom_target_blocks[:10],
                 'script_token_hits': script_token_hits[:30],
                 'page_product_urls': page_product_urls[:300],
                 'page_product_urls_with_all_tokens': [x for x in page_product_urls if x['all_tokens_in_context']],
