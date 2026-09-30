@@ -891,20 +891,15 @@ def _html_discovery_priority(store, url, depth, source=''):
     # no specific retailer brand, product name, product id, or user query is used.
     if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
-    # Deloox exposes individual brand/category landing pages as the main
-    # catalog graph. They must not be starved behind generic category pages:
-    # a single brand landing page can contain the complete product-link set for
-    # that brand, including product lines that exist only as non-link facets on
-    # broad category pages. Keep both structural surfaces at the same priority.
-    elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
-        score = 1
-    elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
-        score = 1
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
     # id, or user query is used.
     elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
+        score = 1
+    elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
         score = 2
+    elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
+        score = 3
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
     elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
@@ -964,7 +959,17 @@ def _discover_deloox_catalog(seeds, deadline=None):
         # insertion sequence as the deterministic FIFO tie-breaker between
         # equivalent catalog branches. This preserves the fair fan-out
         # ordering without depending on a non-existent priority[2].
-        heap_priority = (priority[0], priority[1], sequence)
+        # Deloox catalog indexes can expose thousands of sibling category/brand
+        # pages. A plain (score, depth, sequence) heap still exhausts the
+        # earliest lexical branch before later branches receive a turn.
+        # Distribute equivalent catalog pages across deterministic URL buckets
+        # so a bounded discovery run samples the whole catalog graph instead
+        # of starving later alphabetical branches. This uses only URL shape.
+        parts = [part for part in p.path.split('/') if part]
+        leaf = (parts[-1] if parts else p.netloc).lower()
+        bucket_char = next((ch for ch in leaf if ch.isalnum()), '#')
+        bucket_rank = (ord(bucket_char) - ord('a')) if 'a' <= bucket_char <= 'z' else 26
+        heap_priority = (priority[0], priority[1], bucket_rank, sequence)
         heapq.heappush(queue, (heap_priority, sequence, key, depth, source))
         queued.add(key)
 
