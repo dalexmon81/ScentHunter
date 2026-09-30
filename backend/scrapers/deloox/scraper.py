@@ -25,6 +25,7 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
 DELOOX_BASE_URLS = (
     "https://www.deloox.be",
+    "https://www.deloox.com",
 )
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
@@ -43,6 +44,8 @@ HEADERS = {
 DELOOX_HOSTS = {
     "deloox.be",
     "www.deloox.be",
+    "deloox.com",
+    "www.deloox.com",
 }
 
 # Discovery state is diagnostic/contract state only. It never decides identity.
@@ -722,10 +725,10 @@ def _search_endpoints(query):
 def _discover_from_search(session, query):
     """Primary Deloox discovery with bounded pagination.
 
-    Deloox can expose a valid search result on a later page even when an
-    intermediate page repeats already-seen product URLs.  Pagination therefore
-    must not stop merely because one page adds no new candidates.  We continue
-    through the bounded page window and stop only on a failed/empty HTTP page.
+    Deloox serves search results in pages.  A successful first page is therefore
+    not the complete discovery result.  After the first successful search
+    surface is found, follow its numbered ``page`` parameter until no new
+    product URLs are returned or MAX_SEARCH_PAGES is reached.
 
     This remains generic: no product, brand, SKU or variant is encoded here.
     """
@@ -754,8 +757,8 @@ def _discover_from_search(session, query):
         except requests.RequestException:
             return endpoint, None
 
-    # Probe the public search surfaces in parallel and select the first surface
-    # that actually exposes relevant product URLs.
+    # Keep the existing bounded parallel probe for the public search surfaces.
+    # Pagination starts only after one surface has returned relevant products.
     with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
         for future in as_completed(futures):
@@ -778,12 +781,13 @@ def _discover_from_search(session, query):
                 candidates[url] = True
 
             if found:
+                # Keep collecting successful localized storefronts. Deloox can
+                # expose the same family on different locale surfaces with
+                # different product IDs; one locale may omit a valid variant.
                 selected_endpoint = r.url
-                break
 
-    # Follow the same successful search surface.  Do NOT stop on a page that
-    # merely repeats earlier candidates: retailer pagination can legitimately
-    # expose an additional valid product on a later page.
+    # Follow the same successful search surface.  The loop is bounded and stops
+    # immediately when a page produces no new relevant product URLs.
     if selected_endpoint:
         parsed = urlparse(selected_endpoint)
         params = parse_qsl(parsed.query, keep_blank_values=True)
@@ -822,8 +826,12 @@ def _discover_from_search(session, query):
                 base_url=base,
             )
 
+            before = len(candidates)
             for url in found:
                 candidates[url] = True
+
+            if len(candidates) == before:
+                break
 
     global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
@@ -831,6 +839,7 @@ def _discover_from_search(session, query):
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
+
 
 def _category_product_line_links(html, query):
     """Extract generic category/filter links whose visible text matches query.
