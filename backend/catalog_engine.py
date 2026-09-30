@@ -965,11 +965,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         # Distribute equivalent catalog pages across deterministic URL buckets
         # so a bounded discovery run samples the whole catalog graph instead
         # of starving later alphabetical branches. This uses only URL shape.
-        parts = [part for part in p.path.split('/') if part]
-        leaf = (parts[-1] if parts else p.netloc).lower()
-        bucket_char = next((ch for ch in leaf if ch.isalnum()), '#')
-        bucket_rank = (ord(bucket_char) - ord('a')) if 'a' <= bucket_char <= 'z' else 26
-        heap_priority = (priority[0], priority[1], bucket_rank, sequence)
+        # _fair_catalog_links() already interleaves large fan-outs by URL
+        # bucket before they enter this queue. Do not add another bucket
+        # component here: doing so would globally sort A/B/C/... again and
+        # undo the round-robin ordering we just established.
+        heap_priority = (priority[0], priority[1], sequence)
         heapq.heappush(queue, (heap_priority, sequence, key, depth, source))
         queued.add(key)
 
