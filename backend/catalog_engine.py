@@ -891,15 +891,20 @@ def _html_discovery_priority(store, url, depth, source=''):
     # no specific retailer brand, product name, product id, or user query is used.
     if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
+    # Deloox exposes individual brand/category landing pages as the main
+    # catalog graph. They must not be starved behind generic category pages:
+    # a single brand landing page can contain the complete product-link set for
+    # that brand, including product lines that exist only as non-link facets on
+    # broad category pages. Keep both structural surfaces at the same priority.
+    elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
+        score = 1
+    elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
+        score = 1
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
     # id, or user query is used.
     elif any(term in text for term in ('fragrance', 'fragrances', 'perfume', 'parfum', 'parfums', 'profumi', 'perfumes')):
-        score = 1
-    elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
         score = 2
-    elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
-        score = 3
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
     elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
@@ -1261,76 +1266,36 @@ def _discover_html_catalog(store, seeds, deadline=None):
     }
 
 
-def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, max_events=300):
-    """READ-ONLY funnel diagnostic for one target product.
-
-    Stage 1: reach pages containing all query tokens.
-    Stage 2: inspect only HTML nodes/attributes associated with those tokens.
-    Stage 3: show the exact raw URL, normalized URL, product classifier result,
-    and the precise generic URL-shape rejection reason.
-
-    No DB writes, no production search, no hydration, no resync.
-    """
+def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
+    """READ-ONLY trace of the generic HTML discovery graph."""
     store = str(store or '').strip().lower()
-    diagnostic = 'html-discovery-trace-read-only-filter-mechanism'
     if store not in HTML_DISCOVERY_SEEDS:
-        return {'ok': False, 'diagnostic': diagnostic, 'error': f'html_discovery_not_configured:{store}', 'store': store}
+        return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
+                'error': f'html_discovery_not_configured:{store}', 'store': store}
 
     try:
-        max_pages = max(1, min(int(max_pages or 40), 40))
+        max_pages = max(1, min(int(max_pages or 120), HTML_MAX_PAGES))
     except Exception:
-        max_pages = 40
+        max_pages = 120
     try:
-        max_depth = max(0, min(int(max_depth if max_depth is not None else 8), HTML_MAX_DEPTH))
+        max_depth = max(0, min(int(max_depth if max_depth is not None else HTML_MAX_DEPTH), HTML_MAX_DEPTH))
     except Exception:
-        max_depth = 8
+        max_depth = HTML_MAX_DEPTH
     try:
-        max_events = max(50, min(int(max_events or 300), 1000))
+        max_events = max(50, min(int(max_events or 500), 2000))
     except Exception:
-        max_events = 300
+        max_events = 500
 
     required_tokens = tokens(query)
-    if not required_tokens:
-        return {'ok': False, 'diagnostic': diagnostic, 'error': 'query_required', 'store': store}
+    queue, queued, visited = [], set(), set()
+    events, errors = [], []
+    product_urls, listing_urls = set(), set()
+    sequence = 0
+    query_url_hits, query_page_hits = [], []
 
     def has_tokens(value):
         value = norm(value)
-        return all(t in value for t in required_tokens)
-
-    def classify_reason(raw_url, base_url):
-        """Explain _html_product_url() without changing its production logic."""
-        if not raw_url:
-            return {'classification': 'NOT_PRODUCT', 'reason': 'empty_url', 'normalized_url': None}
-        absolute = urllib.parse.urljoin(base_url, raw_url).split('#', 1)[0]
-        p = urllib.parse.urlparse(absolute)
-        if p.scheme not in ('http', 'https'):
-            return {'classification': 'NOT_PRODUCT', 'reason': 'invalid_scheme', 'normalized_url': absolute}
-        allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
-        if p.netloc.lower() not in allowed_hosts:
-            return {'classification': 'NOT_PRODUCT', 'reason': 'host_not_allowed', 'normalized_url': absolute}
-        path = p.path or '/'
-        low = path.lower()
-        if store == 'deloox':
-            if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
-                return {'classification': 'PRODUCT', 'reason': 'numeric_product_path', 'normalized_url': absolute}
-            if low.endswith('.html'):
-                excluded = re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I)
-                if not excluded:
-                    return {'classification': 'PRODUCT', 'reason': 'html_product_shape', 'normalized_url': absolute}
-                return {'classification': 'NOT_PRODUCT', 'reason': 'excluded_listing_or_system_path', 'normalized_url': absolute}
-            return {'classification': 'NOT_PRODUCT', 'reason': 'not_product_url_shape', 'normalized_url': absolute}
-        product = _html_product_url(store, raw_url, base_url)
-        return {'classification': 'PRODUCT' if product else 'NOT_PRODUCT',
-                'reason': 'accepted_by_classifier' if product else 'classifier_rejected',
-                'normalized_url': absolute}
-
-    # We deliberately reuse the production seed/queue mechanics only to find
-    # the first pages containing the complete query. Once found, the funnel
-    # stops expanding the universe and inspects only target-associated nodes.
-    queue, queued, visited = [], set(), set()
-    sequence = 0
-    query_pages = []
-    page_inspections = []
+        return bool(required_tokens) and all(t in value for t in required_tokens)
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -1339,42 +1304,24 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
         key = url.split('#', 1)[0]
         if key in queued or key in visited or depth > max_depth:
             return False
-        if len(queued) >= max_pages * 4:
+        if len(queued) >= max_pages * 2:
             return False
         sequence += 1
         priority = _html_discovery_priority(store, key, depth, source)
-        heapq.heappush(queue, ((priority[0], priority[1], sequence), sequence, key, depth, source))
+        heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
+        if has_tokens(key) and len(query_url_hits) < 100:
+            query_url_hits.append({'url': key, 'depth': depth, 'source': source})
         return True
 
-    for seed in list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ()) )):
+    seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
+    for seed in seeds:
         add(seed, 0, 'configured_seed')
 
     started = time.time()
     successes = 0
-    errors = []
 
-    def candidate_item(kind, raw, base_url, label='', attribute=None, context=''):
-        result = classify_reason(raw, base_url)
-        item = {
-            'kind': kind,
-            'label': label[:300],
-            'attribute': attribute,
-            'raw_url': raw,
-            'normalized_url': result['normalized_url'],
-            'classification': result['classification'],
-            'reason': result['reason'],
-            'context': context[:500],
-        }
-        if result['classification'] == 'PRODUCT' and has_tokens(result['normalized_url']):
-            item['query_product_hit'] = True
-        else:
-            item['query_product_hit'] = False
-        return item
-
-    # We need a small amount of navigation extraction solely to reach the
-    # target pages. It is not reported as a product result and is not written.
-    while queue and len(visited) < max_pages and not query_pages and (time.time() - started) < 120:
+    while queue and len(visited) < max_pages and (time.time() - started) < DISCOVERY_HARD_TIMEOUT:
         _priority, _sequence, requested, depth, source = heapq.heappop(queue)
         if requested in visited:
             continue
@@ -1383,392 +1330,1283 @@ def diagnose_html_discovery_trace(store, query='', max_pages=40, max_depth=8, ma
             _requested, final, data, error = _fetch_html_page(store, requested)
         except Exception as exc:
             final, data, error = requested, None, f'{type(exc).__name__}:{exc}'
+
+        event = {'url': requested, 'final_url': final, 'depth': depth,
+                 'source': source, 'status': 'ERROR' if error else 'OK'}
+
         if error:
+            event['error'] = error
             errors.append(f'{requested} -> {error}')
+            if len(events) < max_events:
+                events.append(event)
             continue
+
         successes += 1
-        page_base = final or requested
         soup = BeautifulSoup(data, 'html.parser')
         page_text = soup.get_text(' ', strip=True)
-        if has_tokens(page_text):
-            query_pages.append({'url': requested, 'final_url': final, 'depth': depth, 'bytes': len(data or b'')})
+        page_hit = has_tokens(page_text)
+        if page_hit and len(query_page_hits) < 100:
+            query_page_hits.append({'url': requested, 'final_url': final,
+                                    'depth': depth, 'bytes': len(data or b'')})
 
-            # ---- STAGE 2: only target-associated HTML nodes ----
-            candidates = []
-            seen = set()
+        relevant, product_count, listing_count = [], 0, 0
 
-            def add_candidate(kind, raw, label='', attribute=None, context=''):
+        def report(kind, url, label='', queued_now=None, attribute=None):
+            if not (has_tokens(url) or has_tokens(label)):
+                return
+            item = {'kind': kind, 'url': url, 'label': label[:200], 'token_hit': True}
+            if queued_now is not None:
+                item['queued'] = bool(queued_now)
+            if attribute:
+                item['attribute'] = attribute
+            relevant.append(item)
+
+        for a in soup.find_all('a', href=True):
+            href, label = a.get('href'), a.get_text(' ', strip=True)
+            product = _html_product_url(store, href, final or requested)
+            if product:
+                product_urls.add(product)
+                product_count += 1
+                report('product', product, label)
+                continue
+            listing = _html_listing_url(store, href, final or requested, label)
+            if listing:
+                listing_urls.add(listing)
+                queued_now = add(listing, depth + 1, requested)
+                listing_count += 1
+                report('listing', listing, label, queued_now)
+
+        navigation_attrs = (
+            'data-url','data-href','data-link','data-product-url',
+            'data-product-link','data-target','data-next-url','data-next',
+            'data-load-more-url','data-pagination-url'
+        )
+        for node in soup.find_all(True):
+            label = node.get_text(' ', strip=True)[:300]
+            for attr in navigation_attrs:
+                raw = node.get(attr)
                 if not raw:
-                    return
-                key = (kind, raw, label[:120], attribute or '')
-                if key in seen:
-                    return
-                seen.add(key)
-                candidates.append(candidate_item(kind, raw, page_base, label, attribute, context))
-
-            # Anchor: inspect anchors whose own text/title/aria or nearby card
-            # text contains the complete query. Nearby text is limited so the
-            # funnel cannot explode into the whole 5MB page.
-            for a in soup.find_all('a', href=True):
-                label = ' '.join(filter(None, [
-                    a.get_text(' ', strip=True), a.get('title'), a.get('aria-label'), a.get('data-product-name')
-                ]))
-                parent_text = ''
-                parent = a.parent
-                if parent is not None:
-                    parent_text = parent.get_text(' ', strip=True)[:800]
-                grand_text = ''
-                if parent is not None and parent.parent is not None:
-                    grand_text = parent.parent.get_text(' ', strip=True)[:1200]
-                context = label or parent_text or grand_text
-                if has_tokens(label) or has_tokens(parent_text) or has_tokens(grand_text):
-                    add_candidate('query_anchor', a.get('href'), label, context=context)
-
-            # Attributes on the same target-associated nodes.
-            navigation_attrs = (
-                'value', 'data-value', 'data-filter-url', 'data-option-url',
-                'data-redirect-url', 'data-url', 'data-href', 'data-link',
-                'data-product-url', 'data-product-link', 'data-target',
-                'data-next-url', 'data-next', 'data-load-more-url',
-                'data-pagination-url',
-            )
-            for node in soup.find_all(True):
-                own = node.get_text(' ', strip=True)[:1000]
-                if not has_tokens(own):
                     continue
-                context = own[:1200]
-                for attr in navigation_attrs:
-                    raw = node.get(attr)
-                    if raw:
-                        add_candidate('query_attribute', raw, own, attr, context)
+                product = _html_product_url(store, raw, final or requested)
+                if product:
+                    product_urls.add(product)
+                    product_count += 1
+                    report('product_attribute', product, label, attribute=attr)
+                    continue
+                listing = _html_listing_url(store, raw, final or requested, label)
+                if listing:
+                    listing_urls.add(listing)
+                    queued_now = add(listing, depth + 1, requested)
+                    listing_count += 1
+                    report('listing_attribute', listing, label, queued_now, attr)
 
-            # STAGE 2B (V5): identify the exact DOM/script location of the
-            # target tokens, then inspect product-shaped URLs already present
-            # on that same page. No proximity guessing and no production writes.
-            dom_token_hits = []
-            script_token_hits = []
-            page_product_urls = []
-            filter_mechanism = {
-                'target_filter_nodes': [],
-                'inline_handler_hits': [],
-                'script_hits': [],
-                'external_script_hits': [],
-            }
+        for node in soup.find_all('link', href=True):
+            rel = ' '.join(node.get('rel') or []).lower()
+            if 'next' not in rel:
+                continue
+            listing = _html_listing_url(store, node.get('href'), final or requested, 'next')
+            if listing:
+                listing_urls.add(listing)
+                queued_now = add(listing, depth + 1, requested)
+                listing_count += 1
+                report('rel_next', listing, 'next', queued_now)
 
-            try:
-                # GENERIC FILTER-MECHANISM TRACE: Deloox facets can be
-                # represented by data-prpid/data-pvalue-id without an href.
-                # Capture the actual node, nearby event attributes, and the
-                # JS source that implements the filter. Read-only only.
-                target_filter_nodes = []
-                target_pvalue_ids = set()
-                for node in soup.find_all(True):
-                    attrs = getattr(node, 'attrs', {}) or {}
-                    if not attrs.get('data-pvalue-id'):
-                        continue
-                    own = ' '.join(node.get_text(' ', strip=True).split())
-                    if not has_tokens(own):
-                        continue
-                    target_pvalue_ids.add(str(attrs.get('data-pvalue-id')))
-                    selected = {}
-                    for attr in ('data-prpid','data-pvalue-id','data-track','data-filter-id',
-                                 'onclick','class','id','title','data-url','data-href',
-                                 'data-link','data-filter-url','data-option-url'):
-                        val = node.get(attr)
-                        if val:
-                            selected[attr] = val
-                    target_filter_nodes.append({
-                        'tag': node.name,
-                        'text': own[:1000],
-                        'attrs': selected,
-                        'parent_outer_html': str(node.parent)[:4000] if node.parent else '',
-                    })
-                    if len(target_filter_nodes) >= 20:
-                        break
-                filter_mechanism['target_filter_nodes'] = target_filter_nodes
+        try:
+            for item in _jsonld(soup):
+                product = _html_product_url(store, item.get('url'), final or requested)
+                if product:
+                    product_urls.add(product)
+                    product_count += 1
+                    report('jsonld_product', product)
+        except Exception:
+            pass
 
-                # Search inline HTML/JS for the exact filter identifiers and
-                # for generic request primitives around them.
-                for script in soup.find_all('script'):
-                    raw_script = script.string or script.get_text() or ''
-                    if not raw_script:
-                        continue
-                    ns = norm(raw_script)
-                    needles = ['data-pvalue-id','data-prpid','j-filter','filter_product-line']
-                    if not any(n in ns for n in needles):
-                        continue
-                    relevant = any(pid in raw_script for pid in target_pvalue_ids) if target_pvalue_ids else True
-                    if not relevant:
-                        continue
-                    request_terms = []
-                    for term in ('fetch(', '$.ajax', '$.get', '$.post', 'XMLHttpRequest',
-                                  '/ajax', '/api/', 'filter', 'facet', 'search'):
-                        if term.lower() in ns:
-                            request_terms.append(term)
-                    filter_mechanism['script_hits'].append({
-                        'type': script.get('type'),
-                        'request_terms': request_terms,
-                        'snippet': raw_script[:12000],
-                    })
-                    if len(filter_mechanism['script_hits']) >= 20:
-                        break
-
-                # If the implementation lives in external storefront JS,
-                # inspect a small number of same-site script assets. This is
-                # read-only and limited to assets referenced by the target page.
-                script_srcs = []
-                for script in soup.find_all('script', src=True):
-                    src = urllib.parse.urljoin(page_base, script.get('src'))
-                    parsed_src = urllib.parse.urlparse(src)
-                    if parsed_src.netloc.lower() != urllib.parse.urlparse(page_base).netloc.lower():
-                        continue
-                    if src not in script_srcs:
-                        script_srcs.append(src)
-                    if len(script_srcs) >= 8:
-                        break
-                for src in script_srcs:
-                    try:
-                        resp = _http_fetch(src, timeout=min(HTTP_TIMEOUT, 8))
-                        raw_js = resp.get('data') or b''
-                        if resp.get('status', 0) >= 400 or not raw_js:
-                            continue
-                        raw_text = raw_js.decode('utf-8', 'ignore')
-                        ns_js = norm(raw_text)
-                        needles = ['data-pvalue-id','data-prpid','j-filter','filter_product-line']
-                        if not any(n in ns_js for n in needles):
-                            continue
-                        request_terms = []
-                        for term in ('fetch(', '$.ajax', '$.get', '$.post', 'XMLHttpRequest',
-                                      '/ajax', '/api/', 'filter', 'facet', 'search'):
-                            if term.lower() in ns_js:
-                                request_terms.append(term)
-                        # Prefer snippets around the exact target pvalue if the
-                        # bundle contains it; otherwise around filter primitives.
-                        positions = [raw_text.find(pid) for pid in target_pvalue_ids if raw_text.find(pid) >= 0]
-                        if not positions:
-                            positions = [min((raw_text.lower().find(n) for n in needles if raw_text.lower().find(n) >= 0), default=0)]
-                        pos = min(positions)
-                        lo = max(0, pos - 2500)
-                        hi = min(len(raw_text), pos + 7000)
-                        filter_mechanism['external_script_hits'].append({
-                            'src': src,
-                            'bytes': len(raw_js),
-                            'request_terms': request_terms,
-                            'snippet': raw_text[lo:hi],
-                        })
-                        if len(filter_mechanism['external_script_hits']) >= 8:
-                            break
-                    except Exception as exc:
-                        continue
-
-                # Capture inline event handlers anywhere in the target block.
-                for node in soup.find_all(True):
-                    attrs = getattr(node, 'attrs', {}) or {}
-                    handlers = {k:v for k,v in attrs.items() if str(k).lower().startswith('on') and v}
-                    if not handlers:
-                        continue
-                    own = ' '.join(node.get_text(' ', strip=True).split())
-                    if has_tokens(own):
-                        filter_mechanism['inline_handler_hits'].append({
-                            'tag': node.name, 'text': own[:500], 'handlers': handlers,
-                        })
-                        if len(filter_mechanism['inline_handler_hits']) >= 20:
-                            break
-            except Exception as exc:
-                filter_mechanism['error'] = f'{type(exc).__name__}:{exc}'
-
-            try:
-                # Exact/near-exact text nodes. Keep the ORIGINAL BeautifulSoup
-                # node in a parallel list. Do not reconstruct the node later
-                # from truncated text: that can select the wrong node or fail
-                # completely on long text nodes.
-                seen_nodes = set()
-                dom_token_nodes = []
-                for node in soup.find_all(string=True):
-                    txt = ' '.join(str(node).split())
-                    if not txt:
-                        continue
-                    nt = norm(txt)
-                    hit_count = sum(1 for t in required_tokens if t in nt)
-                    if hit_count < 2:
-                        continue
-                    parent = node.parent
-                    if parent is None:
-                        continue
-                    key = (id(node), str(parent.name))
-                    if key in seen_nodes:
-                        continue
-                    seen_nodes.add(key)
-                    dom_token_hits.append({
-                        'tag': parent.name,
-                        'text': txt[:500],
-                        'tokens_hit': [t for t in required_tokens if t in nt],
-                        'outer_html': str(parent)[:1800],
-                    })
-                    dom_token_nodes.append(node)
-                    if len(dom_token_hits) >= 100:
-                        break
-
-                # TARGETED BLOCK TRACE: walk upward from the EXACT original
-                # DOM node. This reveals the real product-card relationship
-                # without proximity guessing and without re-parsing text.
-                dom_target_blocks = []
-                for hit, node in list(zip(dom_token_hits, dom_token_nodes))[:30]:
-                    found = node.parent
-                    if found is None:
-                        continue
-                    ancestors = []
-                    cur = found
-                    for level in range(0, 8):
-                        if cur is None:
-                            break
-                        attrs = {}
-                        for attr in ('href','data-url','data-href','data-link','data-product-url',
-                                     'data-product-link','data-product','data-id','id','class'):
-                            val = cur.get(attr) if hasattr(cur, 'get') else None
-                            if val:
-                                attrs[attr] = val
-                        links = []
-                        if hasattr(cur, 'find_all'):
-                            for a in cur.find_all('a', href=True, limit=50):
-                                links.append({
-                                    'href': a.get('href'),
-                                    'text': ' '.join(a.get_text(' ', strip=True).split())[:300],
-                                })
-                        ancestors.append({
-                            'level': level,
-                            'tag': getattr(cur, 'name', None),
-                            'text': ' '.join(cur.get_text(' ', strip=True).split())[:1500],
-                            'attrs': attrs,
-                            'links': links,
-                            'outer_html': str(cur)[:3000],
-                        })
-                        cur = getattr(cur, 'parent', None)
-                    dom_target_blocks.append({
-                        'tokens_hit': hit.get('tokens_hit', []),
-                        'text': hit.get('text', ''),
-                        'ancestors': ancestors,
-                    })
-                    if len(dom_target_blocks) >= 10:
-                        break
-
-                # Search scripts separately: modern storefronts often keep
-                # product cards/URLs in JSON or hydration state rather than
-                # visible anchors.
-                for script in soup.find_all('script'):
-                    raw_script = script.string or script.get_text() or ''
-                    if not raw_script:
-                        continue
-                    ns = norm(raw_script)
-                    hit_count = sum(1 for t in required_tokens if t in ns)
-                    if hit_count < 2:
-                        continue
-                    positions = []
-                    for token in required_tokens:
-                        pos = ns.find(token)
-                        if pos >= 0:
-                            positions.append((pos, token))
-                    pos = min((x[0] for x in positions), default=0)
-                    lo = max(0, pos - 1200)
-                    hi = min(len(raw_script), pos + 3000)
-                    script_token_hits.append({
-                        'type': script.get('type'),
-                        'tokens_hit': [t for t in required_tokens if t in ns],
-                        'snippet': raw_script[lo:hi],
-                    })
-                    if len(script_token_hits) >= 30:
-                        break
-
-                # IMPORTANT: enumerate product-shaped URLs independently of
-                # token proximity. This answers whether the target page
-                # actually exposes product URLs to the discovery extractor.
-                for a in soup.find_all('a', href=True):
-                    raw = a.get('href')
-                    result = classify_reason(raw, page_base)
-                    if result['classification'] != 'PRODUCT':
-                        continue
-                    label = ' '.join(filter(None, [
-                        a.get_text(' ', strip=True),
-                        a.get('title'), a.get('aria-label'), a.get('data-product-name')
-                    ]))
-                    parent = a.parent
-                    parent_text = parent.get_text(' ', strip=True)[:1200] if parent else ''
-                    grand = parent.parent if parent is not None else None
-                    grand_text = grand.get_text(' ', strip=True)[:1800] if grand else ''
-                    blob = norm(' '.join([label, parent_text, grand_text, result['normalized_url']]))
-                    page_product_urls.append({
-                        'raw_url': raw,
-                        'normalized_url': result['normalized_url'],
-                        'label': label[:500],
-                        'tokens_in_context': [t for t in required_tokens if t in blob],
-                        'all_tokens_in_context': has_tokens(blob),
-                        'context': (label or parent_text or grand_text)[:1800],
-                    })
-                    if len(page_product_urls) >= 300:
-                        break
-            except Exception as exc:
-                dom_token_hits.append({'error': f'{type(exc).__name__}:{exc}'})
-
-            page_inspections.append({
-                'page': query_pages[-1],
-                'candidate_count': len(candidates),
-                'candidates': candidates[:200],
-                'raw_token_candidate_count': len(candidates),
-                'raw_token_candidates': candidates[:300],
-                'dom_token_hits': dom_token_hits[:100],
-                'dom_target_blocks': dom_target_blocks[:10],
-                'script_token_hits': script_token_hits[:30],
-                'page_product_urls': page_product_urls[:300],
-                'page_product_urls_with_all_tokens': [x for x in page_product_urls if x['all_tokens_in_context']],
-                'query_product_hits': [x for x in candidates if x['query_product_hit']],
-                'filter_mechanism': filter_mechanism,
-            })
-
-    all_candidates = []
-    for inspection in page_inspections:
-        all_candidates.extend(inspection['candidates'])
-    query_product_hits = [x for x in all_candidates if x['query_product_hit']]
-    product_classification_hits = [x for x in all_candidates if x['classification'] == 'PRODUCT']
-
-    if query_product_hits:
-        diagnosis = 'QUERY_PRODUCT_URL_RETAINED_BY_CLASSIFIER'
-    elif product_classification_hits:
-        diagnosis = 'TARGET_ASSOCIATED_URLS_FOUND_BUT_QUERY_NOT_IN_CLASSIFIED_URL'
-    elif query_pages:
-        diagnosis = 'TARGET_PAGE_REACHED_URL_CLASSIFIER_REJECTS_TARGET_CANDIDATES'
-    else:
-        diagnosis = 'TARGET_PAGE_NOT_REACHED'
+        event.update({'bytes': len(data or b''), 'token_page_hit': page_hit,
+                      'product_links': product_count, 'listing_links': listing_count,
+                      'queue_size_after': len(queue)})
+        if relevant:
+            event['query_relevant_links'] = relevant[:100]
+        if len(events) < max_events:
+            events.append(event)
 
     return {
         'ok': True,
-        'diagnostic': diagnostic,
+        'diagnostic': 'html-discovery-trace-read-only-v1',
         'store': store,
         'query': query,
         'required_tokens': required_tokens,
         'production_search_called': False,
         'database_written': False,
         'parameters': {'max_pages': max_pages, 'max_depth': max_depth, 'max_events': max_events},
-        'stage_1': {
-            'visited': len(visited),
-            'successes': successes,
-            'errors_count': len(errors),
-            'errors': errors[:100],
-            'query_pages': query_pages,
-        },
-        'stage_2': {
-            'pages_inspected': len(page_inspections),
-            'candidate_count': len(all_candidates),
-            'query_product_hits': query_product_hits[:100],
-            'product_classification_hits': product_classification_hits[:100],
-            'rejected_target_candidates': [x for x in all_candidates if x['classification'] != 'PRODUCT'][:200],
-            'page_inspections': page_inspections,
-            'raw_token_candidates': [x for i in page_inspections for x in i.get('raw_token_candidates', [])][:300],
-            'dom_token_hits': [x for i in page_inspections for x in i.get('dom_token_hits', [])][:100],
-            'script_token_hits': [x for i in page_inspections for x in i.get('script_token_hits', [])][:30],
-            'page_product_urls': [x for i in page_inspections for x in i.get('page_product_urls', [])][:300],
-            'page_product_urls_with_all_tokens': [x for i in page_inspections for x in i.get('page_product_urls_with_all_tokens', [])][:100],
-            'filter_mechanism': [i.get('filter_mechanism', {}) for i in page_inspections],
-        },
-        'diagnosis': diagnosis,
-        'elapsed_sec': round(time.time() - started, 2),
+        'seeds': seeds,
+        'visited': len(visited),
+        'successes': successes,
+        'errors_count': len(errors),
+        'errors': errors[:50],
+        'queue_remaining': len(queue),
+        'product_urls_found': len(product_urls),
+        'listing_urls_seen': len(listing_urls),
+        'query_url_hits': query_url_hits,
+        'query_page_hits': query_page_hits,
+        'query_relevant_events': [
+            e for e in events if e.get('token_page_hit') or e.get('query_relevant_links')
+        ][:100],
+        'events': events,
+        'elapsed_sec': round(time.time() - started, 3),
+        'diagnosis': (
+            'TRACE_COMPLETE: se la categoria/brand page compare come link ma non viene '
+            'accodata, controllare _html_listing_url; se non compare, il problema è '
+            'nella superficie di navigazione raggiunta dai seed.'
+        ),
     }
+
+def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
+    conn = db()
+    now = time.time()
+    conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+       VALUES(?,?,?,?,?,?,?)
+       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+       started_at=excluded.started_at,finished_at=excluded.finished_at,
+       discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+       error=excluded.error""",
+       (store, status, started_at if started_at is not None else now, finished_at,
+        discovered_count, fetched_count, error))
+    conn.commit(); conn.close()
+
+
+def discover_store(store):
+    """Build/update one persistent URL catalog with durable progress state."""
+    started_at=time.time()
+    # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
+    _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
+    roots,robots_diagnostics=_seed_sitemaps(store)
+    queue=[(url,0) for url in roots]
+    queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
+    # Some retailers publish navigation/landing URLs in their sitemap instead
+    # of real product URLs. Keep those URLs as generic HTML-discovery seeds
+    # rather than discarding them after the sitemap pass.
+    html_sitemap_seeds=set()
+    sitemap_successes=0; sitemap_url_entries=0
+
+    sitemap_deadline = min(
+        started_at + DISCOVERY_HARD_TIMEOUT,
+        started_at + SITEMAP_DISCOVERY_BUDGET,
+    )
+    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and time.time()<sitemap_deadline:
+        batch=[]
+        while queue and len(batch)<SYNC_WORKERS*4:
+            sm,depth=queue.pop(0)
+            if sm in visited: continue
+            visited.add(sm); batch.append((sm,depth))
+        if not batch: continue
+        with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS,len(batch))) as pool:
+            futures={pool.submit(_fetch_sitemap,store,sm):(sm,depth) for sm,depth in batch}
+            for f in as_completed(futures):
+                sm,depth=futures[f]
+                try: _source,final,entries,error=f.result()
+                except Exception as exc:
+                    final,entries=sm,[]; error=f'EXCEPTION:{type(exc).__name__}:{exc}'
+                if error:
+                    sitemap_errors.append(f'{sm} -> {error}'); continue
+                sitemap_successes+=1; sitemap_url_entries+=len(entries)
+                for kind,raw_url,lastmod in entries:
+                    absolute=urllib.parse.urljoin(final or sm,raw_url.strip()) if raw_url else ''
+                    if kind=='sitemap':
+                        if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
+                            queued.add(absolute); queue.append((absolute,depth+1))
+                    elif _looks_product(absolute):
+                        product_urls[absolute]=lastmod or ''
+                        if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
+                            break
+                    elif store in HTML_DISCOVERY_SEEDS:
+                        listing=_html_listing_url(store,absolute,final or sm,'sitemap')
+                        if listing:
+                            html_sitemap_seeds.add(listing)
+
+    fallback=None
+    # Deloox has a reliable public category graph but unreliable sitemap
+    # endpoints. Traverse that graph directly before the generic HTML fallback.
+    # This is retailer-specific discovery logic only; it never uses the query.
+    deloox_graph = None
+    if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
+        # Do not let the retailer-specific graph consume the entire discovery
+        # deadline. Deloox's sitemap is unreliable, so the generic HTML graph
+        # must always retain execution time to traverse additional catalog
+        # surfaces. The two crawlers are complementary, not alternatives.
+        deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
+        deloox_graph = _discover_deloox_catalog(
+            list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
+            started_at + deloox_graph_budget,
+        )
+        product_urls.update(deloox_graph['product_urls'])
+
+    # Critical: a non-zero sitemap result is not automatically a complete
+    # catalog. Some retailers expose only a small navigation subset through
+    # sitemap roots while their public category pages contain the real catalog.
+    # Supplement small sitemap discoveries from the retailer's own HTML
+    # navigation surfaces. This is generic and never depends on the requested
+    # perfume/product name.
+    if (
+        store in HTML_DISCOVERY_SEEDS
+        and (
+            store == 'deloox'
+            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
+        )
+    ):
+        html_seeds=list(dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
+        ))
+        fallback=_discover_html_catalog(
+            store,
+            html_seeds,
+            started_at + DISCOVERY_HARD_TIMEOUT,
+        )
+        product_urls.update(fallback['product_urls'])
+
+    diagnostics={
+        'visited':len(visited),
+        'successes':sitemap_successes,
+        'entries':sitemap_url_entries,
+        'errors':len(sitemap_errors),
+        'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
+        'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
+        'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
+    }
+    # Zero successful catalog-page fetches means access/discovery failure,
+    # not an empty retailer catalog. Never report EMPTY in that situation.
+    if not product_urls and fallback is not None and fallback['successes'] == 0 and fallback['errors']:
+        now = time.time()
+        detail = 'catalog_access_failed; ' + ' | '.join(fallback['errors'][:8])
+        conn = db()
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
+        )
+        conn.commit(); conn.close()
+        status,count,error='DISCOVERY_ERROR',0,detail
+    else:
+        status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
+
+    details=[]
+    if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if deloox_graph is not None:
+        details.append(
+            f'deloox_category_graph=visited:{deloox_graph["visited"]};'
+            f'successes:{deloox_graph["successes"]};products:{len(deloox_graph["product_urls"])}'
+        )
+        if deloox_graph['errors']:
+            details.append('deloox_graph_errors=' + ' | '.join(deloox_graph['errors'][:4]))
+    if fallback is not None:
+        details.append(
+            f'html_fallback=visited:{fallback["visited"]};'
+            f'successes:{fallback["successes"]};'
+            f'products:{len(fallback["product_urls"])};'
+            f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
+        )
+        if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+    final_error=' | '.join(details) if details else error
+    conn=db()
+    conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
+    conn.commit(); conn.close()
+
+    return {
+        'count':count,'status':status,'visited_sitemaps':len(visited),
+        'sitemap_successes':sitemap_successes,'xml_entries':sitemap_url_entries,
+        'robots':robots_diagnostics[:8],'errors':sitemap_errors[:12],
+        'html_fallback':fallback,
+    }
+
+
+def _jsonld(soup):
+    products = []
+    for script in soup.select('script[type="application/ld+json"]'):
+        raw = script.string or script.get_text()
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list):
+                stack.extend(x)
+                continue
+            if not isinstance(x, dict):
+                continue
+            typ = x.get('@type')
+            types = typ if isinstance(typ, list) else [typ]
+            if any(str(t).lower() == 'product' for t in types):
+                products.append(x)
+            for v in x.values():
+                if isinstance(v, (dict, list)):
+                    stack.append(v)
+    return products
+
+
+def _num(v):
+    if v is None or v == '':
+        return None
+    try:
+        return float(v)
+    except Exception:
+        pass
+    s = re.sub(r'[^0-9,.\-]', '', str(v))
+    if ',' in s and '.' in s:
+        if s.rfind(',') > s.rfind('.'):
+            s = s.replace('.', '').replace(',', '.')
+        else:
+            s = s.replace(',', '')
+    elif ',' in s:
+        s = s.replace(',', '.')
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
+def _first_offer(p):
+    offers = p.get('offers') if isinstance(p, dict) else None
+    if isinstance(offers, dict):
+        return offers
+    if isinstance(offers, list):
+        for o in offers:
+            if isinstance(o, dict) and (_num(o.get('price')) is not None or o.get('availability')):
+                return o
+    return {}
+
+
+def parse_product(store, url, data):
+    soup = BeautifulSoup(data, 'html.parser')
+    h1 = soup.find('h1')
+    h1text = h1.get_text(' ', strip=True) if h1 else ''
+    products = _jsonld(soup)
+    p = products[0] if products else {}
+    name = str(p.get('name') or h1text or '').strip()
+    if not name:
+        return None
+    brand = p.get('brand')
+    if isinstance(brand, dict):
+        brand = brand.get('name')
+    offer = _first_offer(p)
+    price = _num(offer.get('price'))
+    currency = str(offer.get('priceCurrency') or 'EUR')
+    availability = str(offer.get('availability') or '').lower()
+    if 'instock' in availability or 'limitedavailability' in availability or 'onlineonly' in availability:
+        availability = 'in_stock'
+    elif any(x in availability for x in ('outofstock', 'soldout', 'discontinued')):
+        availability = 'out_of_stock'
+    elif 'preorder' in availability:
+        availability = 'preorder'
+    else:
+        availability = 'unknown'
+    image = p.get('image')
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get('url') or image.get('contentUrl')
+    return {
+        'store': STORE_LABELS[store],
+        'store_key': store,
+        'url': url,
+        'name': name,
+        'brand': str(brand or '').strip(),
+        'image': image,
+        'sku': str(p.get('sku') or '').strip(),
+        'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
+        'mpn': str(p.get('mpn') or '').strip(),
+        'price_num': price,
+        'price': price,
+        'currency': currency,
+        'availability': availability,
+        'available': True if availability == 'in_stock' else False if availability == 'out_of_stock' else None,
+        'fetched_at': time.time(),
+    }
+
+
+def _secondary_store_parser(store, final_url, original_url):
+    """Use an existing store parser only as a product-page parser fallback.
+
+    Parser exceptions are deliberately propagated. The hydration layer must
+    preserve the real exception instead of collapsing it into the old opaque
+    ``ERROR:RuntimeError`` record.
+    """
+    module = importlib.import_module(f'scrapers.{store}.scraper')
+    parser = getattr(module, 'extract_product_page', None)
+    if not callable(parser):
+        return None
+
+    session = requests.Session()
+    session.headers.update({'User-Agent': USER_AGENT})
+    try:
+        parsed = parser(session, final_url, url_slug(final_url))
+    finally:
+        session.close()
+
+    if not isinstance(parsed, dict):
+        return None
+
+    identity = parsed.get('identity') or {}
+    def identity_value(key):
+        value = identity.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
+    offer = parsed.get('offer') or {}
+    price = parsed.get('price_num')
+    if price is None:
+        price = offer.get('price')
+    return {
+        'store': STORE_LABELS[store],
+        'store_key': store,
+        'url': parsed.get('url') or final_url or original_url,
+        'name': parsed.get('name') or parsed.get('title') or '',
+        'brand': parsed.get('brand') or '',
+        'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
+        'sku': parsed.get('sku') or identity_value('sku') or '',
+        'gtin': parsed.get('gtin') or identity_value('gtin') or '',
+        'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'price_num': price,
+        'price': price,
+        'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
+        'availability': parsed.get('availability') or offer.get('availability') or 'unknown',
+        'available': parsed.get('available'),
+        'fetched_at': time.time(),
+    }
+
+
+def refresh_url(store, url):
+    try:
+        status, final, data = http_get(url, timeout=REFRESH_TIMEOUT)
+        if status >= 400:
+            raise RuntimeError(f'HTTP {status}')
+
+        # Keep the first HTTP response as the primary source of truth.
+        # The secondary store parser is allowed to fetch again only as a
+        # fallback, but a failed fallback must no longer collapse into the
+        # opaque generic RuntimeError that previously hid the real cause.
+        item = parse_product(store, final, data)
+        primary_ok = bool(item and item.get('name'))
+        secondary_ok = False
+        if not primary_ok:
+            item = _secondary_store_parser(store, final, url)
+            secondary_ok = bool(item and item.get('name'))
+
+        if not item or not item.get('name'):
+            h1_text = ''
+            jsonld_count = 0
+            try:
+                soup = BeautifulSoup(data or b'', 'html.parser')
+                h1 = soup.find('h1')
+                h1_text = h1.get_text(' ', strip=True)[:180] if h1 else ''
+                jsonld_count = len(_jsonld(soup))
+            except Exception:
+                pass
+            detail = (
+                'product_parser_not_found'
+                f';http_status={status}'
+                f';bytes={len(data or b'')}'
+                f';final={final}'
+                f';primary_parser={"ok" if primary_ok else "none"}'
+                f';secondary_parser={"ok" if secondary_ok else "none"}'
+                f';jsonld_products={jsonld_count}'
+                f';h1={h1_text!r}'
+            )
+            print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
+            raise RuntimeError(detail)
+
+        conn = db()
+        conn.execute(
+            '''INSERT INTO store_products(
+                store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
+                price,currency,availability,fetched_at,fetch_status)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(store,url) DO UPDATE SET
+                name=excluded.name,brand=excluded.brand,image=excluded.image,
+                sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                price=excluded.price,currency=excluded.currency,
+                availability=excluded.availability,fetched_at=excluded.fetched_at,
+                fetch_status=excluded.fetch_status''',
+            (
+                store, url, item.get('name'), item.get('brand'), item.get('image'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('price_num'), item.get('currency'), item.get('availability'),
+                item.get('fetched_at'), 'OK',
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        # Keep an already-built search index current without invalidating and
+        # rebuilding the whole store catalog. The persistent DB remains the
+        # source of truth; this only mirrors the hydrated URL in memory.
+        _update_local_search_index_product(
+            store,
+            url,
+            slug=url_slug(url),
+            name=item.get('name'),
+            brand=item.get('brand'),
+        )
+        return item
+    except Exception as exc:
+        conn = db()
+        conn.execute(
+            '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+               VALUES(?,?,?,?)
+               ON CONFLICT(store,url) DO UPDATE SET
+               fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+            (
+                store,
+                url,
+                time.time(),
+                'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else ''),
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        # A failed refresh is excluded by search_local() because only
+        # fetch_status='OK' rows are indexed. Mirror that state in an existing
+        # in-memory index so a stale successful product cannot remain searchable.
+        _remove_local_search_index_url(store, url)
+        return None
+
+
+def search_local(query, per_store=32, search_terms=None):
+    """Search the persistent retailer catalog; never call a retailer endpoint.
+
+    ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
+    Identity acceptance is still performed later by ProductMatcher.match().
+    ``per_store=None`` or a non-positive value means no artificial candidate cap.
+
+    The catalog can contain tens of thousands of URLs per store.  Never scan
+    every URL once for every search term: family-expanded queries can contain
+    dozens of terms and that turns a simple search into an O(URLs * terms)
+    Python loop.  Build a lightweight in-memory token posting index for the
+    current store and evaluate only URLs that contain the rarest token of a
+    search term.  This preserves the exact whole-token matching semantics and
+    deterministic ranking while making broad family queries bounded by the
+    relevant URLs rather than the entire catalog.
+    """
+    raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
+    terms = []
+    for value in raw_terms:
+        value = str(value or '').strip()
+        if value and value not in terms:
+            terms.append(value)
+    if not terms:
+        return []
+
+    token_sets = []
+    for term in terms:
+        ts = tuple(tokens(term))
+        if ts:
+            token_sets.append(ts)
+    if not token_sets:
+        return []
+
+    conn = db()
+    rows = []
+    unlimited = per_store is None or int(per_store) <= 0
+
+    for store in STORES:
+        # Discovery changes invalidate/rebuild the store index. Hydration is
+        # handled incrementally by refresh_url(), so hydrated_count/fetched_at
+        # must NOT be part of this signature: otherwise every background page
+        # fetch would force a full scan of the entire store catalog.
+        signature_row = conn.execute(
+            '''SELECT
+                   COUNT(*) AS active_count,
+                   COALESCE(MAX(discovered_at), 0) AS latest_discovery
+               FROM store_urls
+               WHERE store=? AND active=1''',
+            (store,),
+        ).fetchone()
+        signature = (
+            int(signature_row['active_count'] or 0),
+            float(signature_row['latest_discovery'] or 0),
+        )
+
+        with _LOCAL_SEARCH_INDEX_LOCK:
+            cached = _LOCAL_SEARCH_INDEX_CACHE.get(store)
+            if cached and cached['signature'] == signature:
+                postings = cached['postings']
+                url_tokens = cached['url_tokens']
+            else:
+                candidates = conn.execute(
+                    '''SELECT u.url,u.slug,u.lastmod,
+                              p.name AS product_name,
+                              p.brand AS product_brand
+                       FROM store_urls u
+                       LEFT JOIN store_products p
+                         ON p.store=u.store
+                        AND p.url=u.url
+                        AND p.fetch_status='OK'
+                       WHERE u.store=? AND u.active=1''',
+                    (store,),
+                ).fetchall()
+
+                # Inverted index: token -> URLs containing that token.
+                # Keep the existing fast rarest-token architecture, but also
+                # index the hydrated product name/brand. This is essential for
+                # retailers whose product URLs do not contain the product name.
+                new_postings = {}
+                new_url_tokens = {}
+                for r in candidates:
+                    url = r['url']
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in (
+                            'slug',
+                            'product_name',
+                            'product_brand',
+                        )
+                    )
+                    combined_tokens = set(norm(search_text).split())
+                    new_url_tokens[url] = combined_tokens
+                    for token in combined_tokens:
+                        new_postings.setdefault(token, set()).add(url)
+
+                postings = new_postings
+                url_tokens = new_url_tokens
+                _LOCAL_SEARCH_INDEX_CACHE[store] = {
+                    'signature': signature,
+                    'postings': postings,
+                    'url_tokens': url_tokens,
+                }
+
+            # Keep the lock through scoring. Hydration may mutate postings in
+            # place, so releasing the lock here would allow a concurrent worker
+            # to change a dict/set while search is iterating it.
+            term_anchors = []
+            for ts in token_sets:
+                anchor = min(ts, key=lambda token: len(postings.get(token, ())))
+                if postings.get(anchor):
+                    term_anchors.append((ts, anchor))
+
+            scored = {}
+            for ts, anchor in term_anchors:
+                for url in postings.get(anchor, ()):
+                    slug_tokens = url_tokens.get(url, set())
+                    score = sum(1 for token in ts if token in slug_tokens)
+                    if score == len(ts):
+                        # Preserve the previous ranking contract: complete term
+                        # matches receive the same +10 bonus.
+                        score += 10
+                        if score > scored.get(url, 0):
+                            scored[url] = score
+
+            ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
+        selected = ordered if unlimited else ordered[:int(per_store)]
+        for url, _score in selected:
+            row = conn.execute(
+                'SELECT * FROM store_products WHERE store=? AND url=?',
+                (store, url),
+            ).fetchone()
+            if row:
+                item = dict(row)
+                item['price_num'] = item.get('price')
+                item['store'] = STORE_LABELS[store]
+                item['store_key'] = store
+                rows.append(item)
+            else:
+                rows.append({
+                    'store': STORE_LABELS[store],
+                    'store_key': store,
+                    'url': url,
+                    'name': url_slug(url),
+                    '_needs_refresh': True,
+                })
+
+    conn.close()
+    return rows
+
+
+def refresh_candidates(rows, cancel_event=None, deadline=None):
+    """Refresh only catalog candidates that do not yet have page data.
+
+    Cancellation is cooperative and the optional deadline is a hard search
+    budget. Pending futures are cancelled when either condition is reached;
+    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
+    but the executor is never waited on after cancellation/deadline expiry.
+    """
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
+    if not jobs:
+        return []
+    out = []
+    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    cancelled = False
+    try:
+        pending = set(futures)
+        while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            if deadline is not None and time.monotonic() >= float(deadline):
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            done = [future for future in list(pending) if future.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for future in done:
+                pending.discard(future)
+                try:
+                    item = future.result()
+                    if item:
+                        out.append(item)
+                except Exception:
+                    pass
+        if cancelled:
+            return out
+        return out
+    finally:
+        # Never make a cancelled user search wait for all old refresh workers.
+        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
+        # own DB connections when finished.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
+
+
+def hydration_pending_counts():
+    """Return active discovered URLs that are not successfully hydrated."""
+    conn = db()
+    out = {}
+    try:
+        for store in STORES:
+            row = conn.execute(
+                """SELECT COUNT(*) c
+                   FROM store_urls u
+                   LEFT JOIN store_products p
+                     ON p.store=u.store AND p.url=u.url
+                   WHERE u.store=? AND u.active=1
+                     AND (p.url IS NULL OR p.fetch_status != 'OK')""",
+                (store,),
+            ).fetchone()
+            out[store] = int(row['c'] if row else 0)
+    finally:
+        conn.close()
+    return out
+
+
+def _ensure_hydration_queue():
+    """Backfill the durable queue from every currently active discovered URL.
+
+    This makes the new queue safe to introduce on an already-populated Fly
+    volume: the existing ~65k store_urls rows become durable work items without
+    requiring another discovery run.
+    """
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            # Older catalog versions could accidentally persist category/listing
+            # URLs (for example Shopify /collections/... pages) as product URLs.
+            # Remove those invalid catalog entries before rebuilding the durable
+            # hydration queue. This is generic and applies to every store.
+            invalid_rows = conn.execute(
+                "SELECT store,url FROM store_urls WHERE active=1"
+            ).fetchall()
+            for r in invalid_rows:
+                if _looks_product(r['url']):
+                    continue
+                conn.execute(
+                    "DELETE FROM hydration_queue WHERE store=? AND url=?",
+                    (r['store'], r['url']),
+                )
+                conn.execute(
+                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                    (r['store'], r['url']),
+                )
+
+            rows = conn.execute(
+                """SELECT u.store,u.url
+                   FROM store_urls u
+                   WHERE u.active=1
+                     AND NOT EXISTS (
+                         SELECT 1 FROM hydration_queue q
+                         WHERE q.store=u.store AND q.url=u.url
+                     )"""
+            ).fetchall()
+            for r in rows:
+                existing = conn.execute(
+                    "SELECT 1 FROM store_products WHERE store=? AND url=? AND fetch_status='OK'",
+                    (r['store'], r['url']),
+                ).fetchone()
+                state = 'DONE' if existing else 'PENDING'
+                conn.execute(
+                    """INSERT OR IGNORE INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)""",
+                    (r['store'], r['url'], state, 0, now, now),
+                )
+        return len(rows)
+    finally:
+        conn.close()
+
+
+def recover_stale_tasks():
+    """Return abandoned PROCESSING leases to PENDING after a restart/crash."""
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            result = conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PENDING',
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       available_at=?,
+                       last_error=COALESCE(last_error,'worker lease expired')
+                   WHERE state='PROCESSING'
+                     AND (leased_until IS NULL OR leased_until < ?)""",
+                (now, now),
+            )
+            return int(result.rowcount or 0)
+    finally:
+        conn.close()
+
+
+def _hydration_store_order(conn):
+    """Return a persistent round-robin store order."""
+    row = conn.execute(
+        "SELECT last_store_index FROM hydration_scheduler WHERE id=1"
+    ).fetchone()
+    last_index = int(row['last_store_index'] if row else 0)
+    n = len(STORES)
+    if not n:
+        return [], 0
+    start = (last_index + 1) % n
+    stores = list(STORES)
+    return stores[start:] + stores[:start], start
+
+
+def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
+    """Atomically claim one ready URL, with at most two active tasks per store."""
+    now = time.time()
+    token = uuid.uuid4().hex
+    conn = db()
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+
+        # A worker crash/restart must never strand a URL forever.
+        conn.execute(
+            """UPDATE hydration_queue
+               SET state='PENDING', leased_until=NULL, lease_token=NULL,
+                   available_at=?
+               WHERE state='PROCESSING'
+                 AND (leased_until IS NULL OR leased_until < ?)""",
+            (now, now),
+        )
+
+        ordered, start_index = _hydration_store_order(conn)
+        chosen = None
+        chosen_index = None
+
+        for offset, store in enumerate(ordered):
+            row = conn.execute(
+                """SELECT q.store,q.url,q.attempts
+                   FROM hydration_queue q
+                   JOIN store_urls u
+                     ON u.store=q.store AND u.url=q.url
+                   WHERE q.store=?
+                     AND u.active=1
+                     AND q.state IN ('PENDING','ERROR')
+                     AND q.available_at <= ?
+                     AND (
+                         SELECT COUNT(*)
+                         FROM hydration_queue p
+                         WHERE p.store=q.store
+                           AND p.state='PROCESSING'
+                     ) < 2
+                   ORDER BY
+                     CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
+                     q.available_at ASC,
+                     q.first_seen_at ASC
+                   LIMIT 1""",
+                (store, now),
+            ).fetchone()
+            if row:
+                chosen = row
+                chosen_index = (start_index + offset) % len(STORES)
+                break
+
+        if not chosen:
+            conn.commit()
+            return None
+
+        updated = conn.execute(
+            """UPDATE hydration_queue
+               SET state='PROCESSING',
+                   leased_until=?,
+                   lease_token=?,
+                   last_started_at=?,
+                   attempts=attempts+1
+               WHERE store=? AND url=?
+                 AND state IN ('PENDING','ERROR')
+                 AND available_at <= ?""",
+            (
+                now + float(lease_seconds),
+                token,
+                now,
+                chosen['store'],
+                chosen['url'],
+                now,
+            ),
+        ).rowcount
+
+        if updated != 1:
+            conn.rollback()
+            return None
+
+        conn.execute(
+            "UPDATE hydration_scheduler SET last_store_index=? WHERE id=1",
+            (int(chosen_index),),
+        )
+        conn.commit()
+        return {
+            'store': chosen['store'],
+            'url': chosen['url'],
+            'lease_token': token,
+            'attempts': int(chosen['attempts'] or 0) + 1,
+        }
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
+
+
+def _queue_mark_done(task):
+    """Commit the successful product result and close the lease atomically."""
+    now = time.time()
+    conn = db()
+    try:
+        # refresh_url() has already persisted the product. We only transition
+        # the durable work item here, guarded by its lease token.
+        with conn:
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state='DONE',
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       last_finished_at=?,
+                       last_error=NULL,
+                       last_http_status=NULL
+                   WHERE store=? AND url=? AND lease_token=?
+                     AND state='PROCESSING'""",
+                (now, task['store'], task['url'], task['lease_token']),
+            )
+    finally:
+        conn.close()
+
+
+def _queue_mark_error(task, error, http_status=None):
+    """Record a retryable error using bounded exponential backoff."""
+    now = time.time()
+    conn = db()
+    try:
+        row = conn.execute(
+            """SELECT attempts FROM hydration_queue
+               WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'""",
+            (task['store'], task['url'], task['lease_token']),
+        ).fetchone()
+        if not row:
+            return
+
+        attempts = int(row['attempts'] or 0)
+        idx = min(max(attempts - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
+        delay = float(HYDRATION_BACKOFF_SECONDS[idx])
+        jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
+        next_time = now + delay + jitter
+
+        # 404/410 and exhausted retries are terminal. Other failures remain
+        # retryable and get progressively longer backoff.
+        terminal_http = http_status in (404, 410)
+        next_state = (
+            'DEAD'
+            if terminal_http or attempts >= HYDRATION_MAX_ATTEMPTS
+            else 'ERROR'
+        )
+        conn.execute(
+            """UPDATE hydration_queue
+               SET state=?,
+                   available_at=?,
+                   leased_until=NULL,
+                   lease_token=NULL,
+                   last_finished_at=?,
+                   last_error=?,
+                   last_http_status=?
+               WHERE store=? AND url=? AND lease_token=?
+                 AND state='PROCESSING'""",
+            (
+                next_state,
+                next_time,
+                now,
+                str(error)[:1000],
+                http_status,
+                task['store'],
+                task['url'],
+                task['lease_token'],
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _hydrate_one_task(task):
+    """Execute one claimed page fetch and transition its queue state."""
+    try:
+        item = refresh_url(task['store'], task['url'])
+        if item and item.get('name'):
+            _queue_mark_done(task)
+            return True
+        # refresh_url records the concrete fetch failure in store_products.
+        conn = db()
+        try:
+            row = conn.execute(
+                "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
+                (task['store'], task['url']),
+            ).fetchone()
+            detail = str(row['fetch_status']) if row and row['fetch_status'] else 'product_parser_not_found'
+        finally:
+            conn.close()
+
+        match = re.search(r'(?:HTTP\s+|http_status=)(\d+)', detail)
+        http_status = int(match.group(1)) if match else None
+        _queue_mark_error(task, detail, http_status=http_status)
+        return False
+    except Exception as exc:
+        _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        return False
+
+
+def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
+    """Process a small durable queue batch.
+
+    Queue initialization/backfill is deliberately not part of this hot loop.
+    The queue is initialized once by catalog_hydration_loop() at startup, while
+    discovery writes newly discovered URLs directly into hydration_queue.
+    The queue itself owns concurrency/fairness. At most one task per store is
+    claimed, while the global worker count stays small enough for the 1 GB /
+    shared-CPU Fly machine.
+    """
+    # Do not call _ensure_hydration_queue() here.
+    #
+    # That function scans the whole active catalog and backfills missing queue
+    # rows. Running it before every small hydration batch causes repeated
+    # catalog-wide SQLite work and contends with user searches.
+    recover_stale_tasks()
+
+    limit = max(1, int(max_urls))
+    worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
+    tasks = []
+
+    # Claim serially because each claim uses a short BEGIN IMMEDIATE
+    # transaction. Once claimed, HTTP work happens completely outside SQLite.
+    for _ in range(limit):
+        if deadline is not None and time.monotonic() >= float(deadline):
+            break
+        task = _claim_one_hydration_task()
+        if not task:
+            break
+        tasks.append(task)
+
+    if not tasks:
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
+    fetched = 0
+    errors = 0
+    pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
+    futures = [pool.submit(_hydrate_one_task, task) for task in tasks]
+    try:
+        for future in as_completed(futures):
+            try:
+                if future.result():
+                    fetched += 1
+                else:
+                    errors += 1
+            except Exception:
+                errors += 1
+        return {
+            'selected': len(tasks),
+            'fetched': fetched,
+            'errors': errors,
+        }
+    finally:
+        pool.shutdown(wait=True)
+
+
+def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
+    """Continuously hydrate discovered product pages in the background."""
+    _ensure_hydration_queue()
+    recovered = recover_stale_tasks()
+    print(
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
+        flush=True,
+    )
+    while stop_event is None or not stop_event.is_set():
+        try:
+            result = hydrate_catalog_batch(
+                max_urls=max(1, int(batch_size)),
+                workers=min(int(workers), HYDRATION_WORKERS),
+                deadline=time.monotonic() + max(30.0, float(REFRESH_TIMEOUT) + 5.0),
+            )
+            if result.get('selected', 0) == 0:
+                if stop_event is not None:
+                    stop_event.wait(max(5.0, float(pause_seconds)))
+                else:
+                    time.sleep(max(5.0, float(pause_seconds)))
+                continue
+            print(
+                'CATALOG HYDRATION BATCH '
+                f"selected={result.get('selected')} "
+                f"fetched={result.get('fetched')} "
+                f"errors={result.get('errors')}",
+                flush=True,
+            )
+            if stop_event is not None:
+                stop_event.wait(max(0.1, float(pause_seconds)))
+            else:
+                time.sleep(max(0.1, float(pause_seconds)))
+        except Exception as exc:
+            print(
+                f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            if stop_event is not None:
+                stop_event.wait(5.0)
+            else:
+                time.sleep(5.0)
+
+
+def hydration_status():
+    """Detailed durable hydration queue status, restricted to active URLs."""
+    conn = db()
+    out = {}
+    try:
+        for store in STORES:
+            row = conn.execute(
+                """SELECT
+                     COUNT(*) AS total,
+                     SUM(CASE WHEN q.state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                     SUM(CASE WHEN q.state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                     SUM(CASE WHEN q.state='DONE' THEN 1 ELSE 0 END) AS done,
+                     SUM(CASE WHEN q.state='ERROR' THEN 1 ELSE 0 END) AS error,
+                     SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
+                     MAX(q.last_finished_at) AS last_finished_at
+                   FROM hydration_queue q
+                   JOIN store_urls u
+                     ON u.store=q.store AND u.url=q.url
+                   WHERE q.store=? AND u.active=1""",
+                (store,),
+            ).fetchone()
+            out[store] = {
+                'total': int(row['total'] or 0),
+                'pending': int(row['pending'] or 0),
+                'processing': int(row['processing'] or 0),
+                'done': int(row['done'] or 0),
+                'error': int(row['error'] or 0),
+                'dead': int(row['dead'] or 0),
+                'last_finished_at': row['last_finished_at'],
+            }
+    finally:
+        conn.close()
+    return out
+
+def sync_all():
+    results = {}
+    # Persist a state for all stores before workers start. A slow store is
+    # immediately visible as queued/running instead of falsely NOT_SYNCED.
+    now = time.time()
+    conn = db()
+    with conn:
+        for store in STORES:
+            conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,fetched_count=excluded.fetched_count,
+               error=excluded.error""",
+               (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
+    conn.close()
+    with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
+        futures = {pool.submit(discover_store, store): store for store in STORES}
+        for future in as_completed(futures):
+            store = futures[future]
+            try:
+                results[store] = future.result()
+            except Exception as exc:
+                now = time.time()
+                results[store] = {
+                    'count': 0,
+                    'status': 'DISCOVERY_ERROR',
+                    'error': f'{type(exc).__name__}: {exc}',
+                }
+                conn = db()
+                conn.execute(
+                    '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+                       VALUES(?,?,?,?,?,?,?)
+                       ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+                       finished_at=excluded.finished_at,error=excluded.error''',
+                    (store, 'DISCOVERY_ERROR', now, now, 0, 0, f'{type(exc).__name__}: {exc}'),
+                )
+                conn.commit()
+                conn.close()
+    return results
+
+
+def store_status():
+    conn = db()
+    now = time.time()
+    out = {}
+    for store in STORES:
+        r = conn.execute('SELECT * FROM sync_state WHERE store=?', (store,)).fetchone()
+        count = conn.execute(
+            'SELECT COUNT(*) c FROM store_urls WHERE store=? AND active=1', (store,)
+        ).fetchone()['c']
+        fetched = conn.execute(
+            'SELECT COUNT(*) c FROM store_products WHERE store=? AND fetch_status="OK"', (store,)
+        ).fetchone()['c']
+        derived_status = (
+            r['status'] if r else
+            ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED')
+        )
+        pending = conn.execute(
+            '''SELECT COUNT(*) c
+               FROM store_urls u
+               LEFT JOIN store_products p
+                 ON p.store=u.store AND p.url=u.url
+               WHERE u.store=? AND u.active=1
+                 AND (p.url IS NULL OR p.fetch_status != "OK")''',
+            (store,),
+        ).fetchone()['c']
+        out[store] = {
+            'status': derived_status,
+            'indexed_urls': count,
+            'fetched_products': fetched,
+            'pending_hydration': int(pending),
+            'hydration_ratio': round((fetched / count), 4) if count else 0.0,
+            'finished_at': r['finished_at'] if r else None,
+            'age_sec': (now - r['finished_at']) if r and r['finished_at'] else None,
+            'error': r['error'] if r else None,
+        }
+    conn.close()
+    return out
+
+
+if __name__ == '__main__':
+    print(json.dumps(sync_all(), indent=2, ensure_ascii=False))
