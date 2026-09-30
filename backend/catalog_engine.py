@@ -633,34 +633,34 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Official Deloox catalog surfaces. Both public storefront hosts are
-        # included because the .be surface does not contain the complete
-        # English catalog graph. No product, brand, or query is hard-coded.
+        # Primary Belgian catalog surfaces. These are broad, retailer-owned
+        # category/index pages; no product or brand is hard-coded here.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
-        'https://www.deloox.com/',
-        'https://www.deloox.com/en/',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
-        'https://www.deloox.com/en/category/1103659/fragrances.html',
+        # English catalog indexes are distinct public surfaces on Deloox;
+        # keep both localized and legacy category roots so the brand/category
+        # graph can reach deeper English product categories generically.
         'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.com/en/category/1063858/brands.html',
         'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.com/en/category/1000003/fragrances.html',
         'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
         'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
         'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.com/category/1063858/brands.html',
         'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.com/category/1000003/fragrances.html',
         'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.com/en/',
+        'https://www.deloox.com/en/category/1063858/brands.html',
+        'https://www.deloox.com/en/category/1000003/fragrances.html',
+        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
+        'https://www.deloox.com/category/1063858/brands.html',
+        'https://www.deloox.com/category/1000003/fragrances.html',
+        'https://www.deloox.com/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.com/category/1075660/womens-perfume.html',
     ),
     'sabina': (
@@ -889,13 +889,12 @@ def _html_discovery_priority(store, url, depth, source=''):
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox products through its public category graph.
 
-    Deloox exposes a large amount of catalog navigation in category pages,
-    while sitemap endpoints are frequently unavailable. The crawler therefore
-    traverses the retailer-owned catalog graph directly. Fetches are performed
-    in bounded parallel batches so one slow/large Deloox page cannot consume
-    the entire discovery deadline.
-
-    No product name, brand name, product id, or search query is used here.
+    Deloox exposes the same category graph repeatedly across domains/locales.
+    The crawler therefore canonicalizes category/listing URLs by their stable
+    numeric category id (while preserving pagination), preventing localized
+    duplicates from consuming the finite discovery budget before other brand
+    branches are reached. This is structural catalog discovery only: it never
+    uses a requested product, brand, or query.
     """
     queue = []
     queued = set()
@@ -906,18 +905,33 @@ def _discover_deloox_catalog(seeds, deadline=None):
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
 
+    def queue_key(url):
+        p = urllib.parse.urlparse(url)
+        path = p.path or '/'
+        # Deloox category ids are stable across localized/domain variants.
+        # Keep pagination parameters because each page is a distinct catalog
+        # surface, but collapse host/language duplicates of the same category.
+        m = re.search(r'/(?:category|categorie|categoria|catégorie)/(?P<id>\d+)(?:/|$)', path, re.I)
+        if m:
+            page_bits = []
+            for k, v in urllib.parse.parse_qsl(p.query, keep_blank_values=True):
+                if k.lower() in {'page', 'pagina', 'offset', 'start', 'p'}:
+                    page_bits.append((k.lower(), v))
+            return ('category', m.group('id'), tuple(sorted(page_bits)))
+        # Brand-index/listing surfaces without a numeric id still benefit from
+        # host/locale normalization, but their own path remains significant.
+        clean_path = re.sub(r'^/(?:en|it|de|fr|nl|es|pt|pl|sv|da|tw)(?=/|$)', '', path, flags=re.I)
+        return ('path', clean_path.rstrip('/') or '/', tuple(sorted(urllib.parse.parse_qsl(p.query, keep_blank_values=True))))
+
     def add(url, depth, source=''):
         nonlocal sequence
         if not url or depth > max_depth or len(queued) >= max_pages * 8:
             return
         key = url.split('#', 1)[0]
-        if key in queued or key in visited:
+        if key in visited:
             return
         p = urllib.parse.urlparse(key)
-        allowed_hosts = {
-            urllib.parse.urlparse(base).netloc.lower()
-            for base in _discovery_bases('deloox')
-        }
+        allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}
         if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
         path = p.path.lower()
@@ -929,10 +943,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
+        ckey = queue_key(listing)
+        if ckey in queued:
+            return
         sequence += 1
-        priority = _html_discovery_priority('deloox', key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
-        queued.add(key)
+        priority = _html_discovery_priority('deloox', listing, depth, source)
+        heapq.heappush(queue, (priority, sequence, listing, depth, source))
+        queued.add(ckey)
 
     for seed in seeds:
         add(seed, 0, 'configured_seed')
@@ -1005,10 +1022,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 if listing:
                     add(listing, depth + 1, requested)
 
-    # Parallel batches are deliberately bounded by the same HTML worker pool
-    # used by the generic crawler. The queue itself remains priority-ordered,
-    # so high-value catalog surfaces are still preferred without serializing
-    # the network I/O.
     while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
         while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
@@ -1040,6 +1053,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
+
 
 
 def _discover_html_catalog(store, seeds, deadline=None):
