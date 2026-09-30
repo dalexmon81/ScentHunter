@@ -889,19 +889,23 @@ def _html_discovery_priority(store, url, depth, source=''):
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox through its public catalog graph.
 
-    Catalog-only and query-independent. The crawler deliberately avoids
-    BeautifulSoup on every ~1 MB Deloox page: the diagnostic runs under a
-    tight request budget, so the discovery graph must spend that budget on
-    traversal rather than DOM construction. A small stdlib HTMLParser extracts
-    anchors, pagination links and JSON-LD script bodies without changing the
-    catalog classification rules.
+    Catalog-only and query-independent.  Deloox exposes very large index pages
+    (often thousands of category/brand links).  A normal priority heap can
+    spend the whole diagnostic budget on one alphabetic branch.  This crawler
+    therefore uses a generic branch-fair frontier: links are grouped by the
+    first alphanumeric character of their final path segment and the frontier
+    cycles across those groups.  No product name, brand name, product id or
+    query is used to select a branch.
     """
-    queue = []
+    from collections import deque
+
+    frontiers = {}
+    frontier_order = []
+    frontier_cursor = 0
     queued = set()
     visited = set()
     product_urls = {}
     errors = []
-    sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
 
@@ -922,8 +926,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
             return f'https://{canonical_host}/en/'
         return urllib.parse.urlunparse((p.scheme, canonical_host, path, '', p.query, ''))
 
+    def branch_key(url):
+        path = urllib.parse.urlparse(url).path.rstrip('/')
+        tail = path.rsplit('/', 1)[-1].lower()
+        m = re.search(r'[a-z0-9]', tail)
+        return m.group(0) if m else '#'
+
     def add(url, depth, source=''):
-        nonlocal sequence
         if not url or depth > max_depth or len(queued) >= max_pages * 8:
             return
         key = url.split('#', 1)[0]
@@ -941,11 +950,18 @@ def _discover_deloox_catalog(seeds, deadline=None):
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
-        sequence += 1
-        priority = _html_discovery_priority('deloox', key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
+        key = listing.split('#', 1)[0]
+        if key in queued or key in visited:
+            return
+        bucket = branch_key(key)
+        if bucket not in frontiers:
+            frontiers[bucket] = deque()
+            frontier_order.append(bucket)
+        frontiers[bucket].append((key, depth, source))
         queued.add(key)
 
+    # Configured seeds are kept together and processed first.  Duplicate
+    # language/domain surfaces are canonicalized to .com before enqueueing.
     seed_seen = set()
     for seed in seeds:
         key = canonical_seed(seed)
@@ -953,8 +969,16 @@ def _discover_deloox_catalog(seeds, deadline=None):
             seed_seen.add(key)
             add(key, 0, 'configured_seed')
 
+    # Put the seed bucket first; all discovered catalog branches then rotate
+    # fairly.  The branch key is purely URL structure, not product semantics.
+    seed_bucket = []
+    for b in frontier_order:
+        if any(item[2] == 'configured_seed' for item in frontiers[b]):
+            seed_bucket.append(b)
+    if seed_bucket:
+        frontier_order[:] = seed_bucket + [b for b in frontier_order if b not in seed_bucket]
+
     class _DelooxPageParser(HTMLParser):
-        """Minimal parser: collect href/text and JSON-LD without building a DOM."""
         def __init__(self):
             super().__init__(convert_charrefs=True)
             self.anchors = []
@@ -1015,7 +1039,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
             self._anchor_text = []
 
     def extract_jsonld_urls(raw_items):
-        """Yield product URLs from standard JSON-LD without BeautifulSoup."""
         def walk(value):
             if isinstance(value, dict):
                 raw_url = value.get('url')
@@ -1067,16 +1090,35 @@ def _discover_deloox_catalog(seeds, deadline=None):
             if product:
                 product_urls[product] = ''
 
-    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
+    while frontier_order and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
-        while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            _priority, _sequence, url, depth, source = heapq.heappop(queue)
+        empty_rounds = 0
+        while len(batch) < HTML_WORKERS and frontier_order:
+            if frontier_cursor >= len(frontier_order):
+                frontier_cursor = 0
+            bucket = frontier_order[frontier_cursor]
+            frontier_cursor += 1
+            q = frontiers.get(bucket)
+            if not q:
+                frontier_order = [b for b in frontier_order if frontiers.get(b)]
+                frontier_cursor = 0
+                empty_rounds += 1
+                if empty_rounds >= len(frontier_order or [1]):
+                    break
+                continue
+            item = q.popleft()
+            if not q:
+                frontier_order = [b for b in frontier_order if frontiers.get(b)]
+                frontier_cursor = 0
+            url, depth, source = item
             if url in visited:
                 continue
             visited.add(url)
             batch.append((url, depth, source))
+            if len(visited) >= max_pages:
+                break
         if not batch:
-            continue
+            break
 
         with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
             futures = {
