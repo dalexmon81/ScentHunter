@@ -18,7 +18,6 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
-from html.parser import HTMLParser
 import html
 import heapq
 import importlib
@@ -887,62 +886,37 @@ def _html_discovery_priority(store, url, depth, source=''):
     return (score, depth)
 
 def _discover_deloox_catalog(seeds, deadline=None):
-    """Discover Deloox through its public catalog graph.
+    """Discover Deloox products through its public category graph.
 
-    Catalog-only and query-independent.  Deloox exposes very large index pages
-    (often thousands of category/brand links).  A normal priority heap can
-    spend the whole diagnostic budget on one alphabetic branch.  This crawler
-    therefore uses a generic branch-fair frontier: links are grouped by the
-    first alphanumeric character of their final path segment and the frontier
-    cycles across those groups.  No product name, brand name, product id or
-    query is used to select a branch.
+    Deloox exposes a large amount of catalog navigation in category pages,
+    while sitemap endpoints are frequently unavailable. The crawler therefore
+    traverses the retailer-owned catalog graph directly. Fetches are performed
+    in bounded parallel batches so one slow/large Deloox page cannot consume
+    the entire discovery deadline.
+
+    No product name, brand name, product id, or search query is used here.
     """
-    from collections import deque
-
-    frontiers = {}
-    frontier_order = []
-    frontier_cursor = 0
+    queue = []
     queued = set()
     visited = set()
     product_urls = {}
     errors = []
+    sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
 
-    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}
-    canonical_host = 'www.deloox.com' if 'www.deloox.com' in allowed_hosts else next(iter(allowed_hosts), '')
-
-    def canonical_seed(url):
-        key = (url or '').split('#', 1)[0]
-        p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
-            return None
-        if p.netloc.lower() != canonical_host:
-            return None
-        path = (p.path or '/').rstrip('/') or '/'
-        if path == '/':
-            return f'https://{canonical_host}/'
-        if path == '/en':
-            return f'https://{canonical_host}/en/'
-        return urllib.parse.urlunparse((p.scheme, canonical_host, path, '', p.query, ''))
-
-    def branch_key(url):
-        path = urllib.parse.urlparse(url).path.rstrip('/')
-        tail = path.rsplit('/', 1)[-1].lower()
-        m = re.search(r'[a-z0-9]', tail)
-        return m.group(0) if m else '#'
-
     def add(url, depth, source=''):
+        nonlocal sequence
         if not url or depth > max_depth or len(queued) >= max_pages * 8:
             return
         key = url.split('#', 1)[0]
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}:
             return
         path = p.path.lower()
-        if '/product/' in path or '/produit/' in path:
+        if '/product/' in path:
             product = _html_product_url('deloox', key, key)
             if product:
                 product_urls[product] = ''
@@ -950,175 +924,140 @@ def _discover_deloox_catalog(seeds, deadline=None):
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
-        key = listing.split('#', 1)[0]
-        if key in queued or key in visited:
-            return
-        bucket = branch_key(key)
-        if bucket not in frontiers:
-            frontiers[bucket] = deque()
-            frontier_order.append(bucket)
-        frontiers[bucket].append((key, depth, source))
+        sequence += 1
+        priority = _html_discovery_priority('deloox', key, depth, source)
+        # The page-level fair ordering is deliberately carried into the
+        # persistent priority queue.  Previously heapq received the full
+        # structural priority tuple (score, depth, path-length, url), which
+        # re-sorted the fair fan-out immediately after it was created.  That
+        # made _fair_catalog_links() effectively useless on large Deloox
+        # indexes and allowed lexical/path ordering to starve branches.
+        # Keep the generic structural score first, then use insertion sequence
+        # as the tie-breaker so the already-fair page order is preserved.
+        heap_priority = (priority[0], priority[1], sequence)
+        heapq.heappush(queue, (heap_priority, sequence, key, depth, source))
         queued.add(key)
 
-    # Configured seeds are kept together and processed first.  Duplicate
-    # language/domain surfaces are canonicalized to .com before enqueueing.
-    seed_seen = set()
     for seed in seeds:
-        key = canonical_seed(seed)
-        if key and key not in seed_seen:
-            seed_seen.add(key)
-            add(key, 0, 'configured_seed')
+        add(seed, 0, 'configured_seed')
 
-    # Put the seed bucket first; all discovered catalog branches then rotate
-    # fairly.  The branch key is purely URL structure, not product semantics.
-    seed_bucket = []
-    for b in frontier_order:
-        if any(item[2] == 'configured_seed' for item in frontiers[b]):
-            seed_bucket.append(b)
-    if seed_bucket:
-        frontier_order[:] = seed_bucket + [b for b in frontier_order if b not in seed_bucket]
+    def _fair_catalog_links(items):
+        """Interleave large navigation fan-outs by structural URL bucket.
 
-    class _DelooxPageParser(HTMLParser):
-        def __init__(self):
-            super().__init__(convert_charrefs=True)
-            self.anchors = []
-            self.next_links = []
-            self._anchor_href = None
-            self._anchor_text = []
-            self._in_anchor = False
-            self._script_jsonld = False
-            self._script_buf = []
-            self.jsonld = []
-
-        def handle_starttag(self, tag, attrs):
-            attrs = dict(attrs)
-            tag = tag.lower()
-            if tag == 'a' and attrs.get('href'):
-                self._in_anchor = True
-                self._anchor_href = attrs.get('href')
-                self._anchor_text = []
-            elif tag == 'link' and attrs.get('href'):
-                rel = ' '.join(attrs.get('rel', '').split()).lower()
-                if 'next' in rel:
-                    self.next_links.append(attrs.get('href'))
-            elif tag == 'script':
-                typ = (attrs.get('type') or '').lower().strip()
-                self._script_jsonld = typ in ('application/ld+json', 'application/json+ld')
-                if self._script_jsonld:
-                    self._script_buf = []
-
-        def handle_startendtag(self, tag, attrs):
-            self.handle_starttag(tag, attrs)
-            if tag.lower() == 'a' and self._in_anchor:
-                self._finish_anchor()
-
-        def handle_data(self, data):
-            if self._in_anchor:
-                self._anchor_text.append(data)
-            if self._script_jsonld:
-                self._script_buf.append(data)
-
-        def handle_endtag(self, tag):
-            tag = tag.lower()
-            if tag == 'a' and self._in_anchor:
-                self._finish_anchor()
-            elif tag == 'script' and self._script_jsonld:
-                raw = ''.join(self._script_buf).strip()
-                if raw:
-                    self.jsonld.append(raw)
-                self._script_jsonld = False
-                self._script_buf = []
-
-        def _finish_anchor(self):
-            href = self._anchor_href
-            label = ' '.join(''.join(self._anchor_text).split())[:300]
-            if href:
-                self.anchors.append((href, label))
-            self._in_anchor = False
-            self._anchor_href = None
-            self._anchor_text = []
-
-    def extract_jsonld_urls(raw_items):
-        def walk(value):
-            if isinstance(value, dict):
-                raw_url = value.get('url')
-                if raw_url:
-                    yield raw_url
-                for child in value.values():
-                    yield from walk(child)
-            elif isinstance(value, list):
-                for child in value:
-                    yield from walk(child)
-        for raw in raw_items:
-            try:
-                obj = json.loads(raw)
-            except Exception:
-                continue
-            yield from walk(obj)
+        Deloox brand/category indexes can expose thousands of links from one
+        page. Processing those links in lexical URL order can starve entire
+        parts of the catalog before the page budget expires. Interleaving by
+        the first alphanumeric character of the final path component preserves
+        generic discovery while giving every structural branch an opportunity
+        to be visited.
+        """
+        buckets = {}
+        for item in items:
+            url = item[0]
+            parsed = urllib.parse.urlparse(url)
+            parts = [x for x in (parsed.path or '').split('/') if x]
+            key = (parts[-1] if parts else parsed.netloc).lower()
+            bucket = key[0] if key and key[0].isalnum() else '#'
+            buckets.setdefault(bucket, []).append(item)
+        ordered = []
+        for key in sorted(buckets):
+            buckets[key].sort(key=lambda x: x[0])
+        while buckets:
+            for key in list(sorted(buckets)):
+                values = buckets.get(key)
+                if not values:
+                    buckets.pop(key, None)
+                    continue
+                ordered.append(values.pop(0))
+                if not values:
+                    buckets.pop(key, None)
+        return ordered
 
     def process_page(requested, depth, source, result):
+        """Collect products and enqueue catalog/navigation URLs from one page."""
         _requested, final, data, error = result
         if error:
             errors.append(f'{requested} -> {error}')
             return
+
+        soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
+
+        anchor_listings = []
+        for a in soup.find_all('a', href=True):
+            raw = a.get('href')
+            product = _html_product_url('deloox', raw, base)
+            if product:
+                product_urls[product] = ''
+                continue
+            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
+            if listing:
+                anchor_listings.append((listing, depth + 1, requested))
+        for listing, next_depth, next_source in _fair_catalog_links(anchor_listings):
+            add(listing, next_depth, next_source)
+
+        for node in soup.find_all(True):
+            label = node.get_text(' ', strip=True)[:300]
+            for attr in (
+                'value', 'data-value', 'data-filter-url', 'data-option-url',
+                'data-redirect-url', 'data-url', 'data-href', 'data-link',
+                'data-next-url', 'data-next', 'data-load-more-url',
+                'data-pagination-url',
+            ):
+                raw = node.get(attr)
+                if not raw:
+                    continue
+                product = _html_product_url('deloox', raw, base)
+                if product:
+                    product_urls[product] = ''
+                    continue
+                listing = _html_listing_url('deloox', raw, base, label)
+                if listing:
+                    add(listing, depth + 1, requested)
+
         try:
-            raw_html = data.decode('utf-8', 'ignore') if isinstance(data, (bytes, bytearray)) else str(data)
-            parser = _DelooxPageParser()
-            parser.feed(raw_html)
-            parser.close()
-        except Exception as exc:
-            errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
-            return
+            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
+            raw_html = raw_html.replace('\\/', '/')
+            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            for match in re.finditer(
+                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                raw_html,
+                re.I,
+            ):
+                raw = match.group(0)
+                absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
+                product = _html_product_url('deloox', absolute, base)
+                if product:
+                    product_urls[product] = ''
+                    continue
+                listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
+                if listing:
+                    add(listing, depth + 1, requested)
+        except Exception:
+            pass
 
-        for raw, label in parser.anchors:
-            product = _html_product_url('deloox', raw, base)
-            if product:
-                product_urls[product] = ''
-                continue
-            listing = _html_listing_url('deloox', raw, base, label)
-            if listing:
-                add(listing, depth + 1, label or requested)
+        for node in soup.find_all(['a', 'link'], href=True):
+            rel = ' '.join(node.get('rel') or []).lower()
+            href = node.get('href')
+            if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
+                listing = _html_listing_url('deloox', href, base, 'pagination')
+                if listing:
+                    add(listing, depth + 1, requested)
 
-        for raw in parser.next_links:
-            listing = _html_listing_url('deloox', raw, base, 'next')
-            if listing:
-                add(listing, depth + 1, 'next')
-
-        for raw in extract_jsonld_urls(parser.jsonld):
-            product = _html_product_url('deloox', raw, base)
-            if product:
-                product_urls[product] = ''
-
-    while frontier_order and len(visited) < max_pages and (deadline is None or time.time() < deadline):
+    # Parallel batches are deliberately bounded by the same HTML worker pool
+    # used by the generic crawler. The queue itself remains priority-ordered,
+    # so high-value catalog surfaces are still preferred without serializing
+    # the network I/O.
+    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
-        empty_rounds = 0
-        while len(batch) < HTML_WORKERS and frontier_order:
-            if frontier_cursor >= len(frontier_order):
-                frontier_cursor = 0
-            bucket = frontier_order[frontier_cursor]
-            frontier_cursor += 1
-            q = frontiers.get(bucket)
-            if not q:
-                frontier_order = [b for b in frontier_order if frontiers.get(b)]
-                frontier_cursor = 0
-                empty_rounds += 1
-                if empty_rounds >= len(frontier_order or [1]):
-                    break
-                continue
-            item = q.popleft()
-            if not q:
-                frontier_order = [b for b in frontier_order if frontiers.get(b)]
-                frontier_cursor = 0
-            url, depth, source = item
+        while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
+            _priority, _sequence, url, depth, source = heapq.heappop(queue)
             if url in visited:
                 continue
             visited.add(url)
             batch.append((url, depth, source))
-            if len(visited) >= max_pages:
-                break
         if not batch:
-            break
+            continue
 
         with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
             futures = {
@@ -1128,9 +1067,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
             for future in as_completed(futures):
                 requested, depth, source = futures[future]
                 try:
-                    process_page(requested, depth, source, future.result())
+                    result = future.result()
                 except Exception as exc:
                     errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
+                    continue
+                process_page(requested, depth, source, result)
 
     return {
         'product_urls': product_urls,
@@ -1138,6 +1079,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
+
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
