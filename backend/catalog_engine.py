@@ -684,7 +684,7 @@ HTML_WORKERS = 12
 
 # Deloox exposes very large category/brand fan-outs. Keep the generic HTML
 # crawler at its existing 800-page contract, but give the dedicated Deloox
-# catalog graph enough page budget to traverse the catalog graph structurally.
+# catalog graph enough budget to traverse all structural branches fairly.
 DELOOX_CATALOG_MAX_PAGES = 1600
 
 DISCOVERY_HARD_TIMEOUT = 300
@@ -931,14 +931,16 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if not listing:
             return
         sequence += 1
-        # The dedicated Deloox catalog graph is traversed breadth-first.
-        # Priority scoring is useful for the generic crawler, but here it can
-        # let deeper "high priority" branches from one seed overtake direct
-        # category branches from another seed. With Deloox's very large brand
-        # index, that can starve entire catalog branches before their category
-        # pages are ever fetched. Depth-first queue ordering keeps discovery
-        # structural and gives every seed-derived branch the same opportunity.
-        heapq.heappush(queue, (depth, sequence, key, depth, source))
+        # Deloox has very large category/brand fan-outs. A global URL
+        # priority heap can monopolize the queue with descendants from one
+        # structural branch. Schedule the dedicated catalog graph by depth
+        # first, then by structural URL bucket, so sibling branches receive
+        # deterministic opportunities to be visited.
+        parsed_key = urllib.parse.urlparse(key)
+        path_parts = [p for p in (parsed_key.path or '').split('/') if p]
+        branch_key = (path_parts[-1] if path_parts else parsed_key.netloc).lower()
+        branch_bucket = branch_key[0] if branch_key and branch_key[0].isalnum() else '#'
+        heapq.heappush(queue, (depth, branch_bucket, sequence, key, depth, source))
         queued.add(key)
 
     for seed in seeds:
@@ -1054,7 +1056,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
     while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
         while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            _priority, _sequence, url, depth, source = heapq.heappop(queue)
+            _depth_key, _branch_bucket, _sequence, url, depth, source = heapq.heappop(queue)
             if url in visited:
                 continue
             visited.add(url)
