@@ -719,125 +719,18 @@ def _search_endpoints(query):
     return out
 
 
-def _search_pagination_urls(base_url, html):
-    """Extract generic pagination URLs exposed by a Deloox search page.
-
-    Search implementations may expose pagination through normal numbered links,
-    rel="next", aria labels, data-* URL attributes, or client-side state.
-    Discovery follows those store-provided URLs first and never encodes a
-    product/brand/variant-specific rule here.
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    found = []
-    seen = set()
-
-    def add(raw):
-        raw = clean(raw)
-        if not raw or raw.startswith(("javascript:", "mailto:", "#")):
-            return
-        raw = raw.replace("\\/", "/")
-        url = urljoin(base_url, raw).split("#")[0]
-        parsed = urlparse(url)
-        if parsed.netloc.lower() not in DELOOX_HOSTS:
-            return
-        if url not in seen:
-            seen.add(url)
-            found.append(url)
-
-    # Explicit next/pagination links.
-    for node in soup.find_all(["a", "link"], href=True):
-        rel = node.get("rel") or []
-        if not isinstance(rel, list):
-            rel = [str(rel)]
-        marker = norm(
-            " ".join(
-                [str(x) for x in rel]
-                + [
-                    clean(node.get("aria-label")),
-                    clean(node.get("title")),
-                    clean(node.get_text(" ", strip=True)),
-                ]
-            )
-        )
-        href = clean(node.get("href"))
-        parsed = urlparse(urljoin(base_url, href))
-        has_page_param = bool(
-            re.search(
-                r"(?:^|&)(?:page|p|pagina|paged|pageindex|page_number)=\d+",
-                parsed.query,
-                re.I,
-            )
-        )
-        numbered = bool(re.fullmatch(r"\d{1,3}", clean(node.get_text(" ", strip=True))))
-        if "next" in marker or "pagination" in marker or has_page_param or numbered:
-            add(href)
-
-    # Common dynamic pagination/load-more URL attributes.
-    for node in soup.find_all(True):
-        for attr in (
-            "data-next",
-            "data-next-url",
-            "data-pagination-url",
-            "data-load-more-url",
-            "data-page-url",
-            "data-url",
-            "data-href",
-        ):
-            raw = node.get(attr)
-            if raw:
-                add(raw)
-
-    # Some storefronts keep pagination URLs in JSON/JS state instead of
-    # rendering them as anchors. Keep this generic and bounded.
-    patterns = (
-        r'(?:"|\\\')((?:https?:)?//[^"\\\']*deloox\.[^"\\\']+[^"\\\']*[?&](?:page|p|pagina|paged|pageindex|page_number)=\d+[^"\\\']*)',
-        r'(?:"|\\\')((?:/[^"\\\']*)?[?&](?:page|p|pagina|paged|pageindex|page_number)=\d+[^"\\\']*)',
-    )
-    for pattern in patterns:
-        for raw in re.findall(pattern, html, re.I):
-            add(raw)
-
-    return found
-
-
-def _set_page_parameter(url, parameter, page_number):
-    parsed = urlparse(url)
-    params = parse_qsl(parsed.query, keep_blank_values=True)
-    replaced = False
-    out = []
-
-    for key, value in params:
-        if key.lower() == parameter.lower():
-            out.append((key, str(page_number)))
-            replaced = True
-        else:
-            out.append((key, value))
-
-    if not replaced:
-        out.append((parameter, str(page_number)))
-
-    return urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        parsed.params,
-        urlencode(out, doseq=True),
-        "",
-    ))
-
-
 def _discover_from_search(session, query):
-    global _LAST_DISCOVERY_STATE
-    """Primary Deloox discovery with generic, bounded pagination.
+    """Primary Deloox discovery with bounded pagination.
 
-    The first successful search surface is selected deterministically from the
-    configured endpoint order. Pagination URLs exposed by that surface are
-    followed first. If the page does not expose usable pagination links, the
-    generic ``page=N`` convention is probed as a bounded fallback.
+    Deloox can expose a valid search result on a later page even when an
+    intermediate page repeats already-seen product URLs.  Pagination therefore
+    must not stop merely because one page adds no new candidates.  We continue
+    through the bounded page window and stop only on a failed/empty HTTP page.
 
-    No product, brand, SKU or variant is encoded here.
+    This remains generic: no product, brand, SKU or variant is encoded here.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
+    from urllib.parse import parse_qsl, urlencode, urlunparse
 
     query = clean(query)
     if not query:
@@ -847,7 +740,7 @@ def _discover_from_search(session, query):
     candidates = {}
     successful_pages = 0
     failed_pages = 0
-    selected = None
+    selected_endpoint = None
 
     def fetch(endpoint):
         try:
@@ -861,18 +754,12 @@ def _discover_from_search(session, query):
         except requests.RequestException:
             return endpoint, None
 
-    # Probe all configured public search surfaces, but select the first
-    # configured surface that actually returns relevant products. This avoids
-    # nondeterminism from whichever parallel request finishes first.
+    # Probe the public search surfaces in parallel and select the first surface
+    # that actually exposes relevant product URLs.
     with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
-        responses = {}
         for future in as_completed(futures):
             endpoint, r = future.result()
-            responses[endpoint] = r
-
-        for endpoint in endpoints:
-            r = responses.get(endpoint)
             if r is None or r.status_code >= 400 or not r.text:
                 failed_pages += 1
                 continue
@@ -890,87 +777,55 @@ def _discover_from_search(session, query):
             for url in found:
                 candidates[url] = True
 
-            if found and selected is None:
-                selected = (r.url, r.text)
+            if found:
+                selected_endpoint = r.url
+                break
 
-    # No relevant result on any public search surface. Let the existing
-    # category/sitemap fallback handle the verified zero-result case.
-    if selected is None:
-        _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
-        _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
-        _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
-        return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
+    # Follow the same successful search surface.  Do NOT stop on a page that
+    # merely repeats earlier candidates: retailer pagination can legitimately
+    # expose an additional valid product on a later page.
+    if selected_endpoint:
+        parsed = urlparse(selected_endpoint)
+        params = parse_qsl(parsed.query, keep_blank_values=True)
 
-    selected_url, selected_html = selected
-    selected_base = f"{urlparse(selected_url).scheme}://{urlparse(selected_url).netloc}"
+        def page_url(page_number):
+            page_params = [
+                (key, value)
+                for key, value in params
+                if key.lower() != "page"
+            ]
+            page_params.append(("page", str(page_number)))
+            return urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                urlencode(page_params, doseq=True),
+                "",
+            ))
 
-    # Follow the retailer's own pagination links first.
-    queue = []
-    queued = set()
-
-    def enqueue(url):
-        url = clean(url)
-        if not url or url in queued:
-            return
-        queued.add(url)
-        queue.append(url)
-
-    for url in _search_pagination_urls(selected_base, selected_html):
-        if url != selected_url:
-            enqueue(url)
-        if len(queue) >= MAX_SEARCH_PAGES - 1:
-            break
-
-    # If pagination is not represented as links/data attributes, use the
-    # generic page parameter as a bounded fallback. Do not replace the
-    # retailer-provided links when they exist.
-    if not queue:
         for page_number in range(2, MAX_SEARCH_PAGES + 1):
-            enqueue(_set_page_parameter(selected_url, "page", page_number))
+            endpoint = page_url(page_number)
+            _endpoint, r = fetch(endpoint)
 
-    processed = 1
-    while queue and processed < MAX_SEARCH_PAGES:
-        endpoint = queue.pop(0)
+            if r is None or r.status_code >= 400 or not r.text:
+                failed_pages += 1
+                break
 
-        _endpoint, r = fetch(endpoint)
-        if r is None or r.status_code >= 400 or not r.text:
-            failed_pages += 1
-            continue
+            successful_pages += 1
+            base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
+            found = _candidate_product_urls(
+                r.text,
+                query,
+                discovery_query=query,
+                accept_all_products=False,
+                base_url=base,
+            )
 
-        successful_pages += 1
-        processed += 1
+            for url in found:
+                candidates[url] = True
 
-        response_url = r.url
-        response_base = (
-            f"{urlparse(response_url).scheme}://{urlparse(response_url).netloc}"
-        )
-
-        before = len(candidates)
-        found = _candidate_product_urls(
-            r.text,
-            query,
-            discovery_query=query,
-            accept_all_products=False,
-            base_url=response_base,
-        )
-
-        for url in found:
-            candidates[url] = True
-
-        # A page can reveal additional pagination controls only after it is
-        # loaded. Follow them while keeping the total search-page budget fixed.
-        if processed < MAX_SEARCH_PAGES:
-            for next_url in _search_pagination_urls(response_base, r.text):
-                if next_url not in queued and next_url != selected_url:
-                    enqueue(next_url)
-                if len(queue) + processed >= MAX_SEARCH_PAGES:
-                    break
-
-        # Do not stop merely because one page yielded no new candidates:
-        # sparse result pages are valid, and the missing product can be the
-        # final item on the next page.
-        _ = before
-
+    global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
