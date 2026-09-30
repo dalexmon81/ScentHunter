@@ -18,6 +18,7 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
+from html.parser import HTMLParser
 import html
 import heapq
 import importlib
@@ -888,15 +889,12 @@ def _html_discovery_priority(store, url, depth, source=''):
 def _discover_deloox_catalog(seeds, deadline=None):
     """Discover Deloox through its public catalog graph.
 
-    This is catalog discovery only. It is deliberately independent of the
-    requested product/query and does not touch persistence, hydration, search,
-    or ProductMatcher.
-
-    Deloox exposes a very large brand index. The important constraint is not
-    how many links can be extracted from that index, but how much time is spent
-    on duplicate/invalid seed surfaces before the real .com catalog graph is
-    traversed. We therefore canonicalize the configured seeds first and keep
-    one canonical .com seed for each structural catalog surface.
+    Catalog-only and query-independent. The crawler deliberately avoids
+    BeautifulSoup on every ~1 MB Deloox page: the diagnostic runs under a
+    tight request budget, so the discovery graph must spend that budget on
+    traversal rather than DOM construction. A small stdlib HTMLParser extracts
+    anchors, pagination links and JSON-LD script bodies without changing the
+    catalog classification rules.
     """
     queue = []
     queued = set()
@@ -915,14 +913,9 @@ def _discover_deloox_catalog(seeds, deadline=None):
         p = urllib.parse.urlparse(key)
         if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return None
-        # The .be storefront currently exposes duplicate/404 category roots;
-        # keep it available for product URLs discovered later, but do not spend
-        # the initial catalog traversal budget on those duplicate roots.
         if p.netloc.lower() != canonical_host:
             return None
         path = (p.path or '/').rstrip('/') or '/'
-        # Avoid duplicate language/root variants that resolve to the same
-        # catalog surface. The English .com surface is the canonical graph.
         if path == '/':
             return f'https://{canonical_host}/'
         if path == '/en':
@@ -953,8 +946,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
-    # Only canonical .com structural seeds enter the initial frontier. Product
-    # URLs from .be are still accepted once encountered in the catalog graph.
     seed_seen = set()
     for seed in seeds:
         key = canonical_seed(seed)
@@ -962,46 +953,119 @@ def _discover_deloox_catalog(seeds, deadline=None):
             seed_seen.add(key)
             add(key, 0, 'configured_seed')
 
+    class _DelooxPageParser(HTMLParser):
+        """Minimal parser: collect href/text and JSON-LD without building a DOM."""
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.anchors = []
+            self.next_links = []
+            self._anchor_href = None
+            self._anchor_text = []
+            self._in_anchor = False
+            self._script_jsonld = False
+            self._script_buf = []
+            self.jsonld = []
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            tag = tag.lower()
+            if tag == 'a' and attrs.get('href'):
+                self._in_anchor = True
+                self._anchor_href = attrs.get('href')
+                self._anchor_text = []
+            elif tag == 'link' and attrs.get('href'):
+                rel = ' '.join(attrs.get('rel', '').split()).lower()
+                if 'next' in rel:
+                    self.next_links.append(attrs.get('href'))
+            elif tag == 'script':
+                typ = (attrs.get('type') or '').lower().strip()
+                self._script_jsonld = typ in ('application/ld+json', 'application/json+ld')
+                if self._script_jsonld:
+                    self._script_buf = []
+
+        def handle_startendtag(self, tag, attrs):
+            self.handle_starttag(tag, attrs)
+            if tag.lower() == 'a' and self._in_anchor:
+                self._finish_anchor()
+
+        def handle_data(self, data):
+            if self._in_anchor:
+                self._anchor_text.append(data)
+            if self._script_jsonld:
+                self._script_buf.append(data)
+
+        def handle_endtag(self, tag):
+            tag = tag.lower()
+            if tag == 'a' and self._in_anchor:
+                self._finish_anchor()
+            elif tag == 'script' and self._script_jsonld:
+                raw = ''.join(self._script_buf).strip()
+                if raw:
+                    self.jsonld.append(raw)
+                self._script_jsonld = False
+                self._script_buf = []
+
+        def _finish_anchor(self):
+            href = self._anchor_href
+            label = ' '.join(''.join(self._anchor_text).split())[:300]
+            if href:
+                self.anchors.append((href, label))
+            self._in_anchor = False
+            self._anchor_href = None
+            self._anchor_text = []
+
+    def extract_jsonld_urls(raw_items):
+        """Yield product URLs from standard JSON-LD without BeautifulSoup."""
+        def walk(value):
+            if isinstance(value, dict):
+                raw_url = value.get('url')
+                if raw_url:
+                    yield raw_url
+                for child in value.values():
+                    yield from walk(child)
+            elif isinstance(value, list):
+                for child in value:
+                    yield from walk(child)
+        for raw in raw_items:
+            try:
+                obj = json.loads(raw)
+            except Exception:
+                continue
+            yield from walk(obj)
+
     def process_page(requested, depth, source, result):
         _requested, final, data, error = result
         if error:
             errors.append(f'{requested} -> {error}')
             return
-
         base = final or requested
-        # Anchor extraction is sufficient for the proven Deloox catalog graph
-        # and is materially cheaper than walking every DOM node plus scanning
-        # the entire HTML as JavaScript text on every 1 MB category page.
-        soup = BeautifulSoup(data, 'html.parser')
-        for a in soup.find_all('a', href=True):
-            raw = a.get('href')
+        try:
+            raw_html = data.decode('utf-8', 'ignore') if isinstance(data, (bytes, bytearray)) else str(data)
+            parser = _DelooxPageParser()
+            parser.feed(raw_html)
+            parser.close()
+        except Exception as exc:
+            errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
+            return
+
+        for raw, label in parser.anchors:
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
                 continue
-            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
+            listing = _html_listing_url('deloox', raw, base, label)
             if listing:
-                add(listing, depth + 1, requested)
+                add(listing, depth + 1, label or requested)
 
-        # Follow standard pagination only; it is catalog navigation and does
-        # not depend on a user query.
-        for node in soup.find_all('link', href=True):
-            rel = ' '.join(node.get('rel') or []).lower()
-            href = node.get('href')
-            if 'next' in rel:
-                listing = _html_listing_url('deloox', href, base, 'next')
-                if listing:
-                    add(listing, depth + 1, requested)
+        for raw in parser.next_links:
+            listing = _html_listing_url('deloox', raw, base, 'next')
+            if listing:
+                add(listing, depth + 1, 'next')
 
-        # JSON-LD product URLs are cheap to inspect and cover product links
-        # that are not rendered as ordinary anchors.
-        try:
-            for item in _jsonld(soup):
-                product = _html_product_url('deloox', item.get('url'), base)
-                if product:
-                    product_urls[product] = ''
-        except Exception:
-            pass
+        for raw in extract_jsonld_urls(parser.jsonld):
+            product = _html_product_url('deloox', raw, base)
+            if product:
+                product_urls[product] = ''
 
     while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
@@ -1032,7 +1096,6 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
-
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
