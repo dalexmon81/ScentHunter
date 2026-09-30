@@ -335,6 +335,57 @@ def _remove_local_search_index_url(store, url):
         }
 
 
+
+def _add_local_search_index_catalog_urls(store, entries, active_count=None):
+    """Batch-add newly discovered catalog URLs without rebuilding the index."""
+    if not entries:
+        return
+    with _LOCAL_SEARCH_INDEX_LOCK:
+        cached = _LOCAL_SEARCH_INDEX_CACHE.get(store)
+        if not cached:
+            return
+        postings = dict(cached['postings'])
+        url_tokens = dict(cached['url_tokens'])
+        for url, data in entries.items():
+            if not url:
+                continue
+            if isinstance(data, dict):
+                slug = data.get('slug') or url_slug(url)
+                name = data.get('name')
+                brand = data.get('brand')
+            else:
+                slug, name, brand = url_slug(url), None, None
+            old_tokens = set(url_tokens.get(url, ()))
+            for token in old_tokens:
+                bucket = postings.get(token)
+                if not bucket:
+                    continue
+                new_bucket = set(bucket)
+                new_bucket.discard(url)
+                if new_bucket:
+                    postings[token] = frozenset(new_bucket)
+                else:
+                    postings.pop(token, None)
+            search_text = ' '.join(str(value or '') for value in (slug, name, brand))
+            new_tokens = frozenset(norm(search_text).split())
+            url_tokens[url] = new_tokens
+            for token in new_tokens:
+                bucket = set(postings.get(token, ()))
+                bucket.add(url)
+                postings[token] = frozenset(bucket)
+        signature = (int(active_count),) if active_count is not None else cached.get('signature', (0,))
+        _LOCAL_SEARCH_INDEX_CACHE[store] = {
+            'signature': signature,
+            'postings': postings,
+            'url_tokens': url_tokens,
+        }
+
+
+def _invalidate_local_search_index(store):
+    """Invalidate one store when discovery replaces its active URL set."""
+    with _LOCAL_SEARCH_INDEX_LOCK:
+        _LOCAL_SEARCH_INDEX_CACHE.pop(store, None)
+
 def _ensure_schema(conn):
     """Create/migrate the catalog schema once per process.
 
@@ -689,6 +740,22 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
+
+    if status == 'DISCOVERY_OK' and store == 'deloox':
+        try:
+            conn = db()
+            active_count = conn.execute(
+                'SELECT COUNT(*) AS c FROM store_urls WHERE store=? AND active=1',
+                (store,),
+            ).fetchone()['c']
+            conn.close()
+            entries = {url: {'slug': url_slug(url)} for url in product_urls}
+            _add_local_search_index_catalog_urls(store, entries, active_count=active_count)
+        except Exception as exc:
+            print(f'LOCAL SEARCH INDEX DISCOVERY UPDATE ERROR: {type(exc).__name__}: {exc}', flush=True)
+    elif store != 'deloox' and status == 'DISCOVERY_OK':
+        _invalidate_local_search_index(store)
+
     return status, new_count, error
 
 
@@ -1238,6 +1305,18 @@ def _deloox_persist_products(product_urls):
                 count += 1
     finally:
         conn.close()
+    if count:
+        try:
+            conn = db()
+            active_count = conn.execute(
+                'SELECT COUNT(*) AS c FROM store_urls WHERE store=? AND active=1',
+                ('deloox',),
+            ).fetchone()['c']
+            conn.close()
+            entries = {url: {'slug': url_slug(url)} for url in product_urls}
+            _add_local_search_index_catalog_urls('deloox', entries, active_count=active_count)
+        except Exception as exc:
+            print(f'DELOOX LOCAL SEARCH INDEX UPDATE ERROR: {type(exc).__name__}: {exc}', flush=True)
     return count
 
 
@@ -2212,17 +2291,12 @@ def search_local(query, per_store=32, search_terms=None):
     try:
         for store in STORES:
             signature_row = conn.execute(
-                '''SELECT
-                       COUNT(*) AS active_count,
-                       COALESCE(MAX(discovered_at), 0) AS latest_discovery
+                '''SELECT COUNT(*) AS active_count
                    FROM store_urls
                    WHERE store=? AND active=1''',
                 (store,),
             ).fetchone()
-            signature = (
-                int(signature_row['active_count'] or 0),
-                float(signature_row['latest_discovery'] or 0),
-            )
+            signature = (int(signature_row['active_count'] or 0),)
 
             # Cache access is intentionally tiny. Never hold this lock while
             # reading the catalog, constructing postings, or scoring results.
