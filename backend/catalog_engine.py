@@ -886,21 +886,17 @@ def _html_discovery_priority(store, url, depth, source=''):
     return (score, depth)
 
 def _discover_deloox_catalog(seeds, deadline=None):
-    """Discover Deloox products through the public catalog graph.
+    """Discover Deloox through its public catalog graph.
 
-    Deloox's sitemap surfaces are unreliable. The public .com catalog graph,
-    however, exposes a stable hierarchy such as:
+    This is catalog discovery only. It is deliberately independent of the
+    requested product/query and does not touch persistence, hydration, search,
+    or ProductMatcher.
 
-        catalog index -> brand/category page -> product URLs
-
-    The important constraint here is traversal depth: a single index can expose
-    thousands of sibling pages. We therefore keep the index fan-out interleaved
-    by structural URL bucket, while preserving the normal priority queue. This
-    gives different parts of the catalog a chance to descend without creating
-    one queue branch per child URL.
-
-    This function is deliberately query-independent. It never receives or
-    uses a requested perfume name, brand name, product id, or search query.
+    Deloox exposes a very large brand index. The important constraint is not
+    how many links can be extracted from that index, but how much time is spent
+    on duplicate/invalid seed surfaces before the real .com catalog graph is
+    traversed. We therefore canonicalize the configured seeds first and keep
+    one canonical .com seed for each structural catalog surface.
     """
     queue = []
     queued = set()
@@ -910,8 +906,28 @@ def _discover_deloox_catalog(seeds, deadline=None):
     sequence = 0
     max_pages = min(800, HTML_MAX_PAGES)
     max_depth = min(10, HTML_MAX_DEPTH)
+
     allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}
-    preferred_listing_host = 'www.deloox.com'
+    canonical_host = 'www.deloox.com' if 'www.deloox.com' in allowed_hosts else next(iter(allowed_hosts), '')
+
+    def canonical_seed(url):
+        key = (url or '').split('#', 1)[0]
+        p = urllib.parse.urlparse(key)
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
+            return None
+        # The .be storefront currently exposes duplicate/404 category roots;
+        # keep it available for product URLs discovered later, but do not spend
+        # the initial catalog traversal budget on those duplicate roots.
+        if p.netloc.lower() != canonical_host:
+            return None
+        path = (p.path or '/').rstrip('/') or '/'
+        # Avoid duplicate language/root variants that resolve to the same
+        # catalog surface. The English .com surface is the canonical graph.
+        if path == '/':
+            return f'https://{canonical_host}/'
+        if path == '/en':
+            return f'https://{canonical_host}/en/'
+        return urllib.parse.urlunparse((p.scheme, canonical_host, path, '', p.query, ''))
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -923,22 +939,12 @@ def _discover_deloox_catalog(seeds, deadline=None):
         p = urllib.parse.urlparse(key)
         if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
-
         path = p.path.lower()
-        # Product URLs may legitimately live on either official host. They are
-        # terminal nodes and never consume a crawl slot.
         if '/product/' in path or '/produit/' in path:
             product = _html_product_url('deloox', key, key)
             if product:
                 product_urls[product] = ''
             return
-
-        # The .be storefront is useful for product URLs, but its category
-        # navigation repeatedly returned 404 in the verified crawl. Keep it
-        # as a product surface and traverse the complete catalog graph on .com.
-        if p.netloc.lower() != preferred_listing_host:
-            return
-
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
             return
@@ -947,83 +953,26 @@ def _discover_deloox_catalog(seeds, deadline=None):
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
 
-    def fair_catalog_links(items):
-        """Interleave a large catalog-index fan-out by structural bucket.
-
-        The bucket is derived only from the URL's final path component. It is
-        not based on the user's query or on a particular brand/product.
-        """
-        buckets = {}
-        for item in items:
-            url = item[0]
-            parsed = urllib.parse.urlparse(url)
-            parts = [x for x in (parsed.path or '').split('/') if x]
-            tail = (parts[-1] if parts else parsed.netloc).lower()
-            bucket = tail[0] if tail and tail[0].isalnum() else '#'
-            buckets.setdefault(bucket, []).append(item)
-
-        for values in buckets.values():
-            values.sort(key=lambda x: x[0])
-
-        ordered = []
-        active = sorted(buckets)
-        while active:
-            next_active = []
-            for bucket in active:
-                values = buckets[bucket]
-                if values:
-                    ordered.append(values.pop(0))
-                if values:
-                    next_active.append(bucket)
-            active = next_active
-        return ordered
-
-    # Prefer the canonical .com catalog surfaces. Duplicate .be seeds and
-    # duplicate language/non-language variants otherwise consume worker slots
-    # before the real category graph is reached.
-    seed_candidates = []
+    # Only canonical .com structural seeds enter the initial frontier. Product
+    # URLs from .be are still accepted once encountered in the catalog graph.
+    seed_seen = set()
     for seed in seeds:
-        if not seed:
-            continue
-        key = seed.split('#', 1)[0]
-        p = urllib.parse.urlparse(key)
-        if p.netloc.lower() != preferred_listing_host:
-            continue
-        seed_candidates.append(key)
-
-    # Keep one canonical seed per normalized path. Deloox's /en/ and
-    # non-language category pages were observed to expose the same navigation;
-    # the English .com surface is the stable catalog graph.
-    canonical_seeds = []
-    seen_seed_paths = set()
-    for key in seed_candidates:
-        p = urllib.parse.urlparse(key)
-        path = p.path.rstrip('/') or '/'
-        if path == '/en':
-            canonical_path = '/'
-        elif path.startswith('/en/'):
-            canonical_path = path
-        else:
-            canonical_path = path
-        if canonical_path in seen_seed_paths:
-            continue
-        seen_seed_paths.add(canonical_path)
-        canonical_seeds.append(key)
-
-    for seed in canonical_seeds:
-        add(seed, 0, 'configured_seed')
+        key = canonical_seed(seed)
+        if key and key not in seed_seen:
+            seed_seen.add(key)
+            add(key, 0, 'configured_seed')
 
     def process_page(requested, depth, source, result):
-        """Collect products and enqueue catalog/navigation URLs from one page."""
         _requested, final, data, error = result
         if error:
             errors.append(f'{requested} -> {error}')
             return
 
-        soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
-        anchor_listings = []
-
+        # Anchor extraction is sufficient for the proven Deloox catalog graph
+        # and is materially cheaper than walking every DOM node plus scanning
+        # the entire HTML as JavaScript text on every 1 MB category page.
+        soup = BeautifulSoup(data, 'html.parser')
         for a in soup.find_all('a', href=True):
             raw = a.get('href')
             product = _html_product_url('deloox', raw, base)
@@ -1032,72 +981,27 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 continue
             listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
             if listing:
-                anchor_listings.append((listing, depth + 1, requested))
+                add(listing, depth + 1, requested)
 
-        # Do not turn every child into its own scheduler branch. Interleave the
-        # current page's fan-out once, then let the normal priority queue decide
-        # which structural pages to descend into next.
-        for listing, next_depth, next_source in fair_catalog_links(anchor_listings):
-            add(listing, next_depth, next_source)
-
-        for node in soup.find_all(True):
-            label = node.get_text(' ', strip=True)[:300]
-            for attr in (
-                'value', 'data-value', 'data-filter-url', 'data-option-url',
-                'data-redirect-url', 'data-url', 'data-href', 'data-link',
-                'data-next-url', 'data-next', 'data-load-more-url',
-                'data-pagination-url',
-            ):
-                raw = node.get(attr)
-                if not raw:
-                    continue
-                product = _html_product_url('deloox', raw, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', raw, base, label)
-                if listing:
-                    add(listing, depth + 1, requested)
-
-        # Deloox also stores catalog routes in escaped JSON/JS state. Extract
-        # same-site routes and pass them through the exact same classifiers.
-        try:
-            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
-            raw_html = raw_html.replace('\\/', '/').replace('\\u002F', '/').replace('\\u002f', '/')
-            candidates = set()
-            for match in re.finditer(
-                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
-                raw_html,
-                re.I,
-            ):
-                raw = match.group(0)
-                absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
-                parsed = urllib.parse.urlparse(absolute)
-                if parsed.netloc.lower() not in allowed_hosts:
-                    continue
-                candidates.add(absolute)
-            embedded_listings = []
-            for raw in candidates:
-                product = _html_product_url('deloox', raw, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', raw, base, 'embedded_navigation')
-                if listing:
-                    embedded_listings.append((listing, depth + 1, requested))
-            for listing, next_depth, next_source in fair_catalog_links(embedded_listings):
-                add(listing, next_depth, next_source)
-        except Exception:
-            pass
-
-        # Standard pagination surfaces are catalog navigation, not search.
-        for node in soup.find_all(['a', 'link'], href=True):
+        # Follow standard pagination only; it is catalog navigation and does
+        # not depend on a user query.
+        for node in soup.find_all('link', href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             href = node.get('href')
-            if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
-                listing = _html_listing_url('deloox', href, base, 'pagination')
+            if 'next' in rel:
+                listing = _html_listing_url('deloox', href, base, 'next')
                 if listing:
                     add(listing, depth + 1, requested)
+
+        # JSON-LD product URLs are cheap to inspect and cover product links
+        # that are not rendered as ordinary anchors.
+        try:
+            for item in _jsonld(soup):
+                product = _html_product_url('deloox', item.get('url'), base)
+                if product:
+                    product_urls[product] = ''
+        except Exception:
+            pass
 
     while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
         batch = []
@@ -1118,11 +1022,9 @@ def _discover_deloox_catalog(seeds, deadline=None):
             for future in as_completed(futures):
                 requested, depth, source = futures[future]
                 try:
-                    result = future.result()
+                    process_page(requested, depth, source, future.result())
                 except Exception as exc:
                     errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
-                    continue
-                process_page(requested, depth, source, result)
 
     return {
         'product_urls': product_urls,
@@ -1130,6 +1032,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'successes': len(visited) - len(errors),
         'errors': errors[:20],
     }
+
 
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
