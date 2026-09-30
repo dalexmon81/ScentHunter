@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import parse_qsl, quote_plus, urljoin, urlparse, urlencode, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -30,6 +30,7 @@ TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
 MAX_RESULTS = 80
 MAX_SEARCH_PAGES = 10
+MAX_CATEGORY_PAGES = 10
 MAX_SEARCH_CANDIDATES = MAX_CANDIDATES
 HEADERS = {
     "User-Agent": (
@@ -432,7 +433,9 @@ def _candidate_product_urls(
         slug_product_path = (
             path.lower().endswith(".html")
             and not re.search(
-                r"/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca)(?:/|$)",
+                r"(?:^|/)(?:category|categorie|categoria|catégorie|chercher|search|sitemap|"
+                r"brand|marque|marca|page|cart|panier|checkout|account|login)"
+                r"(?:\.html)?(?:/|$)",
                 path,
                 re.I,
             )
@@ -867,51 +870,207 @@ def _category_product_line_links(html, query):
     return found[:MAX_CANDIDATES]
 
 
-def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
-    """Bounded generic category fallback after search has failed."""
-    urls = []
+def _category_pagination_urls(base_url, html):
+    """Extract generic pagination/navigation URLs from a category page.
+
+    Retailer category pages can expose pagination through normal links,
+    rel="next", data-* attributes or JavaScript state. This helper only
+    discovers navigation URLs; it never identifies a product.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
     seen = set()
+
+    def add(raw):
+        raw = clean(raw)
+        if not raw or raw.startswith(("javascript:", "mailto:", "#")):
+            return
+        url = urljoin(base_url, raw).split("#")[0]
+        parsed = urlparse(url)
+        if parsed.netloc.lower() not in DELOOX_HOSTS:
+            return
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
+
+    # Explicit "next" / pagination links.
+    for node in soup.find_all(["a", "link"], href=True):
+        rel = node.get("rel") or []
+        if not isinstance(rel, list):
+            rel = [str(rel)]
+        marker = norm(
+            " ".join(
+                [str(x) for x in rel]
+                + [clean(node.get("aria-label")), clean(node.get_text(" ", strip=True))]
+            )
+        )
+        if "next" in marker or "pagination" in marker:
+            add(node.get("href"))
+
+    # Common URL-bearing attributes used by dynamic pagination/load-more.
+    for node in soup.find_all(True):
+        for attr in (
+            "data-next",
+            "data-next-url",
+            "data-pagination-url",
+            "data-load-more-url",
+            "data-url",
+            "data-href",
+            "data-page-url",
+        ):
+            raw = node.get(attr)
+            if raw:
+                add(raw)
+
+    # Numbered pagination links.
+    for a in soup.find_all("a", href=True):
+        href = clean(a.get("href"))
+        if not href:
+            continue
+        parsed = urlparse(urljoin(base_url, href))
+        label = clean(a.get_text(" ", strip=True))
+        if (
+            re.search(r"(?:^|[?&])(?:page|p|pagina|paged)=\d+", parsed.query, re.I)
+            or re.fullmatch(r"\d{1,3}", label)
+        ):
+            add(href)
+
+    return found
+
+
+def _category_page_2_url(url):
+    """Return the generic second-page URL for a paginated category."""
+    parsed = urlparse(url)
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    replaced = False
+    new_pairs = []
+
+    for key, value in pairs:
+        if key.lower() in {"page", "p", "pagina", "paged"}:
+            new_pairs.append((key, "2"))
+            replaced = True
+        else:
+            new_pairs.append((key, value))
+
+    if not replaced:
+        new_pairs.append(("page", "2"))
+
+    return urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        parsed.params,
+        urlencode(new_pairs, doseq=True),
+        "",
+    ))
+
+
+def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
+    """Generic category fallback with bounded, complete pagination.
+
+    Category discovery follows the retailer's own pagination/navigation first.
+    If no pagination is exposed in the HTML, page=2 is probed generically.
+    No product, brand, SKU or variant is encoded here.
+    """
+    urls = []
+    seen_products = set()
+
     for page_url in _category_pages()[:12]:
         try:
-            r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            r = session.get(
+                page_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
         except requests.RequestException:
             continue
-        if r.status_code >= 400:
+
+        if r.status_code >= 400 or not r.text:
             continue
-        base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
-        pages = [r.url]
-        soup = BeautifulSoup(r.text, "html.parser")
-        for a in soup.find_all("a", href=True):
-            href = clean(a.get("href"))
-            if "page=" not in href.lower():
-                continue
-            u = urljoin(base, href)
+
+        first_url = r.url
+        pages = [first_url]
+        loaded = {first_url: r.text}
+
+        for u in _category_pagination_urls(
+            f"{urlparse(first_url).scheme}://{urlparse(first_url).netloc}",
+            r.text,
+        ):
             if u not in pages:
                 pages.append(u)
-            if len(pages) >= 8:
+            if len(pages) >= MAX_CATEGORY_PAGES:
                 break
 
-        for current_url in pages:
-            if current_url == r.url:
-                html = r.text
+        # Some category implementations expose no usable pagination link in
+        # the HTML even though ?page=2 works. Probe it as a generic fallback.
+        if len(pages) == 1:
+            page2 = _category_page_2_url(first_url)
+            if page2 != first_url:
+                pages.append(page2)
+
+        index = 0
+        while index < len(pages) and index < MAX_CATEGORY_PAGES:
+            current_url = pages[index]
+
+            if current_url in loaded:
+                html = loaded[current_url]
             else:
                 try:
-                    page = session.get(current_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-                    if page.status_code >= 400:
-                        continue
-                    html = page.text
+                    page = session.get(
+                        current_url,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                        allow_redirects=True,
+                    )
                 except requests.RequestException:
+                    index += 1
                     continue
-            for product_url in _candidate_product_urls(
-                html, query, base_url=base, accept_all_products=True
-            ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
-                        return urls
-    return urls
 
+                if page.status_code >= 400 or not page.text:
+                    index += 1
+                    continue
+
+                html = page.text
+                loaded[current_url] = html
+
+            current_base = (
+                f"{urlparse(current_url).scheme}://{urlparse(current_url).netloc}"
+            )
+            page_found = []
+
+            for product_url in _candidate_product_urls(
+                html,
+                query,
+                base_url=current_base,
+                accept_all_products=True,
+            ):
+                if product_url in seen_products:
+                    continue
+                seen_products.add(product_url)
+                urls.append(product_url)
+                page_found.append(product_url)
+
+                if len(urls) >= max_urls:
+                    return urls
+
+            # Pagination can be exposed only after rendering/processing a page.
+            if len(pages) < MAX_CATEGORY_PAGES:
+                for next_url in _category_pagination_urls(current_base, html):
+                    if next_url not in pages:
+                        pages.append(next_url)
+                    if len(pages) >= MAX_CATEGORY_PAGES:
+                        break
+
+            # Once an actual subsequent page yields no new query candidates,
+            # stop this category. This prevents needless crawling of long
+            # empty tails while still reaching a product on page 2.
+            if index > 0 and not page_found:
+                break
+
+            index += 1
+
+    return urls
 
 def _discover(session, q):
     """Generic deterministic discovery with search as the primary surface.
