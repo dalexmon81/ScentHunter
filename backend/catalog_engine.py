@@ -663,6 +663,12 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
         'https://www.deloox.com/en/category/1103659/fragrances.html',
+        # Current Deloox fragrance-category surfaces used by the public
+        # storefront. These are generic catalog roots, not product/query URLs.
+        'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
+        'https://www.deloox.com/categorie/1075744/eau-de-toilette-homme.html',
+        'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
+        'https://www.deloox.com/categorie/1075743/eau-de-parfum-femme.html',
         'https://www.deloox.be/en/category/1063858/brands.html',
         'https://www.deloox.com/en/category/1063858/brands.html',
         'https://www.deloox.be/en/category/1000003/fragrances.html',
