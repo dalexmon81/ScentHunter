@@ -633,32 +633,36 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Deloox publishes catalog surfaces on more than one official host.
-        # Keep both host surfaces as generic crawler entry points; no product,
-        # brand, or user-query URL is hard-coded here.
+        # Deloox publishes the same catalog through multiple official
+        # storefront hosts. Some .be category routes redirect to .com; the
+        # crawler must retain the redirected .com surface instead of rejecting
+        # its product/navigation URLs. These are broad catalog surfaces only.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
-        'https://www.deloox.be/en/category/1103659/fragrances.html',
-        'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/category/1075660/womens-perfume.html',
-        # The .com/en catalog is a separate public surface and must be allowed
-        # to seed the same generic category graph.
         'https://www.deloox.com/',
         'https://www.deloox.com/en/',
+        'https://www.deloox.be/en/category/1103659/fragrances.html',
         'https://www.deloox.com/en/category/1103659/fragrances.html',
+        'https://www.deloox.be/en/category/1063858/brands.html',
         'https://www.deloox.com/en/category/1063858/brands.html',
+        'https://www.deloox.be/en/category/1000003/fragrances.html',
         'https://www.deloox.com/en/category/1000003/fragrances.html',
+        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
         'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
         'https://www.deloox.com/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
         'https://www.deloox.com/en/category/1075660/womens-perfume.html',
+        'https://www.deloox.be/category/1063858/brands.html',
+        'https://www.deloox.com/category/1063858/brands.html',
+        'https://www.deloox.be/category/1000003/fragrances.html',
+        'https://www.deloox.com/category/1000003/fragrances.html',
+        'https://www.deloox.be/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/category/1000054/mens-fragrances.html',
+        'https://www.deloox.be/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/category/1075750/mens-perfume.html',
+        'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.com/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -911,17 +915,18 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        allowed_hosts = {
-            urllib.parse.urlparse(base).netloc.lower()
-            for base in _discovery_bases('deloox')
-        }
-        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
+        if p.scheme not in ('http', 'https'):
             return
-        path = p.path.lower()
-        if '/product/' in path:
-            product = _html_product_url('deloox', key, key)
-            if product:
-                product_urls[product] = ''
+        allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}
+        if p.netloc.lower() not in allowed_hosts:
+            return
+        # A queued URL can itself be a product URL (for example when it comes
+        # from embedded navigation). Classify it before listing admission so
+        # every Deloox product URL shape supported by _html_product_url is
+        # handled consistently: /product/, /produit/, /producto/, /prodotto/.
+        product = _html_product_url('deloox', key, key)
+        if product:
+            product_urls[product] = ''
             return
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
