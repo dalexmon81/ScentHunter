@@ -633,10 +633,9 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Deloox publishes the same catalog through multiple official
-        # storefront hosts. Some .be category routes redirect to .com; the
-        # crawler must retain the redirected .com surface instead of rejecting
-        # its product/navigation URLs. These are broad catalog surfaces only.
+        # Official Deloox catalog surfaces. Both public storefront hosts are
+        # included because the .be surface does not contain the complete
+        # English catalog graph. No product, brand, or query is hard-coded.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
         'https://www.deloox.com/',
@@ -915,18 +914,17 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if key in queued or key in visited:
             return
         p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https'):
+        allowed_hosts = {
+            urllib.parse.urlparse(base).netloc.lower()
+            for base in _discovery_bases('deloox')
+        }
+        if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
             return
-        allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('deloox')}
-        if p.netloc.lower() not in allowed_hosts:
-            return
-        # A queued URL can itself be a product URL (for example when it comes
-        # from embedded navigation). Classify it before listing admission so
-        # every Deloox product URL shape supported by _html_product_url is
-        # handled consistently: /product/, /produit/, /producto/, /prodotto/.
-        product = _html_product_url('deloox', key, key)
-        if product:
-            product_urls[product] = ''
+        path = p.path.lower()
+        if '/product/' in path:
+            product = _html_product_url('deloox', key, key)
+            if product:
+                product_urls[product] = ''
             return
         listing = _html_listing_url('deloox', key, key, source)
         if not listing:
