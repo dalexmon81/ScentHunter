@@ -1262,14 +1262,19 @@ def _discover_html_catalog(store, seeds, deadline=None):
 
 
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
-    """READ-ONLY trace of the generic HTML discovery graph."""
+    """READ-ONLY trace of the generic HTML discovery graph.
+
+    This diagnostic deliberately mirrors the product-URL extraction paths used
+    by the real Deloox discovery crawler, including embedded HTML/JS URLs and
+    JSON-LD. It never writes to the database and never calls production search.
+    """
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
-        return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
+        return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v2',
                 'error': f'html_discovery_not_configured:{store}', 'store': store}
 
     try:
-        max_pages = max(1, min(int(max_pages or 120), HTML_MAX_PAGES))
+        max_pages = max(1, min(int(max_pages or 120), min(HTML_MAX_PAGES, 120)))
     except Exception:
         max_pages = 120
     try:
@@ -1286,7 +1291,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     events, errors = [], []
     product_urls, listing_urls = set(), set()
     sequence = 0
-    query_url_hits, query_page_hits = [], []
+    query_url_hits, query_page_hits, query_product_hits = [], [], []
 
     def has_tokens(value):
         value = norm(value)
@@ -1299,11 +1304,11 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         key = url.split('#', 1)[0]
         if key in queued or key in visited or depth > max_depth:
             return False
-        if len(queued) >= max_pages * 2:
+        if len(queued) >= max_pages * 4:
             return False
         sequence += 1
         priority = _html_discovery_priority(store, key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
+        heapq.heappush(queue, ((priority[0], priority[1], sequence), sequence, key, depth, source))
         queued.add(key)
         if has_tokens(key) and len(query_url_hits) < 100:
             query_url_hits.append({'url': key, 'depth': depth, 'source': source})
@@ -1316,11 +1321,24 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     started = time.time()
     successes = 0
 
-    while queue and len(visited) < max_pages and (time.time() - started) < DISCOVERY_HARD_TIMEOUT:
+    def report(kind, url, label='', queued_now=None, attribute=None, source=''):
+        if not (has_tokens(url) or has_tokens(label)):
+            return
+        item = {'kind': kind, 'url': url, 'label': label[:200], 'token_hit': True}
+        if queued_now is not None:
+            item['queued'] = bool(queued_now)
+        if attribute:
+            item['attribute'] = attribute
+        if source:
+            item['source'] = source
+        return item
+
+    while queue and len(visited) < max_pages and (time.time() - started) < min(DISCOVERY_HARD_TIMEOUT, 120):
         _priority, _sequence, requested, depth, source = heapq.heappop(queue)
         if requested in visited:
             continue
         visited.add(requested)
+
         try:
             _requested, final, data, error = _fetch_html_page(store, requested)
         except Exception as exc:
@@ -1337,44 +1355,50 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             continue
 
         successes += 1
+        page_base = final or requested
         soup = BeautifulSoup(data, 'html.parser')
         page_text = soup.get_text(' ', strip=True)
         page_hit = has_tokens(page_text)
         if page_hit and len(query_page_hits) < 100:
-            query_page_hits.append({'url': requested, 'final_url': final,
-                                    'depth': depth, 'bytes': len(data or b'')})
+            query_page_hits.append({
+                'url': requested, 'final_url': final, 'depth': depth,
+                'bytes': len(data or b''),
+            })
 
-        relevant, product_count, listing_count = [], 0, 0
+        relevant = []
+        product_count = 0
+        listing_count = 0
 
-        def report(kind, url, label='', queued_now=None, attribute=None):
-            if not (has_tokens(url) or has_tokens(label)):
-                return
-            item = {'kind': kind, 'url': url, 'label': label[:200], 'token_hit': True}
-            if queued_now is not None:
-                item['queued'] = bool(queued_now)
-            if attribute:
-                item['attribute'] = attribute
-            relevant.append(item)
+        def capture_product(product, kind, label='', attribute=None, source_url=None):
+            nonlocal product_count
+            product_urls.add(product)
+            product_count += 1
+            item = report(kind, product, label, attribute=attribute, source=source_url or requested)
+            if item:
+                relevant.append(item)
 
         for a in soup.find_all('a', href=True):
-            href, label = a.get('href'), a.get_text(' ', strip=True)
-            product = _html_product_url(store, href, final or requested)
+            raw = a.get('href')
+            label = a.get_text(' ', strip=True)
+            product = _html_product_url(store, raw, page_base)
             if product:
-                product_urls.add(product)
-                product_count += 1
-                report('product', product, label)
+                capture_product(product, 'product_anchor', label)
                 continue
-            listing = _html_listing_url(store, href, final or requested, label)
+            listing = _html_listing_url(store, raw, page_base, label)
             if listing:
                 listing_urls.add(listing)
                 queued_now = add(listing, depth + 1, requested)
                 listing_count += 1
-                report('listing', listing, label, queued_now)
+                item = report('listing_anchor', listing, label, queued_now)
+                if item:
+                    relevant.append(item)
 
         navigation_attrs = (
-            'data-url','data-href','data-link','data-product-url',
-            'data-product-link','data-target','data-next-url','data-next',
-            'data-load-more-url','data-pagination-url'
+            'value', 'data-value', 'data-filter-url', 'data-option-url',
+            'data-redirect-url', 'data-url', 'data-href', 'data-link',
+            'data-product-url', 'data-product-link', 'data-target',
+            'data-next-url', 'data-next', 'data-load-more-url',
+            'data-pagination-url',
         )
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
@@ -1382,51 +1406,112 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
                 raw = node.get(attr)
                 if not raw:
                     continue
-                product = _html_product_url(store, raw, final or requested)
+                product = _html_product_url(store, raw, page_base)
                 if product:
-                    product_urls.add(product)
-                    product_count += 1
-                    report('product_attribute', product, label, attribute=attr)
+                    capture_product(product, 'product_attribute', label, attr)
                     continue
-                listing = _html_listing_url(store, raw, final or requested, label)
+                listing = _html_listing_url(store, raw, page_base, label)
                 if listing:
                     listing_urls.add(listing)
                     queued_now = add(listing, depth + 1, requested)
                     listing_count += 1
-                    report('listing_attribute', listing, label, queued_now, attr)
+                    item = report('listing_attribute', listing, label, queued_now, attr)
+                    if item:
+                        relevant.append(item)
 
         for node in soup.find_all('link', href=True):
             rel = ' '.join(node.get('rel') or []).lower()
             if 'next' not in rel:
                 continue
-            listing = _html_listing_url(store, node.get('href'), final or requested, 'next')
+            listing = _html_listing_url(store, node.get('href'), page_base, 'next')
             if listing:
                 listing_urls.add(listing)
                 queued_now = add(listing, depth + 1, requested)
                 listing_count += 1
-                report('rel_next', listing, 'next', queued_now)
+                item = report('rel_next', listing, 'next', queued_now)
+                if item:
+                    relevant.append(item)
+
+        # IMPORTANT: this is the same embedded URL extraction used by the
+        # real Deloox discovery crawler. The previous diagnostic omitted this
+        # path, so it could falsely report "no Hawas URL" even when discovery
+        # itself had extracted it.
+        embedded_candidates = set()
+        try:
+            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
+            raw_html = raw_html.replace('\\/', '/')
+            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            host_patterns = {
+                urllib.parse.urlparse(base).netloc.lower()
+                for base in _discovery_bases(store)
+            }
+            for match in re.finditer(
+                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                raw_html,
+                re.I,
+            ):
+                raw = match.group(0)
+                absolute = urllib.parse.urljoin(page_base, raw).split('#', 1)[0]
+                parsed = urllib.parse.urlparse(absolute)
+                if parsed.netloc.lower() in host_patterns:
+                    embedded_candidates.add(absolute)
+        except Exception:
+            embedded_candidates = set()
+
+        embedded_product_count = 0
+        embedded_listing_count = 0
+        for raw in embedded_candidates:
+            product = _html_product_url(store, raw, page_base)
+            if product:
+                embedded_product_count += 1
+                capture_product(product, 'product_embedded', source_url=requested)
+                continue
+            listing = _html_listing_url(store, raw, page_base, 'embedded_navigation')
+            if listing:
+                embedded_listing_count += 1
+                listing_urls.add(listing)
+                queued_now = add(listing, depth + 1, requested)
+                listing_count += 1
+                item = report('listing_embedded', listing, '', queued_now)
+                if item:
+                    relevant.append(item)
 
         try:
             for item in _jsonld(soup):
-                product = _html_product_url(store, item.get('url'), final or requested)
+                product = _html_product_url(store, item.get('url'), page_base)
                 if product:
-                    product_urls.add(product)
-                    product_count += 1
-                    report('jsonld_product', product)
+                    capture_product(product, 'product_jsonld')
         except Exception:
             pass
 
-        event.update({'bytes': len(data or b''), 'token_page_hit': page_hit,
-                      'product_links': product_count, 'listing_links': listing_count,
-                      'queue_size_after': len(queue)})
+        event.update({
+            'bytes': len(data or b''),
+            'token_page_hit': page_hit,
+            'product_links': product_count,
+            'listing_links': listing_count,
+            'embedded_candidates': len(embedded_candidates),
+            'embedded_product_links': embedded_product_count,
+            'embedded_listing_links': embedded_listing_count,
+            'queue_size_after': len(queue),
+        })
         if relevant:
             event['query_relevant_links'] = relevant[:100]
         if len(events) < max_events:
             events.append(event)
 
+    # This is the decisive output: it checks the FINAL product URL set,
+    # independently of how the URL was extracted. It tells us whether the
+    # crawler actually retained the requested product before persistence.
+    for product in sorted(product_urls):
+        if has_tokens(product):
+            query_product_hits.append({
+                'url': product,
+                'in_product_urls': True,
+            })
+
     return {
         'ok': True,
-        'diagnostic': 'html-discovery-trace-read-only-v1',
+        'diagnostic': 'html-discovery-trace-read-only-v2',
         'store': store,
         'query': query,
         'required_tokens': required_tokens,
@@ -1443,15 +1528,15 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         'listing_urls_seen': len(listing_urls),
         'query_url_hits': query_url_hits,
         'query_page_hits': query_page_hits,
+        'query_product_hits': query_product_hits[:100],
         'query_relevant_events': [
             e for e in events if e.get('token_page_hit') or e.get('query_relevant_links')
         ][:100],
         'events': events,
         'elapsed_sec': round(time.time() - started, 3),
         'diagnosis': (
-            'TRACE_COMPLETE: se la categoria/brand page compare come link ma non viene '
-            'accodata, controllare _html_listing_url; se non compare, il problema è '
-            'nella superficie di navigazione raggiunta dai seed.'
+            'PRODUCT_RETAINED_BY_DISCOVERY' if query_product_hits else
+            'QUERY_PAGE_REACHED_BUT_PRODUCT_NOT_RETAINED'
         ),
     }
 
