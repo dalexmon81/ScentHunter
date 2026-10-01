@@ -661,7 +661,7 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             # previously discovered Deloox catalog merely because this run did
             # not reach those branches. A real product disappearance is handled
             # by product-page hydration/HTTP status, not by crawl omission.
-            if store not in ('deloox', 'sabina'):
+            if store != 'deloox':
                 conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
@@ -769,22 +769,10 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/31-profumi-uomo',
         'https://www.sabina.com/it/890-profumeria-di-nicchia',
         'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
-        # Broad Arabic-fragrance landing surface exposed by Sabina's own
-        # sitemap. It is a catalog/navigation surface, not a product query.
-        'https://www.sabina.com/it/l/profumi-arabi',
-        # Sabina's legacy/native search surface exposes catalog products that
-        # may be absent from category pages (notably products marked
-        # out-of-stock). These are broad catalog terms only; they are not
-        # driven by the user's runtime search and contain no product-specific
-        # exception.
-        'https://www.sabina.com/it/ricerca_old?search_query=',
-        'https://www.sabina.com/it/ricerca_old?search_query=profumi',
-        'https://www.sabina.com/it/ricerca_old?search_query=parfum',
-        'https://www.sabina.com/it/ricerca_old?search_query=perfume',
-        # Sabina's native search is also a catalog surface. A-Z seeds are
-        # intentionally generic: they recover products that are searchable
-        # on Sabina but absent from category navigation (including OOS items),
-        # without coupling discovery to any user query or specific product.
+        # Sabina's legacy native search is a retailer catalog surface.
+        # Enumerate generic single-letter probes only, so discovery does not
+        # depend on the user's query and can reach products not linked from
+        # category pages. Pagination is followed by the normal HTML crawler.
         'https://www.sabina.com/it/ricerca_old?search_query=a',
         'https://www.sabina.com/it/ricerca_old?search_query=b',
         'https://www.sabina.com/it/ricerca_old?search_query=c',
@@ -811,6 +799,9 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/ricerca_old?search_query=x',
         'https://www.sabina.com/it/ricerca_old?search_query=y',
         'https://www.sabina.com/it/ricerca_old?search_query=z',
+        # Broad Arabic-fragrance landing surface exposed by Sabina's own
+        # sitemap. It is a catalog/navigation surface, not a product query.
+        'https://www.sabina.com/it/l/profumi-arabi',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -857,15 +848,92 @@ def _html_product_url(store, raw_url, base_url):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina product pages use a numeric product id followed by a slug and
-        # end in .html. Listing/navigation pages use different URL shapes
-        # such as /it/31-profumi-uomo or /it/l/.... This is URL-shape
-        # classification only; no perfume/product name is embedded here.
+        # Canonical Sabina product pages use a numeric product id followed by
+        # a slug and end in .html. Sabina's legacy storefront also exposes
+        # PrestaShop product-controller URLs containing id_product. Those URLs
+        # are generic product resolvers: hydration follows the HTTP redirect
+        # to the canonical .html URL. No product id or product name is embedded.
         if re.search(r'/\d+-[^/]+\.html$', low, re.I):
             return absolute
+        if low.endswith('/index.php'):
+            params = urllib.parse.parse_qs(p.query, keep_blank_values=False)
+            controllers = {str(x).strip().lower() for x in params.get('controller', [])}
+            ids = [str(x).strip() for x in params.get('id_product', []) if str(x).strip().isdigit()]
+            if 'product' in controllers and ids:
+                return absolute
         return None
     return absolute if _looks_product(absolute) else None
 
+
+def _sabina_legacy_product_urls(data, page_base):
+    """Extract generic Sabina product IDs exposed by legacy catalog HTML.
+
+    Sabina's legacy search can expose product IDs through its controller state
+    even when the corresponding product card/link is not present in the HTML.
+    Those IDs are valid product identifiers, but they are not themselves
+    canonical URLs. Convert them to the standard PrestaShop product-controller
+    resolver URL so the normal hydration path can follow the retailer's own
+    redirect to the canonical product URL.
+
+    This function is deliberately independent of query text, product names,
+    brands and individual product IDs.
+    """
+    if not data:
+        return set()
+    try:
+        raw = data.decode('utf-8', 'ignore') if isinstance(data, (bytes, bytearray)) else str(data)
+    except Exception:
+        return set()
+
+    raw = html.unescape(raw)
+    raw = raw.replace('\\/', '/').replace('\\u002F', '/').replace('\\u002f', '/')
+
+    ids = set()
+
+    # Sabina exposes the legacy result IDs as the value of a hidden input
+    # whose id/name identifies the controller field. Parse attributes rather
+    # than relying on a particular attribute order in the HTML.
+    try:
+        soup = BeautifulSoup(raw, 'html.parser')
+        for node in soup.find_all(
+            attrs={'id': re.compile(r'^af_controller_product_ids$', re.I)}
+        ):
+            value = node.get('value') or node.get_text(' ', strip=True)
+            for product_id in re.findall(r'(?<!\d)\d+(?!\d)', value or ''):
+                ids.add(product_id)
+        for node in soup.find_all(
+            attrs={'name': re.compile(r'^af_controller_product_ids$', re.I)}
+        ):
+            value = node.get('value') or node.get_text(' ', strip=True)
+            for product_id in re.findall(r'(?<!\d)\d+(?!\d)', value or ''):
+                ids.add(product_id)
+    except Exception:
+        pass
+
+    # Also accept the same controller field when embedded in JavaScript/JSON
+    # rather than an HTML input element.
+    for match in re.finditer(
+        r'af_controller_product_ids\\s*[^=]{0,80}=\\s*[\"\']([^\"\']*)[\"\']',
+        raw,
+        re.I,
+    ):
+        for value in re.findall(r'(?<!\d)\d+(?!\d)', match.group(1)):
+            ids.add(value)
+
+    for pattern in (
+        r"(?:data-id-product|data-product-id|data-id_product)\\s*=\\s*[\"\'](\\d+)[\"\']",
+        r"[\"\'](?:id_product|product_id)[\"\']\\s*[:=]\\s*[\"\']?(\\d+)",
+    ):
+        for match in re.finditer(pattern, raw, re.I):
+            ids.add(match.group(1))
+
+    return {
+        urllib.parse.urljoin(
+            page_base,
+            f'/index.php?controller=product&id_product={product_id}',
+        )
+        for product_id in sorted(ids, key=lambda value: int(value))[:500]
+    }
 
 def _html_listing_url(store, raw_url, base_url, label=''):
     if not raw_url:
@@ -917,15 +985,11 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina category/navigation pages and its native search surface are
-        # both catalog listing nodes. Product pages are excluded here because
-        # _html_product_url handles their numeric-id .html shape.
+        # Sabina catalog/navigation pages are crawlable without a query
+        # endpoint. Product pages are excluded here because _html_product_url
+        # handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
-        if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
-            return absolute
-        if 'search_query=' in p.query.lower():
-            return absolute
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
             return absolute
         if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
@@ -977,7 +1041,7 @@ def _fetch_html_page(store, url):
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store in ('easycosmetic', 'sabina'):
+    if store == 'easycosmetic':
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
@@ -1000,6 +1064,11 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
+    # Sabina's legacy native search is a real catalog/navigation surface.
+    # Give it high priority so the generic probes are actually executed before
+    # the broad category graph consumes the bounded HTML crawl budget.
+    if store == 'sabina' and path.rstrip('/') in ('/it/ricerca_old', '/it/ricerca') and 'search_query=' in p.query.lower():
+        score = 0
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
@@ -1381,9 +1450,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
             raw_html = html.unescape(data.decode('utf-8', 'ignore'))
             raw_html = raw_html.replace('\\/', '/')
             raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
-            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
             for match in re.finditer(
-                r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
                 raw_html,
                 re.I,
             ):
@@ -1514,11 +1582,8 @@ def _discover_html_catalog(store, seeds, deadline=None):
                     errors.append(f'{requested} -> {error}'); continue
                 successes+=1
                 soup=BeautifulSoup(data,'html.parser')
-                # Product URLs are collected directly from links and common
-                # data attributes. No product name/brand/price is embedded.
                 page_base=final or requested
 
-                # Normal anchors are the primary catalog graph.
                 for a in soup.find_all('a',href=True):
                     href=a.get('href'); label=a.get_text(' ',strip=True)
                     product=_html_product_url(store,href,page_base)
@@ -1529,9 +1594,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                     if listing:
                         add(listing,depth+1,requested)
 
-                # Many modern storefronts put pagination/load-more targets in
-                # attributes instead of normal hrefs. Follow these generic
-                # navigation attributes; never use the user's query here.
                 navigation_attrs=(
                     'data-url','data-href','data-link','data-product-url',
                     'data-product-link','data-target','data-next-url',
@@ -1553,8 +1615,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         if listing:
                             add(listing,depth+1,requested)
 
-                # Explicit rel=next is a standard pagination mechanism and is
-                # easy to miss when it lives in <head> rather than in an <a>.
                 for node in soup.find_all('link',href=True):
                     rel=' '.join(node.get('rel') or []).lower()
                     if 'next' not in rel:
@@ -1563,8 +1623,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                     if listing:
                         add(listing,depth+1,requested)
 
-                # Product JSON-LD is another standard storefront surface. It
-                # gives us product URLs without depending on CSS/DOM layout.
                 try:
                     for item in _jsonld(soup):
                         raw_url=item.get('url')
@@ -1574,19 +1632,12 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 except Exception:
                     pass
 
-                # Some modern retailers keep catalog navigation/filter targets
-                # inside JavaScript state or JSON blobs instead of real <a>
-                # elements. Deloox uses this pattern for parts of its category
-                # and brand navigation. Extract only URLs belonging to the
-                # retailer's own discovery hosts, then run them through the same
-                # generic product/listing classifiers above. This is not a
-                # product/query rule and does not depend on Liquid Brun, a brand,
-                # or any other requested perfume.
+                if store == 'sabina':
+                    for product in _sabina_legacy_product_urls(data, page_base):
+                        product_urls[product]=''
+
                 try:
                     raw_html = data.decode('utf-8', 'ignore')
-                    # Deloox embeds some catalog routes in escaped JSON/JS
-                    # strings (https:\/\/www... or \/category/...).
-                    # Normalize only URL escaping before extracting candidates.
                     raw_html = raw_html.replace('\\/', '/')
                     raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
                     host_patterns = {
@@ -1594,13 +1645,8 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         for base in _discovery_bases(store)
                     }
                     candidates = set()
-                    # Accept both absolute same-site URLs and root-relative
-                    # routes. Root-relative routes are important when Deloox
-                    # stores generic category/brand navigation in JS state
-                    # instead of an <a href>. The normal classifiers below
-                    # still decide whether each route is a product or listing.
                     for match in re.finditer(
-                        r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
+                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
                         raw_html,
                         re.I,
                     ):
@@ -1627,7 +1673,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
         'successes':successes,
         'errors':errors[:20],
     }
-
 
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
@@ -2838,42 +2883,6 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         except Exception as exc:
             print(
                 f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
-                flush=True,
-            )
-        elapsed = time.time() - started
-        wait_for = max(1.0, pause - elapsed)
-        if stop_event is not None:
-            stop_event.wait(wait_for)
-        else:
-            time.sleep(wait_for)
-
-
-def catalog_sabina_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance Sabina catalog discovery without resetting the catalog.
-
-    Sabina exposes a public HTML catalog surface but its persistent catalog can
-    outlive the initial bootstrap. Discovery is therefore incremental: newly
-    found product URLs are added/reactivated while existing URLs remain active.
-    This loop is independent from hydration and from request-time search.
-    """
-    pause = max(60.0, float(interval_seconds))
-    print(
-        f'CATALOG SABINA DISCOVERY START interval={pause:g}s',
-        flush=True,
-    )
-    while stop_event is None or not stop_event.is_set():
-        started = time.time()
-        try:
-            result = discover_store('sabina')
-            print(
-                'CATALOG SABINA DISCOVERY BATCH '
-                f'status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
-                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
-                flush=True,
-            )
-        except Exception as exc:
-            print(
-                f'CATALOG SABINA DISCOVERY ERROR: {type(exc).__name__}: {exc}',
                 flush=True,
             )
         elapsed = time.time() - started
