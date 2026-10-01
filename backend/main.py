@@ -530,6 +530,88 @@ def _identity_scope(query):
         )
         return []
 
+_GENERIC_EXACT_CANDIDATE_CACHE = {}
+_GENERIC_EXACT_CANDIDATE_LOCK = threading.Lock()
+
+def _generic_exact_catalog_candidate(matcher_offer, query):
+    """Return one unique central-catalog product for an exact offer identity.
+
+    This is only a candidate narrowing optimization. ProductMatcher.match_offer()
+    remains the authority that accepts/rejects the identity. If the normalized
+    name is ambiguous, missing, or the brand conflicts, return None and let the
+    normal matcher decide.
+    """
+    if PRODUCT_MATCHER is None:
+        return None
+
+    raw_name = str(
+        matcher_offer.get("name")
+        or matcher_offer.get("title")
+        or matcher_offer.get("product_name")
+        or ""
+    ).strip()
+    if not raw_name:
+        return None
+
+    key_fn = globals().get("catalog_variant_key")
+    if not callable(key_fn):
+        return None
+
+    name_key = key_fn(raw_name)
+    query_key = key_fn(str(query or "").strip())
+    if not name_key or not query_key:
+        return None
+
+    # The offer itself must be relevant to the query. Do not let an exact
+    # catalog name bypass the normal query scope for an unrelated product.
+    query_tokens = set(query_key.split())
+    name_tokens = set(name_key.split())
+    if not query_tokens or not (query_tokens & name_tokens):
+        return None
+
+    cache_key = id(PRODUCT_MATCHER)
+    with _GENERIC_EXACT_CANDIDATE_LOCK:
+        index = _GENERIC_EXACT_CANDIDATE_CACHE.get(cache_key)
+
+    if index is None:
+        built = {}
+        for product in getattr(PRODUCT_MATCHER, "catalog", ()) or ():
+            keys = [getattr(product, "name", "")]
+            keys.extend(getattr(product, "aliases", ()) or ())
+            for value in keys:
+                normalized = key_fn(value)
+                if not normalized:
+                    continue
+                built.setdefault(normalized, []).append(product)
+        with _GENERIC_EXACT_CANDIDATE_LOCK:
+            existing = _GENERIC_EXACT_CANDIDATE_CACHE.get(cache_key)
+            if existing is None:
+                _GENERIC_EXACT_CANDIDATE_CACHE[cache_key] = built
+                index = built
+            else:
+                index = existing
+
+    candidates = index.get(name_key) or []
+    if len(candidates) != 1:
+        return None
+
+    candidate = candidates[0]
+
+    offer_brand_resolver = getattr(PRODUCT_MATCHER, "_offer_brand", None)
+    brand_matcher = getattr(PRODUCT_MATCHER, "_brand_matches", None)
+    offer_brand = (
+        offer_brand_resolver(matcher_offer)
+        if callable(offer_brand_resolver)
+        else str(matcher_offer.get("brand") or "").strip()
+    )
+    candidate_brand = str(getattr(candidate, "brand", "") or "").strip()
+    if offer_brand and candidate_brand and callable(brand_matcher):
+        if not brand_matcher(offer_brand, candidate_brand):
+            return None
+
+    return candidate
+
+
 def _resolve_offer_identity(result, query):
     """Resolve one raw retailer offer through the central ProductMatcher.
 
@@ -595,6 +677,60 @@ def _resolve_offer_identity(result, query):
                 matcher_offer["source"] = clean_source
             elif source is not None:
                 matcher_offer.pop("source", None)
+
+        # Generic exact-identity fast path. This handles ordinary catalog
+        # products such as a direct "Aromatix" identity without entering
+        # ProductMatcher._best_match(), whose generic URL fallback can otherwise
+        # scan the entire central catalog once per offer.
+        #
+        # ProductMatcher.match_offer() remains the identity authority: main.py
+        # only narrows the candidate set when the central catalog contains one
+        # unique exact name/alias and the supplied brand is compatible.
+        exact_candidate = _generic_exact_catalog_candidate(matcher_offer, query)
+        match_offer_method = getattr(PRODUCT_MATCHER, "match_offer", None)
+        if exact_candidate is not None and callable(match_offer_method):
+            fast_scope = {
+                "query": str(query or "").strip(),
+                "candidates": [exact_candidate],
+            }
+            fast_offer = dict(matcher_offer)
+
+            # The brand was already checked against the exact candidate above.
+            # Removing it from this narrowed call prevents match_offer() from
+            # reopening its catalog-wide brand/URL discovery loop.
+            fast_offer["brand"] = ""
+            fast_offer.pop("manufacturer", None)
+            source = fast_offer.get("source")
+            if isinstance(source, dict):
+                source = dict(source)
+                for key in ("source_brand", "brand", "manufacturer"):
+                    source.pop(key, None)
+                fast_offer["source"] = source
+            try:
+                fast_generic = match_offer_method(fast_offer, fast_scope)
+            except Exception as exc:
+                fast_generic = None
+                print(
+                    f"PRODUCT_MATCHER_EXACT_FASTPATH_ERROR: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+            if isinstance(fast_generic, dict) and fast_generic.get("status") == "matched":
+                fast_match = dict(fast_generic)
+                # Restore the original retailer/commercial fields; only the
+                # identity decision came from the narrowed matcher input.
+                for key, value in matcher_offer.items():
+                    if key not in {
+                        "catalog_id", "family_id", "family_name", "canonical_name",
+                        "canonical_brand", "catalog_variant", "match_method",
+                        "match_score", "confidence", "product_identity",
+                        "variant_id", "canonical_image", "size_ml",
+                    }:
+                        fast_match[key] = value
+                fast_match["_match_status"] = "matched"
+                fast_match["_reject_reason"] = None
+                fast_match["match_confidence"] = fast_match.get("confidence")
+                return fast_match
 
         # Fast path for an exact registered family alias. ProductMatcher remains
         # the owner of family data and result construction; this only avoids
@@ -1634,7 +1770,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if matched_rows:
             status, verified, error = 'success', True, None
         elif pending_by_store.get(store, 0) > 0:
-            status, verified, error = 'catalog_pending', False, 'product_page_refresh_pending'
+            # A discovered catalog URL whose product page is not hydrated yet
+            # is a transitional catalog state, not a technical store failure.
+            # The background hydration path will complete it independently.
+            status, verified, error = 'catalog_refreshing', True, None
         elif indexed > 0:
             status, verified, error = 'no_match', True, None
         else:
