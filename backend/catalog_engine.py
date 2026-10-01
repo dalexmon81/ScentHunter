@@ -71,7 +71,13 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'deloox': (
+        # Official localized Deloox storefronts. This is host-level catalog
+        # coverage only; no product, brand, or query-specific URL is used.
         'https://www.deloox.be',
+        'https://www.deloox.com',
+        'https://www.deloox.nl',
+        'https://www.deloox.lu',
+        'https://www.deloox.es',
     ),
 }
 
@@ -83,6 +89,18 @@ EASY_COSMETIC_HEADERS = {
     'User-Agent': EASY_COSMETIC_USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+}
+DELOOX_USER_AGENT = (
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+)
+DELOOX_HEADERS = {
+    'User-Agent': DELOOX_USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-GB,en;q=0.9',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
@@ -178,12 +196,22 @@ def _decode_body(data, url=''):
 def _http_fetch(url, timeout=HTTP_TIMEOUT):
     """Fetch with redirects, compression handling and diagnostics."""
     parsed = urllib.parse.urlparse(url)
-    if parsed.netloc.lower() in {'easycosmetic.de', 'www.easycosmetic.de'}:
+    host = parsed.netloc.lower()
+    if host in {'easycosmetic.de', 'www.easycosmetic.de'}:
         # Easycosmetic serves the public storefront to normal browser clients
         # but can stall requests carrying an identifying bot user-agent.
         # Use the same browser-class headers as the production Easycosmetic
         # scraper. This is transport only; discovery remains generic.
         response = _session().get(url, headers=EASY_COSMETIC_HEADERS, timeout=timeout, allow_redirects=True)
+    elif host in {
+        'deloox.be', 'www.deloox.be',
+        'deloox.com', 'www.deloox.com',
+        'deloox.nl', 'www.deloox.nl',
+    }:
+        # Deloox exposes its catalog graph to browser-class requests. Keep
+        # catalog discovery generic, but use the same browser request profile
+        # as the production Deloox scraper instead of ScentHunterBot/7.0.
+        response = _session().get(url, headers=DELOOX_HEADERS, timeout=timeout, allow_redirects=True)
     else:
         response = _session().get(url, timeout=timeout, allow_redirects=True)
     data = _decode_body(response.content, response.url or url)
@@ -337,6 +365,30 @@ def _ensure_schema(conn):
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
+        # Persistent HTML catalog frontier. This is deliberately separate from
+        # hydration_queue: discovery tracks catalog/navigation pages, while
+        # hydration tracks product pages. Deloox needs durable frontier state
+        # because its sitemap endpoints are unreliable and the HTML catalog is
+        # too large to finish in one bounded process.
+        conn.execute("""CREATE TABLE IF NOT EXISTS catalog_discovery_queue(
+            store TEXT NOT NULL,
+            url TEXT NOT NULL,
+            depth INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL DEFAULT 'PENDING',
+            attempts INTEGER NOT NULL DEFAULT 0,
+            available_at REAL NOT NULL DEFAULT 0,
+            leased_until REAL,
+            lease_token TEXT,
+            first_seen_at REAL NOT NULL,
+            last_started_at REAL,
+            last_finished_at REAL,
+            last_error TEXT,
+            PRIMARY KEY(store,url)
+        )""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_ready ON catalog_discovery_queue(store,state,available_at)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_lease ON catalog_discovery_queue(store,state,leased_until)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_finished ON catalog_discovery_queue(store,state,last_finished_at)')
         conn.execute("""CREATE TABLE IF NOT EXISTS hydration_scheduler(
             id INTEGER PRIMARY KEY CHECK(id=1),
             last_store_index INTEGER NOT NULL DEFAULT 0
@@ -542,6 +594,40 @@ def _existing_count(store):
         conn.close()
 
 
+
+def _sync_deloox_search_index(product_urls):
+    """Update an existing Deloox search index without forcing a full rebuild."""
+    if not product_urls:
+        return
+    with _LOCAL_SEARCH_INDEX_LOCK:
+        cached = _LOCAL_SEARCH_INDEX_CACHE.get('deloox')
+        if not cached:
+            return
+
+        postings = cached['postings']
+        url_tokens = cached['url_tokens']
+
+        for url, lastmod in product_urls.items():
+            # Discovery gives us the canonical product URL/slug. Hydration will
+            # later enrich the same index entry with product name and brand.
+            old_tokens = url_tokens.get(url, set())
+            for token in old_tokens:
+                bucket = postings.get(token)
+                if not bucket:
+                    continue
+                bucket.discard(url)
+                if not bucket:
+                    postings.pop(token, None)
+
+            new_tokens = set(norm(url_slug(url)).split())
+            url_tokens[url] = new_tokens
+            for token in new_tokens:
+                postings.setdefault(token, set()).add(url)
+
+        active_count = sum(1 for _ in url_tokens)
+        cached['signature'] = active_count
+
+
 def _save_discovery(store, product_urls, started_at, diagnostics):
     now = time.time()
     new_count = len(product_urls)
@@ -570,7 +656,13 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
     conn = db()
     with conn:
         if new_count:
-            conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
+            # Deloox discovery is intentionally incremental: a bounded run is
+            # only one slice of a persistent HTML graph. Never deactivate the
+            # previously discovered Deloox catalog merely because this run did
+            # not reach those branches. A real product disappearance is handled
+            # by product-page hydration/HTTP status, not by crawl omission.
+            if store != 'deloox':
+                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
                     '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
@@ -612,6 +704,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
+    if status == 'DISCOVERY_OK' and store == 'deloox':
+        _sync_deloox_search_index(product_urls)
     return status, new_count, error
 
 
@@ -632,24 +726,40 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/neuheiten',
     ),
     'deloox': (
-        # Primary Belgian catalog surfaces. These are broad, retailer-owned
-        # category/index pages; no product or brand is hard-coded here.
+        # Broad official catalog surfaces. Both public Deloox hosts are
+        # included because the catalog graph is split across storefronts.
         'https://www.deloox.be/',
         'https://www.deloox.be/en/',
+        'https://www.deloox.com/',
+        'https://www.deloox.com/en/',
         'https://www.deloox.be/en/category/1103659/fragrances.html',
-        # English catalog indexes are distinct public surfaces on Deloox;
-        # keep both localized and legacy category roots so the brand/category
-        # graph can reach deeper English product categories generically.
+        'https://www.deloox.com/en/category/1103659/fragrances.html',
+        # Current Deloox fragrance-category surfaces used by the public
+        # storefront. These are generic catalog roots, not product/query URLs.
+        'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
+        'https://www.deloox.com/categorie/1075744/eau-de-toilette-homme.html',
+        'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
+        'https://www.deloox.com/categorie/1075743/eau-de-parfum-femme.html',
         'https://www.deloox.be/en/category/1063858/brands.html',
+        'https://www.deloox.com/en/category/1063858/brands.html',
         'https://www.deloox.be/en/category/1000003/fragrances.html',
+        'https://www.deloox.com/en/category/1000003/fragrances.html',
         'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/en/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
         'https://www.deloox.be/en/category/1075660/womens-perfume.html',
+        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
         'https://www.deloox.be/category/1063858/brands.html',
+        'https://www.deloox.com/category/1063858/brands.html',
         'https://www.deloox.be/category/1000003/fragrances.html',
+        'https://www.deloox.com/category/1000003/fragrances.html',
         'https://www.deloox.be/category/1000054/mens-fragrances.html',
+        'https://www.deloox.com/category/1000054/mens-fragrances.html',
         'https://www.deloox.be/category/1075750/mens-perfume.html',
+        'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
+        'https://www.deloox.com/category/1075660/womens-perfume.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -662,6 +772,10 @@ HTML_DISCOVERY_SEEDS = {
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
+        # Sabina exposes part of its catalog through the native search surface.
+        # An empty query is a generic catalog/navigation surface, not a
+        # product-specific search and does not depend on the user query.
+        'https://www.sabina.com/it/ricerca?controller=search&s=',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -872,74 +986,329 @@ def _html_discovery_priority(store, url, depth, source=''):
 
     # Deeper pages are still valid, but breadth-first behavior should only
     # break ties between otherwise equivalent catalog surfaces.
-    return (score, depth, len(path), url)
+    return (score, depth)
+
+def _deloox_queue_allowed(url):
+    """Return True only for URLs on an official configured Deloox host."""
+    if not url:
+        return False
+    try:
+        p = urllib.parse.urlparse(url.split('#', 1)[0])
+    except Exception:
+        return False
+    if p.scheme not in ('http', 'https'):
+        return False
+    allowed_hosts = {
+        urllib.parse.urlparse(x).netloc.lower()
+        for x in _discovery_bases('deloox')
+    }
+    return p.netloc.lower() in allowed_hosts
+
+
+def _deloox_queue_seed():
+    """Seed the durable Deloox catalog graph without product-specific URLs."""
+    seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('deloox', ())))
+    for base in _discovery_bases('deloox'):
+        base = base.rstrip('/')
+        seeds.extend((base + '/', base + '/en/'))
+    seeds = list(dict.fromkeys(seeds))
+    _deloox_queue_enqueue(
+        [(url, 0, 'configured_seed') for url in seeds]
+    )
+    return seeds
+
+
+def _deloox_queue_enqueue(items):
+    """Durably enqueue catalog/navigation URLs.
+
+    Existing DONE rows are not reset by rediscovery. This is what makes the
+    frontier cumulative instead of repeatedly starting from the same branch.
+    """
+    if not items:
+        return 0
+    now = time.time()
+    conn = db()
+    inserted = 0
+    try:
+        with conn:
+            for raw_url, depth, source in items:
+                if not raw_url:
+                    continue
+                url = str(raw_url).split('#', 1)[0]
+                if not _deloox_queue_allowed(url):
+                    continue
+                if depth > HTML_MAX_DEPTH:
+                    continue
+                listing = _html_listing_url('deloox', url, url, source)
+                if not listing:
+                    continue
+                url = listing
+                before = conn.execute(
+                    'SELECT 1 FROM catalog_discovery_queue WHERE store=? AND url=?',
+                    ('deloox', url),
+                ).fetchone()
+                conn.execute(
+                    """INSERT INTO catalog_discovery_queue(
+                           store,url,depth,source,state,attempts,available_at,
+                           first_seen_at)
+                       VALUES(?,?,?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           depth=MIN(catalog_discovery_queue.depth,excluded.depth),
+                           source=CASE
+                               WHEN catalog_discovery_queue.source='' THEN excluded.source
+                               ELSE catalog_discovery_queue.source
+                           END""",
+                    (
+                        'deloox', url, int(depth), str(source or ''),
+                        'PENDING', 0, now, now,
+                    ),
+                )
+                if before is None:
+                    inserted += 1
+    finally:
+        conn.close()
+    return inserted
+
+
+def _deloox_queue_recover_stale():
+    """Return expired discovery leases to PENDING."""
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            cur = conn.execute(
+                """UPDATE catalog_discovery_queue
+                   SET state='PENDING',
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       available_at=?
+                 WHERE store='deloox'
+                   AND state='PROCESSING'
+                   AND leased_until IS NOT NULL
+                   AND leased_until < ?""",
+                (now, now),
+            )
+            return int(cur.rowcount or 0)
+    finally:
+        conn.close()
+
+
+def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
+    """Periodically revisit completed graph nodes so new catalog branches appear."""
+    cutoff = time.time() - max(3600.0, float(revisit_seconds))
+    conn = db()
+    try:
+        with conn:
+            rows = conn.execute(
+                """SELECT url
+                     FROM catalog_discovery_queue
+                    WHERE store='deloox'
+                      AND state='DONE'
+                      AND last_finished_at IS NOT NULL
+                      AND last_finished_at < ?
+                    ORDER BY last_finished_at ASC
+                    LIMIT ?""",
+                (cutoff, max(1, int(limit))),
+            ).fetchall()
+            if not rows:
+                return 0
+            now = time.time()
+            conn.executemany(
+                """UPDATE catalog_discovery_queue
+                      SET state='PENDING',
+                          available_at=?,
+                          leased_until=NULL,
+                          lease_token=NULL,
+                          last_error=NULL
+                    WHERE store='deloox' AND url=? AND state='DONE'""",
+                [(now, row['url']) for row in rows],
+            )
+            return len(rows)
+    finally:
+        conn.close()
+
+
+def _deloox_queue_claim(limit=12, lease_seconds=180):
+    """Atomically claim a bounded batch of discovery pages."""
+    limit = max(1, min(int(limit), HTML_WORKERS))
+    now = time.time()
+    token = uuid.uuid4().hex
+    conn = db()
+    claimed = []
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+        rows = conn.execute(
+            """SELECT url,depth,source
+                 FROM catalog_discovery_queue
+                WHERE store='deloox'
+                  AND state IN ('PENDING','ERROR')
+                  AND available_at <= ?
+                ORDER BY depth ASC, url ASC
+                LIMIT ?""",
+            (now, limit),
+        ).fetchall()
+        if not rows:
+            conn.commit()
+            return []
+        leased_until = now + max(30.0, float(lease_seconds))
+        for row in rows:
+            cur = conn.execute(
+                """UPDATE catalog_discovery_queue
+                      SET state='PROCESSING',
+                          attempts=attempts+1,
+                          leased_until=?,
+                          lease_token=?,
+                          last_started_at=?,
+                          last_error=NULL
+                    WHERE store='deloox'
+                      AND url=?
+                      AND state IN ('PENDING','ERROR')
+                      AND available_at <= ?""",
+                (leased_until, token, now, row['url'], now),
+            )
+            if cur.rowcount:
+                claimed.append(
+                    (row['url'], int(row['depth']), row['source'] or '', token)
+                )
+        conn.commit()
+        return claimed
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _deloox_queue_finish(url, token, ok, error=''):
+    """Finish one leased page with bounded retry/backoff."""
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            row = conn.execute(
+                """SELECT attempts
+                     FROM catalog_discovery_queue
+                    WHERE store='deloox' AND url=? AND lease_token=?""",
+                (url, token),
+            ).fetchone()
+            if not row:
+                return
+            attempts = int(row['attempts'] or 0)
+            if ok:
+                state = 'DONE'
+                available_at = 0
+                last_error = None
+            else:
+                state = 'DEAD' if attempts >= 8 else 'ERROR'
+                backoff = (60, 300, 1800, 7200, 21600, 86400)
+                available_at = now + backoff[min(max(attempts - 1, 0), len(backoff) - 1)]
+                last_error = str(error or 'discovery_error')[:1000]
+            conn.execute(
+                """UPDATE catalog_discovery_queue
+                      SET state=?,
+                          available_at=?,
+                          leased_until=NULL,
+                          lease_token=NULL,
+                          last_finished_at=?,
+                          last_error=?
+                    WHERE store='deloox' AND url=? AND lease_token=?""",
+                (state, available_at, now, last_error, url, token),
+            )
+    finally:
+        conn.close()
+
+
+def _deloox_persist_products(product_urls):
+    """Persist discovered Deloox product URLs incrementally.
+
+    This reuses the existing catalog -> hydration handoff. It does not alter
+    hydration claiming, workers, retries, or performance-sensitive code.
+    """
+    if not product_urls:
+        return 0
+    now = time.time()
+    conn = db()
+    count = 0
+    try:
+        with conn:
+            for url, lastmod in product_urls.items():
+                conn.execute(
+                    """INSERT INTO store_urls(
+                           store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           lastmod=excluded.lastmod,
+                           discovered_at=excluded.discovered_at,
+                           active=1""",
+                    ('deloox', url, url_slug(url), lastmod or '', now),
+                )
+                conn.execute(
+                    """INSERT INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
+                               ELSE hydration_queue.state
+                           END""",
+                    ('deloox', url, 'PENDING', 0, now, now, now),
+                )
+                count += 1
+    finally:
+        conn.close()
+    return count
+
 
 def _discover_deloox_catalog(seeds, deadline=None):
-    """Discover Deloox products through its public category graph.
+    """Advance Deloox's persistent catalog graph.
 
-    Deloox exposes a large amount of catalog navigation in category pages,
-    while sitemap endpoints are frequently unavailable. The crawler therefore
-    traverses the retailer-owned catalog graph directly. Fetches are performed
-    in bounded parallel batches so one slow/large Deloox page cannot consume
-    the entire discovery deadline.
-
-    No product name, brand name, product id, or search query is used here.
+    Deloox's sitemap endpoints are unreliable, so catalog discovery is an
+    incremental durable graph crawl. Each run claims a bounded set of
+    navigation pages, persists newly discovered frontier nodes, and leaves
+    the remaining frontier for the next run. No product name, brand, query,
+    or individual product URL is used as a special case.
     """
-    queue = []
-    queued = set()
-    visited = set()
+    if seeds:
+        _deloox_queue_enqueue(
+            [(url, 0, 'configured_seed') for url in seeds]
+        )
+    seeded = _deloox_queue_seed()
+    recovered = _deloox_queue_recover_stale()
+    requeued = _deloox_queue_requeue_stale_done()
+
+    started = time.time()
     product_urls = {}
     errors = []
-    sequence = 0
-    max_pages = min(800, HTML_MAX_PAGES)
-    max_depth = min(10, HTML_MAX_DEPTH)
-
-    def add(url, depth, source=''):
-        nonlocal sequence
-        if not url or depth > max_depth or len(queued) >= max_pages * 8:
-            return
-        key = url.split('#', 1)[0]
-        if key in queued or key in visited:
-            return
-        p = urllib.parse.urlparse(key)
-        if p.scheme not in ('http', 'https') or p.netloc.lower() != 'www.deloox.be':
-            return
-        path = p.path.lower()
-        if '/product/' in path:
-            product = _html_product_url('deloox', key, key)
-            if product:
-                product_urls[product] = ''
-            return
-        listing = _html_listing_url('deloox', key, key, source)
-        if not listing:
-            return
-        sequence += 1
-        priority = _html_discovery_priority('deloox', key, depth, source)
-        heapq.heappush(queue, (priority, sequence, key, depth, source))
-        queued.add(key)
-
-    for seed in seeds:
-        add(seed, 0, 'configured_seed')
+    visited = 0
+    successes = 0
 
     def process_page(requested, depth, source, result):
-        """Collect products and enqueue catalog/navigation URLs from one page."""
+        nonlocal visited, successes
         _requested, final, data, error = result
+        visited += 1
         if error:
             errors.append(f'{requested} -> {error}')
-            return
+            return False
 
+        successes += 1
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
+        listings = []
 
-        for a in soup.find_all('a', href=True):
-            raw = a.get('href')
+        def admit(raw, label=''):
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
-                continue
-            listing = _html_listing_url('deloox', raw, base, a.get_text(' ', strip=True))
+                return
+            listing = _html_listing_url('deloox', raw, base, label)
             if listing:
-                add(listing, depth + 1, requested)
+                listings.append((listing, depth + 1, requested))
+
+        for a in soup.find_all('a', href=True):
+            admit(a.get('href'), a.get_text(' ', strip=True))
 
         for node in soup.find_all(True):
             label = node.get_text(' ', strip=True)[:300]
@@ -950,15 +1319,24 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 'data-pagination-url',
             ):
                 raw = node.get(attr)
-                if not raw:
-                    continue
-                product = _html_product_url('deloox', raw, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', raw, base, label)
-                if listing:
-                    add(listing, depth + 1, requested)
+                if raw:
+                    admit(raw, label)
+
+        for node in soup.find_all(['link'], href=True):
+            rel = ' '.join(node.get('rel') or []).lower()
+            href = node.get('href')
+            if 'next' in rel or re.search(
+                r'(?:page|pagina|offset|start|p)=',
+                urllib.parse.urlparse(href or '').query,
+                re.I,
+            ):
+                admit(href, 'pagination')
+
+        try:
+            for item in _jsonld(soup):
+                admit(item.get('url'), 'jsonld_product')
+        except Exception:
+            pass
 
         try:
             raw_html = html.unescape(data.decode('utf-8', 'ignore'))
@@ -969,60 +1347,89 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 raw_html,
                 re.I,
             ):
-                raw = match.group(0)
-                absolute = urllib.parse.urljoin(base, raw).split('#', 1)[0]
-                product = _html_product_url('deloox', absolute, base)
-                if product:
-                    product_urls[product] = ''
-                    continue
-                listing = _html_listing_url('deloox', absolute, base, 'embedded_navigation')
-                if listing:
-                    add(listing, depth + 1, requested)
+                admit(
+                    urllib.parse.urljoin(base, match.group(0)).split('#', 1)[0],
+                    'embedded_navigation',
+                )
         except Exception:
             pass
 
-        for node in soup.find_all(['a', 'link'], href=True):
-            rel = ' '.join(node.get('rel') or []).lower()
-            href = node.get('href')
-            if 'next' in rel or re.search(r'(?:page|pagina|offset|start|p)=', urllib.parse.urlparse(href or '').query, re.I):
-                listing = _html_listing_url('deloox', href, base, 'pagination')
-                if listing:
-                    add(listing, depth + 1, requested)
+        if listings:
+            _deloox_queue_enqueue(listings)
+        if product_urls:
+            _deloox_persist_products(product_urls)
+        return True
 
-    # Parallel batches are deliberately bounded by the same HTML worker pool
-    # used by the generic crawler. The queue itself remains priority-ordered,
-    # so high-value catalog surfaces are still preferred without serializing
-    # the network I/O.
-    while queue and len(visited) < max_pages and (deadline is None or time.time() < deadline):
-        batch = []
-        while queue and len(batch) < HTML_WORKERS and len(visited) + len(batch) < max_pages:
-            _priority, _sequence, url, depth, source = heapq.heappop(queue)
-            if url in visited:
-                continue
-            visited.add(url)
-            batch.append((url, depth, source))
+    max_run_seconds = 120.0
+    if deadline is not None:
+        max_run_seconds = max(1.0, float(deadline) - time.time())
+    run_deadline = time.time() + min(max_run_seconds, 120.0)
+
+    while time.time() < run_deadline:
+        batch = _deloox_queue_claim(limit=HTML_WORKERS, lease_seconds=180)
         if not batch:
-            continue
+            break
 
         with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
             futures = {
-                pool.submit(_fetch_html_page, 'deloox', url): (url, depth, source)
-                for url, depth, source in batch
+                pool.submit(_fetch_html_page, 'deloox', url): (
+                    url, depth, source, token
+                )
+                for url, depth, source, token in batch
             }
             for future in as_completed(futures):
-                requested, depth, source = futures[future]
+                url, depth, source, token = futures[future]
                 try:
                     result = future.result()
+                    ok = process_page(url, depth, source, result)
+                    if ok:
+                        _deloox_queue_finish(url, token, True)
+                    else:
+                        error = result[3] if len(result) > 3 else 'fetch_error'
+                        _deloox_queue_finish(url, token, False, error)
                 except Exception as exc:
-                    errors.append(f'{requested} -> {type(exc).__name__}:{exc}')
-                    continue
-                process_page(requested, depth, source, result)
+                    error = f'{type(exc).__name__}:{exc}'
+                    errors.append(f'{url} -> {error}')
+                    _deloox_queue_finish(url, token, False, error)
+
+        # Never monopolize the process after a batch finishes.
+        if time.time() >= run_deadline:
+            break
+
+    conn = db()
+    try:
+        row = conn.execute(
+            """SELECT
+                 SUM(CASE WHEN state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                 SUM(CASE WHEN state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                 SUM(CASE WHEN state='DONE' THEN 1 ELSE 0 END) AS done,
+                 SUM(CASE WHEN state='ERROR' THEN 1 ELSE 0 END) AS error,
+                 SUM(CASE WHEN state='DEAD' THEN 1 ELSE 0 END) AS dead,
+                 COUNT(*) AS total
+               FROM catalog_discovery_queue
+              WHERE store='deloox'"""
+        ).fetchone()
+    finally:
+        conn.close()
+
+    frontier = {
+        'total': int(row['total'] or 0),
+        'pending': int(row['pending'] or 0),
+        'processing': int(row['processing'] or 0),
+        'done': int(row['done'] or 0),
+        'error': int(row['error'] or 0),
+        'dead': int(row['dead'] or 0),
+        'seeded': len(seeded),
+        'recovered': recovered,
+        'requeued_stale_done': requeued,
+    }
 
     return {
         'product_urls': product_urls,
-        'visited': len(visited),
-        'successes': len(visited) - len(errors),
+        'visited': visited,
+        'successes': successes,
         'errors': errors[:20],
+        'frontier': frontier,
     }
 
 
@@ -1439,15 +1846,12 @@ def discover_store(store):
                             html_sitemap_seeds.add(listing)
 
     fallback=None
-    # Deloox has a reliable public category graph but unreliable sitemap
-    # endpoints. Traverse that graph directly before the generic HTML fallback.
-    # This is retailer-specific discovery logic only; it never uses the query.
+    # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
+    # advanced through a persistent discovery frontier. Do not run a second
+    # in-memory HTML fallback for Deloox: that would restart from the same
+    # roots and recreate the starvation problem.
     deloox_graph = None
     if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
-        # Do not let the retailer-specific graph consume the entire discovery
-        # deadline. Deloox's sitemap is unreliable, so the generic HTML graph
-        # must always retain execution time to traverse additional catalog
-        # surfaces. The two crawlers are complementary, not alternatives.
         deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
         deloox_graph = _discover_deloox_catalog(
             list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
@@ -1455,17 +1859,12 @@ def discover_store(store):
         )
         product_urls.update(deloox_graph['product_urls'])
 
-    # Critical: a non-zero sitemap result is not automatically a complete
-    # catalog. Some retailers expose only a small navigation subset through
-    # sitemap roots while their public category pages contain the real catalog.
-    # Supplement small sitemap discoveries from the retailer's own HTML
-    # navigation surfaces. This is generic and never depends on the requested
-    # perfume/product name.
+    # Other retailers retain the existing bounded generic HTML fallback.
     if (
         store in HTML_DISCOVERY_SEEDS
+        and store != 'deloox'
         and (
-            store == 'deloox'
-            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
     ):
@@ -1516,6 +1915,16 @@ def discover_store(store):
         )
         if deloox_graph['errors']:
             details.append('deloox_graph_errors=' + ' | '.join(deloox_graph['errors'][:4]))
+        frontier = deloox_graph.get('frontier') or {}
+        if frontier:
+            details.append(
+                'deloox_frontier='
+                f'total:{frontier.get("total",0)};'
+                f'pending:{frontier.get("pending",0)};'
+                f'done:{frontier.get("done",0)};'
+                f'error:{frontier.get("error",0)};'
+                f'dead:{frontier.get("dead",0)}'
+            )
     if fallback is not None:
         details.append(
             f'html_fallback=visited:{fallback["visited"]};'
@@ -1792,22 +2201,32 @@ def refresh_url(store, url):
         return None
 
 
+def _search_db():
+    """Open the catalog database strictly read-only for user-facing search.
+
+    Search must never wait for a discovery/hydration writer to acquire a
+    SQLite write lock. The catalog database is already initialized by the
+    application; a read-only WAL connection is sufficient for search.
+    """
+    uri = f"file:{DB_PATH.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=2)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA query_only=ON')
+    return conn
+
+
 def search_local(query, per_store=32, search_terms=None):
-    """Search the persistent retailer catalog; never call a retailer endpoint.
+    '''Search the persistent retailer catalog; never call a retailer endpoint.
 
     ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
     Identity acceptance is still performed later by ProductMatcher.match().
     ``per_store=None`` or a non-positive value means no artificial candidate cap.
 
-    The catalog can contain tens of thousands of URLs per store.  Never scan
-    every URL once for every search term: family-expanded queries can contain
-    dozens of terms and that turns a simple search into an O(URLs * terms)
-    Python loop.  Build a lightweight in-memory token posting index for the
-    current store and evaluate only URLs that contain the rarest token of a
-    search term.  This preserves the exact whole-token matching semantics and
-    deterministic ranking while making broad family queries bounded by the
-    relevant URLs rather than the entire catalog.
-    """
+    The catalog can contain tens of thousands of URLs per store. Never scan
+    every URL once for every search term. Build a lightweight in-memory token
+    posting index and evaluate only URLs containing the rarest token.
+    '''
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -1830,10 +2249,6 @@ def search_local(query, per_store=32, search_terms=None):
     unlimited = per_store is None or int(per_store) <= 0
 
     for store in STORES:
-        # Discovery changes invalidate/rebuild the store index. Hydration is
-        # handled incrementally by refresh_url(), so hydrated_count/fetched_at
-        # must NOT be part of this signature: otherwise every background page
-        # fetch would force a full scan of the entire store catalog.
         signature_row = conn.execute(
             '''SELECT
                    COUNT(*) AS active_count,
@@ -1866,21 +2281,13 @@ def search_local(query, per_store=32, search_terms=None):
                     (store,),
                 ).fetchall()
 
-                # Inverted index: token -> URLs containing that token.
-                # Keep the existing fast rarest-token architecture, but also
-                # index the hydrated product name/brand. This is essential for
-                # retailers whose product URLs do not contain the product name.
                 new_postings = {}
                 new_url_tokens = {}
                 for r in candidates:
                     url = r['url']
                     search_text = ' '.join(
                         str(r[key] or '')
-                        for key in (
-                            'slug',
-                            'product_name',
-                            'product_brand',
-                        )
+                        for key in ('slug', 'product_name', 'product_brand')
                     )
                     combined_tokens = set(norm(search_text).split())
                     new_url_tokens[url] = combined_tokens
@@ -1895,9 +2302,6 @@ def search_local(query, per_store=32, search_terms=None):
                     'url_tokens': url_tokens,
                 }
 
-            # Keep the lock through scoring. Hydration may mutate postings in
-            # place, so releasing the lock here would allow a concurrent worker
-            # to change a dict/set while search is iterating it.
             term_anchors = []
             for ts in token_sets:
                 anchor = min(ts, key=lambda token: len(postings.get(token, ())))
@@ -1910,13 +2314,12 @@ def search_local(query, per_store=32, search_terms=None):
                     slug_tokens = url_tokens.get(url, set())
                     score = sum(1 for token in ts if token in slug_tokens)
                     if score == len(ts):
-                        # Preserve the previous ranking contract: complete term
-                        # matches receive the same +10 bonus.
                         score += 10
                         if score > scored.get(url, 0):
                             scored[url] = score
 
             ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
+
         selected = ordered if unlimited else ordered[:int(per_store)]
         for url, _score in selected:
             row = conn.execute(
@@ -1940,7 +2343,6 @@ def search_local(query, per_store=32, search_terms=None):
 
     conn.close()
     return rows
-
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
     """Refresh only catalog candidates that do not yet have page data.
@@ -2363,6 +2765,46 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
         }
     finally:
         pool.shutdown(wait=True)
+
+
+def catalog_discovery_loop(stop_event, interval_seconds=300.0):
+    """Continuously advance durable catalog discovery in the background.
+
+    This loop is intentionally independent from hydration. It only advances
+    the Deloox navigation frontier; search remains read-only and hydration
+    keeps its existing workers/claim/retry behavior unchanged.
+    """
+    pause = max(30.0, float(interval_seconds))
+    print(
+        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
+        flush=True,
+    )
+    while stop_event is None or not stop_event.is_set():
+        started = time.time()
+        try:
+            result = discover_store('deloox')
+            frontier = {}
+            if isinstance(result, dict):
+                # The frontier is also persisted in sync_state.error for
+                # operators, so this remains observable without a new API.
+                frontier = (result.get('html_fallback') or {}) if False else {}
+            print(
+                'CATALOG DISCOVERY BATCH '
+                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
+                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+        elapsed = time.time() - started
+        wait_for = max(1.0, pause - elapsed)
+        if stop_event is not None:
+            stop_event.wait(wait_for)
+        else:
+            time.sleep(wait_for)
 
 
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
