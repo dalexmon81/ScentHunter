@@ -1640,6 +1640,23 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     for seed in seeds:
         add(seed, 0, 'configured_seed')
 
+    # DIAGNOSTIC ONLY: when tracing Sabina, probe the retailer's native
+    # search surface with the exact diagnostic query. This URL is injected
+    # only into this read-only replay queue; it is NOT added to production
+    # discovery seeds, catalog state, or hydration. The purpose is to prove
+    # whether Sabina exposes the requested product in HTML and whether the
+    # generic product-URL classifier captures it.
+    if store == 'sabina' and required_tokens:
+        try:
+            diagnostic_query_url = (
+                'https://www.sabina.com/it/ricerca_old?search_query='
+                + urllib.parse.quote(query or '', safe='')
+            )
+            if add(diagnostic_query_url, 0, 'diagnostic_query_probe'):
+                seeds.append(diagnostic_query_url)
+        except Exception:
+            pass
+
     started = time.time()
     successes = 0
 
