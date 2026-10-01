@@ -1000,10 +1000,16 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
+    # Native retailer search listing pages are catalog surfaces too. They are
+    # generic discovery inputs (for example A-Z seeds), not user-query search.
+    # Prioritize them before broad category traversal so OOS/search-only products
+    # cannot be starved by thousands of category links.
+    if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
+        score = 0
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
