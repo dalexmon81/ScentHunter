@@ -592,10 +592,19 @@ def _generic_exact_catalog_candidate(matcher_offer, query):
                 index = existing
 
     candidates = index.get(name_key) or []
-    if len(candidates) != 1:
+    # CatalogProduct.from_dict() intentionally keeps the canonical name in
+    # aliases as well, so the same product can occur more than once under one
+    # normalized identity key. Deduplicate by catalog identity before deciding
+    # whether the identity is unique.
+    unique_candidates = {}
+    for candidate in candidates:
+        catalog_id = str(getattr(candidate, "catalog_id", "") or "").strip()
+        identity_key = catalog_id or str(id(candidate))
+        unique_candidates.setdefault(identity_key, candidate)
+    if len(unique_candidates) != 1:
         return None
 
-    candidate = candidates[0]
+    candidate = next(iter(unique_candidates.values()))
 
     offer_brand_resolver = getattr(PRODUCT_MATCHER, "_offer_brand", None)
     brand_matcher = getattr(PRODUCT_MATCHER, "_brand_matches", None)
@@ -686,7 +695,19 @@ def _resolve_offer_identity(result, query):
         # ProductMatcher.match_offer() remains the identity authority: main.py
         # only narrows the candidate set when the central catalog contains one
         # unique exact name/alias and the supplied brand is compatible.
-        exact_candidate = _generic_exact_catalog_candidate(matcher_offer, query)
+        # Registered families keep precedence over the generic exact-name
+        # optimization. This preserves ProductMatcher family semantics while
+        # allowing ordinary products to bypass the expensive generic URL scan.
+        family_scope_resolver = getattr(PRODUCT_MATCHER, "_family_for_query", None)
+        query_is_registered_family = (
+            callable(family_scope_resolver)
+            and family_scope_resolver(str(query or "").strip()) is not None
+        )
+        exact_candidate = (
+            None
+            if query_is_registered_family
+            else _generic_exact_catalog_candidate(matcher_offer, query)
+        )
         match_offer_method = getattr(PRODUCT_MATCHER, "match_offer", None)
         if exact_candidate is not None and callable(match_offer_method):
             fast_scope = {
