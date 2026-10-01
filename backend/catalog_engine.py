@@ -772,13 +772,6 @@ HTML_DISCOVERY_SEEDS = {
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
-        # Sabina's legacy native catalog search is a real retailer catalog
-        # surface. These are broad navigation seeds, not user-query URLs and
-        # therefore do not create a product-specific exception.
-        'https://www.sabina.com/it/ricerca_old?search_query=',
-        'https://www.sabina.com/it/ricerca_old?search_query=profumi',
-        'https://www.sabina.com/it/ricerca_old?search_query=parfum',
-        'https://www.sabina.com/it/ricerca_old?search_query=perfume',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -886,16 +879,10 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         return None
     if store == 'sabina':
         # Sabina catalog/navigation pages are crawlable without a query
-        # endpoint. Its legacy /ricerca_old surface is also part of the
-        # retailer's public catalog graph and can expose product links that
-        # are absent from the small sitemap slice. It is still generic: no
-        # user search term is inserted here.
+        # endpoint. Product pages are excluded here because _html_product_url
+        # handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
-        if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
-            return absolute
-        if 'search_query=' in p.query.lower():
-            return absolute
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
             return absolute
         if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
@@ -974,6 +961,10 @@ def _html_discovery_priority(store, url, depth, source=''):
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
     if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+        score = 0
+    # Search/catalog result surfaces are primary navigation roots. This is
+    # structural only: it does not use the requested product query.
+    elif path.endswith('/ricerca_old') or path.endswith('/ricerca') or path.endswith('/search'):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
