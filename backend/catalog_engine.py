@@ -848,43 +848,43 @@ def _html_product_url(store, raw_url, base_url):
             return absolute
         return None
     if store == 'sabina':
-    # Le pagine .html con ID numerico sono prodotti.
-    # Le altre superfici Sabina possono essere pagine di catalogo,
-    # ricerca, filtri o paginazione.
-    if path.endswith('.html'):
+        # Le pagine .html con ID numerico sono prodotti.
+        # Le altre superfici Sabina possono essere pagine di catalogo,
+        # ricerca, filtri o paginazione.
+        if path.endswith('.html'):
+            return None
+    
+        # Pagine native di ricerca/catalogo.
+        if re.search(
+            r'/(?:ricerca|ricerca_old|search|buscar|suchen)(?:/|$)',
+            path,
+            re.I,
+        ):
+            return absolute
+    
+        # Query di ricerca, paginazione e filtri.
+        if re.search(
+            r'(?:search_query|query|q|page|pagina|p|offset|start)=',
+            p.query,
+            re.I,
+        ):
+            return absolute
+    
+        # Superfici catalogo Sabina.
+        if re.search(
+            r'/(?:profumi|perfumes|parfums|l/|s/)',
+            path,
+            re.I,
+        ):
+            return absolute
+    
+        parts = [x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 3:
+            return absolute
+    
         return None
-
-    # Pagine native di ricerca/catalogo.
-    if re.search(
-        r'/(?:ricerca|ricerca_old|search|buscar|suchen)(?:/|$)',
-        path,
-        re.I,
-    ):
-        return absolute
-
-    # Query di ricerca, paginazione e filtri.
-    if re.search(
-        r'(?:search_query|query|q|page|pagina|p|offset|start)=',
-        p.query,
-        re.I,
-    ):
-        return absolute
-
-    # Superfici catalogo Sabina.
-    if re.search(
-        r'/(?:profumi|perfumes|parfums|l/|s/)',
-        path,
-        re.I,
-    ):
-        return absolute
-
-    parts = [x for x in path.split('/') if x]
-    if 1 <= len(parts) <= 3:
-        return absolute
-
-    return None
-
-    return absolute if _looks_product(absolute) else None
+    
+        return absolute if _looks_product(absolute) else None
 
 
 def _html_listing_url(store, raw_url, base_url, label=''):
@@ -1553,24 +1553,24 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # attributes instead of normal hrefs. Follow these generic
                 # navigation attributes; never use the user's query here.
                 navigation_attrs = (
-    'data-url',
-    'data-href',
-    'data-link',
-    'data-product-url',
-    'data-product-link',
-    'data-target',
-    'data-next-url',
-    'data-next',
-    'data-load-more-url',
-    'data-pagination-url',
-    'data-search-url',
-    'data-search-link',
-    'data-request-url',
-    'data-action',
-    'data-page-url',
-    'data-filter-url',
-    'data-results-url',
-)
+                    'data-url',
+                    'data-href',
+                    'data-link',
+                    'data-product-url',
+                    'data-product-link',
+                    'data-target',
+                    'data-next-url',
+                    'data-next',
+                    'data-load-more-url',
+                    'data-pagination-url',
+                    'data-search-url',
+                    'data-search-link',
+                    'data-request-url',
+                    'data-action',
+                    'data-page-url',
+                    'data-filter-url',
+                    'data-results-url',
+                )
 
                 for node in soup.find_all(True):
                     for attr in navigation_attrs:
@@ -1608,73 +1608,73 @@ def _discover_html_catalog(store, seeds, deadline=None):
                             product_urls[product]=''
                 except Exception:
                     pass
-                # Alcuni storefront inseriscono link prodotto, ricerca e
-# paginazione dentro JSON, JavaScript o attributi HTML.
-# Estraiamo solo URL dello stesso dominio e li sottoponiamo
-# agli stessi classificatori già esistenti.
-try:
-    raw_html = html.unescape(
-        data.decode('utf-8', 'ignore')
-    )
-
-    raw_html = (
-        raw_html
-        .replace('\\/', '/')
-        .replace('\\u002F', '/')
-        .replace('\\u002f', '/')
-    )
-
-    allowed_hosts = {
-        urllib.parse.urlparse(base).netloc.lower()
-        for base in _discovery_bases(store)
-    }
-
-    embedded_urls = set()
-
-    for match in re.finditer(
-        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
-        raw_html,
-        re.I,
-    ):
-        raw = match.group(0)
-
-        absolute = urllib.parse.urljoin(
-            page_base,
-            raw,
-        ).split('#', 1)[0]
-
-        parsed = urllib.parse.urlparse(absolute)
-
-        if parsed.netloc.lower() in allowed_hosts:
-            embedded_urls.add(absolute)
-
-    for raw in embedded_urls:
-        product = _html_product_url(
-            store,
-            raw,
-            page_base,
-        )
-
-        if product:
-            product_urls[product] = ''
-            continue
-
-        listing = _html_listing_url(
-            store,
-            raw,
-            page_base,
-            'embedded_navigation',
-        )
-
-        if listing:
-            add(
-                listing,
-                depth + 1,
-                requested,
-            )
-
-except Exception:
-    pass
+                                # Alcuni storefront inseriscono link prodotto, ricerca e
+                # paginazione dentro JSON, JavaScript o attributi HTML.
+                # Estraiamo solo URL dello stesso dominio e li sottoponiamo
+                # agli stessi classificatori già esistenti.
+                try:
+                    raw_html = html.unescape(
+                        data.decode('utf-8', 'ignore')
+                    )
+                
+                    raw_html = (
+                        raw_html
+                        .replace('\\/', '/')
+                        .replace('\\u002F', '/')
+                        .replace('\\u002f', '/')
+                    )
+                
+                    allowed_hosts = {
+                        urllib.parse.urlparse(base).netloc.lower()
+                        for base in _discovery_bases(store)
+                    }
+                
+                    embedded_urls = set()
+                
+                    for match in re.finditer(
+                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
+                        raw_html,
+                        re.I,
+                    ):
+                        raw = match.group(0)
+                
+                        absolute = urllib.parse.urljoin(
+                            page_base,
+                            raw,
+                        ).split('#', 1)[0]
+                
+                        parsed = urllib.parse.urlparse(absolute)
+                
+                        if parsed.netloc.lower() in allowed_hosts:
+                            embedded_urls.add(absolute)
+                
+                    for raw in embedded_urls:
+                        product = _html_product_url(
+                            store,
+                            raw,
+                            page_base,
+                        )
+                
+                        if product:
+                            product_urls[product] = ''
+                            continue
+                
+                        listing = _html_listing_url(
+                            store,
+                            raw,
+                            page_base,
+                            'embedded_navigation',
+                        )
+                
+                        if listing:
+                            add(
+                                listing,
+                                depth + 1,
+                                requested,
+                            )
+                
+                except Exception:
+                    pass
 
                 # Some modern retailers keep catalog navigation/filter targets
                 # inside JavaScript state or JSON blobs instead of real <a>
