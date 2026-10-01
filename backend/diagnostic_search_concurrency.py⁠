@@ -1,15 +1,14 @@
-"""ScentHunter read-only concurrency diagnostic for the local catalog index."""
+"""ScentHunter read-only search concurrency diagnostic."""
 import importlib
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter
 
 router = APIRouter()
 
 
 def _catalog():
-    # Import only when the endpoint is actually called.
-    # This keeps application startup independent from catalog_engine.
     return importlib.import_module("catalog_engine")
 
 
@@ -34,14 +33,22 @@ def _lock_state(lock):
 
 
 @router.get("/diagnostic/search-concurrency")
-def diagnostic_search_concurrency(q: str = "Liquid Brun"):
-    """Observe concurrent search_local() calls without SQLite writes."""
+def diagnostic_search_concurrency(
+    q: str = "Liquid Brun",
+    timeout_seconds: float = 12.0,
+):
+    """Run two search_local calls without waiting indefinitely.
+
+    SQLite is never written. Discovery/hydration are not called.
+    """
+    started = time.perf_counter()
+
     try:
         catalog = _catalog()
     except Exception as exc:
         return {
             "ok": False,
-            "diagnostic": "search-concurrency-v2",
+            "diagnostic": "search-concurrency-v3",
             "error": f"{type(exc).__name__}: {exc}",
         }
 
@@ -51,19 +58,9 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
     if not callable(search_local) or lock is None:
         return {
             "ok": False,
-            "diagnostic": "search-concurrency-v2",
+            "diagnostic": "search-concurrency-v3",
             "error": "search_local_or_lock_unavailable",
         }
-
-    # Warm the existing process cache first.
-    warm_started = time.perf_counter()
-    try:
-        warm_rows = search_local(q, per_store=64, search_terms=[q])
-        warm_error = None
-    except Exception as exc:
-        warm_rows = []
-        warm_error = f"{type(exc).__name__}: {exc}"
-    warm_sec = time.perf_counter() - warm_started
 
     samples = []
     stop = threading.Event()
@@ -71,11 +68,11 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
     def sampler():
         while not stop.is_set():
             samples.append({
-                "t": round(time.perf_counter(), 6),
+                "elapsed": round(time.perf_counter() - started, 4),
                 "lock_locked": _lock_state(lock),
                 "cache": _snapshot(catalog),
             })
-            time.sleep(0.01)
+            time.sleep(0.05)
 
     sampler_thread = threading.Thread(
         target=sampler,
@@ -84,78 +81,97 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
     )
     sampler_thread.start()
 
-    results = [None, None]
-
-    def run(index):
-        started = time.perf_counter()
+    def run_one():
+        t0 = time.perf_counter()
+        cpu0 = time.thread_time()
         try:
             rows = search_local(q, per_store=64, search_terms=[q])
-            results[index] = {
-                "seconds": round(time.perf_counter() - started, 4),
+            return {
+                "finished": True,
+                "seconds": round(time.perf_counter() - t0, 4),
+                "thread_cpu_seconds": round(time.thread_time() - cpu0, 4),
                 "result_count": len(rows),
                 "error": None,
             }
         except Exception as exc:
-            results[index] = {
-                "seconds": round(time.perf_counter() - started, 4),
+            return {
+                "finished": True,
+                "seconds": round(time.perf_counter() - t0, 4),
+                "thread_cpu_seconds": round(time.thread_time() - cpu0, 4),
                 "result_count": 0,
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
-    t1 = threading.Thread(target=run, args=(0,), name="diagnostic-search-1")
-    t2 = threading.Thread(target=run, args=(1,), name="diagnostic-search-2")
+    executor = ThreadPoolExecutor(
+        max_workers=2,
+        thread_name_prefix="diagnostic-search",
+    )
 
-    concurrent_started = time.perf_counter()
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
-    concurrent_sec = time.perf_counter() - concurrent_started
+    futures = [
+        executor.submit(run_one),
+        executor.submit(run_one),
+    ]
 
+    results = []
+    deadline = time.perf_counter() + max(1.0, float(timeout_seconds))
+
+    for future in futures:
+        remaining = max(0.0, deadline - time.perf_counter())
+        try:
+            results.append(future.result(timeout=remaining))
+        except TimeoutError:
+            results.append({
+                "finished": False,
+                "timeout": True,
+            })
+        except Exception as exc:
+            results.append({
+                "finished": False,
+                "timeout": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+    # Do NOT wait for stuck search threads.
     stop.set()
-    sampler_thread.join(timeout=0.5)
+    sampler_thread.join(timeout=0.2)
+    executor.shutdown(wait=False, cancel_futures=True)
 
-    lock_true_samples = [s for s in samples if s["lock_locked"]]
-    unique_signatures = {}
+    lock_samples = [s for s in samples if s["lock_locked"]]
+
+    signature_sets = {}
     for sample in samples:
         for store, data in sample["cache"].items():
-            unique_signatures.setdefault(store, set()).add(
+            signature_sets.setdefault(store, set()).add(
                 tuple(data["signature"])
             )
 
     signature_changes = {
-        store: [list(sig) for sig in signatures]
-        for store, signatures in unique_signatures.items()
-        if len(signatures) > 1
+        store: [list(sig) for sig in values]
+        for store, values in signature_sets.items()
+        if len(values) > 1
     }
 
-    max_search_sec = max(
-        (r["seconds"] for r in results if r is not None),
-        default=0,
-    )
+    finished = [r for r in results if r.get("finished")]
+    timed_out = [r for r in results if r.get("timeout")]
 
     return {
-        "ok": warm_error is None and all(
-            r is not None and r["error"] is None for r in results
+        "ok": len(timed_out) == 0 and all(
+            r.get("error") is None for r in finished
         ),
-        "diagnostic": "search-concurrency-v2",
+        "diagnostic": "search-concurrency-v3",
         "query": q,
         "writes_to_sqlite": False,
-        "warmup": {
-            "seconds": round(warm_sec, 4),
-            "result_count": len(warm_rows),
-            "error": warm_error,
-        },
+        "timeout_seconds": timeout_seconds,
+        "total_seconds": round(time.perf_counter() - started, 4),
         "concurrent": {
-            "total_seconds": round(concurrent_sec, 4),
             "search_1": results[0],
             "search_2": results[1],
         },
         "lock": {
-            "locked_sample_count": len(lock_true_samples),
+            "locked_sample_count": len(lock_samples),
             "sample_count": len(samples),
             "lock_observed_ratio": round(
-                len(lock_true_samples) / len(samples), 4
+                len(lock_samples) / len(samples), 4
             ) if samples else 0,
         },
         "cache": {
@@ -164,11 +180,18 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
         },
         "sampler": {
             "samples": len(samples),
-            "interval_seconds": 0.01,
+            "interval_seconds": 0.05,
         },
         "diagnosis": (
-            "CONCURRENT_SEARCH_LOCK_CONTENTION"
-            if max_search_sec > 1.0
-            else "NO_MAJOR_CONCURRENT_CONTENTION_OBSERVED"
+            "SEARCH_LOCAL_TIMEOUT_OR_CONTENTION"
+            if timed_out
+            else (
+                "CONCURRENT_SEARCH_LOCK_CONTENTION"
+                if max(
+                    (r.get("seconds", 0) for r in finished),
+                    default=0,
+                ) > 1.0
+                else "NO_MAJOR_CONCURRENT_CONTENTION_OBSERVED"
+            )
         ),
     }
