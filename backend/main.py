@@ -13,6 +13,7 @@ from pathlib import Path
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
 try:
+    import catalog_engine as _catalog_engine_module
     from catalog_engine import (
         search_local as catalog_search_local,
         refresh_candidates as catalog_refresh_candidates,
@@ -23,6 +24,12 @@ try:
         catalog_hydration_loop,
         db as catalog_db,
     )
+    # Optional capability: older catalog_engine deployments remain compatible.
+    catalog_sabina_discovery_loop = getattr(
+        _catalog_engine_module,
+        'catalog_sabina_discovery_loop',
+        None,
+    )
     CATALOG_ENGINE_AVAILABLE = True
 except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
@@ -32,6 +39,7 @@ except Exception as exc:
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
+    catalog_sabina_discovery_loop = None
     catalog_db = None
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
@@ -49,6 +57,8 @@ _CATALOG_BOOTSTRAP_DONE = False
 _CATALOG_BOOTSTRAP_ERROR = None
 _CATALOG_HYDRATION_STARTED = False
 _CATALOG_HYDRATION_STOP = threading.Event()
+_CATALOG_SABINA_DISCOVERY_STARTED = False
+_CATALOG_SABINA_DISCOVERY_STOP = threading.Event()
 
 # Controlled operational resync for stores whose persistent catalog needs to
 # be rebuilt without touching the normal search path. This is deliberately
@@ -223,6 +233,32 @@ def _start_catalog_hydration():
     ).start()
 
 
+def _start_catalog_sabina_discovery():
+    """Start incremental Sabina discovery without resetting the persistent catalog."""
+    global _CATALOG_SABINA_DISCOVERY_STARTED
+    with _CATALOG_BOOTSTRAP_LOCK:
+        if _CATALOG_SABINA_DISCOVERY_STARTED:
+            return
+        if not callable(catalog_sabina_discovery_loop):
+            print(
+                'CATALOG SABINA DISCOVERY SKIP: '
+                'catalog_engine has no Sabina discovery loop',
+                flush=True,
+            )
+            return
+        _CATALOG_SABINA_DISCOVERY_STARTED = True
+
+    threading.Thread(
+        target=catalog_sabina_discovery_loop,
+        kwargs={
+            'stop_event': _CATALOG_SABINA_DISCOVERY_STOP,
+            'interval_seconds': 300.0,
+        },
+        daemon=True,
+        name='scenthunter-catalog-sabina-discovery',
+    ).start()
+
+
 def _catalog_bootstrap_worker():
     global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -391,7 +427,9 @@ def _start_catalog_bootstrap():
             _CATALOG_BOOTSTRAP_DONE = True
         print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
         _start_catalog_hydration()
+        _start_catalog_sabina_discovery()
         return
+    _start_catalog_sabina_discovery()
     threading.Thread(
         target=_catalog_bootstrap_worker,
         daemon=True,
