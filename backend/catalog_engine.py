@@ -661,7 +661,11 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             # previously discovered Deloox catalog merely because this run did
             # not reach those branches. A real product disappearance is handled
             # by product-page hydration/HTTP status, not by crawl omission.
-            if store != 'deloox':
+            # Sabina discovery is also incremental. Its HTML legacy catalog
+            # surface is bounded by time, so a run can legitimately discover
+            # only a subset of the existing catalog. Never deactivate known
+            # Sabina URLs merely because this run did not reach them.
+            if store not in ('deloox', 'sabina'):
                 conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
@@ -1072,7 +1076,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -1085,6 +1089,11 @@ def _html_discovery_priority(store, url, depth, source=''):
         score = 3
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 3
+    elif store == 'sabina' and re.search(r'/ricerca_old(?:/|$)', path, re.I):
+        # Sabina's legacy search is a catalog surface and exposes controller
+        # product IDs that may not be present in category navigation. Keep it
+        # ahead of generic site links without embedding any query/product rule.
+        score = 2
     elif re.search(r'(?:page|pagina|offset|start|p=)', p.query, re.I):
         score = 4
     elif path in ('/', '') or path.rstrip('/') in ('/en', '/it', '/de', '/fr', '/nl', '/es'):
