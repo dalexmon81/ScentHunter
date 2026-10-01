@@ -2213,15 +2213,17 @@ def _search_db():
 
 
 def search_local(query, per_store=32, search_terms=None):
-    """Search the persistent retailer catalog using alternative search terms.
+    """Search the persistent retailer catalog with fast alternative-term fallback.
 
-    ``search_terms`` is an OR-list of alternative catalog expressions supplied
-    by ProductMatcher. Tokens inside one term are ANDed, while different terms
-    are alternatives. ProductMatcher remains responsible for final identity.
+    ``search_terms`` contains alternative catalog expressions supplied by
+    ProductMatcher. Tokens inside one term are ANDed; different terms are OR
+    alternatives. The primary query is tried first for each store. Alternative
+    terms are queried only when the primary term does not provide enough
+    candidates, preventing a family-expanded query from multiplying full-table
+    SQLite scans across every alias.
 
-    User-facing search stays read-only and delegates candidate retrieval to
-    SQLite. No discovery, hydration, retailer endpoint or matcher decision is
-    performed here.
+    Search remains strictly read-only: no discovery, hydration, retailer
+    request, or ProductMatcher identity decision is performed here.
     """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
@@ -2232,8 +2234,6 @@ def search_local(query, per_store=32, search_terms=None):
     if not terms:
         return []
 
-    # Each term is one alternative expression. Tokens within the same term
-    # must all be present; different terms are OR alternatives.
     token_sets = []
     for term in terms:
         ts = tuple(tokens(term))
@@ -2245,42 +2245,55 @@ def search_local(query, per_store=32, search_terms=None):
     conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
+    target = None if unlimited else int(per_store)
+
+    def fetch_term(store, ts):
+        clauses = []
+        params = [store]
+        for token in ts:
+            clauses.append(
+                "(LOWER(COALESCE(u.slug,'')) LIKE ? "
+                "OR LOWER(COALESCE(p.name,'')) LIKE ? "
+                "OR LOWER(COALESCE(p.brand,'')) LIKE ?)"
+            )
+            pattern = f"%{token.lower()}%"
+            params.extend((pattern, pattern, pattern))
+        sql = f"""SELECT u.url,u.slug,u.lastmod,
+                       p.name AS product_name,
+                       p.brand AS product_brand
+                FROM store_urls u
+                LEFT JOIN store_products p
+                  ON p.store=u.store
+                 AND p.url=u.url
+                 AND p.fetch_status='OK'
+                WHERE u.store=? AND u.active=1
+                  AND {' AND '.join(clauses)}"""
+        return conn.execute(sql, params).fetchall()
 
     try:
         for store in STORES:
-            term_clauses = []
-            params = [store]
+            # Fast path: the original user query is always the first term.
+            # Only fall back to expanded aliases/canonical names when the
+            # primary expression does not fill the requested candidate set.
+            candidates_by_url = {}
+            for term_index, ts in enumerate(token_sets):
+                candidates = fetch_term(store, ts)
+                for r in candidates:
+                    candidates_by_url[r['url']] = r
 
-            for ts in token_sets:
-                token_clauses = []
-                for token in ts:
-                    token_clauses.append(
-                        "(LOWER(COALESCE(u.slug,'')) LIKE ? "
-                        "OR LOWER(COALESCE(p.name,'')) LIKE ? "
-                        "OR LOWER(COALESCE(p.brand,'')) LIKE ?)"
-                    )
-                    pattern = f"%{token.lower()}%"
-                    params.extend((pattern, pattern, pattern))
-                # A single search term such as "Liquid Brun" requires both
-                # tokens, but it is enough for any one of the alternative
-                # terms to match.
-                term_clauses.append('(' + ' AND '.join(token_clauses) + ')')
-
-            where_tokens = '(' + ' OR '.join(term_clauses) + ')'
-            sql = f"""SELECT u.url,u.slug,u.lastmod,
-                           p.name AS product_name,
-                           p.brand AS product_brand
-                    FROM store_urls u
-                    LEFT JOIN store_products p
-                      ON p.store=u.store
-                     AND p.url=u.url
-                     AND p.fetch_status='OK'
-                    WHERE u.store=? AND u.active=1
-                      AND {where_tokens}"""
-            candidates = conn.execute(sql, params).fetchall()
+                if target is not None and len(candidates_by_url) >= target:
+                    break
+                if term_index == 0 and not candidates:
+                    # Continue into alternatives only when the primary term
+                    # produced nothing; this is the recovery path for catalog
+                    # naming differences.
+                    continue
+                if target is None:
+                    # Unlimited mode must evaluate every alternative.
+                    continue
 
             scored = {}
-            for r in candidates:
+            for r in candidates_by_url.values():
                 url = r['url']
                 search_text = ' '.join(
                     str(r[key] or '')
@@ -2288,22 +2301,17 @@ def search_local(query, per_store=32, search_terms=None):
                 )
                 normalized_tokens = frozenset(norm(search_text).split())
 
-                # Pick the strongest matching alternative. We must NOT require
-                # every alias/canonical expression to match the same product.
-                best_score = None
+                best_score = 0
                 for ts in token_sets:
                     score = sum(1 for token in ts if token in normalized_tokens)
-                    if score != len(ts):
-                        continue
-                    candidate_score = score + 10
-                    if best_score is None or candidate_score > best_score:
-                        best_score = candidate_score
+                    if score == len(ts):
+                        best_score = max(best_score, score + 10)
 
-                if best_score is not None:
+                if best_score:
                     scored[url] = best_score
 
             ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
-            selected = ordered if unlimited else ordered[:int(per_store)]
+            selected = ordered if unlimited else ordered[:target]
 
             for url, _score in selected:
                 row = conn.execute(
@@ -2328,6 +2336,7 @@ def search_local(query, per_store=32, search_terms=None):
         conn.close()
 
     return rows
+
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
     """Refresh only catalog candidates that do not yet have page data.
