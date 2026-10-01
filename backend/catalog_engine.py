@@ -2197,21 +2197,28 @@ def refresh_url(store, url):
         return None
 
 
+def _search_db():
+    """Open the catalog database strictly read-only for user-facing search.
+
+    Search must never wait for a discovery/hydration writer to acquire a
+    SQLite write lock. The catalog database is already initialized by the
+    application; a read-only WAL connection is sufficient for search.
+    """
+    uri = f"file:{DB_PATH.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=2)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA query_only=ON')
+    return conn
+
+
 def search_local(query, per_store=32, search_terms=None):
-    """Search the persistent retailer catalog; never call a retailer endpoint.
+    """Search the persistent retailer catalog without rebuilding an in-memory index.
 
-    ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
-    Identity acceptance is still performed later by ProductMatcher.match().
-    ``per_store=None`` or a non-positive value means no artificial candidate cap.
-
-    The catalog can contain tens of thousands of URLs per store.  Never scan
-    every URL once for every search term: family-expanded queries can contain
-    dozens of terms and that turns a simple search into an O(URLs * terms)
-    Python loop.  Build a lightweight in-memory token posting index for the
-    current store and evaluate only URLs that contain the rarest token of a
-    search term.  This preserves the exact whole-token matching semantics and
-    deterministic ranking while making broad family queries bounded by the
-    relevant URLs rather than the entire catalog.
+    User-facing search must not spend the request budget rebuilding the complete
+    catalog after a process restart. Candidate retrieval is delegated to SQLite:
+    only rows containing the requested tokens in slug/name/brand are read, then
+    the existing token scoring semantics are applied in Python.
     """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
@@ -2230,117 +2237,86 @@ def search_local(query, per_store=32, search_terms=None):
     if not token_sets:
         return []
 
-    conn = db()
+    conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
 
-    for store in STORES:
-        # Discovery changes invalidate/rebuild the store index. Hydration is
-        # handled incrementally by refresh_url(), so hydrated_count/fetched_at
-        # must NOT be part of this signature: otherwise every background page
-        # fetch would force a full scan of the entire store catalog.
-        signature_row = conn.execute(
-            '''SELECT COUNT(*) AS active_count
-               FROM store_urls
-               WHERE store=? AND active=1''',
-            (store,),
-        ).fetchone()
-        signature = int(signature_row['active_count'] or 0)
-
-        with _LOCAL_SEARCH_INDEX_LOCK:
-            cached = _LOCAL_SEARCH_INDEX_CACHE.get(store)
-            if cached and cached['signature'] == signature:
-                postings = cached['postings']
-                url_tokens = cached['url_tokens']
-            else:
-                candidates = conn.execute(
-                    '''SELECT u.url,u.slug,u.lastmod,
-                              p.name AS product_name,
-                              p.brand AS product_brand
-                       FROM store_urls u
-                       LEFT JOIN store_products p
-                         ON p.store=u.store
-                        AND p.url=u.url
-                        AND p.fetch_status='OK'
-                       WHERE u.store=? AND u.active=1''',
-                    (store,),
-                ).fetchall()
-
-                # Inverted index: token -> URLs containing that token.
-                # Keep the existing fast rarest-token architecture, but also
-                # index the hydrated product name/brand. This is essential for
-                # retailers whose product URLs do not contain the product name.
-                new_postings = {}
-                new_url_tokens = {}
-                for r in candidates:
-                    url = r['url']
-                    search_text = ' '.join(
-                        str(r[key] or '')
-                        for key in (
-                            'slug',
-                            'product_name',
-                            'product_brand',
-                        )
-                    )
-                    combined_tokens = set(norm(search_text).split())
-                    new_url_tokens[url] = combined_tokens
-                    for token in combined_tokens:
-                        new_postings.setdefault(token, set()).add(url)
-
-                postings = new_postings
-                url_tokens = new_url_tokens
-                _LOCAL_SEARCH_INDEX_CACHE[store] = {
-                    'signature': signature,
-                    'postings': postings,
-                    'url_tokens': url_tokens,
-                }
-
-            # Keep the lock through scoring. Hydration may mutate postings in
-            # place, so releasing the lock here would allow a concurrent worker
-            # to change a dict/set while search is iterating it.
-            term_anchors = []
+    try:
+        for store in STORES:
+            clauses = []
+            params = [store]
             for ts in token_sets:
-                anchor = min(ts, key=lambda token: len(postings.get(token, ())))
-                if postings.get(anchor):
-                    term_anchors.append((ts, anchor))
+                token_clauses = []
+                for token in ts:
+                    token_clauses.append(
+                        "(LOWER(COALESCE(u.slug,'')) LIKE ? "
+                        "OR LOWER(COALESCE(p.name,'')) LIKE ? "
+                        "OR LOWER(COALESCE(p.brand,'')) LIKE ?)"
+                    )
+                    pattern = f"%{token.lower()}%"
+                    params.extend((pattern, pattern, pattern))
+                clauses.append('(' + ' OR '.join(token_clauses) + ')')
+
+            where_tokens = ' AND '.join(clauses)
+            sql = f"""SELECT u.url,u.slug,u.lastmod,
+                           p.name AS product_name,
+                           p.brand AS product_brand
+                    FROM store_urls u
+                    LEFT JOIN store_products p
+                      ON p.store=u.store
+                     AND p.url=u.url
+                     AND p.fetch_status='OK'
+                    WHERE u.store=? AND u.active=1
+                      AND {where_tokens}"""
+            candidates = conn.execute(sql, params).fetchall()
 
             scored = {}
-            for ts, anchor in term_anchors:
-                for url in postings.get(anchor, ()):
-                    slug_tokens = url_tokens.get(url, set())
-                    score = sum(1 for token in ts if token in slug_tokens)
-                    if score == len(ts):
-                        # Preserve the previous ranking contract: complete term
-                        # matches receive the same +10 bonus.
-                        score += 10
-                        if score > scored.get(url, 0):
-                            scored[url] = score
+            for r in candidates:
+                url = r['url']
+                search_text = ' '.join(
+                    str(r[key] or '')
+                    for key in ('slug', 'product_name', 'product_brand')
+                )
+                normalized_tokens = frozenset(norm(search_text).split())
+
+                total_score = 0
+                all_terms_match = True
+                for ts in token_sets:
+                    score = sum(1 for token in ts if token in normalized_tokens)
+                    if score != len(ts):
+                        all_terms_match = False
+                        break
+                    total_score += score + 10
+
+                if all_terms_match:
+                    scored[url] = total_score
 
             ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
-        selected = ordered if unlimited else ordered[:int(per_store)]
-        for url, _score in selected:
-            row = conn.execute(
-                'SELECT * FROM store_products WHERE store=? AND url=?',
-                (store, url),
-            ).fetchone()
-            if row:
-                item = dict(row)
-                item['price_num'] = item.get('price')
-                item['store'] = STORE_LABELS[store]
-                item['store_key'] = store
-                rows.append(item)
-            else:
-                rows.append({
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                    'url': url,
-                    'name': url_slug(url),
-                    '_needs_refresh': True,
-                })
+            selected = ordered if unlimited else ordered[:int(per_store)]
 
-    conn.close()
+            for url, _score in selected:
+                row = conn.execute(
+                    'SELECT * FROM store_products WHERE store=? AND url=?',
+                    (store, url),
+                ).fetchone()
+                if row:
+                    item = dict(row)
+                    item['price_num'] = item.get('price')
+                    item['store'] = STORE_LABELS[store]
+                    item['store_key'] = store
+                    rows.append(item)
+                else:
+                    rows.append({
+                        'store': STORE_LABELS[store],
+                        'store_key': store,
+                        'url': url,
+                        'name': url_slug(url),
+                        '_needs_refresh': True,
+                    })
+    finally:
+        conn.close()
+
     return rows
-
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
     """Refresh only catalog candidates that do not yet have page data.
