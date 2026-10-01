@@ -1945,12 +1945,20 @@ def discover_store(store):
         )
         product_urls.update(deloox_graph['product_urls'])
 
-    # Other retailers retain the existing bounded generic HTML fallback.
+    # Sabina's sitemap is only one catalog surface. Its legacy storefront
+    # exposes additional product IDs through HTML controller state
+    # (af_controller_product_ids), so Sabina must supplement the sitemap with
+    # the generic HTML catalog discovery even when the sitemap already
+    # contains many product URLs. This is store-level discovery policy only:
+    # no product, brand, name or query is embedded here.
+    #
+    # Other non-Deloox retailers retain the bounded fallback behaviour.
     if (
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            store == 'sabina'
+            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
     ):
