@@ -769,39 +769,18 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/31-profumi-uomo',
         'https://www.sabina.com/it/890-profumeria-di-nicchia',
         'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
-        # Sabina's legacy native search is a retailer catalog surface.
-        # Enumerate generic single-letter probes only, so discovery does not
-        # depend on the user's query and can reach products not linked from
-        # category pages. Pagination is followed by the normal HTML crawler.
-        'https://www.sabina.com/it/ricerca_old?search_query=a',
-        'https://www.sabina.com/it/ricerca_old?search_query=b',
-        'https://www.sabina.com/it/ricerca_old?search_query=c',
-        'https://www.sabina.com/it/ricerca_old?search_query=d',
-        'https://www.sabina.com/it/ricerca_old?search_query=e',
-        'https://www.sabina.com/it/ricerca_old?search_query=f',
-        'https://www.sabina.com/it/ricerca_old?search_query=g',
-        'https://www.sabina.com/it/ricerca_old?search_query=h',
-        'https://www.sabina.com/it/ricerca_old?search_query=i',
-        'https://www.sabina.com/it/ricerca_old?search_query=j',
-        'https://www.sabina.com/it/ricerca_old?search_query=k',
-        'https://www.sabina.com/it/ricerca_old?search_query=l',
-        'https://www.sabina.com/it/ricerca_old?search_query=m',
-        'https://www.sabina.com/it/ricerca_old?search_query=n',
-        'https://www.sabina.com/it/ricerca_old?search_query=o',
-        'https://www.sabina.com/it/ricerca_old?search_query=p',
-        'https://www.sabina.com/it/ricerca_old?search_query=q',
-        'https://www.sabina.com/it/ricerca_old?search_query=r',
-        'https://www.sabina.com/it/ricerca_old?search_query=s',
-        'https://www.sabina.com/it/ricerca_old?search_query=t',
-        'https://www.sabina.com/it/ricerca_old?search_query=u',
-        'https://www.sabina.com/it/ricerca_old?search_query=v',
-        'https://www.sabina.com/it/ricerca_old?search_query=w',
-        'https://www.sabina.com/it/ricerca_old?search_query=x',
-        'https://www.sabina.com/it/ricerca_old?search_query=y',
-        'https://www.sabina.com/it/ricerca_old?search_query=z',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
+        # Sabina's legacy/native search surface exposes catalog products that
+        # may be absent from category pages (notably products marked
+        # out-of-stock). These are broad catalog terms only; they are not
+        # driven by the user's runtime search and contain no product-specific
+        # exception.
+        'https://www.sabina.com/it/ricerca_old?search_query=',
+        'https://www.sabina.com/it/ricerca_old?search_query=profumi',
+        'https://www.sabina.com/it/ricerca_old?search_query=parfum',
+        'https://www.sabina.com/it/ricerca_old?search_query=perfume',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -848,42 +827,13 @@ def _html_product_url(store, raw_url, base_url):
             return absolute
         return None
     if store == 'sabina':
-        # Le pagine .html con ID numerico sono prodotti.
-        # Le altre superfici Sabina possono essere pagine di catalogo,
-        # ricerca, filtri o paginazione.
-        if path.endswith('.html'):
-            return None
-
-        # Pagine native di ricerca/catalogo.
-        if re.search(
-            r'/(?:ricerca|ricerca_old|search|buscar|suchen)(?:/|$)',
-            path,
-            re.I,
-        ):
+        # Sabina product pages use a numeric product id followed by a slug and
+        # end in .html. Listing/navigation pages use different URL shapes
+        # such as /it/31-profumi-uomo or /it/l/.... This is URL-shape
+        # classification only; no perfume/product name is embedded here.
+        if re.search(r'/\d+-[^/]+\.html$', low, re.I):
             return absolute
-
-        # Query di ricerca, paginazione e filtri.
-        if re.search(
-            r'(?:search_query|query|q|page|pagina|p|offset|start)=',
-            p.query,
-            re.I,
-        ):
-            return absolute
-
-        # Superfici catalogo Sabina.
-        if re.search(
-            r'/(?:profumi|perfumes|parfums|l/|s/)',
-            path,
-            re.I,
-        ):
-            return absolute
-
-        parts = [x for x in path.split('/') if x]
-        if 1 <= len(parts) <= 3:
-            return absolute
-
         return None
-
     return absolute if _looks_product(absolute) else None
 
 
@@ -937,11 +887,15 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina catalog/navigation pages are crawlable without a query
-        # endpoint. Product pages are excluded here because _html_product_url
-        # handles their numeric-id .html shape.
+        # Sabina category/navigation pages and its native search surface are
+        # both catalog listing nodes. Product pages are excluded here because
+        # _html_product_url handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
+        if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
+            return absolute
+        if 'search_query=' in p.query.lower():
+            return absolute
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
             return absolute
         if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
@@ -993,7 +947,7 @@ def _fetch_html_page(store, url):
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store == 'easycosmetic':
+    if store in ('easycosmetic', 'sabina'):
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
@@ -1016,11 +970,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Sabina's legacy native search is a real catalog/navigation surface.
-    # Give it high priority so the generic probes are actually executed before
-    # the broad category graph consumes the bounded HTML crawl budget.
-    if store == 'sabina' and path.rstrip('/') in ('/it/ricerca_old', '/it/ricerca') and 'search_query=' in p.query.lower():
-        score = 0
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
@@ -1552,26 +1501,11 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # Many modern storefronts put pagination/load-more targets in
                 # attributes instead of normal hrefs. Follow these generic
                 # navigation attributes; never use the user's query here.
-                navigation_attrs = (
-                    'data-url',
-                    'data-href',
-                    'data-link',
-                    'data-product-url',
-                    'data-product-link',
-                    'data-target',
-                    'data-next-url',
-                    'data-next',
-                    'data-load-more-url',
-                    'data-pagination-url',
-                    'data-search-url',
-                    'data-search-link',
-                    'data-request-url',
-                    'data-action',
-                    'data-page-url',
-                    'data-filter-url',
-                    'data-results-url',
+                navigation_attrs=(
+                    'data-url','data-href','data-link','data-product-url',
+                    'data-product-link','data-target','data-next-url',
+                    'data-next','data-load-more-url','data-pagination-url',
                 )
-
                 for node in soup.find_all(True):
                     for attr in navigation_attrs:
                         raw=node.get(attr)
@@ -1606,73 +1540,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         product=_html_product_url(store,raw_url,page_base)
                         if product:
                             product_urls[product]=''
-                except Exception:
-                    pass
-                                # Alcuni storefront inseriscono link prodotto, ricerca e
-                # paginazione dentro JSON, JavaScript o attributi HTML.
-                # Estraiamo solo URL dello stesso dominio e li sottoponiamo
-                # agli stessi classificatori già esistenti.
-                try:
-                    raw_html = html.unescape(
-                        data.decode('utf-8', 'ignore')
-                    )
-
-                    raw_html = (
-                        raw_html
-                        .replace('\\/', '/')
-                        .replace('\\u002F', '/')
-                        .replace('\\u002f', '/')
-                    )
-
-                    allowed_hosts = {
-                        urllib.parse.urlparse(base).netloc.lower()
-                        for base in _discovery_bases(store)
-                    }
-
-                    embedded_urls = set()
-
-                    for match in re.finditer(
-                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
-                        raw_html,
-                        re.I,
-                    ):
-                        raw = match.group(0)
-
-                        absolute = urllib.parse.urljoin(
-                            page_base,
-                            raw,
-                        ).split('#', 1)[0]
-
-                        parsed = urllib.parse.urlparse(absolute)
-
-                        if parsed.netloc.lower() in allowed_hosts:
-                            embedded_urls.add(absolute)
-
-                    for raw in embedded_urls:
-                        product = _html_product_url(
-                            store,
-                            raw,
-                            page_base,
-                        )
-
-                        if product:
-                            product_urls[product] = ''
-                            continue
-
-                        listing = _html_listing_url(
-                            store,
-                            raw,
-                            page_base,
-                            'embedded_navigation',
-                        )
-
-                        if listing:
-                            add(
-                                listing,
-                                depth + 1,
-                                requested,
-                            )
-
                 except Exception:
                     pass
 
