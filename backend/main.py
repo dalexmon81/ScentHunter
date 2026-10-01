@@ -8,7 +8,7 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-
+from diagnostic_search_index_build import router as search_index_diag_router
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
@@ -40,7 +40,7 @@ except Exception as exc:
 
 APP_VERSION = '5.7-catalog-targeted-refresh'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
-
+app.include_router(search_index_diag_router)
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
 # so discovery must be bootstrapped in the background when the application
 # starts. Normal user searches never run discovery themselves.
