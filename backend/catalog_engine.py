@@ -852,39 +852,37 @@ def _html_product_url(store, raw_url, base_url):
         # Le altre superfici Sabina possono essere pagine di catalogo,
         # ricerca, filtri o paginazione.
         if path.endswith('.html'):
-            if re.search(r'/\d+-[^/]+\.html$', low, re.I):
-                return absolute
             return None
 
-    # Pagine native di ricerca/catalogo.
-    if re.search(
-        r'/(?:ricerca|ricerca_old|search|buscar|suchen)(?:/|$)',
-        path,
-        re.I,
-    ):
-        return absolute
+        # Pagine native di ricerca/catalogo.
+        if re.search(
+            r'/(?:ricerca|ricerca_old|search|buscar|suchen)(?:/|$)',
+            path,
+            re.I,
+        ):
+            return absolute
 
-    # Query di ricerca, paginazione e filtri.
-    if re.search(
-        r'(?:search_query|query|q|page|pagina|p|offset|start)=',
-        p.query,
-        re.I,
-    ):
-        return absolute
+        # Query di ricerca, paginazione e filtri.
+        if re.search(
+            r'(?:search_query|query|q|page|pagina|p|offset|start)=',
+            p.query,
+            re.I,
+        ):
+            return absolute
 
-    # Superfici catalogo Sabina.
-    if re.search(
-        r'/(?:profumi|perfumes|parfums|l/|s/)',
-        path,
-        re.I,
-    ):
-        return absolute
+        # Superfici catalogo Sabina.
+        if re.search(
+            r'/(?:profumi|perfumes|parfums|l/|s/)',
+            path,
+            re.I,
+        ):
+            return absolute
 
-    parts = [x for x in path.split('/') if x]
-    if 1 <= len(parts) <= 3:
-        return absolute
+        parts = [x for x in path.split('/') if x]
+        if 1 <= len(parts) <= 3:
+            return absolute
 
-    return None
+        return None
 
     return absolute if _looks_product(absolute) else None
 
@@ -1555,24 +1553,24 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 # attributes instead of normal hrefs. Follow these generic
                 # navigation attributes; never use the user's query here.
                 navigation_attrs = (
-    'data-url',
-    'data-href',
-    'data-link',
-    'data-product-url',
-    'data-product-link',
-    'data-target',
-    'data-next-url',
-    'data-next',
-    'data-load-more-url',
-    'data-pagination-url',
-    'data-search-url',
-    'data-search-link',
-    'data-request-url',
-    'data-action',
-    'data-page-url',
-    'data-filter-url',
-    'data-results-url',
-)
+                    'data-url',
+                    'data-href',
+                    'data-link',
+                    'data-product-url',
+                    'data-product-link',
+                    'data-target',
+                    'data-next-url',
+                    'data-next',
+                    'data-load-more-url',
+                    'data-pagination-url',
+                    'data-search-url',
+                    'data-search-link',
+                    'data-request-url',
+                    'data-action',
+                    'data-page-url',
+                    'data-filter-url',
+                    'data-results-url',
+                )
 
                 for node in soup.find_all(True):
                     for attr in navigation_attrs:
@@ -1610,7 +1608,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
                             product_urls[product]=''
                 except Exception:
                     pass
-                # Alcuni storefront inseriscono link prodotto, ricerca e
+                                # Alcuni storefront inseriscono link prodotto, ricerca e
                 # paginazione dentro JSON, JavaScript o attributi HTML.
                 # Estraiamo solo URL dello stesso dominio e li sottoponiamo
                 # agli stessi classificatori già esistenti.
