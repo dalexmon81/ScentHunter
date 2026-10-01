@@ -2213,12 +2213,15 @@ def _search_db():
 
 
 def search_local(query, per_store=32, search_terms=None):
-    """Search the persistent retailer catalog without rebuilding an in-memory index.
+    """Search the persistent retailer catalog using alternative search terms.
 
-    User-facing search must not spend the request budget rebuilding the complete
-    catalog after a process restart. Candidate retrieval is delegated to SQLite:
-    only rows containing the requested tokens in slug/name/brand are read, then
-    the existing token scoring semantics are applied in Python.
+    ``search_terms`` is an OR-list of alternative catalog expressions supplied
+    by ProductMatcher. Tokens inside one term are ANDed, while different terms
+    are alternatives. ProductMatcher remains responsible for final identity.
+
+    User-facing search stays read-only and delegates candidate retrieval to
+    SQLite. No discovery, hydration, retailer endpoint or matcher decision is
+    performed here.
     """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
@@ -2229,6 +2232,8 @@ def search_local(query, per_store=32, search_terms=None):
     if not terms:
         return []
 
+    # Each term is one alternative expression. Tokens within the same term
+    # must all be present; different terms are OR alternatives.
     token_sets = []
     for term in terms:
         ts = tuple(tokens(term))
@@ -2243,8 +2248,9 @@ def search_local(query, per_store=32, search_terms=None):
 
     try:
         for store in STORES:
-            clauses = []
+            term_clauses = []
             params = [store]
+
             for ts in token_sets:
                 token_clauses = []
                 for token in ts:
@@ -2255,9 +2261,12 @@ def search_local(query, per_store=32, search_terms=None):
                     )
                     pattern = f"%{token.lower()}%"
                     params.extend((pattern, pattern, pattern))
-                clauses.append('(' + ' OR '.join(token_clauses) + ')')
+                # A single search term such as "Liquid Brun" requires both
+                # tokens, but it is enough for any one of the alternative
+                # terms to match.
+                term_clauses.append('(' + ' AND '.join(token_clauses) + ')')
 
-            where_tokens = ' AND '.join(clauses)
+            where_tokens = '(' + ' OR '.join(term_clauses) + ')'
             sql = f"""SELECT u.url,u.slug,u.lastmod,
                            p.name AS product_name,
                            p.brand AS product_brand
@@ -2279,17 +2288,19 @@ def search_local(query, per_store=32, search_terms=None):
                 )
                 normalized_tokens = frozenset(norm(search_text).split())
 
-                total_score = 0
-                all_terms_match = True
+                # Pick the strongest matching alternative. We must NOT require
+                # every alias/canonical expression to match the same product.
+                best_score = None
                 for ts in token_sets:
                     score = sum(1 for token in ts if token in normalized_tokens)
                     if score != len(ts):
-                        all_terms_match = False
-                        break
-                    total_score += score + 10
+                        continue
+                    candidate_score = score + 10
+                    if best_score is None or candidate_score > best_score:
+                        best_score = candidate_score
 
-                if all_terms_match:
-                    scored[url] = total_score
+                if best_score is not None:
+                    scored[url] = best_score
 
             ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
             selected = ordered if unlimited else ordered[:int(per_store)]
