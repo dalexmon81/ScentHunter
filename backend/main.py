@@ -3,13 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid
 try:
-    from product_matcher import ProductMatcher, catalog_variant_key
+    from product_matcher import ProductMatcher
 except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-from diagnostic_search_index_build import router as search_index_diag_router
-from diagnostic_search_concurrency import router as search_concurrency_diag_router
+
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
@@ -22,7 +21,6 @@ try:
         hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
-        catalog_discovery_loop,
         db as catalog_db,
     )
     CATALOG_ENGINE_AVAILABLE = True
@@ -34,15 +32,13 @@ except Exception as exc:
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
-    catalog_discovery_loop = None
     catalog_db = None
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
 APP_VERSION = '5.7-catalog-targeted-refresh'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
-app.include_router(search_index_diag_router)
-app.include_router(search_concurrency_diag_router)
+
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
 # so discovery must be bootstrapped in the background when the application
 # starts. Normal user searches never run discovery themselves.
@@ -227,30 +223,6 @@ def _start_catalog_hydration():
     ).start()
 
 
-_CATALOG_DISCOVERY_STARTED = False
-_CATALOG_DISCOVERY_STOP = threading.Event()
-
-
-def _start_catalog_discovery():
-    global _CATALOG_DISCOVERY_STARTED
-    with _CATALOG_BOOTSTRAP_LOCK:
-        if _CATALOG_DISCOVERY_STARTED:
-            return
-        if not callable(catalog_discovery_loop):
-            print('CATALOG DISCOVERY SKIP: catalog_engine has no discovery loop', flush=True)
-            return
-        _CATALOG_DISCOVERY_STARTED = True
-    threading.Thread(
-        target=catalog_discovery_loop,
-        kwargs={
-            'stop_event': _CATALOG_DISCOVERY_STOP,
-            'interval_seconds': 300.0,
-        },
-        daemon=True,
-        name='scenthunter-catalog-discovery',
-    ).start()
-
-
 def _catalog_bootstrap_worker():
     global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -261,7 +233,6 @@ def _catalog_bootstrap_worker():
             raise RuntimeError('catalog_engine_unavailable')
         result = catalog_sync_all()
         _start_catalog_hydration()
-        _start_catalog_discovery()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_DONE = ready
@@ -420,7 +391,6 @@ def _start_catalog_bootstrap():
             _CATALOG_BOOTSTRAP_DONE = True
         print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
         _start_catalog_hydration()
-        _start_catalog_discovery()
         return
     threading.Thread(
         target=_catalog_bootstrap_worker,
@@ -434,8 +404,6 @@ try:
     app.include_router(diagnose_two_scrapers_router)
     from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
     app.include_router(diagnose_deloox_scraper_router)
-    from debug_deloox import router as debug_deloox_router
-    app.include_router(debug_deloox_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
@@ -532,97 +500,6 @@ def _identity_scope(query):
         )
         return []
 
-_GENERIC_EXACT_CANDIDATE_CACHE = {}
-_GENERIC_EXACT_CANDIDATE_LOCK = threading.Lock()
-
-def _generic_exact_catalog_candidate(matcher_offer, query):
-    """Return one unique central-catalog product for an exact offer identity.
-
-    This is only a candidate narrowing optimization. ProductMatcher.match_offer()
-    remains the authority that accepts/rejects the identity. If the normalized
-    name is ambiguous, missing, or the brand conflicts, return None and let the
-    normal matcher decide.
-    """
-    if PRODUCT_MATCHER is None:
-        return None
-
-    raw_name = str(
-        matcher_offer.get("name")
-        or matcher_offer.get("title")
-        or matcher_offer.get("product_name")
-        or ""
-    ).strip()
-    if not raw_name:
-        return None
-
-    key_fn = globals().get("catalog_variant_key")
-    if not callable(key_fn):
-        return None
-
-    name_key = key_fn(raw_name)
-    query_key = key_fn(str(query or "").strip())
-    if not name_key or not query_key:
-        return None
-
-    # The offer itself must be relevant to the query. Do not let an exact
-    # catalog name bypass the normal query scope for an unrelated product.
-    query_tokens = set(query_key.split())
-    name_tokens = set(name_key.split())
-    if not query_tokens or not (query_tokens & name_tokens):
-        return None
-
-    cache_key = id(PRODUCT_MATCHER)
-    with _GENERIC_EXACT_CANDIDATE_LOCK:
-        index = _GENERIC_EXACT_CANDIDATE_CACHE.get(cache_key)
-
-    if index is None:
-        built = {}
-        for product in getattr(PRODUCT_MATCHER, "catalog", ()) or ():
-            keys = [getattr(product, "name", "")]
-            keys.extend(getattr(product, "aliases", ()) or ())
-            for value in keys:
-                normalized = key_fn(value)
-                if not normalized:
-                    continue
-                built.setdefault(normalized, []).append(product)
-        with _GENERIC_EXACT_CANDIDATE_LOCK:
-            existing = _GENERIC_EXACT_CANDIDATE_CACHE.get(cache_key)
-            if existing is None:
-                _GENERIC_EXACT_CANDIDATE_CACHE[cache_key] = built
-                index = built
-            else:
-                index = existing
-
-    candidates = index.get(name_key) or []
-    # CatalogProduct.from_dict() intentionally keeps the canonical name in
-    # aliases as well, so the same product can occur more than once under one
-    # normalized identity key. Deduplicate by catalog identity before deciding
-    # whether the identity is unique.
-    unique_candidates = {}
-    for candidate in candidates:
-        catalog_id = str(getattr(candidate, "catalog_id", "") or "").strip()
-        identity_key = catalog_id or str(id(candidate))
-        unique_candidates.setdefault(identity_key, candidate)
-    if len(unique_candidates) != 1:
-        return None
-
-    candidate = next(iter(unique_candidates.values()))
-
-    offer_brand_resolver = getattr(PRODUCT_MATCHER, "_offer_brand", None)
-    brand_matcher = getattr(PRODUCT_MATCHER, "_brand_matches", None)
-    offer_brand = (
-        offer_brand_resolver(matcher_offer)
-        if callable(offer_brand_resolver)
-        else str(matcher_offer.get("brand") or "").strip()
-    )
-    candidate_brand = str(getattr(candidate, "brand", "") or "").strip()
-    if offer_brand and candidate_brand and callable(brand_matcher):
-        if not brand_matcher(offer_brand, candidate_brand):
-            return None
-
-    return candidate
-
-
 def _resolve_offer_identity(result, query):
     """Resolve one raw retailer offer through the central ProductMatcher.
 
@@ -688,116 +565,6 @@ def _resolve_offer_identity(result, query):
                 matcher_offer["source"] = clean_source
             elif source is not None:
                 matcher_offer.pop("source", None)
-
-        # Generic exact-identity fast path. This handles ordinary catalog
-        # products such as a direct "Aromatix" identity without entering
-        # ProductMatcher._best_match(), whose generic URL fallback can otherwise
-        # scan the entire central catalog once per offer.
-        #
-        # ProductMatcher.match_offer() remains the identity authority: main.py
-        # only narrows the candidate set when the central catalog contains one
-        # unique exact name/alias and the supplied brand is compatible.
-        # Registered families keep precedence over the generic exact-name
-        # optimization. This preserves ProductMatcher family semantics while
-        # allowing ordinary products to bypass the expensive generic URL scan.
-        family_scope_resolver = getattr(PRODUCT_MATCHER, "_family_for_query", None)
-        query_is_registered_family = (
-            callable(family_scope_resolver)
-            and family_scope_resolver(str(query or "").strip()) is not None
-        )
-        exact_candidate = (
-            None
-            if query_is_registered_family
-            else _generic_exact_catalog_candidate(matcher_offer, query)
-        )
-        match_offer_method = getattr(PRODUCT_MATCHER, "match_offer", None)
-        if exact_candidate is not None and callable(match_offer_method):
-            fast_scope = {
-                "query": str(query or "").strip(),
-                "candidates": [exact_candidate],
-            }
-            fast_offer = dict(matcher_offer)
-
-            # The brand was already checked against the exact candidate above.
-            # Removing it from this narrowed call prevents match_offer() from
-            # reopening its catalog-wide brand/URL discovery loop.
-            fast_offer["brand"] = ""
-            fast_offer.pop("manufacturer", None)
-            source = fast_offer.get("source")
-            if isinstance(source, dict):
-                source = dict(source)
-                for key in ("source_brand", "brand", "manufacturer"):
-                    source.pop(key, None)
-                fast_offer["source"] = source
-            try:
-                fast_generic = match_offer_method(fast_offer, fast_scope)
-            except Exception as exc:
-                fast_generic = None
-                print(
-                    f"PRODUCT_MATCHER_EXACT_FASTPATH_ERROR: "
-                    f"{type(exc).__name__}: {exc}",
-                    flush=True,
-                )
-            if isinstance(fast_generic, dict) and fast_generic.get("status") == "matched":
-                fast_match = dict(fast_generic)
-                # Restore the original retailer/commercial fields; only the
-                # identity decision came from the narrowed matcher input.
-                for key, value in matcher_offer.items():
-                    if key not in {
-                        "catalog_id", "family_id", "family_name", "canonical_name",
-                        "canonical_brand", "catalog_variant", "match_method",
-                        "match_score", "confidence", "product_identity",
-                        "variant_id", "canonical_image", "size_ml",
-                    }:
-                        fast_match[key] = value
-                fast_match["_match_status"] = "matched"
-                fast_match["_reject_reason"] = None
-                fast_match["match_confidence"] = fast_match.get("confidence")
-                return fast_match
-
-        # Fast path for an exact registered family alias. ProductMatcher remains
-        # the owner of family data and result construction; this only avoids
-        # re-entering its expensive URL-disambiguation loop when the retailer
-        # name already identifies a registered variant exactly.
-        family_resolver = getattr(PRODUCT_MATCHER, "_family_for_query", None)
-        family_builder = getattr(PRODUCT_MATCHER, "_build_family_result", None)
-        non_fragrance_resolver = getattr(PRODUCT_MATCHER, "_is_non_fragrance_offer", None)
-        if callable(family_resolver) and callable(family_builder):
-            family = family_resolver(str(query or "").strip())
-            if family is not None:
-                if callable(non_fragrance_resolver) and non_fragrance_resolver(matcher_offer):
-                    family = None
-                if family is not None:
-                    offer_brand_resolver = getattr(PRODUCT_MATCHER, "_offer_brand", None)
-                    brand_matcher = getattr(PRODUCT_MATCHER, "_brand_matches", None)
-                    offer_brand = offer_brand_resolver(matcher_offer) if callable(offer_brand_resolver) else ""
-                    family_brand = str(family.get("brand") or "")
-                    brand_ok = True
-                    if offer_brand and callable(brand_matcher):
-                        brand_ok = bool(brand_matcher(offer_brand, family_brand))
-                    raw_name = str(
-                        matcher_offer.get("name")
-                        or matcher_offer.get("title")
-                        or matcher_offer.get("product_name")
-                        or ""
-                    ).strip()
-                    if raw_name and brand_ok:
-                        remove_brand = getattr(PRODUCT_MATCHER, "_remove_brand", None)
-                        candidate = raw_name
-                        if callable(remove_brand):
-                            candidate = remove_brand(candidate, family_brand)
-                        candidate_key = catalog_variant_key(candidate)
-                        exact_variant = None
-                        for variant in family.get("variants") or ():
-                            if candidate_key and candidate_key in (variant.get("normalized_aliases") or ()):
-                                exact_variant = variant
-                                break
-                        if exact_variant is not None:
-                            fast_match = family_builder(matcher_offer, family, exact_variant)
-                            if isinstance(fast_match, dict):
-                                fast_match["_match_status"] = "matched"
-                                fast_match["_reject_reason"] = None
-                                return fast_match
 
         match = match_method(matcher_offer, str(query or "").strip())
     except Exception as exc:
@@ -1793,10 +1560,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if matched_rows:
             status, verified, error = 'success', True, None
         elif pending_by_store.get(store, 0) > 0:
-            # A discovered catalog URL whose product page is not hydrated yet
-            # is a transitional catalog state, not a technical store failure.
-            # The background hydration path will complete it independently.
-            status, verified, error = 'catalog_refreshing', True, None
+            status, verified, error = 'catalog_pending', False, 'product_page_refresh_pending'
         elif indexed > 0:
             status, verified, error = 'no_match', True, None
         else:
