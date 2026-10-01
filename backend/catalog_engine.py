@@ -772,16 +772,6 @@ HTML_DISCOVERY_SEEDS = {
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
-        # Sabina's legacy catalog-search surface is part of the retailer's
-        # own catalog graph. It is used only by background discovery, never by
-        # user-facing search. Some products (including products marked
-        # out-of-stock) are exposed here even when category navigation does
-        # not expose them. The terms are broad catalog-language seeds, not
-        # product names or user queries.
-        'https://www.sabina.com/it/ricerca_old?search_query=',
-        'https://www.sabina.com/it/ricerca_old?search_query=profumi',
-        'https://www.sabina.com/it/ricerca_old?search_query=parfum',
-        'https://www.sabina.com/it/ricerca_old?search_query=perfume',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -893,13 +883,6 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         # handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
-        # Legacy/native Sabina search pages are catalog listing nodes. Keep
-        # them crawlable regardless of the exact search_query value; discovery
-        # itself decides which product URLs are present on the returned page.
-        if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
-            return absolute
-        if 'search_query=' in p.query.lower():
-            return absolute
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
             return absolute
         if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
@@ -1601,6 +1584,110 @@ def _discover_html_catalog(store, seeds, deadline=None):
     }
 
 
+def _diagnose_sabina_native_search(query):
+    """READ-ONLY diagnostic of Sabina's native search surface.
+
+    This deliberately does not write to the database and does not enqueue,
+    hydrate, refresh, or alter production search. It answers one narrow
+    question: does Sabina's own search surface expose product URLs for the
+    requested query, and does our generic product-URL parser recognize them?
+    """
+    result = {
+        'enabled': True,
+        'query': query or '',
+        'production_search_called': False,
+        'database_written': False,
+        'endpoints': [],
+        'recognized_product_urls': [],
+        'unrecognized_candidate_urls': [],
+        'query_text_hits': [],
+    }
+    q = str(query or '').strip()
+    if not q:
+        result['error'] = 'EMPTY_QUERY'
+        return result
+
+    endpoints = (
+        ('ricerca_old_search_query', 'https://www.sabina.com/it/ricerca_old?search_query=' + urllib.parse.quote_plus(q)),
+        ('ricerca_old_s', 'https://www.sabina.com/it/ricerca_old?s=' + urllib.parse.quote_plus(q)),
+    )
+    required = tokens(q)
+
+    for name, url in endpoints:
+        item = {'name': name, 'url': url, 'status': 'ERROR'}
+        try:
+            _requested, final, data, error = _fetch_html_page('sabina', url)
+            item['final_url'] = final
+            if error:
+                item['error'] = error
+                result['endpoints'].append(item)
+                continue
+            item['status'] = 'OK'
+            item['bytes'] = len(data or b'')
+            soup = BeautifulSoup(data, 'html.parser')
+            text = norm(soup.get_text(' ', strip=True))
+            item['query_tokens_in_text'] = [t for t in required if t in text]
+            item['all_query_tokens_in_text'] = bool(required) and all(t in text for t in required)
+            if item['all_query_tokens_in_text']:
+                result['query_text_hits'].append(url)
+
+            recognized = []
+            unrecognized = []
+            seen = set()
+            for a in soup.find_all('a', href=True):
+                raw = a.get('href')
+                absolute = urllib.parse.urljoin(final or url, raw).split('#', 1)[0]
+                product = _html_product_url('sabina', raw, final or url)
+                label = a.get_text(' ', strip=True)
+                if product:
+                    if product not in seen:
+                        seen.add(product)
+                        recognized.append({'url': product, 'label': label[:200]})
+                else:
+                    low = norm(absolute)
+                    if required and all(t in low for t in required) and '.html' in low:
+                        unrecognized.append({'url': absolute, 'label': label[:200]})
+
+            item['recognized_product_urls'] = recognized[:100]
+            item['recognized_product_count'] = len(recognized)
+            item['unrecognized_candidate_urls'] = unrecognized[:100]
+            item['unrecognized_candidate_count'] = len(unrecognized)
+            result['recognized_product_urls'].extend(
+                x for x in recognized if x['url'] not in {y['url'] for y in result['recognized_product_urls']}
+            )
+            result['unrecognized_candidate_urls'].extend(
+                x for x in unrecognized if x['url'] not in {y['url'] for y in result['unrecognized_candidate_urls']}
+            )
+        except Exception as exc:
+            item['error'] = f'{type(exc).__name__}:{exc}'
+        result['endpoints'].append(item)
+
+    result['recognized_product_count'] = len(result['recognized_product_urls'])
+    result['unrecognized_candidate_count'] = len(result['unrecognized_candidate_urls'])
+    if result['recognized_product_count']:
+        result['diagnosis'] = (
+            'NATIVE_SEARCH_EXPOSES_PRODUCT: Sabina espone uno o più URL prodotto nella sua ricerca nativa '
+            'e il parser generico li riconosce. Se il catalogo continua ad avere zero candidati, il problema '
+            'è nella fase di discovery/persistenza del grafo, non nell esistenza del prodotto né nel parser URL.'
+        )
+    elif result['unrecognized_candidate_count']:
+        result['diagnosis'] = (
+            'NATIVE_SEARCH_URL_NOT_RECOGNIZED: Sabina espone URL che contengono i token della query, '
+            'ma _html_product_url non li classifica come prodotto. Questo identifica il punto preciso da correggere.'
+        )
+    elif result['query_text_hits']:
+        result['diagnosis'] = (
+            'NATIVE_SEARCH_PAGE_HAS_QUERY_BUT_NO_RECOGNIZED_PRODUCT_LINK: la ricerca nativa contiene tutti '
+            'i token ma non è stato riconosciuto alcun link prodotto.'
+        )
+    else:
+        result['diagnosis'] = (
+            'NATIVE_SEARCH_NO_QUERY_MATCH: le superfici native testate non hanno restituito una pagina con tutti '
+            'i token richiesti oppure il fetch non è riuscito.'
+        )
+    return result
+
+
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     store = str(store or '').strip().lower()
@@ -1622,6 +1709,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         max_events = 500
 
     required_tokens = tokens(query)
+    native_search_probe = _diagnose_sabina_native_search(query) if store == 'sabina' and query else None
     queue, queued, visited = [], set(), set()
     events, errors = [], []
     product_urls, listing_urls = set(), set()
@@ -1769,6 +1857,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         'diagnostic': 'html-discovery-trace-read-only-v1',
         'store': store,
         'query': query,
+        'native_search_probe': native_search_probe,
         'required_tokens': required_tokens,
         'production_search_called': False,
         'database_written': False,
