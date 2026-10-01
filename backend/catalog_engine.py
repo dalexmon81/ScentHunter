@@ -769,6 +769,31 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/31-profumi-uomo',
         'https://www.sabina.com/it/890-profumeria-di-nicchia',
         'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
+        # Sabina's legacy native search surface is a real catalog index: unlike
+        # the empty search page, a non-empty generic token returns product cards
+        # including products that are not linked from category pages (for example
+        # out-of-stock/discontinued items). Use generic alphabetic probes only;
+        # never inject a user product/query into background discovery. Pagination
+        # is followed by the normal HTML listing classifier.
+        'https://www.sabina.com/it/ricerca_old?search_query=a',
+        'https://www.sabina.com/it/ricerca_old?search_query=e',
+        'https://www.sabina.com/it/ricerca_old?search_query=i',
+        'https://www.sabina.com/it/ricerca_old?search_query=o',
+        'https://www.sabina.com/it/ricerca_old?search_query=u',
+        'https://www.sabina.com/it/ricerca_old?search_query=b',
+        'https://www.sabina.com/it/ricerca_old?search_query=c',
+        'https://www.sabina.com/it/ricerca_old?search_query=d',
+        'https://www.sabina.com/it/ricerca_old?search_query=f',
+        'https://www.sabina.com/it/ricerca_old?search_query=g',
+        'https://www.sabina.com/it/ricerca_old?search_query=l',
+        'https://www.sabina.com/it/ricerca_old?search_query=m',
+        'https://www.sabina.com/it/ricerca_old?search_query=n',
+        'https://www.sabina.com/it/ricerca_old?search_query=p',
+        'https://www.sabina.com/it/ricerca_old?search_query=r',
+        'https://www.sabina.com/it/ricerca_old?search_query=s',
+        'https://www.sabina.com/it/ricerca_old?search_query=t',
+        'https://www.sabina.com/it/ricerca_old?search_query=v',
+        'https://www.sabina.com/it/ricerca_old?search_query=w',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -878,6 +903,11 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
+        # Sabina's native legacy search is a catalog/navigation surface. It is
+        # deliberately generic here; the background crawler supplies only its
+        # non-product alphabetic seeds and follows the retailer pagination.
+        if path in ('/it/ricerca_old', '/it/ricerca'):
+            return absolute
         # Sabina catalog/navigation pages are crawlable without a query
         # endpoint. Product pages are excluded here because _html_product_url
         # handles their numeric-id .html shape.
@@ -960,10 +990,8 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    if store == 'sabina' and re.search(r'/ricerca(?:_old)?(?:/|$)', path, re.I):
+    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
-    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
-        score = 1
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
     # id, or user query is used.
