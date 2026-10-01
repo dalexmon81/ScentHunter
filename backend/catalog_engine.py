@@ -772,6 +772,15 @@ HTML_DISCOVERY_SEEDS = {
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
+        # Sabina's legacy/native search surface exposes catalog products that
+        # may be absent from category pages (notably products marked
+        # out-of-stock). These are broad catalog terms only; they are not
+        # driven by the user's runtime search and contain no product-specific
+        # exception.
+        'https://www.sabina.com/it/ricerca_old?search_query=',
+        'https://www.sabina.com/it/ricerca_old?search_query=profumi',
+        'https://www.sabina.com/it/ricerca_old?search_query=parfum',
+        'https://www.sabina.com/it/ricerca_old?search_query=perfume',
     ),
 }
 # HTML discovery is background catalog work, not request-time search. The old
@@ -878,11 +887,15 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina catalog/navigation pages are crawlable without a query
-        # endpoint. Product pages are excluded here because _html_product_url
-        # handles their numeric-id .html shape.
+        # Sabina category/navigation pages and its native search surface are
+        # both catalog listing nodes. Product pages are excluded here because
+        # _html_product_url handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
+        if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
+            return absolute
+        if 'search_query=' in p.query.lower():
+            return absolute
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
             return absolute
         if re.search(r'/(?:profumi|perfumes|parfums|l/|s/)', path, re.I):
@@ -934,7 +947,7 @@ def _fetch_html_page(store, url):
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store == 'easycosmetic':
+    if store in ('easycosmetic', 'sabina'):
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
@@ -961,10 +974,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
     if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
-        score = 0
-    # Search/catalog result surfaces are primary navigation roots. This is
-    # structural only: it does not use the requested product query.
-    elif path.endswith('/ricerca_old') or path.endswith('/ricerca') or path.endswith('/search'):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -1639,23 +1648,6 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
     seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
     for seed in seeds:
         add(seed, 0, 'configured_seed')
-
-    # DIAGNOSTIC ONLY: when tracing Sabina, probe the retailer's native
-    # search surface with the exact diagnostic query. This URL is injected
-    # only into this read-only replay queue; it is NOT added to production
-    # discovery seeds, catalog state, or hydration. The purpose is to prove
-    # whether Sabina exposes the requested product in HTML and whether the
-    # generic product-URL classifier captures it.
-    if store == 'sabina' and required_tokens:
-        try:
-            diagnostic_query_url = (
-                'https://www.sabina.com/it/ricerca_old?search_query='
-                + urllib.parse.quote(query or '', safe='')
-            )
-            if add(diagnostic_query_url, 0, 'diagnostic_query_probe'):
-                seeds.append(diagnostic_query_url)
-        except Exception:
-            pass
 
     started = time.time()
     successes = 0
