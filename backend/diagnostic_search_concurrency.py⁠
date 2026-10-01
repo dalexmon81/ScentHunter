@@ -1,19 +1,16 @@
 """ScentHunter read-only concurrency diagnostic for the local catalog index."""
+import importlib
 import threading
 import time
-import traceback
 from fastapi import APIRouter
 
 router = APIRouter()
 
 
 def _catalog():
-    try:
-        from backend import catalog_engine
-        return catalog_engine
-    except Exception:
-        import catalog_engine
-        return catalog_engine
+    # Import only when the endpoint is actually called.
+    # This keeps application startup independent from catalog_engine.
+    return importlib.import_module("catalog_engine")
 
 
 def _snapshot(catalog):
@@ -36,36 +33,29 @@ def _lock_state(lock):
         return None
 
 
-def _stack_for_thread(thread):
-    try:
-        frames = __import__("sys")._current_frames()
-        frame = frames.get(thread.ident)
-        if frame is None:
-            return []
-        return traceback.format_stack(frame)[-12:]
-    except Exception:
-        return []
-
-
 @router.get("/diagnostic/search-concurrency")
 def diagnostic_search_concurrency(q: str = "Liquid Brun"):
-    """Run two catalog searches concurrently and observe lock/cache behavior.
+    """Observe concurrent search_local() calls without SQLite writes."""
+    try:
+        catalog = _catalog()
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic": "search-concurrency-v2",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
-    This endpoint does not write SQLite and does not call discovery/hydration.
-    It invokes the same catalog_engine.search_local() used by normal search.
-    """
-    catalog = _catalog()
     search_local = getattr(catalog, "search_local", None)
     lock = getattr(catalog, "_LOCAL_SEARCH_INDEX_LOCK", None)
 
     if not callable(search_local) or lock is None:
         return {
             "ok": False,
-            "diagnostic": "search-concurrency-v1",
+            "diagnostic": "search-concurrency-v2",
             "error": "search_local_or_lock_unavailable",
         }
 
-    # Warm the cache first so this test measures concurrency, not cold startup.
+    # Warm the existing process cache first.
     warm_started = time.perf_counter()
     try:
         warm_rows = search_local(q, per_store=64, search_terms=[q])
@@ -139,11 +129,16 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
         if len(signatures) > 1
     }
 
+    max_search_sec = max(
+        (r["seconds"] for r in results if r is not None),
+        default=0,
+    )
+
     return {
         "ok": warm_error is None and all(
             r is not None and r["error"] is None for r in results
         ),
-        "diagnostic": "search-concurrency-v1",
+        "diagnostic": "search-concurrency-v2",
         "query": q,
         "writes_to_sqlite": False,
         "warmup": {
@@ -173,8 +168,7 @@ def diagnostic_search_concurrency(q: str = "Liquid Brun"):
         },
         "diagnosis": (
             "CONCURRENT_SEARCH_LOCK_CONTENTION"
-            if results[0] and results[1]
-            and max(results[0]["seconds"], results[1]["seconds"]) > 1.0
+            if max_search_sec > 1.0
             else "NO_MAJOR_CONCURRENT_CONTENTION_OBSERVED"
         ),
     }
