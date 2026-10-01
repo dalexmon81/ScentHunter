@@ -1000,16 +1000,10 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Native retailer search listing pages are catalog surfaces too. They are
-    # generic discovery inputs (for example A-Z seeds), not user-query search.
-    # Prioritize them before broad category traversal so OOS/search-only products
-    # cannot be starved by thousands of category links.
-    if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
-        score = 0
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    if re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -1387,6 +1381,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
             raw_html = html.unescape(data.decode('utf-8', 'ignore'))
             raw_html = raw_html.replace('\\/', '/')
             raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
             for match in re.finditer(
                 r"https?://[^\"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^\"'\s<>\\]+",
                 raw_html,
@@ -1594,7 +1589,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                     # Normalize only URL escaping before extracting candidates.
                     raw_html = raw_html.replace('\\/', '/')
                     raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
-                    raw_html = raw_html.replace('\\u003A', ':').replace('\\u003a', ':')
                     host_patterns = {
                         urllib.parse.urlparse(base).netloc.lower()
                         for base in _discovery_bases(store)
