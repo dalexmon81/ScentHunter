@@ -1,0 +1,180 @@
+"""ScentHunter read-only concurrency diagnostic for the local catalog index."""
+import threading
+import time
+import traceback
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+def _catalog():
+    try:
+        from backend import catalog_engine
+        return catalog_engine
+    except Exception:
+        import catalog_engine
+        return catalog_engine
+
+
+def _snapshot(catalog):
+    cache = getattr(catalog, "_LOCAL_SEARCH_INDEX_CACHE", {})
+    out = {}
+    for store, item in cache.items():
+        sig = item.get("signature", ())
+        out[store] = {
+            "signature": list(sig),
+            "url_count": len(item.get("url_tokens", {})),
+            "posting_count": len(item.get("postings", {})),
+        }
+    return out
+
+
+def _lock_state(lock):
+    try:
+        return bool(lock.locked())
+    except Exception:
+        return None
+
+
+def _stack_for_thread(thread):
+    try:
+        frames = __import__("sys")._current_frames()
+        frame = frames.get(thread.ident)
+        if frame is None:
+            return []
+        return traceback.format_stack(frame)[-12:]
+    except Exception:
+        return []
+
+
+@router.get("/diagnostic/search-concurrency")
+def diagnostic_search_concurrency(q: str = "Liquid Brun"):
+    """Run two catalog searches concurrently and observe lock/cache behavior.
+
+    This endpoint does not write SQLite and does not call discovery/hydration.
+    It invokes the same catalog_engine.search_local() used by normal search.
+    """
+    catalog = _catalog()
+    search_local = getattr(catalog, "search_local", None)
+    lock = getattr(catalog, "_LOCAL_SEARCH_INDEX_LOCK", None)
+
+    if not callable(search_local) or lock is None:
+        return {
+            "ok": False,
+            "diagnostic": "search-concurrency-v1",
+            "error": "search_local_or_lock_unavailable",
+        }
+
+    # Warm the cache first so this test measures concurrency, not cold startup.
+    warm_started = time.perf_counter()
+    try:
+        warm_rows = search_local(q, per_store=64, search_terms=[q])
+        warm_error = None
+    except Exception as exc:
+        warm_rows = []
+        warm_error = f"{type(exc).__name__}: {exc}"
+    warm_sec = time.perf_counter() - warm_started
+
+    samples = []
+    stop = threading.Event()
+
+    def sampler():
+        while not stop.is_set():
+            samples.append({
+                "t": round(time.perf_counter(), 6),
+                "lock_locked": _lock_state(lock),
+                "cache": _snapshot(catalog),
+            })
+            time.sleep(0.01)
+
+    sampler_thread = threading.Thread(
+        target=sampler,
+        name="diagnostic-search-concurrency-sampler",
+        daemon=True,
+    )
+    sampler_thread.start()
+
+    results = [None, None]
+
+    def run(index):
+        started = time.perf_counter()
+        try:
+            rows = search_local(q, per_store=64, search_terms=[q])
+            results[index] = {
+                "seconds": round(time.perf_counter() - started, 4),
+                "result_count": len(rows),
+                "error": None,
+            }
+        except Exception as exc:
+            results[index] = {
+                "seconds": round(time.perf_counter() - started, 4),
+                "result_count": 0,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+    t1 = threading.Thread(target=run, args=(0,), name="diagnostic-search-1")
+    t2 = threading.Thread(target=run, args=(1,), name="diagnostic-search-2")
+
+    concurrent_started = time.perf_counter()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    concurrent_sec = time.perf_counter() - concurrent_started
+
+    stop.set()
+    sampler_thread.join(timeout=0.5)
+
+    lock_true_samples = [s for s in samples if s["lock_locked"]]
+    unique_signatures = {}
+    for sample in samples:
+        for store, data in sample["cache"].items():
+            unique_signatures.setdefault(store, set()).add(
+                tuple(data["signature"])
+            )
+
+    signature_changes = {
+        store: [list(sig) for sig in signatures]
+        for store, signatures in unique_signatures.items()
+        if len(signatures) > 1
+    }
+
+    return {
+        "ok": warm_error is None and all(
+            r is not None and r["error"] is None for r in results
+        ),
+        "diagnostic": "search-concurrency-v1",
+        "query": q,
+        "writes_to_sqlite": False,
+        "warmup": {
+            "seconds": round(warm_sec, 4),
+            "result_count": len(warm_rows),
+            "error": warm_error,
+        },
+        "concurrent": {
+            "total_seconds": round(concurrent_sec, 4),
+            "search_1": results[0],
+            "search_2": results[1],
+        },
+        "lock": {
+            "locked_sample_count": len(lock_true_samples),
+            "sample_count": len(samples),
+            "lock_observed_ratio": round(
+                len(lock_true_samples) / len(samples), 4
+            ) if samples else 0,
+        },
+        "cache": {
+            "signature_changes_during_test": signature_changes,
+            "final": _snapshot(catalog),
+        },
+        "sampler": {
+            "samples": len(samples),
+            "interval_seconds": 0.01,
+        },
+        "diagnosis": (
+            "CONCURRENT_SEARCH_LOCK_CONTENTION"
+            if results[0] and results[1]
+            and max(results[0]["seconds"], results[1]["seconds"]) > 1.0
+            else "NO_MAJOR_CONCURRENT_CONTENTION_OBSERVED"
+        ),
+    }
