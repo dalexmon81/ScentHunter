@@ -772,11 +772,12 @@ HTML_DISCOVERY_SEEDS = {
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
-        # Sabina's legacy/native search surface exposes catalog products that
-        # may be absent from category pages (notably products marked
-        # out-of-stock). These are broad catalog terms only; they are not
-        # driven by the user's runtime search and contain no product-specific
-        # exception.
+        # Sabina's legacy catalog-search surface is part of the retailer's
+        # own catalog graph. It is used only by background discovery, never by
+        # user-facing search. Some products (including products marked
+        # out-of-stock) are exposed here even when category navigation does
+        # not expose them. The terms are broad catalog-language seeds, not
+        # product names or user queries.
         'https://www.sabina.com/it/ricerca_old?search_query=',
         'https://www.sabina.com/it/ricerca_old?search_query=profumi',
         'https://www.sabina.com/it/ricerca_old?search_query=parfum',
@@ -887,11 +888,14 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina category/navigation pages and its native search surface are
-        # both catalog listing nodes. Product pages are excluded here because
-        # _html_product_url handles their numeric-id .html shape.
+        # Sabina catalog/navigation pages are crawlable without a query
+        # endpoint. Product pages are excluded here because _html_product_url
+        # handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
+        # Legacy/native Sabina search pages are catalog listing nodes. Keep
+        # them crawlable regardless of the exact search_query value; discovery
+        # itself decides which product URLs are present on the returned page.
         if path.endswith('/ricerca_old') or path.endswith('/ricerca'):
             return absolute
         if 'search_query=' in p.query.lower():
@@ -947,7 +951,7 @@ def _fetch_html_page(store, url):
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store in ('easycosmetic', 'sabina'):
+    if store == 'easycosmetic':
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
