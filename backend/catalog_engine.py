@@ -1593,6 +1593,8 @@ def _discover_html_catalog(store, seeds, deadline=None):
                     # strings (https:\/\/www... or \/category/...).
                     # Normalize only URL escaping before extracting candidates.
                     raw_html = raw_html.replace('\\/', '/')
+                    raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+                    raw_html = raw_html.replace('\\u003A', ':').replace('\\u003a', ':')
                     host_patterns = {
                         urllib.parse.urlparse(base).netloc.lower()
                         for base in _discovery_bases(store)
