@@ -661,7 +661,7 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             # previously discovered Deloox catalog merely because this run did
             # not reach those branches. A real product disappearance is handled
             # by product-page hydration/HTTP status, not by crawl omission.
-            if store != 'deloox':
+            if store not in ('deloox', 'sabina'):
                 conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
@@ -2806,6 +2806,42 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         except Exception as exc:
             print(
                 f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+        elapsed = time.time() - started
+        wait_for = max(1.0, pause - elapsed)
+        if stop_event is not None:
+            stop_event.wait(wait_for)
+        else:
+            time.sleep(wait_for)
+
+
+def catalog_sabina_discovery_loop(stop_event, interval_seconds=300.0):
+    """Continuously advance Sabina catalog discovery without resetting the catalog.
+
+    Sabina exposes a public HTML catalog surface but its persistent catalog can
+    outlive the initial bootstrap. Discovery is therefore incremental: newly
+    found product URLs are added/reactivated while existing URLs remain active.
+    This loop is independent from hydration and from request-time search.
+    """
+    pause = max(60.0, float(interval_seconds))
+    print(
+        f'CATALOG SABINA DISCOVERY START interval={pause:g}s',
+        flush=True,
+    )
+    while stop_event is None or not stop_event.is_set():
+        started = time.time()
+        try:
+            result = discover_store('sabina')
+            print(
+                'CATALOG SABINA DISCOVERY BATCH '
+                f'status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
+                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f'CATALOG SABINA DISCOVERY ERROR: {type(exc).__name__}: {exc}',
                 flush=True,
             )
         elapsed = time.time() - started
