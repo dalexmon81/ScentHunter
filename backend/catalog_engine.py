@@ -1113,10 +1113,20 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
+    # Deloox's native public search is a catalog enumeration surface. Keep
+    # its generic background seeds ahead of the broad frontier so the search
+    # surface is actually exercised during a bounded discovery run. This is
+    # URL-structure based only; no user query or product identity is used.
+    if (
+        store == 'deloox'
+        and re.search(r'/(?:chercher|search)(?:\.html)?$', path, re.I)
+        and re.search(r'(?:^|&)(?:q|query)=', p.query, re.I)
+    ):
+        score = 0
     # Sabina's native legacy search is a real catalog/navigation surface.
     # Give the native `?s=` form highest priority so generic catalog probes are
     # executed before the broad category graph consumes the bounded crawl.
-    if (
+    elif (
         store == 'sabina'
         and path.rstrip('/') in ('/it/ricerca_old', '/it/ricerca')
         and re.search(r'(?:^|&)s=', p.query, re.I)
