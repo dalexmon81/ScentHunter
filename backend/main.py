@@ -410,6 +410,8 @@ try:
     app.include_router(diagnose_sabina_real_seeds_router)
     from diagnose_sabina_legacy_sparam import router as diagnose_sabina_legacy_sparam_router
     app.include_router(diagnose_sabina_legacy_sparam_router)
+    from diagnose_deloox_catalog_gap_final import router as diagnose_deloox_catalog_gap_final_router
+    app.include_router(diagnose_deloox_catalog_gap_final_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
