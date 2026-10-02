@@ -672,44 +672,30 @@ def _sync_deloox_search_index(product_urls):
 
 
 def _save_discovery(store, product_urls, started_at, diagnostics):
+    """Persist discovery cumulatively and deactivate only after a complete crawl.
+
+    A discovery pass is normally a bounded observation of a retailer catalog.
+    Network failures, sitemap gaps, pagination limits and crawler deadlines can
+    all produce a valid subset of product URLs. Treating that subset as the
+    entire catalog causes previously valid offers to disappear.
+
+    Therefore every discovered product URL is persisted immediately, regardless
+    of batch size. Existing URLs are never deactivated unless the caller proves
+    that the catalog traversal completed without hitting a crawler limit.
+    """
     now = time.time()
     new_count = len(product_urls)
+    complete = bool(diagnostics.get('catalog_complete'))
     old_count = _existing_count(store)
-
-    # Never replace a known catalog with a suspiciously tiny transient result.
-    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
-        conn = db()
-        detail = (
-            f'partial_catalog_rejected;old={old_count};new={new_count};'
-            f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
-            f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
-        )
-        conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-               started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
-            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
-        )
-        conn.commit()
-        conn.close()
-        return 'DISCOVERY_PARTIAL', new_count, detail
 
     conn = db()
     with conn:
+        if new_count and complete:
+            conn.execute(
+                'UPDATE store_urls SET active=0 WHERE store=? AND active=1',
+                (store,),
+            )
         if new_count:
-            # Deloox discovery is intentionally incremental: a bounded run is
-            # only one slice of a persistent HTML graph. Never deactivate the
-            # previously discovered Deloox catalog merely because this run did
-            # not reach those branches. A real product disappearance is handled
-            # by product-page hydration/HTTP status, not by crawl omission.
-            # Sabina discovery is also incremental. Its HTML legacy catalog
-            # surface is bounded by time, so a run can legitimately discover
-            # only a subset of the existing catalog. Never deactivate known
-            # Sabina URLs merely because this run did not reach them.
-            if store not in ('deloox', 'sabina'):
-                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
                     '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
@@ -732,22 +718,30 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                            END''',
                     (store, url, 'PENDING', 0, now, now, now),
                 )
-            status = 'DISCOVERY_OK'
-            error = None
+            status = 'DISCOVERY_OK' if complete else 'DISCOVERY_PARTIAL'
+            error = None if complete else (
+                f'partial_cumulative_catalog;old={old_count};new={new_count};'
+                f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
+                f'entries={diagnostics["entries"]};errors={diagnostics["errors"]};'
+                f'timed_out={diagnostics.get("timed_out")};'
+                f'budget_exhausted={diagnostics.get('sitemap_budget_exhausted')};'
+                f'queue_remaining={diagnostics.get("sitemap_queue_remaining")}'
+            )
         else:
-            status = 'DISCOVERY_EMPTY'
-            error = (
-                f'no_product_urls;visited={diagnostics["visited"]};'
+            status = 'DISCOVERY_OK' if complete else 'DISCOVERY_PARTIAL'
+            error = None if complete else (
+                f'no_product_urls_from_partial_pass;visited={diagnostics["visited"]};'
                 f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
-                f'errors={diagnostics["errors"]}'
+                f'errors={diagnostics["errors"]};timed_out={diagnostics.get('timed_out')};'
+                f'budget_exhausted={diagnostics.get('sitemap_budget_exhausted')}'
             )
 
         conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
                started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
+               discovered_count=excluded.discovered_count,error=excluded.error""",
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
@@ -2138,13 +2132,30 @@ def discover_store(store, force_seed_refresh=False):
         )
         product_urls.update(fallback['product_urls'])
 
+    timed_out = (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT
+    sitemap_budget_exhausted = bool(queue) and time.time() >= sitemap_deadline
+    crawler_limits_hit = (
+        len(visited) >= MAX_SITEMAPS_PER_STORE
+        or len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS
+    )
+    # Only a naturally exhausted sitemap frontier is authoritative. Partial
+    # network/crawler observations are cumulative and never authorize removal.
+    catalog_complete = bool(
+        not timed_out
+        and not sitemap_budget_exhausted
+        and not queue
+        and not crawler_limits_hit
+    )
     diagnostics={
         'visited':len(visited),
         'successes':sitemap_successes,
         'entries':sitemap_url_entries,
         'errors':len(sitemap_errors),
-        'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
-        'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
+        'timed_out': timed_out,
+        'sitemap_budget_exhausted': sitemap_budget_exhausted,
+        'sitemap_queue_remaining': len(queue),
+        'crawler_limits_hit': crawler_limits_hit,
+        'catalog_complete': catalog_complete,
         'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
     }
     # Zero successful catalog-page fetches means access/discovery failure,
