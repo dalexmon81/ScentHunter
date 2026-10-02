@@ -603,7 +603,7 @@ function getBestKnownOfferForWishlist(item){
         price_value:o.price_value,
         shop:o.store||"",
         url:o.url||"",
-        pic:g.image||item.pic||"🧴"
+        pic:g.image||g.fallback_image||item.pic||"🧴"
       });
     });
   });
@@ -780,9 +780,10 @@ function shGroupData(data){
      * only as a visual fallback. This does not change product identity,
      * canonical_image, catalog data, or matcher behavior.
      */
-    const image=String(group.image||"").trim() ||
-      offers.map(o=>String(o.retailer_image||o.image||o.image_url||"").trim()).find(Boolean) ||
-      "";
+    const image=String(group.image||"").trim();
+    const fallback_image=offers
+      .map(o=>String(o.retailer_image||o.image||o.image_url||"").trim())
+      .find(url=>url && url!==image) || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       brand:String(group.canonical_brand||group.brand||"").trim(),
@@ -792,9 +793,30 @@ function shGroupData(data){
       family:String(group.family||"").trim(),
       variant:String(group.variant||"").trim(),
       image,
+      fallback_image,
       offers
     };
   }).filter(group=>group.catalog_id&&group.name);
+}
+
+/*
+ * IMAGE ERROR FALLBACK
+ * The backend canonical image remains authoritative.
+ * If that URL returns an image-load error (for example HTTP 404),
+ * switch only the visual element to the first retailer image
+ * already present on the offer. No catalog identity or backend data
+ * is changed.
+ */
+function shImageError(img){
+  if(!img)return;
+  const fallback=String(img.dataset?.fallback||"").trim();
+  const current=String(img.getAttribute("src")||"").trim();
+  if(fallback && fallback!==current){
+    img.onerror=function(){this.outerHTML="🧴"};
+    img.src=fallback;
+    return;
+  }
+  img.outerHTML="🧴";
 }
 
 function isOfferOutOfStock(o){
@@ -854,7 +876,7 @@ function showProducts(groups){
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
-      <div class="result-image">${g.image?`<img src="${esc(g.image)}" alt="${esc(title)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${g.image?`<img src="${esc(g.image)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
       <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
@@ -871,12 +893,12 @@ function renderOffersHtml(g,img,offers,saved){
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
 }
 
 function renderFormatChoiceCard(gi,g,sizes){
   const img=g.image||"";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
     return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">🧴</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
@@ -905,7 +927,7 @@ function openSize(gi,sizeKey){
   if(!selected)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=String(sizeKey);
   const saved=getWishlist(),img=g.image||"";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
 }
 
 function chooseOffer(gi,sizeKey,oi){
@@ -913,7 +935,7 @@ function chooseOffer(gi,sizeKey,oi){
   const selected=getSizeGroups(g).find(s=>String(s.size)===String(sizeKey));if(!selected)return;
   const o=selected.offers[oi];if(!o)return;
   const out=isOfferOutOfStock(o);
-  const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴",outOfStock:out};
+  const item={catalog_id:g.catalog_id||o.catalog_id||"",brand:g.brand||o.brand||"",name:g.name||o.name||"",price:out?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:g.image||g.fallback_image||"🧴",outOfStock:out};
   toggleWish(item);
 }
 
