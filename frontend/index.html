@@ -740,7 +740,9 @@ function shPrice(o){
   if(o&&o.price!==undefined&&o.price!==null&&String(o.price).trim()!==""){
     const text=String(o.price).trim();
     const parsed=parsePrice(text);
-    if(parsed!==null && parsed<=0)return "Prezzo non disponibile";
+    if(parsed!==null){
+      return parsed>0?formatEuro(parsed):"Prezzo non disponibile";
+    }
     return text;
   }
   const n=Number(o&&o.price_num);
