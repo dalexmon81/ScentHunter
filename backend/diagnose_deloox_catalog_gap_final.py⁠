@@ -1,0 +1,470 @@
+from fastapi import APIRouter, Query
+import re
+import time
+import urllib.parse
+
+router = APIRouter()
+
+
+@router.get("/diagnose-deloox-catalog-gap-final")
+def diagnose_deloox_catalog_gap_final(
+    q: str = Query("Rasasi Hawas Atlantis")
+):
+    """
+    FINAL READ-ONLY Deloox catalog-gap diagnostic.
+
+    Purpose:
+      Trace one known Deloox product through the exact catalog-discovery
+      admission rules without running discovery, writing SQLite, hydration,
+      ProductMatcher, production search, resync or repair.
+
+    It checks:
+      1. retailer search exposes the exact product URL;
+      2. deployed scraper._discover() exposes the exact product URL;
+      3. catalog_engine._html_product_url() accepts the exact URL;
+      4. catalog_engine._html_listing_url() treats it as a listing or rejects it;
+      5. persistent catalog_discovery_queue contains relevant URLs;
+      6. persistent store_urls contains the exact product URL;
+      7. the exact product page can be fetched and parsed by Deloox _product().
+
+    No database writes are performed.
+    """
+    started = time.monotonic()
+    query = str(q or "").strip() or "Rasasi Hawas Atlantis"
+
+    out = {
+        "diagnostic": "deloox-catalog-gap-final-v1",
+        "ok": False,
+        "store": "deloox",
+        "query": query,
+        "writes": False,
+        "resync": False,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "repair_called": False,
+        "checks": {},
+    }
+
+    session = None
+
+    try:
+        import requests
+        import catalog_engine
+        from scrapers.deloox import scraper
+
+        db_fn = getattr(catalog_engine, "db", None)
+        product_url_fn = getattr(catalog_engine, "_html_product_url", None)
+        listing_url_fn = getattr(catalog_engine, "_html_listing_url", None)
+        discover_fn = getattr(scraper, "_discover", None)
+        candidate_fn = getattr(scraper, "_candidate_product_urls", None)
+        product_fn = getattr(scraper, "_product", None)
+
+        if not callable(db_fn):
+            out["error"] = "catalog_db_unavailable"
+            return out
+
+        target_url = None
+
+        # ------------------------------------------------------------
+        # 1. Read-only public Deloox search: exact product URL
+        # ------------------------------------------------------------
+        session = requests.Session()
+        headers = getattr(scraper, "HEADERS", {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 Chrome/131 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
+        })
+        session.headers.update(headers)
+
+        search_url = (
+            "https://www.deloox.be/chercher.html?q="
+            + urllib.parse.quote_plus(query)
+        )
+
+        search_check = {
+            "url": search_url,
+            "status": None,
+            "candidate_product_urls": [],
+            "target_url_found": False,
+            "error": None,
+        }
+
+        try:
+            response = session.get(
+                search_url,
+                headers=headers,
+                timeout=(5, 15),
+                allow_redirects=True,
+            )
+            search_check["status"] = response.status_code
+
+            if response.status_code < 400:
+                if callable(candidate_fn):
+                    found = list(
+                        candidate_fn(
+                            response.text,
+                            query,
+                            discovery_query=query,
+                            accept_all_products=True,
+                            base_url=(
+                                f"{urllib.parse.urlparse(response.url).scheme}://"
+                                f"{urllib.parse.urlparse(response.url).netloc}"
+                            ),
+                        )
+                        or []
+                    )
+                    search_check["candidate_product_urls"] = found[:100]
+
+                    for url in found:
+                        if (
+                            re.search(
+                                r"/(?:product|produit|producto|prodotto)/1382469(?:/|$)",
+                                url,
+                                re.I,
+                            )
+                        ):
+                            target_url = url
+                            break
+        except Exception as exc:
+            search_check["error"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+
+        search_check["target_url_found"] = bool(target_url)
+        out["checks"]["public_search"] = search_check
+
+        # ------------------------------------------------------------
+        # 2. Exact deployed scraper discovery
+        # ------------------------------------------------------------
+        discover_check = {
+            "available": callable(discover_fn),
+            "candidate_count": 0,
+            "candidate_urls": [],
+            "target_url_found": False,
+            "error": None,
+        }
+
+        if callable(discover_fn):
+            try:
+                discovered = list(discover_fn(session, query) or [])
+                discover_check["candidate_count"] = len(discovered)
+                discover_check["candidate_urls"] = discovered[:100]
+
+                for url in discovered:
+                    if re.search(
+                        r"/(?:product|produit|producto|prodotto)/1382469(?:/|$)",
+                        url,
+                        re.I,
+                    ):
+                        target_url = target_url or url
+                        discover_check["target_url_found"] = True
+                        break
+            except Exception as exc:
+                discover_check["error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        out["checks"]["scraper_discover"] = discover_check
+
+        # ------------------------------------------------------------
+        # 3. Exact catalog admission rules
+        # ------------------------------------------------------------
+        admission_check = {
+            "target_url": target_url,
+            "html_product_url_available": callable(product_url_fn),
+            "html_listing_url_available": callable(listing_url_fn),
+            "product_admitted": False,
+            "listing_admitted": False,
+            "product_result": None,
+            "listing_result": None,
+            "error": None,
+        }
+
+        if target_url and callable(product_url_fn):
+            try:
+                base = (
+                    f"{urllib.parse.urlparse(target_url).scheme}://"
+                    f"{urllib.parse.urlparse(target_url).netloc}"
+                )
+                admission_check["product_result"] = product_url_fn(
+                    "deloox",
+                    target_url,
+                    base,
+                )
+                admission_check["product_admitted"] = bool(
+                    admission_check["product_result"]
+                )
+
+                if callable(listing_url_fn):
+                    admission_check["listing_result"] = listing_url_fn(
+                        "deloox",
+                        target_url,
+                        base,
+                        "Rasasi Hawas Atlantis",
+                    )
+                    admission_check["listing_admitted"] = bool(
+                        admission_check["listing_result"]
+                    )
+            except Exception as exc:
+                admission_check["error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        out["checks"]["catalog_url_admission"] = admission_check
+
+        # ------------------------------------------------------------
+        # 4. Persistent SQLite catalog state — READ ONLY
+        # ------------------------------------------------------------
+        db_check = {
+            "exact_store_url": None,
+            "exact_hydration": None,
+            "discovery_queue_matches": [],
+            "discovery_queue_match_count": 0,
+            "error": None,
+        }
+
+        conn = db_fn()
+        try:
+            exact = conn.execute(
+                """
+                SELECT
+                    store,url,slug,lastmod,discovered_at,active
+                FROM store_urls
+                WHERE store='deloox'
+                  AND (
+                    url LIKE '%/1382469/%'
+                    OR slug LIKE '%rasasi hawas atlantis%'
+                  )
+                ORDER BY url
+                """
+            ).fetchall()
+
+            db_check["exact_store_url"] = [
+                dict(row) for row in exact
+            ]
+
+            hydration = []
+            for row in exact:
+                h = conn.execute(
+                    """
+                    SELECT
+                        store,url,state,attempts,last_error,
+                        last_http_status,last_started_at,
+                        last_finished_at
+                    FROM hydration_queue
+                    WHERE store=? AND url=?
+                    """,
+                    ("deloox", row["url"]),
+                ).fetchone()
+                if h:
+                    hydration.append(dict(h))
+
+            db_check["exact_hydration"] = hydration
+
+            # Search the durable discovery frontier structurally.
+            frontier = conn.execute(
+                """
+                SELECT
+                    store,url,depth,source,state,attempts,
+                    available_at,last_started_at,last_finished_at,
+                    last_error
+                FROM catalog_discovery_queue
+                WHERE store='deloox'
+                  AND (
+                    lower(url) LIKE '%atlantis%'
+                    OR lower(url) LIKE '%1382469%'
+                    OR lower(source) LIKE '%atlantis%'
+                    OR lower(source) LIKE '%1382469%'
+                  )
+                ORDER BY depth ASC, url ASC
+                LIMIT 100
+                """
+            ).fetchall()
+
+            db_check["discovery_queue_matches"] = [
+                dict(row) for row in frontier
+            ]
+            db_check["discovery_queue_match_count"] = len(frontier)
+
+        finally:
+            conn.close()
+
+        out["checks"]["persistent_catalog"] = db_check
+
+        # ------------------------------------------------------------
+        # 5. Direct product-page validation — READ ONLY
+        # ------------------------------------------------------------
+        validation = {
+            "target_url": target_url,
+            "http_status": None,
+            "final_url": None,
+            "bytes": 0,
+            "parser_available": callable(product_fn),
+            "parsed_product": None,
+            "error": None,
+        }
+
+        if target_url:
+            try:
+                response = session.get(
+                    target_url,
+                    headers=headers,
+                    timeout=(5, 15),
+                    allow_redirects=True,
+                )
+                validation["http_status"] = response.status_code
+                validation["final_url"] = response.url
+                validation["bytes"] = len(response.content or b"")
+
+                if (
+                    response.status_code < 400
+                    and callable(product_fn)
+                ):
+                    item = product_fn(
+                        response.url or target_url,
+                        response.text,
+                        query,
+                    )
+                    if item:
+                        validation["parsed_product"] = {
+                            "name": item.get("name"),
+                            "brand": (
+                                item.get("source", {})
+                                if isinstance(item.get("source"), dict)
+                                else {}
+                            ).get("source_brand"),
+                            "size_ml": (
+                                item.get("attributes", {})
+                                if isinstance(item.get("attributes"), dict)
+                                else {}
+                            ).get("size_ml"),
+                            "url": response.url or target_url,
+                        }
+            except Exception as exc:
+                validation["error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        out["checks"]["direct_product_validation"] = validation
+
+        # ------------------------------------------------------------
+        # FINAL DIAGNOSIS
+        # ------------------------------------------------------------
+        public_ok = bool(
+            out["checks"]["public_search"].get("target_url_found")
+        )
+        scraper_ok = bool(
+            out["checks"]["scraper_discover"].get("target_url_found")
+        )
+        admission_ok = bool(
+            out["checks"]["catalog_url_admission"].get("product_admitted")
+        )
+        store_url_ok = bool(
+            out["checks"]["persistent_catalog"].get("exact_store_url")
+        )
+        queue_matches = int(
+            out["checks"]["persistent_catalog"].get(
+                "discovery_queue_match_count", 0
+            )
+        )
+        parsed_ok = bool(
+            out["checks"]["direct_product_validation"].get(
+                "parsed_product"
+            )
+        )
+
+        if public_ok and scraper_ok and not admission_ok:
+            diagnosis = (
+                "ROOT_CAUSE_URL_ADMISSION: "
+                "Deloox exposes the exact Atlantis product and the deployed "
+                "scraper discovers it, but catalog_engine._html_product_url "
+                "does not admit the URL."
+            )
+        elif public_ok and scraper_ok and admission_ok and not store_url_ok:
+            if queue_matches:
+                diagnosis = (
+                    "ROOT_CAUSE_CATALOG_PERSISTENCE_AFTER_FRONTIER: "
+                    "the exact product is discoverable and admitted by the "
+                    "catalog URL rules, and related frontier entries exist, "
+                    "but the product URL is absent from store_urls. "
+                    "The loss is between discovery admission and "
+                    "_deloox_persist_products()."
+                )
+            else:
+                diagnosis = (
+                    "ROOT_CAUSE_DISCOVERY_GRAPH: "
+                    "the exact product is publicly discoverable, the deployed "
+                    "scraper finds it, and catalog_engine admits the URL, but "
+                    "the persistent catalog frontier contains no Atlantis "
+                    "path and store_urls has no product URL. The catalog graph "
+                    "is therefore not reaching this product during its normal "
+                    "background traversal."
+                )
+        elif store_url_ok and not parsed_ok:
+            diagnosis = (
+                "ROOT_CAUSE_HYDRATION_OR_PRODUCT_PARSE: "
+                "the exact product is already in store_urls, but direct "
+                "product-page validation/parser does not produce a product."
+            )
+        elif store_url_ok and parsed_ok:
+            diagnosis = (
+                "CATALOG_PATH_ALREADY_PRESENT: "
+                "Atlantis is present in the persistent catalog and parses "
+                "successfully; the loss is downstream of catalog discovery."
+            )
+        elif public_ok and not scraper_ok:
+            diagnosis = (
+                "ROOT_CAUSE_SCRAPER_DISCOVERY: "
+                "Deloox public search exposes Atlantis, but the deployed "
+                "scraper _discover() does not return it."
+            )
+        elif not public_ok:
+            diagnosis = (
+                "PUBLIC_SEARCH_NO_TARGET: "
+                "the diagnostic did not prove the target product URL on "
+                "Deloox public search."
+            )
+        else:
+            diagnosis = (
+                "INCONCLUSIVE: "
+                "the available read-only checks do not isolate a single "
+                "failure point."
+            )
+
+        out["diagnosis"] = diagnosis
+        out["summary"] = {
+            "public_search_finds_target": public_ok,
+            "scraper_discover_finds_target": scraper_ok,
+            "catalog_engine_admits_target": admission_ok,
+            "persistent_store_urls_contains_target": store_url_ok,
+            "discovery_frontier_has_related_entry": queue_matches > 0,
+            "direct_product_parser_succeeds": parsed_ok,
+        }
+
+        out["ok"] = True
+        return out
+
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
+
+    finally:
+        if session is not None:
+            session.close()
+        out["elapsed_sec"] = round(
+            time.monotonic() - started,
+            3,
+        )
+
+
+# IMPORTANT:
+# main.py already imports diagnostic routers explicitly. To expose this
+# standalone router, add:
+#
+# from diagnose_deloox_catalog_gap_final import router as diagnose_deloox_catalog_gap_final_router
+# app.include_router(diagnose_deloox_catalog_gap_final_router)
+#
+# No other production component needs to change.
