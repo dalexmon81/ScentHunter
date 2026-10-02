@@ -773,7 +773,16 @@ function shGroupData(data){
       variant:offer.variant||group.variant||"",
       size_ml:offer.size_ml??offer.format_ml??""
     }));
-    const image=String(group.image||"").trim();
+    /*
+     * IMAGE PRESENTATION FALLBACK
+     * group.image remains the canonical image when the backend provides one.
+     * If it is empty, use the first retailer image already present on an offer
+     * only as a visual fallback. This does not change product identity,
+     * canonical_image, catalog data, or matcher behavior.
+     */
+    const image=String(group.image||"").trim() ||
+      offers.map(o=>String(o.retailer_image||o.image||o.image_url||"").trim()).find(Boolean) ||
+      "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       brand:String(group.canonical_brand||group.brand||"").trim(),
