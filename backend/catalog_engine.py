@@ -2406,7 +2406,11 @@ def search_local(query, per_store=32, search_terms=None):
     if not token_sets:
         return []
 
-    conn = db()
+    # User-facing search must never enter the writable catalog connection.
+    # db() runs _ensure_schema(), including a full Deloox frontier priority
+    # backfill; during discovery/hydration that can contend with writers and
+    # make /search wait. _search_db() is the dedicated read-only path.
+    conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
 
