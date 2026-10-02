@@ -190,6 +190,16 @@
             "Hawas Overdose"
           ]
         }
+        {
+          "canonical_name": "Hawas La Mer",
+          "aliases": [
+            "Hawas La Mer",
+            "Rasasi Hawas La Mer"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
       ],
       "excluded_products": [
         "Hawas Al Wisam",
