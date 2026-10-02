@@ -1614,27 +1614,54 @@ def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
         if not batch:
             break
 
-        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
-            futures = {
-                pool.submit(_fetch_html_page, 'deloox', url): (
-                    url, depth, source, token
-                )
-                for url, depth, source, token in batch
-            }
-            for future in as_completed(futures):
-                url, depth, source, token = futures[future]
-                try:
-                    result = future.result()
-                    ok = process_page(url, depth, source, result)
-                    if ok:
-                        _deloox_queue_finish(url, token, True)
-                    else:
-                        error = result[3] if len(result) > 3 else 'fetch_error'
+        # The discovery deadline must also bound the executor itself.
+        # A ThreadPoolExecutor context manager calls shutdown(wait=True), so a
+        # single stuck browser/network worker could otherwise keep the whole
+        # resync job in RUNNING forever even after run_deadline was reached.
+        pool = ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch)))
+        futures = {
+            pool.submit(_fetch_html_page, 'deloox', url): (
+                url, depth, source, token
+            )
+            for url, depth, source, token in batch
+        }
+        completed = set()
+        try:
+            remaining = max(0.1, run_deadline - time.time())
+            try:
+                completed_iter = as_completed(futures, timeout=remaining)
+                for future in completed_iter:
+                    completed.add(future)
+                    url, depth, source, token = futures[future]
+                    try:
+                        result = future.result()
+                        ok = process_page(url, depth, source, result)
+                        if ok:
+                            _deloox_queue_finish(url, token, True)
+                        else:
+                            error = result[3] if len(result) > 3 else 'fetch_error'
+                            _deloox_queue_finish(url, token, False, error)
+                    except Exception as exc:
+                        error = f'{type(exc).__name__}:{exc}'
+                        errors.append(f'{url} -> {error}')
                         _deloox_queue_finish(url, token, False, error)
-                except Exception as exc:
-                    error = f'{type(exc).__name__}:{exc}'
-                    errors.append(f'{url} -> {error}')
-                    _deloox_queue_finish(url, token, False, error)
+            except TimeoutError:
+                # Any future not completed before the batch deadline is no
+                # longer allowed to keep the discovery job alive. Clear its
+                # lease so a later discovery pass can retry it. The underlying
+                # worker may still be finishing in the background, but it is no
+                # longer part of this job's critical path.
+                for future, item in futures.items():
+                    if future in completed or future.done():
+                        continue
+                    url, depth, source, token = item
+                    future.cancel()
+                    timeout_error = 'BATCH_TIMEOUT_BEFORE_DISCOVERY_DEADLINE'
+                    errors.append(f'{url} -> {timeout_error}')
+                    _deloox_queue_finish(url, token, False, timeout_error)
+        finally:
+            # Never wait for a stuck browser/network thread here.
+            pool.shutdown(wait=False, cancel_futures=True)
 
         # Never monopolize the process after a batch finishes.
         if time.time() >= run_deadline:
