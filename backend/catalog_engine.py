@@ -1058,20 +1058,23 @@ def _browser_fetch_html(url, timeout_ms=15000):
         return None, f'PLAYWRIGHT_UNAVAILABLE:{type(exc).__name__}:{exc}'
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
+            browser = pw.chromium.launch(headless=True, timeout=min(int(timeout_ms), 10000))
             try:
                 page = browser.new_page(
                     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
                     locale='de-DE',
                 )
-                page.goto(url, wait_until='domcontentloaded', timeout=timeout_ms)
+                page.goto(url, wait_until='domcontentloaded', timeout=min(int(timeout_ms), 12000))
                 html = page.content()
                 final = page.url
                 if not html:
                     return None, 'BROWSER_EMPTY_BODY'
                 return (final, html.encode('utf-8', 'ignore')), None
             finally:
-                browser.close()
+                try:
+                    browser.close()
+                except Exception:
+                    pass
     except Exception as exc:
         return None, f'BROWSER_{type(exc).__name__}:{exc}'
 
