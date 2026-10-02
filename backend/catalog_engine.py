@@ -1113,9 +1113,12 @@ def _html_discovery_priority(store, url, depth, source=''):
     elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
         score = 2
     elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
-        score = 3
+        # Individual brand pages are high-value catalog branches: they expose
+        # the retailer's product set directly and must not sit behind the broad
+        # category backlog when the durable frontier is large.
+        score = 0
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
-        score = 3
+        score = 1
     elif store == 'sabina' and re.search(r'/ricerca_old(?:/|$)', path, re.I):
         # Sabina's legacy search is a catalog surface and exposes controller
         # product IDs that may not be present in category navigation. Keep it
