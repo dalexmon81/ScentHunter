@@ -1181,9 +1181,18 @@ def _deloox_queue_allowed(url):
     return p.netloc.lower() in allowed_hosts
 
 
-def _deloox_queue_seed():
-    """Seed the durable Deloox catalog graph without product-specific URLs."""
-    seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('deloox', ())))
+def _deloox_queue_seed(force_seed_refresh=False):
+    """Seed the durable Deloox catalog graph without product-specific URLs.
+
+    Normal discovery keeps completed frontier nodes completed so the crawler
+    remains cumulative. An explicit operational resync may force only the
+    configured seed URLs back to PENDING, allowing changed discovery seeds to
+    be traversed again without resetting the whole Deloox frontier.
+    """
+    configured_seeds = list(dict.fromkeys(
+        HTML_DISCOVERY_SEEDS.get('deloox', ())
+    ))
+    seeds = list(configured_seeds)
     for base in _discovery_bases('deloox'):
         base = base.rstrip('/')
         seeds.extend((base + '/', base + '/en/'))
@@ -1191,7 +1200,32 @@ def _deloox_queue_seed():
     _deloox_queue_enqueue(
         [(url, 0, 'configured_seed') for url in seeds]
     )
-    return seeds
+
+    forced_seed_count = 0
+    if force_seed_refresh and configured_seeds:
+        conn = db()
+        try:
+            now = time.time()
+            placeholders = ','.join('?' for _ in configured_seeds)
+            params = [now, *configured_seeds]
+            with conn:
+                cur = conn.execute(
+                    f"""UPDATE catalog_discovery_queue
+                           SET state='PENDING',
+                               available_at=?,
+                               leased_until=NULL,
+                               lease_token=NULL,
+                               last_error=NULL
+                         WHERE store='deloox'
+                           AND url IN ({placeholders})
+                           AND state IN ('DONE','ERROR','DEAD')""",
+                    params,
+                )
+                forced_seed_count = int(cur.rowcount or 0)
+        finally:
+            conn.close()
+
+    return seeds, forced_seed_count
 
 
 def _deloox_queue_enqueue(items):
@@ -1448,7 +1482,7 @@ def _deloox_persist_products(product_urls):
     return count
 
 
-def _discover_deloox_catalog(seeds, deadline=None):
+def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
     """Advance Deloox's persistent catalog graph.
 
     Deloox's sitemap endpoints are unreliable, so catalog discovery is an
@@ -1461,7 +1495,9 @@ def _discover_deloox_catalog(seeds, deadline=None):
         _deloox_queue_enqueue(
             [(url, 0, 'configured_seed') for url in seeds]
         )
-    seeded = _deloox_queue_seed()
+    seeded, forced_seed_count = _deloox_queue_seed(
+        force_seed_refresh=force_seed_refresh
+    )
     recovered = _deloox_queue_recover_stale()
     requeued = _deloox_queue_requeue_stale_done()
 
@@ -1606,6 +1642,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
         'error': int(row['error'] or 0),
         'dead': int(row['dead'] or 0),
         'seeded': len(seeded),
+        'forced_seed_refresh': bool(force_seed_refresh),
+        'forced_seed_count': forced_seed_count,
         'recovered': recovered,
         'requeued_stale_done': requeued,
     }
@@ -1960,7 +1998,7 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
     conn.commit(); conn.close()
 
 
-def discover_store(store):
+def discover_store(store, force_seed_refresh=False):
     """Build/update one persistent URL catalog with durable progress state."""
     started_at=time.time()
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
@@ -2020,6 +2058,7 @@ def discover_store(store):
         deloox_graph = _discover_deloox_catalog(
             list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
             started_at + deloox_graph_budget,
+            force_seed_refresh=force_seed_refresh,
         )
         product_urls.update(deloox_graph['product_urls'])
 
