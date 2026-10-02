@@ -404,8 +404,6 @@ try:
     app.include_router(diagnose_two_scrapers_router)
     from diagnose_deloox_scraper import router as diagnose_deloox_scraper_router
     app.include_router(diagnose_deloox_scraper_router)
-    from diagnose_sabina_legacy_page import router as diagnose_sabina_legacy_page_router
-    app.include_router(diagnose_sabina_legacy_page_router)
     from diagnose_sabina_legacy_crawl import router as diagnose_sabina_legacy_crawl_router
     app.include_router(diagnose_sabina_legacy_crawl_router)
     from diagnose_sabina_real_seeds import router as diagnose_sabina_real_seeds_router
