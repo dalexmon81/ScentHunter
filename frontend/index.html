@@ -780,10 +780,11 @@ function shGroupData(data){
      * only as a visual fallback. This does not change product identity,
      * canonical_image, catalog data, or matcher behavior.
      */
-    const image=String(group.image||"").trim();
+    const canonical_image=String(group.image||"").trim();
     const fallback_image=offers
       .map(o=>String(o.retailer_image||o.image||o.image_url||"").trim())
-      .find(url=>url && url!==image) || "";
+      .find(url=>url && url!==canonical_image) || "";
+    const image=canonical_image || fallback_image;
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       brand:String(group.canonical_brand||group.brand||"").trim(),
