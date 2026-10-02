@@ -374,6 +374,7 @@ def _ensure_schema(conn):
             store TEXT NOT NULL,
             url TEXT NOT NULL,
             depth INTEGER NOT NULL DEFAULT 0,
+            priority INTEGER NOT NULL DEFAULT 100,
             source TEXT NOT NULL DEFAULT '',
             state TEXT NOT NULL DEFAULT 'PENDING',
             attempts INTEGER NOT NULL DEFAULT 0,
@@ -386,9 +387,51 @@ def _ensure_schema(conn):
             last_error TEXT,
             PRIMARY KEY(store,url)
         )""")
+        # Older deployments may already have catalog_discovery_queue without
+        # the persistent priority column. Migrate it in place before the
+        # frontier is claimed. The priority is structural only and is derived
+        # from the same generic URL-priority function used by the in-memory
+        # HTML crawler.
+        columns = {
+            row['name']
+            for row in conn.execute('PRAGMA table_info(catalog_discovery_queue)').fetchall()
+        }
+        if 'priority' not in columns:
+            conn.execute(
+                'ALTER TABLE catalog_discovery_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 100'
+            )
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_ready ON catalog_discovery_queue(store,state,available_at)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_priority ON catalog_discovery_queue(store,state,available_at,priority,depth,url)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_lease ON catalog_discovery_queue(store,state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_finished ON catalog_discovery_queue(store,state,last_finished_at)')
+
+        # Backfill the persistent Deloox frontier after migration. This is
+        # intentionally independent of any search query or product identity.
+        # Existing rows are reprioritized from their URL structure so the
+        # current backlog benefits immediately after deployment.
+        priority_rows = conn.execute(
+            """SELECT url,depth,source
+                 FROM catalog_discovery_queue
+                WHERE store='deloox'"""
+        ).fetchall()
+        if priority_rows:
+            conn.executemany(
+                """UPDATE catalog_discovery_queue
+                      SET priority=?
+                    WHERE store='deloox' AND url=?""",
+                [
+                    (
+                        int(_html_discovery_priority(
+                            'deloox',
+                            row['url'],
+                            int(row['depth'] or 0),
+                            row['source'] or '',
+                        )[0]),
+                        row['url'],
+                    )
+                    for row in priority_rows
+                ],
+            )
         conn.execute("""CREATE TABLE IF NOT EXISTS hydration_scheduler(
             id INTEGER PRIMARY KEY CHECK(id=1),
             last_store_index INTEGER NOT NULL DEFAULT 0
@@ -1150,18 +1193,28 @@ def _deloox_queue_enqueue(items):
                 ).fetchone()
                 conn.execute(
                     """INSERT INTO catalog_discovery_queue(
-                           store,url,depth,source,state,attempts,available_at,
+                           store,url,depth,priority,source,state,attempts,available_at,
                            first_seen_at)
-                       VALUES(?,?,?,?,?,?,?,?)
+                       VALUES(?,?,?,?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
                            depth=MIN(catalog_discovery_queue.depth,excluded.depth),
+                           priority=MIN(catalog_discovery_queue.priority,excluded.priority),
                            source=CASE
                                WHEN catalog_discovery_queue.source='' THEN excluded.source
                                ELSE catalog_discovery_queue.source
                            END""",
                     (
-                        'deloox', url, int(depth), str(source or ''),
-                        'PENDING', 0, now, now,
+                        'deloox',
+                        url,
+                        int(depth),
+                        int(_html_discovery_priority(
+                            'deloox', url, int(depth), str(source or '')
+                        )[0]),
+                        str(source or ''),
+                        'PENDING',
+                        0,
+                        now,
+                        now,
                     ),
                 )
                 if before is None:
@@ -1239,12 +1292,12 @@ def _deloox_queue_claim(limit=12, lease_seconds=180):
     try:
         conn.execute('BEGIN IMMEDIATE')
         rows = conn.execute(
-            """SELECT url,depth,source
+            """SELECT url,depth,priority,source
                  FROM catalog_discovery_queue
                 WHERE store='deloox'
                   AND state IN ('PENDING','ERROR')
                   AND available_at <= ?
-                ORDER BY depth ASC, url ASC
+                ORDER BY priority ASC, depth ASC, url ASC
                 LIMIT ?""",
             (now, limit),
         ).fetchall()
