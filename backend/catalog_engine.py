@@ -807,6 +807,21 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
         'https://www.deloox.com/category/1075660/womens-perfume.html',
+        # Deloox's public search is also a retailer-owned catalog surface.
+        # These are fixed, broad fragrance terms used only by background
+        # catalog discovery; the user's search query is never injected here.
+        'https://www.deloox.be/chercher.html?q=parfum',
+        'https://www.deloox.be/chercher.html?q=perfume',
+        'https://www.deloox.be/chercher.html?q=fragrance',
+        'https://www.deloox.com/chercher.html?q=parfum',
+        'https://www.deloox.com/chercher.html?q=perfume',
+        'https://www.deloox.com/chercher.html?q=fragrance',
+        'https://www.deloox.be/en/search?query=parfum',
+        'https://www.deloox.be/en/search?query=perfume',
+        'https://www.deloox.be/en/search?query=fragrance',
+        'https://www.deloox.com/en/search?query=parfum',
+        'https://www.deloox.com/en/search?query=perfume',
+        'https://www.deloox.com/en/search?query=fragrance',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -996,6 +1011,13 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         # The Deloox homepage is the root of the catalog graph.
         if path in ('', '/'):
             return absolute
+        # Deloox exposes a public search surface which is useful for
+        # background catalog enumeration. It is accepted only as a generic
+        # retailer navigation page; product-specific/user queries are not
+        # introduced by catalog discovery.
+        if re.search(r'/(?:chercher|search)(?:\.html)?$', path, re.I):
+            if re.search(r'(?:^|&)(?:q|query)=', p.query, re.I):
+                return absolute
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
@@ -1113,10 +1135,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     elif re.search(r'/(?:category|categorie|categoria|catégorie|categories)(?:/|$)', path, re.I):
         score = 2
     elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
-        # Individual brand pages are high-value catalog branches: they expose
-        # the retailer's product set directly and must not sit behind the broad
-        # category backlog when the durable frontier is large.
-        score = 0
+        score = 3
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
         score = 1
     elif store == 'sabina' and re.search(r'/ricerca_old(?:/|$)', path, re.I):
