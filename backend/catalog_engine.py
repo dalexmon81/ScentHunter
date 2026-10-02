@@ -1077,25 +1077,44 @@ def _browser_fetch_html(url, timeout_ms=15000):
 
 
 def _fetch_html_page(store, url):
+    browser_reason = None
     try:
         resp = _http_fetch(url, timeout=HTTP_TIMEOUT)
         if resp['status'] < 400 and resp['data']:
             data = resp['data']
             ctype = (resp.get('content_type') or '').lower()
-            if 'html' in ctype or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
-                return url, resp['url'], data, None
-            http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
+            looks_html = bool(
+                'html' in ctype
+                or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I)
+            )
+            if looks_html:
+                # Deloox can return an HTTP-success HTML shell whose catalog
+                # links are rendered by the storefront/browser layer. Treat a
+                # successful but product-link-empty response as a browser
+                # fallback case rather than declaring the navigation page
+                # successfully crawled with zero discoveries.
+                if store == 'deloox' and not re.search(
+                    br'/(?:product|produit|producto|prodotto)/\d+(?:/|\b)',
+                    data,
+                    re.I,
+                ):
+                    browser_reason = 'DOLOOX_HTML_WITHOUT_PRODUCT_LINKS'
+                else:
+                    return url, resp['url'], data, None
+            else:
+                http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
         else:
             http_error = _diagnostic(resp, url)
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store == 'easycosmetic':
+    if store in ('easycosmetic', 'deloox'):
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
             return url, final, data, None
-        return url, url, None, f'HTTP={http_error};{browser_error}'
+        reason = browser_reason or 'HTTP_ERROR'
+        return url, url, None, f'HTTP={http_error};BROWSER_REASON={reason};{browser_error}'
     return url, url, None, http_error
 
 
