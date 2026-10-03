@@ -135,7 +135,8 @@ MIN_REPLACEMENT_ABSOLUTE = 100
 # fetch; this only removes obvious non-product endpoints from a sitemap.
 NON_PRODUCT_PATH = re.compile(
     r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
-    r'kategorie|kategorien|categories|collection|collections|brand|brands|marca|marque|sitemap|'
+    r'kategorie|kategorien|categories|collection|collections|brand|brands|'
+    r'marca|marque|sitemap|'
     r'login|account|cart|checkout|blog|news|tag|tags|help|faq|pages|'
     r'privacy|privacy-policy|terms|terms-of-service|refund|returns|shipping|'
     r'contact|about|legal|policies)(?:/|$)',
@@ -316,6 +317,157 @@ def _remove_local_search_index_url(store, url):
                 postings.pop(token, None)
 
 
+
+_SEARCH_FTS_TABLE = 'catalog_search_fts'
+_SEARCH_FTS_SCHEMA_VERSION = '1'
+
+
+def _ensure_search_fts(conn):
+    """Create and maintain the persistent local-search FTS5 index."""
+    try:
+        conn.execute(
+            """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
+               USING fts5(
+                   store UNINDEXED,
+                   url UNINDEXED,
+                   search_text,
+                   tokenize='unicode61 remove_diacritics 2'
+               )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS catalog_search_fts_meta(
+                   key TEXT PRIMARY KEY,
+                   value TEXT NOT NULL
+               )"""
+        )
+        row = conn.execute(
+            "SELECT value FROM catalog_search_fts_meta WHERE key='schema_version'"
+        ).fetchone()
+        version = str(row['value']) if row else ''
+        if version != _SEARCH_FTS_SCHEMA_VERSION:
+            conn.execute("DELETE FROM catalog_search_fts")
+            conn.execute(
+                """INSERT INTO catalog_search_fts(store,url,search_text)
+                   SELECT u.store,u.url,
+                          trim(COALESCE(u.slug,'') || ' ' ||
+                               COALESCE(p.name,'') || ' ' ||
+                               COALESCE(p.brand,''))
+                     FROM store_urls u
+                     LEFT JOIN store_products p
+                       ON p.store=u.store AND p.url=u.url
+                      AND p.fetch_status='OK'
+                    WHERE u.active=1"""
+            )
+            conn.execute(
+                """INSERT INTO catalog_search_fts_meta(key,value)
+                   VALUES('schema_version',?)
+                   ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+                (_SEARCH_FTS_SCHEMA_VERSION,),
+            )
+            conn.commit()
+        _ensure_search_fts_triggers(conn)
+        return True
+    except sqlite3.OperationalError:
+        return False
+
+
+def _ensure_search_fts_triggers(conn):
+    """Keep the FTS candidate index synchronized with catalog mutations."""
+    trigger_sql = (
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ai
+        AFTER INSERT ON store_urls
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts(store,url,search_text)
+            SELECT NEW.store,NEW.url,
+                   trim(COALESCE(NEW.slug,'') || ' ' ||
+                        COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
+              FROM (SELECT 1) AS one
+              LEFT JOIN store_products p
+                ON p.store=NEW.store AND p.url=NEW.url
+               AND p.fetch_status='OK'
+             WHERE NEW.active=1;
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_au
+        AFTER UPDATE OF store,url,slug,active ON store_urls
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
+            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts(store,url,search_text)
+            SELECT NEW.store,NEW.url,
+                   trim(COALESCE(NEW.slug,'') || ' ' ||
+                        COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
+              FROM (SELECT 1) AS one
+              LEFT JOIN store_products p
+                ON p.store=NEW.store AND p.url=NEW.url
+               AND p.fetch_status='OK'
+             WHERE NEW.active=1;
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ad
+        AFTER DELETE ON store_urls
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ai
+        AFTER INSERT ON store_products
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
+            INSERT INTO catalog_search_fts(store,url,search_text)
+            SELECT u.store,u.url,
+                   trim(COALESCE(u.slug,'') || ' ' ||
+                        COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
+              FROM store_urls u
+             WHERE u.store=NEW.store AND u.url=NEW.url
+               AND u.active=1;
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_au
+        AFTER UPDATE OF store,url,name,brand,fetch_status ON store_products
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
+            INSERT INTO catalog_search_fts(store,url,search_text)
+            SELECT u.store,u.url,
+                   trim(COALESCE(u.slug,'') || ' ' ||
+                        COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
+              FROM store_urls u
+             WHERE u.store=NEW.store AND u.url=NEW.url
+               AND u.active=1;
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ad
+        AFTER DELETE ON store_products
+        BEGIN
+            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
+            INSERT INTO catalog_search_fts(store,url,search_text)
+            SELECT u.store,u.url,trim(COALESCE(u.slug,''))
+              FROM store_urls u
+             WHERE u.store=OLD.store AND u.url=OLD.url AND u.active=1;
+        END
+        """,
+    )
+    for sql in trigger_sql:
+        conn.execute(sql)
+
+
+def _fts_query_for_tokens(token_set):
+    """Build a safe FTS5 AND query from normalized search tokens."""
+    parts = []
+    for token in token_set:
+        token = str(token or '').strip()
+        if token:
+            parts.append('"' + token.replace('"', '""') + '"')
+    return ' AND '.join(parts)
+
+
 def _ensure_schema(conn):
     """Create/migrate the catalog schema once per process.
 
@@ -344,6 +496,7 @@ def _ensure_schema(conn):
             price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
             PRIMARY KEY(store,url))""")
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
+        _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
             store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
             discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
@@ -573,15 +726,6 @@ def _parse_xml_entries(data, url=''):
 
 
 def _looks_product(url, store=None):
-    """Return whether a URL has a plausible product-page URL shape.
-
-    This is discovery-layer validation only. It does not assign product
-    identity and does not depend on a particular product name.
-
-    Some retailers expose a stable URL grammar that distinguishes products
-    from brand/category pages. When that grammar is known, use it here before
-    falling back to the generic multi-token slug heuristic.
-    """
     p = urllib.parse.urlparse(url)
     if p.scheme not in ('http', 'https') or p.fragment:
         return False
@@ -590,20 +734,17 @@ def _looks_product(url, store=None):
         return False
     if NON_PRODUCT_PATH.search(p.path):
         return False
-
-    # ParfumZentrum uses ``_z<id>`` for product pages and ``_v<id>`` for
-    # brand/category/navigation pages. The latter can otherwise pass the
-    # generic multi-token slug test (for example ``rayhaan_v1602``).
-    # This is a retailer URL grammar rule, not a product-specific exception.
-    if store == 'parfumzentrum':
-        return bool(re.search(r'(?:^|_)z\d+/?$', p.path, re.I))
-
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
     # because their slugs contain multiple words, so exclude them here while
     # keeping the generic heuristic unchanged for the other stores.
     if re.match(r'^/[a-z]{2}/(?:l|s)(?:/|$)', p.path, re.I):
         return False
+    # ParfumZentrum exposes product pages with a `_z<id>` suffix, while
+    # brand/category/navigation pages use a `_v<id>` suffix. Keep the rule
+    # retailer-generic: it distinguishes URL grammar, not product identity.
+    if store == 'parfumzentrum':
+        return bool(re.search(r'(?:^|_)z\d+/?$', p.path, re.I))
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
@@ -2405,17 +2546,10 @@ def _search_db():
     return conn
 
 
-def search_local(query, per_store=32, search_terms=None):
-    '''Search the persistent retailer catalog; never call a retailer endpoint.
 
-    Candidate discovery is query-scoped. The previous implementation lazily
-    rebuilt a complete Python token index for every store on the first search
-    after a cache miss. With a large catalog that made one user search wait on
-    a catalog-wide scan and could keep the search job alive long enough for the
-    frontend to abort it. Search now asks SQLite only for rows containing all
-    tokens of each requested term, then applies the same deterministic token
-    scoring in Python. ProductMatcher remains authoritative for identity.
-    '''
+def search_local(query, per_store=32, search_terms=None):
+    # FTS5 is candidate generation only. Whole-token verification and
+    # ProductMatcher remain authoritative for identity.
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2439,6 +2573,16 @@ def search_local(query, per_store=32, search_terms=None):
     limit = None if unlimited else max(1, int(per_store))
 
     try:
+        try:
+            fts_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            fts_exists = None
+
+        if not fts_exists:
+            return _search_local_legacy_sql(conn, token_sets, limit, rows)
+
         for store in STORES:
             selected_by_url = {}
 
@@ -2446,26 +2590,11 @@ def search_local(query, per_store=32, search_terms=None):
                 if limit is not None and len(selected_by_url) >= limit:
                     break
 
-                # Candidate generation only: substring SQL is intentionally
-                # permissive here. ProductMatcher performs the authoritative
-                # whole-token identity decision later, so candidate generation
-                # must not become a second matcher.
-                clauses = []
-                params = []
-                for token in ts:
-                    token = str(token or '').strip()
-                    if not token:
-                        continue
-                    pattern = f'%{token}%'
-                    clauses.append(
-                        '(u.slug LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)'
-                    )
-                    params.extend((pattern, pattern, pattern))
-
-                if not clauses:
+                fts_query = _fts_query_for_tokens(ts)
+                if not fts_query:
                     continue
 
-                sql = f'''
+                sql = '''
                     SELECT u.url,u.slug,u.lastmod,
                            p.store AS product_store,
                            p.url AS product_url,
@@ -2483,26 +2612,25 @@ def search_local(query, per_store=32, search_terms=None):
                            p.availability AS product_availability,
                            p.fetched_at AS product_fetched_at,
                            p.fetch_status AS fetch_status
-                      FROM store_urls u
+                      FROM catalog_search_fts f
+                      JOIN store_urls u
+                        ON u.store=f.store AND u.url=f.url
                       LEFT JOIN store_products p
-                        ON p.store=u.store
-                       AND p.url=u.url
+                        ON p.store=u.store AND p.url=u.url
                        AND p.fetch_status='OK'
-                     WHERE u.store=?
+                     WHERE f.store=?
+                       AND catalog_search_fts MATCH ?
                        AND u.active=1
-                       AND {' AND '.join(clauses)}
                      LIMIT ?
                 '''
-                query_params = [store, *params, max(128, limit or 128)]
-                candidates = conn.execute(sql, query_params).fetchall()
+                candidates = conn.execute(
+                    sql, (store, fts_query, max(128, limit or 128))
+                ).fetchall()
 
                 for r in candidates:
                     url = str(r['url'] or '').strip()
-                    if not url:
+                    if not url or url in selected_by_url:
                         continue
-                    if url in selected_by_url:
-                        continue
-
                     search_text = ' '.join(
                         str(r[key] or '')
                         for key in ('slug', 'product_name', 'product_brand')
@@ -2510,10 +2638,7 @@ def search_local(query, per_store=32, search_terms=None):
                     normalized_tokens = set(norm(search_text).split())
                     score = sum(1 for token in ts if token in normalized_tokens)
                     if score != len(ts):
-                        # SQL LIKE is only a broad candidate gate. Recheck
-                        # complete tokens before admitting the row.
                         continue
-
                     selected_by_url[url] = (score + 10, dict(r))
 
             ordered = sorted(
@@ -2528,7 +2653,7 @@ def search_local(query, per_store=32, search_terms=None):
                 if not url:
                     continue
                 if r.get('product_name'):
-                    item = {
+                    rows.append({
                         'url': url,
                         'slug': r.get('slug') or '',
                         'lastmod': r.get('lastmod') or '',
@@ -2549,8 +2674,7 @@ def search_local(query, per_store=32, search_terms=None):
                         'price_num': r.get('product_price'),
                         'store': STORE_LABELS[store],
                         'store_key': store,
-                    }
-                    rows.append(item)
+                    })
                 else:
                     rows.append({
                         'store': STORE_LABELS[store],
@@ -2559,10 +2683,107 @@ def search_local(query, per_store=32, search_terms=None):
                         'name': r.get('slug') or url_slug(url),
                         '_needs_refresh': True,
                     })
+        return rows
     finally:
         conn.close()
 
+
+def _search_local_legacy_sql(conn, token_sets, limit, rows):
+    # Compatibility path for SQLite builds without FTS5.
+    for store in STORES:
+        selected_by_url = {}
+        for ts in token_sets:
+            if limit is not None and len(selected_by_url) >= limit:
+                break
+            clauses = []
+            params = []
+            for token in ts:
+                token = str(token or '').strip()
+                if not token:
+                    continue
+                pattern = f'%{token}%'
+                clauses.append('(u.slug LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)')
+                params.extend((pattern, pattern, pattern))
+            if not clauses:
+                continue
+
+            sql = f'''
+                SELECT u.url,u.slug,u.lastmod,
+                       p.store AS product_store,p.url AS product_url,
+                       p.name AS product_name,p.brand AS product_brand,
+                       p.image AS product_image,p.sku AS product_sku,
+                       p.gtin AS product_gtin,p.mpn AS product_mpn,
+                       p.size_ml AS product_size_ml,
+                       p.concentration AS product_concentration,
+                       p.gender AS product_gender,p.price AS product_price,
+                       p.currency AS product_currency,
+                       p.availability AS product_availability,
+                       p.fetched_at AS product_fetched_at,
+                       p.fetch_status AS fetch_status
+                  FROM store_urls u
+                  LEFT JOIN store_products p
+                    ON p.store=u.store AND p.url=u.url
+                   AND p.fetch_status='OK'
+                 WHERE u.store=? AND u.active=1
+                   AND {' AND '.join(clauses)}
+                 LIMIT ?
+            '''
+            candidates = conn.execute(
+                sql, [store, *params, max(128, limit or 128)]
+            ).fetchall()
+            for r in candidates:
+                url = str(r['url'] or '').strip()
+                if not url or url in selected_by_url:
+                    continue
+                search_text = ' '.join(
+                    str(r[key] or '') for key in ('slug','product_name','product_brand')
+                )
+                normalized_tokens = set(norm(search_text).split())
+                score = sum(1 for token in ts if token in normalized_tokens)
+                if score != len(ts):
+                    continue
+                selected_by_url[url] = (score + 10, dict(r))
+
+        ordered = sorted(
+            selected_by_url.values(),
+            key=lambda item: (-item[0], str(item[1].get('url') or '')),
+        )
+        if limit is not None:
+            ordered = ordered[:limit]
+
+        for _score, r in ordered:
+            url = str(r.get('url') or '').strip()
+            if not url:
+                continue
+            if r.get('product_name'):
+                rows.append({
+                    'url': url,'slug': r.get('slug') or '',
+                    'lastmod': r.get('lastmod') or '',
+                    'name': r.get('product_name') or '',
+                    'brand': r.get('product_brand') or '',
+                    'image': r.get('product_image') or '',
+                    'sku': r.get('product_sku') or '',
+                    'gtin': r.get('product_gtin') or '',
+                    'mpn': r.get('product_mpn') or '',
+                    'size_ml': r.get('product_size_ml'),
+                    'concentration': r.get('product_concentration') or '',
+                    'gender': r.get('product_gender') or '',
+                    'price': r.get('product_price'),
+                    'currency': r.get('product_currency') or '',
+                    'availability': r.get('product_availability') or '',
+                    'fetched_at': r.get('product_fetched_at'),
+                    'fetch_status': r.get('fetch_status') or 'OK',
+                    'price_num': r.get('product_price'),
+                    'store': STORE_LABELS[store],'store_key': store,
+                })
+            else:
+                rows.append({
+                    'store': STORE_LABELS[store],'store_key': store,
+                    'url': url,'name': r.get('slug') or url_slug(url),
+                    '_needs_refresh': True,
+                })
     return rows
+
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
     """Refresh only catalog candidates that do not yet have page data.
