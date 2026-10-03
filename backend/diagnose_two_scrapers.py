@@ -761,6 +761,120 @@ def diagnose_catalog_store(
         }
 
 
+@router.get("/diagnose-catalog-search-local")
+def diagnose_catalog_search_local(
+    store: str = Query("parfumzentrum"),
+    q: str = Query("Rayhaan"),
+    max_results: int = Query(100, ge=1, le=500),
+):
+    """Read-only trace of the persistent catalog through search_local().
+
+    This endpoint deliberately calls ONLY catalog_engine.search_local(). It
+    does not call retailer scrapers, ProductMatcher, discovery, hydration,
+    the public /search route, or any database write operation.
+    """
+    started = time.monotonic()
+    store_key = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    try:
+        from catalog_engine import STORES, search_local
+
+        if store_key not in tuple(STORES):
+            return {
+                "diagnostic": "catalog-search-local-read-only-v1",
+                "ok": False,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "scraper_called": False,
+                "database_written": False,
+                "search_local_called": False,
+                "store": store_key,
+                "query": query,
+                "error": "invalid_store: available stores=" + ",".join(str(item) for item in STORES),
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        if not query:
+            return {
+                "diagnostic": "catalog-search-local-read-only-v1",
+                "ok": False,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "scraper_called": False,
+                "database_written": False,
+                "search_local_called": False,
+                "store": store_key,
+                "query": query,
+                "error": "empty_query",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        search_terms = [query]
+        raw_rows = search_local(
+            query,
+            per_store=max_results,
+            search_terms=search_terms,
+        )
+
+        rows = list(raw_rows or [])
+        store_rows = []
+        for row in rows:
+            if isinstance(row, dict):
+                row_store = str(row.get("store") or "").strip().lower()
+                if row_store == store_key:
+                    store_rows.append(dict(row))
+            else:
+                try:
+                    item = dict(row)
+                except Exception:
+                    item = {"value": str(row)}
+                row_store = str(item.get("store") or "").strip().lower()
+                if row_store == store_key:
+                    store_rows.append(item)
+
+        store_rows = store_rows[:max_results]
+
+        return {
+            "diagnostic": "catalog-search-local-read-only-v1",
+            "ok": True,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "scraper_called": False,
+            "database_written": False,
+            "search_local_called": True,
+            "store": store_key,
+            "query": query,
+            "search_terms": search_terms,
+            "catalog_search_row_count_all_stores": len(rows),
+            "catalog_search_row_count_store": len(store_rows),
+            "rows": store_rows,
+            "diagnosis": (
+                "SEARCH_LOCAL_RETURNS_STORE_ROWS: catalog projection exposes rows "
+                "for this store; next layer is main.py catalog report/identity resolution."
+                if store_rows else
+                "SEARCH_LOCAL_RETURNS_NO_STORE_ROWS: the catalog contains matching "
+                "SQLite rows but search_local() did not project any row for this store."
+            ),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except Exception as exc:
+        return {
+            "diagnostic": "catalog-search-local-read-only-v1",
+            "ok": False,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "scraper_called": False,
+            "database_written": False,
+            "search_local_called": True,
+            "store": store_key,
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
 @router.get("/diagnose-catalog-path")
 def diagnose_catalog_path(
     q: str = Query("Liquid Brun"),
