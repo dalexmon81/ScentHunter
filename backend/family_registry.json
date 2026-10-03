@@ -526,6 +526,163 @@
           ]
         }
       ]
+    },
+    {
+      "family_id": "aromatix_french_avenue",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Aromatix",
+        "Aromatix X French Avenue",
+        "French Avenue Aromatix"
+      ],
+      "products": [
+        {
+          "canonical_name": "Carnal Desire",
+          "aliases": [
+            "Carnal Desire",
+            "Aromatix Carnal Desire",
+            "Aromatix X French Avenue Carnal Desire",
+            "French Avenue Carnal Desire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Forbidden Fruit",
+          "aliases": [
+            "Forbidden Fruit",
+            "Aromatix Forbidden Fruit",
+            "Aromatix X French Avenue Forbidden Fruit",
+            "French Avenue Forbidden Fruit"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Frostbite",
+          "aliases": [
+            "Frostbite",
+            "Aromatix Frostbite",
+            "Aromatix X French Avenue Frostbite",
+            "French Avenue Frostbite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Magnetiq",
+          "aliases": [
+            "Magnetiq",
+            "Aromatix Magnetiq",
+            "Aromatix X French Avenue Magnetiq",
+            "French Avenue Magnetiq"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Naughty Dates",
+          "aliases": [
+            "Naughty Dates",
+            "Aromatix Naughty Dates",
+            "Aromatix X French Avenue Naughty Dates",
+            "French Avenue Naughty Dates"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ora",
+          "aliases": [
+            "Ora",
+            "Aromatix Ora",
+            "Aromatix X French Avenue Ora",
+            "French Avenue Ora"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Platine Blanc",
+          "aliases": [
+            "Platine Blanc",
+            "Aromatix Platine Blanc",
+            "Aromatix X French Avenue Platine Blanc",
+            "French Avenue Platine Blanc"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Taboo",
+          "aliases": [
+            "Royal Taboo",
+            "Aromatix Royal Taboo",
+            "Aromatix X French Avenue Royal Taboo",
+            "French Avenue Royal Taboo"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Roza",
+          "aliases": [
+            "Roza",
+            "Aromatix Roza",
+            "Aromatix X French Avenue Roza",
+            "French Avenue Roza"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sun Kissed",
+          "aliases": [
+            "Sun Kissed",
+            "Aromatix Sun Kissed",
+            "Aromatix X French Avenue Sun Kissed",
+            "French Avenue Sun Kissed"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Teas Me",
+          "aliases": [
+            "Teas Me",
+            "Aromatix Teas Me",
+            "Aromatix X French Avenue Teas Me",
+            "French Avenue Teas Me"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "X Xandal",
+          "aliases": [
+            "X Xandal",
+            "Aromatix X Xandal",
+            "Aromatix X French Avenue X Xandal",
+            "French Avenue X Xandal"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     }
   ]
 }
