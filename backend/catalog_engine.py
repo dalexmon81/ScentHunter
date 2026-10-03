@@ -2815,53 +2815,8 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows):
 
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
-    """Refresh only catalog candidates that do not yet have page data.
-
-    Cancellation is cooperative and the optional deadline is a hard search
-    budget. Pending futures are cancelled when either condition is reached;
-    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
-    but the executor is never waited on after cancellation/deadline expiry.
-    """
-    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
-    if not jobs:
-        return []
-    out = []
-    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
-    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
-    cancelled = False
-    try:
-        pending = set(futures)
-        while pending:
-            if cancel_event is not None and cancel_event.is_set():
-                cancelled = True
-                for future in pending:
-                    future.cancel()
-                break
-            if deadline is not None and time.monotonic() >= float(deadline):
-                cancelled = True
-                for future in pending:
-                    future.cancel()
-                break
-            done = [future for future in list(pending) if future.done()]
-            if not done:
-                time.sleep(0.05)
-                continue
-            for future in done:
-                pending.discard(future)
-                try:
-                    item = future.result()
-                    if item:
-                        out.append(item)
-                except Exception:
-                    pass
-        if cancelled:
-            return out
-        return out
-    finally:
-        # Never make a cancelled user search wait for all old refresh workers.
-        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
-        # own DB connections when finished.
-        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
+    """Read-only compatibility boundary: user search never performs network I/O."""
+    return []
 
 
 def hydration_pending_counts():
@@ -3760,72 +3715,13 @@ def coverage_status():
 
 
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Continuously hydrate discovered product pages in the background."""
-    _ensure_hydration_queue()
-    _coverage_ensure_schema()
-    recovered = recover_stale_tasks()
-    coverage_next_at = 0.0
-    print(
-        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
-        flush=True,
-    )
-    print(
-        f'CATALOG COVERAGE START interval={_COVERAGE_INTERVAL_SECONDS:g}s '
-        f'batch={_COVERAGE_BATCH_SIZE} workers={_COVERAGE_WORKERS}',
-        flush=True,
-    )
+    """Compatibility waiter; no background network work in the API process."""
+    print('CATALOG HYDRATION DISABLED: foreground API search is read-only', flush=True)
     while stop_event is None or not stop_event.is_set():
-        try:
-            # Background coverage/hydration is lower priority than the
-            # foreground catalog search.  Never start another retailer
-            # scraper or hydration batch while a user search is active.
-            if _foreground_search_running():
-                if stop_event is not None:
-                    stop_event.wait(0.25)
-                else:
-                    time.sleep(0.25)
-                continue
-
-            now_mono = time.monotonic()
-            # Coverage is deliberately NOT executed from the normal hydration
-            # loop. It invokes retailer discovery/search code and can create a
-            # second, independent network/browser workload behind a user search.
-            # Coverage remains available through its explicit operational path,
-            # but normal catalog hydration must only hydrate already-discovered
-            # product URLs.
-            if now_mono >= coverage_next_at:
-                coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
-            result = hydrate_catalog_batch(
-                max_urls=max(1, int(batch_size)),
-                workers=min(int(workers), HYDRATION_WORKERS),
-                deadline=time.monotonic() + max(30.0, float(REFRESH_TIMEOUT) + 5.0),
-            )
-            if result.get('selected', 0) == 0:
-                if stop_event is not None:
-                    stop_event.wait(max(5.0, float(pause_seconds)))
-                else:
-                    time.sleep(max(5.0, float(pause_seconds)))
-                continue
-            print(
-                'CATALOG HYDRATION BATCH '
-                f"selected={result.get('selected')} "
-                f"fetched={result.get('fetched')} "
-                f"errors={result.get('errors')}",
-                flush=True,
-            )
-            if stop_event is not None:
-                stop_event.wait(max(0.1, float(pause_seconds)))
-            else:
-                time.sleep(max(0.1, float(pause_seconds)))
-        except Exception as exc:
-            print(
-                f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
-                flush=True,
-            )
-            if stop_event is not None:
-                stop_event.wait(5.0)
-            else:
-                time.sleep(5.0)
+        if stop_event is not None:
+            stop_event.wait(5.0)
+        else:
+            time.sleep(5.0)
 
 
 def hydration_status():
