@@ -3714,95 +3714,115 @@ def coverage_status():
         conn.close()
 
 
-def _hydration_batch_process(batch_size, workers, timeout_seconds=25.0):
-    """Run one bounded hydration batch in a killable child process."""
+def _hydration_worker_process(batch_size, workers, pause_seconds=1.0):
+    """Run the durable hydration worker in one isolated child process.
+
+    The API process starts one worker process, not one process per batch.
+    Queue backfill happens once in the child, then small bounded batches run
+    continuously. If the worker hangs, the parent can terminate its process
+    group without affecting the API process.
+    """
     child_code = (
         "import json\n"
-        "import sys\n"
+        "import time\n"
         "import catalog_engine as ce\n"
-        "payload=json.load(sys.stdin)\n"
-        "result=ce.hydrate_catalog_batch(max_urls=int(payload.get('batch_size') or 2), workers=int(payload.get('workers') or 1))\n"
-        "json.dump(result, sys.stdout, ensure_ascii=False, default=str)\n"
-        "sys.stdout.flush()\n"
+        "ce._ensure_hydration_queue()\n"
+        "batch_size=max(1,min(int(%d),4))\n"
+        "workers=max(1,min(int(%d),2))\n"
+        "pause=max(1.0,float(%s))\n"
+        "while True:\n"
+        "    result=ce.hydrate_catalog_batch(max_urls=batch_size, workers=workers)\n"
+        "    if result.get('selected') or result.get('fetched') or result.get('errors'):\n"
+        "        print('CATALOG HYDRATION BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
+        "    time.sleep(pause)\n"
+        % (int(batch_size), int(workers), repr(float(pause_seconds)))
     )
     env = os.environ.copy()
     current = env.get('PYTHONPATH', '')
     env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
-    payload = json.dumps({'batch_size': int(batch_size), 'workers': int(workers)})
     process = None
     try:
         process = subprocess.Popen(
             [sys.executable, '-u', '-c', child_code],
             cwd=str(BASE_DIR),
             env=env,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
+            stdin=subprocess.DEVNULL,
+            stdout=None,
+            stderr=None,
             start_new_session=(os.name != 'nt'),
         )
-        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
-    except subprocess.TimeoutExpired:
-        if process is not None:
-            try:
-                if os.name != 'nt':
-                    os.killpg(process.pid, signal.SIGTERM)
-                else:
-                    process.terminate()
-            except Exception:
-                pass
-            try:
-                process.wait(timeout=2.0)
-            except Exception:
-                pass
-            try:
-                if process.poll() is None:
-                    if os.name != 'nt':
-                        os.killpg(process.pid, signal.SIGKILL)
-                    else:
-                        process.kill()
-            except Exception:
-                pass
-        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'timeout'}
+        return process
     except Exception as exc:
-        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'error', 'error': f'{type(exc).__name__}:{exc}'}
+        print(
+            f'CATALOG HYDRATION WORKER START ERROR: {type(exc).__name__}:{exc}',
+            flush=True,
+        )
+        return None
 
-    if process is None or process.returncode != 0:
-        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': f'exit_{getattr(process, "returncode", None)}'}
+
+def _terminate_hydration_worker(process):
+    """Terminate the isolated hydration worker and its descendants."""
+    if process is None:
+        return
     try:
-        result = json.loads(stdout or '{}')
-        return result if isinstance(result, dict) else {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'invalid_result'}
-    except Exception as exc:
-        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'invalid_result', 'error': f'{type(exc).__name__}:{exc}'}
+        if process.poll() is None:
+            if os.name != 'nt':
+                os.killpg(process.pid, signal.SIGTERM)
+            else:
+                process.terminate()
+            try:
+                process.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                if os.name != 'nt':
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+                try:
+                    process.wait(timeout=2.0)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Hydrate discovered product URLs outside the API process."""
+    """Hydrate discovered product URLs in one persistent isolated worker."""
     batch_size = max(1, min(int(batch_size or 2), 4))
     workers = max(1, min(int(workers or 1), 2))
+    pause_seconds = max(1.0, float(pause_seconds or 1.0))
     print(
-        f'CATALOG HYDRATION START isolated batch={batch_size} workers={workers}',
+        f'CATALOG HYDRATION START isolated-persistent batch={batch_size} workers={workers}',
         flush=True,
     )
+
+    process = None
     while stop_event is None or not stop_event.is_set():
-        try:
-            result = _hydration_batch_process(batch_size, workers, timeout_seconds=25.0)
-            selected = int(result.get('selected') or 0)
-            fetched = int(result.get('fetched') or 0)
-            errors = int(result.get('errors') or 0)
-            if selected or fetched or errors:
+        if process is None or process.poll() is not None:
+            if process is not None:
                 print(
-                    f'CATALOG HYDRATION BATCH selected={selected} fetched={fetched} errors={errors} status={result.get("status", "ok")}',
+                    f'CATALOG HYDRATION WORKER EXIT code={process.returncode}; restarting',
                     flush=True,
                 )
-        except Exception as exc:
-            print(f'CATALOG HYDRATION ERROR: {type(exc).__name__}:{exc}', flush=True)
+            process = _hydration_worker_process(
+                batch_size,
+                workers,
+                pause_seconds,
+            )
+            if process is None:
+                if stop_event is not None:
+                    stop_event.wait(5.0)
+                else:
+                    time.sleep(5.0)
+                continue
+
         if stop_event is not None:
-            stop_event.wait(max(1.0, float(pause_seconds)))
+            if stop_event.wait(2.0):
+                break
         else:
-            time.sleep(max(1.0, float(pause_seconds)))
+            time.sleep(2.0)
+
+    _terminate_hydration_worker(process)
+    print('CATALOG HYDRATION STOP', flush=True)
 
 
 def hydration_status():
