@@ -1,14 +1,16 @@
 """
-ScentHunter - Sabina bounded discovery diagnostic v3.
+ScentHunter - Sabina bounded discovery diagnostic v4.
 
 Read-only. This module isolates Sabina native discovery routes without calling
 search(), product pages, ProductMatcher, catalog, hydration, or aggregation.
-It also preserves the existing product-page availability diagnostic.
+It also preserves the existing product-page availability diagnostic and adds
+a single-seed pagination diagnostic for the Sabina category graph.
 """
 
 import inspect
+import re
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin, parse_qsl, urlencode, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -241,3 +243,290 @@ def diagnose_sabina_legacy_crawl(
         }
     except Exception as exc:
         return {"diagnostic": "sabina-legacy-crawl-v3", "ok": False, "error": f"{type(exc).__name__}: {exc}", "read_only": True, "elapsed_sec": round(time.time() - started, 3)}
+
+
+@router.get("/diagnose-sabina-category-pagination")
+def diagnose_sabina_category_pagination(
+    category_url: str = Query(
+        "https://www.sabina.com/it/6-profumi-di-donna",
+        min_length=20,
+        max_length=500,
+    ),
+    target: str = Query("41708", min_length=1, max_length=120),
+):
+    """
+    Single-seed, read-only Sabina pagination diagnostic.
+
+    Stages:
+      1. Fetch exactly one category page using catalog_engine's production HTML fetch.
+      2. Extract pagination-looking hrefs from the HTML.
+      3. Test each candidate through catalog_engine._html_listing_url().
+      4. Fetch the first accepted next-page URL only.
+      5. Inspect that page for the target token and product URLs.
+
+    No production search, matcher, hydration, catalog write, or product-page
+    request is performed.
+    """
+    started = time.monotonic()
+
+    base_result = {
+        "diagnostic": "sabina-category-pagination-read-only-v1",
+        "ok": False,
+        "read_only": True,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "hydration_called": False,
+        "database_written": False,
+        "category_url": category_url,
+        "target": target,
+    }
+
+    try:
+        import catalog_engine as ce
+
+        fetch_fn = getattr(ce, "_fetch_html_page", None)
+        listing_fn = getattr(ce, "_html_listing_url", None)
+        product_fn = getattr(ce, "_html_product_url", None)
+        if not callable(fetch_fn) or not callable(listing_fn) or not callable(product_fn):
+            return {
+                **base_result,
+                "error": "required catalog_engine HTML helpers are unavailable",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        category_started = time.monotonic()
+        requested, final_url, data, error = fetch_fn("sabina", category_url)
+        category_http = {
+            "requested_url": requested,
+            "final_url": final_url,
+            "status": None if error else 200,
+            "bytes": len(data or b""),
+            "elapsed_sec": round(time.monotonic() - category_started, 3),
+            "error": error,
+        }
+        if error or not data:
+            return {
+                **base_result,
+                "stage": "category_fetch",
+                "category_http": category_http,
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        page_base = final_url or category_url
+        soup = BeautifulSoup(data, "html.parser")
+        target_norm = str(target or "").strip().lower()
+        html_lower = data.decode("utf-8", "ignore").lower()
+
+        # Collect only links that actually look like pagination URLs. This is
+        # diagnostic classification, not a production discovery rule.
+        raw_candidates = []
+        seen_raw = set()
+        for a in soup.find_all("a", href=True):
+            href = str(a.get("href") or "").strip()
+            if not href:
+                continue
+            absolute = urljoin(page_base, href).split("#", 1)[0]
+            parsed = urlparse(absolute)
+            query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+            query_keys = {str(k).lower() for k, _ in query_pairs}
+            pagination_key = bool(
+                query_keys.intersection({"p", "page", "pagina", "offset", "start"})
+            )
+            pagination_path = bool(
+                re.search(r"(?:/page/|/pagina/)", parsed.path, re.I)
+            )
+            if not (pagination_key or pagination_path):
+                continue
+            if absolute in seen_raw:
+                continue
+            seen_raw.add(absolute)
+            label = a.get_text(" ", strip=True)
+            accepted = listing_fn("sabina", href, page_base, label)
+            raw_candidates.append({
+                "href": href,
+                "absolute_url": absolute,
+                "label": label[:200],
+                "query_keys": sorted(query_keys),
+                "accepted_by_html_listing_url": bool(accepted),
+                "accepted_url": accepted,
+            })
+
+        # Also inspect embedded navigation attributes because Sabina can expose
+        # pagination through data-* attributes rather than ordinary anchors.
+        navigation_attrs = (
+            "data-url", "data-href", "data-link", "data-next-url",
+            "data-next", "data-load-more-url", "data-pagination-url",
+        )
+        for node in soup.find_all(True):
+            for attr in navigation_attrs:
+                raw = str(node.get(attr) or "").strip()
+                if not raw:
+                    continue
+                absolute = urljoin(page_base, raw).split("#", 1)[0]
+                parsed = urlparse(absolute)
+                query_keys = {str(k).lower() for k, _ in parse_qsl(parsed.query, keep_blank_values=True)}
+                if not (
+                    query_keys.intersection({"p", "page", "pagina", "offset", "start"})
+                    or re.search(r"(?:/page/|/pagina/)", parsed.path, re.I)
+                ):
+                    continue
+                if absolute in seen_raw:
+                    continue
+                seen_raw.add(absolute)
+                label = node.get_text(" ", strip=True)[:200]
+                accepted = listing_fn("sabina", raw, page_base, label)
+                raw_candidates.append({
+                    "href": raw,
+                    "absolute_url": absolute,
+                    "label": label,
+                    "query_keys": sorted(query_keys),
+                    "attribute": attr,
+                    "accepted_by_html_listing_url": bool(accepted),
+                    "accepted_url": accepted,
+                })
+
+        accepted_urls = [
+            x["accepted_url"] for x in raw_candidates
+            if x.get("accepted_url")
+        ]
+        accepted_urls = list(dict.fromkeys(accepted_urls))
+
+        # Prefer the first page > 1 when the retailer exposes an explicit p/page
+        # parameter. Otherwise use the first accepted pagination URL.
+        def page_number(url):
+            try:
+                params = dict(parse_qsl(urlparse(url).query, keep_blank_values=True))
+                for key in ("p", "page", "pagina"):
+                    if key in params and str(params[key]).isdigit():
+                        return int(params[key])
+            except Exception:
+                pass
+            return None
+
+        ordered = sorted(
+            accepted_urls,
+            key=lambda u: (
+                0 if (page_number(u) is not None and page_number(u) > 1) else 1,
+                page_number(u) if page_number(u) is not None else 999999,
+                u,
+            ),
+        )
+        next_url = ordered[0] if ordered else None
+
+        pagination_summary = {
+            "raw_pagination_candidates": len(raw_candidates),
+            "accepted_pagination_urls": len(accepted_urls),
+            "accepted_urls_sample": accepted_urls[:30],
+            "selected_next_url": next_url,
+            "selected_page_number": page_number(next_url) if next_url else None,
+        }
+
+        result = {
+            **base_result,
+            "ok": True,
+            "stage": "category_parsed",
+            "category_http": category_http,
+            "pagination": pagination_summary,
+            "pagination_candidates": raw_candidates[:100],
+            "category_target_text_hit": target_norm in html_lower if target_norm else False,
+        }
+
+        if not next_url:
+            result["stage"] = "pagination_not_found_or_rejected"
+            result["diagnosis"] = (
+                "CATEGORY_FETCH_OK_BUT_NO_ACCEPTED_PAGINATION: the category page "
+                "was fetched, but no pagination URL was both discovered and accepted "
+                "by _html_listing_url()."
+            )
+            result["elapsed_sec"] = round(time.monotonic() - started, 3)
+            return result
+
+        next_started = time.monotonic()
+        req2, final2, data2, error2 = fetch_fn("sabina", next_url)
+        next_http = {
+            "requested_url": req2,
+            "final_url": final2,
+            "status": None if error2 else 200,
+            "bytes": len(data2 or b""),
+            "elapsed_sec": round(time.monotonic() - next_started, 3),
+            "error": error2,
+        }
+        result["next_page_http"] = next_http
+
+        if error2 or not data2:
+            result["stage"] = "next_page_fetch_failed"
+            result["diagnosis"] = (
+                "PAGINATION_ACCEPTED_BUT_NEXT_PAGE_FETCH_FAILED: the pagination "
+                "URL is accepted by _html_listing_url(), but the production HTML "
+                "fetch could not retrieve it."
+            )
+            result["elapsed_sec"] = round(time.monotonic() - started, 3)
+            return result
+
+        soup2 = BeautifulSoup(data2, "html.parser")
+        text2 = soup2.get_text(" ", strip=True)
+        lower2 = data2.decode("utf-8", "ignore").lower()
+
+        product_urls = []
+        for a in soup2.find_all("a", href=True):
+            product = product_fn("sabina", a.get("href"), final2 or next_url)
+            if product:
+                product_urls.append(product)
+
+        for item in getattr(ce, "_jsonld", lambda _s: [])(soup2):
+            product = product_fn("sabina", item.get("url"), final2 or next_url)
+            if product:
+                product_urls.append(product)
+
+        product_urls = list(dict.fromkeys(product_urls))
+        target_urls = [
+            u for u in product_urls
+            if target_norm and target_norm in u.lower()
+        ]
+
+        # This helper is generic and read-only; it does not fetch product pages.
+        legacy_urls = []
+        legacy_fn = getattr(ce, "_sabina_legacy_product_urls", None)
+        if callable(legacy_fn):
+            try:
+                legacy_urls = list(legacy_fn(data2, final2 or next_url))
+            except Exception as exc:
+                result["legacy_helper_error"] = f"{type(exc).__name__}: {exc}"
+
+        legacy_target_urls = [
+            u for u in legacy_urls
+            if target_norm and target_norm in u.lower()
+        ]
+
+        result.update({
+            "stage": "next_page_parsed",
+            "next_page": {
+                "bytes": len(data2),
+                "target_text_hit": target_norm in lower2 if target_norm else False,
+                "target_url_hit": bool(target_urls),
+                "target_urls": target_urls[:20],
+                "product_url_count": len(product_urls),
+                "product_urls_sample": product_urls[:50],
+                "legacy_product_url_count": len(legacy_urls),
+                "legacy_target_urls": legacy_target_urls[:20],
+                "liquid_brun_text_hit": "liquid brun" in lower2,
+                "french_avenue_text_hit": "french avenue" in lower2,
+            },
+            "diagnosis": (
+                "TARGET_REACHED_ON_NEXT_PAGE"
+                if target_urls or legacy_target_urls or (target_norm and target_norm in lower2)
+                else
+                "NEXT_PAGE_FETCHED_TARGET_NOT_PRESENT: pagination works for the first "
+                "next page, but the requested target is not on that page."
+            ),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        })
+        return result
+
+    except Exception as exc:
+        return {
+            **base_result,
+            "stage": "exception",
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
