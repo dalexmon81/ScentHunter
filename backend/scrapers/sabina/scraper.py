@@ -25,6 +25,9 @@ DISCOVERY_TIMEOUT = 7
 PRODUCT_WORKERS = 6
 MAX_CANDIDATES = 8
 MAX_SITEMAP_CANDIDATES = 8
+# Bounded browser fallback for Sabina's generic native search.
+BROWSER_DISCOVERY_TIMEOUT_MS = 15000
+BROWSER_DISCOVERY_WAIT_MS = 1000
 
 HEADERS = {
     "User-Agent": (
@@ -790,14 +793,64 @@ def _sitemap_product_urls(session, query):
     return list(dict.fromkeys(found))[:MAX_SITEMAP_CANDIDATES]
 
 
+def _browser_search_product_urls(query):
+    """Bounded browser fallback for Sabina's generic native search."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return []
+
+    from urllib.parse import urlencode
+
+    search_url = BASE_URL + "/es/buscar?" + urlencode({"search_query": query})
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(
+                    user_agent=HEADERS["User-Agent"],
+                    locale="es-ES",
+                    extra_http_headers={
+                        "Accept-Language": HEADERS["Accept-Language"],
+                    },
+                )
+                page.goto(
+                    search_url,
+                    wait_until="domcontentloaded",
+                    timeout=BROWSER_DISCOVERY_TIMEOUT_MS,
+                )
+                if BROWSER_DISCOVERY_WAIT_MS > 0:
+                    page.wait_for_timeout(BROWSER_DISCOVERY_WAIT_MS)
+
+                html = page.content()
+                if not html:
+                    return []
+
+                class _BrowserResponse:
+                    def __init__(self, text, url):
+                        self.text = text
+                        self.url = url
+
+                response = _BrowserResponse(html, page.url)
+                return _extract_search_candidates(
+                    response, query
+                )[:MAX_CANDIDATES]
+            finally:
+                browser.close()
+    except Exception:
+        return []
+
+
 def discover_product_urls(session, query):
     """
     Generic Sabina discovery.
 
     Try the retailer's known generic native-search routes in sequence. Each
     route is driven only by the runtime query; there are no product/brand/SKU
-    exceptions. If all native routes fail to produce candidates, use the
-    bounded generic sitemap fallback.
+    exceptions. If native HTTP search does not produce candidates, use the
+    same generic native-search surface through a bounded browser fallback,
+    then the bounded generic sitemap fallback.
     """
     for endpoint, param_template in SEARCH_ENDPOINTS:
         params = {
@@ -822,8 +875,15 @@ def discover_product_urls(session, query):
         if candidates:
             return candidates[:MAX_CANDIDATES]
 
-    # Native search returned no usable candidates. Use only a bounded,
-    # generic sitemap fallback rather than scanning brand indexes.
+    # HTTP-native search can time out while the same public search surface
+    # remains usable through a real browser. Try that generic surface once
+    # before falling back to the retailer sitemap.
+    browser_candidates = _browser_search_product_urls(query)
+    if browser_candidates:
+        return browser_candidates[:MAX_CANDIDATES]
+
+    # Native and browser search returned no usable candidates. Use only a
+    # bounded generic sitemap fallback rather than scanning brand indexes.
     return _sitemap_product_urls(session, query)[:MAX_CANDIDATES]
 
 
