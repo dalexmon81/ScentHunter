@@ -2245,11 +2245,12 @@ class ProductMatcher:
                 else 0.0
             )
 
-            # Preserve the original matcher rule: generic matching must not
-            # promote a shorter query merely because it is a substring of a
-            # longer canonical name.
-            if candidate in name:
-                f_score = max(f_score, 0.92)
+            # Never promote a candidate merely because it is a substring of
+            # a longer word. Identity matching is token-based: a catalog name
+            # such as ``Kiss`` must not match ``Kissed``, and a one-letter
+            # identity such as ``Q`` must not match ``Magnetiq``.
+            # Phrase containment is handled separately by the token/F-score
+            # calculation above, so arbitrary substring promotion is unsafe.
 
             best = max(best, f_score)
 
