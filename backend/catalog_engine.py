@@ -1008,6 +1008,15 @@ HTML_DISCOVERY_SEEDS = {
         # catalog coverage without coupling discovery to the user's search.
         'https://www.sabina.com/it/ricerca_old?s=parfum',
         'https://www.sabina.com/it/ricerca_old?s=extrait',
+        # Sabina's Spanish storefront exposes a second native search surface
+        # that is currently used by the runtime scraper. It is a generic
+        # retailer catalog surface: only broad fragrance terms are seeded here,
+        # never the user's query or a product/brand-specific term.
+        'https://www.sabina.com/es/buscar?search_query=parfum',
+        'https://www.sabina.com/es/buscar?search_query=perfume',
+        'https://www.sabina.com/es/buscar?search_query=fragrance',
+        'https://www.sabina.com/es/buscar?search_query=extrait',
+        'https://www.sabina.com/es/buscar?search_query=profumi',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -1201,9 +1210,15 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina catalog/navigation pages are crawlable without a query
-        # endpoint. Product pages are excluded here because _html_product_url
-        # handles their numeric-id .html shape.
+        # Sabina's Spanish native search is a generic catalog enumeration
+        # surface used by the runtime scraper. Accept it only with the
+        # retailer's search_query parameter; discovery never injects the
+        # user's request into these URLs. Product pages are excluded here
+        # because _html_product_url handles their numeric-id .html shape.
+        if path.rstrip('/') == '/es/buscar':
+            if re.search(r'(?:^|&)(?:search_query)=', p.query, re.I):
+                return absolute
+            return None
         if path.endswith('.html'):
             return None
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
@@ -1293,6 +1308,14 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Sabina's native legacy search is a real catalog/navigation surface.
     # Give the native `?s=` form highest priority so generic catalog probes are
     # executed before the broad category graph consumes the bounded crawl.
+    elif (
+        store == 'sabina'
+        and path.rstrip('/') == '/es/buscar'
+        and re.search(r'(?:^|&)search_query=', p.query, re.I)
+    ):
+        # The Spanish native search is a high-value catalog surface for Sabina.
+        # Priority is structural and independent of the user's query.
+        score = 0
     elif (
         store == 'sabina'
         and path.rstrip('/') in ('/it/ricerca_old', '/it/ricerca')
