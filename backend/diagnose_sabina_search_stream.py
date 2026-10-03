@@ -175,3 +175,101 @@ def diagnose_sabina_product_page(
             "hydration_called": False,
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
+
+
+@router.get("/diagnose-sabina-discover-and-target")
+def diagnose_sabina_discover_and_target(
+    q: str = Query("Liquid Brun Limited Edition", min_length=1, max_length=120),
+):
+    """
+    Read-only isolation of production discovery + the exact discovered target.
+    It intentionally does NOT run search() over every candidate.
+    """
+    started = time.monotonic()
+    target_token = "41708"
+
+    try:
+        from scrapers.sabina import scraper
+
+        session = requests.Session()
+        try:
+            discovery_started = time.monotonic()
+            candidates = scraper.discover_product_urls(session, q)
+            discovery_elapsed = round(time.monotonic() - discovery_started, 3)
+
+            target_urls = [
+                url for url in candidates
+                if target_token in str(url)
+            ]
+
+            target_result = None
+            target_error = None
+
+            if target_urls:
+                target_url = target_urls[0]
+                parse_started = time.monotonic()
+                try:
+                    target_result = scraper.extract_product_page(
+                        session, target_url, q
+                    )
+                except Exception as exc:
+                    target_error = f"{type(exc).__name__}: {exc}"
+                parse_elapsed = round(time.monotonic() - parse_started, 3)
+            else:
+                target_url = None
+                parse_elapsed = None
+
+            compact = None
+            if isinstance(target_result, dict):
+                compact = {
+                    "name": target_result.get("name"),
+                    "brand": target_result.get("brand"),
+                    "price": target_result.get("price"),
+                    "available": target_result.get("available"),
+                    "availability": target_result.get("availability"),
+                    "url": target_result.get("url"),
+                    "identity": target_result.get("identity"),
+                    "attributes": target_result.get("attributes"),
+                    "offer": target_result.get("offer"),
+                }
+
+            return {
+                "diagnostic": "sabina-discover-and-target-v1",
+                "ok": True,
+                "query": q,
+                "discovery": {
+                    "elapsed_sec": discovery_elapsed,
+                    "candidate_count": len(candidates),
+                    "candidates": candidates,
+                    "target_41708_found": bool(target_urls),
+                    "target_urls": target_urls,
+                },
+                "target_parse": {
+                    "url": target_url,
+                    "elapsed_sec": parse_elapsed,
+                    "returned_product": target_result is not None,
+                    "error": target_error,
+                    "product": compact,
+                },
+                "read_only": True,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "catalog_written": False,
+                "hydration_called": False,
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+        finally:
+            session.close()
+
+    except Exception as exc:
+        return {
+            "diagnostic": "sabina-discover-and-target-v1",
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "read_only": True,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "catalog_written": False,
+            "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
