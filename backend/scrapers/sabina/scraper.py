@@ -852,6 +852,9 @@ def discover_product_urls(session, query):
     same generic native-search surface through a bounded browser fallback,
     then the bounded generic sitemap fallback.
     """
+    native_candidates = []
+    seen = set()
+
     for endpoint, param_template in SEARCH_ENDPOINTS:
         params = {
             key: (query if value is True else value)
@@ -872,18 +875,57 @@ def discover_product_urls(session, query):
             continue
 
         candidates = _extract_search_candidates(response, query)
-        if candidates:
-            return candidates[:MAX_CANDIDATES]
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                native_candidates.append(candidate)
 
-    # HTTP-native search can time out while the same public search surface
-    # remains usable through a real browser. Try that generic surface once
-    # before falling back to the retailer sitemap.
+        # A native route can return technically valid product URLs that are
+        # unrelated to the runtime query. Do not stop on those false-positive
+        # candidates. Continue through the remaining generic Sabina routes
+        # until a URL itself contains all meaningful query tokens.
+        strong = [
+            candidate
+            for candidate in native_candidates
+            if query_matches(candidate, query)
+        ]
+        if strong:
+            ranked = sorted(
+                native_candidates,
+                key=lambda candidate: (
+                    -_candidate_score(candidate, '', query),
+                    candidate,
+                ),
+            )
+            return ranked[:MAX_CANDIDATES]
+
+    # HTTP-native search can time out or return only unrelated candidates while
+    # the same public search surface remains usable through a real browser.
+    # Use the browser fallback only after all native routes have been tried.
     browser_candidates = _browser_search_product_urls(query)
-    if browser_candidates:
-        return browser_candidates[:MAX_CANDIDATES]
+    merged = list(native_candidates)
+    for candidate in browser_candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            merged.append(candidate)
 
-    # Native and browser search returned no usable candidates. Use only a
-    # bounded generic sitemap fallback rather than scanning brand indexes.
+    strong = [
+        candidate
+        for candidate in merged
+        if query_matches(candidate, query)
+    ]
+    if strong:
+        ranked = sorted(
+            merged,
+            key=lambda candidate: (
+                -_candidate_score(candidate, '', query),
+                candidate,
+            ),
+        )
+        return ranked[:MAX_CANDIDATES]
+
+    # Native and browser search returned no query-relevant candidates. Use only
+    # a bounded generic sitemap fallback rather than scanning brand indexes.
     return _sitemap_product_urls(session, query)[:MAX_CANDIDATES]
 
 
