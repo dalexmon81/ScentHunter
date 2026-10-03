@@ -556,6 +556,11 @@ class ProductMatcher:
         # normalized aliases and concentration metadata for every offer was
         # unnecessarily expensive and could monopolize a store worker.
         self._url_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
+        # Token postings let generic URL identity lookup inspect only products
+        # that share at least one identity token with the offer URL. This is a
+        # lossless candidate-generation optimization: every positive URL score
+        # requires at least one shared identity token.
+        self._url_token_index: Dict[str, set[int]] = {}
         for product in self.catalog:
             product_cache: List[Tuple[Any, ...]] = []
             catalog_identity_tokens = frozenset(
@@ -586,6 +591,11 @@ class ProductMatcher:
                     )
                 )
             self._url_product_cache[id(product)] = tuple(product_cache)
+            url_index_tokens = set()
+            for _alias, _c_tokens, _identity_candidate, identity_c_tokens, _concentration in product_cache:
+                url_index_tokens.update(identity_c_tokens)
+            for token in url_index_tokens:
+                self._url_token_index.setdefault(token, set()).add(id(product))
 
         # Precompute text/brand blocking data once per catalog product.
         # Generic matching must preserve the same identity rules, but it must
@@ -594,6 +604,10 @@ class ProductMatcher:
         self._text_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
         self._text_specificity_cache: Dict[int, int] = {}
         self._brand_compatible_cache: Dict[str, Tuple[CatalogProduct, ...]] = {}
+        # Text postings are a lossless candidate generator for accepted text
+        # matches: a positive F-score requires at least one shared token.
+        self._text_token_index: Dict[str, set[int]] = {}
+        self._text_exact_index: Dict[str, Tuple[CatalogProduct, ...]] = {}
 
         for product in self.catalog:
             product_id = id(product)
@@ -614,6 +628,13 @@ class ProductMatcher:
                 text_cache.append((cleaned, tokens, token_set))
 
             self._text_product_cache[product_id] = tuple(text_cache)
+            for cleaned, _tokens, token_set in text_cache:
+                for token in token_set:
+                    self._text_token_index.setdefault(token, set()).add(product_id)
+                exact_bucket = list(self._text_exact_index.get(cleaned, ()))
+                if product not in exact_bucket:
+                    exact_bucket.append(product)
+                self._text_exact_index[cleaned] = tuple(exact_bucket)
             self._text_specificity_cache[product_id] = len(
                 set(self._variant_specificity_key(product.name, product.brand).split())
             )
@@ -2214,11 +2235,10 @@ class ProductMatcher:
     def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
         """Resolve a generic offer with identifiers, name evidence and URL identity.
 
-        Retailer display names are not authoritative: a product card can carry a
-        shortened or neighbouring-product name while the product URL contains the
-        exact variant. URL evidence is therefore used generically across the
-        catalog, with specificity tie-breaking, before accepting a weaker text
-        match. No retailer- or product-specific rule is used here.
+        Candidate generation is indexed and lossless for the acceptance rules:
+        a positive text score requires a shared text token, and a positive URL
+        score requires a shared URL identity token. The authoritative scoring
+        and tie-breaking rules remain unchanged.
         """
         gtin = identifier(offer, self.GTIN_KEYS)
         if gtin in self._by_gtin and len(self._by_gtin[gtin]) == 1:
@@ -2239,49 +2259,77 @@ class ProductMatcher:
 
         normalized_brand = normalize(brand)
         if normalized_brand:
-            # Preserve the exact old brand-compatibility semantics, but scan
-            # the catalog only once per distinct offer brand and reuse the
-            # resulting candidate set across all offers from that brand.
             eligible = list(self._brand_compatible_products(normalized_brand))
         else:
-            # Preserve the previous behavior when no usable brand exists: the
-            # full catalog remains eligible. The expensive catalog-side text
-            # normalization has already been precomputed, so this path is still
-            # materially cheaper without introducing a lossy blocking rule.
             eligible = list(self.catalog)
 
-        # First resolve the strongest textual candidate for the fallback path.
-        best_text_product: Optional[CatalogProduct] = None
-        best_text_score = 0.0
-        best_text_specificity = -1
-        text_candidates = []
-        for product in eligible:
-            score = self._text_score(brand, name, product)
-            specificity = self._text_specificity(product)
-            text_candidates.append((product, score, specificity))
+        eligible_by_id = {id(product): product for product in eligible}
 
-        for product, score, specificity in text_candidates:
-            if (
-                score > best_text_score
-                or (
-                    abs(score - best_text_score) < 0.03
-                    and specificity > best_text_specificity
-                )
-            ):
-                best_text_product = product
-                best_text_score = score
-                best_text_specificity = specificity
+        # Text candidate generation: every accepted text score has at least one
+        # shared token. Keep the old full-catalog behavior only as a safety
+        # fallback when no indexed token is available.
+        offer_text = catalog_clean_text(name)
+        offer_tokens = set(offer_text.split())
+        text_ids: set[int] = set()
+        for token in offer_tokens:
+            text_ids.update(self._text_token_index.get(token, set()))
+        text_products = [eligible_by_id[pid] for pid in text_ids if pid in eligible_by_id]
 
-        # Normalize the offer URL and brand tokens once for the catalog-wide
-        # URL scoring pass.
+        # Exact normalized identity is the strongest text result. Multiple
+        # catalog products sharing the exact identity remain subject to the
+        # existing specificity/tie-breaking rules.
+        exact_products = [
+            product for product in self._text_exact_index.get(offer_text, ())
+            if id(product) in eligible_by_id
+        ]
+        if exact_products:
+            best_text_product = None
+            best_text_specificity = -1
+            for product in exact_products:
+                specificity = self._text_specificity(product)
+                if (
+                    best_text_product is None
+                    or specificity > best_text_specificity
+                ):
+                    best_text_product = product
+                    best_text_specificity = specificity
+            best_text_score = 1.0
+        else:
+            best_text_product = None
+            best_text_score = 0.0
+            best_text_specificity = -1
+            for product in text_products:
+                score = self._text_score(brand, name, product)
+                specificity = self._text_specificity(product)
+                if (
+                    score > best_text_score
+                    or (
+                        abs(score - best_text_score) < 0.03
+                        and specificity > best_text_specificity
+                    )
+                ):
+                    best_text_product = product
+                    best_text_score = score
+                    best_text_specificity = specificity
+
+        # URL candidate generation is also lossless for positive URL scores:
+        # _url_candidate_score cannot become positive without at least one
+        # shared identity token after its generic/domain/brand filtering.
         url_context = self._prepare_offer_url_context(offer)
+        url_ids: set[int] = set()
+        prepared_urls, _brand_tokens = url_context
+        for url_variants in prepared_urls:
+            for variant_data in url_variants:
+                raw_variant = variant_data[0]
+                url_tokens = ProductMatcher._url_identity_text(raw_variant).split()
+                for token in url_tokens:
+                    url_ids.update(self._url_token_index.get(token, set()))
 
-        # URL evidence is independent of retailer and can discover a stronger
-        # catalog identity than the scraped name.
-        best_url_product: Optional[CatalogProduct] = None
+        url_products = [eligible_by_id[pid] for pid in url_ids if pid in eligible_by_id]
+        best_url_product = None
         best_url_score = 0.0
         best_url_specificity = -1
-        for product in eligible:
+        for product in url_products:
             score, _alias = self._url_candidate_score(offer, product, url_context)
             specificity = self._text_specificity(product)
             if (
@@ -2296,8 +2344,6 @@ class ProductMatcher:
                 best_url_specificity = specificity
 
         if best_url_product is not None and best_url_score >= 0.72:
-            # Strong URL identity wins when it is more specific than the text
-            # candidate, or when the URL itself is materially stronger.
             if (
                 best_text_product is None
                 or best_url_specificity > best_text_specificity
