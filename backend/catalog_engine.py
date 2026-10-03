@@ -3787,16 +3787,13 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
+            # Coverage is deliberately NOT executed from the normal hydration
+            # loop. It invokes retailer discovery/search code and can create a
+            # second, independent network/browser workload behind a user search.
+            # Coverage remains available through its explicit operational path,
+            # but normal catalog hydration must only hydrate already-discovered
+            # product URLs.
             if now_mono >= coverage_next_at:
-                coverage_result = coverage_batch()
-                print(
-                    'CATALOG COVERAGE BATCH '
-                    f"selected={coverage_result.get('selected')} "
-                    f"found={coverage_result.get('found')} "
-                    f"not_found={coverage_result.get('not_found')} "
-                    f"errors={coverage_result.get('errors')}",
-                    flush=True,
-                )
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
             result = hydrate_catalog_batch(
                 max_urls=max(1, int(batch_size)),
