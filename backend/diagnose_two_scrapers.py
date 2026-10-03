@@ -629,6 +629,138 @@ def _catalog_queue_state(conn, store, urls):
     return {row["url"]: dict(row) for row in rows}
 
 
+@router.get("/diagnose-catalog-store")
+def diagnose_catalog_store(
+    store: str = Query("parfumzentrum"),
+    q: str = Query("Rayhaan"),
+    max_candidates: int = Query(100, ge=1, le=500),
+):
+    """Generic, strictly read-only inspection of one active catalog store.
+
+    This endpoint isolates the catalog layer only. It never calls the
+    production search pipeline, a scraper, ProductMatcher, discovery,
+    hydration, or any write operation.
+    """
+    started = time.monotonic()
+    store_key = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    try:
+        from catalog_engine import STORES, db
+
+        if store_key not in tuple(STORES):
+            return {
+                "diagnostic": "catalog-store-read-only-v1",
+                "ok": False,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "scraper_called": False,
+                "database_written": False,
+                "store": store_key,
+                "query": query,
+                "error": (
+                    "invalid_store: available stores="
+                    + ",".join(str(item) for item in STORES)
+                ),
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        if not query:
+            return {
+                "diagnostic": "catalog-store-read-only-v1",
+                "ok": False,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "scraper_called": False,
+                "database_written": False,
+                "store": store_key,
+                "query": query,
+                "error": "empty_query",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        query_tokens = list(_catalog_tokens(query))
+        conn = db()
+
+        try:
+            rows = _catalog_rows(conn, store_key)
+            total = len(rows)
+            hydrated_ok = sum(
+                1 for row in rows
+                if str(row["fetch_status"] or "").upper() == "OK"
+            )
+            pending_or_error = total - hydrated_ok
+
+            candidates = []
+            required = set(query_tokens)
+
+            for row in rows:
+                row_tokens = _catalog_row_tokens(row)
+                if required and not required.issubset(row_tokens):
+                    continue
+                candidates.append(row)
+
+            candidates = candidates[:max_candidates]
+            queue = _catalog_queue_state(
+                conn,
+                store_key,
+                [row["url"] for row in candidates],
+            )
+
+            if candidates:
+                diagnosis = (
+                    "CATALOG_CANDIDATES_FOUND: the active catalog contains "
+                    "rows matching all query tokens. The next diagnostic "
+                    "layer is search_local/catalog projection."
+                )
+            else:
+                diagnosis = (
+                    "NO_CATALOG_MATCH: no active catalog row contains all "
+                    "query tokens across slug/name/brand."
+                )
+
+            return {
+                "diagnostic": "catalog-store-read-only-v1",
+                "ok": True,
+                "production_search_called": False,
+                "product_matcher_called": False,
+                "scraper_called": False,
+                "database_written": False,
+                "store": store_key,
+                "query": query,
+                "query_tokens": query_tokens,
+                "active_catalog_urls": total,
+                "hydrated_ok": hydrated_ok,
+                "pending_or_error": pending_or_error,
+                "candidate_count": len(candidates),
+                "candidates": [
+                    _catalog_compact_row(row)
+                    for row in candidates
+                ],
+                "hydration_queue_for_candidates": [
+                    dict(item) for item in queue.values()
+                ],
+                "diagnosis": diagnosis,
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+        finally:
+            conn.close()
+
+    except Exception as exc:
+        return {
+            "diagnostic": "catalog-store-read-only-v1",
+            "ok": False,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "scraper_called": False,
+            "database_written": False,
+            "store": store_key,
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
 @router.get("/diagnose-catalog-path")
 def diagnose_catalog_path(
     q: str = Query("Liquid Brun"),
