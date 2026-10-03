@@ -1,14 +1,19 @@
 """
-ScentHunter - Sabina search_stream contract diagnostic.
+ScentHunter - Sabina search/product diagnostics.
 
-Read-only: calls only Sabina search_stream(query), then reports the exact
-return contract and whether its results list contains product rows.
+Read-only diagnostics. No matcher, catalog write, or hydration.
 """
 
 import time
 from fastapi import APIRouter, Query
+import requests
 
 router = APIRouter()
+
+TARGET_41708 = (
+    "https://www.sabina.com/es/perfumes-mujer/"
+    "41708-liquid-brun-limited-edition-extrait-de-parfum.html"
+)
 
 
 @router.get("/diagnose-sabina-search-stream")
@@ -73,6 +78,95 @@ def diagnose_sabina_search_stream(
     except Exception as exc:
         return {
             "diagnostic": "sabina-search-stream-v1",
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "read_only": True,
+            "product_matcher_called": False,
+            "catalog_written": False,
+            "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
+@router.get("/diagnose-sabina-product-page")
+def diagnose_sabina_product_page(
+    url: str = Query(TARGET_41708, min_length=20, max_length=500),
+    q: str = Query("Liquid Brun Limited Edition", min_length=1, max_length=120),
+):
+    """
+    Read-only transport/parser isolation test.
+
+    Fetches exactly one supplied Sabina product URL with requests and then
+    runs the production extract_product_page parser. No search, matcher,
+    catalog write, or hydration is called.
+    """
+    started = time.monotonic()
+
+    try:
+        from scrapers.sabina import scraper
+
+        session = requests.Session()
+        try:
+            response = session.get(
+                url,
+                headers=scraper.HEADERS,
+                timeout=scraper.TIMEOUT,
+                allow_redirects=True,
+            )
+
+            transport = {
+                "status_code": response.status_code,
+                "final_url": response.url,
+                "bytes": len(response.content or b""),
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+            parsed = None
+            parse_error = None
+            if response.status_code < 400:
+                try:
+                    parsed = scraper.extract_product_page(session, url, q)
+                except Exception as exc:
+                    parse_error = f"{type(exc).__name__}: {exc}"
+
+            compact = None
+            if isinstance(parsed, dict):
+                compact = {
+                    "name": parsed.get("name"),
+                    "brand": parsed.get("brand"),
+                    "price": parsed.get("price"),
+                    "available": parsed.get("available"),
+                    "availability": parsed.get("availability"),
+                    "url": parsed.get("url"),
+                    "identity": parsed.get("identity"),
+                    "attributes": parsed.get("attributes"),
+                    "offer": parsed.get("offer"),
+                    "provenance": parsed.get("provenance"),
+                }
+
+            return {
+                "diagnostic": "sabina-product-page-v1",
+                "ok": True,
+                "query": q,
+                "url": url,
+                "transport": transport,
+                "parser": {
+                    "returned_product": parsed is not None,
+                    "parse_error": parse_error,
+                    "product": compact,
+                },
+                "read_only": True,
+                "product_matcher_called": False,
+                "catalog_written": False,
+                "hydration_called": False,
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+        finally:
+            session.close()
+
+    except Exception as exc:
+        return {
+            "diagnostic": "sabina-product-page-v1",
             "ok": False,
             "error": f"{type(exc).__name__}: {exc}",
             "read_only": True,
