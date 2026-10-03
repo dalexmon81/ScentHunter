@@ -740,3 +740,213 @@ def diagnose_sabina_category_pages(
             "error": f"{type(exc).__name__}: {exc}",
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
+
+
+@router.get("/diagnose-sabina-category-pages-batch")
+def diagnose_sabina_category_pages_batch(
+    category_url: str = Query(
+        "https://www.sabina.com/it/6-profumi-di-donna",
+        min_length=20,
+        max_length=500,
+    ),
+    start_page: int = Query(1, ge=1, le=1000),
+    end_page: int = Query(42, ge=1, le=1000),
+    workers: int = Query(8, ge=1, le=12),
+    target: str = Query("41708", min_length=1, max_length=120),
+):
+    """
+    Read-only parallel probe of a bounded Sabina category page interval.
+
+    It deliberately bypasses the generic discovery frontier. Each requested
+    p=N URL is fetched through catalog_engine._fetch_html_page, then inspected
+    only for the target and product links. No DB, matcher, hydration, search,
+    or product-page fetch is performed.
+    """
+    started = time.monotonic()
+    base_result = {
+        "diagnostic": "sabina-category-pages-batch-read-only-v1",
+        "ok": False,
+        "read_only": True,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "hydration_called": False,
+        "database_written": False,
+        "category_url": category_url,
+        "target": target,
+    }
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import catalog_engine as ce
+
+        fetch_fn = getattr(ce, "_fetch_html_page", None)
+        product_fn = getattr(ce, "_html_product_url", None)
+        if not callable(fetch_fn) or not callable(product_fn):
+            return {
+                **base_result,
+                "error": "required catalog_engine HTML helpers are unavailable",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        if end_page < start_page:
+            return {
+                **base_result,
+                "error": "end_page_must_be_greater_or_equal_to_start_page",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        page_numbers = list(range(start_page, end_page + 1))
+        if len(page_numbers) > 100:
+            return {
+                **base_result,
+                "error": "maximum_batch_span_is_100_pages",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        target_norm = str(target or "").strip().lower()
+
+        def make_url(n):
+            parsed = urlparse(category_url)
+            pairs = [
+                (k, v) for k, v in parse_qsl(
+                    parsed.query, keep_blank_values=True
+                )
+                if k.lower() != "p"
+            ]
+            if n != 1:
+                pairs.append(("p", str(n)))
+            return urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    urlencode(pairs),
+                    parsed.fragment,
+                )
+            )
+
+        def probe(n):
+            url = make_url(n)
+            page_started = time.monotonic()
+            requested, final_url, data, error = fetch_fn("sabina", url)
+
+            item = {
+                "page": n,
+                "requested_url": requested,
+                "final_url": final_url,
+                "status": None if error else 200,
+                "bytes": len(data or b""),
+                "elapsed_sec": round(time.monotonic() - page_started, 3),
+                "error": error,
+            }
+
+            if error or not data:
+                item["diagnosis"] = "FETCH_FAILED"
+                return item
+
+            soup = BeautifulSoup(data, "html.parser")
+            text = soup.get_text(" ", strip=True).lower()
+            raw = data.decode("utf-8", "ignore").lower()
+
+            product_urls = []
+            for a in soup.find_all("a", href=True):
+                product = product_fn("sabina", a.get("href"), final_url or url)
+                if product:
+                    product_urls.append(product)
+
+            for ld in getattr(ce, "_jsonld", lambda _s: [])(soup):
+                product = product_fn("sabina", ld.get("url"), final_url or url)
+                if product:
+                    product_urls.append(product)
+
+            product_urls = list(dict.fromkeys(product_urls))
+            target_urls = [
+                u for u in product_urls
+                if target_norm and target_norm in u.lower()
+            ]
+
+            item.update({
+                "target_text_hit": bool(target_norm and target_norm in text),
+                "target_raw_html_hit": bool(target_norm and target_norm in raw),
+                "target_url_hit": bool(target_urls),
+                "target_urls": target_urls[:10],
+                "product_url_count": len(product_urls),
+                "product_urls_sample": product_urls[:10],
+                "liquid_brun_text_hit": "liquid brun" in text,
+                "french_avenue_text_hit": "french avenue" in text,
+                "diagnosis": (
+                    "TARGET_FOUND"
+                    if (
+                        target_urls
+                        or (target_norm and target_norm in text)
+                        or (target_norm and target_norm in raw)
+                    )
+                    else "TARGET_NOT_ON_PAGE"
+                ),
+            })
+            return item
+
+        results = []
+        with ThreadPoolExecutor(max_workers=min(int(workers), len(page_numbers))) as pool:
+            futures = {
+                pool.submit(probe, n): n for n in page_numbers
+            }
+            for future in as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    n = futures[future]
+                    results.append({
+                        "page": n,
+                        "diagnosis": "EXCEPTION",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+
+        results.sort(key=lambda x: x.get("page", 0))
+        found = [
+            r for r in results if r.get("diagnosis") == "TARGET_FOUND"
+        ]
+        failures = [
+            r for r in results if r.get("diagnosis") == "FETCH_FAILED"
+        ]
+
+        return {
+            **base_result,
+            "ok": True,
+            "parameters": {
+                "start_page": start_page,
+                "end_page": end_page,
+                "page_count": len(page_numbers),
+                "workers": workers,
+            },
+            "results": results,
+            "target_found_on_pages": [
+                r.get("page") for r in found
+            ],
+            "fetch_failures": [
+                {"page": r.get("page"), "error": r.get("error")}
+                for r in failures
+            ],
+            "pages_with_liquid_brun_text": [
+                r.get("page") for r in results
+                if r.get("liquid_brun_text_hit")
+            ],
+            "pages_with_french_avenue_text": [
+                r.get("page") for r in results
+                if r.get("french_avenue_text_hit")
+            ],
+            "diagnosis": (
+                "TARGET_FOUND_IN_CATEGORY_INTERVAL"
+                if found
+                else "TARGET_NOT_FOUND_IN_CATEGORY_INTERVAL"
+            ),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except Exception as exc:
+        return {
+            **base_result,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
