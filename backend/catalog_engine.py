@@ -3714,14 +3714,95 @@ def coverage_status():
         conn.close()
 
 
+def _hydration_batch_process(batch_size, workers, timeout_seconds=25.0):
+    """Run one bounded hydration batch in a killable child process."""
+    child_code = (
+        "import json\n"
+        "import sys\n"
+        "import catalog_engine as ce\n"
+        "payload=json.load(sys.stdin)\n"
+        "result=ce.hydrate_catalog_batch(max_urls=int(payload.get('batch_size') or 2), workers=int(payload.get('workers') or 1))\n"
+        "json.dump(result, sys.stdout, ensure_ascii=False, default=str)\n"
+        "sys.stdout.flush()\n"
+    )
+    env = os.environ.copy()
+    current = env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
+    payload = json.dumps({'batch_size': int(batch_size), 'workers': int(workers)})
+    process = None
+    try:
+        process = subprocess.Popen(
+            [sys.executable, '-u', '-c', child_code],
+            cwd=str(BASE_DIR),
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            start_new_session=(os.name != 'nt'),
+        )
+        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
+    except subprocess.TimeoutExpired:
+        if process is not None:
+            try:
+                if os.name != 'nt':
+                    os.killpg(process.pid, signal.SIGTERM)
+                else:
+                    process.terminate()
+            except Exception:
+                pass
+            try:
+                process.wait(timeout=2.0)
+            except Exception:
+                pass
+            try:
+                if process.poll() is None:
+                    if os.name != 'nt':
+                        os.killpg(process.pid, signal.SIGKILL)
+                    else:
+                        process.kill()
+            except Exception:
+                pass
+        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'timeout'}
+    except Exception as exc:
+        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'error', 'error': f'{type(exc).__name__}:{exc}'}
+
+    if process is None or process.returncode != 0:
+        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': f'exit_{getattr(process, "returncode", None)}'}
+    try:
+        result = json.loads(stdout or '{}')
+        return result if isinstance(result, dict) else {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'invalid_result'}
+    except Exception as exc:
+        return {'selected': 0, 'fetched': 0, 'errors': 1, 'status': 'invalid_result', 'error': f'{type(exc).__name__}:{exc}'}
+
+
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Compatibility waiter; no background network work in the API process."""
-    print('CATALOG HYDRATION DISABLED: foreground API search is read-only', flush=True)
+    """Hydrate discovered product URLs outside the API process."""
+    batch_size = max(1, min(int(batch_size or 2), 4))
+    workers = max(1, min(int(workers or 1), 2))
+    print(
+        f'CATALOG HYDRATION START isolated batch={batch_size} workers={workers}',
+        flush=True,
+    )
     while stop_event is None or not stop_event.is_set():
+        try:
+            result = _hydration_batch_process(batch_size, workers, timeout_seconds=25.0)
+            selected = int(result.get('selected') or 0)
+            fetched = int(result.get('fetched') or 0)
+            errors = int(result.get('errors') or 0)
+            if selected or fetched or errors:
+                print(
+                    f'CATALOG HYDRATION BATCH selected={selected} fetched={fetched} errors={errors} status={result.get("status", "ok")}',
+                    flush=True,
+                )
+        except Exception as exc:
+            print(f'CATALOG HYDRATION ERROR: {type(exc).__name__}:{exc}', flush=True)
         if stop_event is not None:
-            stop_event.wait(5.0)
+            stop_event.wait(max(1.0, float(pause_seconds)))
         else:
-            time.sleep(5.0)
+            time.sleep(max(1.0, float(pause_seconds)))
 
 
 def hydration_status():
