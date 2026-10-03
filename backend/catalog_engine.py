@@ -468,6 +468,15 @@ def _fts_query_for_tokens(token_set):
     return ' AND '.join(parts)
 
 
+def _fts_query_for_token_sets(token_sets):
+    """Build one FTS5 OR query for alternative token sets."""
+    groups = []
+    for token_set in token_sets:
+        part = _fts_query_for_tokens(token_set)
+        if part:
+            groups.append('(' + part + ')')
+    return ' OR '.join(groups)
+
 def _ensure_schema(conn):
     """Create/migrate the catalog schema once per process.
 
@@ -2586,35 +2595,27 @@ def search_local(query, per_store=32, search_terms=None):
         for store in STORES:
             selected_by_url = {}
 
-            for ts in token_sets:
-                if limit is not None and len(selected_by_url) >= limit:
-                    break
+            # All query terms are alternatives for the same user intent.
+            # Execute one FTS5 query per store instead of one query per term.
+            fts_query = _fts_query_for_token_sets(token_sets)
+            if not fts_query:
+                continue
 
-                fts_query = _fts_query_for_tokens(ts)
-                if not fts_query:
-                    continue
-
-                sql = '''
+            sql = """
                     SELECT u.url,u.slug,u.lastmod,
-                           p.store AS product_store,
-                           p.url AS product_url,
-                           p.name AS product_name,
-                           p.brand AS product_brand,
-                           p.image AS product_image,
-                           p.sku AS product_sku,
-                           p.gtin AS product_gtin,
-                           p.mpn AS product_mpn,
+                           p.store AS product_store, p.url AS product_url,
+                           p.name AS product_name, p.brand AS product_brand,
+                           p.image AS product_image, p.sku AS product_sku,
+                           p.gtin AS product_gtin, p.mpn AS product_mpn,
                            p.size_ml AS product_size_ml,
                            p.concentration AS product_concentration,
-                           p.gender AS product_gender,
-                           p.price AS product_price,
+                           p.gender AS product_gender, p.price AS product_price,
                            p.currency AS product_currency,
                            p.availability AS product_availability,
                            p.fetched_at AS product_fetched_at,
                            p.fetch_status AS fetch_status
                       FROM catalog_search_fts f
-                      JOIN store_urls u
-                        ON u.store=f.store AND u.url=f.url
+                      JOIN store_urls u ON u.store=f.store AND u.url=f.url
                       LEFT JOIN store_products p
                         ON p.store=u.store AND p.url=u.url
                        AND p.fetch_status='OK'
@@ -2622,24 +2623,26 @@ def search_local(query, per_store=32, search_terms=None):
                        AND catalog_search_fts MATCH ?
                        AND u.active=1
                      LIMIT ?
-                '''
-                candidates = conn.execute(
-                    sql, (store, fts_query, max(128, limit or 128))
-                ).fetchall()
+                """
+            candidate_sql_limit = max(128, (limit or 64) * max(1, len(token_sets)))
+            candidates = conn.execute(sql, (store, fts_query, candidate_sql_limit)).fetchall()
 
-                for r in candidates:
-                    url = str(r['url'] or '').strip()
-                    if not url or url in selected_by_url:
-                        continue
-                    search_text = ' '.join(
-                        str(r[key] or '')
-                        for key in ('slug', 'product_name', 'product_brand')
-                    )
-                    normalized_tokens = set(norm(search_text).split())
+            for r in candidates:
+                url = str(r['url'] or '').strip()
+                if not url or url in selected_by_url:
+                    continue
+                search_text = ' '.join(str(r[key] or '') for key in ('slug','product_name','product_brand'))
+                normalized_tokens = set(norm(search_text).split())
+                best_term_score = 0
+                matched_term = False
+                for ts in token_sets:
                     score = sum(1 for token in ts if token in normalized_tokens)
-                    if score != len(ts):
-                        continue
-                    selected_by_url[url] = (score + 10, dict(r))
+                    if score == len(ts):
+                        matched_term = True
+                        best_term_score = max(best_term_score, score)
+                if not matched_term:
+                    continue
+                selected_by_url[url] = (best_term_score + 10, dict(r))
 
             ordered = sorted(
                 selected_by_url.values(),
