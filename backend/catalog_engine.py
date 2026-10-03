@@ -672,30 +672,44 @@ def _sync_deloox_search_index(product_urls):
 
 
 def _save_discovery(store, product_urls, started_at, diagnostics):
-    """Persist discovery cumulatively and deactivate only after a complete crawl.
-
-    A discovery pass is normally a bounded observation of a retailer catalog.
-    Network failures, sitemap gaps, pagination limits and crawler deadlines can
-    all produce a valid subset of product URLs. Treating that subset as the
-    entire catalog causes previously valid offers to disappear.
-
-    Therefore every discovered product URL is persisted immediately, regardless
-    of batch size. Existing URLs are never deactivated unless the caller proves
-    that the catalog traversal completed without hitting a crawler limit.
-    """
     now = time.time()
     new_count = len(product_urls)
-    complete = bool(diagnostics.get('catalog_complete'))
     old_count = _existing_count(store)
+
+    # Never replace a known catalog with a suspiciously tiny transient result.
+    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
+        conn = db()
+        detail = (
+            f'partial_catalog_rejected;old={old_count};new={new_count};'
+            f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
+            f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
+        )
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
+        )
+        conn.commit()
+        conn.close()
+        return 'DISCOVERY_PARTIAL', new_count, detail
 
     conn = db()
     with conn:
-        if new_count and complete:
-            conn.execute(
-                'UPDATE store_urls SET active=0 WHERE store=? AND active=1',
-                (store,),
-            )
         if new_count:
+            # Deloox discovery is intentionally incremental: a bounded run is
+            # only one slice of a persistent HTML graph. Never deactivate the
+            # previously discovered Deloox catalog merely because this run did
+            # not reach those branches. A real product disappearance is handled
+            # by product-page hydration/HTTP status, not by crawl omission.
+            # Sabina discovery is also incremental. Its HTML legacy catalog
+            # surface is bounded by time, so a run can legitimately discover
+            # only a subset of the existing catalog. Never deactivate known
+            # Sabina URLs merely because this run did not reach them.
+            if store not in ('deloox', 'sabina'):
+                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
             for url, lastmod in product_urls.items():
                 conn.execute(
                     '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
@@ -718,30 +732,22 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                            END''',
                     (store, url, 'PENDING', 0, now, now, now),
                 )
-            status = 'DISCOVERY_OK' if complete else 'DISCOVERY_PARTIAL'
-            error = None if complete else (
-                f'partial_cumulative_catalog;old={old_count};new={new_count};'
-                f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
-                f'entries={diagnostics["entries"]};errors={diagnostics["errors"]};'
-                f'timed_out={diagnostics.get("timed_out")};'
-                f'budget_exhausted={diagnostics.get('sitemap_budget_exhausted')};'
-                f'queue_remaining={diagnostics.get("sitemap_queue_remaining")}'
-            )
+            status = 'DISCOVERY_OK'
+            error = None
         else:
-            status = 'DISCOVERY_OK' if complete else 'DISCOVERY_PARTIAL'
-            error = None if complete else (
-                f'no_product_urls_from_partial_pass;visited={diagnostics["visited"]};'
+            status = 'DISCOVERY_EMPTY'
+            error = (
+                f'no_product_urls;visited={diagnostics["visited"]};'
                 f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
-                f'errors={diagnostics["errors"]};timed_out={diagnostics.get('timed_out')};'
-                f'budget_exhausted={diagnostics.get('sitemap_budget_exhausted')}'
+                f'errors={diagnostics["errors"]}'
             )
 
         conn.execute(
-            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
                started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error""",
+               discovered_count=excluded.discovered_count,error=excluded.error''',
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
@@ -1052,66 +1058,44 @@ def _browser_fetch_html(url, timeout_ms=15000):
         return None, f'PLAYWRIGHT_UNAVAILABLE:{type(exc).__name__}:{exc}'
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True, timeout=min(int(timeout_ms), 10000))
+            browser = pw.chromium.launch(headless=True)
             try:
                 page = browser.new_page(
                     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
                     locale='de-DE',
                 )
-                page.goto(url, wait_until='domcontentloaded', timeout=min(int(timeout_ms), 12000))
+                page.goto(url, wait_until='domcontentloaded', timeout=timeout_ms)
                 html = page.content()
                 final = page.url
                 if not html:
                     return None, 'BROWSER_EMPTY_BODY'
                 return (final, html.encode('utf-8', 'ignore')), None
             finally:
-                try:
-                    browser.close()
-                except Exception:
-                    pass
+                browser.close()
     except Exception as exc:
         return None, f'BROWSER_{type(exc).__name__}:{exc}'
 
 
 def _fetch_html_page(store, url):
-    browser_reason = None
     try:
         resp = _http_fetch(url, timeout=HTTP_TIMEOUT)
         if resp['status'] < 400 and resp['data']:
             data = resp['data']
             ctype = (resp.get('content_type') or '').lower()
-            looks_html = bool(
-                'html' in ctype
-                or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I)
-            )
-            if looks_html:
-                # Deloox can return an HTTP-success HTML shell whose catalog
-                # links are rendered by the storefront/browser layer. Treat a
-                # successful but product-link-empty response as a browser
-                # fallback case rather than declaring the navigation page
-                # successfully crawled with zero discoveries.
-                if store == 'deloox' and not re.search(
-                    br'/(?:product|produit|producto|prodotto)/\d+(?:/|\b)',
-                    data,
-                    re.I,
-                ):
-                    browser_reason = 'DOLOOX_HTML_WITHOUT_PRODUCT_LINKS'
-                else:
-                    return url, resp['url'], data, None
-            else:
-                http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
+            if 'html' in ctype or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
+                return url, resp['url'], data, None
+            http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
         else:
             http_error = _diagnostic(resp, url)
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store in ('easycosmetic', 'deloox'):
+    if store == 'easycosmetic':
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
             return url, final, data, None
-        reason = browser_reason or 'HTTP_ERROR'
-        return url, url, None, f'HTTP={http_error};BROWSER_REASON={reason};{browser_error}'
+        return url, url, None, f'HTTP={http_error};{browser_error}'
     return url, url, None, http_error
 
 
@@ -1197,18 +1181,9 @@ def _deloox_queue_allowed(url):
     return p.netloc.lower() in allowed_hosts
 
 
-def _deloox_queue_seed(force_seed_refresh=False):
-    """Seed the durable Deloox catalog graph without product-specific URLs.
-
-    Normal discovery keeps completed frontier nodes completed so the crawler
-    remains cumulative. An explicit operational resync may force only the
-    configured seed URLs back to PENDING, allowing changed discovery seeds to
-    be traversed again without resetting the whole Deloox frontier.
-    """
-    configured_seeds = list(dict.fromkeys(
-        HTML_DISCOVERY_SEEDS.get('deloox', ())
-    ))
-    seeds = list(configured_seeds)
+def _deloox_queue_seed():
+    """Seed the durable Deloox catalog graph without product-specific URLs."""
+    seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('deloox', ())))
     for base in _discovery_bases('deloox'):
         base = base.rstrip('/')
         seeds.extend((base + '/', base + '/en/'))
@@ -1216,32 +1191,7 @@ def _deloox_queue_seed(force_seed_refresh=False):
     _deloox_queue_enqueue(
         [(url, 0, 'configured_seed') for url in seeds]
     )
-
-    forced_seed_count = 0
-    if force_seed_refresh and configured_seeds:
-        conn = db()
-        try:
-            now = time.time()
-            placeholders = ','.join('?' for _ in configured_seeds)
-            params = [now, *configured_seeds]
-            with conn:
-                cur = conn.execute(
-                    f"""UPDATE catalog_discovery_queue
-                           SET state='PENDING',
-                               available_at=?,
-                               leased_until=NULL,
-                               lease_token=NULL,
-                               last_error=NULL
-                         WHERE store='deloox'
-                           AND url IN ({placeholders})
-                           AND state IN ('DONE','ERROR','DEAD')""",
-                    params,
-                )
-                forced_seed_count = int(cur.rowcount or 0)
-        finally:
-            conn.close()
-
-    return seeds, forced_seed_count
+    return seeds
 
 
 def _deloox_queue_enqueue(items):
@@ -1498,7 +1448,7 @@ def _deloox_persist_products(product_urls):
     return count
 
 
-def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
+def _discover_deloox_catalog(seeds, deadline=None):
     """Advance Deloox's persistent catalog graph.
 
     Deloox's sitemap endpoints are unreliable, so catalog discovery is an
@@ -1511,9 +1461,7 @@ def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
         _deloox_queue_enqueue(
             [(url, 0, 'configured_seed') for url in seeds]
         )
-    seeded, forced_seed_count = _deloox_queue_seed(
-        force_seed_refresh=force_seed_refresh
-    )
+    seeded = _deloox_queue_seed()
     recovered = _deloox_queue_recover_stale()
     requeued = _deloox_queue_requeue_stale_done()
 
@@ -1608,54 +1556,27 @@ def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
         if not batch:
             break
 
-        # The discovery deadline must also bound the executor itself.
-        # A ThreadPoolExecutor context manager calls shutdown(wait=True), so a
-        # single stuck browser/network worker could otherwise keep the whole
-        # resync job in RUNNING forever even after run_deadline was reached.
-        pool = ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch)))
-        futures = {
-            pool.submit(_fetch_html_page, 'deloox', url): (
-                url, depth, source, token
-            )
-            for url, depth, source, token in batch
-        }
-        completed = set()
-        try:
-            remaining = max(0.1, run_deadline - time.time())
-            try:
-                completed_iter = as_completed(futures, timeout=remaining)
-                for future in completed_iter:
-                    completed.add(future)
-                    url, depth, source, token = futures[future]
-                    try:
-                        result = future.result()
-                        ok = process_page(url, depth, source, result)
-                        if ok:
-                            _deloox_queue_finish(url, token, True)
-                        else:
-                            error = result[3] if len(result) > 3 else 'fetch_error'
-                            _deloox_queue_finish(url, token, False, error)
-                    except Exception as exc:
-                        error = f'{type(exc).__name__}:{exc}'
-                        errors.append(f'{url} -> {error}')
+        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
+            futures = {
+                pool.submit(_fetch_html_page, 'deloox', url): (
+                    url, depth, source, token
+                )
+                for url, depth, source, token in batch
+            }
+            for future in as_completed(futures):
+                url, depth, source, token = futures[future]
+                try:
+                    result = future.result()
+                    ok = process_page(url, depth, source, result)
+                    if ok:
+                        _deloox_queue_finish(url, token, True)
+                    else:
+                        error = result[3] if len(result) > 3 else 'fetch_error'
                         _deloox_queue_finish(url, token, False, error)
-            except TimeoutError:
-                # Any future not completed before the batch deadline is no
-                # longer allowed to keep the discovery job alive. Clear its
-                # lease so a later discovery pass can retry it. The underlying
-                # worker may still be finishing in the background, but it is no
-                # longer part of this job's critical path.
-                for future, item in futures.items():
-                    if future in completed or future.done():
-                        continue
-                    url, depth, source, token = item
-                    future.cancel()
-                    timeout_error = 'BATCH_TIMEOUT_BEFORE_DISCOVERY_DEADLINE'
-                    errors.append(f'{url} -> {timeout_error}')
-                    _deloox_queue_finish(url, token, False, timeout_error)
-        finally:
-            # Never wait for a stuck browser/network thread here.
-            pool.shutdown(wait=False, cancel_futures=True)
+                except Exception as exc:
+                    error = f'{type(exc).__name__}:{exc}'
+                    errors.append(f'{url} -> {error}')
+                    _deloox_queue_finish(url, token, False, error)
 
         # Never monopolize the process after a batch finishes.
         if time.time() >= run_deadline:
@@ -1685,8 +1606,6 @@ def _discover_deloox_catalog(seeds, deadline=None, force_seed_refresh=False):
         'error': int(row['error'] or 0),
         'dead': int(row['dead'] or 0),
         'seeded': len(seeded),
-        'forced_seed_refresh': bool(force_seed_refresh),
-        'forced_seed_count': forced_seed_count,
         'recovered': recovered,
         'requeued_stale_done': requeued,
     }
@@ -2041,7 +1960,7 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
     conn.commit(); conn.close()
 
 
-def discover_store(store, force_seed_refresh=False):
+def discover_store(store):
     """Build/update one persistent URL catalog with durable progress state."""
     started_at=time.time()
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
@@ -2101,7 +2020,6 @@ def discover_store(store, force_seed_refresh=False):
         deloox_graph = _discover_deloox_catalog(
             list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
             started_at + deloox_graph_budget,
-            force_seed_refresh=force_seed_refresh,
         )
         product_urls.update(deloox_graph['product_urls'])
 
@@ -2132,30 +2050,13 @@ def discover_store(store, force_seed_refresh=False):
         )
         product_urls.update(fallback['product_urls'])
 
-    timed_out = (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT
-    sitemap_budget_exhausted = bool(queue) and time.time() >= sitemap_deadline
-    crawler_limits_hit = (
-        len(visited) >= MAX_SITEMAPS_PER_STORE
-        or len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS
-    )
-    # Only a naturally exhausted sitemap frontier is authoritative. Partial
-    # network/crawler observations are cumulative and never authorize removal.
-    catalog_complete = bool(
-        not timed_out
-        and not sitemap_budget_exhausted
-        and not queue
-        and not crawler_limits_hit
-    )
     diagnostics={
         'visited':len(visited),
         'successes':sitemap_successes,
         'entries':sitemap_url_entries,
         'errors':len(sitemap_errors),
-        'timed_out': timed_out,
-        'sitemap_budget_exhausted': sitemap_budget_exhausted,
-        'sitemap_queue_remaining': len(queue),
-        'crawler_limits_hit': crawler_limits_hit,
-        'catalog_complete': catalog_complete,
+        'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
+        'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
         'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
     }
     # Zero successful catalog-page fetches means access/discovery failure,
@@ -3082,16 +2983,464 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
             time.sleep(wait_for)
 
 
+# ---------------------------------------------------------------------------
+# Canonical catalog coverage engine
+# ---------------------------------------------------------------------------
+# The persistent retailer catalog is intentionally store-first, but store-wide
+# crawling alone cannot guarantee that a product exposed by a retailer's
+# search surface is ever indexed. Coverage therefore runs from the canonical
+# identity catalog and feeds the same store_urls/hydration pipeline used by
+# normal discovery.
+#
+# canonical product -> store scraper search -> candidate URL -> hydration
+#
+# This layer is deliberately generic: no product, brand, retailer-product URL,
+# price, or exception is embedded here.
+
+_COVERAGE_SCHEMA_LOCK = threading.Lock()
+_COVERAGE_SCHEMA_READY = False
+_COVERAGE_CATALOG_CACHE = None
+_COVERAGE_CATALOG_MTIME = None
+_COVERAGE_INTERVAL_SECONDS = 60.0
+_COVERAGE_BATCH_SIZE = 8
+_COVERAGE_WORKERS = 2
+_COVERAGE_RETRY_SECONDS = 86400.0
+_COVERAGE_ERROR_RETRY_SECONDS = 3600.0
+
+_COVERAGE_STORE_MODULES = {
+    'bplatz': 'scrapers.bplatz.scraper',
+    'deloox': 'scrapers.deloox.scraper',
+    'parfumcity': 'scrapers.parfumcity.scraper',
+    'parfumzentrum': 'scrapers.parfumzentrum.scraper',
+    'perfumemarket': 'scrapers.perfumemarket.scraper',
+    'sabina': 'scrapers.sabina.scraper',
+    'orioudh': 'scrapers.orioudh.scraper',
+    'easycosmetic': 'scrapers.easycosmetic.scraper',
+}
+
+
+def _coverage_ensure_schema():
+    global _COVERAGE_SCHEMA_READY
+    if _COVERAGE_SCHEMA_READY:
+        return
+    with _COVERAGE_SCHEMA_LOCK:
+        if _COVERAGE_SCHEMA_READY:
+            return
+        conn = db()
+        try:
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS catalog_coverage(
+                    store TEXT NOT NULL,
+                    product_id TEXT NOT NULL,
+                    canonical_name TEXT NOT NULL,
+                    query TEXT NOT NULL,
+                    state TEXT NOT NULL DEFAULT 'PENDING',
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    found_urls INTEGER NOT NULL DEFAULT 0,
+                    last_started_at REAL,
+                    last_finished_at REAL,
+                    next_run_at REAL NOT NULL DEFAULT 0,
+                    last_error TEXT,
+                    PRIMARY KEY(store, product_id)
+                )"""
+            )
+            conn.execute(
+                'CREATE INDEX IF NOT EXISTS idx_catalog_coverage_ready '
+                'ON catalog_coverage(state,next_run_at,store)'
+            )
+            conn.execute(
+                'CREATE INDEX IF NOT EXISTS idx_catalog_coverage_product '
+                'ON catalog_coverage(product_id,state)'
+            )
+            conn.commit()
+            _COVERAGE_SCHEMA_READY = True
+        finally:
+            conn.close()
+
+
+def _coverage_load_catalog():
+    """Load the canonical product list once and refresh only when the file changes."""
+    global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
+    path = BASE_DIR / 'product_catalog.json'
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return []
+    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
+        return _COVERAGE_CATALOG_CACHE
+    try:
+        with path.open('r', encoding='utf-8') as handle:
+            payload = json.load(handle)
+    except Exception as exc:
+        print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
+        return _COVERAGE_CATALOG_CACHE or []
+    products = payload.get('products') if isinstance(payload, dict) else None
+    if not isinstance(products, list):
+        products = []
+    cleaned = []
+    for product in reversed(products):
+        if not isinstance(product, dict):
+            continue
+        product_id = str(product.get('product_id') or '').strip()
+        canonical_name = str(product.get('canonical_name') or '').strip()
+        if product_id and canonical_name:
+            cleaned.append(product)
+    _COVERAGE_CATALOG_CACHE = cleaned
+    _COVERAGE_CATALOG_MTIME = mtime
+    return cleaned
+
+
+def _coverage_queries(product):
+    """Build a small generic query set from canonical identity metadata."""
+    canonical = str(product.get('canonical_name') or '').strip()
+    brand = str(product.get('brand_name') or '').strip()
+    aliases = product.get('aliases') or []
+    candidates = [canonical]
+    if brand and brand.lower() not in canonical.lower():
+        candidates.append(f'{brand} {canonical}')
+    if isinstance(aliases, list):
+        for alias in aliases:
+            alias = str(alias or '').strip()
+            if alias:
+                candidates.append(alias)
+            if len(candidates) >= 4:
+                break
+    out = []
+    seen = set()
+    for value in candidates:
+        key = norm(value)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(value)
+    return out[:4]
+
+
+def _coverage_seed_tasks(conn, products):
+    """Create the complete store x canonical-product coverage matrix idempotently."""
+    if not products:
+        return
+    expected = len(products) * len(STORES)
+    existing = int(conn.execute('SELECT COUNT(*) c FROM catalog_coverage').fetchone()['c'] or 0)
+    if existing >= expected:
+        return
+    now = time.time()
+    rows = []
+    for product in products:
+        product_id = str(product.get('product_id') or '').strip()
+        canonical = str(product.get('canonical_name') or '').strip()
+        queries = _coverage_queries(product)
+        if not product_id or not canonical or not queries:
+            continue
+        primary = queries[0]
+        for store in STORES:
+            rows.append((store, product_id, canonical, primary, now))
+    conn.executemany(
+        """INSERT INTO catalog_coverage(
+               store,product_id,canonical_name,query,state,next_run_at)
+           VALUES(?,?,?,?, 'PENDING', ?)
+           ON CONFLICT(store,product_id) DO NOTHING""",
+        rows,
+    )
+    conn.commit()
+
+
+def _coverage_token_match(text, target):
+    """Whole-token generic identity gate; never uses arbitrary substring matches."""
+    hay = norm(text)
+    needle = norm(target)
+    if not hay or not needle:
+        return False
+    if f' {needle} ' in f' {hay} ':
+        return True
+    target_tokens = needle.split()
+    hay_tokens = set(hay.split())
+    return bool(target_tokens) and all(token in hay_tokens for token in target_tokens)
+
+
+def _coverage_result_matches(product, row):
+    canonical = str(product.get('canonical_name') or '').strip()
+    if not canonical or not isinstance(row, dict):
+        return False
+    text = ' '.join(
+        str(row.get(key) or '')
+        for key in ('name', 'brand', 'title', 'url', 'product_url', 'link')
+    )
+    if _coverage_token_match(text, canonical):
+        return True
+
+    # Retailers may publish a canonical item under a longer catalog alias.
+    # Accept only meaningful aliases here; short identity tokens such as a
+    # one-letter product code must never become arbitrary substring matches.
+    aliases = product.get('aliases') or []
+    if isinstance(aliases, list):
+        for alias in aliases:
+            alias = str(alias or '').strip()
+            normalized = norm(alias)
+            if len(normalized) < 4 or len(normalized.split()) < 2:
+                continue
+            if _coverage_token_match(text, alias):
+                return True
+    return False
+
+
+def _coverage_allowed_url(store, raw_url):
+    if not raw_url:
+        return ''
+    try:
+        url = urllib.parse.urljoin(STORES.get(store, ''), str(raw_url)).split('#', 1)[0]
+        parsed = urllib.parse.urlparse(url)
+    except Exception:
+        return ''
+    if parsed.scheme not in ('http', 'https'):
+        return ''
+    host = parsed.netloc.lower().split(':', 1)[0]
+    base_host = urllib.parse.urlparse(STORES.get(store, '')).netloc.lower().split(':', 1)[0]
+    allowed = {base_host, base_host[4:] if base_host.startswith('www.') else 'www.' + base_host}
+    if store == 'deloox':
+        allowed.update({
+            'deloox.be', 'www.deloox.be', 'deloox.nl', 'www.deloox.nl',
+            'deloox.com', 'www.deloox.com', 'deloox.lu', 'www.deloox.lu',
+            'deloox.es', 'www.deloox.es',
+        })
+    return url if host in allowed else ''
+
+
+def _coverage_persist_urls(store, rows):
+    urls = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw = row.get('url') or row.get('product_url') or row.get('link')
+        url = _coverage_allowed_url(store, raw)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+    if not urls:
+        return 0
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            for url in urls:
+                conn.execute(
+                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
+                    (store, url, url_slug(url), '', now),
+                )
+                conn.execute(
+                    """INSERT INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
+                               ELSE hydration_queue.state
+                           END""",
+                    (store, url, 'PENDING', 0, now, now, now),
+                )
+        with _LOCAL_SEARCH_INDEX_LOCK:
+            _LOCAL_SEARCH_INDEX_CACHE.pop(store, None)
+    finally:
+        conn.close()
+    return len(urls)
+
+
+def _coverage_run_task(task):
+    store = task['store']
+    product = task['product']
+    queries = _coverage_queries(product)
+    module_name = _COVERAGE_STORE_MODULES.get(store)
+    if not module_name:
+        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as exc:
+        return {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
+    search_stream = getattr(module, 'search_stream', None)
+    search_fn = getattr(module, 'search', None)
+    if not callable(search_stream) and not callable(search_fn):
+        return {'state': 'ERROR', 'found': 0, 'error': 'scraper_search_unavailable'}
+
+    matched_rows = []
+    errors = []
+    for query in queries:
+        try:
+            if callable(search_stream):
+                report = search_stream(query)
+                if isinstance(report, dict):
+                    rows = report.get('results') or []
+                    status = str(report.get('status') or '')
+                    if status in {'error', 'timeout', 'blocked', 'unavailable'}:
+                        errors.append(str(report.get('error') or status))
+                else:
+                    rows = report if isinstance(report, list) else []
+            else:
+                rows = search_fn(query)
+                rows = rows if isinstance(rows, list) else []
+        except Exception as exc:
+            errors.append(f'{type(exc).__name__}:{exc}')
+            continue
+        for row in rows:
+            if _coverage_result_matches(product, row):
+                matched_rows.append(row)
+        if matched_rows:
+            break
+
+    found = _coverage_persist_urls(store, matched_rows)
+    if found:
+        return {'state': 'FOUND', 'found': found, 'error': None}
+    if errors:
+        return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
+    return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
+
+
+def _coverage_claim_tasks(limit):
+    _coverage_ensure_schema()
+    products = _coverage_load_catalog()
+    if not products:
+        return []
+    now = time.time()
+    conn = db()
+    try:
+        _coverage_seed_tasks(conn, products)
+        rows = conn.execute(
+            """SELECT store,product_id,canonical_name,query,attempts
+                 FROM catalog_coverage
+                WHERE next_run_at <= ?
+                  AND state IN ('PENDING','NOT_FOUND','RETRY')
+                ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
+                         next_run_at,rowid
+                LIMIT ?""",
+            (now, max(1, int(limit))),
+        ).fetchall()
+        product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
+        tasks = []
+        for row in rows:
+            product = product_by_id.get(str(row['product_id']))
+            if not product:
+                continue
+            attempts = int(row['attempts'] or 0) + 1
+            conn.execute(
+                """UPDATE catalog_coverage
+                      SET state='PROCESSING',attempts=?,last_started_at=?,last_error=NULL
+                    WHERE store=? AND product_id=?""",
+                (attempts, now, row['store'], row['product_id']),
+            )
+            tasks.append({'store': row['store'], 'product': product, 'attempts': attempts})
+        conn.commit()
+        return tasks
+    finally:
+        conn.close()
+
+
+def _coverage_finish_task(task, result):
+    now = time.time()
+    state = str(result.get('state') or 'ERROR')
+    next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+    conn = db()
+    try:
+        conn.execute(
+            """UPDATE catalog_coverage
+                  SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
+                WHERE store=? AND product_id=?""",
+            (
+                state, int(result.get('found') or 0), now, next_run, result.get('error'),
+                task['store'], str(task['product'].get('product_id') or ''),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
+    """Advance canonical-product coverage in small bounded batches."""
+    tasks = _coverage_claim_tasks(max_tasks)
+    if not tasks:
+        return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
+    found = not_found = errors = 0
+    worker_count = max(1, min(int(workers), len(tasks), _COVERAGE_WORKERS))
+    with ThreadPoolExecutor(max_workers=worker_count) as pool:
+        future_map = {pool.submit(_coverage_run_task, task): task for task in tasks}
+        for future in as_completed(future_map):
+            task = future_map[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                result = {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
+            _coverage_finish_task(task, result)
+            state = result.get('state')
+            if state == 'FOUND':
+                found += int(result.get('found') or 0)
+            elif state == 'NOT_FOUND':
+                not_found += 1
+            else:
+                errors += 1
+    return {'selected': len(tasks), 'found': found, 'not_found': not_found, 'errors': errors}
+
+
+def coverage_status():
+    """Read-only coverage metrics for operators and diagnostics."""
+    _coverage_ensure_schema()
+    conn = db()
+    try:
+        rows = conn.execute(
+            """SELECT store,COUNT(*) AS total,
+                      SUM(CASE WHEN state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                      SUM(CASE WHEN state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                      SUM(CASE WHEN state='FOUND' THEN 1 ELSE 0 END) AS found,
+                      SUM(CASE WHEN state='NOT_FOUND' THEN 1 ELSE 0 END) AS not_found,
+                      SUM(CASE WHEN state='RETRY' THEN 1 ELSE 0 END) AS retry,
+                      SUM(CASE WHEN state='ERROR' THEN 1 ELSE 0 END) AS error
+                 FROM catalog_coverage GROUP BY store ORDER BY store"""
+        ).fetchall()
+        return {
+            row['store']: {
+                'total': int(row['total'] or 0), 'pending': int(row['pending'] or 0),
+                'processing': int(row['processing'] or 0), 'found': int(row['found'] or 0),
+                'not_found': int(row['not_found'] or 0), 'retry': int(row['retry'] or 0),
+                'error': int(row['error'] or 0),
+            }
+            for row in rows
+        }
+    finally:
+        conn.close()
+
+
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
     """Continuously hydrate discovered product pages in the background."""
     _ensure_hydration_queue()
+    _coverage_ensure_schema()
     recovered = recover_stale_tasks()
+    coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
     )
+    print(
+        f'CATALOG COVERAGE START interval={_COVERAGE_INTERVAL_SECONDS:g}s '
+        f'batch={_COVERAGE_BATCH_SIZE} workers={_COVERAGE_WORKERS}',
+        flush=True,
+    )
     while stop_event is None or not stop_event.is_set():
         try:
+            now_mono = time.monotonic()
+            if now_mono >= coverage_next_at:
+                coverage_result = coverage_batch()
+                print(
+                    'CATALOG COVERAGE BATCH '
+                    f"selected={coverage_result.get('selected')} "
+                    f"found={coverage_result.get('found')} "
+                    f"not_found={coverage_result.get('not_found')} "
+                    f"errors={coverage_result.get('errors')}",
+                    flush=True,
+                )
+                coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
             result = hydrate_catalog_batch(
                 max_urls=max(1, int(batch_size)),
                 workers=min(int(workers), HYDRATION_WORKERS),
