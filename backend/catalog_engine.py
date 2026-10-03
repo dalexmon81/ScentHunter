@@ -29,6 +29,9 @@ import time
 import unicodedata
 import urllib.parse
 import os
+import signal
+import subprocess
+import sys
 import uuid
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -3297,6 +3300,12 @@ _COVERAGE_BATCH_SIZE = 8
 _COVERAGE_WORKERS = 2
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
+# Coverage is background work.  A retailer scraper is allowed to use its own
+# internal workers/browser processes, but the catalog engine must have a hard
+# wall-clock boundary around the whole task.  This prevents a stuck scraper
+# (including child Playwright/browser processes) from leaking into the main
+# application process and competing with foreground searches.
+_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
 
 
 def _foreground_search_running():
@@ -3561,6 +3570,109 @@ def _coverage_persist_urls(store, rows):
     return len(urls)
 
 
+def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
+    """Run one retailer coverage search in a killable process group.
+
+    Coverage is background work and must never inherit the lifetime of the
+    application process. Some retailer scrapers use requests worker pools
+    and/or Playwright, whose descendants can remain blocked even after a
+    Python thread timeout. A subprocess with its own process group gives the
+    parent a real wall-clock boundary and lets us terminate the whole scraper
+    tree when that boundary is exceeded.
+
+    The child returns only scraper reports. URL persistence and coverage state
+    remain in the parent process, preserving the catalog ownership boundary.
+    """
+    child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                if callable(search_stream):\n                    report = search_stream(query)\n                else:\n                    report = search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({\n                "query": query,\n                "error": f"{type(exc).__name__}:{exc}",\n            })\n            continue\n\n        if isinstance(report, dict):\n            rows = report.get("results") or []\n            if rows:\n                break\n        elif isinstance(report, list) and report:\n            break\n\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
+    payload = json.dumps(
+        {"module": module_name, "queries": list(queries)},
+        ensure_ascii=False,
+    )
+    env = os.environ.copy()
+    python_path = env.get("PYTHONPATH", "")
+    base_path = str(BASE_DIR)
+    env["PYTHONPATH"] = (
+        base_path if not python_path
+        else base_path + os.pathsep + python_path
+    )
+
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "-c", child_code],
+            cwd=str(BASE_DIR),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            start_new_session=True,
+            env=env,
+        )
+    except Exception as exc:
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+
+    try:
+        stdout, stderr = proc.communicate(
+            input=payload,
+            timeout=float(timeout_seconds),
+        )
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        try:
+            proc.wait(timeout=3.0)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            try:
+                proc.wait(timeout=2.0)
+            except Exception:
+                pass
+        return {
+            "ok": False,
+            "reports": [],
+            "error": f"coverage_timeout_after_{float(timeout_seconds):g}s",
+        }
+    except Exception as exc:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except Exception:
+            pass
+        try:
+            proc.wait(timeout=2.0)
+        except Exception:
+            pass
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+
+    if proc.returncode != 0:
+        detail = (stderr or "").strip().splitlines()
+        error = detail[-1][:1000] if detail else f"coverage_process_exit_{proc.returncode}"
+        return {"ok": False, "reports": [], "error": error}
+
+    try:
+        result = json.loads(stdout or "")
+    except Exception as exc:
+        return {
+            "ok": False,
+            "reports": [],
+            "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}",
+        }
+    if not isinstance(result, dict):
+        return {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
+    return result
+
+
 def _coverage_run_task(task):
     store = task['store']
     product = task['product']
@@ -3568,34 +3680,34 @@ def _coverage_run_task(task):
     module_name = _COVERAGE_STORE_MODULES.get(store)
     if not module_name:
         return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
-    try:
-        module = importlib.import_module(module_name)
-    except Exception as exc:
-        return {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
-    search_stream = getattr(module, 'search_stream', None)
-    search_fn = getattr(module, 'search', None)
-    if not callable(search_stream) and not callable(search_fn):
-        return {'state': 'ERROR', 'found': 0, 'error': 'scraper_search_unavailable'}
+
+    isolated = _coverage_scraper_process(module_name, queries)
+    reports = isolated.get('reports') or []
+    if not isolated.get('ok'):
+        return {
+            'state': 'RETRY',
+            'found': 0,
+            'error': str(isolated.get('error') or 'coverage_process_failed')[:1000],
+        }
 
     matched_rows = []
     errors = []
-    for query in queries:
-        try:
-            if callable(search_stream):
-                report = search_stream(query)
-                if isinstance(report, dict):
-                    rows = report.get('results') or []
-                    status = str(report.get('status') or '')
-                    if status in {'error', 'timeout', 'blocked', 'unavailable'}:
-                        errors.append(str(report.get('error') or status))
-                else:
-                    rows = report if isinstance(report, list) else []
-            else:
-                rows = search_fn(query)
-                rows = rows if isinstance(rows, list) else []
-        except Exception as exc:
-            errors.append(f'{type(exc).__name__}:{exc}')
+    for item in reports:
+        if not isinstance(item, dict):
             continue
+        if item.get('error'):
+            errors.append(str(item['error']))
+            continue
+
+        report = item.get('report')
+        if isinstance(report, dict):
+            rows = report.get('results') or []
+            status = str(report.get('status') or '')
+            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
+                errors.append(str(report.get('error') or status))
+        else:
+            rows = report if isinstance(report, list) else []
+
         for row in rows:
             if _coverage_result_matches(product, row):
                 matched_rows.append(row)
