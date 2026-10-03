@@ -1,7 +1,10 @@
 """
-ScentHunter - Sabina search/product diagnostics.
+ScentHunter - Sabina/catalog coverage diagnostics.
 
-Read-only diagnostics. No matcher, catalog write, or hydration.
+Read-only scraper diagnostics plus one explicitly operational coverage runner.
+The coverage runner is generic: it accepts a store + canonical product_id,
+uses the existing catalog_coverage machinery, and does not contain any
+product-specific URL or identity rule.
 """
 
 import time
@@ -269,6 +272,91 @@ def diagnose_sabina_discover_and_target(
             "read_only": True,
             "production_search_called": False,
             "product_matcher_called": False,
+            "catalog_written": False,
+            "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
+@router.get("/diagnose-catalog-coverage-run")
+def diagnose_catalog_coverage_run(
+    store: str = Query("sabina", min_length=1, max_length=40),
+    product_id: str = Query(..., min_length=1, max_length=120),
+):
+    """
+    Explicitly advance one generic store x canonical-product coverage task.
+
+    Unlike the other diagnostics this endpoint is intentionally operational:
+    it may persist a discovered retailer URL into store_urls/hydration_queue
+    and update the corresponding catalog_coverage state. It uses only the
+    canonical product_id supplied by the caller and the existing generic
+    coverage engine. No product-specific URL, name, or rule is embedded.
+    """
+    started = time.monotonic()
+    store_key = str(store or "").strip().lower()
+    product_key = str(product_id or "").strip()
+
+    try:
+        from catalog_engine import (
+            _coverage_ensure_schema,
+            _coverage_load_catalog,
+            _coverage_run_task,
+            _coverage_finish_task,
+        )
+
+        _coverage_ensure_schema()
+        products = _coverage_load_catalog()
+
+        product = next(
+            (
+                p for p in products
+                if str(p.get("product_id") or "").strip() == product_key
+            ),
+            None,
+        )
+
+        if product is None:
+            return {
+                "diagnostic": "catalog-coverage-run-v1",
+                "ok": False,
+                "error": "canonical_product_not_found",
+                "store": store_key,
+                "product_id": product_key,
+                "catalog_written": False,
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        task = {
+            "store": store_key,
+            "product": product,
+            "attempts": 0,
+        }
+
+        result = _coverage_run_task(task)
+        _coverage_finish_task(task, result)
+
+        return {
+            "diagnostic": "catalog-coverage-run-v1",
+            "ok": True,
+            "store": store_key,
+            "product_id": product_key,
+            "canonical_name": product.get("canonical_name"),
+            "coverage_queries": (
+                __import__("catalog_engine")._coverage_queries(product)
+            ),
+            "result": result,
+            "catalog_written": bool(result.get("found")),
+            "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except Exception as exc:
+        return {
+            "diagnostic": "catalog-coverage-run-v1",
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "store": store_key,
+            "product_id": product_key,
             "catalog_written": False,
             "hydration_called": False,
             "elapsed_sec": round(time.monotonic() - started, 3),
