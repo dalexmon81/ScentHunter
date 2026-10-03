@@ -587,6 +587,37 @@ class ProductMatcher:
                 )
             self._url_product_cache[id(product)] = tuple(product_cache)
 
+        # Precompute text/brand blocking data once per catalog product.
+        # Generic matching must preserve the same identity rules, but it must
+        # not normalize and rescan the entire catalog for every retailer offer.
+        self._normalized_brand_cache: Dict[int, str] = {}
+        self._text_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
+        self._text_specificity_cache: Dict[int, int] = {}
+        self._brand_compatible_cache: Dict[str, Tuple[CatalogProduct, ...]] = {}
+
+        for product in self.catalog:
+            product_id = id(product)
+            normalized_brand = normalize(product.brand)
+            self._normalized_brand_cache[product_id] = normalized_brand
+
+            text_cache: List[Tuple[Any, ...]] = []
+            for candidate in (product.normalized_name, *product.normalized_aliases):
+                if not candidate:
+                    continue
+                cleaned = catalog_clean_text(candidate)
+                if not cleaned:
+                    continue
+                tokens = tuple(cleaned.split())
+                if not tokens:
+                    continue
+                token_set = frozenset(tokens)
+                text_cache.append((cleaned, tokens, token_set))
+
+            self._text_product_cache[product_id] = tuple(text_cache)
+            self._text_specificity_cache[product_id] = len(
+                set(self._variant_specificity_key(product.name, product.brand).split())
+            )
+
     @staticmethod
     def _normalize_family_registry(
         registry: Optional[Dict[str, Any] | Iterable[Dict[str, Any]]],
@@ -2147,6 +2178,39 @@ class ProductMatcher:
             matched["canonical_image"] = best_product.canonical_image
         return matched
 
+    def _brand_compatible_products(
+        self,
+        normalized_brand: str,
+    ) -> Tuple[CatalogProduct, ...]:
+        """Return exactly the same brand-compatible set as the old scan.
+
+        The old implementation recomputed normalize(product.brand) for every
+        offer. Cache the result per normalized retailer brand instead. This is
+        a blocking optimization only; the compatibility rule is unchanged.
+        """
+        if not normalized_brand:
+            return tuple()
+
+        cached = self._brand_compatible_cache.get(normalized_brand)
+        if cached is not None:
+            return cached
+
+        eligible: List[CatalogProduct] = []
+        for product in self.catalog:
+            product_brand = self._normalized_brand_cache.get(id(product), "")
+            if product_brand:
+                if (
+                    normalized_brand != product_brand
+                    and normalized_brand not in product_brand
+                    and product_brand not in normalized_brand
+                ):
+                    continue
+            eligible.append(product)
+
+        result = tuple(eligible)
+        self._brand_compatible_cache[normalized_brand] = result
+        return result
+
     def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
         """Resolve a generic offer with identifiers, name evidence and URL identity.
 
@@ -2173,28 +2237,30 @@ class ProductMatcher:
         if not name:
             return None, "none", 0.0
 
-        eligible = []
         normalized_brand = normalize(brand)
-        for product in self.catalog:
-            if normalized_brand and product.normalized_brand:
-                product_brand = normalize(product.brand)
-                if (
-                    normalized_brand != product_brand
-                    and normalized_brand not in product_brand
-                    and product_brand not in normalized_brand
-                ):
-                    continue
-            eligible.append(product)
+        if normalized_brand:
+            # Preserve the exact old brand-compatibility semantics, but scan
+            # the catalog only once per distinct offer brand and reuse the
+            # resulting candidate set across all offers from that brand.
+            eligible = list(self._brand_compatible_products(normalized_brand))
+        else:
+            # Preserve the previous behavior when no usable brand exists: the
+            # full catalog remains eligible. The expensive catalog-side text
+            # normalization has already been precomputed, so this path is still
+            # materially cheaper without introducing a lossy blocking rule.
+            eligible = list(self.catalog)
 
         # First resolve the strongest textual candidate for the fallback path.
         best_text_product: Optional[CatalogProduct] = None
         best_text_score = 0.0
         best_text_specificity = -1
+        text_candidates = []
         for product in eligible:
             score = self._text_score(brand, name, product)
-            specificity = len(
-                set(self._variant_specificity_key(product.name, product.brand).split())
-            )
+            specificity = self._text_specificity(product)
+            text_candidates.append((product, score, specificity))
+
+        for product, score, specificity in text_candidates:
             if (
                 score > best_text_score
                 or (
@@ -2217,9 +2283,7 @@ class ProductMatcher:
         best_url_specificity = -1
         for product in eligible:
             score, _alias = self._url_candidate_score(offer, product, url_context)
-            specificity = len(
-                set(self._variant_specificity_key(product.name, product.brand).split())
-            )
+            specificity = self._text_specificity(product)
             if (
                 score > best_url_score
                 or (
@@ -2247,8 +2311,11 @@ class ProductMatcher:
             "exact_name" if best_text_score >= 0.94 else "token_score"
         ), best_text_score
 
-    @staticmethod
+    def _text_specificity(self, product: CatalogProduct) -> int:
+        return self._text_specificity_cache.get(id(product), 0)
+
     def _text_score(
+        self,
         brand: str,
         name: str,
         product: CatalogProduct,
@@ -2256,24 +2323,25 @@ class ProductMatcher:
         brand_score = 1.0 if brand and brand == product.normalized_brand else 0.0
         best = 0.0
 
-        for candidate in (product.normalized_name, *product.normalized_aliases):
-            if not candidate:
-                continue
-            if name == candidate:
-                best = max(best, 1.0)
-                continue
+        # Catalog-side normalization/tokenization is precomputed once in
+        # ProductMatcher.__init__. The offer-side text is normalized once per
+        # scoring call and then reused for every alias.
+        offer_text = catalog_clean_text(name)
+        offer_tokens = tuple(offer_text.split())
+        offer_token_set = frozenset(offer_tokens)
+        if not offer_tokens:
+            return 0.0
 
-            # Compare identity-bearing tokens without penalising a canonical
-            # product for harmless retailer descriptors appended around it.
-            # For example, ``Tiger`` must match ``Rayhaan Collection Tiger Cal
-            # Cologne Edition`` once the exact token ``Tiger`` is present.
-            # This is token/phrase matching only: ``Kiss`` still cannot match
-            # ``Kissed``, and ``Q`` cannot match the token ``Magnetiq``.
-            offer_text = catalog_clean_text(name)
-            candidate_text = catalog_clean_text(candidate)
-            offer_tokens = offer_text.split()
-            candidate_tokens = candidate_text.split()
-            if not candidate_tokens or not offer_tokens:
+        product_cache = self._text_product_cache.get(id(product), ())
+        if not product_cache:
+            return 0.45 if brand_score else 0.0
+        candidates = product_cache
+
+        for candidate, candidate_tokens, candidate_token_set in candidates:
+            if not candidate_tokens:
+                continue
+            if offer_text == candidate:
+                best = max(best, 1.0)
                 continue
 
             # Exact contiguous token phrase. A single very short token is not
@@ -2283,8 +2351,8 @@ class ProductMatcher:
             phrase_match = False
             if len(candidate_tokens) > 1 or len(candidate_tokens[0]) >= 4:
                 width = len(candidate_tokens)
-                for start in range(len(offer_tokens) - width + 1):
-                    if offer_tokens[start:start + width] == candidate_tokens:
+                for start_index in range(len(offer_tokens) - width + 1):
+                    if offer_tokens[start_index:start_index + width] == candidate_tokens:
                         phrase_match = True
                         break
 
@@ -2292,11 +2360,9 @@ class ProductMatcher:
                 best = max(best, 1.0)
                 continue
 
-            query_tokens = set(offer_tokens)
-            candidate_token_set = set(candidate_tokens)
-            intersection = len(query_tokens & candidate_token_set)
+            intersection = len(offer_token_set & candidate_token_set)
             recall = intersection / len(candidate_token_set) if candidate_token_set else 0.0
-            precision = intersection / max(1, len(query_tokens))
+            precision = intersection / max(1, len(offer_token_set))
             f_score = (
                 2 * recall * precision / (recall + precision)
                 if recall + precision
