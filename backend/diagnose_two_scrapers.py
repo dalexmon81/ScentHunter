@@ -761,6 +761,153 @@ def diagnose_catalog_store(
         }
 
 
+@router.get("/diagnose-catalog-identity")
+def diagnose_catalog_identity(
+    store: str = Query("parfumzentrum"),
+    q: str = Query("Rayhaan"),
+    max_results: int = Query(100, ge=1, le=500),
+):
+    """Read-only trace of catalog rows through the production identity layer.
+
+    This deliberately starts from catalog_engine.search_local() and then uses
+    the same main.py clean_result() and _resolve_offer_identity() functions
+    used by catalog-first search. It never calls a retailer scraper,
+    discovery, hydration, /search, or any database write operation.
+    """
+    started = time.monotonic()
+    store_key = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    base = {
+        "diagnostic": "catalog-identity-read-only-v1",
+        "ok": False,
+        "production_search_called": False,
+        "scraper_called": False,
+        "discovery_called": False,
+        "hydration_called": False,
+        "database_written": False,
+        "search_local_called": False,
+        "clean_result_called": False,
+        "resolve_offer_identity_called": False,
+        "store": store_key,
+        "query": query,
+    }
+
+    try:
+        from catalog_engine import STORES, search_local
+        if store_key not in tuple(STORES):
+            return {**base, "error": "invalid_store: available stores=" + ",".join(str(x) for x in STORES),
+                    "elapsed_sec": round(time.monotonic() - started, 3)}
+        if not query:
+            return {**base, "error": "empty_query",
+                    "elapsed_sec": round(time.monotonic() - started, 3)}
+
+        raw_rows = search_local(query, per_store=max_results, search_terms=[query])
+        base["search_local_called"] = True
+        rows = []
+        for row in list(raw_rows or []):
+            item = dict(row) if not isinstance(row, dict) else dict(row)
+            if str(item.get("store") or "").strip().lower() == store_key:
+                rows.append(item)
+        rows = rows[:max_results]
+
+        # Import lazily: main.py has already imported this router at startup,
+        # so by request time the production functions are fully defined.
+        import main as main_module
+        clean_fn = getattr(main_module, "clean_result", None)
+        resolve_fn = getattr(main_module, "_resolve_offer_identity", None)
+        if not callable(clean_fn):
+            return {**base, "error": "main.clean_result_unavailable", "row_count": len(rows),
+                    "elapsed_sec": round(time.monotonic() - started, 3)}
+        if not callable(resolve_fn):
+            return {**base, "error": "main._resolve_offer_identity_unavailable", "row_count": len(rows),
+                    "elapsed_sec": round(time.monotonic() - started, 3)}
+
+        inspected = []
+        for index, raw in enumerate(rows):
+            item = {
+                "index": index,
+                "raw": {
+                    "name": raw.get("name"),
+                    "brand": raw.get("brand"),
+                    "url": raw.get("url"),
+                    "price": raw.get("price"),
+                    "availability": raw.get("availability"),
+                    "size_ml": raw.get("size_ml"),
+                    "fetch_status": raw.get("fetch_status"),
+                    "source": raw.get("source"),
+                },
+            }
+            try:
+                cleaned = clean_fn(dict(raw), store_key)
+                base["clean_result_called"] = True
+                if not isinstance(cleaned, dict):
+                    item["clean"] = {"type": type(cleaned).__name__, "value": str(cleaned)[:1000]}
+                    item["identity"] = {"status": "CLEAN_RESULT_NON_DICT"}
+                    inspected.append(item)
+                    continue
+                item["clean"] = {
+                    "name": cleaned.get("name"),
+                    "brand": cleaned.get("brand"),
+                    "_raw_name": cleaned.get("_raw_name"),
+                    "_raw_brand": cleaned.get("_raw_brand"),
+                    "url": cleaned.get("url"),
+                    "price": cleaned.get("price"),
+                    "availability": cleaned.get("availability"),
+                    "size_ml": cleaned.get("size_ml"),
+                    "store": cleaned.get("store"),
+                }
+                try:
+                    resolved = resolve_fn(dict(cleaned), query)
+                    base["resolve_offer_identity_called"] = True
+                    if isinstance(resolved, dict):
+                        item["identity"] = {
+                            "returned": True,
+                            "match_status": resolved.get("_match_status"),
+                            "catalog_id": resolved.get("catalog_id"),
+                            "canonical_name": resolved.get("canonical_name"),
+                            "canonical_brand": resolved.get("canonical_brand"),
+                            "canonical_size_ml": resolved.get("canonical_size_ml"),
+                            "match_method": resolved.get("match_method"),
+                            "match_score": resolved.get("match_score"),
+                            "match_error": resolved.get("_match_error"),
+                            "needs_refresh": resolved.get("_needs_refresh"),
+                        }
+                    else:
+                        item["identity"] = {
+                            "returned": False,
+                            "return_type": type(resolved).__name__,
+                            "return_value": str(resolved)[:1000],
+                        }
+                except Exception as exc:
+                    item["identity"] = {
+                        "returned": False,
+                        "exception": f"{type(exc).__name__}: {exc}",
+                    }
+            except Exception as exc:
+                item["clean_error"] = f"{type(exc).__name__}: {exc}"
+            inspected.append(item)
+
+        return {
+            **base,
+            "ok": True,
+            "row_count": len(rows),
+            "rows": inspected,
+            "diagnosis": (
+                "TRACE_COMPLETE: catalog search_local rows were passed through "
+                "the production clean_result -> _resolve_offer_identity layer. "
+                "Inspect each row's identity status to locate the loss."
+            ),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+    except Exception as exc:
+        return {
+            **base,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
 @router.get("/diagnose-catalog-search-local")
 def diagnose_catalog_search_local(
     store: str = Query("parfumzentrum"),
