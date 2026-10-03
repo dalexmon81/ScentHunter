@@ -1,16 +1,20 @@
 """
-ScentHunter - read-only Sabina catalog-discovery handoff diagnostic.
+ScentHunter - Sabina one-product-page forensic diagnostic.
 
-This module deliberately runs only bounded, read-only diagnostics.
-It does not call production search(), ProductMatcher, catalog writes,
-hydration, resync, or database writes.
+Read-only diagnostic only. It makes exactly one HTTP request to the supplied
+Sabina product URL, parses the already-downloaded HTML with the deployed
+scraper's pure parsing functions, and reports the availability decision.
+
+It does NOT call production search(), discovery, ProductMatcher, catalog writes,
+hydration, resync, or any database operation.
 """
 
 import inspect
 import time
-from urllib.parse import quote
+from urllib.parse import urlparse
 
 import requests
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, Query
 
 router = APIRouter()
@@ -71,11 +75,7 @@ def diagnose_sabina_legacy_crawl(
     try:
         ce.HTML_MAX_PAGES = int(max_pages)
         ce.HTML_MAX_DEPTH = int(max_depth)
-        result = fn(
-            "sabina",
-            [SEARCH_URL],
-            time.time() + 45,
-        )
+        result = fn("sabina", [SEARCH_URL], time.time() + 45)
     finally:
         if old_pages is not None:
             ce.HTML_MAX_PAGES = old_pages
@@ -119,22 +119,21 @@ def diagnose_sabina_product_page(
     q: str = Query("Liquid Brun", min_length=1, max_length=120),
 ):
     """
-    Read-only forensic test of ONE real Sabina product page.
+    One HTTP request + pure parser test.
 
-    It calls the deployed scraper's extract_product_page() directly.
-    It does not run discovery, production search, matcher, catalog writes,
-    hydration, or resync. The purpose is to prove exactly what the scraper
-    emits for offer.availability / available / provenance.availability.
+    The HTTP request is deliberately performed here instead of calling
+    extract_product_page(), because extract_product_page() performs its own
+    network request. This isolates HTTP from HTML parsing/availability logic.
     """
     started = time.monotonic()
 
     try:
         from scrapers.sabina import scraper
 
-        parsed = requests.utils.urlparse(url)
+        parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"}:
             return {
-                "diagnostic": "sabina-product-page-v1",
+                "diagnostic": "sabina-product-page-v2",
                 "ok": False,
                 "stage": "input_validation",
                 "error": "URL must use http or https",
@@ -144,7 +143,7 @@ def diagnose_sabina_product_page(
 
         if parsed.hostname not in {"sabina.com", "www.sabina.com"}:
             return {
-                "diagnostic": "sabina-product-page-v1",
+                "diagnostic": "sabina-product-page-v2",
                 "ok": False,
                 "stage": "input_validation",
                 "error": "URL host must be sabina.com",
@@ -152,82 +151,188 @@ def diagnose_sabina_product_page(
                 "read_only": True,
             }
 
-        session = requests.Session()
-        try:
-            response_probe = session.get(
-                url,
-                headers=getattr(scraper, "HEADERS", {}),
-                timeout=getattr(scraper, "TIMEOUT", 7),
-                allow_redirects=True,
-            )
-            probe = {
-                "status": response_probe.status_code,
-                "final_url": response_probe.url,
-                "bytes": len(response_probe.content),
-            }
+        headers = getattr(scraper, "HEADERS", {})
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=(3.0, 5.0),
+            allow_redirects=True,
+        )
 
-            if response_probe.status_code >= 400:
-                return {
-                    "diagnostic": "sabina-product-page-v1",
-                    "ok": False,
-                    "stage": "http_fetch",
-                    "query": q,
-                    "url": url,
-                    "probe": probe,
-                    "error": f"HTTP {response_probe.status_code}",
-                    "read_only": True,
-                    "elapsed_sec": round(time.monotonic() - started, 3),
-                }
+        http = {
+            "status": response.status_code,
+            "final_url": response.url,
+            "bytes": len(response.content),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
 
-            row = scraper.extract_product_page(session, url, q)
-
+        if response.status_code >= 400:
             return {
-                "diagnostic": "sabina-product-page-v1",
-                "ok": True,
-                "purpose": (
-                    "read-only execution of the deployed Sabina "
-                    "extract_product_page() on one product URL"
-                ),
+                "diagnostic": "sabina-product-page-v2",
+                "ok": False,
+                "stage": "http_fetch",
                 "query": q,
                 "input_url": url,
-                "http_probe": probe,
-                "scraper_module": getattr(scraper, "__file__", None),
-                "scraper_function": "extract_product_page",
-                "result": {
-                    "store": row.get("store") if isinstance(row, dict) else None,
-                    "source": row.get("source") if isinstance(row, dict) else None,
-                    "identity": row.get("identity") if isinstance(row, dict) else None,
-                    "attributes": row.get("attributes") if isinstance(row, dict) else None,
-                    "offer": row.get("offer") if isinstance(row, dict) else None,
-                    "available": row.get("available") if isinstance(row, dict) else None,
-                    "availability": (
-                        row.get("availability")
-                        if isinstance(row, dict)
-                        else None
-                    ),
-                    "provenance": (
-                        row.get("provenance")
-                        if isinstance(row, dict)
-                        else None
-                    ),
-                },
+                "http": http,
+                "error": f"HTTP {response.status_code}",
                 "read_only": True,
-                "production_search_called": False,
-                "product_matcher_called": False,
-                "catalog_written": False,
-                "hydration_called": False,
-                "elapsed_sec": round(time.monotonic() - started, 3),
             }
-        finally:
-            session.close()
+
+        parse_started = time.monotonic()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        h1 = soup.select_one("h1")
+        h1_text = (
+            scraper.clean(h1.get_text(" ", strip=True))
+            if h1
+            else ""
+        )
+
+        product = scraper.first_jsonld_product(
+            soup,
+            expected_url=response.url,
+            expected_title=h1_text or None,
+        )
+
+        product_name = scraper.clean(
+            (product or {}).get("name") or h1_text
+        )
+
+        offer = scraper._select_product_offer(
+            product or {},
+            scraper.normalise_url(response.url),
+            product_name,
+            scraper.extract_size_ml_from_product_page(
+                soup,
+                product_name,
+            )[0],
+        )
+
+        availability, availability_source = (
+            scraper.availability_from_product_page(
+                soup,
+                offer,
+            )
+        )
+
+        size_ml, size_source = (
+            scraper.extract_size_ml_from_product_page(
+                soup,
+                product_name,
+            )
+        )
+
+        price = (
+            scraper.money_to_float(offer.get("price"))
+            if isinstance(offer, dict)
+            else None
+        )
+
+        if price is None:
+            price, price_source = scraper.extract_price_from_html(soup)
+        else:
+            price_source = "sabina_jsonld"
+
+        parsed_result = {
+            "name": product_name or None,
+            "size_ml": size_ml,
+            "size_source": size_source,
+            "price": price,
+            "price_source": price_source,
+            "offer_availability": (
+                offer.get("availability")
+                if isinstance(offer, dict)
+                else None
+            ),
+            "availability_from_product_page": availability,
+            "availability_source": availability_source,
+            "available_boolean": (
+                True if availability == "in_stock"
+                else False if availability == "out_of_stock"
+                else None
+            ),
+            "jsonld_product_found": bool(product),
+            "jsonld_offer_found": bool(offer),
+            "html_parser_elapsed_sec": round(
+                time.monotonic() - parse_started, 4
+            ),
+        }
+
+        # Compact evidence only: enough to prove why the parser classified
+        # the page, without returning the entire Sabina HTML document.
+        page_text = scraper.norm(
+            soup.get_text(" ", strip=True)
+        )
+        notify_markers = (
+            "avisame",
+            "avísame",
+            "notificarme",
+            "notify me",
+            "prévenez-moi",
+            "me prévenir",
+            "benachrichtigen",
+        )
+        date_markers = (
+            "fecha de disponibilidad",
+            "availability date",
+            "date de disponibilité",
+            "verfügbarkeitsdatum",
+        )
+
+        parsed_result["evidence"] = {
+            "has_availability_date_marker": any(
+                marker in page_text
+                for marker in date_markers
+            ),
+            "has_notification_marker": any(
+                marker in page_text
+                for marker in notify_markers
+            ),
+            "purchase_control_scan": {
+                "function": "availability_from_product_page",
+                "purchase_roots_checked": True,
+            },
+        }
+
+        return {
+            "diagnostic": "sabina-product-page-v2",
+            "ok": True,
+            "purpose": (
+                "one HTTP request followed by the deployed Sabina pure "
+                "HTML/availability parser; no product-page scraper network call"
+            ),
+            "query": q,
+            "input_url": url,
+            "http": http,
+            "scraper_module": getattr(scraper, "__file__", None),
+            "result": parsed_result,
+            "read_only": True,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "catalog_written": False,
+            "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except requests.RequestException as exc:
+        return {
+            "diagnostic": "sabina-product-page-v2",
+            "ok": False,
+            "stage": "http_fetch",
+            "query": q,
+            "url": url,
+            "error": f"{type(exc).__name__}: {exc}",
+            "read_only": True,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
 
     except Exception as exc:
         return {
-            "diagnostic": "sabina-product-page-v1",
+            "diagnostic": "sabina-product-page-v2",
             "ok": False,
+            "stage": "html_parse_or_availability",
             "query": q,
             "url": url,
-            "stage": "extract_product_page",
             "error": f"{type(exc).__name__}: {exc}",
             "read_only": True,
             "production_search_called": False,
