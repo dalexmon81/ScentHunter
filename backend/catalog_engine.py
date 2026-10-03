@@ -3272,6 +3272,26 @@ _COVERAGE_WORKERS = 2
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
 
+
+def _foreground_search_running():
+    """Return True while the normal foreground search job is running.
+
+    The catalog hydration/coverage worker is deliberately lower priority than
+    user searches.  Foreground jobs are named by main.py with the stable
+    `scenthunter-search-` prefix.  When one is active, background scraper work
+    must not start, because it can otherwise consume CPU/network time and
+    contend with the foreground matcher even though the public search itself
+    is catalog-only.
+    """
+    try:
+        return any(
+            thread.is_alive()
+            and str(thread.name or '').startswith('scenthunter-search-')
+            for thread in threading.enumerate()
+        )
+    except Exception:
+        return False
+
 _COVERAGE_STORE_MODULES = {
     'bplatz': 'scrapers.bplatz.scraper',
     'deloox': 'scrapers.deloox.scraper',
@@ -3694,6 +3714,16 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     )
     while stop_event is None or not stop_event.is_set():
         try:
+            # Background coverage/hydration is lower priority than the
+            # foreground catalog search.  Never start another retailer
+            # scraper or hydration batch while a user search is active.
+            if _foreground_search_running():
+                if stop_event is not None:
+                    stop_event.wait(0.25)
+                else:
+                    time.sleep(0.25)
+                continue
+
             now_mono = time.monotonic()
             if now_mono >= coverage_next_at:
                 coverage_result = coverage_batch()
