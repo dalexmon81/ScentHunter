@@ -991,6 +991,35 @@ class ProductMatcher:
                         name_variant = variant
                         break
 
+        # A retailer may place the family/brand label around the real variant
+        # instead of using the canonical ordering, e.g. ``Sun Kissed Aromatix X
+        # French Avenue``. Within a closed family, an exact token phrase from a
+        # registered variant is sufficient identity evidence. This is still
+        # token-based (never substring-based), and therefore ``Kiss`` cannot
+        # match ``Kissed``. Single-token variants are allowed here at length 3+
+        # because the family scope has already constrained the candidate set.
+        if name_variant is None:
+            candidate_tokens = candidate_key.split()
+            for variant in family["variants"]:
+                for alias in (variant.get("canonical_name"), *variant.get("aliases", ())):
+                    alias_key = catalog_variant_key(alias)
+                    if not alias_key:
+                        continue
+                    alias_tokens = alias_key.split()
+                    if not alias_tokens:
+                        continue
+                    if len(alias_tokens) == 1 and len(alias_tokens[0]) < 3:
+                        continue
+                    width = len(alias_tokens)
+                    for start in range(len(candidate_tokens) - width + 1):
+                        if candidate_tokens[start:start + width] == alias_tokens:
+                            name_variant = variant
+                            break
+                    if name_variant is not None:
+                        break
+                if name_variant is not None:
+                    break
+
         # The retailer name can be generic while the URL still contains the
         # actual variant. Resolve URL evidence generically against the family
         # registry aliases. No retailer-specific or perfume-specific rule is used.
@@ -2234,23 +2263,45 @@ class ProductMatcher:
                 best = max(best, 1.0)
                 continue
 
-            query_tokens = set(name.split())
-            candidate_tokens = set(candidate.split())
-            intersection = len(query_tokens & candidate_tokens)
-            recall = intersection / len(candidate_tokens) if candidate_tokens else 0.0
+            # Compare identity-bearing tokens without penalising a canonical
+            # product for harmless retailer descriptors appended around it.
+            # For example, ``Tiger`` must match ``Rayhaan Collection Tiger Cal
+            # Cologne Edition`` once the exact token ``Tiger`` is present.
+            # This is token/phrase matching only: ``Kiss`` still cannot match
+            # ``Kissed``, and ``Q`` cannot match the token ``Magnetiq``.
+            offer_text = catalog_clean_text(name)
+            candidate_text = catalog_clean_text(candidate)
+            offer_tokens = offer_text.split()
+            candidate_tokens = candidate_text.split()
+            if not candidate_tokens or not offer_tokens:
+                continue
+
+            # Exact contiguous token phrase. A single very short token is not
+            # sufficient evidence because catalog identities such as ``Q`` or
+            # ``X`` are too ambiguous; longer single-token identities are safe
+            # only when they occur as an exact token.
+            phrase_match = False
+            if len(candidate_tokens) > 1 or len(candidate_tokens[0]) >= 4:
+                width = len(candidate_tokens)
+                for start in range(len(offer_tokens) - width + 1):
+                    if offer_tokens[start:start + width] == candidate_tokens:
+                        phrase_match = True
+                        break
+
+            if phrase_match:
+                best = max(best, 1.0)
+                continue
+
+            query_tokens = set(offer_tokens)
+            candidate_token_set = set(candidate_tokens)
+            intersection = len(query_tokens & candidate_token_set)
+            recall = intersection / len(candidate_token_set) if candidate_token_set else 0.0
             precision = intersection / max(1, len(query_tokens))
             f_score = (
                 2 * recall * precision / (recall + precision)
                 if recall + precision
                 else 0.0
             )
-
-            # Never promote a candidate merely because it is a substring of
-            # a longer word. Identity matching is token-based: a catalog name
-            # such as ``Kiss`` must not match ``Kissed``, and a one-letter
-            # identity such as ``Q`` must not match ``Magnetiq``.
-            # Phrase containment is handled separately by the token/F-score
-            # calculation above, so arbitrary substring promotion is unsafe.
 
             best = max(best, f_score)
 
