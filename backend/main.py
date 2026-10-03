@@ -2726,27 +2726,22 @@ def search_start(q: str):
             'stores': {},
         }
 
-    # A fresh Fly volume starts empty. Wait for background catalog discovery
-    # instead of starting a search that can only return zero results.
-    if not _catalog_is_ready():
-        with _CATALOG_BOOTSTRAP_LOCK:
-            bootstrap_running = _CATALOG_BOOTSTRAP_RUNNING
-            bootstrap_error = _CATALOG_BOOTSTRAP_ERROR
-        if bootstrap_error and not bootstrap_running:
-            return {
-                'job_id': '',
-                'query': query,
-                'completed': True,
-                'status': 'error',
-                'count': 0,
-                'offer_count': 0,
-                'results': [],
-                'unresolved_offers': [],
-                'identity_scope': [],
-                'comparisons': [],
-                'errors': {'catalog': bootstrap_error},
-                'stores': {},
-            }
+    # IMPORTANT: /search-start must remain a lightweight orchestration
+    # endpoint. Do not call catalog_store_status() / _catalog_is_ready() here:
+    # that performs multiple SQLite reads, including a hydration-related
+    # LEFT JOIN, and can contend with the background catalog hydrator exactly
+    # when a user starts a second search.
+    #
+    # Catalog bootstrap readiness is established once during application
+    # startup and cached in _CATALOG_BOOTSTRAP_DONE / _CATALOG_BOOTSTRAP_ERROR.
+    # A normal persistent catalog is therefore allowed to start a job without
+    # re-scanning SQLite on every search.
+    with _CATALOG_BOOTSTRAP_LOCK:
+        bootstrap_running = _CATALOG_BOOTSTRAP_RUNNING
+        bootstrap_done = _CATALOG_BOOTSTRAP_DONE
+        bootstrap_error = _CATALOG_BOOTSTRAP_ERROR
+
+    if bootstrap_running and not bootstrap_done:
         return {
             'job_id': '',
             'query': query,
@@ -2760,6 +2755,22 @@ def search_start(q: str):
             'identity_scope': [],
             'comparisons': [],
             'errors': {'catalog': 'catalog_bootstrapping'},
+            'stores': {},
+        }
+
+    if bootstrap_error and not bootstrap_running:
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': True,
+            'status': 'error',
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': bootstrap_error},
             'stores': {},
         }
 
