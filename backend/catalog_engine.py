@@ -135,7 +135,7 @@ MIN_REPLACEMENT_ABSOLUTE = 100
 # fetch; this only removes obvious non-product endpoints from a sitemap.
 NON_PRODUCT_PATH = re.compile(
     r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
-    r'categories|collection|collections|brand|brands|marca|marque|sitemap|'
+    r'kategorie|kategorien|categories|collection|collections|brand|brands|marca|marque|sitemap|'
     r'login|account|cart|checkout|blog|news|tag|tags|help|faq|pages|'
     r'privacy|privacy-policy|terms|terms-of-service|refund|returns|shipping|'
     r'contact|about|legal|policies)(?:/|$)',
@@ -572,7 +572,16 @@ def _parse_xml_entries(data, url=''):
         return [], f'XML_PARSE_ERROR:{type(exc).__name__}'
 
 
-def _looks_product(url):
+def _looks_product(url, store=None):
+    """Return whether a URL has a plausible product-page URL shape.
+
+    This is discovery-layer validation only. It does not assign product
+    identity and does not depend on a particular product name.
+
+    Some retailers expose a stable URL grammar that distinguishes products
+    from brand/category pages. When that grammar is known, use it here before
+    falling back to the generic multi-token slug heuristic.
+    """
     p = urllib.parse.urlparse(url)
     if p.scheme not in ('http', 'https') or p.fragment:
         return False
@@ -581,6 +590,14 @@ def _looks_product(url):
         return False
     if NON_PRODUCT_PATH.search(p.path):
         return False
+
+    # ParfumZentrum uses ``_z<id>`` for product pages and ``_v<id>`` for
+    # brand/category/navigation pages. The latter can otherwise pass the
+    # generic multi-token slug test (for example ``rayhaan_v1602``).
+    # This is a retailer URL grammar rule, not a product-specific exception.
+    if store == 'parfumzentrum':
+        return bool(re.search(r'(?:^|_)z\d+/?$', p.path, re.I))
+
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
     # because their slugs contain multiple words, so exclude them here while
@@ -904,7 +921,7 @@ def _html_product_url(store, raw_url, base_url):
             if 'product' in controllers and ids:
                 return absolute
         return None
-    return absolute if _looks_product(absolute) else None
+    return absolute if _looks_product(absolute, store) else None
 
 
 def _sabina_legacy_product_urls(data, page_base):
@@ -2000,7 +2017,7 @@ def discover_store(store):
                     if kind=='sitemap':
                         if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
                             queued.add(absolute); queue.append((absolute,depth+1))
-                    elif _looks_product(absolute):
+                    elif _looks_product(absolute, store):
                         product_urls[absolute]=lastmod or ''
                         if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
                             break
@@ -2637,7 +2654,7 @@ def _ensure_hydration_queue():
                 "SELECT store,url FROM store_urls WHERE active=1"
             ).fetchall()
             for r in invalid_rows:
-                if _looks_product(r['url']):
+                if _looks_product(r['url'], r['store']):
                     continue
                 conn.execute(
                     "DELETE FROM hydration_queue WHERE store=? AND url=?",
