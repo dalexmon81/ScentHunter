@@ -530,3 +530,213 @@ def diagnose_sabina_category_pagination(
             "error": f"{type(exc).__name__}: {exc}",
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
+
+
+@router.get("/diagnose-sabina-category-pages")
+def diagnose_sabina_category_pages(
+    category_url: str = Query(
+        "https://www.sabina.com/it/6-profumi-di-donna",
+        min_length=20,
+        max_length=500,
+    ),
+    pages: str = Query("2,3,42", min_length=1, max_length=120),
+    target: str = Query("41708", min_length=1, max_length=120),
+):
+    """
+    Read-only probe of explicitly selected Sabina category pages.
+
+    This intentionally does not use the crawler frontier. It fetches only the
+    requested p=N pages through the production HTML fetch helper, then reports
+    whether the target occurs in page text, product URLs, JSON-LD, or the
+    generic Sabina legacy-ID extraction.
+    """
+    started = time.monotonic()
+    base_result = {
+        "diagnostic": "sabina-category-pages-read-only-v1",
+        "ok": False,
+        "read_only": True,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "hydration_called": False,
+        "database_written": False,
+        "category_url": category_url,
+        "target": target,
+    }
+
+    try:
+        import catalog_engine as ce
+
+        fetch_fn = getattr(ce, "_fetch_html_page", None)
+        listing_fn = getattr(ce, "_html_listing_url", None)
+        product_fn = getattr(ce, "_html_product_url", None)
+        if not callable(fetch_fn) or not callable(listing_fn) or not callable(product_fn):
+            return {
+                **base_result,
+                "error": "required catalog_engine HTML helpers are unavailable",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        requested_pages = []
+        for raw in str(pages or "").split(","):
+            raw = raw.strip()
+            if raw.isdigit():
+                n = int(raw)
+                if 1 <= n <= 1000 and n not in requested_pages:
+                    requested_pages.append(n)
+
+        if not requested_pages:
+            return {
+                **base_result,
+                "error": "no_valid_pages",
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        target_norm = str(target or "").strip().lower()
+        results = []
+
+        for page_number in requested_pages:
+            if page_number == 1:
+                url = category_url
+            else:
+                parsed = urlparse(category_url)
+                pairs = [
+                    (k, v) for k, v in parse_qsl(
+                        parsed.query, keep_blank_values=True
+                    )
+                    if k.lower() != "p"
+                ]
+                pairs.append(("p", str(page_number)))
+                url = urlunparse(
+                    (
+                        parsed.scheme,
+                        parsed.netloc,
+                        parsed.path,
+                        parsed.params,
+                        urlencode(pairs),
+                        parsed.fragment,
+                    )
+                )
+
+            page_started = time.monotonic()
+            requested, final_url, data, error = fetch_fn("sabina", url)
+            item = {
+                "page": page_number,
+                "requested_url": requested,
+                "final_url": final_url,
+                "status": None if error else 200,
+                "bytes": len(data or b""),
+                "elapsed_sec": round(time.monotonic() - page_started, 3),
+                "error": error,
+            }
+
+            if error or not data:
+                item["diagnosis"] = "FETCH_FAILED"
+                results.append(item)
+                continue
+
+            soup = BeautifulSoup(data, "html.parser")
+            lower = data.decode("utf-8", "ignore").lower()
+            text = soup.get_text(" ", strip=True).lower()
+
+            product_urls = []
+            for a in soup.find_all("a", href=True):
+                product = product_fn(
+                    "sabina",
+                    a.get("href"),
+                    final_url or url,
+                )
+                if product:
+                    product_urls.append(product)
+
+            for ld in getattr(ce, "_jsonld", lambda _s: [])(soup):
+                product = product_fn(
+                    "sabina",
+                    ld.get("url"),
+                    final_url or url,
+                )
+                if product:
+                    product_urls.append(product)
+
+            product_urls = list(dict.fromkeys(product_urls))
+            target_urls = [
+                u for u in product_urls
+                if target_norm and target_norm in u.lower()
+            ]
+
+            legacy_urls = []
+            legacy_fn = getattr(ce, "_sabina_legacy_product_urls", None)
+            if callable(legacy_fn):
+                try:
+                    legacy_urls = list(
+                        legacy_fn(data, final_url or url)
+                    )
+                except Exception as exc:
+                    item["legacy_helper_error"] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+
+            legacy_target_urls = [
+                u for u in legacy_urls
+                if target_norm and target_norm in u.lower()
+            ]
+
+            item.update({
+                "target_text_hit": bool(target_norm and target_norm in text),
+                "target_raw_html_hit": bool(target_norm and target_norm in lower),
+                "target_url_hit": bool(target_urls),
+                "target_urls": target_urls[:20],
+                "product_url_count": len(product_urls),
+                "product_urls_sample": product_urls[:40],
+                "legacy_product_url_count": len(legacy_urls),
+                "legacy_target_urls": legacy_target_urls[:20],
+                "liquid_brun_text_hit": "liquid brun" in text,
+                "french_avenue_text_hit": "french avenue" in text,
+                "pagination_links": [
+                    href for href in (
+                        urljoin(final_url or url, a.get("href"))
+                        for a in soup.find_all("a", href=True)
+                    )
+                    if href and re.search(
+                        r"(?:[?&](?:p|page|pagina)=\d+|/page/\d+|/pagina/\d+)",
+                        href,
+                        re.I,
+                    )
+                ][:30],
+            })
+
+            item["diagnosis"] = (
+                "TARGET_FOUND"
+                if (
+                    item["target_text_hit"]
+                    or item["target_raw_html_hit"]
+                    or item["target_url_hit"]
+                    or legacy_target_urls
+                )
+                else "TARGET_NOT_ON_PAGE"
+            )
+            results.append(item)
+
+        found_pages = [
+            r["page"] for r in results if r.get("diagnosis") == "TARGET_FOUND"
+        ]
+
+        return {
+            **base_result,
+            "ok": True,
+            "requested_pages": requested_pages,
+            "results": results,
+            "target_found_on_pages": found_pages,
+            "diagnosis": (
+                "TARGET_FOUND_ON_SELECTED_PAGE"
+                if found_pages
+                else "TARGET_NOT_FOUND_ON_SELECTED_PAGES"
+            ),
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except Exception as exc:
+        return {
+            **base_result,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
