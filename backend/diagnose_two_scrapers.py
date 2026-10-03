@@ -583,14 +583,14 @@ def _catalog_row_tokens(row):
 
 def _catalog_compact_row(row):
     return {
-        "url": row.get("url"),
-        "slug": row.get("slug"),
-        "name": row.get("product_name"),
-        "brand": row.get("product_brand"),
-        "fetch_status": row.get("fetch_status"),
-        "fetched_at": row.get("fetched_at"),
-        "lastmod": row.get("lastmod"),
-        "discovered_at": row.get("discovered_at"),
+        "url": row["url"],
+        "slug": row["slug"],
+        "name": row["product_name"],
+        "brand": row["product_brand"],
+        "fetch_status": row["fetch_status"],
+        "fetched_at": row["fetched_at"],
+        "lastmod": row["lastmod"],
+        "discovered_at": row["discovered_at"],
     }
 
 
