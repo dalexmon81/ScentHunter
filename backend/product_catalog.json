@@ -25175,6 +25175,48 @@
       ],
       "canonical_name": "Ô de Lancôme",
       "canonical_image": "https://www.sobelia.com/1505-83796-thickbox/o-de-lancome-lancome-eau-de-toilette-spray-125ml.jpg"
+    },
+    {
+      "product_id": "SH-RAYHAAN-VANTAGE",
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "family_name": "Vantage",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Rayhaan Vantage",
+        "Vantage"
+      ],
+      "source_status": "verificato_online_2026",
+      "source_notes": "Referenza verificata sulla pagina ufficiale Rayhaan Vantage e su fonti retailer concordanti; 100 ml Eau de Parfum unisex.",
+      "verification_sources": [
+        "https://rayhaanperfumes.eu/products/rayhaan-vantage?variant=50277164679425",
+        "https://jcparfum.nl/product/5052438/vantage-rayhaan/"
+      ],
+      "canonical_name": "Vantage",
+      "canonical_image": "https://rayhaanperfumes.eu/cdn/shop/files/023.png?v=1788519834"
+    },
+    {
+      "product_id": "SH-RAYHAAN-CADIZ",
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "family_name": "Cadiz",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Cadiz",
+        "Rayhaan Cadiz",
+        "Rayhaan Cádiz"
+      ],
+      "source_status": "verificato_online_2026",
+      "source_notes": "Identità verificata tramite pagina prodotto/catalogo Deloox e fonti retailer indipendenti concordanti; 100 ml Eau de Parfum unisex.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1131978/rayhaan-profumi.html",
+        "https://lmd.com.co/products/perfume-rayhaan-cadiz-edp-100ml-original",
+        "https://glissperfumes.com/perfumes-arabes/2825-rayhaan-cadiz"
+      ],
+      "canonical_name": "Cadiz",
+      "canonical_image": "https://cdn.shopify.com/s/files/1/0798/6898/5693/files/Rayhaan-Cadiz-Perfume-100ml-EDP-by-Rayhaan-181153594.jpg?v=1764454060"
     }
   ],
   "variants": [
@@ -29691,6 +29733,38 @@
         "French Avenue Éclair Affair"
       ],
       "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1ddec65f4c7ae081",
+      "product_id": "SH-RAYHAAN-VANTAGE",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rayhaan Vantage",
+        "Vantage",
+        "Rayhaan Vantage 100 ml"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-RAYHAAN-CADIZ-100",
+      "product_id": "SH-RAYHAAN-CADIZ",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rayhaan Cadiz",
+        "Rayhaan Cadiz 100 ML",
+        "Cadiz 100 ML"
+      ],
+      "store_mappings": [
+        {
+          "store": "deloox",
+          "sku": "1387957",
+          "url": "https://www.deloox.com/product/1387957/rayhaan-cadiz-eau-de-parfum-100-ml.html"
+        }
+      ]
     }
   ],
   "offers": [],
@@ -29703,15 +29777,15 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1291,
+    "product_count": 1293,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 346,
+    "variant_count": 348,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
-      "rayhaan_products_in_catalog": 41,
-      "note": "Rayhaan official collection currently exposes 41 distinct product names across pages 1-4; 38 missing identities were added. Existing Aquatica, Valhalla and Wolf identities were preserved."
+      "rayhaan_products_in_catalog": 43,
+      "note": "Rayhaan identities already present were preserved; Cadiz and Vantage were added after separate online verification because they were surfaced by current retailer data."
     },
     "web_verification_2026": {
       "status": "expanded_after_online_audit",
