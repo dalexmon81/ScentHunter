@@ -3601,7 +3601,7 @@ def _coverage_run_task(task):
     if found: return {'state': 'FOUND', 'found': found, 'error': None}
     if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
     return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
-def _coverage_claim_tasks(limit):
+def _coverage_claim_tasks(limit, stores=None):
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
     if not products:
@@ -3610,15 +3610,28 @@ def _coverage_claim_tasks(limit):
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
+        selected_stores = [
+            str(store).strip().lower()
+            for store in (stores or [])
+            if str(store).strip().lower() in STORES
+        ]
+        params = [now]
+        store_clause = ''
+        if selected_stores:
+            placeholders = ','.join('?' for _ in selected_stores)
+            store_clause = f' AND store IN ({placeholders})'
+            params.extend(selected_stores)
+        params.append(max(1, int(limit)))
         rows = conn.execute(
-            """SELECT store,product_id,canonical_name,query,attempts
+            f"""SELECT store,product_id,canonical_name,query,attempts
                  FROM catalog_coverage
                 WHERE next_run_at <= ?
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
+                  {store_clause}
                 ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
-            (now, max(1, int(limit))),
+            tuple(params),
         ).fetchall()
         product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
         tasks = []
@@ -3660,9 +3673,9 @@ def _coverage_finish_task(task, result):
         conn.close()
 
 
-def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
+def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS, stores=None):
     """Advance canonical-product coverage in small bounded batches."""
-    tasks = _coverage_claim_tasks(max_tasks)
+    tasks = _coverage_claim_tasks(max_tasks, stores=stores)
     if not tasks:
         return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     found = not_found = errors = 0
@@ -3760,6 +3773,74 @@ def _hydration_worker_process(batch_size, workers, pause_seconds=1.0):
         return None
 
 
+def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
+    """Run canonical coverage for selected stores in one isolated process.
+
+    Coverage is background catalog work. It never runs inside the API search
+    request and every retailer search is already executed by the existing
+    killable coverage child process. This closes the gap where sitemap/HTML
+    discovery does not expose every canonical product page.
+    """
+    store_values = tuple(str(store).strip().lower() for store in (stores or ()) if str(store).strip().lower() in STORES)
+    if not store_values:
+        return None
+    child_code = (
+        "import json\n"
+        "import time\n"
+        "import catalog_engine as ce\n"
+        "stores=" + repr(store_values) + "\n"
+        "pause=max(2.0,float(" + repr(float(pause_seconds)) + "))\n"
+        "while True:\n"
+        "    result=ce.coverage_batch(max_tasks=1, workers=1, stores=stores)\n"
+        "    if result.get('selected') or result.get('found') or result.get('errors'):\n"
+        "        print('CATALOG COVERAGE BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
+        "    time.sleep(pause)\n"
+    )
+    env = os.environ.copy()
+    current = env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
+    process = None
+    try:
+        process = subprocess.Popen(
+            [sys.executable, '-u', '-c', child_code],
+            cwd=str(BASE_DIR),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=None,
+            stderr=None,
+            start_new_session=(os.name != 'nt'),
+        )
+        return process
+    except Exception as exc:
+        print(f'CATALOG COVERAGE WORKER START ERROR: {type(exc).__name__}:{exc}', flush=True)
+        return None
+
+
+def _terminate_coverage_worker(process):
+    """Terminate the isolated coverage worker and its descendants."""
+    if process is None:
+        return
+    try:
+        if process.poll() is None:
+            if os.name != 'nt':
+                os.killpg(process.pid, signal.SIGTERM)
+            else:
+                process.terminate()
+            try:
+                process.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                if os.name != 'nt':
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+                try:
+                    process.wait(timeout=2.0)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 def _terminate_hydration_worker(process):
     """Terminate the isolated hydration worker and its descendants."""
     if process is None:
@@ -3796,6 +3877,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     )
 
     process = None
+    coverage_process = None
     while stop_event is None or not stop_event.is_set():
         if process is None or process.poll() is not None:
             if process is not None:
@@ -3808,12 +3890,24 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 workers,
                 pause_seconds,
             )
-            if process is None:
-                if stop_event is not None:
-                    stop_event.wait(5.0)
-                else:
-                    time.sleep(5.0)
-                continue
+
+        if coverage_process is None or coverage_process.poll() is not None:
+            if coverage_process is not None:
+                print(
+                    f'CATALOG COVERAGE WORKER EXIT code={coverage_process.returncode}; restarting',
+                    flush=True,
+                )
+            coverage_process = _coverage_worker_process(
+                stores=('sabina',),
+                pause_seconds=5.0,
+            )
+
+        if process is None or coverage_process is None:
+            if stop_event is not None:
+                stop_event.wait(5.0)
+            else:
+                time.sleep(5.0)
+            continue
 
         if stop_event is not None:
             if stop_event.wait(2.0):
@@ -3822,6 +3916,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             time.sleep(2.0)
 
     _terminate_hydration_worker(process)
+    _terminate_coverage_worker(coverage_process)
     print('CATALOG HYDRATION STOP', flush=True)
 
 
