@@ -2417,7 +2417,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url):
+def _secondary_store_parser(store, final_url, original_url, parser_query=None):
     """Use an existing store parser only as a product-page parser fallback.
 
     Parser exceptions are deliberately propagated. The hydration layer must
@@ -2432,7 +2432,12 @@ def _secondary_store_parser(store, final_url, original_url):
     session = requests.Session()
     session.headers.update({'User-Agent': USER_AGENT})
     try:
-        parsed = parser(session, final_url, url_slug(final_url))
+        # This is direct product-page hydration, not a user search. Prefer
+        # the page title captured from the original HTTP response; using the
+        # URL slug as a relevance query can inject numeric IDs/category words
+        # and cause a valid product parser to reject an already-identified URL.
+        query = str(parser_query or '').strip() or url_slug(final_url)
+        parsed = parser(session, final_url, query)
     finally:
         session.close()
 
@@ -2483,7 +2488,14 @@ def refresh_url(store, url):
         primary_ok = bool(item and item.get('name'))
         secondary_ok = False
         if not primary_ok:
-            item = _secondary_store_parser(store, final, url)
+            parser_query = ''
+            try:
+                soup = BeautifulSoup(data or b'', 'html.parser')
+                page_title = soup.find('title')
+                parser_query = page_title.get_text(' ', strip=True) if page_title else ''
+            except Exception:
+                parser_query = ''
+            item = _secondary_store_parser(store, final, url, parser_query=parser_query)
             secondary_ok = bool(item and item.get('name'))
 
         if not item or not item.get('name'):
