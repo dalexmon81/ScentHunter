@@ -994,6 +994,11 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/search?query=fragrance',
     ),
     'sabina': (
+        # Sabina's official complete manufacturer/brand index is a generic
+        # catalog-navigation surface. Starting from it lets the crawler
+        # traverse the retailer's paginated brand graph and reach each brand
+        # catalog without embedding any product- or brand-specific rule.
+        'https://www.sabina.com/en/fabricantes_old',
         'https://www.sabina.com/it/',
         'https://www.sabina.com/it/6-profumi-di-donna',
         'https://www.sabina.com/it/7-profumi-da-uomo',
@@ -1328,7 +1333,11 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    elif re.search(
+        r'/(?:brands?|marques?|marcas|marken|fabricantes_old)(?:\.html)?$',
+        path,
+        re.I,
+    ):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
