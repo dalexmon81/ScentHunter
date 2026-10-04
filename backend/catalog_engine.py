@@ -2430,7 +2430,15 @@ def _secondary_store_parser(store, final_url, original_url, parser_query=None):
         return None
 
     session = requests.Session()
-    session.headers.update({'User-Agent': USER_AGENT})
+    # Reuse the store parser's official browser/request profile when it exposes
+    # one. Some retailers serve a reduced shell to the generic catalog user-agent;
+    # the store parser already knows the transport profile required to receive
+    # the real product document. This remains store-generic and product-agnostic.
+    parser_headers = getattr(module, 'HEADERS', None)
+    if isinstance(parser_headers, dict) and parser_headers:
+        session.headers.update(parser_headers)
+    else:
+        session.headers.update({'User-Agent': USER_AGENT})
     try:
         # This is direct product-page hydration, not a user search. Prefer
         # the page title captured from the original HTTP response. If the
