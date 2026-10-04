@@ -1020,6 +1020,13 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
+        # Sabina's public brand directory is a generic catalog graph.
+        # Seeding the directory lets the crawler reach every retailer brand
+        # page, including brands whose products are not exposed by the
+        # bounded fragrance search/category surfaces. No brand or product is
+        # named here; pagination is followed by the generic HTML crawler.
+        'https://www.sabina.com/es/marcas',
+        'https://www.sabina.com/es/marcas_old',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
