@@ -3488,6 +3488,14 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
             time.sleep(wait_for)
 
 
+_COVERAGE_INTERVAL_SECONDS = 60.0
+_COVERAGE_BATCH_SIZE = 8
+_COVERAGE_WORKERS = 2
+_COVERAGE_RETRY_SECONDS = 86400.0
+_COVERAGE_ERROR_RETRY_SECONDS = 3600.0
+_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
+
+
 def _foreground_search_running():
     """Return True while the normal foreground search job is running.
 
