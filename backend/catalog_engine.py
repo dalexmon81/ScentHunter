@@ -3784,7 +3784,7 @@ def _coverage_claim_tasks(limit, stores=None):
 def _coverage_finish_task(task, result):
     now = time.time()
     state = str(result.get('state') or 'ERROR')
-    next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+    next_run = now + (_COVERAGE_RETRY_SECONDS if state == 'FOUND' else _COVERAGE_ERROR_RETRY_SECONDS)
     conn = db()
     try:
         conn.execute(
@@ -3901,7 +3901,7 @@ def _hydration_worker_process(batch_size, workers, pause_seconds=1.0):
         return None
 
 
-def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
+def _coverage_worker_process(stores=None, pause_seconds=_COVERAGE_INTERVAL_SECONDS):
     """Run canonical coverage for selected stores in one isolated process.
 
     Coverage is background catalog work. It never runs inside the API search
@@ -3909,7 +3909,10 @@ def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
     killable coverage child process. This closes the gap where sitemap/HTML
     discovery does not expose every canonical product page.
     """
-    store_values = tuple(str(store).strip().lower() for store in (stores or ()) if str(store).strip().lower() in STORES)
+    store_values = tuple(
+        STORES.keys() if stores is None else
+        (str(store).strip().lower() for store in (stores or ()) if str(store).strip().lower() in STORES)
+    )
     if not store_values:
         return None
     child_code = (
@@ -3919,7 +3922,7 @@ def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
         "stores=" + repr(store_values) + "\n"
         "pause=max(2.0,float(" + repr(float(pause_seconds)) + "))\n"
         "while True:\n"
-        "    result=ce.coverage_batch(max_tasks=ce._COVERAGE_BATCH_SIZE, workers=ce._COVERAGE_WORKERS, stores=stores)\n"
+        "    result=ce.coverage_batch(max_tasks=8, workers=2, stores=stores)\n"
         "    if result.get('selected') or result.get('found') or result.get('errors'):\n"
         "        print('CATALOG COVERAGE BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
         "    time.sleep(pause)\n"
@@ -4026,7 +4029,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                     flush=True,
                 )
             coverage_process = _coverage_worker_process(
-                stores=tuple(STORES),
+                stores=None,
                 pause_seconds=_COVERAGE_INTERVAL_SECONDS,
             )
 
