@@ -2664,6 +2664,165 @@ def catalog_status_endpoint():
         }
 
 
+
+@app.get('/diagnose-catalog-fts')
+def diagnose_catalog_fts(store: str = 'sabina', q: str = 'Hawas'):
+    """
+    READ-ONLY diagnostic.
+    Compares active catalog URLs / hydrated products against catalog_search_fts.
+    Does not search retailers, hydrate, modify DB, or run ProductMatcher.
+    """
+    store_key = str(store or '').strip().lower()
+    query = str(q or '').strip()
+
+    if not query:
+        return {
+            'ok': False,
+            'error': 'empty_query',
+        }
+
+    if not callable(catalog_db):
+        return {
+            'ok': False,
+            'error': 'catalog_db_unavailable',
+        }
+
+    conn = catalog_db()
+
+    try:
+        tables = {
+            row['name']
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+
+        required = {
+            'store_urls',
+            'store_products',
+            'catalog_search_fts',
+        }
+
+        missing_tables = sorted(required - tables)
+
+        if missing_tables:
+            return {
+                'ok': False,
+                'store': store_key,
+                'query': query,
+                'missing_tables': missing_tables,
+            }
+
+        tokens = [
+            token
+            for token in query.lower().replace('-', ' ').split()
+            if token
+        ]
+
+        fts_query = ' AND '.join(
+            '"' + token.replace('"', '""') + '"'
+            for token in tokens
+        )
+
+        rows = conn.execute(
+            """
+            SELECT
+                u.url,
+                u.slug,
+                u.active,
+                p.name,
+                p.brand,
+                p.fetch_status,
+                CASE
+                    WHEN f.store IS NOT NULL THEN 1
+                    ELSE 0
+                END AS in_fts
+            FROM store_urls u
+            LEFT JOIN store_products p
+              ON p.store = u.store
+             AND p.url = u.url
+            LEFT JOIN catalog_search_fts f
+              ON f.store = u.store
+             AND f.url = u.url
+            WHERE u.store = ?
+              AND u.active = 1
+              AND (
+                    LOWER(COALESCE(u.slug, '')) LIKE ?
+                 OR LOWER(COALESCE(p.name, '')) LIKE ?
+                 OR LOWER(COALESCE(p.brand, '')) LIKE ?
+              )
+            ORDER BY
+                CASE WHEN p.name IS NULL THEN 1 ELSE 0 END,
+                p.name,
+                u.url
+            """,
+            (
+                store_key,
+                '%' + query.lower() + '%',
+                '%' + query.lower() + '%',
+                '%' + query.lower() + '%',
+            ),
+        ).fetchall()
+
+        fts_rows = conn.execute(
+            """
+            SELECT
+                f.store,
+                f.url,
+                f.search_text
+            FROM catalog_search_fts f
+            WHERE f.store = ?
+              AND catalog_search_fts MATCH ?
+            ORDER BY f.url
+            """,
+            (store_key, fts_query),
+        ).fetchall() if fts_query else []
+
+        fts_urls = {
+            str(row['url'] or '').strip()
+            for row in fts_rows
+        }
+
+        catalog_rows = []
+
+        for row in rows:
+            item = dict(row)
+            item['in_fts'] = bool(
+                item.get('in_fts')
+                and str(item.get('url') or '').strip() in fts_urls
+            )
+            catalog_rows.append(item)
+
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-fts-v1',
+            'read_only': True,
+            'store': store_key,
+            'query': query,
+            'fts_query': fts_query,
+            'catalog_candidate_count': len(catalog_rows),
+            'fts_match_count': len(fts_rows),
+            'catalog_candidates': catalog_rows,
+            'fts_matches': [dict(row) for row in fts_rows],
+            'missing_from_fts': [
+                row
+                for row in catalog_rows
+                if not row.get('in_fts')
+            ],
+        }
+
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-fts-v1',
+            'store': store_key,
+            'query': query,
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+
+    finally:
+        conn.close()
+
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors."""
