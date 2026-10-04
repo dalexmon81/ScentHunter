@@ -1020,11 +1020,6 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
-        # Sabina's public Spanish brand directory is a generic catalog graph.
-        # Its brand links expose manufacturer pages that are not guaranteed to
-        # appear in the broad fragrance search/category surfaces.
-        'https://www.sabina.com/es/marcas',
-        'https://www.sabina.com/es/mapa-web',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -1334,15 +1329,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
     elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
-        score = 0
-    # Sabina's Spanish manufacturer pages use a generic PrestaShop-style
-    # numeric-slug path such as /es/631_rasasi. This is structural URL shape,
-    # not a brand-specific rule, so all manufacturer pages receive catalog
-    # priority and can feed the generic product graph.
-    elif (
-        store == 'sabina'
-        and re.match(r'^/es/\d+_[^/]+/?$', path, re.I)
-    ):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -2413,18 +2399,21 @@ def parse_product(store, url, data):
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
 
-    # Product-page image fallback: some retailers omit Product.image from
-    # JSON-LD even though the same product image is published in standard
-    # social metadata or the product media container. Keep this generic and
-    # page-local; never infer an image from recommendations or site-wide UI.
+    # Generic product-page image fallback. Some retailers expose no usable
+    # Product.image in JSON-LD while publishing the same product image in
+    # standard social metadata, Product microdata, lazy-loading attributes,
+    # srcset, or a preload/image link. Keep the search page-local and generic:
+    # never use recommendation cards or unrelated site-wide images.
     if not image:
         image_node = soup.select_one(
             'meta[property="og:image"], meta[property="og:image:url"], '
-            'meta[name="twitter:image"], meta[itemprop="image"]'
+            'meta[name="twitter:image"], meta[itemprop="image"], '
+            'link[rel="image_src"], link[as="image"]'
         )
         if image_node:
             image = (
                 image_node.get('content')
+                or image_node.get('href')
                 or image_node.get('value')
                 or image_node.get_text(' ', strip=True)
             )
@@ -2434,22 +2423,58 @@ def parse_product(store, url, data):
             'main, #main, .product-container, .product-information, '
             '.product-detail, .product-page, [itemtype*="Product"]'
         )
+        image_attrs = (
+            'data-src', 'data-lazy-src', 'data-original', 'data-image',
+            'data-image-src', 'data-product-image', 'src'
+        )
         for root in product_roots:
-            node = root.select_one(
-                'img[itemprop="image"], img[data-src], img[data-lazy-src], img[src]'
-            )
-            if not node:
-                continue
-            image = (
-                node.get('data-src')
-                or node.get('data-lazy-src')
-                or node.get('src')
-            )
+            for node in root.select('img[itemprop="image"], img[data-src], img[data-lazy-src], img[data-original], img[data-image], img[src]'):
+                for attr in image_attrs:
+                    candidate = node.get(attr)
+                    if candidate:
+                        image = candidate
+                        break
+                if image:
+                    break
+            if image:
+                break
+
+    if not image:
+        # Some storefronts put the product media URL only in srcset. Choose
+        # the largest declared candidate so the result remains a useful
+        # product image rather than a thumbnail.
+        for root in soup.select(
+            'main, #main, .product-container, .product-information, '
+            '.product-detail, .product-page, [itemtype*="Product"]'
+        ):
+            for node in root.select('img[srcset], source[srcset]'):
+                raw = str(node.get('srcset') or '').strip()
+                candidates = []
+                for part in raw.split(','):
+                    bits = part.strip().split()
+                    if not bits:
+                        continue
+                    url_candidate = bits[0]
+                    weight = 0.0
+                    if len(bits) > 1:
+                        m = re.match(r'([0-9]+(?:\.[0-9]+)?)w$', bits[1], re.I)
+                        if m:
+                            weight = float(m.group(1))
+                        else:
+                            m = re.match(r'([0-9]+(?:\.[0-9]+)?)x$', bits[1], re.I)
+                            if m:
+                                weight = float(m.group(1)) * 1000.0
+                    candidates.append((weight, url_candidate))
+                if candidates:
+                    candidates.sort(reverse=True)
+                    image = candidates[0][1]
+                    break
             if image:
                 break
 
     if image:
         image = urllib.parse.urljoin(url, str(image).strip())
+
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
