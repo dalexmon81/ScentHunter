@@ -984,7 +984,18 @@ def _public_offer(item):
         "variant_id": item.get("variant_id"),
         "url": item.get("url") or item.get("product_url"),
         "retailer_image": item.get("image") or item.get("image_url"),
+        # Preserve the scraper's explicit availability signal in the public
+        # offer contract. Previously only `available` survived aggregation,
+        # so structured values such as `OutOfStock` could be lost before the
+        # frontend rendered the offer. No retailer-specific rule is applied.
         "available": item.get("available"),
+        "availability": item.get("availability"),
+        "stock": item.get("stock"),
+        "stock_status": item.get("stock_status"),
+        "availability_status": item.get("availability_status"),
+        "in_stock": item.get("in_stock"),
+        "inStock": item.get("inStock"),
+        "status": item.get("status"),
         "raw_name": item.get("_raw_name")
             or item.get("name")
             or item.get("title"),
