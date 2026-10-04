@@ -2664,277 +2664,6 @@ def catalog_status_endpoint():
         }
 
 
-
-@app.get('/diagnose-catalog-fts')
-def diagnose_catalog_fts(store: str = 'sabina', q: str = 'Hawas'):
-    """
-    READ-ONLY diagnostic.
-    Compares active catalog URLs / hydrated products against catalog_search_fts.
-    Does not search retailers, hydrate, modify DB, or run ProductMatcher.
-    """
-    store_key = str(store or '').strip().lower()
-    query = str(q or '').strip()
-
-    if not query:
-        return {
-            'ok': False,
-            'error': 'empty_query',
-        }
-
-    if not callable(catalog_db):
-        return {
-            'ok': False,
-            'error': 'catalog_db_unavailable',
-        }
-
-    conn = catalog_db()
-
-    try:
-        tables = {
-            row['name']
-            for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-        }
-
-        required = {
-            'store_urls',
-            'store_products',
-            'catalog_search_fts',
-        }
-
-        missing_tables = sorted(required - tables)
-
-        if missing_tables:
-            return {
-                'ok': False,
-                'store': store_key,
-                'query': query,
-                'missing_tables': missing_tables,
-            }
-
-        tokens = [
-            token
-            for token in query.lower().replace('-', ' ').split()
-            if token
-        ]
-
-        fts_query = ' AND '.join(
-            '"' + token.replace('"', '""') + '"'
-            for token in tokens
-        )
-
-        rows = conn.execute(
-            """
-            SELECT
-                u.url,
-                u.slug,
-                u.active,
-                p.name,
-                p.brand,
-                p.fetch_status,
-                CASE
-                    WHEN f.store IS NOT NULL THEN 1
-                    ELSE 0
-                END AS in_fts
-            FROM store_urls u
-            LEFT JOIN store_products p
-              ON p.store = u.store
-             AND p.url = u.url
-            LEFT JOIN catalog_search_fts f
-              ON f.store = u.store
-             AND f.url = u.url
-            WHERE u.store = ?
-              AND u.active = 1
-              AND (
-                    LOWER(COALESCE(u.slug, '')) LIKE ?
-                 OR LOWER(COALESCE(p.name, '')) LIKE ?
-                 OR LOWER(COALESCE(p.brand, '')) LIKE ?
-              )
-            ORDER BY
-                CASE WHEN p.name IS NULL THEN 1 ELSE 0 END,
-                p.name,
-                u.url
-            """,
-            (
-                store_key,
-                '%' + query.lower() + '%',
-                '%' + query.lower() + '%',
-                '%' + query.lower() + '%',
-            ),
-        ).fetchall()
-
-        fts_rows = conn.execute(
-            """
-            SELECT
-                f.store,
-                f.url,
-                f.search_text
-            FROM catalog_search_fts f
-            WHERE f.store = ?
-              AND catalog_search_fts MATCH ?
-            ORDER BY f.url
-            """,
-            (store_key, fts_query),
-        ).fetchall() if fts_query else []
-
-        fts_urls = {
-            str(row['url'] or '').strip()
-            for row in fts_rows
-        }
-
-        catalog_rows = []
-
-        for row in rows:
-            item = dict(row)
-            item['in_fts'] = bool(
-                item.get('in_fts')
-                and str(item.get('url') or '').strip() in fts_urls
-            )
-            catalog_rows.append(item)
-
-        return {
-            'ok': True,
-            'diagnostic': 'catalog-fts-v1',
-            'read_only': True,
-            'store': store_key,
-            'query': query,
-            'fts_query': fts_query,
-            'catalog_candidate_count': len(catalog_rows),
-            'fts_match_count': len(fts_rows),
-            'catalog_candidates': catalog_rows,
-            'fts_matches': [dict(row) for row in fts_rows],
-            'missing_from_fts': [
-                row
-                for row in catalog_rows
-                if not row.get('in_fts')
-            ],
-        }
-
-    except Exception as exc:
-        return {
-            'ok': False,
-            'diagnostic': 'catalog-fts-v1',
-            'store': store_key,
-            'query': query,
-            'error': f'{type(exc).__name__}:{exc}',
-        }
-
-    finally:
-        conn.close()
-@app.get('/diagnose-search-pipeline')
-def diagnose_search_pipeline(store: str = 'sabina', q: str = 'Hawas'):
-    """
-    READ-ONLY end-to-end diagnostic of the catalog-first search pipeline.
-    It does not discover, hydrate, write to SQLite, or call retailer search.
-    It replays only the local catalog candidate -> clean -> matcher gates.
-    """
-    store_key = str(store or '').strip().lower()
-    query = str(q or '').strip()
-
-    if not query:
-        return {'ok': False, 'error': 'empty_query'}
-    if not callable(catalog_search_local):
-        return {'ok': False, 'error': 'catalog_search_local_unavailable'}
-
-    try:
-        terms = _catalog_search_terms(query)
-        candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
-        raw_rows = catalog_search_local(
-            query,
-            per_store=candidate_limit,
-            search_terms=terms,
-        ) or []
-
-        store_rows = []
-        for row in raw_rows:
-            if not isinstance(row, dict):
-                continue
-            row_store = _normalise_store(
-                row.get('store_key') or row.get('store') or row.get('shop'), ''
-            )
-            if row_store == store_key:
-                store_rows.append(dict(row))
-
-        stages = []
-        for raw in store_rows:
-            url = str(raw.get('url') or raw.get('product_url') or '').strip()
-            name = str(raw.get('name') or raw.get('title') or '').strip()
-            item = {
-                'url': url,
-                'name': name,
-                'catalog_id': raw.get('catalog_id'),
-                'stage': 'catalog_candidate',
-            }
-
-            cleaned = clean_result(raw, store_key)
-            if cleaned is None:
-                item['stage'] = 'clean_result_rejected'
-                stages.append(item)
-                continue
-
-            item['clean_name'] = cleaned.get('name')
-            item['clean_brand'] = cleaned.get('brand')
-
-            if _is_non_fragrance_offer(cleaned):
-                item['stage'] = 'non_fragrance_rejected_before_matcher'
-                stages.append(item)
-                continue
-
-            resolved = _resolve_offer_identity(cleaned, query)
-            if not isinstance(resolved, dict):
-                item['stage'] = 'matcher_returned_none'
-                stages.append(item)
-                continue
-
-            item['match_status'] = resolved.get('_match_status')
-            item['catalog_id'] = resolved.get('catalog_id')
-            item['canonical_name'] = resolved.get('canonical_name')
-            item['match_method'] = resolved.get('match_method')
-            item['match_confidence'] = resolved.get('confidence')
-            item['reject_reason'] = resolved.get('_reject_reason')
-
-            if resolved.get('_match_status') == 'rejected':
-                item['stage'] = 'matcher_rejected'
-            elif resolved.get('_match_status') == 'matched' and resolved.get('catalog_id'):
-                if _is_non_fragrance_offer(resolved):
-                    item['stage'] = 'non_fragrance_rejected_after_matcher'
-                else:
-                    item['stage'] = 'matched'
-            else:
-                item['stage'] = 'matcher_unresolved'
-
-            stages.append(item)
-
-        counts = {}
-        for item in stages:
-            key = item.get('stage') or 'unknown'
-            counts[key] = counts.get(key, 0) + 1
-
-        return {
-            'ok': True,
-            'diagnostic': 'search-pipeline-v1',
-            'read_only': True,
-            'store': store_key,
-            'query': query,
-            'search_terms_count': len(terms),
-            'search_terms': terms,
-            'candidate_limit': candidate_limit,
-            'raw_catalog_candidates_total': len(raw_rows),
-            'store_candidate_count': len(store_rows),
-            'stage_counts': counts,
-            'products': stages,
-        }
-    except Exception as exc:
-        return {
-            'ok': False,
-            'diagnostic': 'search-pipeline-v1',
-            'store': store_key,
-            'query': query,
-            'error': f'{type(exc).__name__}:{exc}',
-        }
-
-
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors."""
@@ -3155,6 +2884,126 @@ def search_perfume(q: str):
             }
             for report in reports
         },
+    }
+
+@app.get("/diagnose-search-final")
+def diagnose_search_final(store: str, q: str):
+    """Read-only replay of the final normal-search pipeline for one store.
+
+    This diagnostic intentionally uses the same catalog-first collection,
+    non-fragrance filtering, dedupe and identity aggregation as /search,
+    but exposes every stage so we can locate any loss between matched
+    catalog candidates and the final public groups.
+    """
+    query = str(q or "").strip()
+    store_key = _normalise_store(store, "")
+
+    if not query:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "missing_query",
+        }
+
+    if not store_key or store_key not in STORES:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "unknown_store",
+            "store": store,
+            "known_stores": list(STORES),
+        }
+
+    reports = _collect_catalog_reports_isolated(query, [store_key])
+
+    matched_offers = []
+    rejected_or_skipped = []
+
+    for report in reports:
+        for item in report.get("results", []):
+            if not isinstance(item, dict):
+                continue
+            if _is_non_fragrance_offer(item):
+                rejected_or_skipped.append({
+                    "reason": "non_fragrance_offer",
+                    "name": item.get("name") or item.get("title"),
+                    "canonical_name": item.get("canonical_name"),
+                    "catalog_id": item.get("catalog_id"),
+                    "url": item.get("url") or item.get("product_url"),
+                })
+                continue
+            matched_offers.append(item)
+
+    dedupe_diagnostics = []
+    deduped_offers = dedupe_results(
+        matched_offers,
+        dedupe_diagnostics,
+    )
+
+    grouped, unresolved = _aggregate_identity_results(deduped_offers)
+
+    def compact_offer(item):
+        return {
+            "store": item.get("store") or item.get("shop"),
+            "name": item.get("name") or item.get("title"),
+            "canonical_name": item.get("canonical_name"),
+            "catalog_id": item.get("catalog_id"),
+            "match_status": item.get("_match_status"),
+            "match_method": item.get("match_method") or item.get("_match_method"),
+            "match_score": item.get("match_score") or item.get("_match_score"),
+            "size_ml": item.get("size_ml"),
+            "price": item.get("price"),
+            "url": item.get("url") or item.get("product_url"),
+        }
+
+    return {
+        "ok": True,
+        "diagnostic": "search-final-v1",
+        "read_only": True,
+        "production_search_called": False,
+        "store": store_key,
+        "query": query,
+        "pipeline": [
+            "catalog_search_local",
+            "clean_result",
+            "_resolve_offer_identity",
+            "non_fragrance_filter",
+            "dedupe_results",
+            "_aggregate_identity_results",
+        ],
+        "report": [
+            {
+                "store": report.get("store"),
+                "status": report.get("status"),
+                "verified": bool(report.get("verified")),
+                "count": report.get("count"),
+                "elapsed": report.get("elapsed"),
+                "details": dict(report.get("details") or {}),
+                "error": report.get("error"),
+            }
+            for report in reports
+        ],
+        "stage_counts": {
+            "matched_offers_before_dedupe": len(matched_offers),
+            "deduped_offers": len(deduped_offers),
+            "final_groups": len(grouped),
+            "unresolved": len(unresolved),
+            "non_fragrance_skipped": len(rejected_or_skipped),
+            "dedupe_drops": len(dedupe_diagnostics),
+        },
+        "matched_offers": [compact_offer(item) for item in matched_offers],
+        "deduped_offers": [compact_offer(item) for item in deduped_offers],
+        "final_groups": [
+            {
+                "catalog_id": group.get("catalog_id"),
+                "canonical_name": group.get("canonical_name") or group.get("name"),
+                "offer_count": len(group.get("offers") or []),
+            }
+            for group in grouped
+        ],
+        "unresolved_offers": [compact_offer(item) for item in unresolved],
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "non_fragrance_skipped": rejected_or_skipped,
     }
 
 @app.get('/frontend')
