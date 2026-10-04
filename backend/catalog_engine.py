@@ -128,11 +128,8 @@ MAX_SITEMAP_DEPTH = 10
 MAX_URLS_PER_SITEMAP = 50000
 MAX_TOTAL_DISCOVERED_URLS = 250000
 
-# A single failed/partial discovery must never wipe a previously valid catalog.
-# If a new catalog is implausibly smaller than the existing one, retain the old
-# catalog and expose the result as DISCOVERY_PARTIAL instead.
-MIN_REPLACEMENT_RATIO = 0.10
-MIN_REPLACEMENT_ABSOLUTE = 100
+# Discovery is cumulative: bounded or partial passes add what they observe.
+# A smaller pass is not evidence that previously discovered products vanished.
 
 # Generic product URL signals. Product-vs-category is still decided after page
 # fetch; this only removes obvious non-product endpoints from a sitemap.
@@ -842,89 +839,59 @@ def _sync_deloox_search_index(product_urls):
 
 
 def _save_discovery(store, product_urls, started_at, diagnostics):
+    """Persist discovery cumulatively for every configured store.
+
+    Discovery passes are bounded by time, sitemap/frontier limits and retailer
+    behaviour. A pass that sees fewer URLs is therefore not evidence that the
+    unseen URLs disappeared. Discovery only adds/refreshes URLs it actually
+    observed; product freshness/availability is handled by hydration.
+    """
     now = time.time()
     new_count = len(product_urls)
-    old_count = _existing_count(store)
 
-    # Never replace a known catalog with a suspiciously tiny transient result.
-    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
-        conn = db()
-        detail = (
-            f'partial_catalog_rejected;old={old_count};new={new_count};'
+    conn = db()
+    with conn:
+        for url, lastmod in product_urls.items():
+            conn.execute(
+                """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                   VALUES(?,?,?,?,?,1)
+                   ON CONFLICT(store,url) DO UPDATE SET
+                   slug=excluded.slug,lastmod=excluded.lastmod,
+                   discovered_at=excluded.discovered_at,active=1""",
+                (store, url, url_slug(url), lastmod, now),
+            )
+            conn.execute(
+                """INSERT INTO hydration_queue(
+                       store,url,state,attempts,available_at,first_seen_at)
+                   VALUES(?,?,?,?,?,?)
+                   ON CONFLICT(store,url) DO UPDATE SET
+                       state=CASE
+                           WHEN hydration_queue.state='DONE' THEN 'DONE'
+                           WHEN hydration_queue.state='PROCESSING'
+                                AND hydration_queue.leased_until > ? THEN 'PROCESSING'
+                           ELSE hydration_queue.state
+                       END""",
+                (store, url, 'PENDING', 0, now, now, now),
+            )
+
+        status = 'DISCOVERY_OK' if new_count else 'DISCOVERY_EMPTY'
+        error = (
+            f'discovery_cumulative;discovered={new_count};'
             f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
             f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
         )
         conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
                started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
-            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
-        )
-        conn.commit()
-        conn.close()
-        return 'DISCOVERY_PARTIAL', new_count, detail
-
-    conn = db()
-    with conn:
-        if new_count:
-            # Deloox discovery is intentionally incremental: a bounded run is
-            # only one slice of a persistent HTML graph. Never deactivate the
-            # previously discovered Deloox catalog merely because this run did
-            # not reach those branches. A real product disappearance is handled
-            # by product-page hydration/HTTP status, not by crawl omission.
-            # Sabina discovery is also incremental. Its HTML legacy catalog
-            # surface is bounded by time, so a run can legitimately discover
-            # only a subset of the existing catalog. Never deactivate known
-            # Sabina URLs merely because this run did not reach them.
-            if store not in ('deloox', 'sabina'):
-                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
-            for url, lastmod in product_urls.items():
-                conn.execute(
-                    '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                       slug=excluded.slug,lastmod=excluded.lastmod,
-                       discovered_at=excluded.discovered_at,active=1''',
-                    (store, url, url_slug(url), lastmod, now),
-                )
-                conn.execute(
-                    '''INSERT INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END''',
-                    (store, url, 'PENDING', 0, now, now, now),
-                )
-            status = 'DISCOVERY_OK'
-            error = None
-        else:
-            status = 'DISCOVERY_EMPTY'
-            error = (
-                f'no_product_urls;visited={diagnostics["visited"]};'
-                f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
-                f'errors={diagnostics["errors"]}'
-            )
-
-        conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-               started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
+               discovered_count=excluded.discovered_count,error=excluded.error""",
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
     if status == 'DISCOVERY_OK' and store == 'deloox':
         _sync_deloox_search_index(product_urls)
     return status, new_count, error
-
 
 
 # HTML catalog-discovery fallback. This is NOT user-query search. It is a
@@ -3193,55 +3160,38 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance catalog discovery for every configured HTML store.
+    """Continuously advance durable catalog discovery in the background.
 
-    Discovery is store-wide background work, not user-query search. The loop
-    deliberately advances one configured store at a time and then moves to
-    the next store, so no retailer is silently excluded from the continuous
-    discovery service. Deloox keeps its durable frontier internally; the other
-    configured stores use their generic sitemap/HTML catalog discovery path.
+    This loop is intentionally independent from hydration. It only advances
+    the Deloox navigation frontier; search remains read-only and hydration
+    keeps its existing workers/claim/retry behavior unchanged.
     """
     pause = max(30.0, float(interval_seconds))
-    stores = tuple(dict.fromkeys(HTML_DISCOVERY_SEEDS.keys()))
     print(
-        f'CATALOG DISCOVERY START stores={",".join(stores)} interval={pause:g}s',
+        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
         flush=True,
     )
-
     while stop_event is None or not stop_event.is_set():
-        cycle_started = time.time()
-
-        for store in stores:
-            if stop_event is not None and stop_event.is_set():
-                break
-
-            started = time.time()
-            try:
-                result = discover_store(store)
-                status = (
-                    result.get('status', 'unknown')
-                    if isinstance(result, dict)
-                    else 'unknown'
-                )
-                count = (
-                    result.get('count', '?')
-                    if isinstance(result, dict)
-                    else '?'
-                )
-                print(
-                    'CATALOG DISCOVERY BATCH '
-                    f'store={store} status={status} count={count} '
-                    f'elapsed={time.time() - started:.3f}s',
-                    flush=True,
-                )
-            except Exception as exc:
-                print(
-                    f'CATALOG DISCOVERY ERROR store={store}: '
-                    f'{type(exc).__name__}: {exc}',
-                    flush=True,
-                )
-
-        elapsed = time.time() - cycle_started
+        started = time.time()
+        try:
+            result = discover_store('deloox')
+            frontier = {}
+            if isinstance(result, dict):
+                # The frontier is also persisted in sync_state.error for
+                # operators, so this remains observable without a new API.
+                frontier = (result.get('html_fallback') or {}) if False else {}
+            print(
+                'CATALOG DISCOVERY BATCH '
+                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
+                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
+        elapsed = time.time() - started
         wait_for = max(1.0, pause - elapsed)
         if stop_event is not None:
             stop_event.wait(wait_for)
