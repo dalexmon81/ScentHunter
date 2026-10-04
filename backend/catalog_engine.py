@@ -3386,14 +3386,18 @@ def _coverage_queries(product):
 
 
 def _coverage_seed_tasks(conn, products):
-    """Create the complete store x canonical-product coverage matrix idempotently."""
+    """Maintain the complete store x canonical-product coverage matrix.
+
+    Never infer completeness from the total row count: a catalog can gain a
+    new product while keeping the same number of coverage rows. Missing exact
+    (store, product_id) pairs are therefore inserted idempotently on every
+    maintenance pass.
+    """
     if not products:
         return
-    # Never infer matrix completeness from the global row count.
-    # The catalog can evolve, and a matrix can have the right number of rows
-    # while still missing specific store x product combinations.
-    existing_pairs = {
-        (str(row['store'] or '').strip(), str(row['product_id'] or '').strip())
+
+    existing = {
+        (str(row['store']), str(row['product_id']))
         for row in conn.execute(
             'SELECT store,product_id FROM catalog_coverage'
         ).fetchall()
@@ -3408,18 +3412,21 @@ def _coverage_seed_tasks(conn, products):
             continue
         primary = queries[0]
         for store in STORES:
-            pair = (str(store), product_id)
-            if pair in existing_pairs:
+            key = (str(store), product_id)
+            if key in existing:
                 continue
             rows.append((store, product_id, canonical, primary, now))
-    conn.executemany(
-        """INSERT INTO catalog_coverage(
-               store,product_id,canonical_name,query,state,next_run_at)
-           VALUES(?,?,?,?, 'PENDING', ?)
-           ON CONFLICT(store,product_id) DO NOTHING""",
-        rows,
-    )
-    conn.commit()
+            existing.add(key)
+
+    if rows:
+        conn.executemany(
+            """INSERT INTO catalog_coverage(
+                   store,product_id,canonical_name,query,state,next_run_at)
+               VALUES(?,?,?,?, 'PENDING', ?)
+               ON CONFLICT(store,product_id) DO NOTHING""",
+            rows,
+        )
+        conn.commit()
 
 
 def _coverage_token_match(text, target):
@@ -3436,27 +3443,46 @@ def _coverage_token_match(text, target):
 
 
 def _coverage_result_matches(product, row):
+    """Verify a scraper row against canonical identity without cross-field
+    token contamination. Hostnames, retailer names and arbitrary URL text must
+    never make an unrelated product look like a match.
+    """
     canonical = str(product.get('canonical_name') or '').strip()
     if not canonical or not isinstance(row, dict):
         return False
-    text = ' '.join(
-        str(row.get(key) or '')
-        for key in ('name', 'brand', 'title', 'url', 'product_url', 'link')
-    )
-    if _coverage_token_match(text, canonical):
-        return True
 
-    # Retailers may publish a canonical item under a longer catalog alias.
-    # Accept only meaningful aliases here; short identity tokens such as a
-    # one-letter product code must never become arbitrary substring matches.
     aliases = product.get('aliases') or []
+    targets = [canonical]
     if isinstance(aliases, list):
         for alias in aliases:
             alias = str(alias or '').strip()
             normalized = norm(alias)
-            if len(normalized) < 4 or len(normalized.split()) < 2:
-                continue
-            if _coverage_token_match(text, alias):
+            if len(normalized) >= 4 and len(normalized.split()) >= 2:
+                targets.append(alias)
+
+    # Human-readable scraper fields are safe to combine; URL hosts are not.
+    text_fields = [
+        str(row.get('name') or ''),
+        str(row.get('title') or ''),
+        str(row.get('brand') or ''),
+    ]
+    combined_text = ' '.join(value for value in text_fields if value).strip()
+    for target in targets:
+        if _coverage_token_match(combined_text, target):
+            return True
+
+    # A retailer URL can contain the product identity in its path/slug. Only
+    # inspect the path, never the hostname, query-string or arbitrary URL text.
+    for key in ('url', 'product_url', 'link'):
+        raw_url = str(row.get(key) or '').strip()
+        if not raw_url:
+            continue
+        try:
+            path = urllib.parse.urlparse(raw_url).path
+        except Exception:
+            path = raw_url
+        for target in targets:
+            if _coverage_token_match(path.replace('-', ' ').replace('_', ' '), target):
                 return True
     return False
 
@@ -3529,86 +3555,180 @@ def _coverage_persist_urls(store, rows):
 
 
 def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
-    """Run one retailer coverage search in a killable process group."""
-    child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                report = search_stream(query) if callable(search_stream) else search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({"query": query, "error": f"{type(exc).__name__}:{exc}"})\n            continue\n        if isinstance(report, dict):\n            if report.get("results"):\n                break\n        elif isinstance(report, list) and report:\n            break\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
-    payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
-    env = os.environ.copy()
-    current_python_path = env.get("PYTHONPATH", "")
-    base_path = str(BASE_DIR)
-    env["PYTHONPATH"] = base_path + (os.pathsep + current_python_path if current_python_path else "")
-    try:
-        process = subprocess.Popen(
-            [sys.executable, "-c", child_code],
-            cwd=str(BASE_DIR), env=env,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            text=True, encoding="utf-8", errors="replace",
-            start_new_session=(os.name != "nt"),
-        )
-    except Exception as exc:
-        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
-    try:
-        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
-    except subprocess.TimeoutExpired:
+    """Run coverage queries independently so one slow/irrelevant query cannot
+    terminate the search path for the canonical product.
+
+    Each query gets its own killable child process. A timeout is recorded for
+    that query and the next query is still attempted. The parent never treats
+    an arbitrary scraper result as success; matching is performed later by
+    _coverage_run_task against the canonical identity.
+    """
+    child_code = '''import contextlib
+import importlib
+import json
+import sys
+
+def main():
+    payload = json.load(sys.stdin)
+    module_name = str(payload.get("module") or "")
+    query = str(payload.get("query") or "").strip()
+    module = importlib.import_module(module_name)
+    search_stream = getattr(module, "search_stream", None)
+    search_fn = getattr(module, "search", None)
+    if not callable(search_stream) and not callable(search_fn):
+        raise RuntimeError("scraper_search_unavailable")
+    with contextlib.redirect_stdout(sys.stderr):
+        report = search_stream(query) if callable(search_stream) else search_fn(query)
+    json.dump({"ok": True, "query": query, "report": report}, sys.stdout,
+              ensure_ascii=False, default=str)
+    sys.stdout.flush()
+
+if __name__ == "__main__":
+    main()
+'''
+
+    def run_one(query):
+        payload = json.dumps({"module": module_name, "query": str(query)}, ensure_ascii=False)
+        env = os.environ.copy()
+        current_python_path = env.get("PYTHONPATH", "")
+        base_path = str(BASE_DIR)
+        env["PYTHONPATH"] = base_path + (os.pathsep + current_python_path if current_python_path else "")
         try:
-            if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-            else: process.terminate()
-        except Exception: pass
-        try: process.wait(timeout=2.0)
+            process = subprocess.Popen(
+                [sys.executable, "-c", child_code],
+                cwd=str(BASE_DIR), env=env,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                text=True, encoding="utf-8", errors="replace",
+                start_new_session=(os.name != "nt"),
+            )
+        except Exception as exc:
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": f"{type(exc).__name__}:{exc}"}
+        try:
+            stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
         except subprocess.TimeoutExpired:
             try:
-                if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
-                else: process.kill()
-            except Exception: pass
+                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                else: process.terminate()
+            except Exception:
+                pass
+            try:
+                process.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                try:
+                    if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                    else: process.kill()
+                except Exception:
+                    pass
+                try: process.wait(timeout=2.0)
+                except Exception: pass
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
+        except Exception as exc:
+            try:
+                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                else: process.terminate()
+            except Exception:
+                pass
             try: process.wait(timeout=2.0)
             except Exception: pass
-        return {"ok": False, "reports": [], "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
-    except Exception as exc:
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": f"{type(exc).__name__}:{exc}"}
+
+        if process.returncode != 0:
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": f"coverage_process_exit_{process.returncode}"}
         try:
-            if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-            else: process.terminate()
-        except Exception: pass
-        try: process.wait(timeout=2.0)
-        except Exception: pass
-        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
-    if process.returncode != 0:
-        return {"ok": False, "reports": [], "error": f"coverage_process_exit_{process.returncode}"}
-    try: result = json.loads(stdout or "")
-    except Exception as exc:
-        return {"ok": False, "reports": [], "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
-    return result if isinstance(result, dict) else {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
+            result = json.loads(stdout or "")
+        except Exception as exc:
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
+        if not isinstance(result, dict):
+            return {"query": str(query), "ok": False, "report": None,
+                    "error": "coverage_invalid_child_result"}
+        return result
+
+    reports = []
+    for query in queries or []:
+        reports.append(run_one(query))
+    return {"ok": bool(reports), "reports": reports,
+            "queries_attempted": len(reports)}
 
 
 def _coverage_run_task(task):
+    """Search every generic identity query until an actual canonical match is
+    found. Irrelevant scraper results do not end the search; query timeouts do
+    not prevent later queries. This is deliberately retailer/product agnostic.
+    """
     store = task['store']
     product = task['product']
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
     if not module_name:
-        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
+        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing',
+                'queries_attempted': 0}
+
     isolated = _coverage_scraper_process(module_name, queries)
     reports = isolated.get('reports') or []
-    if not isolated.get('ok'):
-        return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
     matched_rows = []
     errors = []
+    query_states = []
+
     for item in reports:
-        if not isinstance(item, dict): continue
+        if not isinstance(item, dict):
+            continue
+        query = str(item.get('query') or '')
         if item.get('error'):
-            errors.append(str(item['error'])); continue
+            error = str(item['error'])
+            errors.append(error)
+            query_states.append({'query': query, 'state': 'ERROR',
+                                 'error': error[:500], 'matches': 0})
+            continue
+
         report = item.get('report')
         if isinstance(report, dict):
             rows = report.get('results') or []
-            status = str(report.get('status') or '')
-            if status in {'error','timeout','blocked','unavailable'}:
-                errors.append(str(report.get('error') or status))
+            status = str(report.get('status') or '').lower()
+            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
+                error = str(report.get('error') or status)
+                errors.append(error)
+                query_states.append({'query': query, 'state': 'ERROR',
+                                     'error': error[:500], 'matches': 0})
+                continue
         else:
             rows = report if isinstance(report, list) else []
+
+        query_matches = 0
         for row in rows:
-            if _coverage_result_matches(product, row): matched_rows.append(row)
+            if _coverage_result_matches(product, row):
+                matched_rows.append(row)
+                query_matches += 1
+        query_states.append({
+            'query': query,
+            'state': 'FOUND' if query_matches else ('EMPTY' if not rows else 'IRRELEVANT'),
+            'error': None,
+            'matches': query_matches,
+            'results': len(rows) if isinstance(rows, list) else 0,
+        })
+        if query_matches:
+            break
+
     found = _coverage_persist_urls(store, matched_rows)
-    if found: return {'state': 'FOUND', 'found': found, 'error': None}
-    if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
-    return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
+    diagnostic = {
+        'queries': query_states,
+        'attempted': len(query_states),
+        'matched_queries': sum(1 for item in query_states if item.get('matches')),
+        'errors': len(errors),
+    }
+    if found:
+        return {'state': 'FOUND', 'found': found, 'error': None,
+                'diagnostic': diagnostic}
+    if errors:
+        return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000],
+                'diagnostic': diagnostic}
+    return {'state': 'NOT_FOUND', 'found': 0, 'error': None,
+            'diagnostic': diagnostic}
+
 def _coverage_claim_tasks(limit, stores=None):
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
@@ -3799,7 +3919,7 @@ def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
         "stores=" + repr(store_values) + "\n"
         "pause=max(2.0,float(" + repr(float(pause_seconds)) + "))\n"
         "while True:\n"
-        "    result=ce.coverage_batch(max_tasks=1, workers=1, stores=stores)\n"
+        "    result=ce.coverage_batch(max_tasks=2, workers=2, stores=stores)\n"
         "    if result.get('selected') or result.get('found') or result.get('errors'):\n"
         "        print('CATALOG COVERAGE BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
         "    time.sleep(pause)\n"
