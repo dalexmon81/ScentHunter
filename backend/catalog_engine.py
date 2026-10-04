@@ -2433,10 +2433,21 @@ def _secondary_store_parser(store, final_url, original_url, parser_query=None):
     session.headers.update({'User-Agent': USER_AGENT})
     try:
         # This is direct product-page hydration, not a user search. Prefer
-        # the page title captured from the original HTTP response; using the
-        # URL slug as a relevance query can inject numeric IDs/category words
-        # and cause a valid product parser to reject an already-identified URL.
-        query = str(parser_query or '').strip() or url_slug(final_url)
+        # the page title captured from the original HTTP response. If the
+        # transport response has no usable <title> (as happens on some
+        # retailer responses), derive the fallback query ONLY from the final
+        # product-path segment. Never pass numeric product IDs or category
+        # path components to a store parser's relevance gate.
+        query = str(parser_query or '').strip()
+        if not query:
+            path = urllib.parse.unquote(
+                urllib.parse.urlparse(final_url or original_url).path
+            ).rstrip('/')
+            segment = path.rsplit('/', 1)[-1] if path else ''
+            segment = re.sub(r'^[0-9]+[-_]+', '', segment)
+            segment = re.sub(r'[-_]+', ' ', segment)
+            segment = re.sub(r'\.(?:html?|php)$', '', segment, flags=re.I)
+            query = norm(segment)
         parsed = parser(session, final_url, query)
     finally:
         session.close()
