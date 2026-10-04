@@ -3447,69 +3447,45 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance durable catalog discovery in the background.
+    """Continuously advance the durable catalog frontier for every HTML store.
 
-    This loop is intentionally independent from hydration. It only advances
-    the Deloox navigation frontier; search remains read-only and hydration
-    keeps its existing workers/claim/retry behavior unchanged.
+    Discovery is store-wide background work and is deliberately independent
+    from request-time search and hydration. Every configured HTML discovery
+    store gets a turn on the same persistent frontier; progress is cumulative
+    because the frontier state lives in catalog_discovery_queue.
     """
     pause = max(30.0, float(interval_seconds))
+    stores = tuple(dict.fromkeys(HTML_DISCOVERY_SEEDS.keys()))
     print(
-        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
+        f'CATALOG DISCOVERY START stores={",".join(stores)} interval={pause:g}s',
         flush=True,
     )
     while stop_event is None or not stop_event.is_set():
         started = time.time()
-        try:
-            result = discover_store('deloox')
-            frontier = {}
-            if isinstance(result, dict):
-                # The frontier is also persisted in sync_state.error for
-                # operators, so this remains observable without a new API.
-                frontier = (result.get('html_fallback') or {}) if False else {}
-            print(
-                'CATALOG DISCOVERY BATCH '
-                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
-                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
-                flush=True,
-            )
-        except Exception as exc:
-            print(
-                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
-                flush=True,
-            )
+        for store in stores:
+            if stop_event is not None and stop_event.is_set():
+                break
+            try:
+                result = discover_store(store)
+                print(
+                    'CATALOG DISCOVERY BATCH '
+                    f'store={store} '
+                    f'status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
+                    f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                    flush=True,
+                )
+            except Exception as exc:
+                print(
+                    f'CATALOG DISCOVERY ERROR store={store}: '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
         elapsed = time.time() - started
         wait_for = max(1.0, pause - elapsed)
         if stop_event is not None:
             stop_event.wait(wait_for)
         else:
             time.sleep(wait_for)
-
-
-# ---------------------------------------------------------------------------
-# Canonical catalog coverage engine
-# ---------------------------------------------------------------------------
-# The persistent retailer catalog is intentionally store-first, but store-wide
-# crawling alone cannot guarantee that a product exposed by a retailer's
-# search surface is ever indexed. Coverage therefore runs from the canonical
-# identity catalog and feeds the same store_urls/hydration pipeline used by
-# normal discovery.
-#
-# canonical product -> store scraper search -> candidate URL -> hydration
-#
-# This layer is deliberately generic: no product, brand, retailer-product URL,
-# price, or exception is embedded here.
-
-_COVERAGE_SCHEMA_LOCK = threading.Lock()
-_COVERAGE_SCHEMA_READY = False
-_COVERAGE_CATALOG_CACHE = None
-_COVERAGE_CATALOG_MTIME = None
-_COVERAGE_INTERVAL_SECONDS = 60.0
-_COVERAGE_BATCH_SIZE = 8
-_COVERAGE_WORKERS = 2
-_COVERAGE_RETRY_SECONDS = 86400.0
-_COVERAGE_ERROR_RETRY_SECONDS = 3600.0
-_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
 
 
 def _foreground_search_running():
