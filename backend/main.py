@@ -2822,6 +2822,118 @@ def diagnose_catalog_fts(store: str = 'sabina', q: str = 'Hawas'):
 
     finally:
         conn.close()
+@app.get('/diagnose-search-pipeline')
+def diagnose_search_pipeline(store: str = 'sabina', q: str = 'Hawas'):
+    """
+    READ-ONLY end-to-end diagnostic of the catalog-first search pipeline.
+    It does not discover, hydrate, write to SQLite, or call retailer search.
+    It replays only the local catalog candidate -> clean -> matcher gates.
+    """
+    store_key = str(store or '').strip().lower()
+    query = str(q or '').strip()
+
+    if not query:
+        return {'ok': False, 'error': 'empty_query'}
+    if not callable(catalog_search_local):
+        return {'ok': False, 'error': 'catalog_search_local_unavailable'}
+
+    try:
+        terms = _catalog_search_terms(query)
+        candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
+        raw_rows = catalog_search_local(
+            query,
+            per_store=candidate_limit,
+            search_terms=terms,
+        ) or []
+
+        store_rows = []
+        for row in raw_rows:
+            if not isinstance(row, dict):
+                continue
+            row_store = _normalise_store(
+                row.get('store_key') or row.get('store') or row.get('shop'), ''
+            )
+            if row_store == store_key:
+                store_rows.append(dict(row))
+
+        stages = []
+        for raw in store_rows:
+            url = str(raw.get('url') or raw.get('product_url') or '').strip()
+            name = str(raw.get('name') or raw.get('title') or '').strip()
+            item = {
+                'url': url,
+                'name': name,
+                'catalog_id': raw.get('catalog_id'),
+                'stage': 'catalog_candidate',
+            }
+
+            cleaned = clean_result(raw, store_key)
+            if cleaned is None:
+                item['stage'] = 'clean_result_rejected'
+                stages.append(item)
+                continue
+
+            item['clean_name'] = cleaned.get('name')
+            item['clean_brand'] = cleaned.get('brand')
+
+            if _is_non_fragrance_offer(cleaned):
+                item['stage'] = 'non_fragrance_rejected_before_matcher'
+                stages.append(item)
+                continue
+
+            resolved = _resolve_offer_identity(cleaned, query)
+            if not isinstance(resolved, dict):
+                item['stage'] = 'matcher_returned_none'
+                stages.append(item)
+                continue
+
+            item['match_status'] = resolved.get('_match_status')
+            item['catalog_id'] = resolved.get('catalog_id')
+            item['canonical_name'] = resolved.get('canonical_name')
+            item['match_method'] = resolved.get('match_method')
+            item['match_confidence'] = resolved.get('confidence')
+            item['reject_reason'] = resolved.get('_reject_reason')
+
+            if resolved.get('_match_status') == 'rejected':
+                item['stage'] = 'matcher_rejected'
+            elif resolved.get('_match_status') == 'matched' and resolved.get('catalog_id'):
+                if _is_non_fragrance_offer(resolved):
+                    item['stage'] = 'non_fragrance_rejected_after_matcher'
+                else:
+                    item['stage'] = 'matched'
+            else:
+                item['stage'] = 'matcher_unresolved'
+
+            stages.append(item)
+
+        counts = {}
+        for item in stages:
+            key = item.get('stage') or 'unknown'
+            counts[key] = counts.get(key, 0) + 1
+
+        return {
+            'ok': True,
+            'diagnostic': 'search-pipeline-v1',
+            'read_only': True,
+            'store': store_key,
+            'query': query,
+            'search_terms_count': len(terms),
+            'search_terms': terms,
+            'candidate_limit': candidate_limit,
+            'raw_catalog_candidates_total': len(raw_rows),
+            'store_candidate_count': len(store_rows),
+            'stage_counts': counts,
+            'products': stages,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'search-pipeline-v1',
+            'store': store_key,
+            'query': query,
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+
 
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
