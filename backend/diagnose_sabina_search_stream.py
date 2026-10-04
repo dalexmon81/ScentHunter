@@ -1,10 +1,13 @@
 """
 ScentHunter - Sabina/catalog coverage diagnostics.
 
-Read-only scraper diagnostics plus one explicitly operational coverage runner.
-The coverage runner is generic: it accepts a store + canonical product_id,
-uses the existing catalog_coverage machinery, and does not contain any
-product-specific URL or identity rule.
+Read-only scraper diagnostics plus one explicitly operational coverage runner
+and one explicitly operational hydration runner.
+
+The hydration runner is generic: it accepts a store + URL already present in
+hydration_queue, forces exactly that durable queue item through the normal
+catalog_engine.refresh_url() path, and reports the resulting queue state.
+It contains no product-specific URL, name, or matching rule.
 """
 
 import time
@@ -24,7 +27,6 @@ def diagnose_sabina_search_stream(
     q: str = Query("Liquid Brun", min_length=1, max_length=120),
 ):
     started = time.monotonic()
-
     try:
         from scrapers.sabina import scraper
 
@@ -38,7 +40,6 @@ def diagnose_sabina_search_stream(
             }
 
         returned = stream(q)
-
         result_rows = []
         if isinstance(returned, dict):
             value = returned.get("results")
@@ -77,7 +78,6 @@ def diagnose_sabina_search_stream(
             "hydration_called": False,
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
-
     except Exception as exc:
         return {
             "diagnostic": "sabina-search-stream-v1",
@@ -96,13 +96,7 @@ def diagnose_sabina_product_page(
     url: str = Query(TARGET_41708, min_length=20, max_length=500),
     q: str = Query("Liquid Brun Limited Edition", min_length=1, max_length=120),
 ):
-    """
-    Read-only transport/parser isolation test.
-
-    Fetches exactly one supplied Sabina product URL with requests and then
-    runs the production extract_product_page parser. No search, matcher,
-    catalog write, or hydration is called.
-    """
+    """Read-only transport/parser isolation test."""
     started = time.monotonic()
 
     try:
@@ -184,10 +178,7 @@ def diagnose_sabina_product_page(
 def diagnose_sabina_discover_and_target(
     q: str = Query("Liquid Brun Limited Edition", min_length=1, max_length=120),
 ):
-    """
-    Read-only isolation of production discovery + the exact discovered target.
-    It intentionally does NOT run search() over every candidate.
-    """
+    """Read-only isolation of production discovery + the exact discovered target."""
     started = time.monotonic()
     target_token = "41708"
 
@@ -200,10 +191,7 @@ def diagnose_sabina_discover_and_target(
             candidates = scraper.discover_product_urls(session, q)
             discovery_elapsed = round(time.monotonic() - discovery_started, 3)
 
-            target_urls = [
-                url for url in candidates
-                if target_token in str(url)
-            ]
+            target_urls = [url for url in candidates if target_token in str(url)]
 
             target_result = None
             target_error = None
@@ -283,15 +271,7 @@ def diagnose_catalog_coverage_run(
     store: str = Query("sabina", min_length=1, max_length=40),
     product_id: str = Query(..., min_length=1, max_length=120),
 ):
-    """
-    Explicitly advance one generic store x canonical-product coverage task.
-
-    Unlike the other diagnostics this endpoint is intentionally operational:
-    it may persist a discovered retailer URL into store_urls/hydration_queue
-    and update the corresponding catalog_coverage state. It uses only the
-    canonical product_id supplied by the caller and the existing generic
-    coverage engine. No product-specific URL, name, or rule is embedded.
-    """
+    """Explicitly advance one generic store x canonical-product coverage task."""
     started = time.monotonic()
     store_key = str(store or "").strip().lower()
     product_key = str(product_id or "").strip()
@@ -326,12 +306,7 @@ def diagnose_catalog_coverage_run(
                 "elapsed_sec": round(time.monotonic() - started, 3),
             }
 
-        task = {
-            "store": store_key,
-            "product": product,
-            "attempts": 0,
-        }
-
+        task = {"store": store_key, "product": product, "attempts": 0}
         result = _coverage_run_task(task)
         _coverage_finish_task(task, result)
 
@@ -341,9 +316,7 @@ def diagnose_catalog_coverage_run(
             "store": store_key,
             "product_id": product_key,
             "canonical_name": product.get("canonical_name"),
-            "coverage_queries": (
-                __import__("catalog_engine")._coverage_queries(product)
-            ),
+            "coverage_queries": __import__("catalog_engine")._coverage_queries(product),
             "result": result,
             "catalog_written": bool(result.get("found")),
             "hydration_called": False,
@@ -359,5 +332,192 @@ def diagnose_catalog_coverage_run(
             "product_id": product_key,
             "catalog_written": False,
             "hydration_called": False,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+
+@router.get("/diagnose-catalog-hydration-run")
+def diagnose_catalog_hydration_run(
+    store: str = Query("sabina", min_length=1, max_length=40),
+    url: str = Query(..., min_length=20, max_length=1000),
+):
+    """
+    Operational single-queue-item hydration diagnostic.
+
+    This is intentionally generic. It does not know any product name, brand,
+    ID, or retailer-specific rule. It only accepts a URL already present in
+    hydration_queue, claims that durable queue row, calls the exact normal
+    catalog_engine.refresh_url() path, and records DONE/ERROR/DEAD.
+    """
+    started = time.monotonic()
+    store_key = str(store or "").strip().lower()
+    url_key = str(url or "").strip()
+
+    try:
+        from catalog_engine import db, refresh_url, STORES
+
+        if store_key not in STORES:
+            return {
+                "diagnostic": "catalog-hydration-run-v1",
+                "ok": False,
+                "error": "unknown_store",
+                "store": store_key,
+                "url": url_key,
+            }
+
+        conn = db()
+        try:
+            row = conn.execute(
+                """SELECT store,url,state,attempts,last_error,last_http_status,
+                          last_started_at,last_finished_at,available_at,
+                          leased_until,lease_token
+                   FROM hydration_queue
+                   WHERE store=? AND url=?""",
+                (store_key, url_key),
+            ).fetchone()
+
+            if not row:
+                return {
+                    "diagnostic": "catalog-hydration-run-v1",
+                    "ok": False,
+                    "error": "url_not_in_hydration_queue",
+                    "store": store_key,
+                    "url": url_key,
+                }
+
+            previous = dict(row)
+            if previous.get("state") == "PROCESSING":
+                return {
+                    "diagnostic": "catalog-hydration-run-v1",
+                    "ok": False,
+                    "error": "url_currently_processing",
+                    "store": store_key,
+                    "url": url_key,
+                    "previous": previous,
+                }
+
+            if previous.get("state") == "DONE":
+                return {
+                    "diagnostic": "catalog-hydration-run-v1",
+                    "ok": True,
+                    "status": "ALREADY_DONE",
+                    "store": store_key,
+                    "url": url_key,
+                    "previous": previous,
+                }
+
+            token = f"diagnose-{int(time.time() * 1000)}"
+            now = time.time()
+            updated = conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PROCESSING',
+                       leased_until=?,
+                       lease_token=?,
+                       last_started_at=?,
+                       attempts=COALESCE(attempts,0)+1
+                   WHERE store=? AND url=?
+                     AND state IN ('PENDING','ERROR','DEAD')""",
+                (now + 180.0, token, now, store_key, url_key),
+            ).rowcount
+            conn.commit()
+
+            if updated != 1:
+                return {
+                    "diagnostic": "catalog-hydration-run-v1",
+                    "ok": False,
+                    "error": "queue_claim_failed",
+                    "store": store_key,
+                    "url": url_key,
+                    "previous": previous,
+                }
+        finally:
+            conn.close()
+
+        item = None
+        refresh_error = None
+        try:
+            item = refresh_url(store_key, url_key)
+        except Exception as exc:
+            refresh_error = f"{type(exc).__name__}: {exc}"
+
+        conn = db()
+        try:
+            final_state = "DONE" if item and item.get("name") else "ERROR"
+            last_error = None
+            if final_state != "DONE":
+                row = conn.execute(
+                    """SELECT fetch_status
+                       FROM store_products
+                       WHERE store=? AND url=?""",
+                    (store_key, url_key),
+                ).fetchone()
+                last_error = (
+                    str(row["fetch_status"])
+                    if row and row["fetch_status"]
+                    else refresh_error or "product_parser_not_found"
+                )
+
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state=?,
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       last_finished_at=?,
+                       last_error=?,
+                       last_http_status=?
+                   WHERE store=? AND url=? AND lease_token=?""",
+                (
+                    final_state,
+                    time.time(),
+                    last_error,
+                    None,
+                    store_key,
+                    url_key,
+                    token,
+                ),
+            )
+            conn.commit()
+
+            final_row = conn.execute(
+                """SELECT store,url,state,attempts,last_error,last_http_status,
+                          last_started_at,last_finished_at,available_at
+                   FROM hydration_queue
+                   WHERE store=? AND url=?""",
+                (store_key, url_key),
+            ).fetchone()
+
+            product_row = conn.execute(
+                """SELECT name,brand,price,currency,availability,
+                          fetched_at,fetch_status
+                   FROM store_products
+                   WHERE store=? AND url=?""",
+                (store_key, url_key),
+            ).fetchone()
+        finally:
+            conn.close()
+
+        return {
+            "diagnostic": "catalog-hydration-run-v1",
+            "ok": final_state == "DONE",
+            "status": final_state,
+            "store": store_key,
+            "url": url_key,
+            "refresh_returned_product": bool(item and item.get("name")),
+            "product": dict(product_row) if product_row else None,
+            "queue": dict(final_row) if final_row else None,
+            "refresh_error": refresh_error,
+            "catalog_written": bool(item and item.get("name")),
+            "hydration_called": True,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+    except Exception as exc:
+        return {
+            "diagnostic": "catalog-hydration-run-v1",
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "store": store_key,
+            "url": url_key,
+            "hydration_called": True,
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
