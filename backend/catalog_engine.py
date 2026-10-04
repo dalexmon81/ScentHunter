@@ -2153,171 +2153,162 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
     conn.commit(); conn.close()
 
 
-# SQLite-backed catalog discovery must be serialized inside one application
-# process. The background Deloox discovery loop and operational store resyncs
-# both call discover_store(), and overlapping discovery transactions can hold
-# SQLite write locks against each other. Network crawling remains concurrent
-# inside one discovery run; only the outer persistent-discovery transaction
-# lifecycle is serialized.
-_DISCOVERY_LOCK = threading.Lock()
-
 def discover_store(store):
     """Build/update one persistent URL catalog with durable progress state."""
-    with _DISCOVERY_LOCK:
-        started_at=time.time()
-        # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
-        _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
-        roots,robots_diagnostics=_seed_sitemaps(store)
-        queue=[(url,0) for url in roots]
-        queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
-        # Some retailers publish navigation/landing URLs in their sitemap instead
-        # of real product URLs. Keep those URLs as generic HTML-discovery seeds
-        # rather than discarding them after the sitemap pass.
-        html_sitemap_seeds=set()
-        sitemap_successes=0; sitemap_url_entries=0
+    started_at=time.time()
+    # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
+    _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
+    roots,robots_diagnostics=_seed_sitemaps(store)
+    queue=[(url,0) for url in roots]
+    queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
+    # Some retailers publish navigation/landing URLs in their sitemap instead
+    # of real product URLs. Keep those URLs as generic HTML-discovery seeds
+    # rather than discarding them after the sitemap pass.
+    html_sitemap_seeds=set()
+    sitemap_successes=0; sitemap_url_entries=0
 
-        sitemap_deadline = min(
-            started_at + DISCOVERY_HARD_TIMEOUT,
-            started_at + SITEMAP_DISCOVERY_BUDGET,
+    sitemap_deadline = min(
+        started_at + DISCOVERY_HARD_TIMEOUT,
+        started_at + SITEMAP_DISCOVERY_BUDGET,
+    )
+    while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and time.time()<sitemap_deadline:
+        batch=[]
+        while queue and len(batch)<SYNC_WORKERS*4:
+            sm,depth=queue.pop(0)
+            if sm in visited: continue
+            visited.add(sm); batch.append((sm,depth))
+        if not batch: continue
+        with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS,len(batch))) as pool:
+            futures={pool.submit(_fetch_sitemap,store,sm):(sm,depth) for sm,depth in batch}
+            for f in as_completed(futures):
+                sm,depth=futures[f]
+                try: _source,final,entries,error=f.result()
+                except Exception as exc:
+                    final,entries=sm,[]; error=f'EXCEPTION:{type(exc).__name__}:{exc}'
+                if error:
+                    sitemap_errors.append(f'{sm} -> {error}'); continue
+                sitemap_successes+=1; sitemap_url_entries+=len(entries)
+                for kind,raw_url,lastmod in entries:
+                    absolute=urllib.parse.urljoin(final or sm,raw_url.strip()) if raw_url else ''
+                    if kind=='sitemap':
+                        if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
+                            queued.add(absolute); queue.append((absolute,depth+1))
+                    elif _looks_product(absolute, store):
+                        product_urls[absolute]=lastmod or ''
+                        if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
+                            break
+                    elif store in HTML_DISCOVERY_SEEDS:
+                        listing=_html_listing_url(store,absolute,final or sm,'sitemap')
+                        if listing:
+                            html_sitemap_seeds.add(listing)
+
+    fallback=None
+    # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
+    # advanced through a persistent discovery frontier. Do not run a second
+    # in-memory HTML fallback for Deloox: that would restart from the same
+    # roots and recreate the starvation problem.
+    deloox_graph = None
+    if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
+        deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
+        deloox_graph = _discover_deloox_catalog(
+            list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
+            started_at + deloox_graph_budget,
         )
-        while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and time.time()<sitemap_deadline:
-            batch=[]
-            while queue and len(batch)<SYNC_WORKERS*4:
-                sm,depth=queue.pop(0)
-                if sm in visited: continue
-                visited.add(sm); batch.append((sm,depth))
-            if not batch: continue
-            with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS,len(batch))) as pool:
-                futures={pool.submit(_fetch_sitemap,store,sm):(sm,depth) for sm,depth in batch}
-                for f in as_completed(futures):
-                    sm,depth=futures[f]
-                    try: _source,final,entries,error=f.result()
-                    except Exception as exc:
-                        final,entries=sm,[]; error=f'EXCEPTION:{type(exc).__name__}:{exc}'
-                    if error:
-                        sitemap_errors.append(f'{sm} -> {error}'); continue
-                    sitemap_successes+=1; sitemap_url_entries+=len(entries)
-                    for kind,raw_url,lastmod in entries:
-                        absolute=urllib.parse.urljoin(final or sm,raw_url.strip()) if raw_url else ''
-                        if kind=='sitemap':
-                            if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
-                                queued.add(absolute); queue.append((absolute,depth+1))
-                        elif _looks_product(absolute, store):
-                            product_urls[absolute]=lastmod or ''
-                            if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
-                                break
-                        elif store in HTML_DISCOVERY_SEEDS:
-                            listing=_html_listing_url(store,absolute,final or sm,'sitemap')
-                            if listing:
-                                html_sitemap_seeds.add(listing)
+        product_urls.update(deloox_graph['product_urls'])
 
-        fallback=None
-        # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
-        # advanced through a persistent discovery frontier. Do not run a second
-        # in-memory HTML fallback for Deloox: that would restart from the same
-        # roots and recreate the starvation problem.
-        deloox_graph = None
-        if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
-            deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
-            deloox_graph = _discover_deloox_catalog(
-                list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
-                started_at + deloox_graph_budget,
-            )
-            product_urls.update(deloox_graph['product_urls'])
+    # Sabina's sitemap is only one catalog surface. Its legacy storefront
+    # exposes additional product IDs through HTML controller state
+    # (af_controller_product_ids), so Sabina must supplement the sitemap with
+    # the generic HTML catalog discovery even when the sitemap already
+    # contains many product URLs. This is store-level discovery policy only:
+    # no product, brand, name or query is embedded here.
+    #
+    # Other non-Deloox retailers retain the bounded fallback behaviour.
+    if (
+        store in HTML_DISCOVERY_SEEDS
+        and store != 'deloox'
+        and (
+            store == 'sabina'
+            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
+        )
+    ):
+        html_seeds=list(dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
+        ))
+        fallback=_discover_html_catalog(
+            store,
+            html_seeds,
+            started_at + DISCOVERY_HARD_TIMEOUT,
+        )
+        product_urls.update(fallback['product_urls'])
 
-        # Sabina's sitemap is only one catalog surface. Its legacy storefront
-        # exposes additional product IDs through HTML controller state
-        # (af_controller_product_ids), so Sabina must supplement the sitemap with
-        # the generic HTML catalog discovery even when the sitemap already
-        # contains many product URLs. This is store-level discovery policy only:
-        # no product, brand, name or query is embedded here.
-        #
-        # Other non-Deloox retailers retain the bounded fallback behaviour.
-        if (
-            store in HTML_DISCOVERY_SEEDS
-            and store != 'deloox'
-            and (
-                store == 'sabina'
-                or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-                or (bool(sitemap_errors) and sitemap_successes == 0)
-            )
-        ):
-            html_seeds=list(dict.fromkeys(
-                list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
-            ))
-            fallback=_discover_html_catalog(
-                store,
-                html_seeds,
-                started_at + DISCOVERY_HARD_TIMEOUT,
-            )
-            product_urls.update(fallback['product_urls'])
-
-        diagnostics={
-            'visited':len(visited),
-            'successes':sitemap_successes,
-            'entries':sitemap_url_entries,
-            'errors':len(sitemap_errors),
-            'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
-            'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
-            'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
-        }
-        # Zero successful catalog-page fetches means access/discovery failure,
-        # not an empty retailer catalog. Never report EMPTY in that situation.
-        if not product_urls and fallback is not None and fallback['successes'] == 0 and fallback['errors']:
-            now = time.time()
-            detail = 'catalog_access_failed; ' + ' | '.join(fallback['errors'][:8])
-            conn = db()
-            conn.execute(
-                '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-                   VALUES(?,?,?,?,?,?,?)
-                   ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-                   started_at=excluded.started_at,finished_at=excluded.finished_at,
-                   discovered_count=excluded.discovered_count,error=excluded.error''',
-                (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
-            )
-            conn.commit(); conn.close()
-            status,count,error='DISCOVERY_ERROR',0,detail
-        else:
-            status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
-
-        details=[]
-        if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
-        if deloox_graph is not None:
-            details.append(
-                f'deloox_category_graph=visited:{deloox_graph["visited"]};'
-                f'successes:{deloox_graph["successes"]};products:{len(deloox_graph["product_urls"])}'
-            )
-            if deloox_graph['errors']:
-                details.append('deloox_graph_errors=' + ' | '.join(deloox_graph['errors'][:4]))
-            frontier = deloox_graph.get('frontier') or {}
-            if frontier:
-                details.append(
-                    'deloox_frontier='
-                    f'total:{frontier.get("total",0)};'
-                    f'pending:{frontier.get("pending",0)};'
-                    f'done:{frontier.get("done",0)};'
-                    f'error:{frontier.get("error",0)};'
-                    f'dead:{frontier.get("dead",0)}'
-                )
-        if fallback is not None:
-            details.append(
-                f'html_fallback=visited:{fallback["visited"]};'
-                f'successes:{fallback["successes"]};'
-                f'products:{len(fallback["product_urls"])};'
-                f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
-            )
-            if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
-        final_error=' | '.join(details) if details else error
-        conn=db()
-        conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
+    diagnostics={
+        'visited':len(visited),
+        'successes':sitemap_successes,
+        'entries':sitemap_url_entries,
+        'errors':len(sitemap_errors),
+        'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
+        'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
+        'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
+    }
+    # Zero successful catalog-page fetches means access/discovery failure,
+    # not an empty retailer catalog. Never report EMPTY in that situation.
+    if not product_urls and fallback is not None and fallback['successes'] == 0 and fallback['errors']:
+        now = time.time()
+        detail = 'catalog_access_failed; ' + ' | '.join(fallback['errors'][:8])
+        conn = db()
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_ERROR', started_at, now, 0, 0, detail),
+        )
         conn.commit(); conn.close()
+        status,count,error='DISCOVERY_ERROR',0,detail
+    else:
+        status,count,error=_save_discovery(store,product_urls,started_at,diagnostics)
 
-        return {
-            'count':count,'status':status,'visited_sitemaps':len(visited),
-            'sitemap_successes':sitemap_successes,'xml_entries':sitemap_url_entries,
-            'robots':robots_diagnostics[:8],'errors':sitemap_errors[:12],
-            'html_fallback':fallback,
-        }
+    details=[]
+    if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if deloox_graph is not None:
+        details.append(
+            f'deloox_category_graph=visited:{deloox_graph["visited"]};'
+            f'successes:{deloox_graph["successes"]};products:{len(deloox_graph["product_urls"])}'
+        )
+        if deloox_graph['errors']:
+            details.append('deloox_graph_errors=' + ' | '.join(deloox_graph['errors'][:4]))
+        frontier = deloox_graph.get('frontier') or {}
+        if frontier:
+            details.append(
+                'deloox_frontier='
+                f'total:{frontier.get("total",0)};'
+                f'pending:{frontier.get("pending",0)};'
+                f'done:{frontier.get("done",0)};'
+                f'error:{frontier.get("error",0)};'
+                f'dead:{frontier.get("dead",0)}'
+            )
+    if fallback is not None:
+        details.append(
+            f'html_fallback=visited:{fallback["visited"]};'
+            f'successes:{fallback["successes"]};'
+            f'products:{len(fallback["product_urls"])};'
+            f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
+        )
+        if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+    final_error=' | '.join(details) if details else error
+    conn=db()
+    conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
+    conn.commit(); conn.close()
+
+    return {
+        'count':count,'status':status,'visited_sitemaps':len(visited),
+        'sitemap_successes':sitemap_successes,'xml_entries':sitemap_url_entries,
+        'robots':robots_diagnostics[:8],'errors':sitemap_errors[:12],
+        'html_fallback':fallback,
+    }
 
 
 def _jsonld(soup):
