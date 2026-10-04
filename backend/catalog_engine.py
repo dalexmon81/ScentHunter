@@ -112,7 +112,7 @@ HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
-SYNC_WORKERS = 3
+SYNC_WORKERS = 8
 REFRESH_WORKERS = 2
 
 # Persistent hydration queue configuration.
@@ -128,8 +128,11 @@ MAX_SITEMAP_DEPTH = 10
 MAX_URLS_PER_SITEMAP = 50000
 MAX_TOTAL_DISCOVERED_URLS = 250000
 
-# Discovery is cumulative: bounded or partial passes add what they observe.
-# A smaller pass is not evidence that previously discovered products vanished.
+# A single failed/partial discovery must never wipe a previously valid catalog.
+# If a new catalog is implausibly smaller than the existing one, retain the old
+# catalog and expose the result as DISCOVERY_PARTIAL instead.
+MIN_REPLACEMENT_RATIO = 0.10
+MIN_REPLACEMENT_ABSOLUTE = 100
 
 # Generic product URL signals. Product-vs-category is still decided after page
 # fetch; this only removes obvious non-product endpoints from a sitemap.
@@ -838,70 +841,90 @@ def _sync_deloox_search_index(product_urls):
         cached['signature'] = active_count
 
 
-def _persist_discovery_urls(store, product_urls):
-    """Persist observed discovery URLs immediately, without closing the run.
-
-    Discovery can be long-running. Persistence is therefore incremental: URLs
-    already observed become durable as soon as a bounded discovery batch finds
-    them, while sync_state remains DISCOVERY_RUNNING until the store pass ends.
-    """
-    if not product_urls:
-        return 0
-    now = time.time()
-    conn = db()
-    with conn:
-        for url, lastmod in product_urls.items():
-            conn.execute(
-                """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                   VALUES(?,?,?,?,?,1)
-                   ON CONFLICT(store,url) DO UPDATE SET
-                   slug=excluded.slug,lastmod=excluded.lastmod,
-                   discovered_at=excluded.discovered_at,active=1""",
-                (store, url, url_slug(url), lastmod, now),
-            )
-            conn.execute(
-                """INSERT INTO hydration_queue(
-                       store,url,state,attempts,available_at,first_seen_at)
-                   VALUES(?,?,?,?,?,?)
-                   ON CONFLICT(store,url) DO UPDATE SET
-                       state=CASE
-                           WHEN hydration_queue.state='DONE' THEN 'DONE'
-                           WHEN hydration_queue.state='PROCESSING'
-                                AND hydration_queue.leased_until > ? THEN 'PROCESSING'
-                           ELSE hydration_queue.state
-                       END""",
-                (store, url, 'PENDING', 0, now, now, now),
-            )
-    conn.close()
-    return len(product_urls)
-
-
 def _save_discovery(store, product_urls, started_at, diagnostics):
-    """Finalize a cumulative discovery pass after its observed URLs are durable."""
     now = time.time()
     new_count = len(product_urls)
-    _persist_discovery_urls(store, product_urls)
+    old_count = _existing_count(store)
 
-    status = 'DISCOVERY_OK' if new_count else 'DISCOVERY_EMPTY'
-    error = (
-        f'discovery_cumulative;discovered={new_count};'
-        f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
-        f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
-    )
-    conn = db()
-    with conn:
+    # Never replace a known catalog with a suspiciously tiny transient result.
+    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
+        conn = db()
+        detail = (
+            f'partial_catalog_rejected;old={old_count};new={new_count};'
+            f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
+            f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
+        )
         conn.execute(
-            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
                started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error""",
+               discovered_count=excluded.discovered_count,error=excluded.error''',
+            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
+        )
+        conn.commit()
+        conn.close()
+        return 'DISCOVERY_PARTIAL', new_count, detail
+
+    conn = db()
+    with conn:
+        if new_count:
+            # Deloox discovery is intentionally incremental: a bounded run is
+            # only one slice of a persistent HTML graph. Never deactivate the
+            # previously discovered Deloox catalog merely because this run did
+            # not reach those branches. A real product disappearance is handled
+            # by product-page hydration/HTTP status, not by crawl omission.
+            # Sabina discovery is also incremental. Its HTML legacy catalog
+            # surface is bounded by time, so a run can legitimately discover
+            # only a subset of the existing catalog. Never deactivate known
+            # Sabina URLs merely because this run did not reach them.
+            if store not in ('deloox', 'sabina'):
+                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
+            for url, lastmod in product_urls.items():
+                conn.execute(
+                    '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                       slug=excluded.slug,lastmod=excluded.lastmod,
+                       discovered_at=excluded.discovered_at,active=1''',
+                    (store, url, url_slug(url), lastmod, now),
+                )
+                conn.execute(
+                    '''INSERT INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
+                               ELSE hydration_queue.state
+                           END''',
+                    (store, url, 'PENDING', 0, now, now, now),
+                )
+            status = 'DISCOVERY_OK'
+            error = None
+        else:
+            status = 'DISCOVERY_EMPTY'
+            error = (
+                f'no_product_urls;visited={diagnostics["visited"]};'
+                f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
+                f'errors={diagnostics["errors"]}'
+            )
+
+        conn.execute(
+            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
+               started_at=excluded.started_at,finished_at=excluded.finished_at,
+               discovered_count=excluded.discovered_count,error=excluded.error''',
             (store, status, started_at, now, new_count, 0, error),
         )
     conn.close()
     if status == 'DISCOVERY_OK' and store == 'deloox':
         _sync_deloox_search_index(product_urls)
     return status, new_count, error
+
 
 
 # HTML catalog-discovery fallback. This is NOT user-query search. It is a
@@ -1007,7 +1030,7 @@ HTML_DISCOVERY_SEEDS = {
 # pagination/navigation surface was exhausted.
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
-HTML_WORKERS = 4
+HTML_WORKERS = 12
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -1274,14 +1297,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     p = urllib.parse.urlparse(url)
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
-
-    # Configured catalog seeds are the retailer's known discovery surfaces.
-    # Always exhaust this finite seed set before recursively discovered links
-    # can consume the bounded crawl. This is structural and applies to every
-    # retailer; it prevents a broad navigation graph from starving a native
-    # search/category seed that can enumerate the catalog directly.
-    if source == 'configured_seed':
-        return (-10, depth)
 
     # Deloox's native public search is a catalog enumeration surface. Keep
     # its generic background seeds ahead of the broad frontier so the search
@@ -1797,24 +1812,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
     }
 
 
-def _discovery_heartbeat(store, status, detail):
-    """Publish bounded discovery progress without ending the store run."""
-    try:
-        conn = db()
-        now = time.time()
-        conn.execute(
-            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,error=excluded.error""",
-            (store, status, now, None, 0, 0, str(detail)[:2000]),
-        )
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-
-def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None, heartbeat_callback=None):
+def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
     queued=set()
     visited=set()
@@ -1822,7 +1820,6 @@ def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None, h
     errors=[]
     successes=0
     sequence=0
-    persisted_urls=set()
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -1837,8 +1834,6 @@ def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None, h
 
     for seed in seeds:
         add(seed,0,'configured_seed')
-    if heartbeat_callback:
-        heartbeat_callback('HTML_DISCOVERY_RUNNING', f'seeded={len(seeds)};queued={len(queue)}')
 
     while queue and len(visited) < HTML_MAX_PAGES and (deadline is None or time.time() < deadline):
         batch=[]
@@ -1942,21 +1937,6 @@ def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None, h
                             add(listing,depth+1,requested)
                 except Exception:
                     pass
-
-                if persist_callback and product_urls:
-                    new_urls = {
-                        url: lastmod for url, lastmod in product_urls.items()
-                        if url not in persisted_urls
-                    }
-                    if new_urls:
-                        persist_callback(new_urls)
-                        persisted_urls.update(new_urls)
-
-        if heartbeat_callback:
-            heartbeat_callback(
-                'HTML_DISCOVERY_RUNNING',
-                f'visited={len(visited)};successes={successes};products={len(product_urls)};queue={len(queue)}',
-            )
 
     return {
         'product_urls':product_urls,
@@ -2179,10 +2159,6 @@ def discover_store(store):
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     roots,robots_diagnostics=_seed_sitemaps(store)
-    # HTML discovery intentionally starts after the bounded sitemap phase.
-    # This keeps the global discovery scheduler from creating a second large
-    # network fan-out while sitemap workers are still active. The HTML pass is
-    # itself incremental and persists every discovered batch immediately.
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
     # Some retailers publish navigation/landing URLs in their sitemap instead
@@ -2226,15 +2202,6 @@ def discover_store(store):
                         if listing:
                             html_sitemap_seeds.add(listing)
 
-    # Sitemap results are durable before any potentially long HTML crawl.
-    if product_urls:
-        _persist_discovery_urls(store, product_urls)
-
-    _discovery_heartbeat(
-        store,
-        'DISCOVERY_SITEMAP_DONE',
-        f'sitemap_visited={len(visited)};sitemap_successes={sitemap_successes};product_urls={len(product_urls)}',
-    )
     fallback=None
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
     # advanced through a persistent discovery frontier. Do not run a second
@@ -2273,8 +2240,6 @@ def discover_store(store):
             store,
             html_seeds,
             started_at + DISCOVERY_HARD_TIMEOUT,
-            persist_callback=lambda batch: _persist_discovery_urls(store, batch),
-            heartbeat_callback=lambda status, detail: _discovery_heartbeat(store, status, detail),
         )
         product_urls.update(fallback['product_urls'])
 
@@ -2337,8 +2302,6 @@ def discover_store(store):
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
     conn.commit(); conn.close()
-    if html_executor is not None:
-        html_executor.shutdown(wait=False)
 
     return {
         'count':count,'status':status,'visited_sitemaps':len(visited),
@@ -3230,37 +3193,35 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance durable catalog discovery for every configured store.
+    """Continuously advance durable catalog discovery in the background.
 
-    Discovery is store-wide background work, not user-query search. Each cycle
-    advances every configured retailer through the same cumulative
-    ``discover_store()`` pipeline used by the initial synchronization.
-    ``sync_all()`` runs the stores concurrently with bounded workers, so a slow
-    retailer cannot serialize the discovery of the others. Existing catalog
-    URLs remain valid when a bounded pass sees only a subset.
+    This loop is intentionally independent from hydration. It only advances
+    the Deloox navigation frontier; search remains read-only and hydration
+    keeps its existing workers/claim/retry behavior unchanged.
     """
     pause = max(30.0, float(interval_seconds))
-    stores = tuple(STORES.keys())
     print(
-        f'CATALOG DISCOVERY START stores={",".join(stores)} interval={pause:g}s',
+        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
         flush=True,
     )
     while stop_event is None or not stop_event.is_set():
         started = time.time()
         try:
-            results = sync_all()
-            for store in stores:
-                result = results.get(store) or {}
-                print(
-                    'CATALOG DISCOVERY BATCH '
-                    f'store={store} '
-                    f'status={result.get("status", "unknown")} '
-                    f'count={result.get("count", "?")}',
-                    flush=True,
-                )
+            result = discover_store('deloox')
+            frontier = {}
+            if isinstance(result, dict):
+                # The frontier is also persisted in sync_state.error for
+                # operators, so this remains observable without a new API.
+                frontier = (result.get('html_fallback') or {}) if False else {}
+            print(
+                'CATALOG DISCOVERY BATCH '
+                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
+                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                flush=True,
+            )
         except Exception as exc:
             print(
-                f'CATALOG DISCOVERY ERROR cycle: {type(exc).__name__}: {exc}',
+                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
                 flush=True,
             )
         elapsed = time.time() - started
