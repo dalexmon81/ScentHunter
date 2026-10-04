@@ -838,17 +838,16 @@ def _sync_deloox_search_index(product_urls):
         cached['signature'] = active_count
 
 
-def _save_discovery(store, product_urls, started_at, diagnostics):
-    """Persist discovery cumulatively for every configured store.
+def _persist_discovery_urls(store, product_urls):
+    """Persist observed discovery URLs immediately, without closing the run.
 
-    Discovery passes are bounded by time, sitemap/frontier limits and retailer
-    behaviour. A pass that sees fewer URLs is therefore not evidence that the
-    unseen URLs disappeared. Discovery only adds/refreshes URLs it actually
-    observed; product freshness/availability is handled by hydration.
+    Discovery can be long-running. Persistence is therefore incremental: URLs
+    already observed become durable as soon as a bounded discovery batch finds
+    them, while sync_state remains DISCOVERY_RUNNING until the store pass ends.
     """
+    if not product_urls:
+        return 0
     now = time.time()
-    new_count = len(product_urls)
-
     conn = db()
     with conn:
         for url, lastmod in product_urls.items():
@@ -873,13 +872,24 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                        END""",
                 (store, url, 'PENDING', 0, now, now, now),
             )
+    conn.close()
+    return len(product_urls)
 
-        status = 'DISCOVERY_OK' if new_count else 'DISCOVERY_EMPTY'
-        error = (
-            f'discovery_cumulative;discovered={new_count};'
-            f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
-            f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
-        )
+
+def _save_discovery(store, product_urls, started_at, diagnostics):
+    """Finalize a cumulative discovery pass after its observed URLs are durable."""
+    now = time.time()
+    new_count = len(product_urls)
+    _persist_discovery_urls(store, product_urls)
+
+    status = 'DISCOVERY_OK' if new_count else 'DISCOVERY_EMPTY'
+    error = (
+        f'discovery_cumulative;discovered={new_count};'
+        f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
+        f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
+    )
+    conn = db()
+    with conn:
         conn.execute(
             """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
@@ -1779,7 +1789,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
     }
 
 
-def _discover_html_catalog(store, seeds, deadline=None):
+def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None):
     queue=[]
     queued=set()
     visited=set()
@@ -1787,6 +1797,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
     errors=[]
     successes=0
     sequence=0
+    persisted_urls=set()
 
     def add(url, depth, source=''):
         nonlocal sequence
@@ -1904,6 +1915,15 @@ def _discover_html_catalog(store, seeds, deadline=None):
                             add(listing,depth+1,requested)
                 except Exception:
                     pass
+
+                if persist_callback and product_urls:
+                    new_urls = {
+                        url: lastmod for url, lastmod in product_urls.items()
+                        if url not in persisted_urls
+                    }
+                    if new_urls:
+                        persist_callback(new_urls)
+                        persisted_urls.update(new_urls)
 
     return {
         'product_urls':product_urls,
@@ -2169,6 +2189,10 @@ def discover_store(store):
                         if listing:
                             html_sitemap_seeds.add(listing)
 
+    # Sitemap results are durable before any potentially long HTML crawl.
+    if product_urls:
+        _persist_discovery_urls(store, product_urls)
+
     fallback=None
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
     # advanced through a persistent discovery frontier. Do not run a second
@@ -2207,6 +2231,7 @@ def discover_store(store):
             store,
             html_seeds,
             started_at + DISCOVERY_HARD_TIMEOUT,
+            persist_callback=lambda batch: _persist_discovery_urls(store, batch),
         )
         product_urls.update(fallback['product_urls'])
 
