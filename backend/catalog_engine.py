@@ -1001,6 +1001,11 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/it/31-profumi-uomo',
         'https://www.sabina.com/it/890-profumeria-di-nicchia',
         'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
+    # Sabina's Spanish brand directory is a first-class catalog navigation
+    # surface. Seed the directory itself so its generic /<id>_<brand> pages
+    # enter the bounded crawl; no brand or product is hard-coded here.
+    'https://www.sabina.com/es/marcas',
+    'https://www.sabina.com/es/marcas_old',
         # Sabina's legacy native search is a real catalog enumeration
         # surface. The live storefront exposes its legacy product-ID field
         # through the native `?s=` parameter; the `search_query=` variant used
