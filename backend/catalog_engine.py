@@ -2439,7 +2439,10 @@ def _secondary_store_parser(store, final_url, original_url, parser_query=None):
         # product-path segment. Never pass numeric product IDs or category
         # path components to a store parser's relevance gate.
         query = str(parser_query or '').strip()
-        if not query:
+        query_variants = []
+        if query:
+            query_variants.append(query)
+        else:
             path = urllib.parse.unquote(
                 urllib.parse.urlparse(final_url or original_url).path
             ).rstrip('/')
@@ -2447,8 +2450,39 @@ def _secondary_store_parser(store, final_url, original_url, parser_query=None):
             segment = re.sub(r'^[0-9]+[-_]+', '', segment)
             segment = re.sub(r'[-_]+', ' ', segment)
             segment = re.sub(r'\.(?:html?|php)$', '', segment, flags=re.I)
-            query = norm(segment)
-        parsed = parser(session, final_url, query)
+            normalized_segment = norm(segment)
+            words = [word for word in normalized_segment.split() if word]
+
+            # A direct product-page parser may enforce a search-style
+            # relevance gate. URL slugs are not guaranteed to use the same
+            # tokenization as the rendered product title (for example, a
+            # retailer can write a brand as ``brandname`` in the slug but
+            # render it as ``Brand Name``). Try the complete slug first, then
+            # bounded progressively smaller windows, without knowing anything
+            # about a particular product or brand. This remains generic store
+            # hydration logic.
+            candidates = [normalized_segment]
+            if len(words) > 1:
+                candidates.extend([
+                    ' '.join(words[1:]),
+                    ' '.join(words[:-1]),
+                ])
+                for width in (3, 2, 1):
+                    if len(words) >= width:
+                        candidates.extend(
+                            ' '.join(words[i:i + width])
+                            for i in range(0, len(words) - width + 1)
+                        )
+            for candidate in candidates:
+                candidate = str(candidate or '').strip()
+                if candidate and candidate not in query_variants:
+                    query_variants.append(candidate)
+
+        parsed = None
+        for candidate_query in query_variants:
+            parsed = parser(session, final_url, candidate_query)
+            if isinstance(parsed, dict):
+                break
     finally:
         session.close()
 
