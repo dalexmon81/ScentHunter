@@ -737,14 +737,13 @@ let currentOpenSizeKey=null;
 
 
 function shPrice(o){
-  if(o&&o.price!==undefined&&o.price!==null&&String(o.price).trim()!==""){
-    const text=String(o.price).trim();
-    const parsed=parsePrice(text);
-    if(parsed!==null && parsed<=0)return "Prezzo non disponibile";
-    return text;
-  }
-  const n=Number(o&&o.price_num);
-  return Number.isFinite(n)&&n>0?formatEuro(n):"Prezzo non disponibile";
+  /* Always normalize commercial prices through the same EUR formatter.
+   * This prevents raw backend strings such as "35.10" from losing the €
+   * marker while preserving the existing Italian decimal presentation. */
+  const raw=(o&&o.price!==undefined&&o.price!==null)?String(o.price).trim():"";
+  const parsed=raw?parsePrice(raw):Number(o&&o.price_num);
+  if(Number.isFinite(parsed)&&parsed>0)return formatEuro(parsed);
+  return "Prezzo non disponibile";
 }
 function shNum(o){
   const n=Number(o&&o.price_num);
@@ -781,9 +780,17 @@ function shGroupData(data){
      * canonical_image, catalog data, or matcher behavior.
      */
     const image=String(group.image||"").trim();
-    const fallback_image=offers
-      .map(o=>String(o.retailer_image||o.image||o.image_url||"").trim())
-      .find(url=>url && url!==image) || "";
+    const fallback_images=[];
+    [
+      ...offers.map(o=>o?.retailer_image),
+      ...offers.map(o=>o?.image),
+      ...offers.map(o=>o?.image_url),
+      group.fallback_image,
+    ].forEach(raw=>{
+      const url=String(raw||"").trim();
+      if(url && !fallback_images.includes(url))fallback_images.push(url);
+    });
+    const fallback_image=fallback_images.find(url=>url!==image) || fallback_images[0] || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       brand:String(group.canonical_brand||group.brand||"").trim(),
@@ -794,6 +801,7 @@ function shGroupData(data){
       variant:String(group.variant||"").trim(),
       image,
       fallback_image,
+      fallback_images,
       offers
     };
   }).filter(group=>group.catalog_id&&group.name);
@@ -809,11 +817,21 @@ function shGroupData(data){
  */
 function shImageError(img){
   if(!img)return;
-  const fallback=String(img.dataset?.fallback||"").trim();
   const current=String(img.getAttribute("src")||"").trim();
-  if(fallback && fallback!==current){
-    img.onerror=function(){this.outerHTML="🧴"};
-    img.src=fallback;
+  let fallbacks=[];
+  try{
+    const raw=img.dataset?.fallbacks||"[]";
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))fallbacks=parsed.map(x=>String(x||"").trim()).filter(Boolean);
+  }catch(_){ }
+  const legacy=String(img.dataset?.fallback||"").trim();
+  if(legacy && !fallbacks.includes(legacy))fallbacks.push(legacy);
+  const next=fallbacks.find(url=>url!==current);
+  if(next){
+    const remaining=fallbacks.filter(url=>url!==next);
+    img.dataset.fallbacks=JSON.stringify(remaining);
+    img.onerror=function(){shImageError(this)};
+    img.src=next;
     return;
   }
   img.outerHTML="🧴";
@@ -821,12 +839,16 @@ function shImageError(img){
 
 function isOfferOutOfStock(o){
   if(!o)return false;
-  if(o.available===false)return true;
-  const vals=[o.availability,o.stock,o.stock_status,o.status,o.availability_status,o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock];
+  if(o.available===false || o.available===0 || String(o.available??"").trim().toLowerCase()==="false" || String(o.available??"").trim()==="0")return true;
+  const vals=[o.availability,o.stock,o.stock_status,o.status,o.availability_status,o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock,o.offer?.availability,o.offer?.stock_status];
   return vals.some(v=>{
-    if(v===false)return true;
+    if(v===false || v===0)return true;
     const s=String(v??"").trim().toLowerCase().replace(/[-\s]+/g,"_");
-    return ["out_of_stock","outofstock","not_available","notavailable","unavailable","sold_out","soldout","non_disponibile","non_disponibile_online"].includes(s);
+    if(!s)return false;
+    return ["out_of_stock","outofstock","not_available","notavailable","unavailable","sold_out","soldout","non_disponibile","non_disponibile_online","out_of_stock_online"].includes(s)
+      || s.includes("outofstock") || s.includes("out_of_stock") || s.includes("soldout") || s.includes("sold_out")
+      || s.includes("schema.org/outofstock") || s.includes("schema.org/out_of_stock")
+      || s.includes("not_available") || s.includes("unavailable");
   });
 }
 function isWishlistOutOfStock(x){return x?.outOfStock===true||isOfferOutOfStock(x)}
@@ -876,7 +898,7 @@ function showProducts(groups){
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
-      <div class="result-image">${g.image?`<img src="${esc(g.image)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
+      <div class="result-image">${g.image?`<img src="${esc(g.image)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
       <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
@@ -893,12 +915,12 @@ function renderOffersHtml(g,img,offers,saved){
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
 }
 
 function renderFormatChoiceCard(gi,g,sizes){
   const img=g.image||"";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
     return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))})'><div class="format-icon">🧴</div><div class="product-choice-main"><div class="name">${esc(formatLabel(String(size)))}</div><div class="bestprice">${best?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div><div class="offer-meta">${sg?.offers?.length||0} ${(sg?.offers?.length||0)===1?"negozio":"negozi"}</div></div><div class="arrow">›</div></div>`;
@@ -958,7 +980,7 @@ function openSize(gi,sizeKey){
   if(!selected)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=String(sizeKey);
   const saved=getWishlist(),img=g.image||"";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
 }
 
 function chooseOffer(gi,sizeKey,oi){
