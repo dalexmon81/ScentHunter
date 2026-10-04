@@ -21,6 +21,7 @@ try:
         hydration_status as catalog_hydration_status,
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
+        catalog_discovery_loop,
         db as catalog_db,
     )
     CATALOG_ENGINE_AVAILABLE = True
@@ -32,6 +33,7 @@ except Exception as exc:
     catalog_store_status = None
     catalog_sync_all = None
     catalog_hydration_loop = None
+    catalog_discovery_loop = None
     catalog_db = None
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
@@ -49,6 +51,8 @@ _CATALOG_BOOTSTRAP_DONE = False
 _CATALOG_BOOTSTRAP_ERROR = None
 _CATALOG_HYDRATION_STARTED = False
 _CATALOG_HYDRATION_STOP = threading.Event()
+_CATALOG_DISCOVERY_STARTED = False
+_CATALOG_DISCOVERY_STOP = threading.Event()
 
 # Controlled operational resync for stores whose persistent catalog needs to
 # be rebuilt without touching the normal search path. This is deliberately
@@ -223,6 +227,26 @@ def _start_catalog_hydration():
     ).start()
 
 
+def _start_catalog_discovery():
+    global _CATALOG_DISCOVERY_STARTED
+    with _CATALOG_BOOTSTRAP_LOCK:
+        if _CATALOG_DISCOVERY_STARTED:
+            return
+        if not callable(catalog_discovery_loop):
+            print('CATALOG DISCOVERY SKIP: catalog_engine has no discovery loop', flush=True)
+            return
+        _CATALOG_DISCOVERY_STARTED = True
+    threading.Thread(
+        target=catalog_discovery_loop,
+        kwargs={
+            'stop_event': _CATALOG_DISCOVERY_STOP,
+            'interval_seconds': 30.0,
+        },
+        daemon=True,
+        name='scenthunter-catalog-discovery',
+    ).start()
+
+
 def _catalog_bootstrap_worker():
     global _CATALOG_BOOTSTRAP_RUNNING, _CATALOG_BOOTSTRAP_DONE, _CATALOG_BOOTSTRAP_ERROR
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -232,6 +256,7 @@ def _catalog_bootstrap_worker():
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
             raise RuntimeError('catalog_engine_unavailable')
         result = catalog_sync_all()
+        _start_catalog_discovery()
         _start_catalog_hydration()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
@@ -390,6 +415,7 @@ def _start_catalog_bootstrap():
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
         print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
+        _start_catalog_discovery()
         _start_catalog_hydration()
         return
     threading.Thread(
