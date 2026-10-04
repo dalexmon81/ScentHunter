@@ -109,6 +109,134 @@ def _deloox_resync_worker(job_id):
             _DELOOX_RESYNC_RUNNING = False
 
 
+
+# Isolated Sabina operational resync. Sabina must be measurable independently
+# from Deloox because the combined repair endpoint runs stores serially.
+_SABINA_RESYNC_LOCK = threading.Lock()
+_SABINA_RESYNC_RUNNING = False
+_SABINA_RESYNC_JOB_ID = None
+_SABINA_RESYNC_STARTED_AT = None
+_SABINA_RESYNC_FINISHED_AT = None
+_SABINA_RESYNC_RESULT = {}
+_SABINA_RESYNC_ERROR = None
+
+
+def _sabina_resync_worker(job_id):
+    global _SABINA_RESYNC_RUNNING, _SABINA_RESYNC_FINISHED_AT
+    global _SABINA_RESYNC_RESULT, _SABINA_RESYNC_ERROR
+
+    result = {}
+    error = None
+    print(f'CATALOG SABINA RESYNC START job={job_id}', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+
+        result = catalog_discover_store('sabina')
+        if not isinstance(result, dict):
+            result = {'status': 'finished', 'result': result}
+
+        print(
+            f'CATALOG SABINA RESYNC END job={job_id} '
+            f'status={result.get("status", "unknown")} '
+            f'count={result.get("count", "?")}',
+            flush=True,
+        )
+    except Exception as exc:
+        error = f'{type(exc).__name__}:{exc}'
+        result = {
+            'status': 'DISCOVERY_ERROR',
+            'count': 0,
+            'error': error,
+        }
+        print(f'CATALOG SABINA RESYNC ERROR job={job_id}: {error}', flush=True)
+    finally:
+        with _SABINA_RESYNC_LOCK:
+            _SABINA_RESYNC_RESULT = result
+            _SABINA_RESYNC_ERROR = error
+            _SABINA_RESYNC_FINISHED_AT = time.time()
+            _SABINA_RESYNC_RUNNING = False
+
+
+@app.get('/catalog/resync-sabina')
+def catalog_resync_sabina_endpoint():
+    """Start an isolated Sabina-only catalog discovery run."""
+    global _SABINA_RESYNC_RUNNING, _SABINA_RESYNC_JOB_ID
+    global _SABINA_RESYNC_STARTED_AT, _SABINA_RESYNC_FINISHED_AT
+    global _SABINA_RESYNC_RESULT, _SABINA_RESYNC_ERROR
+
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+        return {
+            'ok': False,
+            'error': 'catalog_discovery_unavailable',
+            'store': 'sabina',
+        }
+
+    with _SABINA_RESYNC_LOCK:
+        if _SABINA_RESYNC_RUNNING:
+            return {
+                'ok': False,
+                'status': 'already_running',
+                'job_id': _SABINA_RESYNC_JOB_ID,
+                'store': 'sabina',
+            }
+
+        job_id = uuid.uuid4().hex[:12]
+        _SABINA_RESYNC_RUNNING = True
+        _SABINA_RESYNC_JOB_ID = job_id
+        _SABINA_RESYNC_STARTED_AT = time.time()
+        _SABINA_RESYNC_FINISHED_AT = None
+        _SABINA_RESYNC_RESULT = {}
+        _SABINA_RESYNC_ERROR = None
+
+    threading.Thread(
+        target=_sabina_resync_worker,
+        args=(job_id,),
+        daemon=True,
+        name='scenthunter-catalog-sabina-resync',
+    ).start()
+
+    return {
+        'ok': True,
+        'status': 'started',
+        'job_id': job_id,
+        'store': 'sabina',
+        'status_endpoint': f'/catalog/resync-sabina-status?job_id={job_id}',
+        'note': 'Sabina-only discovery runs in background and does not run inside /search.',
+    }
+
+
+@app.get('/catalog/resync-sabina-status')
+def catalog_resync_sabina_status_endpoint(job_id: str = ''):
+    """Read-only status for the isolated Sabina discovery run."""
+    with _SABINA_RESYNC_LOCK:
+        running = _SABINA_RESYNC_RUNNING
+        current_job = _SABINA_RESYNC_JOB_ID
+        started = _SABINA_RESYNC_STARTED_AT
+        finished = _SABINA_RESYNC_FINISHED_AT
+        result = dict(_SABINA_RESYNC_RESULT)
+        error = _SABINA_RESYNC_ERROR
+
+    if job_id and current_job and job_id != current_job:
+        return {
+            'ok': False,
+            'status': 'job_not_current',
+            'requested_job_id': job_id,
+            'current_job_id': current_job,
+        }
+
+    return {
+        'ok': True,
+        'status': 'running' if running else ('finished' if current_job else 'idle'),
+        'job_id': current_job,
+        'store': 'sabina',
+        'started_at': started,
+        'finished_at': finished,
+        'error': error,
+        'result': result,
+    }
+
+
 @app.get('/catalog/resync-deloox')
 def catalog_resync_deloox_endpoint():
     """Start an isolated Deloox-only catalog discovery run."""
