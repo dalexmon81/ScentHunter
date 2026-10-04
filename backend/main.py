@@ -3025,6 +3025,82 @@ def search_perfume(q: str):
         },
     }
 
+@app.get('/catalog/rebuild-search-index')
+def catalog_rebuild_search_index_endpoint(store: str = 'sabina'):
+    """Read/repair the persistent FTS candidate index for one catalog store.
+
+    This is an operational catalog-index repair only. It does not perform
+    retailer discovery, live search, matching, aggregation, or frontend work.
+    The index is rebuilt from the already-persistent store_urls/store_products
+    tables, so it can expose URLs discovered earlier but missed by a stale FTS
+    index.
+    """
+    store_key = str(store or '').strip().lower()
+    if store_key not in STORES:
+        return {'ok': False, 'error': f'unknown_store:{store_key}', 'stores': STORES}
+    if not callable(catalog_db):
+        return {'ok': False, 'error': 'catalog_db_unavailable', 'store': store_key}
+
+    conn = None
+    try:
+        conn = catalog_db()
+        # Ensure the persistent FTS table exists before rebuilding it.
+        conn.execute(
+            """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
+               USING fts5(
+                   store UNINDEXED,
+                   url UNINDEXED,
+                   search_text,
+                   tokenize='unicode61 remove_diacritics 2'
+               )"""
+        )
+        conn.execute(
+            "DELETE FROM catalog_search_fts WHERE store=?",
+            (store_key,),
+        )
+        conn.execute(
+            """INSERT INTO catalog_search_fts(store,url,search_text)
+               SELECT u.store,u.url,
+                      trim(COALESCE(u.slug,'') || ' ' ||
+                           COALESCE(p.name,'') || ' ' ||
+                           COALESCE(p.brand,''))
+                 FROM store_urls u
+                 LEFT JOIN store_products p
+                   ON p.store=u.store AND p.url=u.url
+                  AND p.fetch_status='OK'
+                WHERE u.store=? AND u.active=1""",
+            (store_key,),
+        )
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM catalog_search_fts WHERE store=?",
+            (store_key,),
+        ).fetchone()
+        conn.commit()
+        count = int(row['c'] or 0)
+        return {
+            'ok': True,
+            'status': 'rebuilt',
+            'store': store_key,
+            'fts_rows': count,
+            'source': 'persistent_catalog',
+            'read_only_discovery': True,
+        }
+    except Exception as exc:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return {
+            'ok': False,
+            'status': 'error',
+            'store': store_key,
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
 @app.get("/diagnose-search-final")
 def diagnose_search_final(store: str, q: str):
     """Read-only replay of the final normal-search pipeline for one store.
