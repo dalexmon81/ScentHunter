@@ -112,7 +112,7 @@ HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
-SYNC_WORKERS = 8
+SYNC_WORKERS = 3
 REFRESH_WORKERS = 2
 
 # Persistent hydration queue configuration.
@@ -1007,7 +1007,7 @@ HTML_DISCOVERY_SEEDS = {
 # pagination/navigation surface was exhausted.
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
-HTML_WORKERS = 12
+HTML_WORKERS = 4
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -1274,6 +1274,14 @@ def _html_discovery_priority(store, url, depth, source=''):
     p = urllib.parse.urlparse(url)
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
+
+    # Configured catalog seeds are the retailer's known discovery surfaces.
+    # Always exhaust this finite seed set before recursively discovered links
+    # can consume the bounded crawl. This is structural and applies to every
+    # retailer; it prevents a broad navigation graph from starving a native
+    # search/category seed that can enumerate the catalog directly.
+    if source == 'configured_seed':
+        return (-10, depth)
 
     # Deloox's native public search is a catalog enumeration surface. Keep
     # its generic background seeds ahead of the broad frontier so the search
@@ -2171,20 +2179,10 @@ def discover_store(store):
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     roots,robots_diagnostics=_seed_sitemaps(store)
-    html_future = None
-    html_executor = None
-    html_concurrent = store in HTML_DISCOVERY_SEEDS and store != 'deloox'
-    if html_concurrent:
-        html_seeds=list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
-        html_executor=ThreadPoolExecutor(max_workers=1)
-        html_future=html_executor.submit(
-            _discover_html_catalog,
-            store,
-            html_seeds,
-            started_at + DISCOVERY_HARD_TIMEOUT,
-            lambda batch: _persist_discovery_urls(store, batch),
-            lambda status, detail: _discovery_heartbeat(store, status, detail),
-        )
+    # HTML discovery intentionally starts after the bounded sitemap phase.
+    # This keeps the global discovery scheduler from creating a second large
+    # network fan-out while sitemap workers are still active. The HTML pass is
+    # itself incremental and persists every discovered batch immediately.
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
     # Some retailers publish navigation/landing URLs in their sitemap instead
@@ -2259,13 +2257,7 @@ def discover_store(store):
     # no product, brand, name or query is embedded here.
     #
     # Other non-Deloox retailers retain the bounded fallback behaviour.
-    if html_concurrent and html_future is not None:
-        try:
-            fallback=html_future.result(timeout=max(1.0, (started_at + DISCOVERY_HARD_TIMEOUT) - time.time()))
-            product_urls.update(fallback['product_urls'])
-        except Exception as exc:
-            fallback={'product_urls': {}, 'visited': 0, 'successes': 0, 'errors': [f'HTML_FUTURE:{type(exc).__name__}:{exc}']}
-    elif (
+    if (
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
