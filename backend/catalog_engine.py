@@ -1789,7 +1789,24 @@ def _discover_deloox_catalog(seeds, deadline=None):
     }
 
 
-def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None):
+def _discovery_heartbeat(store, status, detail):
+    """Publish bounded discovery progress without ending the store run."""
+    try:
+        conn = db()
+        now = time.time()
+        conn.execute(
+            """INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(store) DO UPDATE SET status=excluded.status,error=excluded.error""",
+            (store, status, now, None, 0, 0, str(detail)[:2000]),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None, heartbeat_callback=None):
     queue=[]
     queued=set()
     visited=set()
@@ -1812,6 +1829,8 @@ def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None):
 
     for seed in seeds:
         add(seed,0,'configured_seed')
+    if heartbeat_callback:
+        heartbeat_callback('HTML_DISCOVERY_RUNNING', f'seeded={len(seeds)};queued={len(queue)}')
 
     while queue and len(visited) < HTML_MAX_PAGES and (deadline is None or time.time() < deadline):
         batch=[]
@@ -1924,6 +1943,12 @@ def _discover_html_catalog(store, seeds, deadline=None, persist_callback=None):
                     if new_urls:
                         persist_callback(new_urls)
                         persisted_urls.update(new_urls)
+
+        if heartbeat_callback:
+            heartbeat_callback(
+                'HTML_DISCOVERY_RUNNING',
+                f'visited={len(visited)};successes={successes};products={len(product_urls)};queue={len(queue)}',
+            )
 
     return {
         'product_urls':product_urls,
@@ -2146,6 +2171,20 @@ def discover_store(store):
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     roots,robots_diagnostics=_seed_sitemaps(store)
+    html_future = None
+    html_executor = None
+    html_concurrent = store in HTML_DISCOVERY_SEEDS and store != 'deloox'
+    if html_concurrent:
+        html_seeds=list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
+        html_executor=ThreadPoolExecutor(max_workers=1)
+        html_future=html_executor.submit(
+            _discover_html_catalog,
+            store,
+            html_seeds,
+            started_at + DISCOVERY_HARD_TIMEOUT,
+            lambda batch: _persist_discovery_urls(store, batch),
+            lambda status, detail: _discovery_heartbeat(store, status, detail),
+        )
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
     # Some retailers publish navigation/landing URLs in their sitemap instead
@@ -2193,6 +2232,11 @@ def discover_store(store):
     if product_urls:
         _persist_discovery_urls(store, product_urls)
 
+    _discovery_heartbeat(
+        store,
+        'DISCOVERY_SITEMAP_DONE',
+        f'sitemap_visited={len(visited)};sitemap_successes={sitemap_successes};product_urls={len(product_urls)}',
+    )
     fallback=None
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
     # advanced through a persistent discovery frontier. Do not run a second
@@ -2215,7 +2259,13 @@ def discover_store(store):
     # no product, brand, name or query is embedded here.
     #
     # Other non-Deloox retailers retain the bounded fallback behaviour.
-    if (
+    if html_concurrent and html_future is not None:
+        try:
+            fallback=html_future.result(timeout=max(1.0, (started_at + DISCOVERY_HARD_TIMEOUT) - time.time()))
+            product_urls.update(fallback['product_urls'])
+        except Exception as exc:
+            fallback={'product_urls': {}, 'visited': 0, 'successes': 0, 'errors': [f'HTML_FUTURE:{type(exc).__name__}:{exc}']}
+    elif (
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
@@ -2232,6 +2282,7 @@ def discover_store(store):
             html_seeds,
             started_at + DISCOVERY_HARD_TIMEOUT,
             persist_callback=lambda batch: _persist_discovery_urls(store, batch),
+            heartbeat_callback=lambda status, detail: _discovery_heartbeat(store, status, detail),
         )
         product_urls.update(fallback['product_urls'])
 
@@ -2294,6 +2345,8 @@ def discover_store(store):
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
     conn.commit(); conn.close()
+    if html_executor is not None:
+        html_executor.shutdown(wait=False)
 
     return {
         'count':count,'status':status,'visited_sitemaps':len(visited),
