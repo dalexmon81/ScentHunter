@@ -3389,10 +3389,15 @@ def _coverage_seed_tasks(conn, products):
     """Create the complete store x canonical-product coverage matrix idempotently."""
     if not products:
         return
-    expected = len(products) * len(STORES)
-    existing = int(conn.execute('SELECT COUNT(*) c FROM catalog_coverage').fetchone()['c'] or 0)
-    if existing >= expected:
-        return
+    # Never infer matrix completeness from the global row count.
+    # The catalog can evolve, and a matrix can have the right number of rows
+    # while still missing specific store x product combinations.
+    existing_pairs = {
+        (str(row['store'] or '').strip(), str(row['product_id'] or '').strip())
+        for row in conn.execute(
+            'SELECT store,product_id FROM catalog_coverage'
+        ).fetchall()
+    }
     now = time.time()
     rows = []
     for product in products:
@@ -3403,6 +3408,9 @@ def _coverage_seed_tasks(conn, products):
             continue
         primary = queries[0]
         for store in STORES:
+            pair = (str(store), product_id)
+            if pair in existing_pairs:
+                continue
             rows.append((store, product_id, canonical, primary, now))
     conn.executemany(
         """INSERT INTO catalog_coverage(
