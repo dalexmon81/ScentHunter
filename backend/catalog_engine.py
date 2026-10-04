@@ -3160,35 +3160,37 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance durable catalog discovery in the background.
+    """Continuously advance durable catalog discovery for every configured store.
 
-    This loop is intentionally independent from hydration. It only advances
-    the Deloox navigation frontier; search remains read-only and hydration
-    keeps its existing workers/claim/retry behavior unchanged.
+    Discovery is store-wide background work, not user-query search. Each cycle
+    advances every configured retailer through the same cumulative
+    ``discover_store()`` pipeline used by the initial synchronization.
+    ``sync_all()`` runs the stores concurrently with bounded workers, so a slow
+    retailer cannot serialize the discovery of the others. Existing catalog
+    URLs remain valid when a bounded pass sees only a subset.
     """
     pause = max(30.0, float(interval_seconds))
+    stores = tuple(STORES.keys())
     print(
-        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
+        f'CATALOG DISCOVERY START stores={",".join(stores)} interval={pause:g}s',
         flush=True,
     )
     while stop_event is None or not stop_event.is_set():
         started = time.time()
         try:
-            result = discover_store('deloox')
-            frontier = {}
-            if isinstance(result, dict):
-                # The frontier is also persisted in sync_state.error for
-                # operators, so this remains observable without a new API.
-                frontier = (result.get('html_fallback') or {}) if False else {}
-            print(
-                'CATALOG DISCOVERY BATCH '
-                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
-                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
-                flush=True,
-            )
+            results = sync_all()
+            for store in stores:
+                result = results.get(store) or {}
+                print(
+                    'CATALOG DISCOVERY BATCH '
+                    f'store={store} '
+                    f'status={result.get("status", "unknown")} '
+                    f'count={result.get("count", "?")}',
+                    flush=True,
+                )
         except Exception as exc:
             print(
-                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
+                f'CATALOG DISCOVERY ERROR cycle: {type(exc).__name__}: {exc}',
                 flush=True,
             )
         elapsed = time.time() - started
