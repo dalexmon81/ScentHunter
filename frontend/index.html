@@ -898,7 +898,7 @@ function showProducts(groups){
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
-      <div class="result-image">${g.image?`<img src="${esc(g.image)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
+      <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
       <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
@@ -919,7 +919,7 @@ function renderSingleFormatComparison(g,img,offers,size,saved){
 }
 
 function renderFormatChoiceCard(gi,g,sizes){
-  const img=g.image||"";
+  const img=g.image||g.fallback_image||"";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div>${sizes.map(size=>{
     const sg=getSizeGroups(g).find(x=>x.size===String(size));
     const best=sg?.best||null;
@@ -953,7 +953,7 @@ function openProduct(i){
    */
   if(groups.length===1){
     const selected=groups[0];
-    renderSingleFormatComparison(g,g.image||"",selected.offers||g.offers||[],selected.size||"",saved);
+    renderSingleFormatComparison(g,g.image||g.fallback_image||"",selected.offers||g.offers||[],selected.size||"",saved);
     return;
   }
 
@@ -965,7 +965,7 @@ function openProduct(i){
       if(ao!==bo)return ao?1:-1;
       return shNum(a)-shNum(b);
     });
-    renderSingleFormatComparison(g,g.image||"",combinedOffers,knownSizes[0],saved);
+    renderSingleFormatComparison(g,g.image||g.fallback_image||"",combinedOffers,knownSizes[0],saved);
     return;
   }
 
@@ -979,7 +979,7 @@ function openSize(gi,sizeKey){
   const selected=getSizeGroups(g).find(x=>String(x.size)===String(sizeKey));
   if(!selected)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=String(sizeKey);
-  const saved=getWishlist(),img=g.image||"";
+  const saved=getWishlist(),img=g.image||g.fallback_image||"";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="shImageError(this)">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,selected.offers,saved)}</article>`;
 }
 
