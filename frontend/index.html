@@ -740,9 +740,7 @@ function shPrice(o){
   if(o&&o.price!==undefined&&o.price!==null&&String(o.price).trim()!==""){
     const text=String(o.price).trim();
     const parsed=parsePrice(text);
-    if(parsed!==null){
-      return parsed>0?formatEuro(parsed):"Prezzo non disponibile";
-    }
+    if(parsed!==null && parsed<=0)return "Prezzo non disponibile";
     return text;
   }
   const n=Number(o&&o.price_num);
@@ -782,11 +780,10 @@ function shGroupData(data){
      * only as a visual fallback. This does not change product identity,
      * canonical_image, catalog data, or matcher behavior.
      */
-    const canonical_image=String(group.image||"").trim();
+    const image=String(group.image||"").trim();
     const fallback_image=offers
       .map(o=>String(o.retailer_image||o.image||o.image_url||"").trim())
-      .find(url=>url && url!==canonical_image) || "";
-    const image=canonical_image || fallback_image;
+      .find(url=>url && url!==image) || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       brand:String(group.canonical_brand||group.brand||"").trim(),
@@ -912,15 +909,46 @@ function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);currentOpenSizeKey=null;
-  const sizes=getSizeGroups(g).map(x=>x.size).filter(Boolean);
+
   const groups=getSizeGroups(g);
+  const knownSizes=groups.map(x=>x.size).filter(Boolean);
+  const unknownSizeGroup=groups.find(x=>!x.size)||null;
   const saved=getWishlist();
-  if(sizes.length<=1){
-    const selected=groups.find(x=>x.size===sizes[0])||groups[0];
-    renderSingleFormatComparison(g,g.image||"",selected?.offers||g.offers||[],selected?.size||"",saved);
+
+  /*
+   * IMPORTANT DISPLAY RULE:
+   * An offer without size_ml is still a valid offer for the already-resolved
+   * catalog product. Previously, when the product had one known format plus
+   * one offer with an unknown format, the unknown-format offer was put in its
+   * own "" size bucket and then silently discarded here by filter(Boolean).
+   * That made a real retailer offer exist in the API/diagnostics but disappear
+   * from the ScentHunter detail screen.
+   *
+   * For a single-format product, the unknown-size offers belong in the same
+   * price comparison: the backend has already resolved the product identity.
+   * For true multi-format products, the unknown-size offers remain visible as
+   * a dedicated "Formato non specificato" choice below.
+   */
+  if(groups.length===1){
+    const selected=groups[0];
+    renderSingleFormatComparison(g,g.image||"",selected.offers||g.offers||[],selected.size||"",saved);
     return;
   }
-  renderFormatChoiceCard(i,g,sizes);
+
+  if(knownSizes.length===1 && unknownSizeGroup){
+    const selected=groups.find(x=>x.size===knownSizes[0]);
+    const combinedOffers=[...(selected?.offers||[]),...(unknownSizeGroup.offers||[])];
+    combinedOffers.sort((a,b)=>{
+      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+      if(ao!==bo)return ao?1:-1;
+      return shNum(a)-shNum(b);
+    });
+    renderSingleFormatComparison(g,g.image||"",combinedOffers,knownSizes[0],saved);
+    return;
+  }
+
+  /* Multiple real formats: keep every format bucket, including the unknown one. */
+  renderFormatChoiceCard(i,g,groups.map(x=>x.size));
 }
 
 function openSize(gi,sizeKey){
