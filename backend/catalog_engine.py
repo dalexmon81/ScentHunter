@@ -1020,13 +1020,11 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
-        # Sabina's public brand directory is a generic catalog graph.
-        # Seeding the directory lets the crawler reach every retailer brand
-        # page, including brands whose products are not exposed by the
-        # bounded fragrance search/category surfaces. No brand or product is
-        # named here; pagination is followed by the generic HTML crawler.
+        # Sabina's public Spanish brand directory is a generic catalog graph.
+        # Its brand links expose manufacturer pages that are not guaranteed to
+        # appear in the broad fragrance search/category surfaces.
         'https://www.sabina.com/es/marcas',
-        'https://www.sabina.com/es/marcas_old',
+        'https://www.sabina.com/es/mapa-web',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -1336,6 +1334,15 @@ def _html_discovery_priority(store, url, depth, source=''):
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
     elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+        score = 0
+    # Sabina's Spanish manufacturer pages use a generic PrestaShop-style
+    # numeric-slug path such as /es/631_rasasi. This is structural URL shape,
+    # not a brand-specific rule, so all manufacturer pages receive catalog
+    # priority and can feed the generic product graph.
+    elif (
+        store == 'sabina'
+        and re.match(r'^/es/\d+_[^/]+/?$', path, re.I)
+    ):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -2405,6 +2412,44 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
+
+    # Product-page image fallback: some retailers omit Product.image from
+    # JSON-LD even though the same product image is published in standard
+    # social metadata or the product media container. Keep this generic and
+    # page-local; never infer an image from recommendations or site-wide UI.
+    if not image:
+        image_node = soup.select_one(
+            'meta[property="og:image"], meta[property="og:image:url"], '
+            'meta[name="twitter:image"], meta[itemprop="image"]'
+        )
+        if image_node:
+            image = (
+                image_node.get('content')
+                or image_node.get('value')
+                or image_node.get_text(' ', strip=True)
+            )
+
+    if not image:
+        product_roots = soup.select(
+            'main, #main, .product-container, .product-information, '
+            '.product-detail, .product-page, [itemtype*="Product"]'
+        )
+        for root in product_roots:
+            node = root.select_one(
+                'img[itemprop="image"], img[data-src], img[data-lazy-src], img[src]'
+            )
+            if not node:
+                continue
+            image = (
+                node.get('data-src')
+                or node.get('data-lazy-src')
+                or node.get('src')
+            )
+            if image:
+                break
+
+    if image:
+        image = urllib.parse.urljoin(url, str(image).strip())
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
