@@ -1072,6 +1072,46 @@ class ProductMatcher:
                 if name_variant is not None:
                     break
 
+        # A retailer may omit the family prefix from a variant name. Within a
+        # closed family, a candidate can therefore be a distinctive subset of
+        # one registered alias. Accept it only when the candidate tokens identify
+        # exactly one variant in the family. This is generic family-scoped
+        # evidence, not a retailer/product exception.
+        if name_variant is None:
+            family_query_tokens = set()
+            for query_alias in family.get("query_aliases", ()):
+                family_query_tokens.update(catalog_variant_key(query_alias).split())
+
+            candidate_tokens = [
+                token for token in candidate_key.split()
+                if len(token) >= 3
+                and token not in family_query_tokens
+                and token not in {
+                    "for", "him", "her", "men", "women", "man", "woman",
+                    "unisex", "unisexe", "homme", "femme", "herren", "damen",
+                    "heren", "dames", "by", "perfume", "parfum", "fragrance",
+                }
+            ]
+            if candidate_tokens:
+                subset_matches = []
+                for variant in family["variants"]:
+                    alias_token_sets = []
+                    for alias in (
+                        variant.get("canonical_name"),
+                        *variant.get("aliases", ()),
+                    ):
+                        alias_key = catalog_variant_key(alias)
+                        if alias_key:
+                            alias_token_sets.append(set(alias_key.split()))
+                    if alias_token_sets and any(
+                        all(token in alias_tokens for token in candidate_tokens)
+                        for alias_tokens in alias_token_sets
+                    ):
+                        subset_matches.append(variant)
+
+                if len(subset_matches) == 1:
+                    name_variant = subset_matches[0]
+
         # The retailer name can be generic while the URL still contains the
         # actual variant. Resolve URL evidence generically against the family
         # registry aliases. No retailer-specific or perfume-specific rule is used.
