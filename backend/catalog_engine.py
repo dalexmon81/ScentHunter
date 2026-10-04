@@ -1020,6 +1020,10 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
+        # Generic Spanish brand/catalog directories. These are retailer navigation
+        # surfaces only and allow discovery of brands absent from broad search terms.
+        'https://www.sabina.com/es/marcas',
+        'https://www.sabina.com/es/marcas_old',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
