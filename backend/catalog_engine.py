@@ -1745,6 +1745,77 @@ def _deloox_queue_finish(
         error,
     )
 
+def _persist_discovered_product_urls(store, product_urls):
+    """Persist discovered product URLs for any configured store."""
+    if not product_urls:
+        return 0
+
+    now = time.time()
+    count = 0
+    conn = db()
+
+    try:
+        with conn:
+            for url, lastmod in product_urls.items():
+                conn.execute(
+                    """INSERT INTO store_urls(
+                           store,
+                           url,
+                           slug,
+                           lastmod,
+                           discovered_at,
+                           active
+                       )
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           lastmod=excluded.lastmod,
+                           discovered_at=excluded.discovered_at,
+                           active=1""",
+                    (
+                        store,
+                        url,
+                        url_slug(url),
+                        lastmod or '',
+                        now,
+                    ),
+                )
+
+                conn.execute(
+                    """INSERT INTO hydration_queue(
+                           store,
+                           url,
+                           state,
+                           attempts,
+                           available_at,
+                           first_seen_at
+                       )
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE'
+                               THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                AND hydration_queue.leased_until > ?
+                               THEN 'PROCESSING'
+                               ELSE hydration_queue.state
+                           END""",
+                    (
+                        store,
+                        url,
+                        'PENDING',
+                        0,
+                        now,
+                        now,
+                        now,
+                    ),
+                )
+
+                count += 1
+
+        return count
+    finally:
+        conn.close()
 
 
 def _deloox_persist_products(product_urls):
@@ -2937,25 +3008,61 @@ def discover_store(store):
     # contains many product URLs. This is store-level discovery policy only:
     # no product, brand, name or query is embedded here.
     #
-    # Other non-Deloox retailers retain the bounded fallback behaviour.
-    if (
-        store in HTML_DISCOVERY_SEEDS
-        and store != 'deloox'
-        and (
-            store == 'sabina'
-            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-            or (bool(sitemap_errors) and sitemap_successes == 0)
+    # Sabina uses a persistent HTML discovery frontier.
+# The old in-memory queue was discarded when the bounded run ended,
+# so pages beyond HTML_MAX_PAGES were permanently forgotten.
+
+if (
+    store == 'sabina'
+    and store in HTML_DISCOVERY_SEEDS
+):
+    html_seeds = list(
+        dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store])
+            + sorted(html_sitemap_seeds)
         )
-    ):
-        html_seeds=list(dict.fromkeys(
-            list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
-        ))
-        fallback=_discover_html_catalog(
-            store,
-            html_seeds,
-            started_at + DISCOVERY_HARD_TIMEOUT,
+    )
+
+    fallback = _discover_persistent_html_catalog(
+        store,
+        html_seeds,
+        started_at + DISCOVERY_HARD_TIMEOUT,
+    )
+
+    product_urls.update(
+        fallback['product_urls']
+    )
+
+# Other non-Deloox retailers retain the existing bounded behaviour.
+elif (
+    store in HTML_DISCOVERY_SEEDS
+    and store != 'deloox'
+    and (
+        len(product_urls)
+        < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+        or (
+            bool(sitemap_errors)
+            and sitemap_successes == 0
         )
-        product_urls.update(fallback['product_urls'])
+    )
+):
+    html_seeds = list(
+        dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store])
+            + sorted(html_sitemap_seeds)
+        )
+    )
+
+    fallback = _discover_html_catalog(
+        store,
+        html_seeds,
+        started_at + DISCOVERY_HARD_TIMEOUT,
+    )
+
+    product_urls.update(
+        fallback['product_urls']
+    )
+
 
     diagnostics={
         'visited':len(visited),
@@ -3005,13 +3112,28 @@ def discover_store(store):
                 f'dead:{frontier.get("dead",0)}'
             )
     if fallback is not None:
+    frontier = fallback.get('frontier') or {}
+
+    details.append(
+        f'html_fallback=visited:{fallback["visited"]};'
+        f'successes:{fallback["successes"]};'
+        f'products:{len(fallback["product_urls"])};'
+        f'pending:{frontier.get("pending", 0)};'
+        f'done:{frontier.get("done", 0)};'
+        f'errors:{frontier.get("error", 0)};'
+        f'dead:{frontier.get("dead", 0)};'
+        f'seeds:{len(list(dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS.get(store, ()))
+            + sorted(html_sitemap_seeds)
+        )))}'
+    )
+
+    if fallback['errors']:
         details.append(
-            f'html_fallback=visited:{fallback["visited"]};'
-            f'successes:{fallback["successes"]};'
-            f'products:{len(fallback["product_urls"])};'
-            f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
+            'html_errors='
+            + ' | '.join(fallback['errors'][:4])
         )
-        if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
