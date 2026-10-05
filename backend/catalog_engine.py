@@ -1436,6 +1436,36 @@ def _deloox_queue_enqueue(items):
                            source=CASE
                                WHEN catalog_discovery_queue.source='' THEN excluded.source
                                ELSE catalog_discovery_queue.source
+                           END,
+                           state=CASE
+                               WHEN excluded.source='configured_seed'
+                                    AND catalog_discovery_queue.state IN ('DONE','DEAD')
+                               THEN 'PENDING'
+                               ELSE catalog_discovery_queue.state
+                           END,
+                           available_at=CASE
+                               WHEN excluded.source='configured_seed'
+                                    AND catalog_discovery_queue.state IN ('DONE','DEAD')
+                               THEN excluded.available_at
+                               ELSE catalog_discovery_queue.available_at
+                           END,
+                           leased_until=CASE
+                               WHEN excluded.source='configured_seed'
+                                    AND catalog_discovery_queue.state IN ('DONE','DEAD')
+                               THEN NULL
+                               ELSE catalog_discovery_queue.leased_until
+                           END,
+                           lease_token=CASE
+                               WHEN excluded.source='configured_seed'
+                                    AND catalog_discovery_queue.state IN ('DONE','DEAD')
+                               THEN NULL
+                               ELSE catalog_discovery_queue.lease_token
+                           END,
+                           last_error=CASE
+                               WHEN excluded.source='configured_seed'
+                                    AND catalog_discovery_queue.state IN ('DONE','DEAD')
+                               THEN NULL
+                               ELSE catalog_discovery_queue.last_error
                            END""",
                     (
                         'deloox',
@@ -1702,11 +1732,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
         listings = []
+        page_products = set()
 
         def admit(raw, label=''):
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
+                page_products.add(product)
                 return
             listing = _html_listing_url('deloox', raw, base, label)
             if listing:
