@@ -1332,13 +1332,15 @@ def _html_discovery_priority(store, url, depth, source=''):
         score = 0
     # Sabina's brand directory links use a numeric-id + slug shape such as
     # /es/631_rasasi. Treat this generic retailer brand-page structure as a
-    # high-value catalog surface so the bounded crawl can reach the products
-    # exposed by brand directories. No brand name or product id is hard-coded.
+    # primary catalog surface, alongside the brand directory itself. Keeping
+    # these pages at priority 0 prevents secondary fragrance/search/category
+    # surfaces from consuming the bounded crawl before the brand graph is
+    # traversed. No brand name or product id is hard-coded.
     elif (
         store == 'sabina'
         and re.search(r'/\d+_[^/]+/?$', path, re.I)
     ):
-        score = 1
+        score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
     # id, or user query is used.
