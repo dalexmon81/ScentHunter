@@ -1790,6 +1790,422 @@ def _deloox_persist_products(product_urls):
         conn.close()
     return count
 
+def _catalog_discovery_process_page(
+    store,
+    requested,
+    depth,
+    source,
+    result,
+):
+    """
+    Process one generic HTML catalog page.
+
+    Returns:
+        {
+            'ok': bool,
+            'products': dict,
+            'listings': list,
+            'error': str | None,
+        }
+    """
+    _requested, final, data, error = result
+
+    if error:
+        return {
+            'ok': False,
+            'products': {},
+            'listings': [],
+            'error': error,
+        }
+
+    if not data:
+        return {
+            'ok': False,
+            'products': {},
+            'listings': [],
+            'error': 'empty_html_body',
+        }
+
+    soup = BeautifulSoup(data, 'html.parser')
+    base = final or requested
+
+    product_urls = {}
+    listings = []
+
+    def admit(raw, label=''):
+        if not raw:
+            return
+
+        product = _html_product_url(
+            store,
+            raw,
+            base,
+        )
+
+        if product:
+            product_urls[product] = ''
+            return
+
+        listing = _html_listing_url(
+            store,
+            raw,
+            base,
+            label,
+        )
+
+        if listing:
+            listings.append(
+                (
+                    listing,
+                    depth + 1,
+                    requested,
+                )
+            )
+
+    for a in soup.find_all('a', href=True):
+        admit(
+            a.get('href'),
+            a.get_text(' ', strip=True),
+        )
+
+    navigation_attrs = (
+        'data-url',
+        'data-href',
+        'data-link',
+        'data-product-url',
+        'data-product-link',
+        'data-target',
+        'data-next-url',
+        'data-next',
+        'data-load-more-url',
+        'data-pagination-url',
+    )
+
+    for node in soup.find_all(True):
+        label = node.get_text(
+            ' ',
+            strip=True,
+        )[:300]
+
+        for attr in navigation_attrs:
+            raw = node.get(attr)
+
+            if raw:
+                admit(raw, label)
+
+    for node in soup.find_all(
+        'link',
+        href=True,
+    ):
+        rel = ' '.join(
+            node.get('rel') or []
+        ).lower()
+
+        if 'next' in rel:
+            admit(
+                node.get('href'),
+                'pagination',
+            )
+
+    try:
+        for item in _jsonld(soup):
+            admit(
+                item.get('url'),
+                'jsonld_product',
+            )
+    except Exception:
+        pass
+
+    if store == 'sabina':
+        for product in _sabina_legacy_product_urls(
+            data,
+            base,
+        ):
+            product_urls[product] = ''
+
+    try:
+        raw_html = html.unescape(
+            data.decode(
+                'utf-8',
+                'ignore',
+            )
+        )
+
+        raw_html = raw_html.replace(
+            '\\/',
+            '/',
+        )
+
+        raw_html = raw_html.replace(
+            '\\u002F',
+            '/',
+        ).replace(
+            '\\u002f',
+            '/',
+        )
+
+        for match in re.finditer(
+            r'''https?://[^"'\\s<>\\\\]+|
+                /(?:[A-Za-z0-9._~-]+/){1,}
+                [^"'\\s<>\\\\]+''',
+            raw_html,
+            re.I | re.X,
+        ):
+            admit(
+                urllib.parse.urljoin(
+                    base,
+                    match.group(0),
+                ).split('#', 1)[0],
+                'embedded_navigation',
+            )
+
+    except Exception:
+        pass
+
+    return {
+        'ok': True,
+        'products': product_urls,
+        'listings': listings,
+        'error': None,
+    }
+def _discover_persistent_html_catalog(
+    store,
+    seeds,
+    deadline=None,
+):
+    """
+    Incremental persistent HTML discovery for a store.
+
+    The queue survives the end of the current run. URLs beyond the
+    current time budget remain PENDING and are processed later.
+    """
+    if seeds:
+        _catalog_queue_enqueue(
+            store,
+            [
+                (
+                    url,
+                    0,
+                    'configured_seed',
+                )
+                for url in seeds
+            ],
+        )
+
+    seeded = _catalog_queue_enqueue(
+        store,
+        [
+            (
+                url,
+                0,
+                'configured_seed',
+            )
+            for url in seeds
+        ],
+    )
+
+    recovered = _catalog_queue_recover_stale(store)
+
+    requeued = _catalog_queue_requeue_stale_done(
+        store,
+        revisit_seconds=86400.0,
+        limit=100,
+    )
+
+    started = time.time()
+    run_seconds = 120.0
+
+    if deadline is not None:
+        run_seconds = max(
+            1.0,
+            float(deadline) - started,
+        )
+
+    run_deadline = started + min(
+        run_seconds,
+        120.0,
+    )
+
+    visited = 0
+    successes = 0
+    product_urls = {}
+    errors = []
+
+    while time.time() < run_deadline:
+        batch = _catalog_queue_claim(
+            store,
+            limit=HTML_WORKERS,
+            lease_seconds=180,
+        )
+
+        if not batch:
+            break
+
+        with ThreadPoolExecutor(
+            max_workers=min(
+                HTML_WORKERS,
+                len(batch),
+            )
+        ) as pool:
+            futures = {
+                pool.submit(
+                    _fetch_html_page,
+                    store,
+                    url,
+                ): (
+                    url,
+                    depth,
+                    source,
+                    token,
+                )
+                for url, depth, source, token in batch
+            }
+
+            for future in as_completed(futures):
+                url, depth, source, token = futures[
+                    future
+                ]
+
+                visited += 1
+
+                try:
+                    result = future.result()
+
+                    processed = (
+                        _catalog_discovery_process_page(
+                            store,
+                            url,
+                            depth,
+                            source,
+                            result,
+                        )
+                    )
+
+                    if not processed['ok']:
+                        error = processed['error'] or (
+                            'catalog_page_processing_failed'
+                        )
+
+                        errors.append(
+                            f'{url} -> {error}'
+                        )
+
+                        _catalog_queue_finish(
+                            store,
+                            url,
+                            token,
+                            False,
+                            error,
+                        )
+
+                        continue
+
+                    successes += 1
+
+                    product_urls.update(
+                        processed['products']
+                    )
+
+                    _catalog_queue_enqueue(
+                        store,
+                        processed['listings'],
+                    )
+
+                    _catalog_queue_finish(
+                        store,
+                        url,
+                        token,
+                        True,
+                    )
+
+                except Exception as exc:
+                    error = (
+                        f'{type(exc).__name__}: {exc}'
+                    )
+
+                    errors.append(
+                        f'{url} -> {error}'
+                    )
+
+                    _catalog_queue_finish(
+                        store,
+                        url,
+                        token,
+                        False,
+                        error,
+                    )
+
+        if time.time() >= run_deadline:
+            break
+
+    if product_urls:
+        _persist_discovered_product_urls(
+            store,
+            product_urls,
+        )
+
+    conn = db()
+
+    try:
+        row = conn.execute(
+            """SELECT
+                   SUM(
+                       CASE
+                           WHEN state='PENDING'
+                           THEN 1 ELSE 0
+                       END
+                   ) AS pending,
+                   SUM(
+                       CASE
+                           WHEN state='PROCESSING'
+                           THEN 1 ELSE 0
+                       END
+                   ) AS processing,
+                   SUM(
+                       CASE
+                           WHEN state='DONE'
+                           THEN 1 ELSE 0
+                       END
+                   ) AS done,
+                   SUM(
+                       CASE
+                           WHEN state='ERROR'
+                           THEN 1 ELSE 0
+                       END
+                   ) AS error,
+                   SUM(
+                       CASE
+                           WHEN state='DEAD'
+                           THEN 1 ELSE 0
+                       END
+                   ) AS dead,
+                   COUNT(*) AS total
+              FROM catalog_discovery_queue
+             WHERE store=?""",
+            (store,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    frontier = {
+        'total': int(row['total'] or 0),
+        'pending': int(row['pending'] or 0),
+        'processing': int(row['processing'] or 0),
+        'done': int(row['done'] or 0),
+        'error': int(row['error'] or 0),
+        'dead': int(row['dead'] or 0),
+        'seeded': seeded,
+        'recovered': recovered,
+        'requeued_stale_done': requeued,
+    }
+
+    return {
+        'product_urls': product_urls,
+        'visited': visited,
+        'successes': successes,
+        'errors': errors[:20],
+        'frontier': frontier,
+    }
 
 def _discover_deloox_catalog(seeds, deadline=None):
     """Advance Deloox's persistent catalog graph.
