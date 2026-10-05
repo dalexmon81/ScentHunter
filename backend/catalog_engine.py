@@ -112,18 +112,6 @@ HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
-# Sabina's Italian storefront delegates native search to Sellboost. These are
-# fixed, broad catalog terms used only by background discovery; the user's
-# search query is never injected here.
-SABINA_SELLBOOST_SEARCH_URL = 'https://api.sellboost.com/finder/search'
-SABINA_SELLBOOST_SHOP_ID = 'fd08e30c-8347-4a9f-ae40-94463e3d1e59'
-SABINA_SELLBOOST_SUB_SHOP_ID = 'shop|1'
-SABINA_SELLBOOST_TERMS = ('parfum', 'perfume', 'fragrance', 'extrait', 'profumi')
-SABINA_SELLBOOST_REGISTERS_PER_PAGE = 50
-SABINA_SELLBOOST_MAX_PAGES = 10
-SABINA_SELLBOOST_TIMEOUT = 10
-
-
 SYNC_WORKERS = 8
 REFRESH_WORKERS = 2
 
@@ -1032,13 +1020,6 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
-        # Sabina's public brand directory is a generic catalog graph.
-        # Seeding the directory lets the crawler reach every retailer brand
-        # page, including brands whose products are not exposed by the
-        # bounded fragrance search/category surfaces. No brand or product is
-        # named here; pagination is followed by the generic HTML crawler.
-        'https://www.sabina.com/es/marcas',
-        'https://www.sabina.com/es/marcas_old',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -1348,21 +1329,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
     elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
-        score = 0
-    # Sabina's brand directory is a bounded, generic catalog graph. Links
-    # emitted directly by the directory must be admitted before the broad
-    # category graph, otherwise hundreds of category/pagination URLs can
-    # consume the finite HTML discovery budget before all retailer brands are
-    # reached. This uses only the navigation source URL; it does not name or
-    # privilege any individual brand or product.
-    elif (
-        store == 'sabina'
-        and re.search(
-            r'/es/(?:marcas|marcas_old)(?:\.html)?/?$',
-            urllib.parse.urlparse(str(source or '')).path.lower(),
-            re.I,
-        )
-    ):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -2237,14 +2203,6 @@ def discover_store(store):
                             html_sitemap_seeds.add(listing)
 
     fallback=None
-    sabina_sellboost = None
-    if store == 'sabina':
-        # Sabina's Italian native search is backed by Sellboost and exposes
-        # product URLs that are absent from the HTML search surfaces. This is
-        # generic background catalog discovery; no user query is involved.
-        sabina_sellboost = _discover_sabina_sellboost_catalog()
-        product_urls.update(sabina_sellboost['product_urls'])
-
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
     # advanced through a persistent discovery frontier. Do not run a second
     # in-memory HTML fallback for Deloox: that would restart from the same
@@ -2332,16 +2290,6 @@ def discover_store(store):
                 f'error:{frontier.get("error",0)};'
                 f'dead:{frontier.get("dead",0)}'
             )
-    if sabina_sellboost is not None:
-        details.append(
-            f'sabina_sellboost=terms:{len(sabina_sellboost["terms"])};'
-            f'requests:{sabina_sellboost["requests"]};'
-            f'products:{len(sabina_sellboost["product_urls"])}'
-        )
-        if sabina_sellboost['errors']:
-            details.append(
-                'sabina_sellboost_errors=' + ' | '.join(sabina_sellboost['errors'][:4])
-            )
     if fallback is not None:
         details.append(
             f'html_fallback=visited:{fallback["visited"]};'
@@ -2362,122 +2310,6 @@ def discover_store(store):
         'html_fallback':fallback,
     }
 
-
-
-def _discover_sabina_sellboost_catalog():
-    """Discover Sabina product URLs through its authoritative Italian search backend.
-
-    This is background catalog discovery only. It uses fixed generic fragrance
-    terms and never receives or embeds the user's search query, a product name,
-    a brand name, or an individual product id. A technical failure is returned
-    separately from a successful zero-result term so the existing HTML/sitemap
-    discovery remains intact.
-    """
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': EASY_COSMETIC_USER_AGENT,
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8',
-        'Content-Type': 'application/json',
-        'Origin': STORES['sabina'],
-        'Referer': STORES['sabina'].rstrip('/') + '/it/',
-    })
-
-    found = {}
-    errors = []
-    requests_made = 0
-    session_id = str(uuid.uuid4())
-
-    try:
-        for term in SABINA_SELLBOOST_TERMS:
-            payload = {
-                'sessionId': session_id,
-                'searchTerm': term,
-                'facets': [],
-                'priceFacet': None,
-                'country': 'IT',
-                'countryId': 10,
-                'currency': 'EUR',
-                'excludedBrands': [
-                    "PENHALIGON'S", 'PRADA EYEWEAR', 'CHANEL',
-                    'JO MALONE LONDON',
-                ],
-                'excludedProducts': [21140, 40106, 40107, 40108],
-                'group': '1',
-                'lastRegisterId': [],
-                'registersPerPage': SABINA_SELLBOOST_REGISTERS_PER_PAGE,
-                'searchLanguage': 'it',
-                'sorting': {'field': 'relevance', 'type': 'desc'},
-                'shopId': SABINA_SELLBOOST_SHOP_ID,
-                'subShopId': SABINA_SELLBOOST_SUB_SHOP_ID,
-            }
-
-            for _ in range(SABINA_SELLBOOST_MAX_PAGES):
-                try:
-                    response = session.post(
-                        SABINA_SELLBOOST_SEARCH_URL,
-                        json=payload,
-                        timeout=SABINA_SELLBOOST_TIMEOUT,
-                        allow_redirects=True,
-                    )
-                    requests_made += 1
-                except requests.RequestException as exc:
-                    errors.append(f'{term}: {type(exc).__name__}:{exc}')
-                    break
-
-                if response.status_code >= 400:
-                    errors.append(f'{term}: HTTP {response.status_code}')
-                    break
-
-                try:
-                    data = response.json()
-                except (ValueError, json.JSONDecodeError) as exc:
-                    errors.append(f'{term}: invalid_json:{type(exc).__name__}')
-                    break
-
-                if not isinstance(data, dict) or data.get('status') != 'success':
-                    errors.append(f'{term}: invalid_status')
-                    break
-
-                result_data = data.get('data')
-                if not isinstance(result_data, dict):
-                    errors.append(f'{term}: invalid_data')
-                    break
-
-                rows = result_data.get('searchResponses')
-                if not isinstance(rows, list):
-                    errors.append(f'{term}: invalid_searchResponses')
-                    break
-
-                for row in rows:
-                    if not isinstance(row, dict):
-                        continue
-                    raw_url = row.get('url')
-                    if not raw_url:
-                        continue
-                    url = urllib.parse.urljoin(
-                        STORES['sabina'], str(raw_url)
-                    ).split('#', 1)[0]
-                    if _html_product_url('sabina', url, STORES['sabina']):
-                        found[url] = ''
-
-                last_register_id = result_data.get('lastRegisterId')
-                if not last_register_id:
-                    break
-                payload['lastRegisterId'] = (
-                    last_register_id
-                    if isinstance(last_register_id, list)
-                    else [last_register_id]
-                )
-    finally:
-        session.close()
-
-    return {
-        'product_urls': found,
-        'terms': list(SABINA_SELLBOOST_TERMS),
-        'requests': requests_made,
-        'errors': errors[:20],
-    }
 
 def _jsonld(soup):
     products = []
@@ -2750,15 +2582,16 @@ def _search_db():
 
 
 
-def search_local(query, per_store=32, search_terms=None):
-    # FTS5 is candidate generation only. Whole-token verification and
-    # ProductMatcher remain authoritative for identity.
-    #
-    # IMPORTANT: every search term is an alternative representation of the
-    # same user intent. Do not combine them into one FTS query with a single
-    # SQL LIMIT: a broad alias can consume that limit before a later,
-    # more-specific term is evaluated. That can make valid catalog products
-    # disappear from normal search even though they are present in the catalog.
+def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
+    """Generate a bounded local-catalog candidate set for the fast search path.
+
+    FTS is candidate generation only. Whole-token verification and
+    ProductMatcher remain authoritative for identity.
+
+    Alternative catalog terms are searched independently. A single large FTS
+    OR query can return thousands of candidates before the final per-store
+    limit is applied, which then makes the matcher unnecessarily expensive.
+    """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2781,6 +2614,27 @@ def search_local(query, per_store=32, search_terms=None):
     unlimited = per_store is None or int(per_store) <= 0
     limit = None if unlimited else max(1, int(per_store))
 
+    if limit is None:
+        total_scan_budget = 2048
+    else:
+        total_scan_budget = max(256, min(2048, limit * 16))
+    term_candidate_limit = max(
+        8,
+        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
+    )
+
+    interrupted = False
+
+    def _search_interrupted():
+        if cancel_event is not None and cancel_event.is_set():
+            return True
+        if deadline is not None and time.monotonic() >= float(deadline):
+            return True
+        return False
+
+    def _sqlite_progress():
+        return 1 if _search_interrupted() else 0
+
     try:
         try:
             fts_exists = conn.execute(
@@ -2790,51 +2644,75 @@ def search_local(query, per_store=32, search_terms=None):
             fts_exists = None
 
         if not fts_exists:
-            return _search_local_legacy_sql(conn, token_sets, limit, rows)
+            return _search_local_legacy_sql(
+                conn,
+                token_sets,
+                limit,
+                rows,
+                cancel_event=cancel_event,
+                deadline=deadline,
+            )
+
+        conn.set_progress_handler(_sqlite_progress, 1000)
 
         for store in STORES:
+            if _search_interrupted():
+                interrupted = True
+                break
+
             selected_by_url = {}
 
-            sql = """
-                    SELECT u.url,u.slug,u.lastmod,
-                           p.store AS product_store, p.url AS product_url,
-                           p.name AS product_name, p.brand AS product_brand,
-                           p.image AS product_image, p.sku AS product_sku,
-                           p.gtin AS product_gtin, p.mpn AS product_mpn,
-                           p.size_ml AS product_size_ml,
-                           p.concentration AS product_concentration,
-                           p.gender AS product_gender, p.price AS product_price,
-                           p.currency AS product_currency,
-                           p.availability AS product_availability,
-                           p.fetched_at AS product_fetched_at,
-                           p.fetch_status AS fetch_status
-                      FROM catalog_search_fts f
-                      JOIN store_urls u ON u.store=f.store AND u.url=f.url
-                      LEFT JOIN store_products p
-                        ON p.store=u.store AND p.url=u.url
-                       AND p.fetch_status='OK'
-                     WHERE f.store=?
-                       AND catalog_search_fts MATCH ?
-                       AND u.active=1
-                     LIMIT ?
-                """
-
-            # Give every ProductMatcher term its own candidate budget.
-            # The literal user query is therefore never crowded out by
-            # canonical names or aliases belonging to the same intent.
-            per_term_limit = max(128, (limit or 64) * 2)
-
+            # One FTS query per alternative term: keep the previous fast path
+            # and avoid a huge OR candidate pool.
             for ts in token_sets:
-                fts_query = _fts_query_for_token_sets([ts])
+                if _search_interrupted():
+                    interrupted = True
+                    break
+
+                fts_query = _fts_query_for_tokens(ts)
                 if not fts_query:
                     continue
 
-                candidates = conn.execute(
-                    sql,
-                    (store, fts_query, per_term_limit),
-                ).fetchall()
+                sql = """
+                        SELECT u.url,u.slug,u.lastmod,
+                               p.store AS product_store, p.url AS product_url,
+                               p.name AS product_name, p.brand AS product_brand,
+                               p.image AS product_image, p.sku AS product_sku,
+                               p.gtin AS product_gtin, p.mpn AS product_mpn,
+                               p.size_ml AS product_size_ml,
+                               p.concentration AS product_concentration,
+                               p.gender AS product_gender, p.price AS product_price,
+                               p.currency AS product_currency,
+                               p.availability AS product_availability,
+                               p.fetched_at AS product_fetched_at,
+                               p.fetch_status AS fetch_status
+                          FROM catalog_search_fts f
+                          JOIN store_urls u ON u.store=f.store AND u.url=f.url
+                          LEFT JOIN store_products p
+                            ON p.store=u.store AND p.url=u.url
+                           AND p.fetch_status='OK'
+                         WHERE f.store=?
+                           AND catalog_search_fts MATCH ?
+                           AND u.active=1
+                         ORDER BY rank
+                         LIMIT ?
+                    """
+                try:
+                    candidates = conn.execute(
+                        sql,
+                        (store, fts_query, term_candidate_limit),
+                    ).fetchall()
+                except sqlite3.OperationalError:
+                    if _search_interrupted():
+                        interrupted = True
+                        break
+                    raise
 
                 for r in candidates:
+                    if _search_interrupted():
+                        interrupted = True
+                        break
+
                     url = str(r['url'] or '').strip()
                     if not url or url in selected_by_url:
                         continue
@@ -2844,13 +2722,20 @@ def search_local(query, per_store=32, search_terms=None):
                         for key in ('slug', 'product_name', 'product_brand')
                     )
                     normalized_tokens = set(norm(search_text).split())
-                    score = sum(
-                        1 for token in ts if token in normalized_tokens
-                    )
+                    score = sum(1 for token in ts if token in normalized_tokens)
                     if score != len(ts):
                         continue
 
-                    selected_by_url[url] = (score + 10, dict(r))
+                    previous = selected_by_url.get(url)
+                    item_score = (score + 10, dict(r))
+                    if previous is None or item_score[0] > previous[0]:
+                        selected_by_url[url] = item_score
+
+                if interrupted:
+                    break
+
+            if interrupted:
+                break
 
             ordered = sorted(
                 selected_by_url.values(),
@@ -2863,7 +2748,6 @@ def search_local(query, per_store=32, search_terms=None):
                 url = str(r.get('url') or '').strip()
                 if not url:
                     continue
-
                 if r.get('product_name'):
                     rows.append({
                         'url': url,
@@ -2898,13 +2782,27 @@ def search_local(query, per_store=32, search_terms=None):
 
         return rows
     finally:
+        try:
+            conn.set_progress_handler(None, 0)
+        except Exception:
+            pass
         conn.close()
 
-def _search_local_legacy_sql(conn, token_sets, limit, rows):
+
+def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, deadline=None):
     # Compatibility path for SQLite builds without FTS5.
     for store in STORES:
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        if deadline is not None and time.monotonic() >= float(deadline):
+            break
+
         selected_by_url = {}
         for ts in token_sets:
+            if cancel_event is not None and cancel_event.is_set():
+                break
+            if deadline is not None and time.monotonic() >= float(deadline):
+                break
             if limit is not None and len(selected_by_url) >= limit:
                 break
             clauses = []
@@ -2919,7 +2817,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows):
             if not clauses:
                 continue
 
-            sql = f'''
+            sql = f"""
                 SELECT u.url,u.slug,u.lastmod,
                        p.store AS product_store,p.url AS product_url,
                        p.name AS product_name,p.brand AS product_brand,
@@ -2939,7 +2837,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows):
                  WHERE u.store=? AND u.active=1
                    AND {' AND '.join(clauses)}
                  LIMIT ?
-            '''
+            """
             candidates = conn.execute(
                 sql, [store, *params, max(128, limit or 128)]
             ).fetchall()
@@ -2998,8 +2896,53 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows):
 
 
 def refresh_candidates(rows, cancel_event=None, deadline=None):
-    """Read-only compatibility boundary: user search never performs network I/O."""
-    return []
+    """Refresh only catalog candidates that do not yet have page data.
+
+    Cancellation is cooperative and the optional deadline is a hard search
+    budget. Pending futures are cancelled when either condition is reached;
+    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
+    but the executor is never waited on after cancellation/deadline expiry.
+    """
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
+    if not jobs:
+        return []
+    out = []
+    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    cancelled = False
+    try:
+        pending = set(futures)
+        while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            if deadline is not None and time.monotonic() >= float(deadline):
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            done = [future for future in list(pending) if future.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for future in done:
+                pending.discard(future)
+                try:
+                    item = future.result()
+                    if item:
+                        out.append(item)
+                except Exception:
+                    pass
+        if cancelled:
+            return out
+        return out
+    finally:
+        # Never make a cancelled user search wait for all old refresh workers.
+        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
+        # own DB connections when finished.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
 def hydration_pending_counts():
@@ -3431,8 +3374,6 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
 
 _COVERAGE_SCHEMA_LOCK = threading.Lock()
 _COVERAGE_SCHEMA_READY = False
-_COVERAGE_FAMILY_REQUEUE_DONE = False
-_COVERAGE_FAMILY_REQUEUE_LOCK = threading.Lock()
 _COVERAGE_CATALOG_CACHE = None
 _COVERAGE_CATALOG_MTIME = None
 _COVERAGE_INTERVAL_SECONDS = 60.0
@@ -3514,104 +3455,34 @@ def _coverage_ensure_schema():
 
 
 def _coverage_load_catalog():
-    """Load canonical products plus registered family identities for coverage.
-
-    The canonical JSON remains authoritative for normal catalog identities.
-    Registered family products are added as a second, generic coverage source
-    so a family identity can be discovered at retailers even when the product
-    has not yet been copied into product_catalog.json. This is intentionally
-    independent of retailer, product name, URL and user query.
-    """
+    """Load the canonical product list once and refresh only when the file changes."""
     global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
-    catalog_path = BASE_DIR / 'product_catalog.json'
-    family_path = BASE_DIR / 'family_registry.json'
+    path = BASE_DIR / 'product_catalog.json'
     try:
-        catalog_mtime = catalog_path.stat().st_mtime_ns
+        mtime = path.stat().st_mtime_ns
     except OSError:
-        catalog_mtime = 0
-    try:
-        family_mtime = family_path.stat().st_mtime_ns
-    except OSError:
-        family_mtime = 0
-    cache_key = (catalog_mtime, family_mtime)
-    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == cache_key:
+        return []
+    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
         return _COVERAGE_CATALOG_CACHE
-
     try:
-        with catalog_path.open('r', encoding='utf-8') as handle:
+        with path.open('r', encoding='utf-8') as handle:
             payload = json.load(handle)
     except Exception as exc:
         print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
-        payload = {}
-
+        return _COVERAGE_CATALOG_CACHE or []
     products = payload.get('products') if isinstance(payload, dict) else None
     if not isinstance(products, list):
         products = []
-
     cleaned = []
-    seen_ids = set()
-    seen_identity = set()
     for product in reversed(products):
         if not isinstance(product, dict):
             continue
         product_id = str(product.get('product_id') or '').strip()
         canonical_name = str(product.get('canonical_name') or '').strip()
-        if not product_id or not canonical_name:
-            continue
-        cleaned.append(product)
-        seen_ids.add(product_id)
-        seen_identity.add((norm(str(product.get('brand_name') or '')), norm(canonical_name)))
-
-    # Family registry is a canonical identity supplement, not a retailer
-    # discovery exception. Every registered family variant receives a stable
-    # synthetic coverage key; ProductMatcher remains responsible for its final
-    # public catalog identity when the hydrated offer is matched.
-    try:
-        with family_path.open('r', encoding='utf-8') as handle:
-            family_payload = json.load(handle)
-    except Exception as exc:
-        family_payload = {}
-        if family_mtime:
-            print(f'CATALOG COVERAGE FAMILY LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
-
-    families = family_payload.get('families') if isinstance(family_payload, dict) else None
-    if isinstance(families, list):
-        for family in families:
-            if not isinstance(family, dict):
-                continue
-            family_id = str(family.get('family_id') or '').strip()
-            brand = str(family.get('brand') or '').strip()
-            variants = family.get('products') or []
-            if not family_id or not isinstance(variants, list):
-                continue
-            for variant in variants:
-                if not isinstance(variant, dict):
-                    continue
-                canonical_name = str(variant.get('canonical_name') or '').strip()
-                if not canonical_name:
-                    continue
-                identity_key = (norm(brand), norm(canonical_name))
-                if identity_key in seen_identity:
-                    continue
-                family_key = f'FAMILY::{family_id}::{norm(canonical_name).replace(" ", "-")}'
-                if family_key in seen_ids:
-                    continue
-                aliases = variant.get('aliases')
-                if not isinstance(aliases, list):
-                    aliases = []
-                synthetic = {
-                    'product_id': family_key,
-                    'brand_name': brand,
-                    'canonical_name': canonical_name,
-                    'aliases': aliases,
-                    'family_id': family_id,
-                }
-                cleaned.append(synthetic)
-                seen_ids.add(family_key)
-                seen_identity.add(identity_key)
-
+        if product_id and canonical_name:
+            cleaned.append(product)
     _COVERAGE_CATALOG_CACHE = cleaned
-    _COVERAGE_CATALOG_MTIME = cache_key
+    _COVERAGE_CATALOG_MTIME = mtime
     return cleaned
 
 
@@ -3641,22 +3512,13 @@ def _coverage_queries(product):
 
 
 def _coverage_seed_tasks(conn, products):
-    """Maintain the complete store x canonical-product coverage matrix.
-
-    Never infer completeness from the total row count: a catalog can gain a
-    new product while keeping the same number of coverage rows. Missing exact
-    (store, product_id) pairs are therefore inserted idempotently on every
-    maintenance pass.
-    """
+    """Create the complete store x canonical-product coverage matrix idempotently."""
     if not products:
         return
-
-    existing = {
-        (str(row['store']), str(row['product_id']))
-        for row in conn.execute(
-            'SELECT store,product_id FROM catalog_coverage'
-        ).fetchall()
-    }
+    expected = len(products) * len(STORES)
+    existing = int(conn.execute('SELECT COUNT(*) c FROM catalog_coverage').fetchone()['c'] or 0)
+    if existing >= expected:
+        return
     now = time.time()
     rows = []
     for product in products:
@@ -3667,21 +3529,15 @@ def _coverage_seed_tasks(conn, products):
             continue
         primary = queries[0]
         for store in STORES:
-            key = (str(store), product_id)
-            if key in existing:
-                continue
             rows.append((store, product_id, canonical, primary, now))
-            existing.add(key)
-
-    if rows:
-        conn.executemany(
-            """INSERT INTO catalog_coverage(
-                   store,product_id,canonical_name,query,state,next_run_at)
-               VALUES(?,?,?,?, 'PENDING', ?)
-               ON CONFLICT(store,product_id) DO NOTHING""",
-            rows,
-        )
-        conn.commit()
+    conn.executemany(
+        """INSERT INTO catalog_coverage(
+               store,product_id,canonical_name,query,state,next_run_at)
+           VALUES(?,?,?,?, 'PENDING', ?)
+           ON CONFLICT(store,product_id) DO NOTHING""",
+        rows,
+    )
+    conn.commit()
 
 
 def _coverage_token_match(text, target):
@@ -3698,46 +3554,27 @@ def _coverage_token_match(text, target):
 
 
 def _coverage_result_matches(product, row):
-    """Verify a scraper row against canonical identity without cross-field
-    token contamination. Hostnames, retailer names and arbitrary URL text must
-    never make an unrelated product look like a match.
-    """
     canonical = str(product.get('canonical_name') or '').strip()
     if not canonical or not isinstance(row, dict):
         return False
+    text = ' '.join(
+        str(row.get(key) or '')
+        for key in ('name', 'brand', 'title', 'url', 'product_url', 'link')
+    )
+    if _coverage_token_match(text, canonical):
+        return True
 
+    # Retailers may publish a canonical item under a longer catalog alias.
+    # Accept only meaningful aliases here; short identity tokens such as a
+    # one-letter product code must never become arbitrary substring matches.
     aliases = product.get('aliases') or []
-    targets = [canonical]
     if isinstance(aliases, list):
         for alias in aliases:
             alias = str(alias or '').strip()
             normalized = norm(alias)
-            if len(normalized) >= 4 and len(normalized.split()) >= 2:
-                targets.append(alias)
-
-    # Human-readable scraper fields are safe to combine; URL hosts are not.
-    text_fields = [
-        str(row.get('name') or ''),
-        str(row.get('title') or ''),
-        str(row.get('brand') or ''),
-    ]
-    combined_text = ' '.join(value for value in text_fields if value).strip()
-    for target in targets:
-        if _coverage_token_match(combined_text, target):
-            return True
-
-    # A retailer URL can contain the product identity in its path/slug. Only
-    # inspect the path, never the hostname, query-string or arbitrary URL text.
-    for key in ('url', 'product_url', 'link'):
-        raw_url = str(row.get(key) or '').strip()
-        if not raw_url:
-            continue
-        try:
-            path = urllib.parse.urlparse(raw_url).path
-        except Exception:
-            path = raw_url
-        for target in targets:
-            if _coverage_token_match(path.replace('-', ' ').replace('_', ' '), target):
+            if len(normalized) < 4 or len(normalized.split()) < 2:
+                continue
+            if _coverage_token_match(text, alias):
                 return True
     return False
 
@@ -3810,182 +3647,87 @@ def _coverage_persist_urls(store, rows):
 
 
 def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
-    """Run coverage queries independently so one slow/irrelevant query cannot
-    terminate the search path for the canonical product.
-
-    Each query gets its own killable child process. A timeout is recorded for
-    that query and the next query is still attempted. The parent never treats
-    an arbitrary scraper result as success; matching is performed later by
-    _coverage_run_task against the canonical identity.
-    """
-    child_code = '''import contextlib
-import importlib
-import json
-import sys
-
-def main():
-    payload = json.load(sys.stdin)
-    module_name = str(payload.get("module") or "")
-    query = str(payload.get("query") or "").strip()
-    module = importlib.import_module(module_name)
-    search_stream = getattr(module, "search_stream", None)
-    search_fn = getattr(module, "search", None)
-    if not callable(search_stream) and not callable(search_fn):
-        raise RuntimeError("scraper_search_unavailable")
-    with contextlib.redirect_stdout(sys.stderr):
-        report = search_stream(query) if callable(search_stream) else search_fn(query)
-    json.dump({"ok": True, "query": query, "report": report}, sys.stdout,
-              ensure_ascii=False, default=str)
-    sys.stdout.flush()
-
-if __name__ == "__main__":
-    main()
-'''
-
-    def run_one(query):
-        payload = json.dumps({"module": module_name, "query": str(query)}, ensure_ascii=False)
-        env = os.environ.copy()
-        current_python_path = env.get("PYTHONPATH", "")
-        base_path = str(BASE_DIR)
-        env["PYTHONPATH"] = base_path + (os.pathsep + current_python_path if current_python_path else "")
+    """Run one retailer coverage search in a killable process group."""
+    child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                report = search_stream(query) if callable(search_stream) else search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({"query": query, "error": f"{type(exc).__name__}:{exc}"})\n            continue\n        if isinstance(report, dict):\n            if report.get("results"):\n                break\n        elif isinstance(report, list) and report:\n            break\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
+    payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
+    env = os.environ.copy()
+    current_python_path = env.get("PYTHONPATH", "")
+    base_path = str(BASE_DIR)
+    env["PYTHONPATH"] = base_path + (os.pathsep + current_python_path if current_python_path else "")
+    try:
+        process = subprocess.Popen(
+            [sys.executable, "-c", child_code],
+            cwd=str(BASE_DIR), env=env,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, encoding="utf-8", errors="replace",
+            start_new_session=(os.name != "nt"),
+        )
+    except Exception as exc:
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+    try:
+        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
+    except subprocess.TimeoutExpired:
         try:
-            process = subprocess.Popen(
-                [sys.executable, "-c", child_code],
-                cwd=str(BASE_DIR), env=env,
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                text=True, encoding="utf-8", errors="replace",
-                start_new_session=(os.name != "nt"),
-            )
-        except Exception as exc:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"{type(exc).__name__}:{exc}"}
-        try:
-            stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
+            if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+            else: process.terminate()
+        except Exception: pass
+        try: process.wait(timeout=2.0)
         except subprocess.TimeoutExpired:
             try:
-                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-                else: process.terminate()
-            except Exception:
-                pass
-            try:
-                process.wait(timeout=2.0)
-            except subprocess.TimeoutExpired:
-                try:
-                    if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
-                    else: process.kill()
-                except Exception:
-                    pass
-                try: process.wait(timeout=2.0)
-                except Exception: pass
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
-        except Exception as exc:
-            try:
-                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-                else: process.terminate()
-            except Exception:
-                pass
+                if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                else: process.kill()
+            except Exception: pass
             try: process.wait(timeout=2.0)
             except Exception: pass
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"{type(exc).__name__}:{exc}"}
-
-        if process.returncode != 0:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_process_exit_{process.returncode}"}
+        return {"ok": False, "reports": [], "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
+    except Exception as exc:
         try:
-            result = json.loads(stdout or "")
-        except Exception as exc:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
-        if not isinstance(result, dict):
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": "coverage_invalid_child_result"}
-        return result
-
-    reports = []
-    for query in queries or []:
-        reports.append(run_one(query))
-    return {"ok": bool(reports), "reports": reports,
-            "queries_attempted": len(reports)}
+            if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+            else: process.terminate()
+        except Exception: pass
+        try: process.wait(timeout=2.0)
+        except Exception: pass
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+    if process.returncode != 0:
+        return {"ok": False, "reports": [], "error": f"coverage_process_exit_{process.returncode}"}
+    try: result = json.loads(stdout or "")
+    except Exception as exc:
+        return {"ok": False, "reports": [], "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
+    return result if isinstance(result, dict) else {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
 
 
 def _coverage_run_task(task):
-    """Search every generic identity query until an actual canonical match is
-    found. Irrelevant scraper results do not end the search; query timeouts do
-    not prevent later queries. This is deliberately retailer/product agnostic.
-    """
     store = task['store']
     product = task['product']
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
     if not module_name:
-        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing',
-                'queries_attempted': 0}
-
+        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
     isolated = _coverage_scraper_process(module_name, queries)
     reports = isolated.get('reports') or []
+    if not isolated.get('ok'):
+        return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
     matched_rows = []
     errors = []
-    query_states = []
-
     for item in reports:
-        if not isinstance(item, dict):
-            continue
-        query = str(item.get('query') or '')
+        if not isinstance(item, dict): continue
         if item.get('error'):
-            error = str(item['error'])
-            errors.append(error)
-            query_states.append({'query': query, 'state': 'ERROR',
-                                 'error': error[:500], 'matches': 0})
-            continue
-
+            errors.append(str(item['error'])); continue
         report = item.get('report')
         if isinstance(report, dict):
             rows = report.get('results') or []
-            status = str(report.get('status') or '').lower()
-            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
-                error = str(report.get('error') or status)
-                errors.append(error)
-                query_states.append({'query': query, 'state': 'ERROR',
-                                     'error': error[:500], 'matches': 0})
-                continue
+            status = str(report.get('status') or '')
+            if status in {'error','timeout','blocked','unavailable'}:
+                errors.append(str(report.get('error') or status))
         else:
             rows = report if isinstance(report, list) else []
-
-        query_matches = 0
         for row in rows:
-            if _coverage_result_matches(product, row):
-                matched_rows.append(row)
-                query_matches += 1
-        query_states.append({
-            'query': query,
-            'state': 'FOUND' if query_matches else ('EMPTY' if not rows else 'IRRELEVANT'),
-            'error': None,
-            'matches': query_matches,
-            'results': len(rows) if isinstance(rows, list) else 0,
-        })
-        if query_matches:
-            break
-
+            if _coverage_result_matches(product, row): matched_rows.append(row)
     found = _coverage_persist_urls(store, matched_rows)
-    diagnostic = {
-        'queries': query_states,
-        'attempted': len(query_states),
-        'matched_queries': sum(1 for item in query_states if item.get('matches')),
-        'errors': len(errors),
-    }
-    if found:
-        return {'state': 'FOUND', 'found': found, 'error': None,
-                'diagnostic': diagnostic}
-    if errors:
-        return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000],
-                'diagnostic': diagnostic}
-    return {'state': 'NOT_FOUND', 'found': 0, 'error': None,
-            'diagnostic': diagnostic}
-
-def _coverage_claim_tasks(limit, stores=None):
-    global _COVERAGE_FAMILY_REQUEUE_DONE
+    if found: return {'state': 'FOUND', 'found': found, 'error': None}
+    if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
+    return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
+def _coverage_claim_tasks(limit):
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
     if not products:
@@ -3994,46 +3736,15 @@ def _coverage_claim_tasks(limit, stores=None):
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
-        # Requeue previously failed family identities once when this coverage
-        # worker process starts. A NOT_FOUND result normally sleeps for 24h;
-        # that is wrong when the family registry has just gained a new identity.
-        # The one-shot process guard avoids a permanent retry loop.
-        if not _COVERAGE_FAMILY_REQUEUE_DONE:
-            with _COVERAGE_FAMILY_REQUEUE_LOCK:
-                if not _COVERAGE_FAMILY_REQUEUE_DONE:
-                    conn.execute(
-                        """UPDATE catalog_coverage
-                              SET state='PENDING', next_run_at=?, last_error=NULL
-                            WHERE product_id LIKE 'FAMILY::%'
-                              AND state IN ('NOT_FOUND','RETRY')
-                        """,
-                        (now,),
-                    )
-                    conn.commit()
-                    _COVERAGE_FAMILY_REQUEUE_DONE = True
-        selected_stores = [
-            str(store).strip().lower()
-            for store in (stores or [])
-            if str(store).strip().lower() in STORES
-        ]
-        params = [now]
-        store_clause = ''
-        if selected_stores:
-            placeholders = ','.join('?' for _ in selected_stores)
-            store_clause = f' AND store IN ({placeholders})'
-            params.extend(selected_stores)
-        params.append(max(1, int(limit)))
         rows = conn.execute(
-            f"""SELECT store,product_id,canonical_name,query,attempts
+            """SELECT store,product_id,canonical_name,query,attempts
                  FROM catalog_coverage
                 WHERE next_run_at <= ?
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
-                  {store_clause}
                 ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
-                         CASE WHEN product_id LIKE 'FAMILY::%' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
-            tuple(params),
+            (now, max(1, int(limit))),
         ).fetchall()
         product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
         tasks = []
@@ -4075,9 +3786,9 @@ def _coverage_finish_task(task, result):
         conn.close()
 
 
-def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS, stores=None):
+def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
     """Advance canonical-product coverage in small bounded batches."""
-    tasks = _coverage_claim_tasks(max_tasks, stores=stores)
+    tasks = _coverage_claim_tasks(max_tasks)
     if not tasks:
         return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     found = not_found = errors = 0
@@ -4129,197 +3840,73 @@ def coverage_status():
         conn.close()
 
 
-def _hydration_worker_process(batch_size, workers, pause_seconds=1.0):
-    """Run the durable hydration worker in one isolated child process.
-
-    The API process starts one worker process, not one process per batch.
-    Queue backfill happens once in the child, then small bounded batches run
-    continuously. If the worker hangs, the parent can terminate its process
-    group without affecting the API process.
-    """
-    child_code = (
-        "import json\n"
-        "import time\n"
-        "import catalog_engine as ce\n"
-        "ce._ensure_hydration_queue()\n"
-        "batch_size=max(1,min(int(%d),4))\n"
-        "workers=max(1,min(int(%d),2))\n"
-        "pause=max(1.0,float(%s))\n"
-        "while True:\n"
-        "    result=ce.hydrate_catalog_batch(max_urls=batch_size, workers=workers)\n"
-        "    if result.get('selected') or result.get('fetched') or result.get('errors'):\n"
-        "        print('CATALOG HYDRATION BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
-        "    time.sleep(pause)\n"
-        % (int(batch_size), int(workers), repr(float(pause_seconds)))
-    )
-    env = os.environ.copy()
-    current = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
-    process = None
-    try:
-        process = subprocess.Popen(
-            [sys.executable, '-u', '-c', child_code],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=None,
-            stderr=None,
-            start_new_session=(os.name != 'nt'),
-        )
-        return process
-    except Exception as exc:
-        print(
-            f'CATALOG HYDRATION WORKER START ERROR: {type(exc).__name__}:{exc}',
-            flush=True,
-        )
-        return None
-
-
-def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
-    """Run canonical coverage for selected stores in one isolated process.
-
-    Coverage is background catalog work. It never runs inside the API search
-    request and every retailer search is already executed by the existing
-    killable coverage child process. This closes the gap where sitemap/HTML
-    discovery does not expose every canonical product page.
-    """
-    store_values = tuple(str(store).strip().lower() for store in (stores or ()) if str(store).strip().lower() in STORES)
-    if not store_values:
-        return None
-    child_code = (
-        "import json\n"
-        "import time\n"
-        "import catalog_engine as ce\n"
-        "stores=" + repr(store_values) + "\n"
-        "pause=max(2.0,float(" + repr(float(pause_seconds)) + "))\n"
-        "while True:\n"
-        "    result=ce.coverage_batch(max_tasks=2, workers=2, stores=stores)\n"
-        "    if result.get('selected') or result.get('found') or result.get('errors'):\n"
-        "        print('CATALOG COVERAGE BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
-        "    time.sleep(pause)\n"
-    )
-    env = os.environ.copy()
-    current = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
-    process = None
-    try:
-        process = subprocess.Popen(
-            [sys.executable, '-u', '-c', child_code],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=None,
-            stderr=None,
-            start_new_session=(os.name != 'nt'),
-        )
-        return process
-    except Exception as exc:
-        print(f'CATALOG COVERAGE WORKER START ERROR: {type(exc).__name__}:{exc}', flush=True)
-        return None
-
-
-def _terminate_coverage_worker(process):
-    """Terminate the isolated coverage worker and its descendants."""
-    if process is None:
-        return
-    try:
-        if process.poll() is None:
-            if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGTERM)
-            else:
-                process.terminate()
-            try:
-                process.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                if os.name != 'nt':
-                    os.killpg(process.pid, signal.SIGKILL)
-                else:
-                    process.kill()
-                try:
-                    process.wait(timeout=2.0)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-
-def _terminate_hydration_worker(process):
-    """Terminate the isolated hydration worker and its descendants."""
-    if process is None:
-        return
-    try:
-        if process.poll() is None:
-            if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGTERM)
-            else:
-                process.terminate()
-            try:
-                process.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                if os.name != 'nt':
-                    os.killpg(process.pid, signal.SIGKILL)
-                else:
-                    process.kill()
-                try:
-                    process.wait(timeout=2.0)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Hydrate discovered product URLs in one persistent isolated worker."""
-    batch_size = max(1, min(int(batch_size or 2), 4))
-    workers = max(1, min(int(workers or 1), 2))
-    pause_seconds = max(1.0, float(pause_seconds or 1.0))
+    """Continuously hydrate discovered product pages in the background."""
+    _ensure_hydration_queue()
+    _coverage_ensure_schema()
+    recovered = recover_stale_tasks()
+    coverage_next_at = 0.0
     print(
-        f'CATALOG HYDRATION START isolated-persistent batch={batch_size} workers={workers}',
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
     )
-
-    process = None
-    coverage_process = None
+    print(
+        f'CATALOG COVERAGE START interval={_COVERAGE_INTERVAL_SECONDS:g}s '
+        f'batch={_COVERAGE_BATCH_SIZE} workers={_COVERAGE_WORKERS}',
+        flush=True,
+    )
     while stop_event is None or not stop_event.is_set():
-        if process is None or process.poll() is not None:
-            if process is not None:
-                print(
-                    f'CATALOG HYDRATION WORKER EXIT code={process.returncode}; restarting',
-                    flush=True,
-                )
-            process = _hydration_worker_process(
-                batch_size,
-                workers,
-                pause_seconds,
-            )
+        try:
+            # Background coverage/hydration is lower priority than the
+            # foreground catalog search.  Never start another retailer
+            # scraper or hydration batch while a user search is active.
+            if _foreground_search_running():
+                if stop_event is not None:
+                    stop_event.wait(0.25)
+                else:
+                    time.sleep(0.25)
+                continue
 
-        if coverage_process is None or coverage_process.poll() is not None:
-            if coverage_process is not None:
-                print(
-                    f'CATALOG COVERAGE WORKER EXIT code={coverage_process.returncode}; restarting',
-                    flush=True,
-                )
-            coverage_process = _coverage_worker_process(
-                stores=('sabina',),
-                pause_seconds=5.0,
+            now_mono = time.monotonic()
+            # Coverage is deliberately NOT executed from the normal hydration
+            # loop. It invokes retailer discovery/search code and can create a
+            # second, independent network/browser workload behind a user search.
+            # Coverage remains available through its explicit operational path,
+            # but normal catalog hydration must only hydrate already-discovered
+            # product URLs.
+            if now_mono >= coverage_next_at:
+                coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
+            result = hydrate_catalog_batch(
+                max_urls=max(1, int(batch_size)),
+                workers=min(int(workers), HYDRATION_WORKERS),
+                deadline=time.monotonic() + max(30.0, float(REFRESH_TIMEOUT) + 5.0),
             )
-
-        if process is None or coverage_process is None:
+            if result.get('selected', 0) == 0:
+                if stop_event is not None:
+                    stop_event.wait(max(5.0, float(pause_seconds)))
+                else:
+                    time.sleep(max(5.0, float(pause_seconds)))
+                continue
+            print(
+                'CATALOG HYDRATION BATCH '
+                f"selected={result.get('selected')} "
+                f"fetched={result.get('fetched')} "
+                f"errors={result.get('errors')}",
+                flush=True,
+            )
+            if stop_event is not None:
+                stop_event.wait(max(0.1, float(pause_seconds)))
+            else:
+                time.sleep(max(0.1, float(pause_seconds)))
+        except Exception as exc:
+            print(
+                f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
             if stop_event is not None:
                 stop_event.wait(5.0)
             else:
                 time.sleep(5.0)
-            continue
-
-        if stop_event is not None:
-            if stop_event.wait(2.0):
-                break
-        else:
-            time.sleep(2.0)
-
-    _terminate_hydration_worker(process)
-    _terminate_coverage_worker(coverage_process)
-    print('CATALOG HYDRATION STOP', flush=True)
 
 
 def hydration_status():
