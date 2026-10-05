@@ -436,6 +436,7 @@ BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
 JOB_TIMEOUT_SECONDS = 30.0
+CATALOG_SEARCH_BUDGET_SECONDS = 12.0
 CATALOG_REFRESH_BUDGET_SECONDS = 8.0
 CATALOG_REFRESH_PER_STORE = 8
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
@@ -1446,12 +1447,45 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
 
     try:
-        raw_rows = catalog_search_local(query, per_store=candidate_limit, search_terms=terms) if callable(catalog_search_local) else []
+        search_budget = min(
+            12.0,
+            max(
+                2.0,
+                float(os.environ.get(
+                    'CATALOG_SEARCH_BUDGET_SECONDS',
+                    str(CATALOG_SEARCH_BUDGET_SECONDS),
+                )),
+            ),
+        )
+        search_deadline = started + search_budget
+        if cancel_event is not None and cancel_event.is_set():
+            return []
+
+        raw_rows = (
+            catalog_search_local(
+                query,
+                per_store=candidate_limit,
+                search_terms=terms,
+                cancel_event=cancel_event,
+                deadline=search_deadline,
+            )
+            if callable(catalog_search_local) else []
+        )
     except TypeError:
-        raw_rows = catalog_search_local(query, per_store=candidate_limit) if callable(catalog_search_local) else []
+        raw_rows = (
+            catalog_search_local(
+                query,
+                per_store=candidate_limit,
+                search_terms=terms,
+            )
+            if callable(catalog_search_local) else []
+        )
     except Exception as exc:
         print(f'CATALOG SEARCH ERROR: {type(exc).__name__}: {exc}', flush=True)
         raw_rows = []
+
+    if cancel_event is not None and cancel_event.is_set():
+        return []
 
     # The catalog decides WHICH URLs are relevant. For the query-selected
     # candidates that are not hydrated yet, perform a short targeted fetch.
