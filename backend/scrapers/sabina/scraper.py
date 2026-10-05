@@ -12,13 +12,9 @@ STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
 # Generic native-search endpoints. No product/brand-specific routes.
 SEARCH_ENDPOINTS = (
-    # Sabina's Spanish native search is currently the route that returns
-    # relevant product URLs for runtime queries. The Italian routes currently
-    # resolve to /it/ricerca_old and can return unrelated products, so they
-    # remain only as fallbacks.
     (BASE_URL + "/es/buscar", {"search_query": True}),
-    (BASE_URL + "/it/ricerca", {"controller": "search", "s": True}),
-    (BASE_URL + "/it/search", {"controller": "search", "s": True}),
+    (BASE_URL + "/it/ricerca", {"s": True}),                              # ✅ solo s=
+    (BASE_URL + "/it/search", {"s": True}),                               # ✅ solo s=
 )
 TIMEOUT = 7
 DISCOVERY_TIMEOUT = 7
