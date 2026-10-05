@@ -683,6 +683,33 @@
       ],
       "excluded_products": [],
       "excluded_aliases": []
+    },
+    {
+      "family_id": "rasasi_kobra",
+      "brand": "Rasasi",
+      "query_aliases": [
+        "Kobra",
+        "Kobra For Him",
+        "Rasasi Kobra",
+        "Rasasi Kobra For Him"
+      ],
+      "products": [
+        {
+          "canonical_name": "Kobra For Him",
+          "aliases": [
+            "Kobra For Him",
+            "Kobra",
+            "Rasasi Kobra",
+            "Rasasi Kobra For Him",
+            "Kobra For Him Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     }
   ]
 }
