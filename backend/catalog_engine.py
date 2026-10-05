@@ -3009,59 +3009,59 @@ def discover_store(store):
     # no product, brand, name or query is embedded here.
     #
     # Sabina uses a persistent HTML discovery frontier.
-# The old in-memory queue was discarded when the bounded run ended,
-# so pages beyond HTML_MAX_PAGES were permanently forgotten.
-
-if (
-    store == 'sabina'
-    and store in HTML_DISCOVERY_SEEDS
-):
-    html_seeds = list(
-        dict.fromkeys(
-            list(HTML_DISCOVERY_SEEDS[store])
-            + sorted(html_sitemap_seeds)
+    # The old in-memory queue was discarded when the bounded run ended,
+    # so pages beyond HTML_MAX_PAGES were permanently forgotten.
+    
+    if (
+        store == 'sabina'
+        and store in HTML_DISCOVERY_SEEDS
+    ):
+        html_seeds = list(
+            dict.fromkeys(
+                list(HTML_DISCOVERY_SEEDS[store])
+                + sorted(html_sitemap_seeds)
+            )
         )
-    )
-
-    fallback = _discover_persistent_html_catalog(
-        store,
-        html_seeds,
-        started_at + DISCOVERY_HARD_TIMEOUT,
-    )
-
-    product_urls.update(
-        fallback['product_urls']
-    )
-
-# Other non-Deloox retailers retain the existing bounded behaviour.
-elif (
-    store in HTML_DISCOVERY_SEEDS
-    and store != 'deloox'
-    and (
-        len(product_urls)
-        < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-        or (
-            bool(sitemap_errors)
-            and sitemap_successes == 0
+    
+        fallback = _discover_persistent_html_catalog(
+            store,
+            html_seeds,
+            started_at + DISCOVERY_HARD_TIMEOUT,
         )
-    )
-):
-    html_seeds = list(
-        dict.fromkeys(
-            list(HTML_DISCOVERY_SEEDS[store])
-            + sorted(html_sitemap_seeds)
+    
+        product_urls.update(
+            fallback['product_urls']
         )
-    )
-
-    fallback = _discover_html_catalog(
-        store,
-        html_seeds,
-        started_at + DISCOVERY_HARD_TIMEOUT,
-    )
-
-    product_urls.update(
-        fallback['product_urls']
-    )
+    
+    # Other non-Deloox retailers retain the existing bounded behaviour.
+    elif (
+        store in HTML_DISCOVERY_SEEDS
+        and store != 'deloox'
+        and (
+            len(product_urls)
+            < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (
+                bool(sitemap_errors)
+                and sitemap_successes == 0
+            )
+        )
+    ):
+        html_seeds = list(
+            dict.fromkeys(
+                list(HTML_DISCOVERY_SEEDS[store])
+                + sorted(html_sitemap_seeds)
+            )
+        )
+    
+        fallback = _discover_html_catalog(
+            store,
+            html_seeds,
+            started_at + DISCOVERY_HARD_TIMEOUT,
+        )
+    
+        product_urls.update(
+            fallback['product_urls']
+        )
 
 
     diagnostics={
@@ -3112,28 +3112,28 @@ elif (
                 f'dead:{frontier.get("dead",0)}'
             )
     if fallback is not None:
-    frontier = fallback.get('frontier') or {}
-
-    details.append(
-        f'html_fallback=visited:{fallback["visited"]};'
-        f'successes:{fallback["successes"]};'
-        f'products:{len(fallback["product_urls"])};'
-        f'pending:{frontier.get("pending", 0)};'
-        f'done:{frontier.get("done", 0)};'
-        f'errors:{frontier.get("error", 0)};'
-        f'dead:{frontier.get("dead", 0)};'
-        f'seeds:{len(list(dict.fromkeys(
-            list(HTML_DISCOVERY_SEEDS.get(store, ()))
-            + sorted(html_sitemap_seeds)
-        )))}'
-    )
-
-    if fallback['errors']:
+        frontier = fallback.get('frontier') or {}
+    
         details.append(
-            'html_errors='
-            + ' | '.join(fallback['errors'][:4])
+            f'html_fallback=visited:{fallback["visited"]};'
+            f'successes:{fallback["successes"]};'
+            f'products:{len(fallback["product_urls"])};'
+            f'pending:{frontier.get("pending", 0)};'
+            f'done:{frontier.get("done", 0)};'
+            f'errors:{frontier.get("error", 0)};'
+            f'dead:{frontier.get("dead", 0)};'
+            f'seeds:{len(list(dict.fromkeys(
+                list(HTML_DISCOVERY_SEEDS.get(store, ()))
+                + sorted(html_sitemap_seeds)
+            )))}'
         )
-
+    
+        if fallback['errors']:
+            details.append(
+                'html_errors='
+                + ' | '.join(fallback['errors'][:4])
+            )
+    
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
