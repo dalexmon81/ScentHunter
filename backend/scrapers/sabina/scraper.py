@@ -1,7 +1,7 @@
 import json
 import re
-import uuid
 import unicodedata
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
@@ -26,6 +26,17 @@ MAX_SITEMAP_CANDIDATES = 40
 BROWSER_DISCOVERY_TIMEOUT_MS = 15000
 BROWSER_DISCOVERY_WAIT_MS = 1000
 
+# Sabina's Italian generic search is powered by Sellboost.
+SELLBOOST_SEARCH_URL = "https://api.sellboost.com/finder/search"
+SELLBOOST_SHOP_ID = "fd08e30c-8347-4a9f-ae40-94463e3d1e59"
+SELLBOOST_SUB_SHOP_ID = "shop|1"
+SELLBOOST_COUNTRY = "IT"
+SELLBOOST_COUNTRY_ID = 10
+SELLBOOST_LANGUAGE = "it"
+SELLBOOST_CURRENCY = "EUR"
+SELLBOOST_REGISTERS_PER_PAGE = 50
+SELLBOOST_MAX_PAGES = 10
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) "
@@ -38,18 +49,6 @@ HEADERS = {
         "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
     "Referer": BASE_URL + "/es/",
-}
-
-SELLBOOST_URL = "https://api.sellboost.com/finder/search"
-SELLBOOST_PAGE_SIZE = 24
-SELLBOOST_MAX_PAGES = 5
-SELLBOOST_HEADERS = {
-    "User-Agent": HEADERS["User-Agent"],
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
-    "Content-Type": "application/json",
-    "Origin": BASE_URL,
-    "Referer": BASE_URL + "/it/",
 }
 
 PRODUCT_PATH_RE = re.compile(
@@ -842,85 +841,114 @@ def _browser_search_product_urls(query):
                         self.url = url
 
                 response = _BrowserResponse(html, page.url)
-                return _extract_search_candidates(
-                    response, query
-                )[:MAX_CANDIDATES]
+                return _extract_search_candidates(response, query)[:MAX_CANDIDATES]
             finally:
                 browser.close()
     except Exception:
         return []
 
 
-def _json_strings(value):
-    if isinstance(value, str):
-        yield value
-    elif isinstance(value, dict):
-        for child in value.values():
-            yield from _json_strings(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from _json_strings(child)
+def _sellboost_search_candidates(session, query):
+    """Query Sabina's authoritative Italian Sellboost search service.
 
+    Returns a list for a successful search (including [] for zero hits).
+    Returns None only for a technical failure so legacy fallback remains
+    distinguishable from a valid zero-result search.
+    """
+    session_id = str(uuid.uuid4())
+    payload = {
+        "sessionId": session_id,
+        "searchTerm": str(query or "").strip(),
+        "facets": [],
+        "priceFacet": None,
+        "country": SELLBOOST_COUNTRY,
+        "countryId": SELLBOOST_COUNTRY_ID,
+        "currency": SELLBOOST_CURRENCY,
+        "excludedBrands": [],
+        "excludedProducts": [],
+        "group": "1",
+        "lastRegisterId": [],
+        "registersPerPage": SELLBOOST_REGISTERS_PER_PAGE,
+        "searchLanguage": SELLBOOST_LANGUAGE,
+        "sorting": {"field": "relevance", "type": "desc"},
+        "shopId": SELLBOOST_SHOP_ID,
+        "subShopId": SELLBOOST_SUB_SHOP_ID,
+    }
 
-def _sellboost_urls_from_payload(payload):
-    urls = []
-    for value in _json_strings(payload):
-        if not (value.startswith("/") or "sabina.com" in value):
-            continue
-        absolute = normalise_url(value)
-        if absolute and is_product_url(absolute) and absolute not in urls:
-            urls.append(absolute)
-    return urls
+    headers = {
+        "User-Agent": HEADERS["User-Agent"],
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+        "Content-Type": "application/json",
+        "Origin": BASE_URL,
+        "Referer": BASE_URL + "/it/",
+    }
 
-
-def _sellboost_product_urls(session, query):
-    """Sellboost is Sabina's search backend; its results are authoritative."""
-    # One session id for every page of a single search.
-    session_id = uuid.uuid4().hex
     found = []
     seen = set()
-    for page in range(SELLBOOST_MAX_PAGES):
-        body = {
-            "query": query,
-            "q": query,
-            "page": page + 1,
-            "size": SELLBOOST_PAGE_SIZE,
-            "session_id": session_id,
-            "locale": "it",
-            "language": "it",
-        }
+
+    for _ in range(SELLBOOST_MAX_PAGES):
         try:
             response = session.post(
-                SELLBOOST_URL,
-                json=body,
-                headers=SELLBOOST_HEADERS,
+                SELLBOOST_SEARCH_URL,
+                json=payload,
+                headers=headers,
                 timeout=DISCOVERY_TIMEOUT,
+                allow_redirects=True,
             )
+        except requests.RequestException:
+            return None
+
+        try:
             if response.status_code >= 400:
-                break
-            payload = response.json()
-        except (requests.RequestException, ValueError):
+                return None
+            data = response.json()
+        except (ValueError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(data, dict) or data.get("status") != "success":
+            return None
+
+        result_data = data.get("data")
+        if not isinstance(result_data, dict):
+            return None
+
+        rows = result_data.get("searchResponses")
+        if rows is None or not isinstance(rows, list):
+            return None
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            candidate = normalise_url(row.get("url"))
+            if not candidate or not is_product_url(candidate):
+                continue
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            found.append(candidate)
+            if len(found) >= MAX_CANDIDATES:
+                return found[:MAX_CANDIDATES]
+
+        last_register_id = result_data.get("lastRegisterId")
+        if not last_register_id:
             break
-        new = [u for u in _sellboost_urls_from_payload(payload) if u not in seen]
-        if not new:
-            break
-        seen.update(new)
-        found.extend(new)
-        if len(found) >= MAX_CANDIDATES:
-            break
+        payload["lastRegisterId"] = (
+            last_register_id
+            if isinstance(last_register_id, list)
+            else [last_register_id]
+        )
+
     return found[:MAX_CANDIDATES]
 
 
-def discover_product_urls(session, query):
-    """
-    Generic Sabina discovery.
+def _sellboost_search_product_urls(session, query):
+    """Compatibility wrapper preserving technical-failure semantics."""
+    return _sellboost_search_candidates(session, query)
 
-    Try the retailer's known generic native-search routes in sequence. Each
-    route is driven only by the runtime query; there are no product/brand/SKU
-    exceptions. If native HTTP search does not produce candidates, use the
-    same generic native-search surface through a bounded browser fallback,
-    then the bounded generic sitemap fallback.
-    """
+
+def _legacy_search_product_urls(session, query):
+    """Legacy generic discovery used only if Sellboost technically fails."""
     native_candidates = []
     seen = set()
 
@@ -949,28 +977,14 @@ def discover_product_urls(session, query):
                 seen.add(candidate)
                 native_candidates.append(candidate)
 
-        # A native route can return technically valid product URLs that are
-        # unrelated to the runtime query. Do not stop on those false-positive
-        # candidates. Continue through the remaining generic Sabina routes
-        # until a URL itself contains all meaningful query tokens.
-        strong = [
-            candidate
-            for candidate in native_candidates
-            if query_matches(candidate, query)
-        ]
+        strong = [candidate for candidate in native_candidates if query_matches(candidate, query)]
         if strong:
             ranked = sorted(
                 native_candidates,
-                key=lambda candidate: (
-                    -_candidate_score(candidate, '', query),
-                    candidate,
-                ),
+                key=lambda candidate: (-_candidate_score(candidate, "", query), candidate),
             )
             return ranked[:MAX_CANDIDATES]
 
-    # HTTP-native search can time out or return only unrelated candidates while
-    # the same public search surface remains usable through a real browser.
-    # Use the browser fallback only after all native routes have been tried.
     browser_candidates = _browser_search_product_urls(query)
     merged = list(native_candidates)
     for candidate in browser_candidates:
@@ -978,24 +992,30 @@ def discover_product_urls(session, query):
             seen.add(candidate)
             merged.append(candidate)
 
-    strong = [
-        candidate
-        for candidate in merged
-        if query_matches(candidate, query)
-    ]
+    strong = [candidate for candidate in merged if query_matches(candidate, query)]
     if strong:
         ranked = sorted(
             merged,
-            key=lambda candidate: (
-                -_candidate_score(candidate, '', query),
-                candidate,
-            ),
+            key=lambda candidate: (-_candidate_score(candidate, "", query), candidate),
         )
         return ranked[:MAX_CANDIDATES]
 
-    # Native and browser search returned no query-relevant candidates. Use only
-    # a bounded generic sitemap fallback rather than scanning brand indexes.
     return _sitemap_product_urls(session, query)[:MAX_CANDIDATES]
+
+
+def _discover_product_candidates(session, query):
+    """Return (URL, authoritative_search) candidates."""
+    sellboost_candidates = _sellboost_search_candidates(session, query)
+
+    if sellboost_candidates is not None:
+        return [(url, True) for url in sellboost_candidates[:MAX_CANDIDATES]]
+
+    return [(url, False) for url in _legacy_search_product_urls(session, query)[:MAX_CANDIDATES]]
+
+
+def discover_product_urls(session, query):
+    """Compatibility API returning URLs only."""
+    return [url for url, _authoritative in _discover_product_candidates(session, query)]
 
 
 def _offer_list(product):
@@ -1075,7 +1095,7 @@ def _select_product_offer(product, final_url, title, size_ml):
     return priced[0] if priced else candidates[0]
 
 
-def extract_product_page(session, url, query, trusted=False):
+def extract_product_page(session, url, query, authoritative_search=False):
     try:
         response = session.get(
             url,
@@ -1128,7 +1148,7 @@ def extract_product_page(session, url, query, trusted=False):
     elif raw_brand:
         brand = clean(raw_brand)
 
-    if not trusted and not query_matches(
+    if not authoritative_search and not query_matches(
         f"{title} {brand or ''}",
         query,
     ):
@@ -1390,7 +1410,7 @@ def extract_product_page(session, url, query, trusted=False):
         ),
     }
 
-def _fallback_extract_product_page(session, url, query, trusted=False):
+def _fallback_extract_product_page(session, url, query, authoritative_search=False):
     """Minimal product-page parser used only when the rich parser raises.
 
     It is deliberately generic: it reads the current product H1, visible
@@ -1414,7 +1434,9 @@ def _fallback_extract_product_page(session, url, query, trusted=False):
 
     h1 = soup.select_one("h1")
     title = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not title or (not trusted and not query_matches(title, query)):
+    if not title:
+        return None
+    if not authoritative_search and not query_matches(title, query):
         return None
 
     page_text = clean(soup.get_text(" ", strip=True))
@@ -1468,7 +1490,7 @@ def _fallback_extract_product_page(session, url, query, trusted=False):
     }
 
 
-def _fetch_candidate(url, query, trusted=False):
+def _fetch_candidate(url, query, authoritative_search=False):
     # One Session per worker avoids sharing requests.Session across threads.
     # IMPORTANT: do not issue a second HTTP request merely because the rich
     # parser returned None. That doubled the worst-case product-page budget
@@ -1476,12 +1498,12 @@ def _fetch_candidate(url, query, trusted=False):
     local_session = requests.Session()
     try:
         try:
-            return extract_product_page(local_session, url, query, trusted)
+            return extract_product_page(local_session, url, query, authoritative_search=authoritative_search)
         except Exception:
             # The fallback is allowed only when the parser itself raises; it
             # must never be used as a second request after a normal rejection.
             try:
-                return _fallback_extract_product_page(local_session, url, query, trusted)
+                return _fallback_extract_product_page(local_session, url, query, authoritative_search=authoritative_search)
             except Exception:
                 return None
     finally:
@@ -1497,11 +1519,8 @@ def search(query):
     session = requests.Session()
 
     try:
-        candidate_urls = _sellboost_product_urls(session, query)
-        trusted = bool(candidate_urls)
-        if not trusted:
-            candidate_urls = discover_product_urls(session, query)
-        if not candidate_urls:
+        candidates = _discover_product_candidates(session, query)
+        if not candidates:
             return []
 
         results = []
@@ -1510,11 +1529,16 @@ def search(query):
         # Product pages are independent. Fetch them concurrently so one slow
         # product cannot consume the entire store timeout budget.
         with ThreadPoolExecutor(
-            max_workers=min(PRODUCT_WORKERS, len(candidate_urls))
+            max_workers=min(PRODUCT_WORKERS, len(candidates))
         ) as pool:
             futures = {
-                pool.submit(_fetch_candidate, url, query, trusted): url
-                for url in candidate_urls[:MAX_CANDIDATES]
+                pool.submit(
+                    _fetch_candidate,
+                    url,
+                    query,
+                    authoritative_search,
+                ): url
+                for url, authoritative_search in candidates[:MAX_CANDIDATES]
             }
 
             for future in as_completed(futures):
