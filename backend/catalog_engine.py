@@ -2607,6 +2607,12 @@ def _search_db():
 def search_local(query, per_store=32, search_terms=None):
     # FTS5 is candidate generation only. Whole-token verification and
     # ProductMatcher remain authoritative for identity.
+    #
+    # IMPORTANT: every search term is an alternative representation of the
+    # same user intent. Do not combine them into one FTS query with a single
+    # SQL LIMIT: a broad alias can consume that limit before a later,
+    # more-specific term is evaluated. That can make valid catalog products
+    # disappear from normal search even though they are present in the catalog.
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2643,12 +2649,6 @@ def search_local(query, per_store=32, search_terms=None):
         for store in STORES:
             selected_by_url = {}
 
-            # All query terms are alternatives for the same user intent.
-            # Execute one FTS5 query per store instead of one query per term.
-            fts_query = _fts_query_for_token_sets(token_sets)
-            if not fts_query:
-                continue
-
             sql = """
                     SELECT u.url,u.slug,u.lastmod,
                            p.store AS product_store, p.url AS product_url,
@@ -2672,25 +2672,39 @@ def search_local(query, per_store=32, search_terms=None):
                        AND u.active=1
                      LIMIT ?
                 """
-            candidate_sql_limit = max(128, (limit or 64) * max(1, len(token_sets)))
-            candidates = conn.execute(sql, (store, fts_query, candidate_sql_limit)).fetchall()
 
-            for r in candidates:
-                url = str(r['url'] or '').strip()
-                if not url or url in selected_by_url:
+            # Give every ProductMatcher term its own candidate budget.
+            # The literal user query is therefore never crowded out by
+            # canonical names or aliases belonging to the same intent.
+            per_term_limit = max(128, (limit or 64) * 2)
+
+            for ts in token_sets:
+                fts_query = _fts_query_for_token_sets([ts])
+                if not fts_query:
                     continue
-                search_text = ' '.join(str(r[key] or '') for key in ('slug','product_name','product_brand'))
-                normalized_tokens = set(norm(search_text).split())
-                best_term_score = 0
-                matched_term = False
-                for ts in token_sets:
-                    score = sum(1 for token in ts if token in normalized_tokens)
-                    if score == len(ts):
-                        matched_term = True
-                        best_term_score = max(best_term_score, score)
-                if not matched_term:
-                    continue
-                selected_by_url[url] = (best_term_score + 10, dict(r))
+
+                candidates = conn.execute(
+                    sql,
+                    (store, fts_query, per_term_limit),
+                ).fetchall()
+
+                for r in candidates:
+                    url = str(r['url'] or '').strip()
+                    if not url or url in selected_by_url:
+                        continue
+
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in ('slug', 'product_name', 'product_brand')
+                    )
+                    normalized_tokens = set(norm(search_text).split())
+                    score = sum(
+                        1 for token in ts if token in normalized_tokens
+                    )
+                    if score != len(ts):
+                        continue
+
+                    selected_by_url[url] = (score + 10, dict(r))
 
             ordered = sorted(
                 selected_by_url.values(),
@@ -2703,6 +2717,7 @@ def search_local(query, per_store=32, search_terms=None):
                 url = str(r.get('url') or '').strip()
                 if not url:
                     continue
+
                 if r.get('product_name'):
                     rows.append({
                         'url': url,
@@ -2734,10 +2749,10 @@ def search_local(query, per_store=32, search_terms=None):
                         'name': r.get('slug') or url_slug(url),
                         '_needs_refresh': True,
                     })
+
         return rows
     finally:
         conn.close()
-
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows):
     # Compatibility path for SQLite builds without FTS5.
@@ -3833,6 +3848,25 @@ def _coverage_claim_tasks(limit, stores=None):
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
+
+        # Recover coverage jobs left in PROCESSING by a worker that died or
+        # was restarted. Without this, a task can remain PROCESSING forever
+        # and never be retried.
+        stale_before = now - max(
+            180.0,
+            _COVERAGE_TASK_TIMEOUT_SECONDS * 6,
+        )
+        conn.execute(
+            """UPDATE catalog_coverage
+                  SET state='RETRY',
+                      next_run_at=?,
+                      last_error='stale_processing_recovered'
+                WHERE state='PROCESSING'
+                  AND last_started_at IS NOT NULL
+                  AND last_started_at < ?""",
+            (now, stale_before),
+        )
+        conn.commit()
         # Requeue previously failed family identities once when this coverage
         # worker process starts. A NOT_FOUND result normally sleeps for 24h;
         # that is wrong when the family registry has just gained a new identity.
@@ -3850,26 +3884,6 @@ def _coverage_claim_tasks(limit, stores=None):
                     )
                     conn.commit()
                     _COVERAGE_FAMILY_REQUEUE_DONE = True
-        # A coverage task is executed outside SQLite and therefore can be left
-        # in PROCESSING if the worker process dies, is restarted, or the child
-        # scraper is terminated. Such a task must never become permanently
-        # invisible to the coverage scheduler.
-        stale_before = now - max(
-            180.0,
-            _COVERAGE_TASK_TIMEOUT_SECONDS * 6,
-        )
-        conn.execute(
-            """UPDATE catalog_coverage
-                  SET state='RETRY',
-                      next_run_at=?,
-                      last_error='stale_processing_recovered'
-                WHERE state='PROCESSING'
-                  AND last_started_at IS NOT NULL
-                  AND last_started_at < ?""",
-            (now, stale_before),
-        )
-        conn.commit()
-
         selected_stores = [
             str(store).strip().lower()
             for store in (stores or [])
