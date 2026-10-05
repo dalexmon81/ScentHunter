@@ -706,14 +706,14 @@ def _extract_search_candidates(response, query):
 
     decoded = response.text.replace("\\/", "/").replace("\\u002F", "/")
     for match in re.finditer(
-        r'https?://(?:www\\.)?sabina\\.com/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
+        r'https?://(?:www\.)?sabina\.com/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
         decoded,
         re.I,
     ):
         add(match.group(0), match.group(0))
 
     for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\\s\\\\]+',
+        r'/(?:es|it|fr|en|de|nl|pt)/[^"\'<>\s\\]+',
         decoded,
         re.I,
     ):
