@@ -1020,6 +1020,13 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
+        # Sabina's public brand directory is a generic catalog graph.
+        # Seeding the directory lets the crawler reach every retailer brand
+        # page, including brands whose products are not exposed by the
+        # bounded fragrance search/category surfaces. No brand or product is
+        # named here; pagination is followed by the generic HTML crawler.
+        'https://www.sabina.com/es/marcas',
+        'https://www.sabina.com/es/marcas_old',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
         # sitemap. It is a catalog/navigation surface, not a product query.
         'https://www.sabina.com/it/l/profumi-arabi',
@@ -1328,18 +1335,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    elif re.search(r'/(?:brands?|marques?|marcas|marchi|marken)(?:\.html)?$', path, re.I):
-        score = 0
-    # Sabina's brand directory links use a numeric-id + slug shape such as
-    # /es/631_rasasi. Treat this generic retailer brand-page structure as a
-    # primary catalog surface, alongside the brand directory itself. Keeping
-    # these pages at priority 0 prevents secondary fragrance/search/category
-    # surfaces from consuming the bounded crawl before the brand graph is
-    # traversed. No brand name or product id is hard-coded.
-    elif (
-        store == 'sabina'
-        and re.search(r'/\d+_[^/]+/?$', path, re.I)
-    ):
+    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
@@ -1956,137 +1952,12 @@ def _discover_html_catalog(store, seeds, deadline=None):
         'errors':errors[:20],
     }
 
-def _diagnose_sabina_brand_branch(brand='RASASI', query='Kobra'):
-    """READ-ONLY two-hop diagnostic for a retailer brand navigation branch.
-
-    This is diagnostic-only: it does not persist anything and does not alter
-    production discovery. It uses the same HTTP fetch and URL-admission
-    functions as the real crawler, but restricts the inspection to the brand
-    directory and one explicitly requested brand page.
-    """
-    started = time.time()
-    directory = 'https://www.sabina.com/es/marcas'
-    out = {
-        'ok': True,
-        'diagnostic': 'sabina-brand-branch-read-only-v1',
-        'store': 'sabina',
-        'brand': brand,
-        'query': query,
-        'database_written': False,
-        'production_search_called': False,
-        'steps': [],
-    }
-
-    def tokens_hit(value, required):
-        value = norm(value)
-        return bool(required) and all(t in value for t in required)
-
-    try:
-        _requested, final, data, error = _fetch_html_page('sabina', directory)
-    except Exception as exc:
-        final, data, error = directory, None, f'{type(exc).__name__}:{exc}'
-
-    directory_step = {
-        'url': directory,
-        'final_url': final,
-        'status': 'ERROR' if error else 'OK',
-        'bytes': len(data or b''),
-        'error': error,
-    }
-    out['steps'].append({'stage': 'brand_directory', **directory_step})
-    if error or not data:
-        out['ok'] = False
-        out['diagnosis'] = 'DIRECTORY_FETCH_FAILED'
-        out['elapsed_sec'] = round(time.time() - started, 3)
-        return out
-
-    soup = BeautifulSoup(data, 'html.parser')
-    brand_links = []
-    target = norm(brand)
-    for a in soup.find_all('a', href=True):
-        href = a.get('href')
-        label = a.get_text(' ', strip=True)
-        absolute = urllib.parse.urljoin(final or directory, href).split('#', 1)[0]
-        parsed = urllib.parse.urlparse(absolute)
-        if parsed.netloc.lower() not in {
-            urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('sabina')
-        }:
-            continue
-        if not re.search(r'/\d+_[^/]+/?$', parsed.path or '', re.I):
-            continue
-        admitted = _html_listing_url('sabina', absolute, final or directory, label)
-        if admitted:
-            item = {'url': admitted, 'label': label}
-            brand_links.append(item)
-            if target and target in norm(label):
-                target_link = admitted
-
-    out['brand_directory_links_found'] = len(brand_links)
-    out['target_brand_link'] = locals().get('target_link')
-    out['target_brand_link_admitted'] = bool(locals().get('target_link'))
-    out['brand_link_sample'] = brand_links[:20]
-
-    target_link = locals().get('target_link')
-    if not target_link:
-        out['diagnosis'] = 'BRAND_LINK_NOT_FOUND_OR_NOT_ADMITTED'
-        out['elapsed_sec'] = round(time.time() - started, 3)
-        return out
-
-    try:
-        _requested, brand_final, brand_data, brand_error = _fetch_html_page('sabina', target_link)
-    except Exception as exc:
-        brand_final, brand_data, brand_error = target_link, None, f'{type(exc).__name__}:{exc}'
-
-    brand_step = {
-        'url': target_link,
-        'final_url': brand_final,
-        'status': 'ERROR' if brand_error else 'OK',
-        'bytes': len(brand_data or b''),
-        'error': brand_error,
-    }
-    out['steps'].append({'stage': 'brand_page', **brand_step})
-    if brand_error or not brand_data:
-        out['diagnosis'] = 'BRAND_PAGE_FETCH_FAILED'
-        out['elapsed_sec'] = round(time.time() - started, 3)
-        return out
-
-    brand_soup = BeautifulSoup(brand_data, 'html.parser')
-    required = tokens(query)
-    product_links = []
-    query_hits = []
-    for a in brand_soup.find_all('a', href=True):
-        href = a.get('href')
-        label = a.get_text(' ', strip=True)
-        absolute = urllib.parse.urljoin(brand_final or target_link, href).split('#', 1)[0]
-        product = _html_product_url('sabina', absolute, brand_final or target_link)
-        if product:
-            product_links.append({'url': product, 'label': label})
-            if tokens_hit(f'{product} {label}', required):
-                query_hits.append({'url': product, 'label': label})
-
-    out['brand_product_links_found'] = len(product_links)
-    out['query_product_hits'] = list(dict((x['url'], x) for x in query_hits).values())[:50]
-    out['query_product_hit_count'] = len(out['query_product_hits'])
-
-    if out['query_product_hit_count']:
-        out['diagnosis'] = 'BRANCH_COMPLETE_QUERY_PRODUCT_FOUND'
-    elif product_links:
-        out['diagnosis'] = 'BRAND_PAGE_REACHED_PRODUCT_LINKS_FOUND_QUERY_NOT_IN_LINK_TEXT'
-    else:
-        out['diagnosis'] = 'BRAND_PAGE_REACHED_NO_PRODUCT_LINKS_ADMITTED'
-    out['elapsed_sec'] = round(time.time() - started, 3)
-    return out
-
-
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
                 'error': f'html_discovery_not_configured:{store}', 'store': store}
-
-    if store == 'sabina' and int(max_pages or 120) == 2 and query:
-        return _diagnose_sabina_brand_branch(brand='RASASI', query=query)
 
     try:
         max_pages = max(1, min(int(max_pages or 120), HTML_MAX_PAGES))
