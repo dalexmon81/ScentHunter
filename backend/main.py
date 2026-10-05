@@ -83,7 +83,7 @@ def _deloox_resync_worker(job_id):
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
             raise RuntimeError('catalog_discovery_unavailable')
 
-        result = catalog_discover_store('deloox', force_seed_refresh=True)
+        result = catalog_discover_store('deloox')
         if not isinstance(result, dict):
             result = {'status': 'finished', 'result': result}
 
