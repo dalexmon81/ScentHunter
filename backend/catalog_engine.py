@@ -3270,6 +3270,8 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
 
 _COVERAGE_SCHEMA_LOCK = threading.Lock()
 _COVERAGE_SCHEMA_READY = False
+_COVERAGE_FAMILY_REQUEUE_DONE = False
+_COVERAGE_FAMILY_REQUEUE_LOCK = threading.Lock()
 _COVERAGE_CATALOG_CACHE = None
 _COVERAGE_CATALOG_MTIME = None
 _COVERAGE_INTERVAL_SECONDS = 60.0
@@ -3822,6 +3824,7 @@ def _coverage_run_task(task):
             'diagnostic': diagnostic}
 
 def _coverage_claim_tasks(limit, stores=None):
+    global _COVERAGE_FAMILY_REQUEUE_DONE
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
     if not products:
@@ -3830,6 +3833,23 @@ def _coverage_claim_tasks(limit, stores=None):
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
+        # Requeue previously failed family identities once when this coverage
+        # worker process starts. A NOT_FOUND result normally sleeps for 24h;
+        # that is wrong when the family registry has just gained a new identity.
+        # The one-shot process guard avoids a permanent retry loop.
+        if not _COVERAGE_FAMILY_REQUEUE_DONE:
+            with _COVERAGE_FAMILY_REQUEUE_LOCK:
+                if not _COVERAGE_FAMILY_REQUEUE_DONE:
+                    conn.execute(
+                        """UPDATE catalog_coverage
+                              SET state='PENDING', next_run_at=?, last_error=NULL
+                            WHERE product_id LIKE 'FAMILY::%'
+                              AND state IN ('NOT_FOUND','RETRY')
+                        """,
+                        (now,),
+                    )
+                    conn.commit()
+                    _COVERAGE_FAMILY_REQUEUE_DONE = True
         selected_stores = [
             str(store).strip().lower()
             for store in (stores or [])
