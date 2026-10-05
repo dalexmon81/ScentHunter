@@ -1819,6 +1819,47 @@ def _discover_deloox_catalog(seeds, deadline=None):
     }
 
 
+def _persist_sabina_discovery_incremental(product_urls):
+    """Persist Sabina brand-graph discoveries immediately, without waiting for the full graph."""
+    if not product_urls:
+        return 0
+    now = time.time()
+    conn = db()
+    inserted = 0
+    try:
+        with conn:
+            for url, lastmod in product_urls.items():
+                conn.execute(
+                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                       slug=excluded.slug,lastmod=excluded.lastmod,
+                       discovered_at=excluded.discovered_at,active=1""",
+                    ('sabina', url, url_slug(url), lastmod, now),
+                )
+                conn.execute(
+                    """INSERT INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
+                               ELSE 'PENDING'
+                           END,
+                           available_at=CASE
+                               WHEN hydration_queue.state='DONE' THEN hydration_queue.available_at
+                               ELSE excluded.available_at
+                           END""",
+                    ('sabina', url, 'PENDING', 0, now, now, now),
+                )
+                inserted += 1
+    finally:
+        conn.close()
+    return inserted
+
+
 def _discover_sabina_brand_catalog(deadline=None):
     """Discover Sabina's public brand graph as a bounded catalog surface.
 
@@ -1885,10 +1926,12 @@ def _discover_sabina_brand_catalog(deadline=None):
                     successes += 1
                     soup = BeautifulSoup(data, 'html.parser')
                     page_base = final or requested
+                    batch_products = {}
                     for a in soup.find_all('a', href=True):
                         product = _html_product_url('sabina', a.get('href'), page_base)
                         if product:
                             product_urls[product] = ''
+                            batch_products[product] = ''
                     navigation_attrs = (
                         'data-url','data-href','data-link','data-product-url',
                         'data-product-link','data-target',
@@ -1901,6 +1944,8 @@ def _discover_sabina_brand_catalog(deadline=None):
                             product = _html_product_url('sabina', raw, page_base)
                             if product:
                                 product_urls[product] = ''
+                                batch_products[product] = ''
+                    _persist_sabina_discovery_incremental(batch_products)
 
     return {
         'product_urls': product_urls,
