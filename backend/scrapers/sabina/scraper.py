@@ -13,8 +13,8 @@ BASE_URL = "https://www.sabina.com"
 # Generic native-search endpoints. No product/brand-specific routes.
 SEARCH_ENDPOINTS = (
     (BASE_URL + "/es/buscar", {"search_query": True}),
-    (BASE_URL + "/it/ricerca", {"s": True}),                              # ✅ solo s=
-    (BASE_URL + "/it/search", {"s": True}),                               # ✅ solo s=
+    (BASE_URL + "/it/ricerca", {"s": True}),
+    (BASE_URL + "/it/search", {"s": True}),
 )
 TIMEOUT = 7
 DISCOVERY_TIMEOUT = 7
