@@ -994,27 +994,16 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/search?query=parfum',
         'https://www.deloox.com/en/search?query=perfume',
         'https://www.deloox.com/en/search?query=fragrance',
-        # Apply the same generic retailer-owned search surfaces to every
-        # already-configured Deloox storefront. No user/product-specific
-        # query is ever injected here.
-        'https://www.deloox.nl/chercher.html?q=parfum',
-        'https://www.deloox.nl/chercher.html?q=perfume',
-        'https://www.deloox.nl/chercher.html?q=fragrance',
-        'https://www.deloox.nl/en/search?query=parfum',
-        'https://www.deloox.nl/en/search?query=perfume',
-        'https://www.deloox.nl/en/search?query=fragrance',
-        'https://www.deloox.lu/chercher.html?q=parfum',
-        'https://www.deloox.lu/chercher.html?q=perfume',
-        'https://www.deloox.lu/chercher.html?q=fragrance',
-        'https://www.deloox.lu/en/search?query=parfum',
-        'https://www.deloox.lu/en/search?query=perfume',
-        'https://www.deloox.lu/en/search?query=fragrance',
-        'https://www.deloox.es/chercher.html?q=parfum',
-        'https://www.deloox.es/chercher.html?q=perfume',
-        'https://www.deloox.es/chercher.html?q=fragrance',
-        'https://www.deloox.es/en/search?query=parfum',
-        'https://www.deloox.es/en/search?query=perfume',
-        'https://www.deloox.es/en/search?query=fragrance',
+
+        # The localized storefronts are separate catalog surfaces. They must
+        # receive their own generic fragrance roots; otherwise the persistent
+        # frontier can spend its bounded budget entirely on .be/.com and never
+        # enter a localized catalog branch. These are store-level catalog
+        # surfaces only: no product, brand, or user-search term is embedded.
+        'https://www.deloox.nl/categorie/1000003/parfum.html',
+        'https://www.deloox.lu/de/kategorie/1000003/parfum.html',
+        'https://www.deloox.lu/fr/categorie/1000003/parfum.html',
+        'https://www.deloox.es/categoria/1000003/perfumes.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
