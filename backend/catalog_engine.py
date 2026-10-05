@@ -1031,6 +1031,9 @@ HTML_DISCOVERY_SEEDS = {
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
+# Deloox native search paginates through a numeric `page` parameter. Keep
+# this bounded so generic catalog discovery follows the public search surface
+# without becoming an unbounded crawler.
 DELOOX_SEARCH_MAX_PAGES = 10
 DISCOVERY_HARD_TIMEOUT = 300
 
@@ -1064,10 +1067,15 @@ def _html_product_url(store, raw_url, base_url):
             return None
         return absolute
     if store == 'deloox':
+        # Product identity is the path. Strip tracking/query parameters so
+        # pagination/session parameters never create duplicate catalog rows.
+        canonical = urllib.parse.urlunparse((
+            p.scheme, p.netloc, p.path, '', '', ''
+        ))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
-            return absolute
+            return canonical
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
-            return absolute
+            return canonical
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
@@ -1677,13 +1685,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
         listings = []
-        page_products = set()
 
         def admit(raw, label=''):
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
-                page_products.add(product)
                 return
             listing = _html_listing_url('deloox', raw, base, label)
             if listing:
@@ -1720,25 +1726,11 @@ def _discover_deloox_catalog(seeds, deadline=None):
         except Exception:
             pass
 
-        try:
-            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
-            raw_html = raw_html.replace('\\/', '/')
-            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
-            for match in re.finditer(
-                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
-                raw_html,
-                re.I,
-            ):
-                admit(
-                    urllib.parse.urljoin(base, match.group(0)).split('#', 1)[0],
-                    'embedded_navigation',
-                )
-        except Exception:
-            pass
-
-        # Deloox search results can paginate through a numeric `page`
-        # parameter without exposing a normal <a rel="next"> link. Follow
-        # those pages as part of the generic catalog crawl.
+        # Deloox search results are paginated by a numeric `page` parameter
+        # that is not always exposed as a normal <a rel="next"> link. Follow
+        # the next page while the current page actually yielded product URLs.
+        # This is generic catalog discovery: no product, brand, or query is
+        # hardcoded here.
         sp = urllib.parse.urlparse(requested)
         if (
             page_products
@@ -1761,6 +1753,22 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     depth,
                     requested,
                 ))
+
+        try:
+            raw_html = html.unescape(data.decode('utf-8', 'ignore'))
+            raw_html = raw_html.replace('\\/', '/')
+            raw_html = raw_html.replace('\\u002F', '/').replace('\\u002f', '/')
+            for match in re.finditer(
+                        r'''https?://[^"'\s<>\\]+|/(?:[A-Za-z0-9._~-]+/){1,}[^"'\s<>\\]+''',
+                raw_html,
+                re.I,
+            ):
+                admit(
+                    urllib.parse.urljoin(base, match.group(0)).split('#', 1)[0],
+                    'embedded_navigation',
+                )
+        except Exception:
+            pass
 
         if listings:
             _deloox_queue_enqueue(listings)
