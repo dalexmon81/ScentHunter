@@ -208,16 +208,15 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
         # scraper. This is transport only; discovery remains generic.
         response = _session().get(url, headers=EASY_COSMETIC_HEADERS, timeout=timeout, allow_redirects=True)
     elif host in {
-        urllib.parse.urlparse(base).netloc.lower()
-        for base in DISCOVERY_BASES.get('deloox', ())
+        'deloox.be', 'www.deloox.be',
+        'deloox.com', 'www.deloox.com',
+        'deloox.nl', 'www.deloox.nl',
+        'deloox.lu', 'www.deloox.lu',
+        'deloox.es', 'www.deloox.es',
     }:
         # Deloox exposes its catalog graph to browser-class requests. Keep
         # catalog discovery generic, but use the same browser request profile
         # as the production Deloox scraper instead of ScentHunterBot/7.0.
-        #
-        # The configured Deloox storefront set is authoritative here. Do not
-        # silently treat only .be/.com/.nl as browser-class hosts: the same
-        # generic catalog discovery must work on every configured storefront.
         response = _session().get(url, headers=DELOOX_HEADERS, timeout=timeout, allow_redirects=True)
     else:
         response = _session().get(url, timeout=timeout, allow_redirects=True)
@@ -995,6 +994,27 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/search?query=parfum',
         'https://www.deloox.com/en/search?query=perfume',
         'https://www.deloox.com/en/search?query=fragrance',
+        # Apply the same generic retailer-owned search surfaces to every
+        # already-configured Deloox storefront. No user/product-specific
+        # query is ever injected here.
+        'https://www.deloox.nl/chercher.html?q=parfum',
+        'https://www.deloox.nl/chercher.html?q=perfume',
+        'https://www.deloox.nl/chercher.html?q=fragrance',
+        'https://www.deloox.nl/en/search?query=parfum',
+        'https://www.deloox.nl/en/search?query=perfume',
+        'https://www.deloox.nl/en/search?query=fragrance',
+        'https://www.deloox.lu/chercher.html?q=parfum',
+        'https://www.deloox.lu/chercher.html?q=perfume',
+        'https://www.deloox.lu/chercher.html?q=fragrance',
+        'https://www.deloox.lu/en/search?query=parfum',
+        'https://www.deloox.lu/en/search?query=perfume',
+        'https://www.deloox.lu/en/search?query=fragrance',
+        'https://www.deloox.es/chercher.html?q=parfum',
+        'https://www.deloox.es/chercher.html?q=perfume',
+        'https://www.deloox.es/chercher.html?q=fragrance',
+        'https://www.deloox.es/en/search?query=parfum',
+        'https://www.deloox.es/en/search?query=perfume',
+        'https://www.deloox.es/en/search?query=fragrance',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -1377,32 +1397,9 @@ def _deloox_queue_allowed(url):
     return p.netloc.lower() in allowed_hosts
 
 
-def _deloox_generic_search_seeds():
-    """Build generic catalog-search seeds for every configured Deloox storefront.
-
-    Deloox exposes overlapping catalogs through multiple localized storefronts.
-    The discovery graph must therefore enumerate the same broad fragrance
-    surfaces on every configured host instead of concentrating search seeds on
-    .be/.com. Terms are intentionally generic and are never derived from the
-    user's query or from an individual product.
-    """
-    terms = ('parfum', 'perfume', 'fragrance')
-    seeds = []
-    for base in _discovery_bases('deloox'):
-        base = base.rstrip('/')
-        for term in terms:
-            encoded = urllib.parse.quote(term)
-            seeds.extend((
-                f'{base}/chercher.html?q={encoded}',
-                f'{base}/en/search?query={encoded}',
-            ))
-    return seeds
-
-
 def _deloox_queue_seed():
     """Seed the durable Deloox catalog graph without product-specific URLs."""
     seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('deloox', ())))
-    seeds.extend(_deloox_generic_search_seeds())
     for base in _discovery_bases('deloox'):
         base = base.rstrip('/')
         seeds.extend((base + '/', base + '/en/'))
