@@ -2101,12 +2101,56 @@ def _diagnose_sabina_rasasi_persistence_v1(query='Rasasi'):
     finally:
         conn.close()
 
+
+def _diagnose_sabina_seed_replay_v1(query='Rasasi'):
+    """Read-only replay of every configured Sabina seed, bypassing frontier ranking."""
+    started=time.time()
+    seeds=list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('sabina',())))
+    required=tokens(query)
+    results=[]
+    def scan_seed(seed):
+        item={'seed':seed,'priority':list(_html_discovery_priority('sabina',seed,0,'configured_seed')),'status':'ERROR','product_hits':[],'listing_hits':[],'error':None}
+        try:
+            requested,final,data,error=_fetch_html_page('sabina',seed)
+            if error or not data:
+                item['error']=error or 'empty_response'
+                return item
+            item['status']='OK'; item['final_url']=final or requested
+            soup=BeautifulSoup(data,'html.parser'); page_base=final or requested
+            for a in soup.find_all('a',href=True):
+                href=a.get('href'); label=a.get_text(' ',strip=True)
+                product=_html_product_url('sabina',href,page_base)
+                if product:
+                    if not required or all(t in norm(product+' '+label) for t in required):
+                        item['product_hits'].append({'url':product,'label':label})
+                    continue
+                listing=_html_listing_url('sabina',href,page_base,label)
+                if listing and (not required or all(t in norm(listing+' '+label) for t in required)):
+                    item['listing_hits'].append({'url':listing,'label':label})
+            return item
+        except Exception as exc:
+            item['error']=f'{type(exc).__name__}:{exc}'; return item
+    with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(seeds))) as pool:
+        results=list(pool.map(scan_seed,seeds))
+    query_hits=[]
+    for r in results:
+        for h in r['product_hits']:
+            query_hits.append({'seed':r['seed'],'url':h['url'],'label':h['label']})
+    return {'ok':True,'diagnostic':'sabina-seed-replay-read-only-v1','store':'sabina','query':query,
+            'database_written':False,'production_search_called':False,'seed_count':len(seeds),
+            'successful_seed_count':sum(1 for r in results if r['status']=='OK'),
+            'error_seed_count':sum(1 for r in results if r['status']!='OK'),'query_product_hits':query_hits,
+            'seeds':results,'diagnosis':('KOBRA_OR_QUERY_FOUND_IN_CONFIGURED_SEED' if query_hits else 'QUERY_NOT_FOUND_IN_CONFIGURED_SEEDS'),
+            'elapsed_sec':round(time.time()-started,3)}
+
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 3 and str(query or '').strip():
         return _diagnose_sabina_frontier_full_baseline(query=str(query).strip())
     if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 4 and str(query or '').strip().lower() == 'rasasi':
         return _diagnose_sabina_rasasi_persistence_v1(query='Rasasi')
+    if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 5 and str(query or '').strip().lower() == 'rasasi':
+        return _diagnose_sabina_seed_replay_v1(query='Rasasi')
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
