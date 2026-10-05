@@ -1,5 +1,6 @@
 import json
 import re
+import uuid
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
@@ -37,6 +38,18 @@ HEADERS = {
         "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
     "Referer": BASE_URL + "/es/",
+}
+
+SELLBOOST_URL = "https://api.sellboost.com/finder/search"
+SELLBOOST_PAGE_SIZE = 24
+SELLBOOST_MAX_PAGES = 5
+SELLBOOST_HEADERS = {
+    "User-Agent": HEADERS["User-Agent"],
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+    "Content-Type": "application/json",
+    "Origin": BASE_URL,
+    "Referer": BASE_URL + "/it/",
 }
 
 PRODUCT_PATH_RE = re.compile(
@@ -838,6 +851,66 @@ def _browser_search_product_urls(query):
         return []
 
 
+def _json_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _json_strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _json_strings(child)
+
+
+def _sellboost_urls_from_payload(payload):
+    urls = []
+    for value in _json_strings(payload):
+        if not (value.startswith("/") or "sabina.com" in value):
+            continue
+        absolute = normalise_url(value)
+        if absolute and is_product_url(absolute) and absolute not in urls:
+            urls.append(absolute)
+    return urls
+
+
+def _sellboost_product_urls(session, query):
+    """Sellboost is Sabina's search backend; its results are authoritative."""
+    # One session id for every page of a single search.
+    session_id = uuid.uuid4().hex
+    found = []
+    seen = set()
+    for page in range(SELLBOOST_MAX_PAGES):
+        body = {
+            "query": query,
+            "q": query,
+            "page": page + 1,
+            "size": SELLBOOST_PAGE_SIZE,
+            "session_id": session_id,
+            "locale": "it",
+            "language": "it",
+        }
+        try:
+            response = session.post(
+                SELLBOOST_URL,
+                json=body,
+                headers=SELLBOOST_HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
+            if response.status_code >= 400:
+                break
+            payload = response.json()
+        except (requests.RequestException, ValueError):
+            break
+        new = [u for u in _sellboost_urls_from_payload(payload) if u not in seen]
+        if not new:
+            break
+        seen.update(new)
+        found.extend(new)
+        if len(found) >= MAX_CANDIDATES:
+            break
+    return found[:MAX_CANDIDATES]
+
+
 def discover_product_urls(session, query):
     """
     Generic Sabina discovery.
@@ -1002,7 +1075,7 @@ def _select_product_offer(product, final_url, title, size_ml):
     return priced[0] if priced else candidates[0]
 
 
-def extract_product_page(session, url, query):
+def extract_product_page(session, url, query, trusted=False):
     try:
         response = session.get(
             url,
@@ -1055,7 +1128,7 @@ def extract_product_page(session, url, query):
     elif raw_brand:
         brand = clean(raw_brand)
 
-    if not query_matches(
+    if not trusted and not query_matches(
         f"{title} {brand or ''}",
         query,
     ):
@@ -1317,7 +1390,7 @@ def extract_product_page(session, url, query):
         ),
     }
 
-def _fallback_extract_product_page(session, url, query):
+def _fallback_extract_product_page(session, url, query, trusted=False):
     """Minimal product-page parser used only when the rich parser raises.
 
     It is deliberately generic: it reads the current product H1, visible
@@ -1341,7 +1414,7 @@ def _fallback_extract_product_page(session, url, query):
 
     h1 = soup.select_one("h1")
     title = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not title or not query_matches(title, query):
+    if not title or (not trusted and not query_matches(title, query)):
         return None
 
     page_text = clean(soup.get_text(" ", strip=True))
@@ -1395,7 +1468,7 @@ def _fallback_extract_product_page(session, url, query):
     }
 
 
-def _fetch_candidate(url, query):
+def _fetch_candidate(url, query, trusted=False):
     # One Session per worker avoids sharing requests.Session across threads.
     # IMPORTANT: do not issue a second HTTP request merely because the rich
     # parser returned None. That doubled the worst-case product-page budget
@@ -1403,12 +1476,12 @@ def _fetch_candidate(url, query):
     local_session = requests.Session()
     try:
         try:
-            return extract_product_page(local_session, url, query)
+            return extract_product_page(local_session, url, query, trusted)
         except Exception:
             # The fallback is allowed only when the parser itself raises; it
             # must never be used as a second request after a normal rejection.
             try:
-                return _fallback_extract_product_page(local_session, url, query)
+                return _fallback_extract_product_page(local_session, url, query, trusted)
             except Exception:
                 return None
     finally:
@@ -1424,7 +1497,10 @@ def search(query):
     session = requests.Session()
 
     try:
-        candidate_urls = discover_product_urls(session, query)
+        candidate_urls = _sellboost_product_urls(session, query)
+        trusted = bool(candidate_urls)
+        if not trusted:
+            candidate_urls = discover_product_urls(session, query)
         if not candidate_urls:
             return []
 
@@ -1437,7 +1513,7 @@ def search(query):
             max_workers=min(PRODUCT_WORKERS, len(candidate_urls))
         ) as pool:
             futures = {
-                pool.submit(_fetch_candidate, url, query): url
+                pool.submit(_fetch_candidate, url, query, trusted): url
                 for url in candidate_urls[:MAX_CANDIDATES]
             }
 
