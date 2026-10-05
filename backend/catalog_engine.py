@@ -1952,8 +1952,64 @@ def _discover_html_catalog(store, seeds, deadline=None):
         'errors':errors[:20],
     }
 
+def _diagnose_sabina_kobra_frontier_baseline(query='Kobra'):
+    """READ-ONLY baseline frontier probe; never called by production discovery."""
+    started=time.time()
+    directory='https://www.sabina.com/es/marcas'
+    out={
+        'ok':True,
+        'diagnostic':'sabina-baseline-frontier-read-only-v1',
+        'store':'sabina',
+        'query':query,
+        'database_written':False,
+        'production_search_called':False,
+    }
+    try:
+        _requested, final, data, error=_fetch_html_page('sabina', directory)
+    except Exception as exc:
+        final,data,error=directory,None,f'{type(exc).__name__}:{exc}'
+    if error or not data:
+        out.update({'diagnosis':'DIRECTORY_FETCH_FAILED','error':error,'elapsed_sec':round(time.time()-started,3)})
+        return out
+    soup=BeautifulSoup(data,'html.parser')
+    candidates=[]
+    target=None
+    for a in soup.find_all('a',href=True):
+        absolute=urllib.parse.urljoin(final or directory,a.get('href')).split('#',1)[0]
+        parsed=urllib.parse.urlparse(absolute)
+        if parsed.netloc.lower() not in {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('sabina')}: continue
+        if not re.search(r'/\d+_[^/]+/?$',parsed.path or '',re.I): continue
+        admitted=_html_listing_url('sabina',absolute,final or directory,a.get_text(' ',strip=True))
+        if not admitted: continue
+        pr=_html_discovery_priority('sabina',admitted,1,directory)
+        item={'url':admitted,'label':a.get_text(' ',strip=True),'priority':pr}
+        candidates.append(item)
+        if 'rasasi' in norm(item['label']+' '+item['url']): target=item
+    candidates_sorted=sorted(candidates,key=lambda x:(x['priority'],x['url']))
+    target_rank=(next((i+1 for i,x in enumerate(candidates_sorted) if x['url']==target['url']),None) if target else None)
+    better=sum(1 for x in candidates if target and x['priority'] < target['priority'])
+    out.update({
+        'directory_status':'OK','brand_directory_links_found':len(candidates),
+        'target_brand':target,
+        'target_rank_among_brand_links':target_rank,
+        'brand_links_with_better_priority_than_rasasi':better,
+        'priority_distribution':{},
+    })
+    dist={}
+    for x in candidates: dist[str(x['priority'])]=dist.get(str(x['priority']),0)+1
+    out['priority_distribution']=dist
+    if target:
+        out['diagnosis']='RASASI_FOUND_PRIORITY_CHECK'
+    else:
+        out['diagnosis']='RASASI_BRAND_LINK_NOT_FOUND'
+    out['elapsed_sec']=round(time.time()-started,3)
+    return out
+
+
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
+    if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 2 and str(query or '').strip():
+        return _diagnose_sabina_kobra_frontier_baseline(query=str(query).strip())
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
