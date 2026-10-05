@@ -211,8 +211,6 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
         'deloox.be', 'www.deloox.be',
         'deloox.com', 'www.deloox.com',
         'deloox.nl', 'www.deloox.nl',
-        'deloox.lu', 'www.deloox.lu',
-        'deloox.es', 'www.deloox.es',
     }:
         # Deloox exposes its catalog graph to browser-class requests. Keep
         # catalog discovery generic, but use the same browser request profile
@@ -994,16 +992,6 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/search?query=parfum',
         'https://www.deloox.com/en/search?query=perfume',
         'https://www.deloox.com/en/search?query=fragrance',
-
-        # The localized storefronts are separate catalog surfaces. They must
-        # receive their own generic fragrance roots; otherwise the persistent
-        # frontier can spend its bounded budget entirely on .be/.com and never
-        # enter a localized catalog branch. These are store-level catalog
-        # surfaces only: no product, brand, or user-search term is embedded.
-        'https://www.deloox.nl/categorie/1000003/parfum.html',
-        'https://www.deloox.lu/de/kategorie/1000003/parfum.html',
-        'https://www.deloox.lu/fr/categorie/1000003/parfum.html',
-        'https://www.deloox.es/categoria/1000003/perfumes.html',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
