@@ -29,9 +29,6 @@ import time
 import unicodedata
 import urllib.parse
 import os
-import signal
-import subprocess
-import sys
 import uuid
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -138,8 +135,7 @@ MIN_REPLACEMENT_ABSOLUTE = 100
 # fetch; this only removes obvious non-product endpoints from a sitemap.
 NON_PRODUCT_PATH = re.compile(
     r'/(?:search|suche|chercher|suchen|buscar|category|categorie|categoria|'
-    r'kategorie|kategorien|categories|collection|collections|brand|brands|'
-    r'marca|marque|sitemap|'
+    r'categories|collection|collections|brand|brands|marca|marque|sitemap|'
     r'login|account|cart|checkout|blog|news|tag|tags|help|faq|pages|'
     r'privacy|privacy-policy|terms|terms-of-service|refund|returns|shipping|'
     r'contact|about|legal|policies)(?:/|$)',
@@ -320,166 +316,6 @@ def _remove_local_search_index_url(store, url):
                 postings.pop(token, None)
 
 
-
-_SEARCH_FTS_TABLE = 'catalog_search_fts'
-_SEARCH_FTS_SCHEMA_VERSION = '1'
-
-
-def _ensure_search_fts(conn):
-    """Create and maintain the persistent local-search FTS5 index."""
-    try:
-        conn.execute(
-            """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
-               USING fts5(
-                   store UNINDEXED,
-                   url UNINDEXED,
-                   search_text,
-                   tokenize='unicode61 remove_diacritics 2'
-               )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS catalog_search_fts_meta(
-                   key TEXT PRIMARY KEY,
-                   value TEXT NOT NULL
-               )"""
-        )
-        row = conn.execute(
-            "SELECT value FROM catalog_search_fts_meta WHERE key='schema_version'"
-        ).fetchone()
-        version = str(row['value']) if row else ''
-        if version != _SEARCH_FTS_SCHEMA_VERSION:
-            conn.execute("DELETE FROM catalog_search_fts")
-            conn.execute(
-                """INSERT INTO catalog_search_fts(store,url,search_text)
-                   SELECT u.store,u.url,
-                          trim(COALESCE(u.slug,'') || ' ' ||
-                               COALESCE(p.name,'') || ' ' ||
-                               COALESCE(p.brand,''))
-                     FROM store_urls u
-                     LEFT JOIN store_products p
-                       ON p.store=u.store AND p.url=u.url
-                      AND p.fetch_status='OK'
-                    WHERE u.active=1"""
-            )
-            conn.execute(
-                """INSERT INTO catalog_search_fts_meta(key,value)
-                   VALUES('schema_version',?)
-                   ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
-                (_SEARCH_FTS_SCHEMA_VERSION,),
-            )
-            conn.commit()
-        _ensure_search_fts_triggers(conn)
-        return True
-    except sqlite3.OperationalError:
-        return False
-
-
-def _ensure_search_fts_triggers(conn):
-    """Keep the FTS candidate index synchronized with catalog mutations."""
-    trigger_sql = (
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ai
-        AFTER INSERT ON store_urls
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT NEW.store,NEW.url,
-                   trim(COALESCE(NEW.slug,'') || ' ' ||
-                        COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
-              FROM (SELECT 1) AS one
-              LEFT JOIN store_products p
-                ON p.store=NEW.store AND p.url=NEW.url
-               AND p.fetch_status='OK'
-             WHERE NEW.active=1;
-        END
-        """,
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_au
-        AFTER UPDATE OF store,url,slug,active ON store_urls
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT NEW.store,NEW.url,
-                   trim(COALESCE(NEW.slug,'') || ' ' ||
-                        COALESCE(p.name,'') || ' ' || COALESCE(p.brand,''))
-              FROM (SELECT 1) AS one
-              LEFT JOIN store_products p
-                ON p.store=NEW.store AND p.url=NEW.url
-               AND p.fetch_status='OK'
-             WHERE NEW.active=1;
-        END
-        """,
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_urls_ad
-        AFTER DELETE ON store_urls
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-        END
-        """,
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ai
-        AFTER INSERT ON store_products
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=NEW.store AND url=NEW.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
-                        COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
-              FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url
-               AND u.active=1;
-        END
-        """,
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_au
-        AFTER UPDATE OF store,url,name,brand,fetch_status ON store_products
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,
-                   trim(COALESCE(u.slug,'') || ' ' ||
-                        COALESCE(NEW.name,'') || ' ' || COALESCE(NEW.brand,''))
-              FROM store_urls u
-             WHERE u.store=NEW.store AND u.url=NEW.url
-               AND u.active=1;
-        END
-        """,
-        """
-        CREATE TRIGGER IF NOT EXISTS catalog_search_fts_store_products_ad
-        AFTER DELETE ON store_products
-        BEGIN
-            DELETE FROM catalog_search_fts WHERE store=OLD.store AND url=OLD.url;
-            INSERT INTO catalog_search_fts(store,url,search_text)
-            SELECT u.store,u.url,trim(COALESCE(u.slug,''))
-              FROM store_urls u
-             WHERE u.store=OLD.store AND u.url=OLD.url AND u.active=1;
-        END
-        """,
-    )
-    for sql in trigger_sql:
-        conn.execute(sql)
-
-
-def _fts_query_for_tokens(token_set):
-    """Build a safe FTS5 AND query from normalized search tokens."""
-    parts = []
-    for token in token_set:
-        token = str(token or '').strip()
-        if token:
-            parts.append('"' + token.replace('"', '""') + '"')
-    return ' AND '.join(parts)
-
-
-def _fts_query_for_token_sets(token_sets):
-    """Build one FTS5 OR query for alternative token sets."""
-    groups = []
-    for token_set in token_sets:
-        part = _fts_query_for_tokens(token_set)
-        if part:
-            groups.append('(' + part + ')')
-    return ' OR '.join(groups)
-
 def _ensure_schema(conn):
     """Create/migrate the catalog schema once per process.
 
@@ -495,24 +331,37 @@ def _ensure_schema(conn):
     with _SCHEMA_LOCK:
         if _SCHEMA_READY:
             return
-        conn.execute("""CREATE TABLE IF NOT EXISTS catalog_discovery_queue(
-store TEXT NOT NULL,
-url TEXT NOT NULL,
-depth INTEGER NOT NULL DEFAULT 0,
-priority INTEGER NOT NULL DEFAULT 100,
-source TEXT NOT NULL DEFAULT '',
-state TEXT NOT NULL DEFAULT 'PENDING',
-attempts INTEGER NOT NULL DEFAULT 0,
-available_at REAL NOT NULL DEFAULT 0,
-leased_until REAL,
-lease_token TEXT,
-first_seen_at REAL NOT NULL,
-last_started_at REAL,
-last_finished_at REAL,
-last_error TEXT,
-PRIMARY KEY(store,url)
-)""")
-
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_urls(
+            store TEXT NOT NULL, url TEXT NOT NULL, slug TEXT NOT NULL,
+            lastmod TEXT, discovered_at REAL NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY(store,url))""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_products(
+            store TEXT NOT NULL, url TEXT NOT NULL, name TEXT, brand TEXT, image TEXT,
+            sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
+            price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
+            PRIMARY KEY(store,url))""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
+        conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
+            store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
+            discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS hydration_queue(
+            store TEXT NOT NULL,
+            url TEXT NOT NULL,
+            state TEXT NOT NULL DEFAULT 'PENDING',
+            attempts INTEGER NOT NULL DEFAULT 0,
+            available_at REAL NOT NULL DEFAULT 0,
+            leased_until REAL,
+            lease_token TEXT,
+            first_seen_at REAL NOT NULL,
+            last_started_at REAL,
+            last_finished_at REAL,
+            last_error TEXT,
+            last_http_status INTEGER,
+            PRIMARY KEY(store,url)
+        )""")
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
@@ -525,7 +374,6 @@ PRIMARY KEY(store,url)
             store TEXT NOT NULL,
             url TEXT NOT NULL,
             depth INTEGER NOT NULL DEFAULT 0,
-            priority INTEGER NOT NULL DEFAULT 100,
             source TEXT NOT NULL DEFAULT '',
             state TEXT NOT NULL DEFAULT 'PENDING',
             attempts INTEGER NOT NULL DEFAULT 0,
@@ -538,51 +386,9 @@ PRIMARY KEY(store,url)
             last_error TEXT,
             PRIMARY KEY(store,url)
         )""")
-        # Older deployments may already have catalog_discovery_queue without
-        # the persistent priority column. Migrate it in place before the
-        # frontier is claimed. The priority is structural only and is derived
-        # from the same generic URL-priority function used by the in-memory
-        # HTML crawler.
-        columns = {
-            row['name']
-            for row in conn.execute('PRAGMA table_info(catalog_discovery_queue)').fetchall()
-        }
-        if 'priority' not in columns:
-            conn.execute(
-                'ALTER TABLE catalog_discovery_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 100'
-            )
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_ready ON catalog_discovery_queue(store,state,available_at)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_priority ON catalog_discovery_queue(store,state,available_at,priority,depth,url)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_lease ON catalog_discovery_queue(store,state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_catalog_discovery_finished ON catalog_discovery_queue(store,state,last_finished_at)')
-
-        # Backfill the persistent Deloox frontier after migration. This is
-        # intentionally independent of any search query or product identity.
-        # Existing rows are reprioritized from their URL structure so the
-        # current backlog benefits immediately after deployment.
-        priority_rows = conn.execute(
-            """SELECT url,depth,source
-                 FROM catalog_discovery_queue
-                WHERE store='deloox'"""
-        ).fetchall()
-        if priority_rows:
-            conn.executemany(
-                """UPDATE catalog_discovery_queue
-                      SET priority=?
-                    WHERE store='deloox' AND url=?""",
-                [
-                    (
-                        int(_html_discovery_priority(
-                            'deloox',
-                            row['url'],
-                            int(row['depth'] or 0),
-                            row['source'] or '',
-                        )[0]),
-                        row['url'],
-                    )
-                    for row in priority_rows
-                ],
-            )
         conn.execute("""CREATE TABLE IF NOT EXISTS hydration_scheduler(
             id INTEGER PRIMARY KEY CHECK(id=1),
             last_store_index INTEGER NOT NULL DEFAULT 0
@@ -723,7 +529,7 @@ def _parse_xml_entries(data, url=''):
         return [], f'XML_PARSE_ERROR:{type(exc).__name__}'
 
 
-def _looks_product(url, store=None):
+def _looks_product(url):
     p = urllib.parse.urlparse(url)
     if p.scheme not in ('http', 'https') or p.fragment:
         return False
@@ -738,11 +544,6 @@ def _looks_product(url, store=None):
     # keeping the generic heuristic unchanged for the other stores.
     if re.match(r'^/[a-z]{2}/(?:l|s)(?:/|$)', p.path, re.I):
         return False
-    # ParfumZentrum exposes product pages with a `_z<id>` suffix, while
-    # brand/category/navigation pages use a `_v<id>` suffix. Keep the rule
-    # retailer-generic: it distinguishes URL grammar, not product identity.
-    if store == 'parfumzentrum':
-        return bool(re.search(r'(?:^|_)z\d+/?$', p.path, re.I))
     path = urllib.parse.unquote(p.path).rstrip('/')
     if not path or path == '/':
         return False
@@ -963,21 +764,6 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/category/1075750/mens-perfume.html',
         'https://www.deloox.be/category/1075660/womens-perfume.html',
         'https://www.deloox.com/category/1075660/womens-perfume.html',
-        # Deloox's public search is also a retailer-owned catalog surface.
-        # These are fixed, broad fragrance terms used only by background
-        # catalog discovery; the user's search query is never injected here.
-        'https://www.deloox.be/chercher.html?q=parfum',
-        'https://www.deloox.be/chercher.html?q=perfume',
-        'https://www.deloox.be/chercher.html?q=fragrance',
-        'https://www.deloox.com/chercher.html?q=parfum',
-        'https://www.deloox.com/chercher.html?q=perfume',
-        'https://www.deloox.com/chercher.html?q=fragrance',
-        'https://www.deloox.be/en/search?query=parfum',
-        'https://www.deloox.be/en/search?query=perfume',
-        'https://www.deloox.be/en/search?query=fragrance',
-        'https://www.deloox.com/en/search?query=parfum',
-        'https://www.deloox.com/en/search?query=perfume',
-        'https://www.deloox.com/en/search?query=fragrance',
     ),
     'sabina': (
         'https://www.sabina.com/it/',
@@ -997,20 +783,12 @@ HTML_DISCOVERY_SEEDS = {
         # catalog coverage without coupling discovery to the user's search.
         'https://www.sabina.com/it/ricerca_old?s=parfum',
         'https://www.sabina.com/it/ricerca_old?s=extrait',
-        # Sabina's Spanish storefront exposes a second native search surface
-        # that is currently used by the runtime scraper. It is a generic
-        # retailer catalog surface: only broad fragrance terms are seeded here,
-        # never the user's query or a product/brand-specific term.
         'https://www.sabina.com/es/buscar?search_query=parfum',
         'https://www.sabina.com/es/buscar?search_query=perfume',
         'https://www.sabina.com/es/buscar?search_query=fragrance',
         'https://www.sabina.com/es/buscar?search_query=extrait',
         'https://www.sabina.com/es/buscar?search_query=profumi',
         # Sabina's public brand directory is a generic catalog graph.
-        # Seeding the directory lets the crawler reach every retailer brand
-        # page, including brands whose products are not exposed by the
-        # bounded fragrance search/category surfaces. No brand or product is
-        # named here; pagination is followed by the generic HTML crawler.
         'https://www.sabina.com/es/marcas',
         'https://www.sabina.com/es/marcas_old',
         # Broad Arabic-fragrance landing surface exposed by Sabina's own
@@ -1076,7 +854,7 @@ def _html_product_url(store, raw_url, base_url):
             if 'product' in controllers and ids:
                 return absolute
         return None
-    return absolute if _looks_product(absolute, store) else None
+    return absolute if _looks_product(absolute) else None
 
 
 def _sabina_legacy_product_urls(data, page_base):
@@ -1183,13 +961,6 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         # The Deloox homepage is the root of the catalog graph.
         if path in ('', '/'):
             return absolute
-        # Deloox exposes a public search surface which is useful for
-        # background catalog enumeration. It is accepted only as a generic
-        # retailer navigation page; product-specific/user queries are not
-        # introduced by catalog discovery.
-        if re.search(r'/(?:chercher|search)(?:\.html)?$', path, re.I):
-            if re.search(r'(?:^|&)(?:q|query)=', p.query, re.I):
-                return absolute
         if re.search(r'/(?:category|categorie|categoria|catégorie|brand|marque|marca|parfum|perfume|fragrance|geur)(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:page|pagina|p=|offset|start)=', p.query, re.I):
@@ -1206,15 +977,9 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'sabina':
-        # Sabina's Spanish native search is a generic catalog enumeration
-        # surface used by the runtime scraper. Accept it only with the
-        # retailer's search_query parameter; discovery never injects the
-        # user's request into these URLs. Product pages are excluded here
-        # because _html_product_url handles their numeric-id .html shape.
-        if path.rstrip('/') == '/es/buscar':
-            if re.search(r'(?:^|&)(?:search_query)=', p.query, re.I):
-                return absolute
-            return None
+        # Sabina catalog/navigation pages are crawlable without a query
+        # endpoint. Product pages are excluded here because _html_product_url
+        # handles their numeric-id .html shape.
         if path.endswith('.html'):
             return None
         if re.search(r'(?:page|pagina|p=|page=|offset|start)=', p.query, re.I):
@@ -1291,28 +1056,10 @@ def _html_discovery_priority(store, url, depth, source=''):
     path = (p.path or '/').lower()
     text = norm(f'{path} {p.query}')
 
-    # Deloox's native public search is a catalog enumeration surface. Keep
-    # its generic background seeds ahead of the broad frontier so the search
-    # surface is actually exercised during a bounded discovery run. This is
-    # URL-structure based only; no user query or product identity is used.
-    if (
-        store == 'deloox'
-        and re.search(r'/(?:chercher|search)(?:\.html)?$', path, re.I)
-        and re.search(r'(?:^|&)(?:q|query)=', p.query, re.I)
-    ):
-        score = 0
     # Sabina's native legacy search is a real catalog/navigation surface.
     # Give the native `?s=` form highest priority so generic catalog probes are
     # executed before the broad category graph consumes the bounded crawl.
-    elif (
-        store == 'sabina'
-        and path.rstrip('/') == '/es/buscar'
-        and re.search(r'(?:^|&)search_query=', p.query, re.I)
-    ):
-        # The Spanish native search is a high-value catalog surface for Sabina.
-        # Priority is structural and independent of the user's query.
-        score = 0
-    elif (
+    if (
         store == 'sabina'
         and path.rstrip('/') in ('/it/ricerca_old', '/it/ricerca')
         and re.search(r'(?:^|&)s=', p.query, re.I)
@@ -1333,7 +1080,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     elif re.search(r'/(?:brand|brands|marque|marca)(?:/|$)', path, re.I):
         score = 3
     elif re.search(r'/(?:collection|collections)(?:/|$)', path, re.I):
-        score = 1
+        score = 3
     elif store == 'sabina' and re.search(r'/ricerca_old(?:/|$)', path, re.I):
         # Sabina's legacy search is a catalog surface and exposes controller
         # product IDs that may not be present in category navigation. Keep it
@@ -1380,105 +1127,60 @@ def _deloox_queue_seed():
     return seeds
 
 
-def _catalog_queue_enqueue(store, items):
-    """
-    Insert or update generic HTML discovery frontier entries.
+def _deloox_queue_enqueue(items):
+    """Durably enqueue catalog/navigation URLs.
 
-    items contains:
-        (url, depth, source)
+    Existing DONE rows are not reset by rediscovery. This is what makes the
+    frontier cumulative instead of repeatedly starting from the same branch.
     """
     if not items:
         return 0
-
     now = time.time()
-    inserted = 0
     conn = db()
-
+    inserted = 0
     try:
         with conn:
-            for url, depth, source in items:
-                if not url:
+            for raw_url, depth, source in items:
+                if not raw_url:
                     continue
-
-                url = str(url).split('#', 1)[0]
-                depth = int(depth)
-                source = str(source or '')
-
+                url = str(raw_url).split('#', 1)[0]
+                if not _deloox_queue_allowed(url):
+                    continue
                 if depth > HTML_MAX_DEPTH:
                     continue
-
-                priority = int(
-                    _html_discovery_priority(
-                        store,
-                        url,
-                        depth,
-                        source,
-                    )[0]
-                )
-
+                listing = _html_listing_url('deloox', url, url, source)
+                if not listing:
+                    continue
+                url = listing
                 before = conn.execute(
-                    """SELECT 1
-                         FROM catalog_discovery_queue
-                        WHERE store=?
-                          AND url=?""",
-                    (store, url),
+                    'SELECT 1 FROM catalog_discovery_queue WHERE store=? AND url=?',
+                    ('deloox', url),
                 ).fetchone()
-
                 conn.execute(
                     """INSERT INTO catalog_discovery_queue(
-                           store,
-                           url,
-                           depth,
-                           priority,
-                           source,
-                           state,
-                           attempts,
-                           available_at,
-                           first_seen_at
-                       )
-                       VALUES(?,?,?,?,?,?,?,?,?)
+                           store,url,depth,source,state,attempts,available_at,
+                           first_seen_at)
+                       VALUES(?,?,?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
-                           depth=MIN(
-                               catalog_discovery_queue.depth,
-                               excluded.depth
-                           ),
-                           priority=MIN(
-                               catalog_discovery_queue.priority,
-                               excluded.priority
-                           ),
+                           depth=MIN(catalog_discovery_queue.depth,excluded.depth),
                            source=CASE
-                               WHEN catalog_discovery_queue.source=''
-                               THEN excluded.source
+                               WHEN catalog_discovery_queue.source='' THEN excluded.source
                                ELSE catalog_discovery_queue.source
                            END""",
                     (
-                        store,
-                        url,
-                        depth,
-                        priority,
-                        source,
-                        'PENDING',
-                        0,
-                        now,
-                        now,
+                        'deloox', url, int(depth), str(source or ''),
+                        'PENDING', 0, now, now,
                     ),
                 )
-
                 if before is None:
                     inserted += 1
-
-        return inserted
     finally:
         conn.close()
+    return inserted
 
 
-def _deloox_queue_enqueue(items):
-    return _catalog_queue_enqueue('deloox', items)
-
-
-
-def _catalog_queue_recover_stale(store):
-    """Return expired discovery leases to PENDING for one store."""
+def _deloox_queue_recover_stale():
+    """Return expired discovery leases to PENDING."""
     now = time.time()
     conn = db()
     try:
@@ -1489,28 +1191,19 @@ def _catalog_queue_recover_stale(store):
                        leased_until=NULL,
                        lease_token=NULL,
                        available_at=?
-                 WHERE store=?
+                 WHERE store='deloox'
                    AND state='PROCESSING'
                    AND leased_until IS NOT NULL
                    AND leased_until < ?""",
-                (now, store, now),
+                (now, now),
             )
             return int(cur.rowcount or 0)
     finally:
         conn.close()
 
 
-def _deloox_queue_recover_stale():
-    return _catalog_queue_recover_stale('deloox')
-
-
-
-def _catalog_queue_requeue_stale_done(
-    store,
-    revisit_seconds=86400.0,
-    limit=100,
-):
-    """Periodically revisit completed catalog pages."""
+def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
+    """Periodically revisit completed graph nodes so new catalog branches appear."""
     cutoff = time.time() - max(3600.0, float(revisit_seconds))
     conn = db()
     try:
@@ -1518,20 +1211,17 @@ def _catalog_queue_requeue_stale_done(
             rows = conn.execute(
                 """SELECT url
                      FROM catalog_discovery_queue
-                    WHERE store=?
+                    WHERE store='deloox'
                       AND state='DONE'
                       AND last_finished_at IS NOT NULL
                       AND last_finished_at < ?
-                 ORDER BY last_finished_at ASC
+                    ORDER BY last_finished_at ASC
                     LIMIT ?""",
-                (store, cutoff, max(1, int(limit))),
+                (cutoff, max(1, int(limit))),
             ).fetchall()
-
             if not rows:
                 return 0
-
             now = time.time()
-
             conn.executemany(
                 """UPDATE catalog_discovery_queue
                       SET state='PENDING',
@@ -1539,67 +1229,37 @@ def _catalog_queue_requeue_stale_done(
                           leased_until=NULL,
                           lease_token=NULL,
                           last_error=NULL
-                    WHERE store=?
-                      AND url=?
-                      AND state='DONE'""",
-                [
-                    (now, store, row['url'])
-                    for row in rows
-                ],
+                    WHERE store='deloox' AND url=? AND state='DONE'""",
+                [(now, row['url']) for row in rows],
             )
-
             return len(rows)
     finally:
         conn.close()
 
 
-def _deloox_queue_requeue_stale_done(
-    revisit_seconds=86400.0,
-    limit=100,
-):
-    return _catalog_queue_requeue_stale_done(
-        'deloox',
-        revisit_seconds=revisit_seconds,
-        limit=limit,
-    )
-
-
-
-def _catalog_queue_claim(
-    store,
-    limit=12,
-    lease_seconds=180,
-):
-    """Atomically claim a batch of catalog pages for one store."""
+def _deloox_queue_claim(limit=12, lease_seconds=180):
+    """Atomically claim a bounded batch of discovery pages."""
     limit = max(1, min(int(limit), HTML_WORKERS))
     now = time.time()
     token = uuid.uuid4().hex
-
     conn = db()
     claimed = []
-
     try:
         conn.execute('BEGIN IMMEDIATE')
-
         rows = conn.execute(
-            """SELECT url, depth, priority, source
+            """SELECT url,depth,source
                  FROM catalog_discovery_queue
-                WHERE store=?
+                WHERE store='deloox'
                   AND state IN ('PENDING','ERROR')
                   AND available_at <= ?
-             ORDER BY priority ASC,
-                      depth ASC,
-                      url ASC
+                ORDER BY depth ASC, url ASC
                 LIMIT ?""",
-            (store, now, limit),
+            (now, limit),
         ).fetchall()
-
         if not rows:
             conn.commit()
             return []
-
         leased_until = now + max(30.0, float(lease_seconds))
-
         for row in rows:
             cur = conn.execute(
                 """UPDATE catalog_discovery_queue
@@ -1609,33 +1269,18 @@ def _catalog_queue_claim(
                           lease_token=?,
                           last_started_at=?,
                           last_error=NULL
-                    WHERE store=?
+                    WHERE store='deloox'
                       AND url=?
                       AND state IN ('PENDING','ERROR')
                       AND available_at <= ?""",
-                (
-                    leased_until,
-                    token,
-                    now,
-                    store,
-                    row['url'],
-                    now,
-                ),
+                (leased_until, token, now, row['url'], now),
             )
-
             if cur.rowcount:
                 claimed.append(
-                    (
-                        row['url'],
-                        int(row['depth']),
-                        row['source'] or '',
-                        token,
-                    )
+                    (row['url'], int(row['depth']), row['source'] or '', token)
                 )
-
         conn.commit()
         return claimed
-
     except Exception:
         conn.rollback()
         raise
@@ -1643,69 +1288,30 @@ def _catalog_queue_claim(
         conn.close()
 
 
-def _deloox_queue_claim(limit=12, lease_seconds=180):
-    return _catalog_queue_claim(
-        'deloox',
-        limit=limit,
-        lease_seconds=lease_seconds,
-    )
-
-
-
-def _catalog_queue_finish(
-    store,
-    url,
-    token,
-    ok,
-    error='',
-):
-    """Finish a generic catalog discovery lease."""
+def _deloox_queue_finish(url, token, ok, error=''):
+    """Finish one leased page with bounded retry/backoff."""
     now = time.time()
     conn = db()
-
     try:
         with conn:
             row = conn.execute(
                 """SELECT attempts
                      FROM catalog_discovery_queue
-                    WHERE store=?
-                      AND url=?
-                      AND lease_token=?""",
-                (store, url, token),
+                    WHERE store='deloox' AND url=? AND lease_token=?""",
+                (url, token),
             ).fetchone()
-
             if not row:
                 return
-
             attempts = int(row['attempts'] or 0)
-
             if ok:
                 state = 'DONE'
                 available_at = 0
                 last_error = None
             else:
                 state = 'DEAD' if attempts >= 8 else 'ERROR'
-
-                backoff = (
-                    60,
-                    300,
-                    1800,
-                    7200,
-                    21600,
-                    86400,
-                )
-
-                available_at = now + backoff[
-                    min(
-                        max(attempts - 1, 0),
-                        len(backoff) - 1,
-                    )
-                ]
-
-                last_error = str(
-                    error or 'discovery_error'
-                )[:1000]
-
+                backoff = (60, 300, 1800, 7200, 21600, 86400)
+                available_at = now + backoff[min(max(attempts - 1, 0), len(backoff) - 1)]
+                last_error = str(error or 'discovery_error')[:1000]
             conn.execute(
                 """UPDATE catalog_discovery_queue
                       SET state=?,
@@ -1714,106 +1320,9 @@ def _catalog_queue_finish(
                           lease_token=NULL,
                           last_finished_at=?,
                           last_error=?
-                    WHERE store=?
-                      AND url=?
-                      AND lease_token=?""",
-                (
-                    state,
-                    available_at,
-                    now,
-                    last_error,
-                    store,
-                    url,
-                    token,
-                ),
+                    WHERE store='deloox' AND url=? AND lease_token=?""",
+                (state, available_at, now, last_error, url, token),
             )
-    finally:
-        conn.close()
-
-
-def _deloox_queue_finish(
-    url,
-    token,
-    ok,
-    error='',
-):
-    return _catalog_queue_finish(
-        'deloox',
-        url,
-        token,
-        ok,
-        error,
-    )
-
-def _persist_discovered_product_urls(store, product_urls):
-    """Persist discovered product URLs for any configured store."""
-    if not product_urls:
-        return 0
-
-    now = time.time()
-    count = 0
-    conn = db()
-
-    try:
-        with conn:
-            for url, lastmod in product_urls.items():
-                conn.execute(
-                    """INSERT INTO store_urls(
-                           store,
-                           url,
-                           slug,
-                           lastmod,
-                           discovered_at,
-                           active
-                       )
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           slug=excluded.slug,
-                           lastmod=excluded.lastmod,
-                           discovered_at=excluded.discovered_at,
-                           active=1""",
-                    (
-                        store,
-                        url,
-                        url_slug(url),
-                        lastmod or '',
-                        now,
-                    ),
-                )
-
-                conn.execute(
-                    """INSERT INTO hydration_queue(
-                           store,
-                           url,
-                           state,
-                           attempts,
-                           available_at,
-                           first_seen_at
-                       )
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE'
-                               THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                AND hydration_queue.leased_until > ?
-                               THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END""",
-                    (
-                        store,
-                        url,
-                        'PENDING',
-                        0,
-                        now,
-                        now,
-                        now,
-                    ),
-                )
-
-                count += 1
-
-        return count
     finally:
         conn.close()
 
@@ -1861,422 +1370,6 @@ def _deloox_persist_products(product_urls):
         conn.close()
     return count
 
-def _catalog_discovery_process_page(
-    store,
-    requested,
-    depth,
-    source,
-    result,
-):
-    """
-    Process one generic HTML catalog page.
-
-    Returns:
-        {
-            'ok': bool,
-            'products': dict,
-            'listings': list,
-            'error': str | None,
-        }
-    """
-    _requested, final, data, error = result
-
-    if error:
-        return {
-            'ok': False,
-            'products': {},
-            'listings': [],
-            'error': error,
-        }
-
-    if not data:
-        return {
-            'ok': False,
-            'products': {},
-            'listings': [],
-            'error': 'empty_html_body',
-        }
-
-    soup = BeautifulSoup(data, 'html.parser')
-    base = final or requested
-
-    product_urls = {}
-    listings = []
-
-    def admit(raw, label=''):
-        if not raw:
-            return
-
-        product = _html_product_url(
-            store,
-            raw,
-            base,
-        )
-
-        if product:
-            product_urls[product] = ''
-            return
-
-        listing = _html_listing_url(
-            store,
-            raw,
-            base,
-            label,
-        )
-
-        if listing:
-            listings.append(
-                (
-                    listing,
-                    depth + 1,
-                    requested,
-                )
-            )
-
-    for a in soup.find_all('a', href=True):
-        admit(
-            a.get('href'),
-            a.get_text(' ', strip=True),
-        )
-
-    navigation_attrs = (
-        'data-url',
-        'data-href',
-        'data-link',
-        'data-product-url',
-        'data-product-link',
-        'data-target',
-        'data-next-url',
-        'data-next',
-        'data-load-more-url',
-        'data-pagination-url',
-    )
-
-    for node in soup.find_all(True):
-        label = node.get_text(
-            ' ',
-            strip=True,
-        )[:300]
-
-        for attr in navigation_attrs:
-            raw = node.get(attr)
-
-            if raw:
-                admit(raw, label)
-
-    for node in soup.find_all(
-        'link',
-        href=True,
-    ):
-        rel = ' '.join(
-            node.get('rel') or []
-        ).lower()
-
-        if 'next' in rel:
-            admit(
-                node.get('href'),
-                'pagination',
-            )
-
-    try:
-        for item in _jsonld(soup):
-            admit(
-                item.get('url'),
-                'jsonld_product',
-            )
-    except Exception:
-        pass
-
-    if store == 'sabina':
-        for product in _sabina_legacy_product_urls(
-            data,
-            base,
-        ):
-            product_urls[product] = ''
-
-    try:
-        raw_html = html.unescape(
-            data.decode(
-                'utf-8',
-                'ignore',
-            )
-        )
-
-        raw_html = raw_html.replace(
-            '\\/',
-            '/',
-        )
-
-        raw_html = raw_html.replace(
-            '\\u002F',
-            '/',
-        ).replace(
-            '\\u002f',
-            '/',
-        )
-
-        for match in re.finditer(
-            r'''https?://[^"'\\s<>\\\\]+|
-                /(?:[A-Za-z0-9._~-]+/){1,}
-                [^"'\\s<>\\\\]+''',
-            raw_html,
-            re.I | re.X,
-        ):
-            admit(
-                urllib.parse.urljoin(
-                    base,
-                    match.group(0),
-                ).split('#', 1)[0],
-                'embedded_navigation',
-            )
-
-    except Exception:
-        pass
-
-    return {
-        'ok': True,
-        'products': product_urls,
-        'listings': listings,
-        'error': None,
-    }
-def _discover_persistent_html_catalog(
-    store,
-    seeds,
-    deadline=None,
-):
-    """
-    Incremental persistent HTML discovery for a store.
-
-    The queue survives the end of the current run. URLs beyond the
-    current time budget remain PENDING and are processed later.
-    """
-    if seeds:
-        _catalog_queue_enqueue(
-            store,
-            [
-                (
-                    url,
-                    0,
-                    'configured_seed',
-                )
-                for url in seeds
-            ],
-        )
-
-    seeded = _catalog_queue_enqueue(
-        store,
-        [
-            (
-                url,
-                0,
-                'configured_seed',
-            )
-            for url in seeds
-        ],
-    )
-
-    recovered = _catalog_queue_recover_stale(store)
-
-    requeued = _catalog_queue_requeue_stale_done(
-        store,
-        revisit_seconds=86400.0,
-        limit=100,
-    )
-
-    started = time.time()
-    run_seconds = 120.0
-
-    if deadline is not None:
-        run_seconds = max(
-            1.0,
-            float(deadline) - started,
-        )
-
-    run_deadline = started + min(
-        run_seconds,
-        120.0,
-    )
-
-    visited = 0
-    successes = 0
-    product_urls = {}
-    errors = []
-
-    while time.time() < run_deadline:
-        batch = _catalog_queue_claim(
-            store,
-            limit=HTML_WORKERS,
-            lease_seconds=180,
-        )
-
-        if not batch:
-            break
-
-        with ThreadPoolExecutor(
-            max_workers=min(
-                HTML_WORKERS,
-                len(batch),
-            )
-        ) as pool:
-            futures = {
-                pool.submit(
-                    _fetch_html_page,
-                    store,
-                    url,
-                ): (
-                    url,
-                    depth,
-                    source,
-                    token,
-                )
-                for url, depth, source, token in batch
-            }
-
-            for future in as_completed(futures):
-                url, depth, source, token = futures[
-                    future
-                ]
-
-                visited += 1
-
-                try:
-                    result = future.result()
-
-                    processed = (
-                        _catalog_discovery_process_page(
-                            store,
-                            url,
-                            depth,
-                            source,
-                            result,
-                        )
-                    )
-
-                    if not processed['ok']:
-                        error = processed['error'] or (
-                            'catalog_page_processing_failed'
-                        )
-
-                        errors.append(
-                            f'{url} -> {error}'
-                        )
-
-                        _catalog_queue_finish(
-                            store,
-                            url,
-                            token,
-                            False,
-                            error,
-                        )
-
-                        continue
-
-                    successes += 1
-
-                    product_urls.update(
-                        processed['products']
-                    )
-
-                    _catalog_queue_enqueue(
-                        store,
-                        processed['listings'],
-                    )
-
-                    _catalog_queue_finish(
-                        store,
-                        url,
-                        token,
-                        True,
-                    )
-
-                except Exception as exc:
-                    error = (
-                        f'{type(exc).__name__}: {exc}'
-                    )
-
-                    errors.append(
-                        f'{url} -> {error}'
-                    )
-
-                    _catalog_queue_finish(
-                        store,
-                        url,
-                        token,
-                        False,
-                        error,
-                    )
-
-        if time.time() >= run_deadline:
-            break
-
-    if product_urls:
-        _persist_discovered_product_urls(
-            store,
-            product_urls,
-        )
-
-    conn = db()
-
-    try:
-        row = conn.execute(
-            """SELECT
-                   SUM(
-                       CASE
-                           WHEN state='PENDING'
-                           THEN 1 ELSE 0
-                       END
-                   ) AS pending,
-                   SUM(
-                       CASE
-                           WHEN state='PROCESSING'
-                           THEN 1 ELSE 0
-                       END
-                   ) AS processing,
-                   SUM(
-                       CASE
-                           WHEN state='DONE'
-                           THEN 1 ELSE 0
-                       END
-                   ) AS done,
-                   SUM(
-                       CASE
-                           WHEN state='ERROR'
-                           THEN 1 ELSE 0
-                       END
-                   ) AS error,
-                   SUM(
-                       CASE
-                           WHEN state='DEAD'
-                           THEN 1 ELSE 0
-                       END
-                   ) AS dead,
-                   COUNT(*) AS total
-              FROM catalog_discovery_queue
-             WHERE store=?""",
-            (store,),
-        ).fetchone()
-    finally:
-        conn.close()
-
-    frontier = {
-        'total': int(row['total'] or 0),
-        'pending': int(row['pending'] or 0),
-        'processing': int(row['processing'] or 0),
-        'done': int(row['done'] or 0),
-        'error': int(row['error'] or 0),
-        'dead': int(row['dead'] or 0),
-        'seeded': seeded,
-        'recovered': recovered,
-        'requeued_stale_done': requeued,
-    }
-
-    return {
-        'product_urls': product_urls,
-        'visited': visited,
-        'successes': successes,
-        'errors': errors[:20],
-        'frontier': frontier,
-    }
 
 def _discover_deloox_catalog(seeds, deadline=None):
     """Advance Deloox's persistent catalog graph.
@@ -2450,7 +1543,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
 
 def _persist_sabina_discovery_incremental(product_urls):
-    """Persist Sabina brand-graph discoveries immediately, without waiting for the full graph."""
+    """Persist Sabina brand-graph discoveries immediately."""
     if not product_urls:
         return 0
     now = time.time()
@@ -2465,7 +1558,7 @@ def _persist_sabina_discovery_incremental(product_urls):
                        ON CONFLICT(store,url) DO UPDATE SET
                        slug=excluded.slug,lastmod=excluded.lastmod,
                        discovered_at=excluded.discovered_at,active=1""",
-                    ('sabina', url, url_slug(url), lastmod, now),
+                    ('sabina', url, url_slug(url), lastmod or '', now),
                 )
                 conn.execute(
                     """INSERT INTO hydration_queue(
@@ -2491,13 +1584,12 @@ def _persist_sabina_discovery_incremental(product_urls):
 
 
 def _discover_sabina_brand_catalog(deadline=None):
-    """Discover Sabina's public brand graph as a bounded catalog surface.
+    """Discover Sabina's public brand graph as a generic catalog surface.
 
-    Sabina exposes a large brand directory whose individual brand pages are
-    catalog enumeration surfaces. The generic HTML frontier can starve these
-    pages behind thousands of unrelated links, so the brand graph is crawled
-    as a first-class structural surface. No product name, brand name, query,
-    or product id is used to select pages.
+    This is retailer-architecture discovery only. It does not use a product
+    name, brand name, product id, or user query. Every public brand page is
+    treated uniformly, so products such as Kobra are covered without a
+    product-specific exception.
     """
     seeds = (
         'https://www.sabina.com/es/marcas',
@@ -2523,9 +1615,17 @@ def _discover_sabina_brand_catalog(deadline=None):
         soup = BeautifulSoup(data, 'html.parser')
         page_base = final or requested
         for a in soup.find_all('a', href=True):
-            listing = _html_listing_url('sabina', a.get('href'), page_base,
-                                        a.get_text(' ', strip=True))
-            if listing and re.search(r'/\d+_[^/]+$', urllib.parse.urlparse(listing).path, re.I):
+            listing = _html_listing_url(
+                'sabina',
+                a.get('href'),
+                page_base,
+                a.get_text(' ', strip=True),
+            )
+            if listing and re.search(
+                r'/\d+_[^/]+$',
+                urllib.parse.urlparse(listing).path,
+                re.I,
+            ):
                 brand_urls.add(listing)
 
     def fetch_brand(url):
@@ -2536,18 +1636,16 @@ def _discover_sabina_brand_catalog(deadline=None):
 
     brand_list = sorted(brand_urls)
     if brand_list:
-        # Fetch in bounded batches rather than submitting the entire brand
-        # directory at once. This preserves the global discovery deadline and
-        # prevents one slow retailer branch from blocking catalog persistence.
         for start in range(0, len(brand_list), HTML_WORKERS):
             if deadline is not None and time.time() >= deadline:
                 break
             batch_urls = brand_list[start:start + HTML_WORKERS]
-            with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch_urls))) as pool:
+            with ThreadPoolExecutor(
+                max_workers=min(HTML_WORKERS, len(batch_urls))
+            ) as pool:
                 futures = [pool.submit(fetch_brand, url) for url in batch_urls]
+                batch_products = {}
                 for future in as_completed(futures):
-                    if deadline is not None and time.time() >= deadline:
-                        continue
                     url, result = future.result()
                     requested, final, data, error = result
                     if error:
@@ -2556,26 +1654,31 @@ def _discover_sabina_brand_catalog(deadline=None):
                     successes += 1
                     soup = BeautifulSoup(data, 'html.parser')
                     page_base = final or requested
-                    batch_products = {}
                     for a in soup.find_all('a', href=True):
-                        product = _html_product_url('sabina', a.get('href'), page_base)
+                        product = _html_product_url(
+                            'sabina', a.get('href'), page_base
+                        )
                         if product:
                             product_urls[product] = ''
                             batch_products[product] = ''
+
                     navigation_attrs = (
-                        'data-url','data-href','data-link','data-product-url',
-                        'data-product-link','data-target',
+                        'data-url', 'data-href', 'data-link',
+                        'data-product-url', 'data-product-link', 'data-target',
                     )
                     for node in soup.find_all(True):
                         for attr in navigation_attrs:
                             raw = node.get(attr)
                             if not raw:
                                 continue
-                            product = _html_product_url('sabina', raw, page_base)
+                            product = _html_product_url(
+                                'sabina', raw, page_base
+                            )
                             if product:
                                 product_urls[product] = ''
                                 batch_products[product] = ''
-                    _persist_sabina_discovery_incremental(batch_products)
+
+                _persist_sabina_discovery_incremental(batch_products)
 
     return {
         'product_urls': product_urls,
@@ -2595,6 +1698,16 @@ def _discover_html_catalog(store, seeds, deadline=None):
     successes=0
     sequence=0
 
+    # Sabina exposes a large public brand directory. Crawl that structural
+    # graph first so brand pages cannot be starved by the bounded generic
+    # frontier. This is generic retailer discovery: no product, brand, query,
+    # or product-id exception is used.
+    if store == 'sabina':
+        brand_graph = _discover_sabina_brand_catalog(deadline)
+        product_urls.update(brand_graph['product_urls'])
+        errors.extend(brand_graph['errors'])
+        successes += brand_graph['successes']
+
     def add(url, depth, source=''):
         nonlocal sequence
         if not url or len(queue) >= HTML_MAX_PAGES * 20:
@@ -2605,17 +1718,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
             priority=_html_discovery_priority(store, key, depth, source)
             heapq.heappush(queue, (priority, sequence, key, depth, source))
             queued.add(key)
-
-    # Sabina exposes a large public brand directory. Crawl that structural
-    # graph first so brand pages cannot be starved by the bounded generic
-    # frontier. This is retailer-architecture logic only: no product, brand,
-    # query, or product-id exception is used.
-    if store == 'sabina':
-        brand_deadline = deadline
-        brand_graph = _discover_sabina_brand_catalog(brand_deadline)
-        product_urls.update(brand_graph['product_urls'])
-        errors.extend(brand_graph['errors'])
-        successes += brand_graph['successes']
 
     for seed in seeds:
         add(seed,0,'configured_seed')
@@ -2923,588 +2025,6 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             'nella superficie di navigazione raggiunta dai seed.'
         ),
     }
-def diagnose_sabina_path(
-    max_pages=800,
-    max_depth=8,
-):
-    """
-    Read-only diagnostic for the Sabina discovery path.
-
-    It does not write to the database.
-    It does not call production search.
-    It follows the normal Sabina HTML discovery rules.
-    """
-    store = 'sabina'
-
-    target_brand = (
-        'https://www.sabina.com/es/631_rasasi'
-    )
-
-    target_product = (
-        'https://www.sabina.com/es/perfumes-hombre/'
-        '56286-kobra-for-him-eau-de-parfum-rasasi.html'
-    )
-
-    target_brand = target_brand.rstrip('/')
-    target_product = target_product.rstrip('/')
-
-    seeds = list(
-        dict.fromkeys(
-            HTML_DISCOVERY_SEEDS.get(store, ())
-        )
-    )
-
-    queue = []
-    queued = set()
-    visited = set()
-    events = []
-
-    sequence = 0
-    target_brand_info = None
-    target_product_info = None
-
-    def normalize_url(url, base_url=''):
-        if not url:
-            return None
-
-        absolute = urllib.parse.urljoin(
-            base_url,
-            str(url),
-        )
-
-        absolute = absolute.split('#', 1)[0]
-        parsed = urllib.parse.urlparse(absolute)
-
-        if parsed.scheme not in ('http', 'https'):
-            return None
-
-        return absolute.rstrip('/')
-
-    def add_to_queue(
-        raw_url,
-        depth,
-        source,
-        reason,
-    ):
-        nonlocal sequence
-        nonlocal target_brand_info
-        nonlocal target_product_info
-
-        url = normalize_url(
-            raw_url,
-            source,
-        )
-
-        if not url:
-            return {
-                'url': None,
-                'queued': False,
-                'reason': 'invalid_url',
-            }
-
-        if depth > max_depth:
-            result = {
-                'url': url,
-                'queued': False,
-                'reason': 'max_depth',
-                'depth': depth,
-                'source': source,
-            }
-
-        elif url in queued:
-            result = {
-                'url': url,
-                'queued': False,
-                'reason': 'already_queued',
-                'depth': depth,
-                'source': source,
-            }
-
-        elif url in visited:
-            result = {
-                'url': url,
-                'queued': False,
-                'reason': 'already_visited',
-                'depth': depth,
-                'source': source,
-            }
-
-        elif len(queued) >= max_pages * 20:
-            result = {
-                'url': url,
-                'queued': False,
-                'reason': 'queue_guard_limit',
-                'depth': depth,
-                'source': source,
-            }
-
-        else:
-            sequence += 1
-
-            priority = _html_discovery_priority(
-                store,
-                url,
-                depth,
-                source,
-            )
-
-            heapq.heappush(
-                queue,
-                (
-                    priority,
-                    sequence,
-                    url,
-                    depth,
-                    source,
-                ),
-            )
-
-            queued.add(url)
-
-            result = {
-                'url': url,
-                'queued': True,
-                'reason': reason,
-                'depth': depth,
-                'source': source,
-                'priority': priority,
-                'queue_size': len(queue),
-            }
-
-        if url == target_brand:
-            target_brand_info = dict(result)
-
-        if url == target_product:
-            target_product_info = dict(result)
-
-        return result
-
-    for seed in seeds:
-        add_to_queue(
-            seed,
-            0,
-            '',
-            'configured_seed',
-        )
-
-    started_at = time.time()
-
-    while (
-        queue
-        and len(visited) < max_pages
-        and (time.time() - started_at)
-        < DISCOVERY_HARD_TIMEOUT
-    ):
-        (
-            priority,
-            sequence_number,
-            requested,
-            depth,
-            source,
-        ) = heapq.heappop(queue)
-
-        if requested in visited:
-            continue
-
-        visited.add(requested)
-
-        event = {
-            'requested_url': requested,
-            'depth': depth,
-            'source': source,
-            'priority': priority,
-            'visited_index': len(visited),
-            'status': 'FETCHING',
-        }
-
-        try:
-            result = _fetch_html_page(
-                store,
-                requested,
-            )
-
-            (
-                requested_url,
-                final_url,
-                data,
-                error,
-            ) = result
-
-        except Exception as exc:
-            final_url = requested
-            data = None
-            error = (
-                f'{type(exc).__name__}: {exc}'
-            )
-
-        event['final_url'] = final_url
-        event['bytes'] = len(data or b'')
-
-        if error:
-            event['status'] = 'ERROR'
-            event['error'] = error
-            events.append(event)
-            continue
-
-        event['status'] = 'OK'
-
-        soup = BeautifulSoup(
-            data,
-            'html.parser',
-        )
-
-        event['links'] = []
-
-        def inspect_link(
-            raw_url,
-            label,
-            location,
-        ):
-            nonlocal target_brand_info
-            nonlocal target_product_info
-
-            absolute = normalize_url(
-                raw_url,
-                final_url or requested,
-            )
-
-            if not absolute:
-                return
-
-            is_target_brand = (
-                absolute == target_brand
-            )
-
-            is_target_product = (
-                absolute == target_product
-            )
-
-            product_url = _html_product_url(
-                store,
-                raw_url,
-                final_url or requested,
-            )
-
-            listing_url = None
-
-            if not product_url:
-                listing_url = _html_listing_url(
-                    store,
-                    raw_url,
-                    final_url or requested,
-                    label,
-                )
-
-            item = {
-                'raw_url': raw_url,
-                'absolute_url': absolute,
-                'label': label[:300],
-                'location': location,
-                'is_target_brand': is_target_brand,
-                'is_target_product': is_target_product,
-                'product_admitted': bool(product_url),
-                'product_url': product_url,
-                'listing_admitted': bool(listing_url),
-                'listing_url': listing_url,
-            }
-
-            if (
-                is_target_brand
-                or is_target_product
-            ):
-                queue_result = add_to_queue(
-                    absolute,
-                    depth + 1,
-                    requested,
-                    location,
-                )
-
-                item['queue_result'] = queue_result
-
-                if is_target_brand:
-                    target_brand_info = {
-                        **target_brand_info
-                        if target_brand_info
-                        else {},
-                        'found_on_page': requested,
-                        'found_label': label[:300],
-                        'found_location': location,
-                        'admission': (
-                            'product'
-                            if product_url
-                            else 'listing'
-                            if listing_url
-                            else 'rejected'
-                        ),
-                        'product_url': product_url,
-                        'listing_url': listing_url,
-                        'queue_result': queue_result,
-                    }
-
-                if is_target_product:
-                    target_product_info = {
-                        **target_product_info
-                        if target_product_info
-                        else {},
-                        'found_on_page': requested,
-                        'found_label': label[:300],
-                        'found_location': location,
-                        'admission': (
-                            'product'
-                            if product_url
-                            else 'listing'
-                            if listing_url
-                            else 'rejected'
-                        ),
-                        'product_url': product_url,
-                        'listing_url': listing_url,
-                        'queue_result': queue_result,
-                    }
-
-            event['links'].append(item)
-
-            if product_url:
-                return
-
-            if listing_url:
-                add_to_queue(
-                    listing_url,
-                    depth + 1,
-                    requested,
-                    location,
-                )
-
-        for anchor in soup.find_all(
-            'a',
-            href=True,
-        ):
-            inspect_link(
-                anchor.get('href'),
-                anchor.get_text(
-                    ' ',
-                    strip=True,
-                ),
-                'anchor',
-            )
-
-        navigation_attrs = (
-            'data-url',
-            'data-href',
-            'data-link',
-            'data-product-url',
-            'data-product-link',
-            'data-target',
-            'data-next-url',
-            'data-next',
-            'data-load-more-url',
-            'data-pagination-url',
-        )
-
-        for node in soup.find_all(True):
-            label = node.get_text(
-                ' ',
-                strip=True,
-            )[:300]
-
-            for attr in navigation_attrs:
-                raw_url = node.get(attr)
-
-                if raw_url:
-                    inspect_link(
-                        raw_url,
-                        label,
-                        f'attribute:{attr}',
-                    )
-
-        for node in soup.find_all(
-            'link',
-            href=True,
-        ):
-            rel = ' '.join(
-                node.get('rel') or []
-            ).lower()
-
-            if 'next' in rel:
-                inspect_link(
-                    node.get('href'),
-                    'pagination',
-                    'rel_next',
-                )
-
-        try:
-            for item in _jsonld(soup):
-                inspect_link(
-                    item.get('url'),
-                    'jsonld_product',
-                    'jsonld',
-                )
-        except Exception as exc:
-            event['jsonld_error'] = (
-                f'{type(exc).__name__}: {exc}'
-            )
-
-        event['target_brand_seen'] = any(
-            item.get('is_target_brand')
-            for item in event['links']
-        )
-
-        event['target_product_seen'] = any(
-            item.get('is_target_product')
-            for item in event['links']
-        )
-
-        event['target_brand_admitted'] = (
-            target_brand_info is not None
-            and target_brand_info.get(
-                'admission'
-            ) in (
-                'listing',
-                'product',
-            )
-        )
-
-        event['target_product_admitted'] = (
-            target_product_info is not None
-            and target_product_info.get(
-                'admission'
-            ) == 'product'
-        )
-
-        event['queue_size_after'] = len(queue)
-
-        events.append(event)
-
-    brand_visited = target_brand in visited
-    product_visited = target_product in visited
-
-    brand_queued = target_brand in queued
-    product_queued = target_product in queued
-
-    brand_event = next(
-        (
-            item
-            for item in events
-            if item.get('requested_url')
-            == target_brand
-        ),
-        None,
-    )
-
-    product_event = next(
-        (
-            item
-            for item in events
-            if item.get('requested_url')
-            == target_product
-        ),
-        None,
-    )
-
-    if not target_brand_info:
-        diagnosis = (
-            'BRAND_NOT_FOUND_IN_VISITED_PAGES'
-        )
-    elif not target_brand_info.get(
-        'listing_url'
-    ) and not target_brand_info.get(
-        'product_url'
-    ):
-        diagnosis = (
-            'BRAND_FOUND_BUT_REJECTED_BY_ADMISSION'
-        )
-    elif not brand_queued:
-        diagnosis = (
-            'BRAND_ADMITTED_BUT_NOT_QUEUED'
-        )
-    elif not brand_visited:
-        diagnosis = (
-            'BRAND_QUEUED_BUT_NOT_VISITED'
-        )
-    elif not target_product_info:
-        diagnosis = (
-            'BRAND_VISITED_BUT_PRODUCT_NOT_FOUND'
-        )
-    elif not target_product_info.get(
-        'product_url'
-    ):
-        diagnosis = (
-            'PRODUCT_FOUND_BUT_REJECTED'
-        )
-    elif not product_queued:
-        diagnosis = (
-            'PRODUCT_ADMITTED_BUT_NOT_QUEUED'
-        )
-    elif not product_visited:
-        diagnosis = (
-            'PRODUCT_QUEUED_BUT_NOT_VISITED'
-        )
-    else:
-        diagnosis = (
-            'PRODUCT_DISCOVERY_PATH_COMPLETE'
-        )
-
-    return {
-        'ok': True,
-        'diagnostic': (
-            'sabina-discovery-path-read-only-v1'
-        ),
-        'store': store,
-        'database_written': False,
-        'production_search_called': False,
-        'limits': {
-            'max_pages': max_pages,
-            'max_depth': max_depth,
-            'hard_timeout': (
-                DISCOVERY_HARD_TIMEOUT
-            ),
-        },
-        'seeds': seeds,
-        'visited_count': len(visited),
-        'queued_count': len(queued),
-        'queue_remaining': len(queue),
-        'brand_url': target_brand,
-        'brand': {
-            'queued': brand_queued,
-            'visited': brand_visited,
-            'frontier_info': target_brand_info,
-            'visited_event': brand_event,
-        },
-        'product_url': target_product,
-        'product': {
-            'queued': product_queued,
-            'visited': product_visited,
-            'frontier_info': target_product_info,
-            'visited_event': product_event,
-        },
-        'diagnosis': diagnosis,
-        'errors': [
-            event
-            for event in events
-            if event.get('status') == 'ERROR'
-        ][:50],
-        'target_events': [
-            event
-            for event in events
-            if event.get(
-                'target_brand_seen'
-            )
-            or event.get(
-                'target_product_seen'
-            )
-            or event.get(
-                'requested_url'
-            ) in (
-                target_brand,
-                target_product,
-            )
-        ],
-        'events_count': len(events),
-        'events': events,
-        'elapsed_sec': round(
-            time.time() - started_at,
-            3,
-        ),
-    }
 
 def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
     conn = db()
@@ -3560,7 +2080,7 @@ def discover_store(store):
                     if kind=='sitemap':
                         if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
                             queued.add(absolute); queue.append((absolute,depth+1))
-                    elif _looks_product(absolute, store):
+                    elif _looks_product(absolute):
                         product_urls[absolute]=lastmod or ''
                         if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
                             break
@@ -3590,61 +2110,25 @@ def discover_store(store):
     # contains many product URLs. This is store-level discovery policy only:
     # no product, brand, name or query is embedded here.
     #
-    # Sabina uses a persistent HTML discovery frontier.
-    # The old in-memory queue was discarded when the bounded run ended,
-    # so pages beyond HTML_MAX_PAGES were permanently forgotten.
-    
+    # Other non-Deloox retailers retain the bounded fallback behaviour.
     if (
-        store == 'sabina'
-        and store in HTML_DISCOVERY_SEEDS
-    ):
-        html_seeds = list(
-            dict.fromkeys(
-                list(HTML_DISCOVERY_SEEDS[store])
-                + sorted(html_sitemap_seeds)
-            )
-        )
-    
-        fallback = _discover_persistent_html_catalog(
-            store,
-            html_seeds,
-            started_at + DISCOVERY_HARD_TIMEOUT,
-        )
-    
-        product_urls.update(
-            fallback['product_urls']
-        )
-    
-    # Other non-Deloox retailers retain the existing bounded behaviour.
-    elif (
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            len(product_urls)
-            < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-            or (
-                bool(sitemap_errors)
-                and sitemap_successes == 0
-            )
+            store == 'sabina'
+            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
         )
     ):
-        html_seeds = list(
-            dict.fromkeys(
-                list(HTML_DISCOVERY_SEEDS[store])
-                + sorted(html_sitemap_seeds)
-            )
-        )
-    
-        fallback = _discover_html_catalog(
+        html_seeds=list(dict.fromkeys(
+            list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
+        ))
+        fallback=_discover_html_catalog(
             store,
             html_seeds,
             started_at + DISCOVERY_HARD_TIMEOUT,
         )
-    
-        product_urls.update(
-            fallback['product_urls']
-        )
-
+        product_urls.update(fallback['product_urls'])
 
     diagnostics={
         'visited':len(visited),
@@ -3694,28 +2178,13 @@ def discover_store(store):
                 f'dead:{frontier.get("dead",0)}'
             )
     if fallback is not None:
-        frontier = fallback.get('frontier') or {}
-    
         details.append(
             f'html_fallback=visited:{fallback["visited"]};'
             f'successes:{fallback["successes"]};'
             f'products:{len(fallback["product_urls"])};'
-            f'pending:{frontier.get("pending", 0)};'
-            f'done:{frontier.get("done", 0)};'
-            f'errors:{frontier.get("error", 0)};'
-            f'dead:{frontier.get("dead", 0)};'
-            f'seeds:{len(list(dict.fromkeys(
-                list(HTML_DISCOVERY_SEEDS.get(store, ()))
-                + sorted(html_sitemap_seeds)
-            )))}'
+            f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
         )
-    
-        if fallback['errors']:
-            details.append(
-                'html_errors='
-                + ' | '.join(fallback['errors'][:4])
-            )
-    
+        if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
@@ -3999,10 +2468,17 @@ def _search_db():
     return conn
 
 
-
 def search_local(query, per_store=32, search_terms=None):
-    # FTS5 is candidate generation only. Whole-token verification and
-    # ProductMatcher remain authoritative for identity.
+    '''Search the persistent retailer catalog; never call a retailer endpoint.
+
+    ``search_terms`` is discovery/ranking telemetry supplied by ProductMatcher.
+    Identity acceptance is still performed later by ProductMatcher.match().
+    ``per_store=None`` or a non-positive value means no artificial candidate cap.
+
+    The catalog can contain tens of thousands of URLs per store. Never scan
+    every URL once for every search term. Build a lightweight in-memory token
+    posting index and evaluate only URLs containing the rarest token.
+    '''
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -4013,228 +2489,161 @@ def search_local(query, per_store=32, search_terms=None):
         return []
 
     token_sets = []
-    for term in terms[:80]:
+    for term in terms:
         ts = tuple(tokens(term))
         if ts:
             token_sets.append(ts)
     if not token_sets:
         return []
 
-    conn = _search_db()
+    conn = db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
-    limit = None if unlimited else max(1, int(per_store))
 
-    try:
-        try:
-            fts_exists = conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
-            ).fetchone()
-        except sqlite3.OperationalError:
-            fts_exists = None
-
-        if not fts_exists:
-            return _search_local_legacy_sql(conn, token_sets, limit, rows)
-
-        for store in STORES:
-            selected_by_url = {}
-
-            # All query terms are alternatives for the same user intent.
-            # Execute one FTS5 query per store instead of one query per term.
-            fts_query = _fts_query_for_token_sets(token_sets)
-            if not fts_query:
-                continue
-
-            sql = """
-                    SELECT u.url,u.slug,u.lastmod,
-                           p.store AS product_store, p.url AS product_url,
-                           p.name AS product_name, p.brand AS product_brand,
-                           p.image AS product_image, p.sku AS product_sku,
-                           p.gtin AS product_gtin, p.mpn AS product_mpn,
-                           p.size_ml AS product_size_ml,
-                           p.concentration AS product_concentration,
-                           p.gender AS product_gender, p.price AS product_price,
-                           p.currency AS product_currency,
-                           p.availability AS product_availability,
-                           p.fetched_at AS product_fetched_at,
-                           p.fetch_status AS fetch_status
-                      FROM catalog_search_fts f
-                      JOIN store_urls u ON u.store=f.store AND u.url=f.url
-                      LEFT JOIN store_products p
-                        ON p.store=u.store AND p.url=u.url
-                       AND p.fetch_status='OK'
-                     WHERE f.store=?
-                       AND catalog_search_fts MATCH ?
-                       AND u.active=1
-                     LIMIT ?
-                """
-            candidate_sql_limit = max(128, (limit or 64) * max(1, len(token_sets)))
-            candidates = conn.execute(sql, (store, fts_query, candidate_sql_limit)).fetchall()
-
-            for r in candidates:
-                url = str(r['url'] or '').strip()
-                if not url or url in selected_by_url:
-                    continue
-                search_text = ' '.join(str(r[key] or '') for key in ('slug','product_name','product_brand'))
-                normalized_tokens = set(norm(search_text).split())
-                best_term_score = 0
-                matched_term = False
-                for ts in token_sets:
-                    score = sum(1 for token in ts if token in normalized_tokens)
-                    if score == len(ts):
-                        matched_term = True
-                        best_term_score = max(best_term_score, score)
-                if not matched_term:
-                    continue
-                selected_by_url[url] = (best_term_score + 10, dict(r))
-
-            ordered = sorted(
-                selected_by_url.values(),
-                key=lambda item: (-item[0], str(item[1].get('url') or '')),
-            )
-            if limit is not None:
-                ordered = ordered[:limit]
-
-            for _score, r in ordered:
-                url = str(r.get('url') or '').strip()
-                if not url:
-                    continue
-                if r.get('product_name'):
-                    rows.append({
-                        'url': url,
-                        'slug': r.get('slug') or '',
-                        'lastmod': r.get('lastmod') or '',
-                        'name': r.get('product_name') or '',
-                        'brand': r.get('product_brand') or '',
-                        'image': r.get('product_image') or '',
-                        'sku': r.get('product_sku') or '',
-                        'gtin': r.get('product_gtin') or '',
-                        'mpn': r.get('product_mpn') or '',
-                        'size_ml': r.get('product_size_ml'),
-                        'concentration': r.get('product_concentration') or '',
-                        'gender': r.get('product_gender') or '',
-                        'price': r.get('product_price'),
-                        'currency': r.get('product_currency') or '',
-                        'availability': r.get('product_availability') or '',
-                        'fetched_at': r.get('product_fetched_at'),
-                        'fetch_status': r.get('fetch_status') or 'OK',
-                        'price_num': r.get('product_price'),
-                        'store': STORE_LABELS[store],
-                        'store_key': store,
-                    })
-                else:
-                    rows.append({
-                        'store': STORE_LABELS[store],
-                        'store_key': store,
-                        'url': url,
-                        'name': r.get('slug') or url_slug(url),
-                        '_needs_refresh': True,
-                    })
-        return rows
-    finally:
-        conn.close()
-
-
-def _search_local_legacy_sql(conn, token_sets, limit, rows):
-    # Compatibility path for SQLite builds without FTS5.
     for store in STORES:
-        selected_by_url = {}
-        for ts in token_sets:
-            if limit is not None and len(selected_by_url) >= limit:
-                break
-            clauses = []
-            params = []
-            for token in ts:
-                token = str(token or '').strip()
-                if not token:
-                    continue
-                pattern = f'%{token}%'
-                clauses.append('(u.slug LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)')
-                params.extend((pattern, pattern, pattern))
-            if not clauses:
-                continue
-
-            sql = f'''
-                SELECT u.url,u.slug,u.lastmod,
-                       p.store AS product_store,p.url AS product_url,
-                       p.name AS product_name,p.brand AS product_brand,
-                       p.image AS product_image,p.sku AS product_sku,
-                       p.gtin AS product_gtin,p.mpn AS product_mpn,
-                       p.size_ml AS product_size_ml,
-                       p.concentration AS product_concentration,
-                       p.gender AS product_gender,p.price AS product_price,
-                       p.currency AS product_currency,
-                       p.availability AS product_availability,
-                       p.fetched_at AS product_fetched_at,
-                       p.fetch_status AS fetch_status
-                  FROM store_urls u
-                  LEFT JOIN store_products p
-                    ON p.store=u.store AND p.url=u.url
-                   AND p.fetch_status='OK'
-                 WHERE u.store=? AND u.active=1
-                   AND {' AND '.join(clauses)}
-                 LIMIT ?
-            '''
-            candidates = conn.execute(
-                sql, [store, *params, max(128, limit or 128)]
-            ).fetchall()
-            for r in candidates:
-                url = str(r['url'] or '').strip()
-                if not url or url in selected_by_url:
-                    continue
-                search_text = ' '.join(
-                    str(r[key] or '') for key in ('slug','product_name','product_brand')
-                )
-                normalized_tokens = set(norm(search_text).split())
-                score = sum(1 for token in ts if token in normalized_tokens)
-                if score != len(ts):
-                    continue
-                selected_by_url[url] = (score + 10, dict(r))
-
-        ordered = sorted(
-            selected_by_url.values(),
-            key=lambda item: (-item[0], str(item[1].get('url') or '')),
+        signature_row = conn.execute(
+            '''SELECT
+                   COUNT(*) AS active_count,
+                   COALESCE(MAX(discovered_at), 0) AS latest_discovery
+               FROM store_urls
+               WHERE store=? AND active=1''',
+            (store,),
+        ).fetchone()
+        signature = (
+            int(signature_row['active_count'] or 0),
+            float(signature_row['latest_discovery'] or 0),
         )
-        if limit is not None:
-            ordered = ordered[:limit]
 
-        for _score, r in ordered:
-            url = str(r.get('url') or '').strip()
-            if not url:
-                continue
-            if r.get('product_name'):
-                rows.append({
-                    'url': url,'slug': r.get('slug') or '',
-                    'lastmod': r.get('lastmod') or '',
-                    'name': r.get('product_name') or '',
-                    'brand': r.get('product_brand') or '',
-                    'image': r.get('product_image') or '',
-                    'sku': r.get('product_sku') or '',
-                    'gtin': r.get('product_gtin') or '',
-                    'mpn': r.get('product_mpn') or '',
-                    'size_ml': r.get('product_size_ml'),
-                    'concentration': r.get('product_concentration') or '',
-                    'gender': r.get('product_gender') or '',
-                    'price': r.get('product_price'),
-                    'currency': r.get('product_currency') or '',
-                    'availability': r.get('product_availability') or '',
-                    'fetched_at': r.get('product_fetched_at'),
-                    'fetch_status': r.get('fetch_status') or 'OK',
-                    'price_num': r.get('product_price'),
-                    'store': STORE_LABELS[store],'store_key': store,
-                })
+        with _LOCAL_SEARCH_INDEX_LOCK:
+            cached = _LOCAL_SEARCH_INDEX_CACHE.get(store)
+            if cached and cached['signature'] == signature:
+                postings = cached['postings']
+                url_tokens = cached['url_tokens']
+            else:
+                candidates = conn.execute(
+                    '''SELECT u.url,u.slug,u.lastmod,
+                              p.name AS product_name,
+                              p.brand AS product_brand
+                       FROM store_urls u
+                       LEFT JOIN store_products p
+                         ON p.store=u.store
+                        AND p.url=u.url
+                        AND p.fetch_status='OK'
+                       WHERE u.store=? AND u.active=1''',
+                    (store,),
+                ).fetchall()
+
+                new_postings = {}
+                new_url_tokens = {}
+                for r in candidates:
+                    url = r['url']
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in ('slug', 'product_name', 'product_brand')
+                    )
+                    combined_tokens = set(norm(search_text).split())
+                    new_url_tokens[url] = combined_tokens
+                    for token in combined_tokens:
+                        new_postings.setdefault(token, set()).add(url)
+
+                postings = new_postings
+                url_tokens = new_url_tokens
+                _LOCAL_SEARCH_INDEX_CACHE[store] = {
+                    'signature': signature,
+                    'postings': postings,
+                    'url_tokens': url_tokens,
+                }
+
+            term_anchors = []
+            for ts in token_sets:
+                anchor = min(ts, key=lambda token: len(postings.get(token, ())))
+                if postings.get(anchor):
+                    term_anchors.append((ts, anchor))
+
+            scored = {}
+            for ts, anchor in term_anchors:
+                for url in postings.get(anchor, ()):
+                    slug_tokens = url_tokens.get(url, set())
+                    score = sum(1 for token in ts if token in slug_tokens)
+                    if score == len(ts):
+                        score += 10
+                        if score > scored.get(url, 0):
+                            scored[url] = score
+
+            ordered = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
+
+        selected = ordered if unlimited else ordered[:int(per_store)]
+        for url, _score in selected:
+            row = conn.execute(
+                'SELECT * FROM store_products WHERE store=? AND url=?',
+                (store, url),
+            ).fetchone()
+            if row:
+                item = dict(row)
+                item['price_num'] = item.get('price')
+                item['store'] = STORE_LABELS[store]
+                item['store_key'] = store
+                rows.append(item)
             else:
                 rows.append({
-                    'store': STORE_LABELS[store],'store_key': store,
-                    'url': url,'name': r.get('slug') or url_slug(url),
+                    'store': STORE_LABELS[store],
+                    'store_key': store,
+                    'url': url,
+                    'name': url_slug(url),
                     '_needs_refresh': True,
                 })
+
+    conn.close()
     return rows
 
-
 def refresh_candidates(rows, cancel_event=None, deadline=None):
-    """Read-only compatibility boundary: user search never performs network I/O."""
-    return []
+    """Refresh only catalog candidates that do not yet have page data.
+
+    Cancellation is cooperative and the optional deadline is a hard search
+    budget. Pending futures are cancelled when either condition is reached;
+    running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
+    but the executor is never waited on after cancellation/deadline expiry.
+    """
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
+    if not jobs:
+        return []
+    out = []
+    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
+    cancelled = False
+    try:
+        pending = set(futures)
+        while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            if deadline is not None and time.monotonic() >= float(deadline):
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+            done = [future for future in list(pending) if future.done()]
+            if not done:
+                time.sleep(0.05)
+                continue
+            for future in done:
+                pending.discard(future)
+                try:
+                    item = future.result()
+                    if item:
+                        out.append(item)
+                except Exception:
+                    pass
+        if cancelled:
+            return out
+        return out
+    finally:
+        # Never make a cancelled user search wait for all old refresh workers.
+        # Running workers are bounded by REFRESH_TIMEOUT; they will close their
+        # own DB connections when finished.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
 def hydration_pending_counts():
@@ -4277,7 +2686,7 @@ def _ensure_hydration_queue():
                 "SELECT store,url FROM store_urls WHERE active=1"
             ).fetchall()
             for r in invalid_rows:
-                if _looks_product(r['url'], r['store']):
+                if _looks_product(r['url']):
                     continue
                 conn.execute(
                     "DELETE FROM hydration_queue WHERE store=? AND url=?",
@@ -4650,820 +3059,47 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
             time.sleep(wait_for)
 
 
-# ---------------------------------------------------------------------------
-# Canonical catalog coverage engine
-# ---------------------------------------------------------------------------
-# The persistent retailer catalog is intentionally store-first, but store-wide
-# crawling alone cannot guarantee that a product exposed by a retailer's
-# search surface is ever indexed. Coverage therefore runs from the canonical
-# identity catalog and feeds the same store_urls/hydration pipeline used by
-# normal discovery.
-#
-# canonical product -> store scraper search -> candidate URL -> hydration
-#
-# This layer is deliberately generic: no product, brand, retailer-product URL,
-# price, or exception is embedded here.
-
-_COVERAGE_SCHEMA_LOCK = threading.Lock()
-_COVERAGE_SCHEMA_READY = False
-_COVERAGE_CATALOG_CACHE = None
-_COVERAGE_CATALOG_MTIME = None
-_COVERAGE_INTERVAL_SECONDS = 60.0
-_COVERAGE_BATCH_SIZE = 8
-_COVERAGE_WORKERS = 2
-_COVERAGE_RETRY_SECONDS = 86400.0
-_COVERAGE_ERROR_RETRY_SECONDS = 3600.0
-_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
-
-
-def _foreground_search_running():
-    """Return True while the normal foreground search job is running.
-
-    The catalog hydration/coverage worker is deliberately lower priority than
-    user searches.  Foreground jobs are named by main.py with the stable
-    `scenthunter-search-` prefix.  When one is active, background scraper work
-    must not start, because it can otherwise consume CPU/network time and
-    contend with the foreground matcher even though the public search itself
-    is catalog-only.
-    """
-    try:
-        return any(
-            thread.is_alive()
-            and str(thread.name or '').startswith('scenthunter-search-')
-            for thread in threading.enumerate()
-        )
-    except Exception:
-        return False
-
-_COVERAGE_STORE_MODULES = {
-    'bplatz': 'scrapers.bplatz.scraper',
-    'deloox': 'scrapers.deloox.scraper',
-    'parfumcity': 'scrapers.parfumcity.scraper',
-    'parfumzentrum': 'scrapers.parfumzentrum.scraper',
-    'perfumemarket': 'scrapers.perfumemarket.scraper',
-    'sabina': 'scrapers.sabina.scraper',
-    'orioudh': 'scrapers.orioudh.scraper',
-    'easycosmetic': 'scrapers.easycosmetic.scraper',
-}
-
-
-def _coverage_ensure_schema():
-    global _COVERAGE_SCHEMA_READY
-    if _COVERAGE_SCHEMA_READY:
-        return
-    with _COVERAGE_SCHEMA_LOCK:
-        if _COVERAGE_SCHEMA_READY:
-            return
-        conn = db()
-        try:
-            conn.execute(
-                """CREATE TABLE IF NOT EXISTS catalog_coverage(
-                    store TEXT NOT NULL,
-                    product_id TEXT NOT NULL,
-                    canonical_name TEXT NOT NULL,
-                    query TEXT NOT NULL,
-                    state TEXT NOT NULL DEFAULT 'PENDING',
-                    attempts INTEGER NOT NULL DEFAULT 0,
-                    found_urls INTEGER NOT NULL DEFAULT 0,
-                    last_started_at REAL,
-                    last_finished_at REAL,
-                    next_run_at REAL NOT NULL DEFAULT 0,
-                    last_error TEXT,
-                    PRIMARY KEY(store, product_id)
-                )"""
-            )
-            conn.execute(
-                'CREATE INDEX IF NOT EXISTS idx_catalog_coverage_ready '
-                'ON catalog_coverage(state,next_run_at,store)'
-            )
-            conn.execute(
-                'CREATE INDEX IF NOT EXISTS idx_catalog_coverage_product '
-                'ON catalog_coverage(product_id,state)'
-            )
-            conn.commit()
-            _COVERAGE_SCHEMA_READY = True
-        finally:
-            conn.close()
-
-
-def _coverage_load_catalog():
-    """Load the canonical product list once and refresh only when the file changes."""
-    global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
-    path = BASE_DIR / 'product_catalog.json'
-    try:
-        mtime = path.stat().st_mtime_ns
-    except OSError:
-        return []
-    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
-        return _COVERAGE_CATALOG_CACHE
-    try:
-        with path.open('r', encoding='utf-8') as handle:
-            payload = json.load(handle)
-    except Exception as exc:
-        print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
-        return _COVERAGE_CATALOG_CACHE or []
-    products = payload.get('products') if isinstance(payload, dict) else None
-    if not isinstance(products, list):
-        products = []
-    cleaned = []
-    for product in reversed(products):
-        if not isinstance(product, dict):
-            continue
-        product_id = str(product.get('product_id') or '').strip()
-        canonical_name = str(product.get('canonical_name') or '').strip()
-        if product_id and canonical_name:
-            cleaned.append(product)
-    _COVERAGE_CATALOG_CACHE = cleaned
-    _COVERAGE_CATALOG_MTIME = mtime
-    return cleaned
-
-
-def _coverage_queries(product):
-    """Build a small generic query set from canonical identity metadata."""
-    canonical = str(product.get('canonical_name') or '').strip()
-    brand = str(product.get('brand_name') or '').strip()
-    aliases = product.get('aliases') or []
-    candidates = [canonical]
-    if brand and brand.lower() not in canonical.lower():
-        candidates.append(f'{brand} {canonical}')
-    if isinstance(aliases, list):
-        for alias in aliases:
-            alias = str(alias or '').strip()
-            if alias:
-                candidates.append(alias)
-            if len(candidates) >= 4:
-                break
-    out = []
-    seen = set()
-    for value in candidates:
-        key = norm(value)
-        if key and key not in seen:
-            seen.add(key)
-            out.append(value)
-    return out[:4]
-
-
-def _coverage_seed_tasks(conn, products):
-    """Maintain the complete store x canonical-product coverage matrix.
-
-    Never infer completeness from the total row count: a catalog can gain a
-    new product while keeping the same number of coverage rows. Missing exact
-    (store, product_id) pairs are therefore inserted idempotently on every
-    maintenance pass.
-    """
-    if not products:
-        return
-
-    existing = {
-        (str(row['store']), str(row['product_id']))
-        for row in conn.execute(
-            'SELECT store,product_id FROM catalog_coverage'
-        ).fetchall()
-    }
-    now = time.time()
-    rows = []
-    for product in products:
-        product_id = str(product.get('product_id') or '').strip()
-        canonical = str(product.get('canonical_name') or '').strip()
-        queries = _coverage_queries(product)
-        if not product_id or not canonical or not queries:
-            continue
-        primary = queries[0]
-        for store in STORES:
-            key = (str(store), product_id)
-            if key in existing:
-                continue
-            rows.append((store, product_id, canonical, primary, now))
-            existing.add(key)
-
-    if rows:
-        conn.executemany(
-            """INSERT INTO catalog_coverage(
-                   store,product_id,canonical_name,query,state,next_run_at)
-               VALUES(?,?,?,?, 'PENDING', ?)
-               ON CONFLICT(store,product_id) DO NOTHING""",
-            rows,
-        )
-        conn.commit()
-
-
-def _coverage_token_match(text, target):
-    """Whole-token generic identity gate; never uses arbitrary substring matches."""
-    hay = norm(text)
-    needle = norm(target)
-    if not hay or not needle:
-        return False
-    if f' {needle} ' in f' {hay} ':
-        return True
-    target_tokens = needle.split()
-    hay_tokens = set(hay.split())
-    return bool(target_tokens) and all(token in hay_tokens for token in target_tokens)
-
-
-def _coverage_result_matches(product, row):
-    """Verify a scraper row against canonical identity without cross-field
-    token contamination. Hostnames, retailer names and arbitrary URL text must
-    never make an unrelated product look like a match.
-    """
-    canonical = str(product.get('canonical_name') or '').strip()
-    if not canonical or not isinstance(row, dict):
-        return False
-
-    aliases = product.get('aliases') or []
-    targets = [canonical]
-    if isinstance(aliases, list):
-        for alias in aliases:
-            alias = str(alias or '').strip()
-            normalized = norm(alias)
-            if len(normalized) >= 4 and len(normalized.split()) >= 2:
-                targets.append(alias)
-
-    # Human-readable scraper fields are safe to combine; URL hosts are not.
-    text_fields = [
-        str(row.get('name') or ''),
-        str(row.get('title') or ''),
-        str(row.get('brand') or ''),
-    ]
-    combined_text = ' '.join(value for value in text_fields if value).strip()
-    for target in targets:
-        if _coverage_token_match(combined_text, target):
-            return True
-
-    # A retailer URL can contain the product identity in its path/slug. Only
-    # inspect the path, never the hostname, query-string or arbitrary URL text.
-    for key in ('url', 'product_url', 'link'):
-        raw_url = str(row.get(key) or '').strip()
-        if not raw_url:
-            continue
-        try:
-            path = urllib.parse.urlparse(raw_url).path
-        except Exception:
-            path = raw_url
-        for target in targets:
-            if _coverage_token_match(path.replace('-', ' ').replace('_', ' '), target):
-                return True
-    return False
-
-
-def _coverage_allowed_url(store, raw_url):
-    if not raw_url:
-        return ''
-    try:
-        url = urllib.parse.urljoin(STORES.get(store, ''), str(raw_url)).split('#', 1)[0]
-        parsed = urllib.parse.urlparse(url)
-    except Exception:
-        return ''
-    if parsed.scheme not in ('http', 'https'):
-        return ''
-    host = parsed.netloc.lower().split(':', 1)[0]
-    base_host = urllib.parse.urlparse(STORES.get(store, '')).netloc.lower().split(':', 1)[0]
-    allowed = {base_host, base_host[4:] if base_host.startswith('www.') else 'www.' + base_host}
-    if store == 'deloox':
-        allowed.update({
-            'deloox.be', 'www.deloox.be', 'deloox.nl', 'www.deloox.nl',
-            'deloox.com', 'www.deloox.com', 'deloox.lu', 'www.deloox.lu',
-            'deloox.es', 'www.deloox.es',
-        })
-    return url if host in allowed else ''
-
-
-def _coverage_persist_urls(store, rows):
-    urls = []
-    seen = set()
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        raw = row.get('url') or row.get('product_url') or row.get('link')
-        url = _coverage_allowed_url(store, raw)
-        if url and url not in seen:
-            seen.add(url)
-            urls.append(url)
-    if not urls:
-        return 0
-    now = time.time()
-    conn = db()
-    try:
-        with conn:
-            for url in urls:
-                conn.execute(
-                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
-                    (store, url, url_slug(url), '', now),
-                )
-                conn.execute(
-                    """INSERT INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END""",
-                    (store, url, 'PENDING', 0, now, now, now),
-                )
-        with _LOCAL_SEARCH_INDEX_LOCK:
-            _LOCAL_SEARCH_INDEX_CACHE.pop(store, None)
-    finally:
-        conn.close()
-    return len(urls)
-
-
-def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
-    """Run coverage queries independently so one slow/irrelevant query cannot
-    terminate the search path for the canonical product.
-
-    Each query gets its own killable child process. A timeout is recorded for
-    that query and the next query is still attempted. The parent never treats
-    an arbitrary scraper result as success; matching is performed later by
-    _coverage_run_task against the canonical identity.
-    """
-    child_code = '''import contextlib
-import importlib
-import json
-import sys
-
-def main():
-    payload = json.load(sys.stdin)
-    module_name = str(payload.get("module") or "")
-    query = str(payload.get("query") or "").strip()
-    module = importlib.import_module(module_name)
-    search_stream = getattr(module, "search_stream", None)
-    search_fn = getattr(module, "search", None)
-    if not callable(search_stream) and not callable(search_fn):
-        raise RuntimeError("scraper_search_unavailable")
-    with contextlib.redirect_stdout(sys.stderr):
-        report = search_stream(query) if callable(search_stream) else search_fn(query)
-    json.dump({"ok": True, "query": query, "report": report}, sys.stdout,
-              ensure_ascii=False, default=str)
-    sys.stdout.flush()
-
-if __name__ == "__main__":
-    main()
-'''
-
-    def run_one(query):
-        payload = json.dumps({"module": module_name, "query": str(query)}, ensure_ascii=False)
-        env = os.environ.copy()
-        current_python_path = env.get("PYTHONPATH", "")
-        base_path = str(BASE_DIR)
-        env["PYTHONPATH"] = base_path + (os.pathsep + current_python_path if current_python_path else "")
-        try:
-            process = subprocess.Popen(
-                [sys.executable, "-c", child_code],
-                cwd=str(BASE_DIR), env=env,
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                text=True, encoding="utf-8", errors="replace",
-                start_new_session=(os.name != "nt"),
-            )
-        except Exception as exc:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"{type(exc).__name__}:{exc}"}
-        try:
-            stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
-        except subprocess.TimeoutExpired:
-            try:
-                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-                else: process.terminate()
-            except Exception:
-                pass
-            try:
-                process.wait(timeout=2.0)
-            except subprocess.TimeoutExpired:
-                try:
-                    if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
-                    else: process.kill()
-                except Exception:
-                    pass
-                try: process.wait(timeout=2.0)
-                except Exception: pass
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
-        except Exception as exc:
-            try:
-                if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
-                else: process.terminate()
-            except Exception:
-                pass
-            try: process.wait(timeout=2.0)
-            except Exception: pass
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"{type(exc).__name__}:{exc}"}
-
-        if process.returncode != 0:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_process_exit_{process.returncode}"}
-        try:
-            result = json.loads(stdout or "")
-        except Exception as exc:
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
-        if not isinstance(result, dict):
-            return {"query": str(query), "ok": False, "report": None,
-                    "error": "coverage_invalid_child_result"}
-        return result
-
-    reports = []
-    for query in queries or []:
-        reports.append(run_one(query))
-    return {"ok": bool(reports), "reports": reports,
-            "queries_attempted": len(reports)}
-
-
-def _coverage_run_task(task):
-    """Search every generic identity query until an actual canonical match is
-    found. Irrelevant scraper results do not end the search; query timeouts do
-    not prevent later queries. This is deliberately retailer/product agnostic.
-    """
-    store = task['store']
-    product = task['product']
-    queries = _coverage_queries(product)
-    module_name = _COVERAGE_STORE_MODULES.get(store)
-    if not module_name:
-        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing',
-                'queries_attempted': 0}
-
-    isolated = _coverage_scraper_process(module_name, queries)
-    reports = isolated.get('reports') or []
-    matched_rows = []
-    errors = []
-    query_states = []
-
-    for item in reports:
-        if not isinstance(item, dict):
-            continue
-        query = str(item.get('query') or '')
-        if item.get('error'):
-            error = str(item['error'])
-            errors.append(error)
-            query_states.append({'query': query, 'state': 'ERROR',
-                                 'error': error[:500], 'matches': 0})
-            continue
-
-        report = item.get('report')
-        if isinstance(report, dict):
-            rows = report.get('results') or []
-            status = str(report.get('status') or '').lower()
-            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
-                error = str(report.get('error') or status)
-                errors.append(error)
-                query_states.append({'query': query, 'state': 'ERROR',
-                                     'error': error[:500], 'matches': 0})
-                continue
-        else:
-            rows = report if isinstance(report, list) else []
-
-        query_matches = 0
-        for row in rows:
-            if _coverage_result_matches(product, row):
-                matched_rows.append(row)
-                query_matches += 1
-        query_states.append({
-            'query': query,
-            'state': 'FOUND' if query_matches else ('EMPTY' if not rows else 'IRRELEVANT'),
-            'error': None,
-            'matches': query_matches,
-            'results': len(rows) if isinstance(rows, list) else 0,
-        })
-        if query_matches:
-            break
-
-    found = _coverage_persist_urls(store, matched_rows)
-    diagnostic = {
-        'queries': query_states,
-        'attempted': len(query_states),
-        'matched_queries': sum(1 for item in query_states if item.get('matches')),
-        'errors': len(errors),
-    }
-    if found:
-        return {'state': 'FOUND', 'found': found, 'error': None,
-                'diagnostic': diagnostic}
-    if errors:
-        return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000],
-                'diagnostic': diagnostic}
-    return {'state': 'NOT_FOUND', 'found': 0, 'error': None,
-            'diagnostic': diagnostic}
-
-def _coverage_claim_tasks(limit, stores=None):
-    _coverage_ensure_schema()
-    products = _coverage_load_catalog()
-    if not products:
-        return []
-    now = time.time()
-    conn = db()
-    try:
-        _coverage_seed_tasks(conn, products)
-        selected_stores = [
-            str(store).strip().lower()
-            for store in (stores or [])
-            if str(store).strip().lower() in STORES
-        ]
-        params = [now]
-        store_clause = ''
-        if selected_stores:
-            placeholders = ','.join('?' for _ in selected_stores)
-            store_clause = f' AND store IN ({placeholders})'
-            params.extend(selected_stores)
-        params.append(max(1, int(limit)))
-        rows = conn.execute(
-            f"""SELECT store,product_id,canonical_name,query,attempts
-                 FROM catalog_coverage
-                WHERE next_run_at <= ?
-                  AND state IN ('PENDING','NOT_FOUND','RETRY')
-                  {store_clause}
-                ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
-                         next_run_at,rowid
-                LIMIT ?""",
-            tuple(params),
-        ).fetchall()
-        product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
-        tasks = []
-        for row in rows:
-            product = product_by_id.get(str(row['product_id']))
-            if not product:
-                continue
-            attempts = int(row['attempts'] or 0) + 1
-            conn.execute(
-                """UPDATE catalog_coverage
-                      SET state='PROCESSING',attempts=?,last_started_at=?,last_error=NULL
-                    WHERE store=? AND product_id=?""",
-                (attempts, now, row['store'], row['product_id']),
-            )
-            tasks.append({'store': row['store'], 'product': product, 'attempts': attempts})
-        conn.commit()
-        return tasks
-    finally:
-        conn.close()
-
-
-def _coverage_finish_task(task, result):
-    now = time.time()
-    state = str(result.get('state') or 'ERROR')
-    next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
-    conn = db()
-    try:
-        conn.execute(
-            """UPDATE catalog_coverage
-                  SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
-                WHERE store=? AND product_id=?""",
-            (
-                state, int(result.get('found') or 0), now, next_run, result.get('error'),
-                task['store'], str(task['product'].get('product_id') or ''),
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS, stores=None):
-    """Advance canonical-product coverage in small bounded batches."""
-    tasks = _coverage_claim_tasks(max_tasks, stores=stores)
-    if not tasks:
-        return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
-    found = not_found = errors = 0
-    worker_count = max(1, min(int(workers), len(tasks), _COVERAGE_WORKERS))
-    with ThreadPoolExecutor(max_workers=worker_count) as pool:
-        future_map = {pool.submit(_coverage_run_task, task): task for task in tasks}
-        for future in as_completed(future_map):
-            task = future_map[future]
-            try:
-                result = future.result()
-            except Exception as exc:
-                result = {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
-            _coverage_finish_task(task, result)
-            state = result.get('state')
-            if state == 'FOUND':
-                found += int(result.get('found') or 0)
-            elif state == 'NOT_FOUND':
-                not_found += 1
-            else:
-                errors += 1
-    return {'selected': len(tasks), 'found': found, 'not_found': not_found, 'errors': errors}
-
-
-def coverage_status():
-    """Read-only coverage metrics for operators and diagnostics."""
-    _coverage_ensure_schema()
-    conn = db()
-    try:
-        rows = conn.execute(
-            """SELECT store,COUNT(*) AS total,
-                      SUM(CASE WHEN state='PENDING' THEN 1 ELSE 0 END) AS pending,
-                      SUM(CASE WHEN state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
-                      SUM(CASE WHEN state='FOUND' THEN 1 ELSE 0 END) AS found,
-                      SUM(CASE WHEN state='NOT_FOUND' THEN 1 ELSE 0 END) AS not_found,
-                      SUM(CASE WHEN state='RETRY' THEN 1 ELSE 0 END) AS retry,
-                      SUM(CASE WHEN state='ERROR' THEN 1 ELSE 0 END) AS error
-                 FROM catalog_coverage GROUP BY store ORDER BY store"""
-        ).fetchall()
-        return {
-            row['store']: {
-                'total': int(row['total'] or 0), 'pending': int(row['pending'] or 0),
-                'processing': int(row['processing'] or 0), 'found': int(row['found'] or 0),
-                'not_found': int(row['not_found'] or 0), 'retry': int(row['retry'] or 0),
-                'error': int(row['error'] or 0),
-            }
-            for row in rows
-        }
-    finally:
-        conn.close()
-
-
-def _hydration_worker_process(batch_size, workers, pause_seconds=1.0):
-    """Run the durable hydration worker in one isolated child process.
-
-    The API process starts one worker process, not one process per batch.
-    Queue backfill happens once in the child, then small bounded batches run
-    continuously. If the worker hangs, the parent can terminate its process
-    group without affecting the API process.
-    """
-    child_code = (
-        "import json\n"
-        "import time\n"
-        "import catalog_engine as ce\n"
-        "ce._ensure_hydration_queue()\n"
-        "batch_size=max(1,min(int(%d),4))\n"
-        "workers=max(1,min(int(%d),2))\n"
-        "pause=max(1.0,float(%s))\n"
-        "while True:\n"
-        "    result=ce.hydrate_catalog_batch(max_urls=batch_size, workers=workers)\n"
-        "    if result.get('selected') or result.get('fetched') or result.get('errors'):\n"
-        "        print('CATALOG HYDRATION BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
-        "    time.sleep(pause)\n"
-        % (int(batch_size), int(workers), repr(float(pause_seconds)))
-    )
-    env = os.environ.copy()
-    current = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
-    process = None
-    try:
-        process = subprocess.Popen(
-            [sys.executable, '-u', '-c', child_code],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=None,
-            stderr=None,
-            start_new_session=(os.name != 'nt'),
-        )
-        return process
-    except Exception as exc:
-        print(
-            f'CATALOG HYDRATION WORKER START ERROR: {type(exc).__name__}:{exc}',
-            flush=True,
-        )
-        return None
-
-
-def _coverage_worker_process(stores=('sabina',), pause_seconds=5.0):
-    """Run canonical coverage for selected stores in one isolated process.
-
-    Coverage is background catalog work. It never runs inside the API search
-    request and every retailer search is already executed by the existing
-    killable coverage child process. This closes the gap where sitemap/HTML
-    discovery does not expose every canonical product page.
-    """
-    store_values = tuple(str(store).strip().lower() for store in (stores or ()) if str(store).strip().lower() in STORES)
-    if not store_values:
-        return None
-    child_code = (
-        "import json\n"
-        "import time\n"
-        "import catalog_engine as ce\n"
-        "stores=" + repr(store_values) + "\n"
-        "pause=max(2.0,float(" + repr(float(pause_seconds)) + "))\n"
-        "while True:\n"
-        "    result=ce.coverage_batch(max_tasks=2, workers=2, stores=stores)\n"
-        "    if result.get('selected') or result.get('found') or result.get('errors'):\n"
-        "        print('CATALOG COVERAGE BATCH '+json.dumps(result,ensure_ascii=False),flush=True)\n"
-        "    time.sleep(pause)\n"
-    )
-    env = os.environ.copy()
-    current = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = str(BASE_DIR) + (os.pathsep + current if current else '')
-    process = None
-    try:
-        process = subprocess.Popen(
-            [sys.executable, '-u', '-c', child_code],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=None,
-            stderr=None,
-            start_new_session=(os.name != 'nt'),
-        )
-        return process
-    except Exception as exc:
-        print(f'CATALOG COVERAGE WORKER START ERROR: {type(exc).__name__}:{exc}', flush=True)
-        return None
-
-
-def _terminate_coverage_worker(process):
-    """Terminate the isolated coverage worker and its descendants."""
-    if process is None:
-        return
-    try:
-        if process.poll() is None:
-            if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGTERM)
-            else:
-                process.terminate()
-            try:
-                process.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                if os.name != 'nt':
-                    os.killpg(process.pid, signal.SIGKILL)
-                else:
-                    process.kill()
-                try:
-                    process.wait(timeout=2.0)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-
-def _terminate_hydration_worker(process):
-    """Terminate the isolated hydration worker and its descendants."""
-    if process is None:
-        return
-    try:
-        if process.poll() is None:
-            if os.name != 'nt':
-                os.killpg(process.pid, signal.SIGTERM)
-            else:
-                process.terminate()
-            try:
-                process.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                if os.name != 'nt':
-                    os.killpg(process.pid, signal.SIGKILL)
-                else:
-                    process.kill()
-                try:
-                    process.wait(timeout=2.0)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Hydrate discovered product URLs in one persistent isolated worker."""
-    batch_size = max(1, min(int(batch_size or 2), 4))
-    workers = max(1, min(int(workers or 1), 2))
-    pause_seconds = max(1.0, float(pause_seconds or 1.0))
+    """Continuously hydrate discovered product pages in the background."""
+    _ensure_hydration_queue()
+    recovered = recover_stale_tasks()
     print(
-        f'CATALOG HYDRATION START isolated-persistent batch={batch_size} workers={workers}',
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
     )
-
-    process = None
-    coverage_process = None
     while stop_event is None or not stop_event.is_set():
-        if process is None or process.poll() is not None:
-            if process is not None:
-                print(
-                    f'CATALOG HYDRATION WORKER EXIT code={process.returncode}; restarting',
-                    flush=True,
-                )
-            process = _hydration_worker_process(
-                batch_size,
-                workers,
-                pause_seconds,
+        try:
+            result = hydrate_catalog_batch(
+                max_urls=max(1, int(batch_size)),
+                workers=min(int(workers), HYDRATION_WORKERS),
+                deadline=time.monotonic() + max(30.0, float(REFRESH_TIMEOUT) + 5.0),
             )
-
-        if coverage_process is None or coverage_process.poll() is not None:
-            if coverage_process is not None:
-                print(
-                    f'CATALOG COVERAGE WORKER EXIT code={coverage_process.returncode}; restarting',
-                    flush=True,
-                )
-            coverage_process = _coverage_worker_process(
-                stores=('sabina',),
-                pause_seconds=5.0,
+            if result.get('selected', 0) == 0:
+                if stop_event is not None:
+                    stop_event.wait(max(5.0, float(pause_seconds)))
+                else:
+                    time.sleep(max(5.0, float(pause_seconds)))
+                continue
+            print(
+                'CATALOG HYDRATION BATCH '
+                f"selected={result.get('selected')} "
+                f"fetched={result.get('fetched')} "
+                f"errors={result.get('errors')}",
+                flush=True,
             )
-
-        if process is None or coverage_process is None:
+            if stop_event is not None:
+                stop_event.wait(max(0.1, float(pause_seconds)))
+            else:
+                time.sleep(max(0.1, float(pause_seconds)))
+        except Exception as exc:
+            print(
+                f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
+                flush=True,
+            )
             if stop_event is not None:
                 stop_event.wait(5.0)
             else:
                 time.sleep(5.0)
-            continue
-
-        if stop_event is not None:
-            if stop_event.wait(2.0):
-                break
-        else:
-            time.sleep(2.0)
-
-    _terminate_hydration_worker(process)
-    _terminate_coverage_worker(coverage_process)
-    print('CATALOG HYDRATION STOP', flush=True)
 
 
 def hydration_status():
