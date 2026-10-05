@@ -1328,7 +1328,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
-    elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
+    elif re.search(r'/(?:brands?|marques?|marcas|marchi|marken)(?:\.html)?$', path, re.I):
         score = 0
     # Sabina's brand directory links use a numeric-id + slug shape such as
     # /es/631_rasasi. Treat this generic retailer brand-page structure as a
