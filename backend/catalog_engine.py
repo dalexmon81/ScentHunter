@@ -1031,6 +1031,7 @@ HTML_DISCOVERY_SEEDS = {
 HTML_MAX_PAGES = 800
 HTML_MAX_DEPTH = 8
 HTML_WORKERS = 12
+DELOOX_SEARCH_MAX_PAGES = 10
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -1063,10 +1064,13 @@ def _html_product_url(store, raw_url, base_url):
             return None
         return absolute
     if store == 'deloox':
+        # Product identity is the path; drop tracking/query parameters so the
+        # same product is persisted once (same canonicalization as the scraper).
+        canonical = urllib.parse.urlunparse((p.scheme, p.netloc, path, '', '', ''))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
-            return absolute
+            return canonical
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
-            return absolute
+            return canonical
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
@@ -1676,11 +1680,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
         soup = BeautifulSoup(data, 'html.parser')
         base = final or requested
         listings = []
+        page_products = set()
 
         def admit(raw, label=''):
             product = _html_product_url('deloox', raw, base)
             if product:
                 product_urls[product] = ''
+                page_products.add(product)
                 return
             listing = _html_listing_url('deloox', raw, base, label)
             if listing:
@@ -1732,6 +1738,32 @@ def _discover_deloox_catalog(seeds, deadline=None):
                 )
         except Exception:
             pass
+
+        # Search results are paginated by a numeric ``page`` parameter that is
+        # not always exposed as a link. Follow it while pages keep yielding
+        # product URLs, exactly like the scraper's search pagination.
+        sp = urllib.parse.urlparse(requested)
+        if (
+            page_products
+            and re.search(r'/(?:chercher|search)(?:\.html)?$', sp.path or '', re.I)
+            and re.search(r'(?:^|&)(?:q|query)=', sp.query, re.I)
+        ):
+            params = urllib.parse.parse_qsl(sp.query, keep_blank_values=True)
+            current = 1
+            for key, value in params:
+                if key.lower() == 'page' and value.isdigit():
+                    current = int(value)
+            if current < DELOOX_SEARCH_MAX_PAGES:
+                params = [(k, v) for k, v in params if k.lower() != 'page']
+                params.append(('page', str(current + 1)))
+                listings.append((
+                    urllib.parse.urlunparse(sp._replace(
+                        query=urllib.parse.urlencode(params, doseq=True),
+                        fragment='',
+                    )),
+                    depth,
+                    requested,
+                ))
 
         if listings:
             _deloox_queue_enqueue(listings)
