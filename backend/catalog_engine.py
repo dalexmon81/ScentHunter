@@ -1865,37 +1865,42 @@ def _discover_sabina_brand_catalog(deadline=None):
 
     brand_list = sorted(brand_urls)
     if brand_list:
-        with ThreadPoolExecutor(max_workers=HTML_WORKERS) as pool:
-            futures = [pool.submit(fetch_brand, url) for url in brand_list]
-            for future in as_completed(futures):
-                if deadline is not None and time.time() >= deadline:
-                    # Futures already submitted may still finish, but their
-                    # results are ignored once the discovery deadline expires.
-                    continue
-                url, result = future.result()
-                requested, final, data, error = result
-                if error:
-                    errors.append(f'{url} -> {error}')
-                    continue
-                successes += 1
-                soup = BeautifulSoup(data, 'html.parser')
-                page_base = final or requested
-                for a in soup.find_all('a', href=True):
-                    product = _html_product_url('sabina', a.get('href'), page_base)
-                    if product:
-                        product_urls[product] = ''
-                navigation_attrs = (
-                    'data-url','data-href','data-link','data-product-url',
-                    'data-product-link','data-target',
-                )
-                for node in soup.find_all(True):
-                    for attr in navigation_attrs:
-                        raw = node.get(attr)
-                        if not raw:
-                            continue
-                        product = _html_product_url('sabina', raw, page_base)
+        # Fetch in bounded batches rather than submitting the entire brand
+        # directory at once. This preserves the global discovery deadline and
+        # prevents one slow retailer branch from blocking catalog persistence.
+        for start in range(0, len(brand_list), HTML_WORKERS):
+            if deadline is not None and time.time() >= deadline:
+                break
+            batch_urls = brand_list[start:start + HTML_WORKERS]
+            with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch_urls))) as pool:
+                futures = [pool.submit(fetch_brand, url) for url in batch_urls]
+                for future in as_completed(futures):
+                    if deadline is not None and time.time() >= deadline:
+                        continue
+                    url, result = future.result()
+                    requested, final, data, error = result
+                    if error:
+                        errors.append(f'{url} -> {error}')
+                        continue
+                    successes += 1
+                    soup = BeautifulSoup(data, 'html.parser')
+                    page_base = final or requested
+                    for a in soup.find_all('a', href=True):
+                        product = _html_product_url('sabina', a.get('href'), page_base)
                         if product:
                             product_urls[product] = ''
+                    navigation_attrs = (
+                        'data-url','data-href','data-link','data-product-url',
+                        'data-product-link','data-target',
+                    )
+                    for node in soup.find_all(True):
+                        for attr in navigation_attrs:
+                            raw = node.get(attr)
+                            if not raw:
+                                continue
+                            product = _html_product_url('sabina', raw, page_base)
+                            if product:
+                                product_urls[product] = ''
 
     return {
         'product_urls': product_urls,
