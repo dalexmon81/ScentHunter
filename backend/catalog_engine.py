@@ -495,38 +495,24 @@ def _ensure_schema(conn):
     with _SCHEMA_LOCK:
         if _SCHEMA_READY:
             return
-        conn.execute('PRAGMA journal_mode=WAL')
-        conn.execute('PRAGMA synchronous=NORMAL')
-        conn.execute("""CREATE TABLE IF NOT EXISTS store_urls(
-            store TEXT NOT NULL, url TEXT NOT NULL, slug TEXT NOT NULL,
-            lastmod TEXT, discovered_at REAL NOT NULL, active INTEGER NOT NULL DEFAULT 1,
-            PRIMARY KEY(store,url))""")
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_urls_slug ON store_urls(store,slug)')
-        conn.execute("""CREATE TABLE IF NOT EXISTS store_products(
-            store TEXT NOT NULL, url TEXT NOT NULL, name TEXT, brand TEXT, image TEXT,
-            sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
-            price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
-            PRIMARY KEY(store,url))""")
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
-        _ensure_search_fts(conn)
-        conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
-            store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
-            discovered_count INTEGER DEFAULT 0, fetched_count INTEGER DEFAULT 0, error TEXT)""")
-        conn.execute("""CREATE TABLE IF NOT EXISTS hydration_queue(
-            store TEXT NOT NULL,
-            url TEXT NOT NULL,
-            state TEXT NOT NULL DEFAULT 'PENDING',
-            attempts INTEGER NOT NULL DEFAULT 0,
-            available_at REAL NOT NULL DEFAULT 0,
-            leased_until REAL,
-            lease_token TEXT,
-            first_seen_at REAL NOT NULL,
-            last_started_at REAL,
-            last_finished_at REAL,
-            last_error TEXT,
-            last_http_status INTEGER,
-            PRIMARY KEY(store,url)
-        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS catalog_discovery_queue(
+store TEXT NOT NULL,
+url TEXT NOT NULL,
+depth INTEGER NOT NULL DEFAULT 0,
+priority INTEGER NOT NULL DEFAULT 100,
+source TEXT NOT NULL DEFAULT '',
+state TEXT NOT NULL DEFAULT 'PENDING',
+attempts INTEGER NOT NULL DEFAULT 0,
+available_at REAL NOT NULL DEFAULT 0,
+leased_until REAL,
+lease_token TEXT,
+first_seen_at REAL NOT NULL,
+last_started_at REAL,
+last_finished_at REAL,
+last_error TEXT,
+PRIMARY KEY(store,url)
+)""")
+
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
