@@ -1064,13 +1064,10 @@ def _html_product_url(store, raw_url, base_url):
             return None
         return absolute
     if store == 'deloox':
-        # Product identity is the path; drop tracking/query parameters so the
-        # same product is persisted once (same canonicalization as the scraper).
-        canonical = urllib.parse.urlunparse((p.scheme, p.netloc, path, '', '', ''))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
-            return canonical
+            return absolute
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
-            return canonical
+            return absolute
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
@@ -1739,9 +1736,9 @@ def _discover_deloox_catalog(seeds, deadline=None):
         except Exception:
             pass
 
-        # Search results are paginated by a numeric ``page`` parameter that is
-        # not always exposed as a link. Follow it while pages keep yielding
-        # product URLs, exactly like the scraper's search pagination.
+        # Deloox search results can paginate through a numeric `page`
+        # parameter without exposing a normal <a rel="next"> link. Follow
+        # those pages as part of the generic catalog crawl.
         sp = urllib.parse.urlparse(requested)
         if (
             page_products
