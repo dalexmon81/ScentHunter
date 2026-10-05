@@ -412,6 +412,8 @@ try:
     app.include_router(diagnose_sabina_legacy_sparam_router)
     from diagnose_deloox_frontier_path import router as diagnose_deloox_frontier_path_router
     app.include_router(diagnose_deloox_frontier_path_router)
+    from diagnose_deloox_url_state import router as diagnose_deloox_url_state_router
+    app.include_router(diagnose_deloox_url_state_router)
     from diagnose_sabina_search import router as diagnose_sabina_search_router
     app.include_router(diagnose_sabina_search_router)
     from diagnose_sabina_search_stream import router as diagnose_sabina_search_stream_router
