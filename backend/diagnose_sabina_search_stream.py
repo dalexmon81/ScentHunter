@@ -36,11 +36,16 @@ def _sabina_search_url(query: str) -> str:
 def diagnose_sabina_js_search(
     q: str = Query("Hawas", min_length=1, max_length=120),
 ):
+    """Read-only, bounded network trace of Sabina's Italian JS search.
+
+    Important: response bodies are deliberately NOT parsed inside Playwright
+    response callbacks. That was causing the previous diagnostic to hang on
+    large/streamed JSON responses.
+    """
     started = time.monotonic()
     url = _sabina_search_url(q)
     requests = []
     responses = []
-    matching_json = []
     body_text = ""
     navigation_error = None
 
@@ -53,7 +58,8 @@ def diagnose_sabina_js_search(
                 user_agent=(
                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-                )
+                ),
+                service_workers="block",
             )
             page = context.new_page()
 
@@ -67,7 +73,7 @@ def diagnose_sabina_js_search(
                         "method": req.method,
                         "url": u,
                         "resource_type": req.resource_type,
-                        "post_data": body[:8000] if body else None,
+                        "post_data": body[:6000] if body else None,
                     })
 
             def on_response(resp):
@@ -76,39 +82,26 @@ def diagnose_sabina_js_search(
                 if req.resource_type in {"xhr", "fetch"} or any(
                     x in u.lower() for x in ("search", "api", "ajax", "product", "catalog")
                 ):
-                    content_type = resp.headers.get("content-type") or ""
                     responses.append({
                         "status": resp.status,
                         "url": u,
                         "resource_type": req.resource_type,
-                        "content_type": content_type,
+                        "content_type": resp.headers.get("content-type"),
                     })
-                    if "json" in content_type.lower():
-                        try:
-                            data = resp.json()
-                            compact = json.dumps(data, ensure_ascii=False)
-                            if q.lower() in compact.lower() or "kobra" in compact.lower() or "hawas" in compact.lower():
-                                matching_json.append({
-                                    "url": u,
-                                    "status": resp.status,
-                                    "json_sample": data,
-                                })
-                        except Exception:
-                            pass
 
             context.on("request", on_request)
             context.on("response", on_response)
 
+            # Do not wait for every network request. We only need the JS calls.
             try:
-                page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                page.goto(url, wait_until="commit", timeout=10000)
             except PlaywrightTimeoutError as exc:
                 navigation_error = f"PlaywrightTimeoutError: {exc}"
 
-            # The search is client-side and may fire after initial DOM load.
-            page.wait_for_timeout(10000)
+            page.wait_for_timeout(5000)
 
             try:
-                body_text = page.locator("body").inner_text(timeout=5000)
+                body_text = page.locator("body").inner_text(timeout=2000)
             except Exception:
                 body_text = ""
 
@@ -116,31 +109,33 @@ def diagnose_sabina_js_search(
             browser.close()
 
         return {
-            "diagnostic": "sabina-js-search-network-v2",
+            "diagnostic": "sabina-js-search-network-v3",
             "ok": True,
             "query": q,
             "search_url": url,
             "navigation_error": navigation_error,
+            "request_count": len(requests),
+            "response_count": len(responses),
             "network_requests": requests,
             "network_responses": responses,
-            "matching_json_responses": matching_json,
             "page_contains_query": q.lower() in body_text.lower(),
             "page_contains_kobra": "kobra" in body_text.lower(),
-            "page_text_sample": body_text[:12000],
+            "page_text_sample": body_text[:6000],
             "read_only": True,
             "catalog_written": False,
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
     except Exception as exc:
         return {
-            "diagnostic": "sabina-js-search-network-v2",
+            "diagnostic": "sabina-js-search-network-v3",
             "ok": False,
             "query": q,
             "search_url": url,
             "error": f"{type(exc).__name__}: {exc}",
+            "request_count": len(requests),
+            "response_count": len(responses),
             "network_requests": requests,
             "network_responses": responses,
-            "matching_json_responses": matching_json,
             "read_only": True,
             "catalog_written": False,
             "elapsed_sec": round(time.monotonic() - started, 3),
