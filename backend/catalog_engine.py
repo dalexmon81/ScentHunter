@@ -112,6 +112,18 @@ HTTP_TIMEOUT = 15
 SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
+# Sabina's Italian storefront delegates native search to Sellboost. These are
+# fixed, broad catalog terms used only by background discovery; the user's
+# search query is never injected here.
+SABINA_SELLBOOST_SEARCH_URL = 'https://api.sellboost.com/finder/search'
+SABINA_SELLBOOST_SHOP_ID = 'fd08e30c-8347-4a9f-ae40-94463e3d1e59'
+SABINA_SELLBOOST_SUB_SHOP_ID = 'shop|1'
+SABINA_SELLBOOST_TERMS = ('parfum', 'perfume', 'fragrance', 'extrait', 'profumi')
+SABINA_SELLBOOST_REGISTERS_PER_PAGE = 50
+SABINA_SELLBOOST_MAX_PAGES = 10
+SABINA_SELLBOOST_TIMEOUT = 10
+
+
 SYNC_WORKERS = 8
 REFRESH_WORKERS = 2
 
@@ -2225,6 +2237,14 @@ def discover_store(store):
                             html_sitemap_seeds.add(listing)
 
     fallback=None
+    sabina_sellboost = None
+    if store == 'sabina':
+        # Sabina's Italian native search is backed by Sellboost and exposes
+        # product URLs that are absent from the HTML search surfaces. This is
+        # generic background catalog discovery; no user query is involved.
+        sabina_sellboost = _discover_sabina_sellboost_catalog()
+        product_urls.update(sabina_sellboost['product_urls'])
+
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
     # advanced through a persistent discovery frontier. Do not run a second
     # in-memory HTML fallback for Deloox: that would restart from the same
@@ -2312,6 +2332,16 @@ def discover_store(store):
                 f'error:{frontier.get("error",0)};'
                 f'dead:{frontier.get("dead",0)}'
             )
+    if sabina_sellboost is not None:
+        details.append(
+            f'sabina_sellboost=terms:{len(sabina_sellboost["terms"])};'
+            f'requests:{sabina_sellboost["requests"]};'
+            f'products:{len(sabina_sellboost["product_urls"])}'
+        )
+        if sabina_sellboost['errors']:
+            details.append(
+                'sabina_sellboost_errors=' + ' | '.join(sabina_sellboost['errors'][:4])
+            )
     if fallback is not None:
         details.append(
             f'html_fallback=visited:{fallback["visited"]};'
@@ -2332,6 +2362,122 @@ def discover_store(store):
         'html_fallback':fallback,
     }
 
+
+
+def _discover_sabina_sellboost_catalog():
+    """Discover Sabina product URLs through its authoritative Italian search backend.
+
+    This is background catalog discovery only. It uses fixed generic fragrance
+    terms and never receives or embeds the user's search query, a product name,
+    a brand name, or an individual product id. A technical failure is returned
+    separately from a successful zero-result term so the existing HTML/sitemap
+    discovery remains intact.
+    """
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': EASY_COSMETIC_USER_AGENT,
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8',
+        'Content-Type': 'application/json',
+        'Origin': STORES['sabina'],
+        'Referer': STORES['sabina'].rstrip('/') + '/it/',
+    })
+
+    found = {}
+    errors = []
+    requests_made = 0
+    session_id = str(uuid.uuid4())
+
+    try:
+        for term in SABINA_SELLBOOST_TERMS:
+            payload = {
+                'sessionId': session_id,
+                'searchTerm': term,
+                'facets': [],
+                'priceFacet': None,
+                'country': 'IT',
+                'countryId': 10,
+                'currency': 'EUR',
+                'excludedBrands': [
+                    "PENHALIGON'S", 'PRADA EYEWEAR', 'CHANEL',
+                    'JO MALONE LONDON',
+                ],
+                'excludedProducts': [21140, 40106, 40107, 40108],
+                'group': '1',
+                'lastRegisterId': [],
+                'registersPerPage': SABINA_SELLBOOST_REGISTERS_PER_PAGE,
+                'searchLanguage': 'it',
+                'sorting': {'field': 'relevance', 'type': 'desc'},
+                'shopId': SABINA_SELLBOOST_SHOP_ID,
+                'subShopId': SABINA_SELLBOOST_SUB_SHOP_ID,
+            }
+
+            for _ in range(SABINA_SELLBOOST_MAX_PAGES):
+                try:
+                    response = session.post(
+                        SABINA_SELLBOOST_SEARCH_URL,
+                        json=payload,
+                        timeout=SABINA_SELLBOOST_TIMEOUT,
+                        allow_redirects=True,
+                    )
+                    requests_made += 1
+                except requests.RequestException as exc:
+                    errors.append(f'{term}: {type(exc).__name__}:{exc}')
+                    break
+
+                if response.status_code >= 400:
+                    errors.append(f'{term}: HTTP {response.status_code}')
+                    break
+
+                try:
+                    data = response.json()
+                except (ValueError, json.JSONDecodeError) as exc:
+                    errors.append(f'{term}: invalid_json:{type(exc).__name__}')
+                    break
+
+                if not isinstance(data, dict) or data.get('status') != 'success':
+                    errors.append(f'{term}: invalid_status')
+                    break
+
+                result_data = data.get('data')
+                if not isinstance(result_data, dict):
+                    errors.append(f'{term}: invalid_data')
+                    break
+
+                rows = result_data.get('searchResponses')
+                if not isinstance(rows, list):
+                    errors.append(f'{term}: invalid_searchResponses')
+                    break
+
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    raw_url = row.get('url')
+                    if not raw_url:
+                        continue
+                    url = urllib.parse.urljoin(
+                        STORES['sabina'], str(raw_url)
+                    ).split('#', 1)[0]
+                    if _html_product_url('sabina', url, STORES['sabina']):
+                        found[url] = ''
+
+                last_register_id = result_data.get('lastRegisterId')
+                if not last_register_id:
+                    break
+                payload['lastRegisterId'] = (
+                    last_register_id
+                    if isinstance(last_register_id, list)
+                    else [last_register_id]
+                )
+    finally:
+        session.close()
+
+    return {
+        'product_urls': found,
+        'terms': list(SABINA_SELLBOOST_TERMS),
+        'requests': requests_made,
+        'errors': errors[:20],
+    }
 
 def _jsonld(soup):
     products = []
@@ -2607,12 +2753,6 @@ def _search_db():
 def search_local(query, per_store=32, search_terms=None):
     # FTS5 is candidate generation only. Whole-token verification and
     # ProductMatcher remain authoritative for identity.
-    #
-    # IMPORTANT: every search term is an alternative representation of the
-    # same user intent. Do not combine them into one FTS query with a single
-    # SQL LIMIT: a broad alias can consume that limit before a later,
-    # more-specific term is evaluated. That can make valid catalog products
-    # disappear from normal search even though they are present in the catalog.
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2649,6 +2789,12 @@ def search_local(query, per_store=32, search_terms=None):
         for store in STORES:
             selected_by_url = {}
 
+            # All query terms are alternatives for the same user intent.
+            # Execute one FTS5 query per store instead of one query per term.
+            fts_query = _fts_query_for_token_sets(token_sets)
+            if not fts_query:
+                continue
+
             sql = """
                     SELECT u.url,u.slug,u.lastmod,
                            p.store AS product_store, p.url AS product_url,
@@ -2672,39 +2818,25 @@ def search_local(query, per_store=32, search_terms=None):
                        AND u.active=1
                      LIMIT ?
                 """
+            candidate_sql_limit = max(128, (limit or 64) * max(1, len(token_sets)))
+            candidates = conn.execute(sql, (store, fts_query, candidate_sql_limit)).fetchall()
 
-            # Give every ProductMatcher term its own candidate budget.
-            # The literal user query is therefore never crowded out by
-            # canonical names or aliases belonging to the same intent.
-            per_term_limit = max(128, (limit or 64) * 2)
-
-            for ts in token_sets:
-                fts_query = _fts_query_for_token_sets([ts])
-                if not fts_query:
+            for r in candidates:
+                url = str(r['url'] or '').strip()
+                if not url or url in selected_by_url:
                     continue
-
-                candidates = conn.execute(
-                    sql,
-                    (store, fts_query, per_term_limit),
-                ).fetchall()
-
-                for r in candidates:
-                    url = str(r['url'] or '').strip()
-                    if not url or url in selected_by_url:
-                        continue
-
-                    search_text = ' '.join(
-                        str(r[key] or '')
-                        for key in ('slug', 'product_name', 'product_brand')
-                    )
-                    normalized_tokens = set(norm(search_text).split())
-                    score = sum(
-                        1 for token in ts if token in normalized_tokens
-                    )
-                    if score != len(ts):
-                        continue
-
-                    selected_by_url[url] = (score + 10, dict(r))
+                search_text = ' '.join(str(r[key] or '') for key in ('slug','product_name','product_brand'))
+                normalized_tokens = set(norm(search_text).split())
+                best_term_score = 0
+                matched_term = False
+                for ts in token_sets:
+                    score = sum(1 for token in ts if token in normalized_tokens)
+                    if score == len(ts):
+                        matched_term = True
+                        best_term_score = max(best_term_score, score)
+                if not matched_term:
+                    continue
+                selected_by_url[url] = (best_term_score + 10, dict(r))
 
             ordered = sorted(
                 selected_by_url.values(),
@@ -2717,7 +2849,6 @@ def search_local(query, per_store=32, search_terms=None):
                 url = str(r.get('url') or '').strip()
                 if not url:
                     continue
-
                 if r.get('product_name'):
                     rows.append({
                         'url': url,
@@ -2749,10 +2880,10 @@ def search_local(query, per_store=32, search_terms=None):
                         'name': r.get('slug') or url_slug(url),
                         '_needs_refresh': True,
                     })
-
         return rows
     finally:
         conn.close()
+
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows):
     # Compatibility path for SQLite builds without FTS5.
@@ -3848,25 +3979,6 @@ def _coverage_claim_tasks(limit, stores=None):
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
-
-        # Recover coverage jobs left in PROCESSING by a worker that died or
-        # was restarted. Without this, a task can remain PROCESSING forever
-        # and never be retried.
-        stale_before = now - max(
-            180.0,
-            _COVERAGE_TASK_TIMEOUT_SECONDS * 6,
-        )
-        conn.execute(
-            """UPDATE catalog_coverage
-                  SET state='RETRY',
-                      next_run_at=?,
-                      last_error='stale_processing_recovered'
-                WHERE state='PROCESSING'
-                  AND last_started_at IS NOT NULL
-                  AND last_started_at < ?""",
-            (now, stale_before),
-        )
-        conn.commit()
         # Requeue previously failed family identities once when this coverage
         # worker process starts. A NOT_FOUND result normally sleeps for 24h;
         # that is wrong when the family registry has just gained a new identity.
