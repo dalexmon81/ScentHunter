@@ -382,6 +382,38 @@ def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
         'results': result,
     }
 
+@app.get('/diagnose-sabina-path')
+def diagnose_sabina_path_endpoint(
+    max_pages: int = 800,
+    max_depth: int = 8,
+):
+    if (
+        not CATALOG_ENGINE_AVAILABLE
+        or not callable(
+            catalog_diagnose_sabina_path
+        )
+    ):
+        return {
+            'ok': False,
+            'diagnostic': 'sabina-discovery-path',
+            'error': (
+                'catalog_diagnostic_unavailable'
+            ),
+        }
+
+    try:
+        return catalog_diagnose_sabina_path(
+            max_pages=max_pages,
+            max_depth=max_depth,
+        )
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'sabina-discovery-path',
+            'error': (
+                f'{type(exc).__name__}: {exc}'
+            ),
+        }
 
 @app.on_event('startup')
 def _start_catalog_bootstrap():
