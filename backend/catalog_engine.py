@@ -1952,64 +1952,109 @@ def _discover_html_catalog(store, seeds, deadline=None):
         'errors':errors[:20],
     }
 
-def _diagnose_sabina_kobra_frontier_baseline(query='Kobra'):
-    """READ-ONLY baseline frontier probe; never called by production discovery."""
+def _diagnose_sabina_frontier_full_baseline(query='Kobra'):
+    """Read-only simulation of the first seed expansion of baseline discovery."""
     started=time.time()
-    directory='https://www.sabina.com/es/marcas'
-    out={
-        'ok':True,
-        'diagnostic':'sabina-baseline-frontier-read-only-v1',
-        'store':'sabina',
-        'query':query,
-        'database_written':False,
-        'production_search_called':False,
-    }
-    try:
-        _requested, final, data, error=_fetch_html_page('sabina', directory)
-    except Exception as exc:
-        final,data,error=directory,None,f'{type(exc).__name__}:{exc}'
-    if error or not data:
-        out.update({'diagnosis':'DIRECTORY_FETCH_FAILED','error':error,'elapsed_sec':round(time.time()-started,3)})
-        return out
-    soup=BeautifulSoup(data,'html.parser')
-    candidates=[]
-    target=None
-    for a in soup.find_all('a',href=True):
-        absolute=urllib.parse.urljoin(final or directory,a.get('href')).split('#',1)[0]
-        parsed=urllib.parse.urlparse(absolute)
-        if parsed.netloc.lower() not in {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases('sabina')}: continue
-        if not re.search(r'/\d+_[^/]+/?$',parsed.path or '',re.I): continue
-        admitted=_html_listing_url('sabina',absolute,final or directory,a.get_text(' ',strip=True))
-        if not admitted: continue
-        pr=_html_discovery_priority('sabina',admitted,1,directory)
-        item={'url':admitted,'label':a.get_text(' ',strip=True),'priority':pr}
-        candidates.append(item)
-        if 'rasasi' in norm(item['label']+' '+item['url']): target=item
-    candidates_sorted=sorted(candidates,key=lambda x:(x['priority'],x['url']))
-    target_rank=(next((i+1 for i,x in enumerate(candidates_sorted) if x['url']==target['url']),None) if target else None)
-    better=sum(1 for x in candidates if target and x['priority'] < target['priority'])
-    out.update({
-        'directory_status':'OK','brand_directory_links_found':len(candidates),
-        'target_brand':target,
-        'target_rank_among_brand_links':target_rank,
-        'brand_links_with_better_priority_than_rasasi':better,
-        'priority_distribution':{},
-    })
-    dist={}
-    for x in candidates: dist[str(x['priority'])]=dist.get(str(x['priority']),0)+1
-    out['priority_distribution']=dist
-    if target:
-        out['diagnosis']='RASASI_FOUND_PRIORITY_CHECK'
-    else:
-        out['diagnosis']='RASASI_BRAND_LINK_NOT_FOUND'
-    out['elapsed_sec']=round(time.time()-started,3)
+    out={'ok':True,'diagnostic':'sabina-baseline-frontier-full-v1','store':'sabina','query':query,'database_written':False,'production_search_called':False}
+    seeds=list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('sabina',())))
+    queue=[]; sequence=0; seen=set(); seed_results=[]
+    def add(url,depth,source=''):
+        nonlocal sequence
+        key=(url or '').split('#',1)[0]
+        if not key or key in seen or depth>HTML_MAX_DEPTH: return
+        sequence+=1; pr=_html_discovery_priority('sabina',key,depth,source)
+        heapq.heappush(queue,(pr,sequence,key,depth,source)); seen.add(key)
+    for seed in seeds: add(seed,0,'configured_seed')
+    batch=[]
+    while queue and len(batch)<HTML_WORKERS: batch.append(heapq.heappop(queue))
+    def fetch(item):
+        _pr,_seq,url,depth,source=item
+        try: return item,*_fetch_html_page('sabina',url)
+        except Exception as exc: return item,url,None,f'{type(exc).__name__}:{exc}'
+    with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(batch))) as pool: results=list(pool.map(fetch,batch))
+    for item,requested,final,data,error in results:
+        _pr,_seq,url,depth,source=item
+        seed_results.append({'url':url,'priority':_pr,'status':'ERROR' if error else 'OK','error':error})
+        if error or not data: continue
+        soup=BeautifulSoup(data,'html.parser'); page_base=final or requested
+        for a in soup.find_all('a',href=True):
+            href=a.get('href'); label=a.get_text(' ',strip=True)
+            if _html_product_url('sabina',href,page_base): continue
+            listing=_html_listing_url('sabina',href,page_base,label)
+            if listing: add(listing,depth+1,url)
+        for node in soup.find_all(True):
+            for attr in ('data-url','data-href','data-link','data-product-url','data-product-link','data-target','data-next-url','data-next','data-load-more-url','data-pagination-url'):
+                raw=node.get(attr)
+                if not raw: continue
+                if _html_product_url('sabina',raw,page_base): continue
+                listing=_html_listing_url('sabina',raw,page_base,node.get_text(' ',strip=True)[:300])
+                if listing: add(listing,depth+1,url)
+        for node in soup.find_all('link',href=True):
+            if 'next' in ' '.join(node.get('rel') or []).lower():
+                listing=_html_listing_url('sabina',node.get('href'),page_base,'next')
+                if listing: add(listing,depth+1,url)
+    target_url='https://www.sabina.com/es/631_rasasi'; ordered=sorted(queue); target=None
+    for pr,seq,url,depth,source in ordered:
+        if url==target_url: target={'url':url,'priority':pr,'sequence':seq,'depth':depth,'source':source}; break
+    rank=next((i+1 for i,x in enumerate(ordered) if x[2]==target_url),None)
+    better=sum(1 for x in ordered if target and x[0]<target['priority'])
+    out.update({'seed_count':len(seeds),'initial_batch_count':len(batch),'seed_results':seed_results,'frontier_count_after_first_batch':len(ordered),'target_brand':target,'target_rank_in_actual_frontier':rank,'frontier_entries_with_better_priority':better,'frontier_entries_before_target':max(0,(rank-1) if rank else 0),'frontier_priority_distribution':{str(pr):sum(1 for x in ordered if x[0]==pr) for pr in sorted(set(x[0] for x in ordered))},'html_max_pages':HTML_MAX_PAGES,'diagnosis':('RASASI_NOT_IN_FRONTIER_AFTER_FIRST_BATCH' if not target else ('RASASI_FRONTIER_RANK_WITHIN_BUDGET' if rank<=HTML_MAX_PAGES else 'RASASI_FRONTIER_BEYOND_BUDGET')),'elapsed_sec':round(time.time()-started,3)})
     return out
 
 
+def _diagnose_sabina_frontier_full_baseline(query='Kobra'):
+    """Read-only simulation of the first seed expansion of baseline discovery."""
+    started=time.time()
+    out={'ok':True,'diagnostic':'sabina-baseline-frontier-full-v1','store':'sabina','query':query,'database_written':False,'production_search_called':False}
+    seeds=list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get('sabina',())))
+    queue=[]; sequence=0; seen=set(); seed_results=[]
+    def add(url,depth,source=''):
+        nonlocal sequence
+        key=(url or '').split('#',1)[0]
+        if not key or key in seen or depth>HTML_MAX_DEPTH: return
+        sequence+=1; pr=_html_discovery_priority('sabina',key,depth,source)
+        heapq.heappush(queue,(pr,sequence,key,depth,source)); seen.add(key)
+    for seed in seeds: add(seed,0,'configured_seed')
+    batch=[]
+    while queue and len(batch)<HTML_WORKERS: batch.append(heapq.heappop(queue))
+    def fetch(item):
+        _pr,_seq,url,depth,source=item
+        try: return item,*_fetch_html_page('sabina',url)
+        except Exception as exc: return item,url,None,f'{type(exc).__name__}:{exc}'
+    with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(batch))) as pool: results=list(pool.map(fetch,batch))
+    for item,requested,final,data,error in results:
+        _pr,_seq,url,depth,source=item
+        seed_results.append({'url':url,'priority':_pr,'status':'ERROR' if error else 'OK','error':error})
+        if error or not data: continue
+        soup=BeautifulSoup(data,'html.parser'); page_base=final or requested
+        for a in soup.find_all('a',href=True):
+            href=a.get('href'); label=a.get_text(' ',strip=True)
+            if _html_product_url('sabina',href,page_base): continue
+            listing=_html_listing_url('sabina',href,page_base,label)
+            if listing: add(listing,depth+1,url)
+        for node in soup.find_all(True):
+            for attr in ('data-url','data-href','data-link','data-product-url','data-product-link','data-target','data-next-url','data-next','data-load-more-url','data-pagination-url'):
+                raw=node.get(attr)
+                if not raw: continue
+                if _html_product_url('sabina',raw,page_base): continue
+                listing=_html_listing_url('sabina',raw,page_base,node.get_text(' ',strip=True)[:300])
+                if listing: add(listing,depth+1,url)
+        for node in soup.find_all('link',href=True):
+            if 'next' in ' '.join(node.get('rel') or []).lower():
+                listing=_html_listing_url('sabina',node.get('href'),page_base,'next')
+                if listing: add(listing,depth+1,url)
+    target_url='https://www.sabina.com/es/631_rasasi'; ordered=sorted(queue); target=None
+    for pr,seq,url,depth,source in ordered:
+        if url==target_url: target={'url':url,'priority':pr,'sequence':seq,'depth':depth,'source':source}; break
+    rank=next((i+1 for i,x in enumerate(ordered) if x[2]==target_url),None)
+    better=sum(1 for x in ordered if target and x[0]<target['priority'])
+    out.update({'seed_count':len(seeds),'initial_batch_count':len(batch),'seed_results':seed_results,'frontier_count_after_first_batch':len(ordered),'target_brand':target,'target_rank_in_actual_frontier':rank,'frontier_entries_with_better_priority':better,'frontier_entries_before_target':max(0,(rank-1) if rank else 0),'frontier_priority_distribution':{str(pr):sum(1 for x in ordered if x[0]==pr) for pr in sorted(set(x[0] for x in ordered))},'html_max_pages':HTML_MAX_PAGES,'diagnosis':('RASASI_NOT_IN_FRONTIER_AFTER_FIRST_BATCH' if not target else ('RASASI_FRONTIER_RANK_WITHIN_BUDGET' if rank<=HTML_MAX_PAGES else 'RASASI_FRONTIER_BEYOND_BUDGET')),'elapsed_sec':round(time.time()-started,3)})
+    return out
+
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
-    if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 2 and str(query or '').strip():
-        return _diagnose_sabina_kobra_frontier_baseline(query=str(query).strip())
+    if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 3 and str(query or '').strip():
+        return _diagnose_sabina_frontier_full_baseline(query=str(query).strip())
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
