@@ -3351,34 +3351,104 @@ def _coverage_ensure_schema():
 
 
 def _coverage_load_catalog():
-    """Load the canonical product list once and refresh only when the file changes."""
+    """Load canonical products plus registered family identities for coverage.
+
+    The canonical JSON remains authoritative for normal catalog identities.
+    Registered family products are added as a second, generic coverage source
+    so a family identity can be discovered at retailers even when the product
+    has not yet been copied into product_catalog.json. This is intentionally
+    independent of retailer, product name, URL and user query.
+    """
     global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
-    path = BASE_DIR / 'product_catalog.json'
+    catalog_path = BASE_DIR / 'product_catalog.json'
+    family_path = BASE_DIR / 'family_registry.json'
     try:
-        mtime = path.stat().st_mtime_ns
+        catalog_mtime = catalog_path.stat().st_mtime_ns
     except OSError:
-        return []
-    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
-        return _COVERAGE_CATALOG_CACHE
+        catalog_mtime = 0
     try:
-        with path.open('r', encoding='utf-8') as handle:
+        family_mtime = family_path.stat().st_mtime_ns
+    except OSError:
+        family_mtime = 0
+    cache_key = (catalog_mtime, family_mtime)
+    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == cache_key:
+        return _COVERAGE_CATALOG_CACHE
+
+    try:
+        with catalog_path.open('r', encoding='utf-8') as handle:
             payload = json.load(handle)
     except Exception as exc:
         print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
-        return _COVERAGE_CATALOG_CACHE or []
+        payload = {}
+
     products = payload.get('products') if isinstance(payload, dict) else None
     if not isinstance(products, list):
         products = []
+
     cleaned = []
+    seen_ids = set()
+    seen_identity = set()
     for product in reversed(products):
         if not isinstance(product, dict):
             continue
         product_id = str(product.get('product_id') or '').strip()
         canonical_name = str(product.get('canonical_name') or '').strip()
-        if product_id and canonical_name:
-            cleaned.append(product)
+        if not product_id or not canonical_name:
+            continue
+        cleaned.append(product)
+        seen_ids.add(product_id)
+        seen_identity.add((norm(str(product.get('brand_name') or '')), norm(canonical_name)))
+
+    # Family registry is a canonical identity supplement, not a retailer
+    # discovery exception. Every registered family variant receives a stable
+    # synthetic coverage key; ProductMatcher remains responsible for its final
+    # public catalog identity when the hydrated offer is matched.
+    try:
+        with family_path.open('r', encoding='utf-8') as handle:
+            family_payload = json.load(handle)
+    except Exception as exc:
+        family_payload = {}
+        if family_mtime:
+            print(f'CATALOG COVERAGE FAMILY LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
+
+    families = family_payload.get('families') if isinstance(family_payload, dict) else None
+    if isinstance(families, list):
+        for family in families:
+            if not isinstance(family, dict):
+                continue
+            family_id = str(family.get('family_id') or '').strip()
+            brand = str(family.get('brand') or '').strip()
+            variants = family.get('products') or []
+            if not family_id or not isinstance(variants, list):
+                continue
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                canonical_name = str(variant.get('canonical_name') or '').strip()
+                if not canonical_name:
+                    continue
+                identity_key = (norm(brand), norm(canonical_name))
+                if identity_key in seen_identity:
+                    continue
+                family_key = f'FAMILY::{family_id}::{norm(canonical_name).replace(" ", "-")}'
+                if family_key in seen_ids:
+                    continue
+                aliases = variant.get('aliases')
+                if not isinstance(aliases, list):
+                    aliases = []
+                synthetic = {
+                    'product_id': family_key,
+                    'brand_name': brand,
+                    'canonical_name': canonical_name,
+                    'aliases': aliases,
+                    'family_id': family_id,
+                }
+                cleaned.append(synthetic)
+                seen_ids.add(family_key)
+                seen_identity.add(identity_key)
+
     _COVERAGE_CATALOG_CACHE = cleaned
-    _COVERAGE_CATALOG_MTIME = mtime
+    _COVERAGE_CATALOG_MTIME = cache_key
     return cleaned
 
 
