@@ -3850,6 +3850,26 @@ def _coverage_claim_tasks(limit, stores=None):
                     )
                     conn.commit()
                     _COVERAGE_FAMILY_REQUEUE_DONE = True
+        # A coverage task is executed outside SQLite and therefore can be left
+        # in PROCESSING if the worker process dies, is restarted, or the child
+        # scraper is terminated. Such a task must never become permanently
+        # invisible to the coverage scheduler.
+        stale_before = now - max(
+            180.0,
+            _COVERAGE_TASK_TIMEOUT_SECONDS * 6,
+        )
+        conn.execute(
+            """UPDATE catalog_coverage
+                  SET state='RETRY',
+                      next_run_at=?,
+                      last_error='stale_processing_recovered'
+                WHERE state='PROCESSING'
+                  AND last_started_at IS NOT NULL
+                  AND last_started_at < ?""",
+            (now, stale_before),
+        )
+        conn.commit()
+
         selected_stores = [
             str(store).strip().lower()
             for store in (stores or [])
