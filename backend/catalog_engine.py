@@ -2051,10 +2051,62 @@ def _diagnose_sabina_frontier_full_baseline(query='Kobra'):
     out.update({'seed_count':len(seeds),'initial_batch_count':len(batch),'seed_results':seed_results,'frontier_count_after_first_batch':len(ordered),'target_brand':target,'target_rank_in_actual_frontier':rank,'frontier_entries_with_better_priority':better,'frontier_entries_before_target':max(0,(rank-1) if rank else 0),'frontier_priority_distribution':{str(pr):sum(1 for x in ordered if x[0]==pr) for pr in sorted(set(x[0] for x in ordered))},'html_max_pages':HTML_MAX_PAGES,'diagnosis':('RASASI_NOT_IN_FRONTIER_AFTER_FIRST_BATCH' if not target else ('RASASI_FRONTIER_RANK_WITHIN_BUDGET' if rank<=HTML_MAX_PAGES else 'RASASI_FRONTIER_BEYOND_BUDGET')),'elapsed_sec':round(time.time()-started,3)})
     return out
 
+def _diagnose_sabina_rasasi_persistence_v1(query='Rasasi'):
+    """Read-only inspection of persisted Sabina RASASI URLs and discovery provenance."""
+    started = time.time()
+    conn = db()
+    try:
+        rows = conn.execute("""
+            SELECT
+                u.url, u.slug, u.discovered_at, u.active,
+                p.name, p.brand, p.fetch_status, p.fetched_at,
+                q.state AS discovery_state, q.depth AS discovery_depth,
+                q.priority AS discovery_priority, q.source AS discovery_source,
+                q.first_seen_at AS discovery_first_seen_at,
+                q.last_finished_at AS discovery_last_finished_at
+            FROM store_urls u
+            LEFT JOIN store_products p
+              ON p.store=u.store AND p.url=u.url
+            LEFT JOIN catalog_discovery_queue q
+              ON q.store=u.store AND q.url=u.url
+            WHERE u.store='sabina'
+              AND (
+                lower(coalesce(p.brand,''))='rasasi'
+                OR lower(coalesce(p.name,'')) LIKE '%rasasi%'
+                OR lower(u.url) LIKE '%rasasi%'
+              )
+            ORDER BY u.discovered_at ASC, u.url ASC
+        """).fetchall()
+        candidates=[]
+        for r in rows:
+            d=dict(r)
+            candidates.append(d)
+        return {
+            'ok': True,
+            'diagnostic': 'sabina-rasasi-persistence-read-only-v1',
+            'store': 'sabina',
+            'query': query,
+            'database_written': False,
+            'production_search_called': False,
+            'candidate_count': len(candidates),
+            'candidates': candidates,
+            'provenance_summary': {
+                'with_discovery_queue_record': sum(1 for x in candidates if x.get('discovery_state') is not None),
+                'with_discovery_source': sum(1 for x in candidates if x.get('discovery_source')),
+                'sources': sorted(set(str(x.get('discovery_source') or '') for x in candidates if x.get('discovery_source'))),
+                'priorities': sorted(set(x.get('discovery_priority') for x in candidates if x.get('discovery_priority') is not None)),
+            },
+            'elapsed_sec': round(time.time()-started, 3),
+        }
+    finally:
+        conn.close()
+
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 3 and str(query or '').strip():
         return _diagnose_sabina_frontier_full_baseline(query=str(query).strip())
+    if str(store or '').strip().lower() == 'sabina' and int(max_pages or 120) == 4 and str(query or '').strip().lower() == 'rasasi':
+        return _diagnose_sabina_rasasi_persistence_v1(query='Rasasi')
     store = str(store or '').strip().lower()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
