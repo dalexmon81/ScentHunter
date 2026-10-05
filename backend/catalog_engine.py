@@ -3849,6 +3849,7 @@ def _coverage_claim_tasks(limit, stores=None):
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
                   {store_clause}
                 ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
+                         CASE WHEN product_id LIKE 'FAMILY::%' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
             tuple(params),
