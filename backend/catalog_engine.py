@@ -1473,6 +1473,27 @@ def _deloox_queue_recover_stale():
         conn.close()
 
 
+def _deloox_search_next_page(url):
+    """Return the next numeric page URL for a Deloox search page, or None."""
+    sp = urllib.parse.urlparse(url)
+    if not (
+        re.search(r'/(?:chercher|search)(?:\.html)?$', sp.path or '', re.I)
+        and re.search(r'(?:^|&)(?:q|query)=', sp.query, re.I)
+    ):
+        return None
+    params = urllib.parse.parse_qsl(sp.query, keep_blank_values=True)
+    current = 1
+    for key, value in params:
+        if key.lower() == 'page' and value.isdigit():
+            current = int(value)
+    if current >= DELOOX_SEARCH_MAX_PAGES:
+        return None
+    params = [(k, v) for k, v in params if k.lower() != 'page']
+    params.append(('page', str(current + 1)))
+    return urllib.parse.urlunparse(sp._replace(
+        query=urllib.parse.urlencode(params, doseq=True), fragment=''))
+
+
 def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
     """Periodically revisit completed graph nodes so new catalog branches appear."""
     cutoff = time.time() - max(3600.0, float(revisit_seconds))
@@ -1490,7 +1511,26 @@ def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
                     LIMIT ?""",
                 (cutoff, max(1, int(limit))),
             ).fetchall()
-            if not rows:
+            urls = [row['url'] for row in rows]
+            # DONE search pages whose next numeric page was never queued
+            # (e.g. completed before pagination existed) must be revisited,
+            # otherwise search pagination can never advance past them.
+            for row in conn.execute(
+                """SELECT url
+                     FROM catalog_discovery_queue
+                    WHERE store='deloox'
+                      AND state='DONE'
+                      AND url LIKE '%chercher%'"""
+            ).fetchall():
+                nxt = _deloox_search_next_page(row['url'])
+                if not nxt or row['url'] in urls:
+                    continue
+                if conn.execute(
+                    'SELECT 1 FROM catalog_discovery_queue WHERE store=? AND url=?',
+                    ('deloox', nxt),
+                ).fetchone() is None:
+                    urls.append(row['url'])
+            if not urls:
                 return 0
             now = time.time()
             conn.executemany(
@@ -1501,9 +1541,9 @@ def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
                           lease_token=NULL,
                           last_error=NULL
                     WHERE store='deloox' AND url=? AND state='DONE'""",
-                [(now, row['url']) for row in rows],
+                [(now, u) for u in urls],
             )
-            return len(rows)
+            return len(urls)
     finally:
         conn.close()
 
@@ -1739,28 +1779,10 @@ def _discover_deloox_catalog(seeds, deadline=None):
         # Deloox search results can paginate through a numeric `page`
         # parameter without exposing a normal <a rel="next"> link. Follow
         # those pages as part of the generic catalog crawl.
-        sp = urllib.parse.urlparse(requested)
-        if (
-            page_products
-            and re.search(r'/(?:chercher|search)(?:\.html)?$', sp.path or '', re.I)
-            and re.search(r'(?:^|&)(?:q|query)=', sp.query, re.I)
-        ):
-            params = urllib.parse.parse_qsl(sp.query, keep_blank_values=True)
-            current = 1
-            for key, value in params:
-                if key.lower() == 'page' and value.isdigit():
-                    current = int(value)
-            if current < DELOOX_SEARCH_MAX_PAGES:
-                params = [(k, v) for k, v in params if k.lower() != 'page']
-                params.append(('page', str(current + 1)))
-                listings.append((
-                    urllib.parse.urlunparse(sp._replace(
-                        query=urllib.parse.urlencode(params, doseq=True),
-                        fragment='',
-                    )),
-                    depth,
-                    requested,
-                ))
+        if page_products:
+            next_page = _deloox_search_next_page(requested)
+            if next_page:
+                listings.append((next_page, depth, requested))
 
         if listings:
             _deloox_queue_enqueue(listings)
