@@ -1453,6 +1453,20 @@ def _deloox_queue_enqueue(items):
                 )
                 if before is None:
                     inserted += 1
+                elif str(source or '') == 'configured_seed':
+                    # Configured Deloox catalog surfaces are durable entry points.
+                    # Re-open them on each explicit discovery run so newly added
+                    # pagination/extraction logic can advance an existing branch.
+                    conn.execute(
+                        """UPDATE catalog_discovery_queue
+                              SET state='PENDING',
+                                  available_at=?,
+                                  leased_until=NULL,
+                                  lease_token=NULL,
+                                  last_error=NULL
+                            WHERE store='deloox' AND url=? AND state IN ('DONE','DEAD')""",
+                        (now, url),
+                    )
     finally:
         conn.close()
     return inserted
