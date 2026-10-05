@@ -1337,19 +1337,6 @@ def _html_discovery_priority(store, url, depth, source=''):
     # no specific retailer brand, product name, product id, or user query is used.
     elif re.search(r'/(?:brands?|marques?|marcas|marken)(?:\.html)?$', path, re.I):
         score = 0
-    # Sabina exposes its brand catalog as numeric brand pages such as
-    # /es/631_rasasi. These are catalog enumeration surfaces, not arbitrary
-    # content pages. Keep them ahead of the broad generic frontier so the
-    # bounded crawl can actually cover the retailer's brand graph. This is
-    # structural only: no specific brand, product, id, or user query is used.
-    elif (
-        store == 'sabina'
-        and re.search(r'^/[^/]+/\d+_[^/]+/?$', path, re.I)
-    ) or (
-        store == 'sabina'
-        and re.search(r'^/\d+_[^/]+/?$', path, re.I)
-    ):
-        score = 1
     # Prefer actual fragrance catalog surfaces before unrelated site sections.
     # This is URL-structure based only: no product name, brand name, product
     # id, or user query is used.
@@ -1832,6 +1819,93 @@ def _discover_deloox_catalog(seeds, deadline=None):
     }
 
 
+def _discover_sabina_brand_catalog(deadline=None):
+    """Discover Sabina's public brand graph as a bounded catalog surface.
+
+    Sabina exposes a large brand directory whose individual brand pages are
+    catalog enumeration surfaces. The generic HTML frontier can starve these
+    pages behind thousands of unrelated links, so the brand graph is crawled
+    as a first-class structural surface. No product name, brand name, query,
+    or product id is used to select pages.
+    """
+    seeds = (
+        'https://www.sabina.com/es/marcas',
+        'https://www.sabina.com/es/marcas_old',
+    )
+    product_urls = {}
+    errors = []
+    brand_urls = set()
+    successes = 0
+
+    for seed in seeds:
+        if deadline is not None and time.time() >= deadline:
+            break
+        try:
+            requested, final, data, error = _fetch_html_page('sabina', seed)
+        except Exception as exc:
+            errors.append(f'{seed} -> {type(exc).__name__}:{exc}')
+            continue
+        if error:
+            errors.append(f'{seed} -> {error}')
+            continue
+        successes += 1
+        soup = BeautifulSoup(data, 'html.parser')
+        page_base = final or requested
+        for a in soup.find_all('a', href=True):
+            listing = _html_listing_url('sabina', a.get('href'), page_base,
+                                        a.get_text(' ', strip=True))
+            if listing and re.search(r'/\d+_[^/]+$', urllib.parse.urlparse(listing).path, re.I):
+                brand_urls.add(listing)
+
+    def fetch_brand(url):
+        try:
+            return url, _fetch_html_page('sabina', url)
+        except Exception as exc:
+            return url, (url, '', b'', f'{type(exc).__name__}:{exc}')
+
+    brand_list = sorted(brand_urls)
+    if brand_list:
+        with ThreadPoolExecutor(max_workers=HTML_WORKERS) as pool:
+            futures = [pool.submit(fetch_brand, url) for url in brand_list]
+            for future in as_completed(futures):
+                if deadline is not None and time.time() >= deadline:
+                    # Futures already submitted may still finish, but their
+                    # results are ignored once the discovery deadline expires.
+                    continue
+                url, result = future.result()
+                requested, final, data, error = result
+                if error:
+                    errors.append(f'{url} -> {error}')
+                    continue
+                successes += 1
+                soup = BeautifulSoup(data, 'html.parser')
+                page_base = final or requested
+                for a in soup.find_all('a', href=True):
+                    product = _html_product_url('sabina', a.get('href'), page_base)
+                    if product:
+                        product_urls[product] = ''
+                navigation_attrs = (
+                    'data-url','data-href','data-link','data-product-url',
+                    'data-product-link','data-target',
+                )
+                for node in soup.find_all(True):
+                    for attr in navigation_attrs:
+                        raw = node.get(attr)
+                        if not raw:
+                            continue
+                        product = _html_product_url('sabina', raw, page_base)
+                        if product:
+                            product_urls[product] = ''
+
+    return {
+        'product_urls': product_urls,
+        'brand_urls': len(brand_urls),
+        'visited': 2 + len(brand_urls),
+        'successes': successes,
+        'errors': errors[:20],
+    }
+
+
 def _discover_html_catalog(store, seeds, deadline=None):
     queue=[]
     queued=set()
@@ -1851,6 +1925,17 @@ def _discover_html_catalog(store, seeds, deadline=None):
             priority=_html_discovery_priority(store, key, depth, source)
             heapq.heappush(queue, (priority, sequence, key, depth, source))
             queued.add(key)
+
+    # Sabina exposes a large public brand directory. Crawl that structural
+    # graph first so brand pages cannot be starved by the bounded generic
+    # frontier. This is retailer-architecture logic only: no product, brand,
+    # query, or product-id exception is used.
+    if store == 'sabina':
+        brand_deadline = deadline
+        brand_graph = _discover_sabina_brand_catalog(brand_deadline)
+        product_urls.update(brand_graph['product_urls'])
+        errors.extend(brand_graph['errors'])
+        successes += brand_graph['successes']
 
     for seed in seeds:
         add(seed,0,'configured_seed')
@@ -1965,60 +2050,9 @@ def _discover_html_catalog(store, seeds, deadline=None):
         'errors':errors[:20],
     }
 
-def _diagnose_sabina_kobra_direct_branch():
-    """READ-ONLY exact Sabina branch: /es/marcas -> RASASI -> Kobra."""
-    started = time.time()
-    directory = "https://www.sabina.com/es/marcas"
-    brand = "https://www.sabina.com/es/631_rasasi"
-    target = "https://www.sabina.com/es/perfumes-hombre/56286-kobra-for-him-eau-de-parfum-rasasi.html"
-    result = {
-        'ok': True, 'diagnostic': 'sabina-kobra-direct-branch-read-only-v1',
-        'store': 'sabina', 'query': 'Kobra',
-        'database_written': False, 'production_search_called': False,
-        'steps': []
-    }
-    for stage, url in [('brand_directory', directory), ('brand_page', brand)]:
-        try:
-            requested, final, data, error = _fetch_html_page('sabina', url)
-        except Exception as exc:
-            final, data, error = url, None, f'{type(exc).__name__}:{exc}'
-        step = {'stage': stage, 'url': url, 'final_url': final,
-                'status': 'ERROR' if error else 'OK',
-                'bytes': len(data or b''), 'error': error}
-        if error:
-            result['steps'].append(step)
-            result['diagnosis'] = f'{stage.upper()}_FETCH_FAILED'
-            result['elapsed_sec'] = round(time.time()-started, 3)
-            return result
-        soup = BeautifulSoup(data, 'html.parser')
-        product_hits = []
-        listing_hits = []
-        for a in soup.find_all('a', href=True):
-            href, label = a.get('href'), a.get_text(' ', strip=True)
-            product = _html_product_url('sabina', href, final or url)
-            if product:
-                if '56286' in product.lower() or 'kobra' in norm(product) or 'kobra' in norm(label):
-                    product_hits.append({'url': product, 'label': label})
-            listing = _html_listing_url('sabina', href, final or url, label)
-            if listing and ('631_rasasi' in listing.lower() or 'rasasi' in norm(label)):
-                listing_hits.append({'url': listing, 'label': label})
-        step['product_hits'] = product_hits[:20]
-        step['listing_hits'] = listing_hits[:20]
-        result['steps'].append(step)
-    target_admitted = _html_product_url('sabina', target, brand)
-    result['target_url'] = target
-    result['target_admitted_by_html_product_url'] = target_admitted
-    result['diagnosis'] = ('DIRECT_BRANCH_KOBRA_ADMITTED' if target_admitted
-                           else 'DIRECT_BRANCH_KOBRA_REJECTED')
-    result['elapsed_sec'] = round(time.time()-started, 3)
-    return result
-
-
 def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, max_events=500):
     """READ-ONLY trace of the generic HTML discovery graph."""
     store = str(store or '').strip().lower()
-    if store == 'sabina' and str(query or '').strip().lower() == 'kobra' and int(max_pages or 0) == 1:
-        return _diagnose_sabina_kobra_direct_branch()
     if store not in HTML_DISCOVERY_SEEDS:
         return {'ok': False, 'diagnostic': 'html-discovery-trace-read-only-v1',
                 'error': f'html_discovery_not_configured:{store}', 'store': store}
