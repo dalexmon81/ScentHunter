@@ -2923,6 +2923,588 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             'nella superficie di navigazione raggiunta dai seed.'
         ),
     }
+def diagnose_sabina_path(
+    max_pages=800,
+    max_depth=8,
+):
+    """
+    Read-only diagnostic for the Sabina discovery path.
+
+    It does not write to the database.
+    It does not call production search.
+    It follows the normal Sabina HTML discovery rules.
+    """
+    store = 'sabina'
+
+    target_brand = (
+        'https://www.sabina.com/es/631_rasasi'
+    )
+
+    target_product = (
+        'https://www.sabina.com/es/perfumes-hombre/'
+        '56286-kobra-for-him-eau-de-parfum-rasasi.html'
+    )
+
+    target_brand = target_brand.rstrip('/')
+    target_product = target_product.rstrip('/')
+
+    seeds = list(
+        dict.fromkeys(
+            HTML_DISCOVERY_SEEDS.get(store, ())
+        )
+    )
+
+    queue = []
+    queued = set()
+    visited = set()
+    events = []
+
+    sequence = 0
+    target_brand_info = None
+    target_product_info = None
+
+    def normalize_url(url, base_url=''):
+        if not url:
+            return None
+
+        absolute = urllib.parse.urljoin(
+            base_url,
+            str(url),
+        )
+
+        absolute = absolute.split('#', 1)[0]
+        parsed = urllib.parse.urlparse(absolute)
+
+        if parsed.scheme not in ('http', 'https'):
+            return None
+
+        return absolute.rstrip('/')
+
+    def add_to_queue(
+        raw_url,
+        depth,
+        source,
+        reason,
+    ):
+        nonlocal sequence
+        nonlocal target_brand_info
+        nonlocal target_product_info
+
+        url = normalize_url(
+            raw_url,
+            source,
+        )
+
+        if not url:
+            return {
+                'url': None,
+                'queued': False,
+                'reason': 'invalid_url',
+            }
+
+        if depth > max_depth:
+            result = {
+                'url': url,
+                'queued': False,
+                'reason': 'max_depth',
+                'depth': depth,
+                'source': source,
+            }
+
+        elif url in queued:
+            result = {
+                'url': url,
+                'queued': False,
+                'reason': 'already_queued',
+                'depth': depth,
+                'source': source,
+            }
+
+        elif url in visited:
+            result = {
+                'url': url,
+                'queued': False,
+                'reason': 'already_visited',
+                'depth': depth,
+                'source': source,
+            }
+
+        elif len(queued) >= max_pages * 20:
+            result = {
+                'url': url,
+                'queued': False,
+                'reason': 'queue_guard_limit',
+                'depth': depth,
+                'source': source,
+            }
+
+        else:
+            sequence += 1
+
+            priority = _html_discovery_priority(
+                store,
+                url,
+                depth,
+                source,
+            )
+
+            heapq.heappush(
+                queue,
+                (
+                    priority,
+                    sequence,
+                    url,
+                    depth,
+                    source,
+                ),
+            )
+
+            queued.add(url)
+
+            result = {
+                'url': url,
+                'queued': True,
+                'reason': reason,
+                'depth': depth,
+                'source': source,
+                'priority': priority,
+                'queue_size': len(queue),
+            }
+
+        if url == target_brand:
+            target_brand_info = dict(result)
+
+        if url == target_product:
+            target_product_info = dict(result)
+
+        return result
+
+    for seed in seeds:
+        add_to_queue(
+            seed,
+            0,
+            '',
+            'configured_seed',
+        )
+
+    started_at = time.time()
+
+    while (
+        queue
+        and len(visited) < max_pages
+        and (time.time() - started_at)
+        < DISCOVERY_HARD_TIMEOUT
+    ):
+        (
+            priority,
+            sequence_number,
+            requested,
+            depth,
+            source,
+        ) = heapq.heappop(queue)
+
+        if requested in visited:
+            continue
+
+        visited.add(requested)
+
+        event = {
+            'requested_url': requested,
+            'depth': depth,
+            'source': source,
+            'priority': priority,
+            'visited_index': len(visited),
+            'status': 'FETCHING',
+        }
+
+        try:
+            result = _fetch_html_page(
+                store,
+                requested,
+            )
+
+            (
+                requested_url,
+                final_url,
+                data,
+                error,
+            ) = result
+
+        except Exception as exc:
+            final_url = requested
+            data = None
+            error = (
+                f'{type(exc).__name__}: {exc}'
+            )
+
+        event['final_url'] = final_url
+        event['bytes'] = len(data or b'')
+
+        if error:
+            event['status'] = 'ERROR'
+            event['error'] = error
+            events.append(event)
+            continue
+
+        event['status'] = 'OK'
+
+        soup = BeautifulSoup(
+            data,
+            'html.parser',
+        )
+
+        event['links'] = []
+
+        def inspect_link(
+            raw_url,
+            label,
+            location,
+        ):
+            nonlocal target_brand_info
+            nonlocal target_product_info
+
+            absolute = normalize_url(
+                raw_url,
+                final_url or requested,
+            )
+
+            if not absolute:
+                return
+
+            is_target_brand = (
+                absolute == target_brand
+            )
+
+            is_target_product = (
+                absolute == target_product
+            )
+
+            product_url = _html_product_url(
+                store,
+                raw_url,
+                final_url or requested,
+            )
+
+            listing_url = None
+
+            if not product_url:
+                listing_url = _html_listing_url(
+                    store,
+                    raw_url,
+                    final_url or requested,
+                    label,
+                )
+
+            item = {
+                'raw_url': raw_url,
+                'absolute_url': absolute,
+                'label': label[:300],
+                'location': location,
+                'is_target_brand': is_target_brand,
+                'is_target_product': is_target_product,
+                'product_admitted': bool(product_url),
+                'product_url': product_url,
+                'listing_admitted': bool(listing_url),
+                'listing_url': listing_url,
+            }
+
+            if (
+                is_target_brand
+                or is_target_product
+            ):
+                queue_result = add_to_queue(
+                    absolute,
+                    depth + 1,
+                    requested,
+                    location,
+                )
+
+                item['queue_result'] = queue_result
+
+                if is_target_brand:
+                    target_brand_info = {
+                        **target_brand_info
+                        if target_brand_info
+                        else {},
+                        'found_on_page': requested,
+                        'found_label': label[:300],
+                        'found_location': location,
+                        'admission': (
+                            'product'
+                            if product_url
+                            else 'listing'
+                            if listing_url
+                            else 'rejected'
+                        ),
+                        'product_url': product_url,
+                        'listing_url': listing_url,
+                        'queue_result': queue_result,
+                    }
+
+                if is_target_product:
+                    target_product_info = {
+                        **target_product_info
+                        if target_product_info
+                        else {},
+                        'found_on_page': requested,
+                        'found_label': label[:300],
+                        'found_location': location,
+                        'admission': (
+                            'product'
+                            if product_url
+                            else 'listing'
+                            if listing_url
+                            else 'rejected'
+                        ),
+                        'product_url': product_url,
+                        'listing_url': listing_url,
+                        'queue_result': queue_result,
+                    }
+
+            event['links'].append(item)
+
+            if product_url:
+                return
+
+            if listing_url:
+                add_to_queue(
+                    listing_url,
+                    depth + 1,
+                    requested,
+                    location,
+                )
+
+        for anchor in soup.find_all(
+            'a',
+            href=True,
+        ):
+            inspect_link(
+                anchor.get('href'),
+                anchor.get_text(
+                    ' ',
+                    strip=True,
+                ),
+                'anchor',
+            )
+
+        navigation_attrs = (
+            'data-url',
+            'data-href',
+            'data-link',
+            'data-product-url',
+            'data-product-link',
+            'data-target',
+            'data-next-url',
+            'data-next',
+            'data-load-more-url',
+            'data-pagination-url',
+        )
+
+        for node in soup.find_all(True):
+            label = node.get_text(
+                ' ',
+                strip=True,
+            )[:300]
+
+            for attr in navigation_attrs:
+                raw_url = node.get(attr)
+
+                if raw_url:
+                    inspect_link(
+                        raw_url,
+                        label,
+                        f'attribute:{attr}',
+                    )
+
+        for node in soup.find_all(
+            'link',
+            href=True,
+        ):
+            rel = ' '.join(
+                node.get('rel') or []
+            ).lower()
+
+            if 'next' in rel:
+                inspect_link(
+                    node.get('href'),
+                    'pagination',
+                    'rel_next',
+                )
+
+        try:
+            for item in _jsonld(soup):
+                inspect_link(
+                    item.get('url'),
+                    'jsonld_product',
+                    'jsonld',
+                )
+        except Exception as exc:
+            event['jsonld_error'] = (
+                f'{type(exc).__name__}: {exc}'
+            )
+
+        event['target_brand_seen'] = any(
+            item.get('is_target_brand')
+            for item in event['links']
+        )
+
+        event['target_product_seen'] = any(
+            item.get('is_target_product')
+            for item in event['links']
+        )
+
+        event['target_brand_admitted'] = (
+            target_brand_info is not None
+            and target_brand_info.get(
+                'admission'
+            ) in (
+                'listing',
+                'product',
+            )
+        )
+
+        event['target_product_admitted'] = (
+            target_product_info is not None
+            and target_product_info.get(
+                'admission'
+            ) == 'product'
+        )
+
+        event['queue_size_after'] = len(queue)
+
+        events.append(event)
+
+    brand_visited = target_brand in visited
+    product_visited = target_product in visited
+
+    brand_queued = target_brand in queued
+    product_queued = target_product in queued
+
+    brand_event = next(
+        (
+            item
+            for item in events
+            if item.get('requested_url')
+            == target_brand
+        ),
+        None,
+    )
+
+    product_event = next(
+        (
+            item
+            for item in events
+            if item.get('requested_url')
+            == target_product
+        ),
+        None,
+    )
+
+    if not target_brand_info:
+        diagnosis = (
+            'BRAND_NOT_FOUND_IN_VISITED_PAGES'
+        )
+    elif not target_brand_info.get(
+        'listing_url'
+    ) and not target_brand_info.get(
+        'product_url'
+    ):
+        diagnosis = (
+            'BRAND_FOUND_BUT_REJECTED_BY_ADMISSION'
+        )
+    elif not brand_queued:
+        diagnosis = (
+            'BRAND_ADMITTED_BUT_NOT_QUEUED'
+        )
+    elif not brand_visited:
+        diagnosis = (
+            'BRAND_QUEUED_BUT_NOT_VISITED'
+        )
+    elif not target_product_info:
+        diagnosis = (
+            'BRAND_VISITED_BUT_PRODUCT_NOT_FOUND'
+        )
+    elif not target_product_info.get(
+        'product_url'
+    ):
+        diagnosis = (
+            'PRODUCT_FOUND_BUT_REJECTED'
+        )
+    elif not product_queued:
+        diagnosis = (
+            'PRODUCT_ADMITTED_BUT_NOT_QUEUED'
+        )
+    elif not product_visited:
+        diagnosis = (
+            'PRODUCT_QUEUED_BUT_NOT_VISITED'
+        )
+    else:
+        diagnosis = (
+            'PRODUCT_DISCOVERY_PATH_COMPLETE'
+        )
+
+    return {
+        'ok': True,
+        'diagnostic': (
+            'sabina-discovery-path-read-only-v1'
+        ),
+        'store': store,
+        'database_written': False,
+        'production_search_called': False,
+        'limits': {
+            'max_pages': max_pages,
+            'max_depth': max_depth,
+            'hard_timeout': (
+                DISCOVERY_HARD_TIMEOUT
+            ),
+        },
+        'seeds': seeds,
+        'visited_count': len(visited),
+        'queued_count': len(queued),
+        'queue_remaining': len(queue),
+        'brand_url': target_brand,
+        'brand': {
+            'queued': brand_queued,
+            'visited': brand_visited,
+            'frontier_info': target_brand_info,
+            'visited_event': brand_event,
+        },
+        'product_url': target_product,
+        'product': {
+            'queued': product_queued,
+            'visited': product_visited,
+            'frontier_info': target_product_info,
+            'visited_event': product_event,
+        },
+        'diagnosis': diagnosis,
+        'errors': [
+            event
+            for event in events
+            if event.get('status') == 'ERROR'
+        ][:50],
+        'target_events': [
+            event
+            for event in events
+            if event.get(
+                'target_brand_seen'
+            )
+            or event.get(
+                'target_product_seen'
+            )
+            or event.get(
+                'requested_url'
+            ) in (
+                target_brand,
+                target_product,
+            )
+        ],
+        'events_count': len(events),
+        'events': events,
+        'elapsed_sec': round(
+            time.time() - started_at,
+            3,
+        ),
+    }
 
 def _set_sync_state(store, status, started_at=None, finished_at=None, discovered_count=0, fetched_count=0, error=None):
     conn = db()
