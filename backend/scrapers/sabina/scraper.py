@@ -5,24 +5,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 
 import requests
-import uuid
 from bs4 import BeautifulSoup
 
 
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
-
-# Sabina's Italian JavaScript search is backed by Sellboost. This is the
-# retailer-authoritative discovery surface used before product-page hydration.
-SELLBOOST_SEARCH_URL = "https://api.sellboost.com/finder/search"
-SELLBOOST_SHOP_ID = "fd08e30c-8347-4a9f-ae40-94463e3d1e59"
-SELLBOOST_SUB_SHOP_ID = "shop|1"
-SELLBOOST_COUNTRY = "IT"
-SELLBOOST_COUNTRY_ID = 10
-SELLBOOST_LANGUAGE = "it"
-SELLBOOST_CURRENCY = "EUR"
-SELLBOOST_REGISTERS_PER_PAGE = 50
-SELLBOOST_MAX_PAGES = 10
 # Generic native-search endpoints. No product/brand-specific routes.
 SEARCH_ENDPOINTS = (
     (BASE_URL + "/es/buscar", {"search_query": True}),
@@ -851,118 +838,16 @@ def _browser_search_product_urls(query):
         return []
 
 
-def _sellboost_search_candidates(session, query):
-    """Return Sabina product URLs from the retailer-authoritative search API.
-
-    ``None`` means the Sellboost request failed technically and the legacy
-    discovery path may be used as a bounded fallback. ``[]`` means the
-    authoritative search completed successfully with zero products and must
-    be respected as such.
+def discover_product_urls(session, query):
     """
-    search_term = clean(query)
-    if not search_term:
-        return []
+    Generic Sabina discovery.
 
-    candidates = []
-    seen = set()
-    last_register_id = []
-
-    for _page in range(SELLBOOST_MAX_PAGES):
-        payload = {
-            "sessionId": str(uuid.uuid4()),
-            "searchTerm": search_term,
-            "facets": [],
-            "priceFacet": None,
-            "country": SELLBOOST_COUNTRY,
-            "countryId": SELLBOOST_COUNTRY_ID,
-            "currency": SELLBOOST_CURRENCY,
-            # These exclusions are intentionally empty. The exclusions seen in
-            # Sabina's browser payload are UI/session-specific and must not be
-            # hard-coded into ScentHunter's generic retailer discovery.
-            "excludedBrands": [],
-            "excludedProducts": [],
-            "group": "1",
-            "lastRegisterId": last_register_id,
-            "registersPerPage": SELLBOOST_REGISTERS_PER_PAGE,
-            "searchLanguage": SELLBOOST_LANGUAGE,
-            "sorting": {
-                "field": "relevance",
-                "type": "desc",
-            },
-            "shopId": SELLBOOST_SHOP_ID,
-            "subShopId": SELLBOOST_SUB_SHOP_ID,
-        }
-
-        try:
-            response = session.post(
-                SELLBOOST_SEARCH_URL,
-                json=payload,
-                headers=HEADERS,
-                timeout=DISCOVERY_TIMEOUT,
-            )
-        except requests.RequestException:
-            return None
-
-        try:
-            if response.status_code >= 400:
-                return None
-
-            body = response.json()
-        except (ValueError, requests.RequestException):
-            return None
-        finally:
-            response.close()
-
-        if not isinstance(body, dict) or body.get("status") != "success":
-            return None
-
-        data = body.get("data")
-        if not isinstance(data, dict):
-            return None
-
-        rows = data.get("searchResponses")
-        if not isinstance(rows, list):
-            rows = []
-
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            raw_url = row.get("url")
-            absolute = normalise_url(raw_url, BASE_URL)
-            if not absolute or not is_product_url(absolute):
-                continue
-            if absolute in seen:
-                continue
-            seen.add(absolute)
-            candidates.append(absolute)
-            if len(candidates) >= MAX_CANDIDATES:
-                return candidates
-
-        next_register_id = data.get("lastRegisterId")
-        if not next_register_id:
-            break
-
-        # Sellboost returns the pagination cursor as a list in the captured
-        # Sabina request/response contract. Preserve it exactly for the next
-        # page, while avoiding an accidental infinite loop.
-        if next_register_id == last_register_id:
-            break
-        last_register_id = (
-            next_register_id
-            if isinstance(next_register_id, list)
-            else [next_register_id]
-        )
-
-    return candidates
-
-
-def _sellboost_search_product_urls(session, query):
-    """Compatibility wrapper returning only authoritative product URLs."""
-    return _sellboost_search_candidates(session, query) or []
-
-
-def _legacy_search_product_urls(session, query):
-    """Legacy heuristic discovery used only when Sellboost fails technically."""
+    Try the retailer's known generic native-search routes in sequence. Each
+    route is driven only by the runtime query; there are no product/brand/SKU
+    exceptions. If native HTTP search does not produce candidates, use the
+    same generic native-search surface through a bounded browser fallback,
+    then the bounded generic sitemap fallback.
+    """
     native_candidates = []
     seen = set()
 
@@ -991,6 +876,10 @@ def _legacy_search_product_urls(session, query):
                 seen.add(candidate)
                 native_candidates.append(candidate)
 
+        # A native route can return technically valid product URLs that are
+        # unrelated to the runtime query. Do not stop on those false-positive
+        # candidates. Continue through the remaining generic Sabina routes
+        # until a URL itself contains all meaningful query tokens.
         strong = [
             candidate
             for candidate in native_candidates
@@ -999,64 +888,514 @@ def _legacy_search_product_urls(session, query):
         if strong:
             ranked = sorted(
                 native_candidates,
-                key=lambda url: (
-                    0 if url in strong else 1,
-                    -_candidate_score(url, "", query),
-                    url,
+                key=lambda candidate: (
+                    -_candidate_score(candidate, '', query),
+                    candidate,
                 ),
             )
             return ranked[:MAX_CANDIDATES]
 
+    # HTTP-native search can time out or return only unrelated candidates while
+    # the same public search surface remains usable through a real browser.
+    # Use the browser fallback only after all native routes have been tried.
     browser_candidates = _browser_search_product_urls(query)
+    merged = list(native_candidates)
     for candidate in browser_candidates:
         if candidate not in seen:
             seen.add(candidate)
-            native_candidates.append(candidate)
+            merged.append(candidate)
 
     strong = [
         candidate
-        for candidate in native_candidates
+        for candidate in merged
         if query_matches(candidate, query)
     ]
     if strong:
         ranked = sorted(
-            native_candidates,
-            key=lambda url: (
-                0 if url in strong else 1,
-                -_candidate_score(url, "", query),
-                url,
+            merged,
+            key=lambda candidate: (
+                -_candidate_score(candidate, '', query),
+                candidate,
             ),
         )
         return ranked[:MAX_CANDIDATES]
 
-    return _sitemap_product_urls(session, query)[:MAX_SITEMAP_CANDIDATES]
+    # Native and browser search returned no query-relevant candidates. Use only
+    # a bounded generic sitemap fallback rather than scanning brand indexes.
+    return _sitemap_product_urls(session, query)[:MAX_CANDIDATES]
 
 
-def _discover_product_candidates(session, query):
-    """Return ``(url, authoritative_search)`` discovery candidates.
-
-    Sabina's Sellboost search is authoritative. We use weaker HTML/browser/
-    sitemap discovery only when the authoritative request itself fails
-    technically. A valid zero-result from Sellboost is not replaced by
-    heuristic guesses.
-    """
-    sellboost_candidates = _sellboost_search_candidates(session, query)
-    if sellboost_candidates is not None:
-        return [(url, True) for url in sellboost_candidates]
-
-    legacy = _legacy_search_product_urls(session, query)
-    return [(url, False) for url in legacy]
+def _offer_list(product):
+    offers = product.get("offers") if isinstance(product, dict) else None
+    if isinstance(offers, dict):
+        return [offers]
+    if isinstance(offers, list):
+        return [offer for offer in offers if isinstance(offer, dict)]
+    return []
 
 
-def discover_product_urls(session, query):
-    """Compatibility API returning only discovered product URLs."""
-    return [
-        url
-        for url, _authoritative in _discover_product_candidates(session, query)
+def _offer_size(offer, product):
+    parts = []
+    for value in (
+        offer.get("name"),
+        offer.get("description"),
+        offer.get("sku"),
+        offer.get("url"),
+        product.get("name"),
+        product.get("description"),
+        product.get("sku"),
+    ):
+        if value:
+            parts.append(str(value))
+    return extract_size_ml(" ".join(parts))
+
+
+def _select_product_offer(product, final_url, title, size_ml):
+    offers = _offer_list(product)
+
+    if not offers:
+        return None
+
+    # Bind the offer to the exact product page/name whenever possible.
+    same_product = []
+    for offer in offers:
+        offer_url = normalise_url(offer.get("url"))
+        offer_name = clean(offer.get("name"))
+
+        if offer_url == final_url:
+            same_product.append(offer)
+        elif offer_name and (
+            query_matches(offer_name, title)
+            or query_matches(title, offer_name)
+        ):
+            same_product.append(offer)
+
+    # Never guess between multiple unrelated offers.
+    candidates = same_product if same_product else (
+        offers if len(offers) == 1 else []
+    )
+
+    if not candidates:
+        return None
+
+    # If the offer itself declares a bottle size, it must match the
+    # selected product size. Never take an unrelated variant's price.
+    if size_ml is not None:
+        sized = [
+            offer for offer in candidates
+            if _offer_size(offer, product) is not None
+            and abs(_offer_size(offer, product) - size_ml) < 0.01
+        ]
+        if sized:
+            candidates = sized
+        elif any(
+            _offer_size(offer, product) is not None
+            for offer in candidates
+        ):
+            return None
+
+    priced = [
+        offer for offer in candidates
+        if money_to_float(offer.get("price")) is not None
     ]
 
+    return priced[0] if priced else candidates[0]
 
-def _fetch_candidate(url, query, authoritative_search=False):
+
+def extract_product_page(session, url, query):
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return None
+
+    if response.status_code >= 400:
+        return None
+
+    final_url = normalise_url(response.url)
+
+    if not final_url or not is_product_url(final_url):
+        return None
+
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
+
+    h1 = soup.select_one("h1")
+    h1_text = (
+        clean(h1.get_text(" ", strip=True))
+        if h1
+        else ""
+    )
+
+    product = first_jsonld_product(
+        soup,
+        expected_url=final_url,
+        expected_title=h1_text or None,
+    )
+
+    title = clean(
+        (product or {}).get("name")
+        or h1_text
+    )
+
+    if not title:
+        return None
+
+    brand = None
+    raw_brand = (product or {}).get("brand")
+
+    if isinstance(raw_brand, dict):
+        brand = clean(raw_brand.get("name")) or None
+    elif raw_brand:
+        brand = clean(raw_brand)
+
+    if not query_matches(
+        f"{title} {brand or ''}",
+        query,
+    ):
+        return None
+
+    # Determine the product size from product-specific areas first.
+    size_ml, size_source = extract_size_ml_from_product_page(
+        soup,
+        title,
+    )
+
+    # Select price from the offer belonging to this exact product/format.
+    offer = _select_product_offer(
+        product or {},
+        final_url,
+        title,
+        size_ml,
+    )
+
+    price = (
+        money_to_float(offer.get("price"))
+        if isinstance(offer, dict)
+        else None
+    )
+    price_source = "sabina_jsonld"
+
+    # If JSON-LD has no usable price, use the product-page HTML fallback.
+    # This fallback deliberately ignores struck-through/reference prices.
+    if price is None:
+        price, price_source = extract_price_from_html(soup)
+
+    currency = (
+        clean(offer.get("priceCurrency"))
+        if isinstance(offer, dict)
+        else ""
+    ) or "EUR"
+
+    availability, availability_source = availability_from_product_page(
+        soup,
+        offer,
+    )
+
+    image = (product or {}).get("image")
+
+    if isinstance(image, list):
+        image = image[0] if image else None
+
+    if isinstance(image, dict):
+        image = (
+            image.get("url")
+            or image.get("contentUrl")
+        )
+
+    if image:
+        image = urljoin(
+            response.url,
+            image,
+        )
+
+    gtin = clean(
+        (product or {}).get("gtin13")
+        or (product or {}).get("gtin12")
+        or (product or {}).get("gtin14")
+        or (product or {}).get("gtin")
+    ) or None
+
+    mpn = clean(
+        (product or {}).get("mpn")
+    ) or None
+
+    sku = clean(
+        (product or {}).get("sku")
+    ) or None
+
+    page_text = soup.get_text(
+        " ",
+        strip=True,
+    )
+
+    if not sku:
+        reference_match = re.search(
+            r"(?:referencia|reference|référence|riferimento)"
+            r"\s*[:#]?\s*([A-Z0-9_-]+)",
+            page_text,
+            re.I,
+        )
+
+        if reference_match:
+            sku = reference_match.group(1)
+
+    product_id = product_id_from_url(
+        final_url
+    )
+
+    concentration, concentration_source = (
+        extract_concentration(
+            title,
+            page_text,
+        )
+    )
+
+    gender, gender_source = extract_gender(
+        title,
+        page_text,
+    )
+
+    return {
+        "store": STORE,
+
+        "source": {
+            "url": final_url,
+            "name": title,
+            "brand": brand,
+            "image": image,
+        },
+
+        "identity": {
+            "gtin": (
+                {
+                    "value": gtin,
+                    "source": "sabina_jsonld",
+                }
+                if gtin
+                else None
+            ),
+
+            "mpn": (
+                {
+                    "value": mpn,
+                    "source": "sabina_jsonld",
+                }
+                if mpn
+                else None
+            ),
+
+            "sku": (
+                {
+                    "value": sku,
+                    "source": "sabina_jsonld_or_reference",
+                }
+                if sku
+                else None
+            ),
+
+            "store_product_id": (
+                {
+                    "value": product_id,
+                    "source": "product_url",
+                }
+                if product_id
+                else None
+            ),
+        },
+
+        "attributes": {
+            "size_ml": (
+                {
+                    "value": size_ml,
+                    "source": size_source,
+                }
+                if size_ml is not None
+                else None
+            ),
+
+            "concentration": (
+                {
+                    "value": concentration,
+                    "source": concentration_source,
+                }
+                if concentration
+                else None
+            ),
+
+            "gender": (
+                {
+                    "value": gender,
+                    "source": gender_source,
+                }
+                if gender_source
+                else {
+                    "value": "unknown",
+                    "source": "default",
+                }
+            ),
+
+            "packaging_type": {
+                "value": "product",
+                "source": "default",
+            },
+        },
+
+        "offer": {
+            "price": price,
+            "currency": currency,
+            "availability": availability,
+        },
+
+        "provenance": {
+            "name": "sabina_jsonld_or_h1",
+            "brand": (
+                "sabina_jsonld"
+                if brand
+                else None
+            ),
+            "price": price_source,
+            "availability": availability_source,
+            "image": (
+                "sabina_jsonld"
+                if image
+                else None
+            ),
+            "store_product_id": (
+                "product_url"
+                if product_id
+                else None
+            ),
+            "sku": (
+                "sabina_jsonld_or_reference"
+                if sku
+                else None
+            ),
+            "gtin": (
+                "sabina_jsonld"
+                if gtin
+                else None
+            ),
+            "mpn": (
+                "sabina_jsonld"
+                if mpn
+                else None
+            ),
+            "size_ml": size_source,
+            "concentration": concentration_source,
+            "gender": gender_source,
+            "packaging_type": "default",
+        },
+
+        "raw_data": {
+            "product_url": final_url,
+            "status_code": response.status_code,
+            "jsonld_product": product,
+        },
+
+        "name": title,
+        "brand": brand,
+        "price": (
+            f"{price:.2f}".replace(".", ",")
+            + " €"
+            if price is not None
+            else ""
+        ),
+        "url": final_url,
+        # Unknown is intentionally not converted to false.
+        # The main backend must not interpret missing evidence as OOS.
+        "available": (
+            True if availability == "in_stock"
+            else False if availability == "out_of_stock"
+            else None
+        ),
+    }
+
+def _fallback_extract_product_page(session, url, query):
+    """Minimal product-page parser used only when the rich parser raises.
+
+    It is deliberately generic: it reads the current product H1, visible
+    customer price, size and purchase/notification state from the retailer
+    page. It never contains a product-specific URL or price.
+    """
+    try:
+        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+    except requests.RequestException:
+        return None
+
+    try:
+        if response.status_code >= 400:
+            return None
+        final_url = normalise_url(response.url)
+        if not final_url or not is_product_url(final_url):
+            return None
+        soup = BeautifulSoup(response.text, "html.parser")
+    finally:
+        response.close()
+
+    h1 = soup.select_one("h1")
+    title = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    if not title or not query_matches(title, query):
+        return None
+
+    page_text = clean(soup.get_text(" ", strip=True))
+
+    # Prefer the visible customer-facing price near the product heading.
+    price = None
+    price_patterns = (
+        r"precio\s*:\s*([0-9][0-9\s.,]*)\s*€",
+        r"price\s*:\s*([0-9][0-9\s.,]*)\s*€",
+        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€\s*\([^)]*100ml",
+    )
+    for pattern in price_patterns:
+        match = re.search(pattern, page_text, re.I)
+        if match:
+            candidate = money_to_float(match.group(1))
+            if candidate is not None and candidate > 0:
+                price = candidate
+                break
+
+    size = extract_size_ml(title, page_text)
+    normalized = norm(page_text)
+    if any(marker in normalized for marker in ("fecha de disponibilidad", "avísame", "notificarme", "notify me")):
+        availability = "out_of_stock"
+    elif any(marker in normalized for marker in ("añadir al carrito", "agregar al carrito", "comprar", "add to cart", "buy now")):
+        availability = "in_stock"
+    else:
+        availability = "unknown"
+
+    image = None
+    meta = soup.select_one('meta[property="og:image"]')
+    if meta and meta.get("content"):
+        image = urljoin(BASE_URL, meta.get("content"))
+
+    return {
+        "store": STORE,
+        "source": {"url": final_url, "name": title, "brand": None, "image": image},
+        "identity": {"gtin": None, "mpn": None, "sku": None, "store_product_id": {"value": product_id_from_url(final_url), "source": "product_url"}, "store_variant_id": None},
+        "attributes": {"size_ml": {"value": size, "source": "product_page"} if size is not None else None, "concentration": {"value": extract_concentration(title, page_text)[0], "source": "product_text"} if extract_concentration(title, page_text)[0] else None, "gender": {"value": "unknown", "source": "default"}, "packaging_type": {"value": "product", "source": "default"}},
+        "offer": {"price": price, "currency": "EUR", "availability": availability},
+        "provenance": {"name": "sabina_html_fallback", "price": "visible_product_page", "availability": "visible_product_page", "size_ml": "visible_product_page"},
+        "raw_data": {"product_url": final_url, "status_code": 200},
+        "name": title,
+        "brand": None,
+        "price": f"{price:.2f}".replace(".", ",") + " €" if price is not None else "",
+        "price_num": price,
+        "url": final_url,
+        "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
+        "availability": availability,
+        "size_ml": size,
+        "image": image,
+    }
+
+
+def _fetch_candidate(url, query):
     # One Session per worker avoids sharing requests.Session across threads.
     # IMPORTANT: do not issue a second HTTP request merely because the rich
     # parser returned None. That doubled the worst-case product-page budget
@@ -1064,12 +1403,12 @@ def _fetch_candidate(url, query, authoritative_search=False):
     local_session = requests.Session()
     try:
         try:
-            return extract_product_page(local_session, url, query, authoritative_search)
+            return extract_product_page(local_session, url, query)
         except Exception:
             # The fallback is allowed only when the parser itself raises; it
             # must never be used as a second request after a normal rejection.
             try:
-                return _fallback_extract_product_page(local_session, url, query, authoritative_search)
+                return _fallback_extract_product_page(local_session, url, query)
             except Exception:
                 return None
     finally:
@@ -1085,8 +1424,8 @@ def search(query):
     session = requests.Session()
 
     try:
-        candidate_candidates = _discover_product_candidates(session, query)
-        if not candidate_candidates:
+        candidate_urls = discover_product_urls(session, query)
+        if not candidate_urls:
             return []
 
         results = []
@@ -1095,16 +1434,11 @@ def search(query):
         # Product pages are independent. Fetch them concurrently so one slow
         # product cannot consume the entire store timeout budget.
         with ThreadPoolExecutor(
-            max_workers=min(PRODUCT_WORKERS, len(candidate_candidates))
+            max_workers=min(PRODUCT_WORKERS, len(candidate_urls))
         ) as pool:
             futures = {
-                pool.submit(
-                    _fetch_candidate,
-                    url,
-                    query,
-                    authoritative_search,
-                ): (url, authoritative_search)
-                for url, authoritative_search in candidate_candidates[:MAX_CANDIDATES]
+                pool.submit(_fetch_candidate, url, query): url
+                for url in candidate_urls[:MAX_CANDIDATES]
             }
 
             for future in as_completed(futures):
