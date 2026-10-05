@@ -13,6 +13,7 @@ from pathlib import Path
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
 try:
+    try:
     from catalog_engine import (
         search_local as catalog_search_local,
         refresh_candidates as catalog_refresh_candidates,
@@ -22,8 +23,10 @@ try:
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
         db as catalog_db,
+        diagnose_sabina_path as catalog_diagnose_sabina_path,
     )
     CATALOG_ENGINE_AVAILABLE = True
+
 except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
     catalog_search_local = None
@@ -34,6 +37,8 @@ except Exception as exc:
     catalog_hydration_loop = None
     catalog_db = None
     catalog_hydration_status = None
+    catalog_diagnose_sabina_path = None
+
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
 APP_VERSION = '5.7-catalog-targeted-refresh'
