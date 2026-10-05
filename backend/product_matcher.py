@@ -1654,16 +1654,63 @@ class ProductMatcher:
         terms: List[str] = [query]
         family = self._family_for_query(query)
         if family is not None:
+            family_brand_tokens = set(
+                catalog_variant_key(family.get("brand", "")).split()
+            )
+            query_tokens = set(catalog_variant_key(query).split())
+            editorial_tokens = {
+                "for", "him", "her", "men", "women", "man", "woman",
+                "unisex", "unisexe", "homme", "femme", "herren", "damen",
+                "heren", "dames", "by", "perfume", "parfum", "fragrance",
+            }
+            reduced_terms: List[str] = []
+            complete_terms: List[str] = []
+
+            def add_unique(bucket: List[str], value: Any) -> None:
+                value = str(value or "").strip()
+                if not value or value in terms or value in bucket:
+                    return
+                bucket.append(value)
+
             for variant in family.get("variants") or []:
-                canonical = str(variant.get("canonical_name") or "").strip()
-                if canonical and canonical not in terms:
-                    terms.append(canonical)
-                for alias in variant.get("aliases") or []:
-                    alias = str(alias or "").strip()
-                    if alias and alias not in terms:
-                        terms.append(alias)
+                values = [
+                    variant.get("canonical_name"),
+                    *(variant.get("aliases") or []),
+                ]
+
+                for value in values:
+                    raw_value = str(value or "").strip()
+                    if not raw_value:
+                        continue
+
+                    normalized = catalog_variant_key(raw_value)
+                    if normalized:
+                        tokens = [
+                            token
+                            for token in normalized.split()
+                            if token not in query_tokens
+                            and token not in family_brand_tokens
+                            and token not in editorial_tokens
+                        ]
+                        reduced = " ".join(tokens).strip()
+
+                        # The reduced term is the important discovery term:
+                        # retailers are allowed to expose a registered family
+                        # variant without the family prefix.  Put these terms
+                        # first so the global cap cannot hide later variants.
+                        if reduced and reduced != normalized:
+                            add_unique(reduced_terms, reduced)
+
+                    # Preserve the complete canonical/alias terms as a
+                    # secondary discovery surface for retailers that index the
+                    # full family name.
+                    add_unique(complete_terms, raw_value)
+
+            terms.extend(reduced_terms)
+            terms.extend(complete_terms)
 
         return terms[:80]
+
 
     def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
         """Return compact, JSON-safe identity candidates for diagnostics.
