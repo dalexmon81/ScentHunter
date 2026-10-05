@@ -1380,70 +1380,105 @@ def _deloox_queue_seed():
     return seeds
 
 
-def _deloox_queue_enqueue(items):
-    """Durably enqueue catalog/navigation URLs.
+def _catalog_queue_enqueue(store, items):
+    """
+    Insert or update generic HTML discovery frontier entries.
 
-    Existing DONE rows are not reset by rediscovery. This is what makes the
-    frontier cumulative instead of repeatedly starting from the same branch.
+    items contains:
+        (url, depth, source)
     """
     if not items:
         return 0
+
     now = time.time()
-    conn = db()
     inserted = 0
+    conn = db()
+
     try:
         with conn:
-            for raw_url, depth, source in items:
-                if not raw_url:
+            for url, depth, source in items:
+                if not url:
                     continue
-                url = str(raw_url).split('#', 1)[0]
-                if not _deloox_queue_allowed(url):
-                    continue
+
+                url = str(url).split('#', 1)[0]
+                depth = int(depth)
+                source = str(source or '')
+
                 if depth > HTML_MAX_DEPTH:
                     continue
-                listing = _html_listing_url('deloox', url, url, source)
-                if not listing:
-                    continue
-                url = listing
+
+                priority = int(
+                    _html_discovery_priority(
+                        store,
+                        url,
+                        depth,
+                        source,
+                    )[0]
+                )
+
                 before = conn.execute(
-                    'SELECT 1 FROM catalog_discovery_queue WHERE store=? AND url=?',
-                    ('deloox', url),
+                    """SELECT 1
+                         FROM catalog_discovery_queue
+                        WHERE store=?
+                          AND url=?""",
+                    (store, url),
                 ).fetchone()
+
                 conn.execute(
                     """INSERT INTO catalog_discovery_queue(
-                           store,url,depth,priority,source,state,attempts,available_at,
-                           first_seen_at)
+                           store,
+                           url,
+                           depth,
+                           priority,
+                           source,
+                           state,
+                           attempts,
+                           available_at,
+                           first_seen_at
+                       )
                        VALUES(?,?,?,?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
-                           depth=MIN(catalog_discovery_queue.depth,excluded.depth),
-                           priority=MIN(catalog_discovery_queue.priority,excluded.priority),
+                           depth=MIN(
+                               catalog_discovery_queue.depth,
+                               excluded.depth
+                           ),
+                           priority=MIN(
+                               catalog_discovery_queue.priority,
+                               excluded.priority
+                           ),
                            source=CASE
-                               WHEN catalog_discovery_queue.source='' THEN excluded.source
+                               WHEN catalog_discovery_queue.source=''
+                               THEN excluded.source
                                ELSE catalog_discovery_queue.source
                            END""",
                     (
-                        'deloox',
+                        store,
                         url,
-                        int(depth),
-                        int(_html_discovery_priority(
-                            'deloox', url, int(depth), str(source or '')
-                        )[0]),
-                        str(source or ''),
+                        depth,
+                        priority,
+                        source,
                         'PENDING',
                         0,
                         now,
                         now,
                     ),
                 )
+
                 if before is None:
                     inserted += 1
+
+        return inserted
     finally:
         conn.close()
-    return inserted
 
 
-def _deloox_queue_recover_stale():
-    """Return expired discovery leases to PENDING."""
+def _deloox_queue_enqueue(items):
+    return _catalog_queue_enqueue('deloox', items)
+
+
+
+def _catalog_queue_recover_stale(store):
+    """Return expired discovery leases to PENDING for one store."""
     now = time.time()
     conn = db()
     try:
@@ -1454,19 +1489,28 @@ def _deloox_queue_recover_stale():
                        leased_until=NULL,
                        lease_token=NULL,
                        available_at=?
-                 WHERE store='deloox'
+                 WHERE store=?
                    AND state='PROCESSING'
                    AND leased_until IS NOT NULL
                    AND leased_until < ?""",
-                (now, now),
+                (now, store, now),
             )
             return int(cur.rowcount or 0)
     finally:
         conn.close()
 
 
-def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
-    """Periodically revisit completed graph nodes so new catalog branches appear."""
+def _deloox_queue_recover_stale():
+    return _catalog_queue_recover_stale('deloox')
+
+
+
+def _catalog_queue_requeue_stale_done(
+    store,
+    revisit_seconds=86400.0,
+    limit=100,
+):
+    """Periodically revisit completed catalog pages."""
     cutoff = time.time() - max(3600.0, float(revisit_seconds))
     conn = db()
     try:
@@ -1474,17 +1518,20 @@ def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
             rows = conn.execute(
                 """SELECT url
                      FROM catalog_discovery_queue
-                    WHERE store='deloox'
+                    WHERE store=?
                       AND state='DONE'
                       AND last_finished_at IS NOT NULL
                       AND last_finished_at < ?
-                    ORDER BY last_finished_at ASC
+                 ORDER BY last_finished_at ASC
                     LIMIT ?""",
-                (cutoff, max(1, int(limit))),
+                (store, cutoff, max(1, int(limit))),
             ).fetchall()
+
             if not rows:
                 return 0
+
             now = time.time()
+
             conn.executemany(
                 """UPDATE catalog_discovery_queue
                       SET state='PENDING',
@@ -1492,37 +1539,67 @@ def _deloox_queue_requeue_stale_done(revisit_seconds=86400.0, limit=100):
                           leased_until=NULL,
                           lease_token=NULL,
                           last_error=NULL
-                    WHERE store='deloox' AND url=? AND state='DONE'""",
-                [(now, row['url']) for row in rows],
+                    WHERE store=?
+                      AND url=?
+                      AND state='DONE'""",
+                [
+                    (now, store, row['url'])
+                    for row in rows
+                ],
             )
+
             return len(rows)
     finally:
         conn.close()
 
 
-def _deloox_queue_claim(limit=12, lease_seconds=180):
-    """Atomically claim a bounded batch of discovery pages."""
+def _deloox_queue_requeue_stale_done(
+    revisit_seconds=86400.0,
+    limit=100,
+):
+    return _catalog_queue_requeue_stale_done(
+        'deloox',
+        revisit_seconds=revisit_seconds,
+        limit=limit,
+    )
+
+
+
+def _catalog_queue_claim(
+    store,
+    limit=12,
+    lease_seconds=180,
+):
+    """Atomically claim a batch of catalog pages for one store."""
     limit = max(1, min(int(limit), HTML_WORKERS))
     now = time.time()
     token = uuid.uuid4().hex
+
     conn = db()
     claimed = []
+
     try:
         conn.execute('BEGIN IMMEDIATE')
+
         rows = conn.execute(
-            """SELECT url,depth,priority,source
+            """SELECT url, depth, priority, source
                  FROM catalog_discovery_queue
-                WHERE store='deloox'
+                WHERE store=?
                   AND state IN ('PENDING','ERROR')
                   AND available_at <= ?
-                ORDER BY priority ASC, depth ASC, url ASC
+             ORDER BY priority ASC,
+                      depth ASC,
+                      url ASC
                 LIMIT ?""",
-            (now, limit),
+            (store, now, limit),
         ).fetchall()
+
         if not rows:
             conn.commit()
             return []
+
         leased_until = now + max(30.0, float(lease_seconds))
+
         for row in rows:
             cur = conn.execute(
                 """UPDATE catalog_discovery_queue
@@ -1532,18 +1609,33 @@ def _deloox_queue_claim(limit=12, lease_seconds=180):
                           lease_token=?,
                           last_started_at=?,
                           last_error=NULL
-                    WHERE store='deloox'
+                    WHERE store=?
                       AND url=?
                       AND state IN ('PENDING','ERROR')
                       AND available_at <= ?""",
-                (leased_until, token, now, row['url'], now),
+                (
+                    leased_until,
+                    token,
+                    now,
+                    store,
+                    row['url'],
+                    now,
+                ),
             )
+
             if cur.rowcount:
                 claimed.append(
-                    (row['url'], int(row['depth']), row['source'] or '', token)
+                    (
+                        row['url'],
+                        int(row['depth']),
+                        row['source'] or '',
+                        token,
+                    )
                 )
+
         conn.commit()
         return claimed
+
     except Exception:
         conn.rollback()
         raise
@@ -1551,30 +1643,69 @@ def _deloox_queue_claim(limit=12, lease_seconds=180):
         conn.close()
 
 
-def _deloox_queue_finish(url, token, ok, error=''):
-    """Finish one leased page with bounded retry/backoff."""
+def _deloox_queue_claim(limit=12, lease_seconds=180):
+    return _catalog_queue_claim(
+        'deloox',
+        limit=limit,
+        lease_seconds=lease_seconds,
+    )
+
+
+
+def _catalog_queue_finish(
+    store,
+    url,
+    token,
+    ok,
+    error='',
+):
+    """Finish a generic catalog discovery lease."""
     now = time.time()
     conn = db()
+
     try:
         with conn:
             row = conn.execute(
                 """SELECT attempts
                      FROM catalog_discovery_queue
-                    WHERE store='deloox' AND url=? AND lease_token=?""",
-                (url, token),
+                    WHERE store=?
+                      AND url=?
+                      AND lease_token=?""",
+                (store, url, token),
             ).fetchone()
+
             if not row:
                 return
+
             attempts = int(row['attempts'] or 0)
+
             if ok:
                 state = 'DONE'
                 available_at = 0
                 last_error = None
             else:
                 state = 'DEAD' if attempts >= 8 else 'ERROR'
-                backoff = (60, 300, 1800, 7200, 21600, 86400)
-                available_at = now + backoff[min(max(attempts - 1, 0), len(backoff) - 1)]
-                last_error = str(error or 'discovery_error')[:1000]
+
+                backoff = (
+                    60,
+                    300,
+                    1800,
+                    7200,
+                    21600,
+                    86400,
+                )
+
+                available_at = now + backoff[
+                    min(
+                        max(attempts - 1, 0),
+                        len(backoff) - 1,
+                    )
+                ]
+
+                last_error = str(
+                    error or 'discovery_error'
+                )[:1000]
+
             conn.execute(
                 """UPDATE catalog_discovery_queue
                       SET state=?,
@@ -1583,11 +1714,37 @@ def _deloox_queue_finish(url, token, ok, error=''):
                           lease_token=NULL,
                           last_finished_at=?,
                           last_error=?
-                    WHERE store='deloox' AND url=? AND lease_token=?""",
-                (state, available_at, now, last_error, url, token),
+                    WHERE store=?
+                      AND url=?
+                      AND lease_token=?""",
+                (
+                    state,
+                    available_at,
+                    now,
+                    last_error,
+                    store,
+                    url,
+                    token,
+                ),
             )
     finally:
         conn.close()
+
+
+def _deloox_queue_finish(
+    url,
+    token,
+    ok,
+    error='',
+):
+    return _catalog_queue_finish(
+        'deloox',
+        url,
+        token,
+        ok,
+        error,
+    )
+
 
 
 def _deloox_persist_products(product_urls):
