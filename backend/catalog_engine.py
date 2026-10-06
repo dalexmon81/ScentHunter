@@ -4360,6 +4360,281 @@ def store_status():
         }
     conn.close()
     return out
+def _seed_family_coverage_queue(conn, store="deloox"):
+    """Popola catalog_discovery_queue con query di family coverage.
+
+    Per ogni famiglia genera query del tipo:
+      - family_key
+      - brand + family_key
+      - alias famiglia (se presenti)
+
+    Ogni riga ha:
+      url = query (es. "Born in Roma")
+      source = "family_coverage"
+      depth = 0
+    """
+    now = time.time()
+
+    # Carica family_registry.json
+    registry_path = BASE_DIR / "family_registry.json"
+    with open(registry_path, "r", encoding="utf-8") as f:
+        registry = json.load(f)
+
+    families = registry.get("families", {})
+
+    rows = []
+
+    for family_key, family_data in families.items():
+        brand = (family_data.get("brand") or "").strip()
+        aliases = family_data.get("aliases", []) or []
+
+        # Query base: family_key
+        q1 = family_key.strip()
+        if q1:
+            rows.append((store, q1, 0, "family_coverage", now, now))
+
+        # Query: brand + family_key
+        if brand:
+            q2 = f"{brand} {family_key}".strip()
+            if q2 and q2 != q1:
+                rows.append((store, q2, 0, "family_coverage", now, now))
+
+        # Query: alias
+        for alias in aliases:
+            alias = (alias or "").strip()
+            if alias and alias != q1:
+                rows.append((store, alias, 0, "family_coverage", now, now))
+
+    if not rows:
+        return 0
+
+    # Inserimento idempotente: una riga per (store, url=query, source=family_coverage)
+    conn.executemany(
+        """
+        INSERT INTO catalog_discovery_queue(
+            store, url, depth, source, state, attempts,
+            available_at, first_seen_at
+        )
+        VALUES (?, ?, 0, 'family_coverage', 'PENDING', 0, ?, ?)
+        ON CONFLICT(store, url) DO NOTHING
+        """,
+        [
+            (store, query, now, now)
+            for (store, query, depth, source, now1, now2) in rows
+        ],
+    )
+
+    return len(rows)
+def _claim_one_family_coverage_task(store="deloox", lease_seconds=120.0):
+    """Claim una riga di family coverage da catalog_discovery_queue."""
+    now = time.time()
+    token = uuid.uuid4().hex
+    conn = db()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        # Recupera lease scaduti
+        conn.execute(
+            """
+            UPDATE catalog_discovery_queue
+            SET state='PENDING',
+                leased_until=NULL,
+                lease_token=NULL,
+                available_at=?
+            WHERE store=?
+              AND source='family_coverage'
+              AND state='PROCESSING'
+              AND (leased_until IS NULL OR leased_until < ?)
+            """,
+            (now, now),
+        )
+
+        row = conn.execute(
+            """
+            SELECT store, url, depth, attempts
+            FROM catalog_discovery_queue
+            WHERE store=?
+              AND source='family_coverage'
+              AND state IN ('PENDING', 'ERROR')
+              AND available_at <= ?
+            ORDER BY available_at ASC, first_seen_at ASC
+            LIMIT 1
+            """,
+            (store, now),
+        ).fetchone()
+
+        if not row:
+            conn.commit()
+            return None
+
+        leased_until = now + float(lease_seconds)
+
+        updated = conn.execute(
+            """
+            UPDATE catalog_discovery_queue
+            SET state='PROCESSING',
+                attempts=attempts+1,
+                leased_until=?,
+                lease_token=?,
+                last_started_at=?
+            WHERE store=? AND url=? AND source='family_coverage'
+              AND state IN ('PENDING', 'ERROR')
+              AND available_at <= ?
+            """,
+            (
+                leased_until,
+                token,
+                now,
+                row["store"],
+                row["url"],
+                now,
+            ),
+        ).rowcount
+
+        if updated != 1:
+            conn.rollback()
+            return None
+
+        conn.commit()
+
+        return {
+            "store": row["store"],
+            "query": row["url"],  # qui url = query
+            "lease_token": token,
+            "attempts": int(row["attempts"] or 0) + 1,
+        }
+
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
+
+
+def _finish_family_coverage_task(task, ok, error=""):
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            row = conn.execute(
+                """
+                SELECT attempts
+                FROM catalog_discovery_queue
+                WHERE store=? AND url=? AND source='family_coverage' AND lease_token=?
+                """,
+                (
+                    task["store"],
+                    task["query"],
+                    task["lease_token"],
+                ),
+            ).fetchone()
+
+            if not row:
+                return
+
+            attempts = int(row["attempts"] or 0)
+
+            if ok:
+                state = "DONE"
+                available_at = 0
+                last_error = None
+            else:
+                state = "DEAD" if attempts >= 8 else "ERROR"
+                backoff = (60, 300, 1800, 7200, 21600, 86400)
+                idx = min(max(attempts - 1, 0), len(backoff) - 1)
+                available_at = now + backoff[idx]
+                last_error = str(error or "coverage_error")[:1000]
+
+            conn.execute(
+                """
+                UPDATE catalog_discovery_queue
+                SET state=?,
+                    available_at=?,
+                    leased_until=NULL,
+                    lease_token=NULL,
+                    last_finished_at=?,
+                    last_error=?
+                WHERE store=? AND url=? AND source='family_coverage' AND lease_token=?
+                """,
+                (
+                    state,
+                    available_at,
+                    now,
+                    last_error,
+                    task["store"],
+                    task["query"],
+                    task["lease_token"],
+                ),
+            )
+    finally:
+        conn.close()
+def run_family_coverage_worker(store="deloox", max_tasks=10, timeout_sec=120):
+    """Esegue un batch limitato di task di family coverage.
+
+    Per ogni task:
+      - query = task["query"] (ex task["url"])
+      - chiama Deloox._discover(session, query)
+      - persiste gli URL in store_urls e hydration_queue
+    """
+    import importlib
+
+    try:
+        module = importlib.import_module("scrapers.deloox.scraper")
+        discover = getattr(module, "_discover", None)
+        if not callable(discover):
+            return {"processed": 0, "error": "deloox_discover_unavailable"}
+    except Exception as exc:
+        return {"processed": 0, "error": f"import:{type(exc).__name__}:{exc}"}
+
+    session = requests.Session()
+    session.headers.update(
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
+        }
+    )
+
+    start = time.time()
+    processed = 0
+    errors = []
+
+    try:
+        while processed < max_tasks and (time.time() - start) < timeout_sec:
+            task = _claim_one_family_coverage_task(store=store)
+            if not task:
+                break
+
+            query = task["query"]
+            try:
+                urls = discover(session, query) or []
+            except Exception as exc:
+                _finish_family_coverage_task(task, ok=False, error=f"{type(exc).__name__}:{exc}")
+                errors.append(f"{query}:{type(exc).__name__}:{exc}")
+                continue
+
+            # Persisti URL in store_urls e hydration_queue
+            count = _deloox_persist_products({url: "" for url in urls})
+
+            _finish_family_coverage_task(task, ok=True)
+            processed += 1
+
+    finally:
+        session.close()
+
+    return {
+        "processed": processed,
+        "errors": errors[:10],
+        "elapsed_sec": round(time.time() - start, 3),
+    }
 
 
 if __name__ == '__main__':
