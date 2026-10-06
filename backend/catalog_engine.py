@@ -3912,6 +3912,7 @@ def _coverage_claim_tasks(limit):
                 WHERE next_run_at <= ?
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
                 ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
+                         CASE store WHEN 'deloox' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
             (now, max(1, int(limit))),
@@ -4038,14 +4039,26 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
-            # Coverage is deliberately NOT executed from the normal hydration
-            # loop. It invokes retailer discovery/search code and can create a
-            # second, independent network/browser workload behind a user search.
-            # Coverage remains available through its explicit operational path,
-            # but normal catalog hydration must only hydrate already-discovered
-            # product URLs.
+            # Canonical coverage is a background catalog-maintenance path,
+            # not part of foreground search. It is allowed to run only while
+            # the foreground search is idle, and it feeds the same durable
+            # store_urls -> hydration pipeline as normal discovery.
             if now_mono >= coverage_next_at:
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
+                coverage = coverage_batch(
+                    max_tasks=_COVERAGE_BATCH_SIZE,
+                    workers=_COVERAGE_WORKERS,
+                )
+                if coverage.get('selected', 0) or coverage.get('found', 0) or coverage.get('errors', 0):
+                    print(
+                        'CATALOG COVERAGE BATCH '
+                        f"selected={coverage.get('selected')} "
+                        f"found={coverage.get('found')} "
+                        f"not_found={coverage.get('not_found')} "
+                        f"errors={coverage.get('errors')}",
+                        flush=True,
+                    )
+
             result = hydrate_catalog_batch(
                 max_urls=max(1, int(batch_size)),
                 workers=min(int(workers), HYDRATION_WORKERS),
