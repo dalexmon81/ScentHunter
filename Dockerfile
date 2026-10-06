@@ -18,4 +18,8 @@ WORKDIR /app
 COPY --from=builder /app/.venv .venv/
 COPY . .
 ENV PYTHONPATH=/app/backend
-CMD ["sh", "-c", "cd /app/backend && /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080"]
+
+# Run Family Coverage as a separate background process.
+# It shares the same Fly volume/database but never participates in the
+# FastAPI /search path. The trap terminates it together with uvicorn.
+CMD ["sh", "-c", "cd /app/backend && /app/.venv/bin/python -m catalog_family_coverage & WORKER_PID=$!; trap 'kill $WORKER_PID 2>/dev/null || true; exit 143' TERM INT; trap 'kill $WORKER_PID 2>/dev/null || true' EXIT; /app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080"]
