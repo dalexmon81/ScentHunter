@@ -1082,8 +1082,19 @@ def _html_product_url(store, raw_url, base_url):
         ))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return canonical
-        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
-            return canonical
+        if low.endswith('.html') and not re.search(
+    r'/(?:'
+    r'category|categorie|categoria|catégorie|'
+    r'chercher|search|'
+    r'sitemap|'
+    r'brand|marque|marca|'
+    r'login|account|cart|checkout'
+    r')(?:\.html|/|$)',
+    low,
+    re.I,
+):
+    return canonical
+
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
