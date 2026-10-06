@@ -470,6 +470,18 @@ def _candidate_product_urls(
         if parsed.netloc.lower() not in DELOOX_HOSTS:
             return
         path = parsed.path or ""
+
+        # Deloox search pages also contain product-image URLs such as
+        # /product/1359240/551400_500.jpg.  They share the numeric product
+        # prefix, but they are assets, not product pages.  Never let assets
+        # consume the bounded discovery candidate budget.
+        if re.search(
+            r"\.(?:jpe?g|png|webp|gif|svg|avif|ico|css|js|map)(?:$|/)",
+            path,
+            re.I,
+        ):
+            return
+
         product_path = re.search(
             r"/(?:product|produit|producto|prodotto)/\d+(?:/|$)",
             path,
@@ -765,14 +777,19 @@ def _search_endpoints(query):
 
 
 def _discover_from_search(session, query):
-    """Primary Deloox discovery with bounded pagination.
+    """Primary Deloox discovery with deterministic bounded pagination.
 
-    Deloox serves search results in pages.  A successful first page is therefore
-    not the complete discovery result.  After the first successful search
-    surface is found, follow its numbered ``page`` parameter until no new
-    product URLs are returned or MAX_SEARCH_PAGES is reached.
+    Deloox exposes several public search surfaces.  They are probed in
+    parallel, but the surface used for pagination is selected deterministically
+    instead of depending on which HTTP request happens to finish first.
 
-    This remains generic: no product, brand, SKU or variant is encoded here.
+    The preferred production surface is the public ``/chercher.html`` route on
+    the primary .be storefront.  If that surface is unavailable or produces no
+    relevant candidates, the other generic Deloox search surfaces remain valid
+    fallbacks.  Once a surface is selected, numbered ``page`` URLs are followed
+    until no new candidates are found or MAX_SEARCH_PAGES is reached.
+
+    No product, brand, SKU or variant is encoded here.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from urllib.parse import parse_qsl, urlencode, urlunparse
@@ -785,7 +802,6 @@ def _discover_from_search(session, query):
     candidates = {}
     successful_pages = 0
     failed_pages = 0
-    selected_endpoint = None
 
     def fetch(endpoint):
         try:
@@ -799,8 +815,13 @@ def _discover_from_search(session, query):
         except requests.RequestException:
             return endpoint, None
 
-    # Keep the existing bounded parallel probe for the public search surfaces.
-    # Pagination starts only after one surface has returned relevant products.
+    # Probe the bounded set concurrently for latency, but collect every
+    # successful response before choosing the pagination surface.  The previous
+    # implementation selected the first completed future with matches, which
+    # made discovery dependent on network timing and could select a localized
+    # search route whose pagination did not expose the same result set as the
+    # primary .be /chercher.html surface.
+    successful = []
     with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
         for future in as_completed(futures):
@@ -818,16 +839,47 @@ def _discover_from_search(session, query):
                 accept_all_products=False,
                 base_url=base,
             )
+            successful.append({
+                "requested": endpoint,
+                "final": r.url,
+                "response": r,
+                "found": found,
+            })
 
-            for url in found:
-                candidates[url] = True
+    # Prefer the production .be legacy search surface, then other legacy
+    # /chercher.html surfaces, then multilingual /en/search routes.  This keeps
+    # pagination tied to the same search family while preserving generic
+    # storefront fallbacks.
+    def surface_rank(item):
+        final = item["final"].lower()
+        requested = item["requested"].lower()
+        has_found = bool(item["found"])
 
-            if found:
-                selected_endpoint = r.url
-                break
+        if has_found and final.startswith("https://www.deloox.be/chercher.html"):
+            return 0
+        if has_found and final.startswith("https://deloox.be/chercher.html"):
+            return 1
+        if has_found and "/chercher.html" in final:
+            return 2
+        if has_found and "/en/search" in final:
+            return 3
+        if "/chercher.html" in requested:
+            return 10
+        return 20
 
-    # Follow the same successful search surface.  The loop is bounded and stops
-    # immediately when a page produces no new relevant product URLs.
+    successful.sort(key=surface_rank)
+    selected = next((item for item in successful if item["found"]), None)
+
+    candidates = {}
+    selected_endpoint = None
+    if selected:
+        selected_endpoint = selected["final"]
+        for url in selected["found"]:
+            candidates[url] = True
+
+    # Follow the selected search surface's numbered pages.  The pagination is
+    # generic and uses the query parameters already present on the successful
+    # URL, replacing only the page parameter.
     if selected_endpoint:
         parsed = urlparse(selected_endpoint)
         params = parse_qsl(parsed.query, keep_blank_values=True)
