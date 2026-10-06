@@ -4146,13 +4146,29 @@ def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
             except Exception as exc:
                 result = {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
             _coverage_finish_task(task, result)
-            state = result.get('state')
+
+            state = str(result.get('state') or 'ERROR')
+            found_count = int(result.get('found') or 0)
+            error_text = str(result.get('error') or '')
+
+            print(
+                "CATALOG COVERAGE TASK "
+                f"store={task.get('store')!r} "
+                f"product_id={str((task.get('product') or {}).get('product_id') or '')!r} "
+                f"canonical_name={str((task.get('product') or {}).get('canonical_name') or '')!r} "
+                f"state={state!r} "
+                f"found={found_count} "
+                f"error={error_text!r}",
+                flush=True,
+            )
+
             if state == 'FOUND':
-                found += int(result.get('found') or 0)
+                found += found_count
             elif state == 'NOT_FOUND':
                 not_found += 1
             else:
                 errors += 1
+
     return {'selected': len(tasks), 'found': found, 'not_found': not_found, 'errors': errors}
 
 
