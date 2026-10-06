@@ -3547,12 +3547,12 @@ _COVERAGE_SCHEMA_LOCK = threading.Lock()
 _COVERAGE_SCHEMA_READY = False
 _COVERAGE_CATALOG_CACHE = None
 _COVERAGE_CATALOG_MTIME = None
-_COVERAGE_INTERVAL_SECONDS = 60.0
-_COVERAGE_BATCH_SIZE = 8
-_COVERAGE_WORKERS = 2
+_COVERAGE_INTERVAL_SECONDS = 300.0
+_COVERAGE_BATCH_SIZE = 1
+_COVERAGE_WORKERS = 1
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
-_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
+_COVERAGE_TASK_TIMEOUT_SECONDS = 15.0
 
 
 def _foreground_search_running():
@@ -4187,7 +4187,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
             # store_urls -> hydration pipeline as normal discovery.
-            if now_mono >= coverage_next_at:
+            if now_mono >= coverage_next_at and not _foreground_search_running():
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
                 coverage = coverage_batch(
                     max_tasks=_COVERAGE_BATCH_SIZE,
