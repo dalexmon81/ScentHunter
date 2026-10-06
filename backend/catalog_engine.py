@@ -1083,17 +1083,17 @@ def _html_product_url(store, raw_url, base_url):
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return canonical
         if low.endswith('.html') and not re.search(
-    r'/(?:'
-    r'category|categorie|categoria|catégorie|'
-    r'chercher|search|'
-    r'sitemap|'
-    r'brand|marque|marca|'
-    r'login|account|cart|checkout'
-    r')(?:\.html|/|$)',
-    low,
-    re.I,
-):
-    return canonical
+            r'/(?:'
+            r'category|categorie|categoria|catégorie|'
+            r'chercher|search|'
+            r'sitemap|'
+            r'brand|marque|marca|'
+            r'login|account|cart|checkout'
+            r')(?:\.html|/|$)',
+            low,
+            re.I,
+        ):
+            return canonical
 
         return None
     if store == 'sabina':
