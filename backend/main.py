@@ -8,7 +8,8 @@ except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
 from pathlib import Path
-
+import threading
+import time
 # Catalog-first search support. The legacy isolated scraper pipeline below is
 # retained for diagnostics/compatibility, but normal search uses the persistent
 # catalog. Product-page hydration is a separate durable background queue.
@@ -376,6 +377,29 @@ def catalog_resync_sabina_deloox_status_endpoint(job_id: str = ''):
         'error': error,
         'results': result,
     }
+def _start_catalog_family_coverage():
+    def _worker():
+        while True:
+            try:
+                run_family_coverage_worker(
+                    store='deloox',
+                    max_tasks=5,
+                    timeout_sec=60,
+                )
+            except Exception as exc:
+                print(
+                    f'CATALOG FAMILY COVERAGE ERROR: '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+
+            time.sleep(300)
+
+    threading.Thread(
+        target=_worker,
+        daemon=True,
+        name='scenthunter-family-coverage',
+    ).start()
 
 
 @app.on_event('startup')
