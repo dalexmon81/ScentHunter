@@ -604,41 +604,6 @@ class ProductMatcher:
         self._text_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
         self._text_specificity_cache: Dict[int, int] = {}
         self._brand_compatible_cache: Dict[str, Tuple[CatalogProduct, ...]] = {}
-
-        # Family-variant lookup postings.  `_catalog_product_for_family_variant`
-        # is called for every matched retailer offer.  The legacy fallback used
-        # to scan the complete catalog twice for every offer when the fast
-        # family-id index missed, which made broad family searches increasingly
-        # expensive as the catalog grew.  These postings are lossless: every
-        # candidate that could contribute an exact name or alias overlap is
-        # placed under each of its normalized identity keys.
-        self._family_identity_index: Dict[Tuple[str, str], Tuple[CatalogProduct, ...]] = {}
-        self._brand_identity_index: Dict[Tuple[str, str], Tuple[CatalogProduct, ...]] = {}
-        family_identity_buckets: Dict[Tuple[str, str], List[CatalogProduct]] = {}
-        brand_identity_buckets: Dict[Tuple[str, str], List[CatalogProduct]] = {}
-        for product in self.catalog:
-            identity_keys = {
-                self._url_catalog_identity_text(product.name),
-                self._url_catalog_identity_text(product.family_name),
-                *(self._url_catalog_identity_text(value) for value in product.aliases),
-            }
-            identity_keys.discard("")
-            family_key = normalize(product.family_id)
-            brand_key = catalog_norm(product.brand)
-            if family_key:
-                for identity_key in identity_keys:
-                    family_identity_buckets.setdefault((family_key, identity_key), []).append(product)
-            if brand_key:
-                for identity_key in identity_keys:
-                    brand_identity_buckets.setdefault((brand_key, identity_key), []).append(product)
-
-        self._family_identity_index = {
-            key: tuple(value) for key, value in family_identity_buckets.items()
-        }
-        self._brand_identity_index = {
-            key: tuple(value) for key, value in brand_identity_buckets.items()
-        }
-
         # Text postings are a lossless candidate generator for accepted text
         # matches: a positive F-score requires at least one shared token.
         self._text_token_index: Dict[str, set[int]] = {}
@@ -1409,22 +1374,8 @@ class ProductMatcher:
         variant_keys = {self._url_catalog_identity_text(value) for value in variant_values if value}
         variant_keys.discard("")
 
-        # Use the precomputed family postings instead of rescanning the whole
-        # catalog.  The union is equivalent to the old full scan because a
-        # candidate can only have a positive `variant_keys & candidate_keys`
-        # overlap when it is indexed under at least one of those same keys.
-        if family_id:
-            family_candidates: List[CatalogProduct] = []
-            seen_candidates: set[int] = set()
-            for variant_key in variant_keys:
-                for candidate in self._family_identity_index.get((family_id, variant_key), ()):
-                    marker = id(candidate)
-                    if marker in seen_candidates:
-                        continue
-                    seen_candidates.add(marker)
-                    family_candidates.append(candidate)
-
-            for candidate in family_candidates:
+        for candidate in self.catalog:
+            if family_id and normalize(candidate.family_id) == family_id:
                 if self._url_catalog_identity_text(candidate.name) == canonical_key:
                     return candidate
                 candidate_keys = {
@@ -1448,32 +1399,23 @@ class ProductMatcher:
         # reuse that existing catalog identity than to mint a second ID.  Brand
         # matching keeps this generic and prevents cross-brand alias collisions.
         family_brand = catalog_norm(family.get("brand", ""))
-        if family_brand:
-            brand_candidates: List[CatalogProduct] = []
-            seen_candidates: set[int] = set()
-            for variant_key in variant_keys:
-                for candidate in self._brand_identity_index.get((family_brand, variant_key), ()):
-                    marker = id(candidate)
-                    if marker in seen_candidates:
-                        continue
-                    seen_candidates.add(marker)
-                    brand_candidates.append(candidate)
-
-            for candidate in brand_candidates:
-                candidate_keys = {
-                    self._url_catalog_identity_text(candidate.name),
-                    self._url_catalog_identity_text(candidate.family_name),
-                    *(self._url_catalog_identity_text(value) for value in candidate.aliases),
-                }
-                candidate_keys.discard("")
-                overlap = variant_keys & candidate_keys
-                if not overlap:
-                    continue
-                # Prefer an exact multi-token identity over a generic family token.
-                score = max(len(key.split()) for key in overlap)
-                if score > best_alias_score:
-                    best_alias_product = candidate
-                    best_alias_score = score
+        for candidate in self.catalog:
+            if family_brand and catalog_norm(candidate.brand) != family_brand:
+                continue
+            candidate_keys = {
+                self._url_catalog_identity_text(candidate.name),
+                self._url_catalog_identity_text(candidate.family_name),
+                *(self._url_catalog_identity_text(value) for value in candidate.aliases),
+            }
+            candidate_keys.discard("")
+            overlap = variant_keys & candidate_keys
+            if not overlap:
+                continue
+            # Prefer an exact multi-token identity over a generic family token.
+            score = max(len(key.split()) for key in overlap)
+            if score > best_alias_score:
+                best_alias_product = candidate
+                best_alias_score = score
 
         return best_alias_product
 
