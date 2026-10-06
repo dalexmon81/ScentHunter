@@ -3548,6 +3548,9 @@ _COVERAGE_SCHEMA_READY = False
 _COVERAGE_CATALOG_CACHE = None
 _COVERAGE_CATALOG_MTIME = None
 _COVERAGE_INTERVAL_SECONDS = 300.0
+# Never run the first coverage pass during process warm-up. The foreground
+# search must become responsive immediately after deploy.
+_COVERAGE_START_DELAY_SECONDS = 90.0
 _COVERAGE_BATCH_SIZE = 1
 _COVERAGE_WORKERS = 1
 _COVERAGE_RETRY_SECONDS = 86400.0
@@ -4049,13 +4052,21 @@ def _coverage_claim_tasks(limit):
                 for slug in store_slugs
             )
             family_key = _coverage_family_key(canonical)
-            family_present = bool(family_key) and any(family_key in slug for slug in store_slugs)
+            family_matches = (
+                sum(1 for slug in store_slugs if family_key and family_key in slug)
+                if family_key else 0
+            )
+            family_present = family_matches > 0
 
-            # Lower score = sooner. Missing product + already represented
-            # family is the strongest generic coverage signal.
+            # Lower score = sooner. A missing sibling in an already represented
+            # family is the highest-value generic coverage signal. Within that
+            # class, prefer families with more known siblings: this makes the
+            # worker repair coherent retailer family gaps quickly without ever
+            # naming a product or brand in code.
             priority = (
                 0 if store == 'deloox' else 1,
                 0 if not exact_present and family_present else 1,
+                -family_matches if (not exact_present and family_present) else 0,
                 0 if not exact_present else 2,
                 0 if str(row['state']) == 'PENDING' else 1,
                 float(row['next_run_at'] or 0),
@@ -4160,7 +4171,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
-    coverage_next_at = 0.0
+    coverage_next_at = time.monotonic() + _COVERAGE_START_DELAY_SECONDS
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
