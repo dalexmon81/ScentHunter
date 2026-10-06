@@ -18,6 +18,7 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
+import hashlib
 import html
 import heapq
 import importlib
@@ -3625,36 +3626,116 @@ def _coverage_ensure_schema():
 
 
 def _coverage_load_catalog():
-    """Load the canonical product list once and refresh only when the file changes."""
-    global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
-    path = BASE_DIR / 'product_catalog.json'
-    try:
-        mtime = path.stat().st_mtime_ns
-    except OSError:
-        return []
-    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
-        return _COVERAGE_CATALOG_CACHE
-    try:
-        with path.open('r', encoding='utf-8') as handle:
-            payload = json.load(handle)
-    except Exception as exc:
-        print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
-        return _COVERAGE_CATALOG_CACHE or []
-    products = payload.get('products') if isinstance(payload, dict) else None
-    if not isinstance(products, list):
-        products = []
-    cleaned = []
-    for product in reversed(products):
-        if not isinstance(product, dict):
-            continue
-        product_id = str(product.get('product_id') or '').strip()
-        canonical_name = str(product.get('canonical_name') or '').strip()
-        if product_id and canonical_name:
-            cleaned.append(product)
-    _COVERAGE_CATALOG_CACHE = cleaned
-    _COVERAGE_CATALOG_MTIME = mtime
-    return cleaned
+    """Load canonical coverage identities from both catalog sources.
 
+    ``product_catalog.json`` is the primary product catalog.  ``family_registry.json``
+    is a verified identity knowledge source and can contain canonical variants that
+    have not yet been materialized in the product catalog.  Coverage must include
+    those variants too; otherwise a retailer can expose a valid sibling product
+    that the background coverage worker will never ask the scraper to discover.
+
+    The family registry is used here only to create discovery work.  It does not
+    decide matching, canonical identity, or frontend output.
+    """
+    global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
+    catalog_path = BASE_DIR / 'product_catalog.json'
+    family_path = BASE_DIR / 'family_registry.json'
+
+    try:
+        catalog_mtime = catalog_path.stat().st_mtime_ns
+    except OSError:
+        catalog_mtime = 0
+    try:
+        family_mtime = family_path.stat().st_mtime_ns
+    except OSError:
+        family_mtime = 0
+    cache_mtime = (catalog_mtime, family_mtime)
+
+    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == cache_mtime:
+        return _COVERAGE_CATALOG_CACHE
+
+    cleaned = []
+    seen_identity = set()
+
+    if catalog_mtime:
+        try:
+            with catalog_path.open('r', encoding='utf-8') as handle:
+                payload = json.load(handle)
+            products = payload.get('products') if isinstance(payload, dict) else None
+            if not isinstance(products, list):
+                products = []
+            for product in reversed(products):
+                if not isinstance(product, dict):
+                    continue
+                product_id = str(product.get('product_id') or '').strip()
+                canonical_name = str(product.get('canonical_name') or '').strip()
+                if not product_id or not canonical_name:
+                    continue
+                brand = str(product.get('brand_name') or product.get('brand') or '').strip()
+                identity = (norm(brand), norm(canonical_name))
+                if identity in seen_identity:
+                    continue
+                seen_identity.add(identity)
+                cleaned.append(product)
+        except Exception as exc:
+            print(
+                f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}',
+                flush=True,
+            )
+
+    # Supplement, never replace, the primary catalog with verified family
+    # variants.  Stable synthetic IDs are used only as durable coverage keys;
+    # they are never exposed as ScentHunter catalog IDs.
+    if family_mtime:
+        try:
+            with family_path.open('r', encoding='utf-8') as handle:
+                family_payload = json.load(handle)
+            families = family_payload.get('families') if isinstance(family_payload, dict) else None
+            if not isinstance(families, list):
+                families = []
+            for family in families:
+                if not isinstance(family, dict):
+                    continue
+                family_id = str(family.get('family_id') or '').strip()
+                brand = str(family.get('brand') or '').strip()
+                family_products = family.get('products')
+                if not isinstance(family_products, list):
+                    continue
+                for product in family_products:
+                    if not isinstance(product, dict):
+                        continue
+                    canonical_name = str(product.get('canonical_name') or '').strip()
+                    if not canonical_name:
+                        continue
+                    identity = (norm(brand), norm(canonical_name))
+                    if identity in seen_identity:
+                        continue
+                    aliases = product.get('aliases')
+                    if not isinstance(aliases, list):
+                        aliases = []
+                    seed = f'{family_id}|{brand}|{canonical_name}'
+                    synthetic_id = 'FAM-' + hashlib.sha1(seed.encode('utf-8')).hexdigest()[:16]
+                    supplemental = {
+                        'product_id': synthetic_id,
+                        'canonical_name': canonical_name,
+                        'brand_name': brand,
+                        'aliases': aliases,
+                    }
+                    if product.get('formats_ml'):
+                        supplemental['formats_ml'] = product.get('formats_ml')
+                    if product.get('gtins'):
+                        supplemental['gtins'] = product.get('gtins')
+                    seen_identity.add(identity)
+                    cleaned.append(supplemental)
+        except Exception as exc:
+            print(
+                f'CATALOG COVERAGE FAMILY REGISTRY LOAD ERROR: {type(exc).__name__}:{exc}',
+                flush=True,
+            )
+
+    _COVERAGE_CATALOG_CACHE = cleaned
+    _COVERAGE_CATALOG_MTIME = cache_mtime
+    return cleaned
 
 def _coverage_queries(product):
     """Build a small generic query set from canonical identity metadata."""
