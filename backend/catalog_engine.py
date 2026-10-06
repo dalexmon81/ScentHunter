@@ -1035,6 +1035,13 @@ HTML_WORKERS = 12
 # this bounded so generic catalog discovery follows the public search surface
 # without becoming an unbounded crawler.
 DELOOX_SEARCH_MAX_PAGES = 10
+# Generic Deloox catalog-search surfaces used only by background discovery.
+# These are retailer-wide terms; the user's request is never injected here.
+DELOOX_GENERIC_CATALOG_QUERIES = (
+    'parfum',
+    'perfume',
+    'fragrance',
+)
 DISCOVERY_HARD_TIMEOUT = 300
 
 # Sitemap discovery gets its own short budget. Some retailers expose broken
@@ -1697,6 +1704,70 @@ def _deloox_persist_products(product_urls):
     return count
 
 
+def _discover_deloox_search_catalog(deadline=None):
+    """Import the Deloox scraper's proven generic search discovery into catalog.
+
+    The production Deloox scraper already knows how to traverse the public
+    search surface and its numeric pagination. Catalog discovery must reuse
+    that capability for retailer-wide terms instead of maintaining a second,
+    divergent pagination implementation.
+
+    This is background catalog coverage only: no user query, product name,
+    brand, SKU, variant, or individual product URL is supplied.
+    """
+    try:
+        module = importlib.import_module('scrapers.deloox.scraper')
+        discover = getattr(module, '_discover', None)
+        if not callable(discover):
+            return {'queries': [], 'products': 0, 'errors': ['deloox_scraper_discover_unavailable']}
+    except Exception as exc:
+        return {'queries': [], 'products': 0, 'errors': [f'import:{type(exc).__name__}:{exc}']}
+
+    started = time.time()
+    product_urls = {}
+    errors = []
+    reports = []
+    session = requests.Session()
+    try:
+        for query in DELOOX_GENERIC_CATALOG_QUERIES:
+            if deadline is not None and time.time() >= float(deadline):
+                break
+            try:
+                urls = discover(session, query) or []
+                added = 0
+                for raw in urls:
+                    if not raw:
+                        continue
+                    url = str(raw).split('#', 1)[0]
+                    if not _deloox_queue_allowed(url):
+                        continue
+                    if url not in product_urls:
+                        product_urls[url] = ''
+                        added += 1
+                reports.append({
+                    'query': query,
+                    'returned': len(urls),
+                    'added': added,
+                })
+            except Exception as exc:
+                error = f'{query}:{type(exc).__name__}:{exc}'
+                errors.append(error)
+                reports.append({'query': query, 'returned': 0, 'added': 0, 'error': error})
+    finally:
+        session.close()
+
+    if product_urls:
+        _deloox_persist_products(product_urls)
+
+    return {
+        'queries': reports,
+        'products': len(product_urls),
+        'product_urls': product_urls,
+        'errors': errors[:8],
+        'elapsed_sec': round(time.time() - started, 3),
+    }
+
+
 def _discover_deloox_catalog(seeds, deadline=None):
     """Advance Deloox's persistent catalog graph.
 
@@ -1719,6 +1790,19 @@ def _discover_deloox_catalog(seeds, deadline=None):
     errors = []
     visited = 0
     successes = 0
+
+    # Reuse the Deloox scraper's already-proven public search pagination for
+    # generic catalog coverage. This runs before the durable graph crawl so
+    # every URL returned by that discovery path is handed directly to the
+    # persistent catalog/hydration layer.
+    search_deadline = min(
+        time.time() + 45.0,
+        float(deadline) if deadline is not None else time.time() + 45.0,
+    )
+    search_catalog = _discover_deloox_search_catalog(search_deadline)
+    for url in search_catalog.get('product_urls', {}):
+        product_urls[url] = ''
+    errors.extend(search_catalog.get('errors') or [])
 
     def process_page(requested, depth, source, result):
         nonlocal visited, successes
