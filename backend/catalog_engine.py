@@ -18,7 +18,6 @@
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
 import gzip
-import hashlib
 import html
 import heapq
 import importlib
@@ -1082,19 +1081,8 @@ def _html_product_url(store, raw_url, base_url):
         ))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return canonical
-        if low.endswith('.html') and not re.search(
-            r'/(?:'
-            r'category|categorie|categoria|catégorie|'
-            r'chercher|search|'
-            r'sitemap|'
-            r'brand|marque|marca|'
-            r'login|account|cart|checkout'
-            r')(?:\.html|/|$)',
-            low,
-            re.I,
-        ):
+        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
-
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
@@ -2484,13 +2472,6 @@ def discover_store(store):
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
     conn.commit(); conn.close()
-       
-    # Seed iniziale della family coverage queue (una tantum per store).
-    conn = db()
-    try:
-        _seed_family_coverage_queue(conn, store=store)
-    finally:
-        conn.close()
 
     return {
         'count':count,'status':status,'visited_sitemaps':len(visited),
@@ -3565,15 +3546,12 @@ _COVERAGE_SCHEMA_LOCK = threading.Lock()
 _COVERAGE_SCHEMA_READY = False
 _COVERAGE_CATALOG_CACHE = None
 _COVERAGE_CATALOG_MTIME = None
-_COVERAGE_INTERVAL_SECONDS = 300.0
-# Never run the first coverage pass during process warm-up. The foreground
-# search must become responsive immediately after deploy.
-_COVERAGE_START_DELAY_SECONDS = 90.0
-_COVERAGE_BATCH_SIZE = 1
-_COVERAGE_WORKERS = 1
+_COVERAGE_INTERVAL_SECONDS = 60.0
+_COVERAGE_BATCH_SIZE = 8
+_COVERAGE_WORKERS = 2
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
-_COVERAGE_TASK_TIMEOUT_SECONDS = 15.0
+_COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
 
 
 def _foreground_search_running():
@@ -3647,116 +3625,36 @@ def _coverage_ensure_schema():
 
 
 def _coverage_load_catalog():
-    """Load canonical coverage identities from both catalog sources.
-
-    ``product_catalog.json`` is the primary product catalog.  ``family_registry.json``
-    is a verified identity knowledge source and can contain canonical variants that
-    have not yet been materialized in the product catalog.  Coverage must include
-    those variants too; otherwise a retailer can expose a valid sibling product
-    that the background coverage worker will never ask the scraper to discover.
-
-    The family registry is used here only to create discovery work.  It does not
-    decide matching, canonical identity, or frontend output.
-    """
+    """Load the canonical product list once and refresh only when the file changes."""
     global _COVERAGE_CATALOG_CACHE, _COVERAGE_CATALOG_MTIME
-    catalog_path = BASE_DIR / 'product_catalog.json'
-    family_path = BASE_DIR / 'family_registry.json'
-
+    path = BASE_DIR / 'product_catalog.json'
     try:
-        catalog_mtime = catalog_path.stat().st_mtime_ns
+        mtime = path.stat().st_mtime_ns
     except OSError:
-        catalog_mtime = 0
-    try:
-        family_mtime = family_path.stat().st_mtime_ns
-    except OSError:
-        family_mtime = 0
-    cache_mtime = (catalog_mtime, family_mtime)
-
-    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == cache_mtime:
+        return []
+    if _COVERAGE_CATALOG_CACHE is not None and _COVERAGE_CATALOG_MTIME == mtime:
         return _COVERAGE_CATALOG_CACHE
-
+    try:
+        with path.open('r', encoding='utf-8') as handle:
+            payload = json.load(handle)
+    except Exception as exc:
+        print(f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}', flush=True)
+        return _COVERAGE_CATALOG_CACHE or []
+    products = payload.get('products') if isinstance(payload, dict) else None
+    if not isinstance(products, list):
+        products = []
     cleaned = []
-    seen_identity = set()
-
-    if catalog_mtime:
-        try:
-            with catalog_path.open('r', encoding='utf-8') as handle:
-                payload = json.load(handle)
-            products = payload.get('products') if isinstance(payload, dict) else None
-            if not isinstance(products, list):
-                products = []
-            for product in reversed(products):
-                if not isinstance(product, dict):
-                    continue
-                product_id = str(product.get('product_id') or '').strip()
-                canonical_name = str(product.get('canonical_name') or '').strip()
-                if not product_id or not canonical_name:
-                    continue
-                brand = str(product.get('brand_name') or product.get('brand') or '').strip()
-                identity = (norm(brand), norm(canonical_name))
-                if identity in seen_identity:
-                    continue
-                seen_identity.add(identity)
-                cleaned.append(product)
-        except Exception as exc:
-            print(
-                f'CATALOG COVERAGE CATALOG LOAD ERROR: {type(exc).__name__}:{exc}',
-                flush=True,
-            )
-
-    # Supplement, never replace, the primary catalog with verified family
-    # variants.  Stable synthetic IDs are used only as durable coverage keys;
-    # they are never exposed as ScentHunter catalog IDs.
-    if family_mtime:
-        try:
-            with family_path.open('r', encoding='utf-8') as handle:
-                family_payload = json.load(handle)
-            families = family_payload.get('families') if isinstance(family_payload, dict) else None
-            if not isinstance(families, list):
-                families = []
-            for family in families:
-                if not isinstance(family, dict):
-                    continue
-                family_id = str(family.get('family_id') or '').strip()
-                brand = str(family.get('brand') or '').strip()
-                family_products = family.get('products')
-                if not isinstance(family_products, list):
-                    continue
-                for product in family_products:
-                    if not isinstance(product, dict):
-                        continue
-                    canonical_name = str(product.get('canonical_name') or '').strip()
-                    if not canonical_name:
-                        continue
-                    identity = (norm(brand), norm(canonical_name))
-                    if identity in seen_identity:
-                        continue
-                    aliases = product.get('aliases')
-                    if not isinstance(aliases, list):
-                        aliases = []
-                    seed = f'{family_id}|{brand}|{canonical_name}'
-                    synthetic_id = 'FAM-' + hashlib.sha1(seed.encode('utf-8')).hexdigest()[:16]
-                    supplemental = {
-                        'product_id': synthetic_id,
-                        'canonical_name': canonical_name,
-                        'brand_name': brand,
-                        'aliases': aliases,
-                    }
-                    if product.get('formats_ml'):
-                        supplemental['formats_ml'] = product.get('formats_ml')
-                    if product.get('gtins'):
-                        supplemental['gtins'] = product.get('gtins')
-                    seen_identity.add(identity)
-                    cleaned.append(supplemental)
-        except Exception as exc:
-            print(
-                f'CATALOG COVERAGE FAMILY REGISTRY LOAD ERROR: {type(exc).__name__}:{exc}',
-                flush=True,
-            )
-
+    for product in reversed(products):
+        if not isinstance(product, dict):
+            continue
+        product_id = str(product.get('product_id') or '').strip()
+        canonical_name = str(product.get('canonical_name') or '').strip()
+        if product_id and canonical_name:
+            cleaned.append(product)
     _COVERAGE_CATALOG_CACHE = cleaned
-    _COVERAGE_CATALOG_MTIME = cache_mtime
+    _COVERAGE_CATALOG_MTIME = mtime
     return cleaned
+
 
 def _coverage_queries(product):
     """Build a small generic query set from canonical identity metadata."""
@@ -3969,190 +3867,47 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
 
 
 def _coverage_run_task(task):
-    """Execute one background canonical coverage task.
-
-    Deloox uses URL discovery only, then hands URLs to the persistent
-    catalog/hydration pipeline. Other stores retain the existing isolated
-    scraper path.
-
-    This function is never called by foreground search.
-    """
     store = task['store']
     product = task['product']
-
-    # Deloox catalog coverage must not invoke the full runtime scraper path:
-    # that path fetches/parses product pages and can exceed the short
-    # isolated-process budget. The Deloox adapter already exposes _discover(),
-    # which returns product URLs through the retailer search/pagination layer.
-    # Persisting those URLs delegates parsing to the normal hydration workers.
-    if store == 'deloox':
-        return _coverage_run_deloox_discovery(product)
-
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
-
     if not module_name:
-        return {
-            'state': 'ERROR',
-            'found': 0,
-            'error': 'store_module_missing',
-        }
-
+        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
     isolated = _coverage_scraper_process(module_name, queries)
     reports = isolated.get('reports') or []
-
     if not isolated.get('ok'):
-        return {
-            'state': 'RETRY',
-            'found': 0,
-            'error': str(
-                isolated.get('error') or 'coverage_process_failed'
-            )[:1000],
-        }
-
+        return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
     matched_rows = []
     errors = []
-
     for item in reports:
-        if not isinstance(item, dict):
-            continue
-
+        if not isinstance(item, dict): continue
         if item.get('error'):
-            errors.append(str(item['error']))
-            continue
-
+            errors.append(str(item['error'])); continue
         report = item.get('report')
-
         if isinstance(report, dict):
             rows = report.get('results') or []
             status = str(report.get('status') or '')
-
-            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
+            if status in {'error','timeout','blocked','unavailable'}:
                 errors.append(str(report.get('error') or status))
         else:
             rows = report if isinstance(report, list) else []
-
         for row in rows:
-            if _coverage_result_matches(product, row):
-                matched_rows.append(row)
-
+            if _coverage_result_matches(product, row): matched_rows.append(row)
     found = _coverage_persist_urls(store, matched_rows)
-
-    if found:
-        return {
-            'state': 'FOUND',
-            'found': found,
-            'error': None,
-        }
-
-    if errors:
-        return {
-            'state': 'RETRY',
-            'found': 0,
-            'error': errors[0][:1000],
-        }
-
-    return {
-        'state': 'NOT_FOUND',
-        'found': 0,
-        'error': None,
-    }
-
-
-def _coverage_run_deloox_discovery(product):
-    """Discover Deloox URLs for a canonical coverage task.
-
-    This is background catalog discovery only:
-      canonical identity -> Deloox public discovery -> store_urls ->
-      hydration_queue.
-
-    It does not call the foreground API, ProductMatcher, Aggregator,
-    frontend or the isolated runtime scraper process.
-    """
-    canonical_name = str(product.get('canonical_name') or '').strip()
-
-    if not canonical_name:
-        return {
-            'state': 'ERROR',
-            'found': 0,
-            'error': 'missing_canonical_name',
-        }
-
-    try:
-        module = importlib.import_module('scrapers.deloox.scraper')
-        discover = getattr(module, '_discover', None)
-
-        if not callable(discover):
-            return {
-                'state': 'ERROR',
-                'found': 0,
-                'error': 'deloox_discover_unavailable',
-            }
-
-        session = requests.Session()
-
-        try:
-            urls = discover(session, canonical_name) or []
-        finally:
-            session.close()
-
-        rows = [{'url': url} for url in urls if url]
-        found = _coverage_persist_urls('deloox', rows)
-
-        if found:
-            return {
-                'state': 'FOUND',
-                'found': found,
-                'error': None,
-            }
-
-        return {
-            'state': 'NOT_FOUND',
-            'found': 0,
-            'error': None,
-        }
-
-    except Exception as exc:
-        return {
-            'state': 'RETRY',
-            'found': 0,
-            'error': f'{type(exc).__name__}:{exc}'[:1000],
-        }
-
-def _coverage_family_key(canonical_name):
-    """Build a conservative generic family key from canonical identity text.
-
-    Coverage uses this only to prioritize variants that belong to a family
-    already represented by the same retailer. It never decides identity and
-    never creates a match. Three leading canonical tokens are enough to group
-    common product lines such as ``Born in Roma ...`` while avoiding short
-    one-token buckets.
-    """
-    words = [token for token in norm(canonical_name).split() if len(token) > 1]
-    if not words:
-        return ''
-    return ' '.join(words[:3])
-
-
+    if found: return {'state': 'FOUND', 'found': found, 'error': None}
+    if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
+    return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
 def _coverage_claim_tasks(limit):
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
     if not products:
         return []
     now = time.time()
-    requested = max(1, int(limit))
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
-
-        # Do not simply consume the catalog in insertion order. A retailer can
-        # already expose several variants of a canonical family while one or
-        # more sibling variants are absent from store_urls. Those missing
-        # siblings are the highest-value coverage work because the retailer's
-        # catalog surface is already proven for that family. This is generic
-        # family-gap prioritization, not a product-specific exception.
         rows = conn.execute(
-            """SELECT store,product_id,canonical_name,query,attempts,state,next_run_at,rowid
+            """SELECT store,product_id,canonical_name,query,attempts
                  FROM catalog_coverage
                 WHERE next_run_at <= ?
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
@@ -4160,62 +3915,14 @@ def _coverage_claim_tasks(limit):
                          CASE store WHEN 'deloox' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
-            (now, max(5000, requested * 200)),
+            (now, max(1, int(limit))),
         ).fetchall()
-
-        # Only the persistent URL catalog is consulted here. No scraper,
-        # production search, hydration, or network request is performed while
-        # selecting work.
-        active_rows = conn.execute(
-            """SELECT store,slug FROM store_urls WHERE active=1"""
-        ).fetchall()
-        slugs_by_store = {}
-        for item in active_rows:
-            store_name = str(item['store'] or '')
-            slugs_by_store.setdefault(store_name, []).append(norm(item['slug'] or ''))
-
         product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
-        ranked = []
+        tasks = []
         for row in rows:
             product = product_by_id.get(str(row['product_id']))
             if not product:
                 continue
-            store = str(row['store'] or '')
-            canonical = str(row['canonical_name'] or product.get('canonical_name') or '').strip()
-            canonical_tokens = [x for x in norm(canonical).split() if len(x) > 1]
-            store_slugs = slugs_by_store.get(store, [])
-
-            exact_present = bool(canonical_tokens) and any(
-                all(token in slug.split() for token in canonical_tokens)
-                for slug in store_slugs
-            )
-            family_key = _coverage_family_key(canonical)
-            family_matches = (
-                sum(1 for slug in store_slugs if family_key and family_key in slug)
-                if family_key else 0
-            )
-            family_present = family_matches > 0
-
-            # Lower score = sooner. A missing sibling in an already represented
-            # family is the highest-value generic coverage signal. Within that
-            # class, prefer families with more known siblings: this makes the
-            # worker repair coherent retailer family gaps quickly without ever
-            # naming a product or brand in code.
-            priority = (
-                0 if store == 'deloox' else 1,
-                0 if not exact_present and family_present else 1,
-                -family_matches if (not exact_present and family_present) else 0,
-                0 if not exact_present else 2,
-                0 if str(row['state']) == 'PENDING' else 1,
-                float(row['next_run_at'] or 0),
-                int(row['rowid'] or 0),
-            )
-            ranked.append((priority, row, product))
-
-        ranked.sort(key=lambda item: item[0])
-        selected = ranked[:requested]
-        tasks = []
-        for _priority, row, product in selected:
             attempts = int(row['attempts'] or 0) + 1
             conn.execute(
                 """UPDATE catalog_coverage
@@ -4266,29 +3973,13 @@ def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
             except Exception as exc:
                 result = {'state': 'ERROR', 'found': 0, 'error': f'{type(exc).__name__}:{exc}'}
             _coverage_finish_task(task, result)
-
-            state = str(result.get('state') or 'ERROR')
-            found_count = int(result.get('found') or 0)
-            error_text = str(result.get('error') or '')
-
-            print(
-                "CATALOG COVERAGE TASK "
-                f"store={task.get('store')!r} "
-                f"product_id={str((task.get('product') or {}).get('product_id') or '')!r} "
-                f"canonical_name={str((task.get('product') or {}).get('canonical_name') or '')!r} "
-                f"state={state!r} "
-                f"found={found_count} "
-                f"error={error_text!r}",
-                flush=True,
-            )
-
+            state = result.get('state')
             if state == 'FOUND':
-                found += found_count
+                found += int(result.get('found') or 0)
             elif state == 'NOT_FOUND':
                 not_found += 1
             else:
                 errors += 1
-
     return {'selected': len(tasks), 'found': found, 'not_found': not_found, 'errors': errors}
 
 
@@ -4325,7 +4016,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
-    coverage_next_at = time.monotonic() + _COVERAGE_START_DELAY_SECONDS
+    coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
@@ -4352,7 +4043,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
             # store_urls -> hydration pipeline as normal discovery.
-            if now_mono >= coverage_next_at and not _foreground_search_running():
+            if now_mono >= coverage_next_at:
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
                 coverage = coverage_batch(
                     max_tasks=_COVERAGE_BATCH_SIZE,
@@ -4399,29 +4090,6 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 stop_event.wait(5.0)
             else:
                 time.sleep(5.0)
-def catalog_family_coverage_loop(stop_event, store="deloox", max_tasks=5, pause_seconds=300):
-    """
-    Loop background per la family coverage.
-    
-    - Non blocca la ricerca.
-    - Gira in continuazione finché stop_event non è settato.
-    - Ogni ciclo processa un batch limitato di query di family coverage.
-    """
-    print(f"CATALOG FAMILY COVERAGE START store={store} max_tasks={max_tasks} pause={pause_seconds}s", flush=True)
-
-    while stop_event is None or not stop_event.is_set():
-        try:
-            result = run_family_coverage_worker(store=store, max_tasks=max_tasks, timeout_sec=60)
-            # Puoi loggare result se vuoi:
-            # print(f"COVERAGE BATCH result={result}", flush=True)
-        except Exception as exc:
-            print(f"COVERAGE BATCH ERROR: {type(exc).__name__}: {exc}", flush=True)
-
-        # Pausa tra un batch e l'altro
-        if stop_event is not None:
-            stop_event.wait(float(pause_seconds))
-        else:
-            time.sleep(float(pause_seconds))
 
 
 def hydration_status():
@@ -4537,281 +4205,6 @@ def store_status():
         }
     conn.close()
     return out
-def _seed_family_coverage_queue(conn, store="deloox"):
-    """Popola catalog_discovery_queue con query di family coverage.
-
-    Per ogni famiglia genera query del tipo:
-      - family_key
-      - brand + family_key
-      - alias famiglia (se presenti)
-
-    Ogni riga ha:
-      url = query (es. "Born in Roma")
-      source = "family_coverage"
-      depth = 0
-    """
-    now = time.time()
-
-    # Carica family_registry.json
-    registry_path = BASE_DIR / "family_registry.json"
-    with open(registry_path, "r", encoding="utf-8") as f:
-        registry = json.load(f)
-
-    families = registry.get("families", {})
-
-    rows = []
-
-    for family_key, family_data in families.items():
-        brand = (family_data.get("brand") or "").strip()
-        aliases = family_data.get("aliases", []) or []
-
-        # Query base: family_key
-        q1 = family_key.strip()
-        if q1:
-            rows.append((store, q1, 0, "family_coverage", now, now))
-
-        # Query: brand + family_key
-        if brand:
-            q2 = f"{brand} {family_key}".strip()
-            if q2 and q2 != q1:
-                rows.append((store, q2, 0, "family_coverage", now, now))
-
-        # Query: alias
-        for alias in aliases:
-            alias = (alias or "").strip()
-            if alias and alias != q1:
-                rows.append((store, alias, 0, "family_coverage", now, now))
-
-    if not rows:
-        return 0
-
-    # Inserimento idempotente: una riga per (store, url=query, source=family_coverage)
-    conn.executemany(
-        """
-        INSERT INTO catalog_discovery_queue(
-            store, url, depth, source, state, attempts,
-            available_at, first_seen_at
-        )
-        VALUES (?, ?, 0, 'family_coverage', 'PENDING', 0, ?, ?)
-        ON CONFLICT(store, url) DO NOTHING
-        """,
-        [
-            (store, query, now, now)
-            for (store, query, depth, source, now1, now2) in rows
-        ],
-    )
-
-    return len(rows)
-def _claim_one_family_coverage_task(store="deloox", lease_seconds=120.0):
-    """Claim una riga di family coverage da catalog_discovery_queue."""
-    now = time.time()
-    token = uuid.uuid4().hex
-    conn = db()
-
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-
-        # Recupera lease scaduti
-        conn.execute(
-            """
-            UPDATE catalog_discovery_queue
-            SET state='PENDING',
-                leased_until=NULL,
-                lease_token=NULL,
-                available_at=?
-            WHERE store=?
-              AND source='family_coverage'
-              AND state='PROCESSING'
-              AND (leased_until IS NULL OR leased_until < ?)
-            """,
-            (now, now),
-        )
-
-        row = conn.execute(
-            """
-            SELECT store, url, depth, attempts
-            FROM catalog_discovery_queue
-            WHERE store=?
-              AND source='family_coverage'
-              AND state IN ('PENDING', 'ERROR')
-              AND available_at <= ?
-            ORDER BY available_at ASC, first_seen_at ASC
-            LIMIT 1
-            """,
-            (store, now),
-        ).fetchone()
-
-        if not row:
-            conn.commit()
-            return None
-
-        leased_until = now + float(lease_seconds)
-
-        updated = conn.execute(
-            """
-            UPDATE catalog_discovery_queue
-            SET state='PROCESSING',
-                attempts=attempts+1,
-                leased_until=?,
-                lease_token=?,
-                last_started_at=?
-            WHERE store=? AND url=? AND source='family_coverage'
-              AND state IN ('PENDING', 'ERROR')
-              AND available_at <= ?
-            """,
-            (
-                leased_until,
-                token,
-                now,
-                row["store"],
-                row["url"],
-                now,
-            ),
-        ).rowcount
-
-        if updated != 1:
-            conn.rollback()
-            return None
-
-        conn.commit()
-
-        return {
-            "store": row["store"],
-            "query": row["url"],  # qui url = query
-            "lease_token": token,
-            "attempts": int(row["attempts"] or 0) + 1,
-        }
-
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        raise
-    finally:
-        conn.close()
-
-
-def _finish_family_coverage_task(task, ok, error=""):
-    now = time.time()
-    conn = db()
-    try:
-        with conn:
-            row = conn.execute(
-                """
-                SELECT attempts
-                FROM catalog_discovery_queue
-                WHERE store=? AND url=? AND source='family_coverage' AND lease_token=?
-                """,
-                (
-                    task["store"],
-                    task["query"],
-                    task["lease_token"],
-                ),
-            ).fetchone()
-
-            if not row:
-                return
-
-            attempts = int(row["attempts"] or 0)
-
-            if ok:
-                state = "DONE"
-                available_at = 0
-                last_error = None
-            else:
-                state = "DEAD" if attempts >= 8 else "ERROR"
-                backoff = (60, 300, 1800, 7200, 21600, 86400)
-                idx = min(max(attempts - 1, 0), len(backoff) - 1)
-                available_at = now + backoff[idx]
-                last_error = str(error or "coverage_error")[:1000]
-
-            conn.execute(
-                """
-                UPDATE catalog_discovery_queue
-                SET state=?,
-                    available_at=?,
-                    leased_until=NULL,
-                    lease_token=NULL,
-                    last_finished_at=?,
-                    last_error=?
-                WHERE store=? AND url=? AND source='family_coverage' AND lease_token=?
-                """,
-                (
-                    state,
-                    available_at,
-                    now,
-                    last_error,
-                    task["store"],
-                    task["query"],
-                    task["lease_token"],
-                ),
-            )
-    finally:
-        conn.close()
-def run_family_coverage_worker(store="deloox", max_tasks=10, timeout_sec=120):
-    """Esegue un batch limitato di task di family coverage.
-
-    Per ogni task:
-      - query = task["query"] (ex task["url"])
-      - chiama Deloox._discover(session, query)
-      - persiste gli URL in store_urls e hydration_queue
-    """
-    import importlib
-
-    try:
-        module = importlib.import_module("scrapers.deloox.scraper")
-        discover = getattr(module, "_discover", None)
-        if not callable(discover):
-            return {"processed": 0, "error": "deloox_discover_unavailable"}
-    except Exception as exc:
-        return {"processed": 0, "error": f"import:{type(exc).__name__}:{exc}"}
-
-    session = requests.Session()
-    session.headers.update(
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/131.0.0.0 Safari/537.36"
-            ),
-            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-GB,en;q=0.9",
-        }
-    )
-
-    start = time.time()
-    processed = 0
-    errors = []
-
-    try:
-        while processed < max_tasks and (time.time() - start) < timeout_sec:
-            task = _claim_one_family_coverage_task(store=store)
-            if not task:
-                break
-
-            query = task["query"]
-            try:
-                urls = discover(session, query) or []
-            except Exception as exc:
-                _finish_family_coverage_task(task, ok=False, error=f"{type(exc).__name__}:{exc}")
-                errors.append(f"{query}:{type(exc).__name__}:{exc}")
-                continue
-
-            # Persisti URL in store_urls e hydration_queue
-            count = _deloox_persist_products({url: "" for url in urls})
-
-            _finish_family_coverage_task(task, ok=True)
-            processed += 1
-
-    finally:
-        session.close()
-
-    return {
-        "processed": processed,
-        "errors": errors[:10],
-        "elapsed_sec": round(time.time() - start, 3),
-    }
 
 
 if __name__ == '__main__':
