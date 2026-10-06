@@ -25278,6 +25278,93 @@
       ],
       "canonical_name": "Cadiz",
       "canonical_image": "https://cdn.shopify.com/s/files/1/0798/6898/5693/files/Rayhaan-Cadiz-Perfume-100ml-EDP-by-Rayhaan-181153594.jpg?v=1764454060"
+    },
+    {
+      "product_id": "SH-0082",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Miu Miu",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu",
+        "Miu Miu Eau de Parfum",
+        "Miu Miu Miu Miu",
+        "Miu Miu Eau de Parfum Spray",
+        "Miu Miu Miu Miu Eau de Parfum Spray"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Prima fragranza Miu Miu; Eau de Parfum femminile, formati 30/50/100 ml verificati su fonti di prodotto.",
+      "verification_sources": [
+        "https://www.idealo.fr/prix/4842844/miu-miu-eau-de-parfum.html"
+      ],
+      "canonical_name": "Miu Miu",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0083",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Twist",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu Twist",
+        "Twist",
+        "Miu Miu Twist Eau de Parfum",
+        "Miu Miu Twist Eau de Parfum Spray"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Miu Miu Twist Eau de Parfum verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/lu/en/miumiu-club/fragrances/miumiu-twist.html"
+      ],
+      "canonical_name": "Twist",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0084",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Twist",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu Twist Eau de Toilette",
+        "Twist Eau de Toilette",
+        "Miu Miu Twist EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Miu Miu Twist Eau de Toilette verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/eu/en/miumiu-club/fragrances/miumiu-twist-edt.html"
+      ],
+      "canonical_name": "Twist Eau de Toilette",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0085",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Fleur d'Argent",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu Fleur d'Argent",
+        "Fleur d'Argent",
+        "Miu Miu Fleur D'Argent",
+        "Miu Miu Fleur d'Argent Eau de Parfum",
+        "Miu Miu Fleur D'Argent Absolue",
+        "Miu Miu Fleur d'Argent Absolute",
+        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Miu Miu Fleur d'Argent Eau de Parfum verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/lu/en/miumiu-club/fragrances/miumiu-fleur-argent.html"
+      ],
+      "canonical_name": "Fleur d'Argent",
+      "canonical_image": null
     }
   ],
   "variants": [
@@ -29941,6 +30028,183 @@
         "Miu Miu Miutine Intense",
         "Miutine Intense",
         "Miutine Intense Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7b8e09287bdb7af8",
+      "product_id": "SH-0082",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu",
+        "Miu Miu Eau de Parfum",
+        "Miu Miu Miu Miu",
+        "Miu Miu Eau de Parfum Spray",
+        "Miu Miu Miu Miu Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6289376a10303690",
+      "product_id": "SH-0082",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu",
+        "Miu Miu Eau de Parfum",
+        "Miu Miu Miu Miu",
+        "Miu Miu Eau de Parfum Spray",
+        "Miu Miu Miu Miu Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8f3dc1164ac554ac",
+      "product_id": "SH-0082",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu",
+        "Miu Miu Eau de Parfum",
+        "Miu Miu Miu Miu",
+        "Miu Miu Eau de Parfum Spray",
+        "Miu Miu Miu Miu Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-52e4d8934eef30ee",
+      "product_id": "SH-0083",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist",
+        "Twist",
+        "Miu Miu Twist Eau de Parfum",
+        "Miu Miu Twist Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9f1bcbd321e0f297",
+      "product_id": "SH-0083",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist",
+        "Twist",
+        "Miu Miu Twist Eau de Parfum",
+        "Miu Miu Twist Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-eed5886661c9c189",
+      "product_id": "SH-0083",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist",
+        "Twist",
+        "Miu Miu Twist Eau de Parfum",
+        "Miu Miu Twist Eau de Parfum Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-504405c9de2dcbfa",
+      "product_id": "SH-0084",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist Eau de Toilette",
+        "Twist Eau de Toilette",
+        "Miu Miu Twist EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-56ed60da77dd8d64",
+      "product_id": "SH-0084",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist Eau de Toilette",
+        "Twist Eau de Toilette",
+        "Miu Miu Twist EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9338531960400cbb",
+      "product_id": "SH-0084",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Twist Eau de Toilette",
+        "Twist Eau de Toilette",
+        "Miu Miu Twist EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-654a0bb5c1b1a901",
+      "product_id": "SH-0085",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur d'Argent",
+        "Fleur d'Argent",
+        "Miu Miu Fleur D'Argent",
+        "Miu Miu Fleur d'Argent Eau de Parfum",
+        "Miu Miu Fleur D'Argent Absolue",
+        "Miu Miu Fleur d'Argent Absolute",
+        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3c91abaeb8c126d4",
+      "product_id": "SH-0085",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur d'Argent",
+        "Fleur d'Argent",
+        "Miu Miu Fleur D'Argent",
+        "Miu Miu Fleur d'Argent Eau de Parfum",
+        "Miu Miu Fleur D'Argent Absolue",
+        "Miu Miu Fleur d'Argent Absolute",
+        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-084e0bb2f20115f0",
+      "product_id": "SH-0085",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur d'Argent",
+        "Fleur d'Argent",
+        "Miu Miu Fleur D'Argent",
+        "Miu Miu Fleur d'Argent Eau de Parfum",
+        "Miu Miu Fleur D'Argent Absolue",
+        "Miu Miu Fleur d'Argent Absolute",
+        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
       ],
       "store_mappings": []
     }
