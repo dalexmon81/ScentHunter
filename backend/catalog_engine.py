@@ -2473,6 +2473,13 @@ def discover_store(store):
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
     conn.commit(); conn.close()
+       
+    # Seed iniziale della family coverage queue (una tantum per store).
+    conn = db()
+    try:
+        _seed_family_coverage_queue(conn, store=store)
+    finally:
+        conn.close()
 
     return {
         'count':count,'status':status,'visited_sitemaps':len(visited),
