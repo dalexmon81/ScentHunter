@@ -16282,6 +16282,67 @@
       "canonical_image": "https://shop.ethosprofumerielauda.com/cdn/shop/files/3614274569131_1.jpg?v=1770372443"
     },
     {
+      "product_id": "SH-0079",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "L'Eau Bleue",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu L'Eau Bleue",
+        "L'Eau Bleue",
+        "Miu Miu L Eau Bleue"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Miu Miu L'Eau Bleue verificata sul sito ufficiale Miu Miu; Eau de Parfum, formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/lu/fr/p/miu-miu-leau-bleue-eau-de-parfum-100-ml/5A1003_2H02_F0Z99_P_ML100"
+      ],
+      "canonical_name": "L'Eau Bleue",
+      "canonical_image": "https://www.miumiu.com/content/dam/miumiubkg_products/5/5A1/5A1003/2H02F0Z99/5A1003_2H02_F0Z99_P_ML100_SLF.jpg"
+    },
+    {
+      "product_id": "SH-0080",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "L'Eau de Muguet",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu L'Eau de Muguet",
+        "L'Eau de Muguet",
+        "Miu Miu L Eau de Muguet"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Miu Miu L'Eau de Muguet verificata sul sito ufficiale Miu Miu; Eau de Parfum, formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/lu/fr/p/miu-miu-leau-de-muguet-eau-de-parfum-100-ml/5A1001_2H00_F0Z99_P_ML100"
+      ],
+      "canonical_name": "L'Eau de Muguet",
+      "canonical_image": "https://www.miumiu.com/content/dam/miumiubkg_products/5/5A1/5A1001/2H00F0Z99/5A1001_2H00_F0Z99_P_ML100_SLF.jpg"
+    },
+    {
+      "product_id": "SH-0081",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Miutine Intense",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Miu Miu Miutine Intense",
+        "Miutine Intense",
+        "Miutine Intense Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Miu Miu Miutine Intense verificata sul catalogo ufficiale Miu Miu; Eau de Parfum, formati 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.miumiu.com/lu/fr/fragrances/c/10242EU",
+        "https://www.miumiu.com/es/es/miumiu-club/fragrances/miutine-intense.html"
+      ],
+      "canonical_name": "Miutine Intense",
+      "canonical_image": null
+    },
+    {
       "product_id": "SH-AUTO-0548",
       "brand_id": "BR-e9c024729763",
       "brand_name": "Marc Jacobs",
@@ -29765,6 +29826,123 @@
           "url": "https://www.deloox.com/product/1387957/rayhaan-cadiz-eau-de-parfum-100-ml.html"
         }
       ]
+    },
+    {
+      "variant_id": "VAR-1eddc38070fc180d",
+      "product_id": "SH-0079",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Bleue",
+        "L'Eau Bleue",
+        "Miu Miu L Eau Bleue"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c641a3a6535b8187",
+      "product_id": "SH-0079",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Bleue",
+        "L'Eau Bleue",
+        "Miu Miu L Eau Bleue"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-acf1d9643f69a064",
+      "product_id": "SH-0079",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Bleue",
+        "L'Eau Bleue",
+        "Miu Miu L Eau Bleue"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-edc2fe0b5d474dc2",
+      "product_id": "SH-0080",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau de Muguet",
+        "L'Eau de Muguet",
+        "Miu Miu L Eau de Muguet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-643e36f00fdfc8fd",
+      "product_id": "SH-0080",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau de Muguet",
+        "L'Eau de Muguet",
+        "Miu Miu L Eau de Muguet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-90ab7695304f64bd",
+      "product_id": "SH-0080",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau de Muguet",
+        "L'Eau de Muguet",
+        "Miu Miu L Eau de Muguet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a8f23fcb870c87cf",
+      "product_id": "SH-0081",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine Intense",
+        "Miutine Intense",
+        "Miutine Intense Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5c848098d22316d5",
+      "product_id": "SH-0081",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine Intense",
+        "Miutine Intense",
+        "Miutine Intense Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-646b27a2865b65ae",
+      "product_id": "SH-0081",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine Intense",
+        "Miutine Intense",
+        "Miutine Intense Eau de Parfum"
+      ],
+      "store_mappings": []
     }
   ],
   "offers": [],
