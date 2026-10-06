@@ -3969,36 +3969,156 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
 
 
 def _coverage_run_task(task):
+    """Execute one background canonical coverage task.
+
+    Deloox uses URL discovery only, then hands URLs to the persistent
+    catalog/hydration pipeline. Other stores retain the existing isolated
+    scraper path.
+
+    This function is never called by foreground search.
+    """
     store = task['store']
     product = task['product']
+
+    # Deloox catalog coverage must not invoke the full runtime scraper path:
+    # that path fetches/parses product pages and can exceed the short
+    # isolated-process budget. The Deloox adapter already exposes _discover(),
+    # which returns product URLs through the retailer search/pagination layer.
+    # Persisting those URLs delegates parsing to the normal hydration workers.
+    if store == 'deloox':
+        return _coverage_run_deloox_discovery(product)
+
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
+
     if not module_name:
-        return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
+        return {
+            'state': 'ERROR',
+            'found': 0,
+            'error': 'store_module_missing',
+        }
+
     isolated = _coverage_scraper_process(module_name, queries)
     reports = isolated.get('reports') or []
+
     if not isolated.get('ok'):
-        return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
+        return {
+            'state': 'RETRY',
+            'found': 0,
+            'error': str(
+                isolated.get('error') or 'coverage_process_failed'
+            )[:1000],
+        }
+
     matched_rows = []
     errors = []
+
     for item in reports:
-        if not isinstance(item, dict): continue
+        if not isinstance(item, dict):
+            continue
+
         if item.get('error'):
-            errors.append(str(item['error'])); continue
+            errors.append(str(item['error']))
+            continue
+
         report = item.get('report')
+
         if isinstance(report, dict):
             rows = report.get('results') or []
             status = str(report.get('status') or '')
-            if status in {'error','timeout','blocked','unavailable'}:
+
+            if status in {'error', 'timeout', 'blocked', 'unavailable'}:
                 errors.append(str(report.get('error') or status))
         else:
             rows = report if isinstance(report, list) else []
+
         for row in rows:
-            if _coverage_result_matches(product, row): matched_rows.append(row)
+            if _coverage_result_matches(product, row):
+                matched_rows.append(row)
+
     found = _coverage_persist_urls(store, matched_rows)
-    if found: return {'state': 'FOUND', 'found': found, 'error': None}
-    if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
-    return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
+
+    if found:
+        return {
+            'state': 'FOUND',
+            'found': found,
+            'error': None,
+        }
+
+    if errors:
+        return {
+            'state': 'RETRY',
+            'found': 0,
+            'error': errors[0][:1000],
+        }
+
+    return {
+        'state': 'NOT_FOUND',
+        'found': 0,
+        'error': None,
+    }
+
+
+def _coverage_run_deloox_discovery(product):
+    """Discover Deloox URLs for a canonical coverage task.
+
+    This is background catalog discovery only:
+      canonical identity -> Deloox public discovery -> store_urls ->
+      hydration_queue.
+
+    It does not call the foreground API, ProductMatcher, Aggregator,
+    frontend or the isolated runtime scraper process.
+    """
+    canonical_name = str(product.get('canonical_name') or '').strip()
+
+    if not canonical_name:
+        return {
+            'state': 'ERROR',
+            'found': 0,
+            'error': 'missing_canonical_name',
+        }
+
+    try:
+        module = importlib.import_module('scrapers.deloox.scraper')
+        discover = getattr(module, '_discover', None)
+
+        if not callable(discover):
+            return {
+                'state': 'ERROR',
+                'found': 0,
+                'error': 'deloox_discover_unavailable',
+            }
+
+        session = requests.Session()
+
+        try:
+            urls = discover(session, canonical_name) or []
+        finally:
+            session.close()
+
+        rows = [{'url': url} for url in urls if url]
+        found = _coverage_persist_urls('deloox', rows)
+
+        if found:
+            return {
+                'state': 'FOUND',
+                'found': found,
+                'error': None,
+            }
+
+        return {
+            'state': 'NOT_FOUND',
+            'found': 0,
+            'error': None,
+        }
+
+    except Exception as exc:
+        return {
+            'state': 'RETRY',
+            'found': 0,
+            'error': f'{type(exc).__name__}:{exc}'[:1000],
+        }
+
 def _coverage_family_key(canonical_name):
     """Build a conservative generic family key from canonical identity text.
 
