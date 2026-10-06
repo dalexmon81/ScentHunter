@@ -2810,36 +2810,59 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
                 continue
 
             sql = """
-                SELECT u.url,u.slug,u.lastmod,
-                       p.store AS product_store,p.url AS product_url,
-                       p.name AS product_name,p.brand AS product_brand,
-                       p.image AS product_image,p.sku AS product_sku,
-                       p.gtin AS product_gtin,p.mpn AS product_mpn,
-                       p.size_ml AS product_size_ml,
-                       p.concentration AS product_concentration,
-                       p.gender AS product_gender,p.price AS product_price,
-                       p.currency AS product_currency,
-                       p.availability AS product_availability,
-                       p.fetched_at AS product_fetched_at,
-                       p.fetch_status AS fetch_status,
-                       f.store AS fts_store
-                  FROM catalog_search_fts f
-                  JOIN store_urls u ON u.store=f.store AND u.url=f.url
-                  LEFT JOIN store_products p
-                    ON p.store=u.store AND p.url=u.url
-                   AND p.fetch_status='OK'
-                 WHERE catalog_search_fts MATCH ?
-                   AND u.active=1
-                 ORDER BY rank
-                 LIMIT ?
+                SELECT url,slug,lastmod,
+                       product_store,product_url,
+                       product_name,product_brand,
+                       product_image,product_sku,
+                       product_gtin,product_mpn,
+                       product_size_ml,
+                       product_concentration,
+                       product_gender,product_price,
+                       product_currency,
+                       product_availability,
+                       product_fetched_at,
+                       fetch_status,
+                       fts_store
+                  FROM (
+                    SELECT u.url AS url,
+                           u.slug AS slug,
+                           u.lastmod AS lastmod,
+                           p.store AS product_store,
+                           p.url AS product_url,
+                           p.name AS product_name,
+                           p.brand AS product_brand,
+                           p.image AS product_image,
+                           p.sku AS product_sku,
+                           p.gtin AS product_gtin,
+                           p.mpn AS product_mpn,
+                           p.size_ml AS product_size_ml,
+                           p.concentration AS product_concentration,
+                           p.gender AS product_gender,
+                           p.price AS product_price,
+                           p.currency AS product_currency,
+                           p.availability AS product_availability,
+                           p.fetched_at AS product_fetched_at,
+                           p.fetch_status AS fetch_status,
+                           f.store AS fts_store,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY f.store
+                               ORDER BY rank
+                           ) AS store_rank
+                      FROM catalog_search_fts f
+                      JOIN store_urls u
+                        ON u.store=f.store AND u.url=f.url
+                      LEFT JOIN store_products p
+                        ON p.store=u.store AND p.url=u.url
+                       AND p.fetch_status='OK'
+                     WHERE catalog_search_fts MATCH ?
+                       AND u.active=1
+                  ) ranked
+                 WHERE store_rank <= ?
+                 ORDER BY store_rank, fts_store
             """
-            global_limit = max(
-                len(STORES) * term_candidate_limit,
-                term_candidate_limit,
-            )
             try:
                 candidates = conn.execute(
-                    sql, (fts_query, global_limit)
+                    sql, (fts_query, term_candidate_limit)
                 ).fetchall()
             except sqlite3.OperationalError:
                 if interrupted():
