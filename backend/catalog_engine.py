@@ -3897,17 +3897,40 @@ def _coverage_run_task(task):
     if found: return {'state': 'FOUND', 'found': found, 'error': None}
     if errors: return {'state': 'RETRY', 'found': 0, 'error': errors[0][:1000]}
     return {'state': 'NOT_FOUND', 'found': 0, 'error': None}
+def _coverage_family_key(canonical_name):
+    """Build a conservative generic family key from canonical identity text.
+
+    Coverage uses this only to prioritize variants that belong to a family
+    already represented by the same retailer. It never decides identity and
+    never creates a match. Three leading canonical tokens are enough to group
+    common product lines such as ``Born in Roma ...`` while avoiding short
+    one-token buckets.
+    """
+    words = [token for token in norm(canonical_name).split() if len(token) > 1]
+    if not words:
+        return ''
+    return ' '.join(words[:3])
+
+
 def _coverage_claim_tasks(limit):
     _coverage_ensure_schema()
     products = _coverage_load_catalog()
     if not products:
         return []
     now = time.time()
+    requested = max(1, int(limit))
     conn = db()
     try:
         _coverage_seed_tasks(conn, products)
+
+        # Do not simply consume the catalog in insertion order. A retailer can
+        # already expose several variants of a canonical family while one or
+        # more sibling variants are absent from store_urls. Those missing
+        # siblings are the highest-value coverage work because the retailer's
+        # catalog surface is already proven for that family. This is generic
+        # family-gap prioritization, not a product-specific exception.
         rows = conn.execute(
-            """SELECT store,product_id,canonical_name,query,attempts
+            """SELECT store,product_id,canonical_name,query,attempts,state,next_run_at,rowid
                  FROM catalog_coverage
                 WHERE next_run_at <= ?
                   AND state IN ('PENDING','NOT_FOUND','RETRY')
@@ -3915,14 +3938,54 @@ def _coverage_claim_tasks(limit):
                          CASE store WHEN 'deloox' THEN 0 ELSE 1 END,
                          next_run_at,rowid
                 LIMIT ?""",
-            (now, max(1, int(limit))),
+            (now, max(5000, requested * 200)),
         ).fetchall()
+
+        # Only the persistent URL catalog is consulted here. No scraper,
+        # production search, hydration, or network request is performed while
+        # selecting work.
+        active_rows = conn.execute(
+            """SELECT store,slug FROM store_urls WHERE active=1"""
+        ).fetchall()
+        slugs_by_store = {}
+        for item in active_rows:
+            store_name = str(item['store'] or '')
+            slugs_by_store.setdefault(store_name, []).append(norm(item['slug'] or ''))
+
         product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
-        tasks = []
+        ranked = []
         for row in rows:
             product = product_by_id.get(str(row['product_id']))
             if not product:
                 continue
+            store = str(row['store'] or '')
+            canonical = str(row['canonical_name'] or product.get('canonical_name') or '').strip()
+            canonical_tokens = [x for x in norm(canonical).split() if len(x) > 1]
+            store_slugs = slugs_by_store.get(store, [])
+
+            exact_present = bool(canonical_tokens) and any(
+                all(token in slug.split() for token in canonical_tokens)
+                for slug in store_slugs
+            )
+            family_key = _coverage_family_key(canonical)
+            family_present = bool(family_key) and any(family_key in slug for slug in store_slugs)
+
+            # Lower score = sooner. Missing product + already represented
+            # family is the strongest generic coverage signal.
+            priority = (
+                0 if store == 'deloox' else 1,
+                0 if not exact_present and family_present else 1,
+                0 if not exact_present else 2,
+                0 if str(row['state']) == 'PENDING' else 1,
+                float(row['next_run_at'] or 0),
+                int(row['rowid'] or 0),
+            )
+            ranked.append((priority, row, product))
+
+        ranked.sort(key=lambda item: item[0])
+        selected = ranked[:requested]
+        tasks = []
+        for _priority, row, product in selected:
             attempts = int(row['attempts'] or 0) + 1
             conn.execute(
                 """UPDATE catalog_coverage
