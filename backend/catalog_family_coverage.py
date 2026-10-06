@@ -1,9 +1,14 @@
 """ScentHunter - isolated family coverage worker.
 
-This process is deliberately outside FastAPI/search. It reads the generic
-family registry, asks the existing Deloox retailer scraper for family-level
-queries, and persists only the discovered Deloox product URLs through the
-catalog engine's existing persistence handoff.
+Generic Deloox family coverage, deliberately outside FastAPI/search.
+
+The worker:
+- reads family_registry.json;
+- tries the first generic alias for each family;
+- only falls back to additional aliases when the previous alias returns no
+  usable product URLs;
+- persists each family's discovered URLs in one short catalog transaction;
+- retries a locked SQLite write with backoff instead of hammering the DB.
 
 It never calls /search, search_local(), ProductMatcher, or the frontend.
 """
@@ -25,15 +30,17 @@ from scrapers.deloox.scraper import _discover
 BASE_DIR = Path(__file__).resolve().parent
 REGISTRY_PATH = BASE_DIR / "family_registry.json"
 
-# The first cycle starts shortly after the API process starts. Subsequent
-# coverage cycles are deliberately infrequent: this is maintenance coverage,
-# not request-time search.
 START_DELAY_SECONDS = float(
     os.environ.get("SCENTHUNTER_FAMILY_COVERAGE_START_DELAY", "15")
 )
 INTERVAL_SECONDS = float(
     os.environ.get("SCENTHUNTER_FAMILY_COVERAGE_INTERVAL", "21600")
 )
+
+PERSIST_RETRIES = int(
+    os.environ.get("SCENTHUNTER_FAMILY_COVERAGE_PERSIST_RETRIES", "5")
+)
+PERSIST_BACKOFF_SECONDS = (2.0, 5.0, 10.0, 20.0, 30.0)
 
 STOP = False
 
@@ -49,7 +56,12 @@ signal.signal(signal.SIGINT, _stop)
 
 
 def _load_queries():
-    """Build generic retailer-family queries from family_registry.json."""
+    """Load generic family aliases from the registry.
+
+    The first alias is preferred. Additional aliases are fallback queries for
+    the same family and are used only when the earlier alias returns no
+    admissible product URLs.
+    """
     with REGISTRY_PATH.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
@@ -58,26 +70,31 @@ def _load_queries():
         return []
 
     queries = []
-    seen = set()
+    seen_families = set()
 
     for family in families:
         if not isinstance(family, dict):
             continue
 
         family_id = str(family.get("family_id") or "").strip()
-        aliases = family.get("query_aliases") or []
+        if not family_id or family_id in seen_families:
+            continue
+        seen_families.add(family_id)
 
+        aliases = family.get("query_aliases") or []
         if not isinstance(aliases, list):
             aliases = []
 
         family_queries = []
+        seen_aliases = set()
+
         for value in aliases:
             query = str(value or "").strip()
-            if query:
+            key = query.casefold()
+            if query and key not in seen_aliases:
+                seen_aliases.add(key)
                 family_queries.append(query)
 
-        # Generic registry-data fallback for a family without query aliases.
-        # This does not encode any product-specific exception.
         if not family_queries:
             products = family.get("products") or []
             if isinstance(products, list):
@@ -89,32 +106,15 @@ def _load_queries():
                         family_queries.append(query)
                         break
 
-        for query in family_queries:
-            key = query.casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            queries.append((family_id, query))
+        if family_queries:
+            queries.append((family_id, family_queries))
 
     return queries
 
 
-def _discover_family(session, family_id, query):
-    started = time.monotonic()
-
-    try:
-        urls = _discover(session, query) or []
-    except Exception as exc:
-        return {
-            "family_id": family_id,
-            "query": query,
-            "returned": 0,
-            "candidate_urls": 0,
-            "persisted": 0,
-            "elapsed": round(time.monotonic() - started, 3),
-            "error": f"{type(exc).__name__}:{exc}",
-        }
-
+def _discover_urls(session, query):
+    """Discover and filter admissible Deloox product URLs for one query."""
+    urls = _discover(session, query) or []
     product_urls = {}
 
     for raw in urls:
@@ -131,38 +131,102 @@ def _discover_family(session, family_id, query):
         if allowed:
             product_urls[url] = ""
 
-    persisted = 0
+    return urls, product_urls
 
-    if product_urls:
+
+def _persist_with_retry(product_urls):
+    """Persist one family's URLs without repeatedly hammering a locked DB."""
+    if not product_urls:
+        return 0, None
+
+    last_error = None
+    retries = max(1, PERSIST_RETRIES)
+
+    for attempt in range(retries):
         try:
-            persisted = int(_deloox_persist_products(product_urls) or 0)
+            return int(_deloox_persist_products(product_urls) or 0), None
         except Exception as exc:
-            return {
-                "family_id": family_id,
-                "query": query,
-                "returned": len(urls),
-                "candidate_urls": len(product_urls),
-                "persisted": 0,
-                "elapsed": round(time.monotonic() - started, 3),
-                "error": f"persist:{type(exc).__name__}:{exc}",
-            }
+            last_error = exc
+            message = str(exc).lower()
+
+            if "database is locked" not in message and "database is busy" not in message:
+                return 0, f"{type(exc).__name__}:{exc}"
+
+            if attempt + 1 >= retries:
+                break
+
+            delay = PERSIST_BACKOFF_SECONDS[
+                min(attempt, len(PERSIST_BACKOFF_SECONDS) - 1)
+            ]
+            print(
+                f"FAMILY COVERAGE DB BUSY retry={attempt + 1} "
+                f"sleep={delay}s",
+                flush=True,
+            )
+            time.sleep(delay)
+
+    return 0, (
+        f"persist:{type(last_error).__name__}:{last_error}"
+        if last_error
+        else "persist:database locked"
+    )
+
+
+def _discover_family(session, family_id, queries):
+    started = time.monotonic()
+    attempted = []
+    selected_urls = {}
+    returned_total = 0
+
+    for query in queries:
+        if STOP:
+            break
+
+        try:
+            urls, product_urls = _discover_urls(session, query)
+            returned_total += len(urls)
+            attempted.append(
+                {
+                    "query": query,
+                    "returned": len(urls),
+                    "candidates": len(product_urls),
+                }
+            )
+
+            # One successful generic alias is sufficient. Additional aliases
+            # are fallbacks, not parallel discovery work.
+            if product_urls:
+                selected_urls = product_urls
+                break
+
+        except Exception as exc:
+            attempted.append(
+                {
+                    "query": query,
+                    "returned": 0,
+                    "candidates": 0,
+                    "error": f"{type(exc).__name__}:{exc}",
+                }
+            )
+
+    persisted, persist_error = _persist_with_retry(selected_urls)
 
     return {
         "family_id": family_id,
-        "query": query,
-        "returned": len(urls),
-        "candidate_urls": len(product_urls),
+        "queries": attempted,
+        "returned": returned_total,
+        "candidate_urls": len(selected_urls),
         "persisted": persisted,
         "elapsed": round(time.monotonic() - started, 3),
-        "error": None,
+        "error": persist_error,
     }
 
 
 def run_once():
-    """Run one complete generic family-coverage pass for Deloox."""
-    queries = _load_queries()
+    """Run one generic family-coverage pass for Deloox."""
+    families = _load_queries()
 
-    if not queries:
+    if not families:
         print("FAMILY COVERAGE: no registry queries found", flush=True)
         return
 
@@ -171,25 +235,32 @@ def run_once():
     total_persisted = 0
 
     print(
-        f"FAMILY COVERAGE START queries={len(queries)} store=deloox",
+        f"FAMILY COVERAGE START families={len(families)} store=deloox",
         flush=True,
     )
 
     try:
-        for family_id, query in queries:
+        for family_id, queries in families:
             if STOP:
                 break
 
-            result = _discover_family(session, family_id, query)
+            result = _discover_family(session, family_id, queries)
 
             total_returned += int(result.get("returned") or 0)
             total_persisted += int(result.get("persisted") or 0)
 
+            attempted = result.get("queries") or []
+            attempted_text = "; ".join(
+                f"{item.get('query')!r}:"
+                f"{item.get('returned', 0)}/"
+                f"{item.get('candidates', 0)}"
+                for item in attempted
+            )
+
             print(
                 "FAMILY COVERAGE "
-                f"family={family_id or '-'} "
-                f"query={query!r} "
-                f"returned={result.get('returned', 0)} "
+                f"family={family_id} "
+                f"queries=[{attempted_text}] "
                 f"candidates={result.get('candidate_urls', 0)} "
                 f"persisted={result.get('persisted', 0)} "
                 f"elapsed={result.get('elapsed', 0)} "
