@@ -1419,17 +1419,21 @@ def _catalog_indexed_flags(stores):
 
 
 def _catalog_search_terms(query):
-    """Build generic URL-discovery terms from the central ProductMatcher."""
-    if PRODUCT_MATCHER is None:
-        return [str(query or '').strip()] if str(query or '').strip() else []
-    method = getattr(PRODUCT_MATCHER, 'catalog_search_terms', None)
-    if callable(method):
-        try:
-            terms = method(str(query or '').strip()) or []
-            return [str(term).strip() for term in terms if str(term or '').strip()]
-        except Exception as exc:
-            print(f'CATALOG_SEARCH_TERMS_ERROR: {type(exc).__name__}: {exc}', flush=True)
-    return [str(query or '').strip()] if str(query or '').strip() else []
+    """Return only the user's query for normal persistent-catalog search.
+
+    ProductMatcher.catalog_search_terms() is reserved for catalog URL
+    discovery. It expands a family into many canonical names and aliases,
+    which is correct for discovery but wrong for the interactive search path:
+    passing dozens of terms here multiplies FTS queries across every store
+    and can exhaust the normal search deadline before useful candidates
+    are collected.
+
+    Normal search must therefore search the persistent catalog using the
+    actual user query. ProductMatcher remains responsible for resolving the
+    returned catalog offers to the canonical identity.
+    """
+    text = str(query or "").strip()
+    return [text] if text else []
 
 
 def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
