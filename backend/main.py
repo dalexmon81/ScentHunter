@@ -23,6 +23,7 @@ try:
         sync_all as catalog_sync_all,
         catalog_hydration_loop,
         db as catalog_db,
+        run_family_coverage_worker,
     )
     CATALOG_ENGINE_AVAILABLE = True
 except Exception as exc:
