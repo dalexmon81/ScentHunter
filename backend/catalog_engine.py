@@ -4252,6 +4252,29 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 stop_event.wait(5.0)
             else:
                 time.sleep(5.0)
+def catalog_family_coverage_loop(stop_event, store="deloox", max_tasks=5, pause_seconds=300):
+    """
+    Loop background per la family coverage.
+    
+    - Non blocca la ricerca.
+    - Gira in continuazione finché stop_event non è settato.
+    - Ogni ciclo processa un batch limitato di query di family coverage.
+    """
+    print(f"CATALOG FAMILY COVERAGE START store={store} max_tasks={max_tasks} pause={pause_seconds}s", flush=True)
+
+    while stop_event is None or not stop_event.is_set():
+        try:
+            result = run_family_coverage_worker(store=store, max_tasks=max_tasks, timeout_sec=60)
+            # Puoi loggare result se vuoi:
+            # print(f"COVERAGE BATCH result={result}", flush=True)
+        except Exception as exc:
+            print(f"COVERAGE BATCH ERROR: {type(exc).__name__}: {exc}", flush=True)
+
+        # Pausa tra un batch e l'altro
+        if stop_event is not None:
+            stop_event.wait(float(pause_seconds))
+        else:
+            time.sleep(float(pause_seconds))
 
 
 def hydration_status():
