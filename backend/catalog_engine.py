@@ -113,7 +113,7 @@ SITEMAP_TIMEOUT = 20
 REFRESH_TIMEOUT = 10
 
 SYNC_WORKERS = 8
-REFRESH_WORKERS = 2
+REFRESH_WORKERS = 8
 
 # Persistent hydration queue configuration.
 HYDRATION_WORKERS = 8
@@ -2790,7 +2790,7 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         total_scan_budget = max(256, min(2048, limit * 16))
     term_candidate_limit = max(
         8,
-        min(128, max(1, total_scan_budget // max(1, len(token_sets))))
+        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
     )
 
     interrupted = False
