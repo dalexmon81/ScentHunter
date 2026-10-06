@@ -1511,7 +1511,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                     requested,
                     cancel_event=cancel_event,
                     deadline=refresh_deadline,
-                    max_workers=min(8, max(1, len(stores))),
                 ) or []
                 print(
                     f'CATALOG TARGETED REFRESH requested={len(requested)} '
