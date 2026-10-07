@@ -3552,6 +3552,8 @@ _COVERAGE_WORKERS = 2
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
 _COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
+_COVERAGE_CANCEL_POLL_SECONDS = 0.25
+_COVERAGE_CANCEL_EVENT = threading.Event()
 
 
 def _foreground_search_running():
@@ -3816,8 +3818,19 @@ def _coverage_persist_urls(store, rows):
     return len(urls)
 
 
-def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
-    """Run one retailer coverage search in a killable process group."""
+def _coverage_scraper_process(
+    module_name,
+    queries,
+    timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS,
+    cancel_event=None,
+):
+    """Run one retailer coverage search in a killable process group.
+
+    A foreground user search has priority over background catalog coverage.
+    The child process is therefore polled instead of using communicate(timeout),
+    so an already-running coverage task can be terminated as soon as a
+    foreground search starts.
+    """
     child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                report = search_stream(query) if callable(search_stream) else search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({"query": query, "error": f"{type(exc).__name__}:{exc}"})\n            continue\n        if isinstance(report, dict):\n            if report.get("results"):\n                break\n        elif isinstance(report, list) and report:\n            break\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
     payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
     env = os.environ.copy()
@@ -3835,7 +3848,48 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
     except Exception as exc:
         return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
     try:
-        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
+        process.stdin.write(payload)
+        process.stdin.close()
+        deadline = time.monotonic() + float(timeout_seconds)
+        while process.poll() is None:
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                    else: process.terminate()
+                except Exception:
+                    pass
+                try: process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    try:
+                        if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                        else: process.kill()
+                    except Exception:
+                        pass
+                    try: process.wait(timeout=2.0)
+                    except Exception: pass
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+            if _foreground_search_running():
+                if cancel_event is not None:
+                    cancel_event.set()
+                try:
+                    if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                    else: process.terminate()
+                except Exception:
+                    pass
+                try: process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    try:
+                        if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                        else: process.kill()
+                    except Exception:
+                        pass
+                    try: process.wait(timeout=2.0)
+                    except Exception: pass
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+            if time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired([sys.executable, "-c", child_code], float(timeout_seconds))
+            time.sleep(_COVERAGE_CANCEL_POLL_SECONDS)
+        stdout = process.stdout.read() if process.stdout is not None else ""
     except subprocess.TimeoutExpired:
         try:
             if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
@@ -3866,15 +3920,23 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
     return result if isinstance(result, dict) else {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
 
 
-def _coverage_run_task(task):
+def _coverage_run_task(task, cancel_event=None):
+    if cancel_event is not None and cancel_event.is_set():
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
+    if _foreground_search_running():
+        if cancel_event is not None:
+            cancel_event.set()
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
     store = task['store']
     product = task['product']
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
     if not module_name:
         return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
-    isolated = _coverage_scraper_process(module_name, queries)
+    isolated = _coverage_scraper_process(module_name, queries, cancel_event=cancel_event)
     reports = isolated.get('reports') or []
+    if isolated.get('cancelled') or (cancel_event is not None and cancel_event.is_set()):
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
     if not isolated.get('ok'):
         return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
     matched_rows = []
@@ -3940,7 +4002,12 @@ def _coverage_claim_tasks(limit):
 def _coverage_finish_task(task, result):
     now = time.time()
     state = str(result.get('state') or 'ERROR')
-    next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+    if state == 'CANCELLED':
+        next_run = now + 5.0
+        db_state = 'PENDING'
+    else:
+        next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+        db_state = state
     conn = db()
     try:
         conn.execute(
@@ -3948,7 +4015,7 @@ def _coverage_finish_task(task, result):
                   SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
                 WHERE store=? AND product_id=?""",
             (
-                state, int(result.get('found') or 0), now, next_run, result.get('error'),
+                db_state, int(result.get('found') or 0), now, next_run, result.get('error'),
                 task['store'], str(task['product'].get('product_id') or ''),
             ),
         )
@@ -3958,14 +4025,22 @@ def _coverage_finish_task(task, result):
 
 
 def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
-    """Advance canonical-product coverage in small bounded batches."""
+    """Advance canonical-product coverage in small bounded batches.
+
+    Coverage is strictly background work. If a foreground search starts,
+    already-running coverage children are terminated and their tasks are
+    returned to PENDING for a later idle window.
+    """
+    _COVERAGE_CANCEL_EVENT.clear()
+    if _foreground_search_running():
+        return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     tasks = _coverage_claim_tasks(max_tasks)
     if not tasks:
         return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     found = not_found = errors = 0
     worker_count = max(1, min(int(workers), len(tasks), _COVERAGE_WORKERS))
     with ThreadPoolExecutor(max_workers=worker_count) as pool:
-        future_map = {pool.submit(_coverage_run_task, task): task for task in tasks}
+        future_map = {pool.submit(_coverage_run_task, task, _COVERAGE_CANCEL_EVENT): task for task in tasks}
         for future in as_completed(future_map):
             task = future_map[future]
             try:
@@ -4043,7 +4118,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
             # store_urls -> hydration pipeline as normal discovery.
-            if now_mono >= coverage_next_at:
+            if now_mono >= coverage_next_at and not _foreground_search_running():
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
                 coverage = coverage_batch(
                     max_tasks=_COVERAGE_BATCH_SIZE,
@@ -4058,6 +4133,13 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                         f"errors={coverage.get('errors')}",
                         flush=True,
                     )
+
+            if _foreground_search_running():
+                if stop_event is not None:
+                    stop_event.wait(0.25)
+                else:
+                    time.sleep(0.25)
+                continue
 
             result = hydrate_catalog_batch(
                 max_urls=max(1, int(batch_size)),
