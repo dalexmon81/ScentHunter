@@ -2368,9 +2368,37 @@ class ProductMatcher:
         # fallback when no indexed token is available.
         offer_text = catalog_clean_text(name)
         offer_tokens = set(offer_text.split())
+        # Broad queries (for example a brand such as "Guerlain") produce many
+        # retailer offers.  Common perfume words such as "eau", "de", "parfum"
+        # and similar merchandising tokens can occur in a very large fraction
+        # of the catalog.  Using every such posting makes the indexed matcher
+        # effectively scan the whole brand catalog again for every offer.
+        #
+        # Candidate generation remains identity-safe: exact normalized names
+        # are handled by _text_exact_index above, while fuzzy acceptance requires
+        # a strong token overlap.  For the fuzzy path, prioritize the least
+        # frequent offer tokens.  A candidate capable of reaching the existing
+        # high text score will normally share one of these identity-bearing
+        # tokens; common tokens are retained as a fallback when no selective
+        # token exists.
+        token_postings = [
+            (token, self._text_token_index.get(token, set()))
+            for token in offer_tokens
+            if self._text_token_index.get(token)
+        ]
+        token_postings.sort(key=lambda item: (len(item[1]), item[0]))
+
         text_ids: set[int] = set()
-        for token in offer_tokens:
-            text_ids.update(self._text_token_index.get(token, set()))
+        if token_postings:
+            selective = [
+                (token, postings)
+                for token, postings in token_postings
+                if len(postings) <= max(64, len(self.catalog) // 50)
+            ]
+            chosen = selective[:8] if selective else token_postings[:4]
+            for _token, postings in chosen:
+                text_ids.update(postings)
+
         text_products = [eligible_by_id[pid] for pid in text_ids if pid in eligible_by_id]
 
         # Exact normalized identity is the strongest text result. Multiple
@@ -2415,13 +2443,43 @@ class ProductMatcher:
         # shared identity token after its generic/domain/brand filtering.
         url_context = self._prepare_offer_url_context(offer)
         url_ids: set[int] = set()
-        prepared_urls, _brand_tokens = url_context
+        prepared_urls, brand_tokens = url_context
+        brand_token_set = set(brand_tokens)
+        generic_url_tokens = {
+            "www", "http", "https", "produit", "product",
+            "products", "prodotto", "producto", "html", "aspx",
+        }
+
+        # URL identity has the same blocking problem as text identity: common
+        # URL/concentration words can produce enormous posting sets.  Brand and
+        # URL boilerplate never contribute to the positive identity score, so
+        # exclude them before selecting the least frequent identity tokens.
+        url_token_postings: List[Tuple[str, set[int]]] = []
+        seen_url_tokens: set[str] = set()
         for url_variants in prepared_urls:
             for variant_data in url_variants:
                 raw_variant = variant_data[0]
                 url_tokens = ProductMatcher._url_identity_text(raw_variant).split()
                 for token in url_tokens:
-                    url_ids.update(self._url_token_index.get(token, set()))
+                    if token in seen_url_tokens:
+                        continue
+                    seen_url_tokens.add(token)
+                    if token in generic_url_tokens or token in brand_token_set:
+                        continue
+                    postings = self._url_token_index.get(token)
+                    if postings:
+                        url_token_postings.append((token, postings))
+
+        url_token_postings.sort(key=lambda item: (len(item[1]), item[0]))
+        if url_token_postings:
+            selective_url = [
+                (token, postings)
+                for token, postings in url_token_postings
+                if len(postings) <= max(64, len(self.catalog) // 50)
+            ]
+            chosen_url = selective_url[:8] if selective_url else url_token_postings[:4]
+            for _token, postings in chosen_url:
+                url_ids.update(postings)
 
         url_products = [eligible_by_id[pid] for pid in url_ids if pid in eligible_by_id]
         best_url_product = None
