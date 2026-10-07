@@ -73,7 +73,15 @@ def _foreground_search_running():
                     except (OSError, UnicodeError):
                         continue
 
-                    if comm.startswith("scenthunter-search-"):
+                    # Linux /proc/<pid>/task/<tid>/comm exposes at most 15
+                    # characters.  main.py names foreground threads
+                    # ``scenthunter-search-...``, which is therefore exposed
+                    # here as ``scenthunter-sea``.  Match both the full
+                    # contract and the kernel-truncated form.
+                    if (
+                        comm.startswith("scenthunter-search-")
+                        or comm.startswith("scenthunter-sea")
+                    ):
                         return True
             except OSError:
                 continue
