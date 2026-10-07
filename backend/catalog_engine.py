@@ -3317,6 +3317,13 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     CASE WHEN EXISTS (
+                         SELECT 1 FROM store_products p2
+                         WHERE p2.store=q.store
+                           AND p2.url=q.url
+                           AND p2.fetch_status='OK'
+                           AND (p2.size_ml IS NULL OR p2.price IS NULL)
+                     ) THEN 0 ELSE 1 END,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
                      q.first_seen_at ASC
