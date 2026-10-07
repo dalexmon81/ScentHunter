@@ -2617,6 +2617,20 @@ def _secondary_store_parser(store, final_url, original_url):
         return value
 
     offer = parsed.get('offer') or {}
+    attributes = parsed.get('attributes') or {}
+    size_attr = attributes.get('size_ml')
+    if isinstance(size_attr, dict):
+        size_ml = size_attr.get('value')
+    else:
+        size_ml = size_attr
+    concentration = parsed.get('concentration')
+    if concentration is None:
+        concentration_attr = attributes.get('concentration')
+        concentration = concentration_attr.get('value') if isinstance(concentration_attr, dict) else concentration_attr
+    gender = parsed.get('gender')
+    if gender is None:
+        gender_attr = attributes.get('gender')
+        gender = gender_attr.get('value') if isinstance(gender_attr, dict) else gender_attr
     price = parsed.get('price_num')
     if price is None:
         price = offer.get('price')
@@ -2630,6 +2644,9 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'size_ml': size_ml,
+        'concentration': concentration,
+        'gender': gender,
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2655,6 +2672,19 @@ def refresh_url(store, url):
         if not primary_ok:
             item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
+        elif (item.get('size_ml') is None or item.get('price_num') is None or not item.get('image')):
+            # JSON-LD is authoritative for identity, but many stores omit
+            # variant size/price/image from JSON-LD. Enrich only when one of
+            # those offer fields is missing, using the store's existing parser.
+            try:
+                enriched = _secondary_store_parser(store, final, url)
+            except Exception:
+                enriched = None
+            if enriched and enriched.get('name'):
+                secondary_ok = True
+                for key in ('size_ml', 'concentration', 'gender', 'price_num', 'currency', 'availability', 'image', 'sku', 'gtin', 'mpn'):
+                    if item.get(key) in (None, '', 'unknown') and enriched.get(key) not in (None, '', 'unknown'):
+                        item[key] = enriched[key]
 
         if not item or not item.get('name'):
             h1_text = ''
@@ -2693,8 +2723,9 @@ def refresh_url(store, url):
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
-                item.get('price_num'), item.get('currency'), item.get('availability'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'),
+                item.get('concentration'), item.get('gender'), item.get('price_num'),
+                item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
         )
@@ -3187,6 +3218,25 @@ def _ensure_hydration_queue():
                        VALUES(?,?,?,?,?,?)""",
                     (r['store'], r['url'], state, 0, now, now),
                 )
+
+            # Re-queue already indexed rows that are structurally incomplete.
+            # This is generic: no retailer or product identity is special-cased.
+            # A successful fetch without size or price is not a complete offer
+            # record, so it must be eligible for one enrichment pass.
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PENDING', leased_until=NULL, lease_token=NULL,
+                       available_at=?
+                   WHERE state='DONE'
+                     AND EXISTS (
+                         SELECT 1 FROM store_products p
+                         WHERE p.store=hydration_queue.store
+                           AND p.url=hydration_queue.url
+                           AND p.fetch_status='OK'
+                           AND (p.size_ml IS NULL OR p.price IS NULL)
+                     )""",
+                (now,),
+            )
         return len(rows)
     finally:
         conn.close()
@@ -3258,7 +3308,19 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      ON u.store=q.store AND u.url=q.url
                    WHERE q.store=?
                      AND u.active=1
-                     AND q.state IN ('PENDING','ERROR')
+                     AND (
+                         q.state IN ('PENDING','ERROR')
+                         OR (
+                             q.state='DONE'
+                             AND EXISTS (
+                                 SELECT 1 FROM store_products p3
+                                 WHERE p3.store=q.store
+                                   AND p3.url=q.url
+                                   AND p3.fetch_status='OK'
+                                   AND (p3.size_ml IS NULL OR p3.price IS NULL)
+                             )
+                         )
+                     )
                      AND q.available_at <= ?
                      AND (
                          SELECT COUNT(*)
@@ -3267,6 +3329,13 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     CASE WHEN EXISTS (
+                         SELECT 1 FROM store_products p2
+                         WHERE p2.store=q.store
+                           AND p2.url=q.url
+                           AND p2.fetch_status='OK'
+                           AND (p2.size_ml IS NULL OR p2.price IS NULL)
+                     ) THEN 0 ELSE 1 END,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
                      q.first_seen_at ASC
