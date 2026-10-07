@@ -3327,6 +3327,27 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
         conn.close()
 
 
+def _queue_release_claim(task):
+    """Return a claimed hydration task to PENDING without recording an error."""
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PENDING',
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       available_at=?,
+                       last_error=NULL
+                 WHERE store=? AND url=? AND lease_token=?
+                   AND state='PROCESSING'""",
+                (now, task['store'], task['url'], task['lease_token']),
+            )
+    finally:
+        conn.close()
+
+
 def _queue_mark_done(task):
     """Commit the successful product result and close the lease atomically."""
     now = time.time()
@@ -3406,7 +3427,15 @@ def _queue_mark_error(task, error, http_status=None):
 
 
 def _hydrate_one_task(task):
-    """Execute one claimed page fetch and transition its queue state."""
+    """Execute one claimed page fetch and transition its queue state.
+
+    Foreground search has strict priority. A task that was claimed just before
+    a search started is released instead of performing another HTTP fetch.
+    """
+    if _foreground_search_running():
+        _queue_release_claim(task)
+        return None
+
     try:
         item = refresh_url(task['store'], task['url'])
         if item and item.get('name'):
@@ -3456,6 +3485,8 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # Claim serially because each claim uses a short BEGIN IMMEDIATE
     # transaction. Once claimed, HTTP work happens completely outside SQLite.
     for _ in range(limit):
+        if _foreground_search_running():
+            break
         if deadline is not None and time.monotonic() >= float(deadline):
             break
         task = _claim_one_hydration_task()
@@ -3466,6 +3497,11 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     if not tasks:
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
+    if _foreground_search_running():
+        for task in tasks:
+            _queue_release_claim(task)
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
     fetched = 0
     errors = 0
     pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
@@ -3473,9 +3509,10 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     try:
         for future in as_completed(futures):
             try:
-                if future.result():
+                result = future.result()
+                if result is True:
                     fetched += 1
-                else:
+                elif result is False:
                     errors += 1
             except Exception:
                 errors += 1
