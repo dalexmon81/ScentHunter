@@ -45,6 +45,79 @@ PERSIST_BACKOFF_SECONDS = (2.0, 5.0, 10.0, 20.0, 30.0)
 STOP = False
 
 
+# The family worker runs as a separate process from Uvicorn.  Thread-local
+# checks in catalog_engine.py cannot see a foreground search from here.
+# Linux exposes thread names through /proc, so use the same search-thread
+# contract across the process boundary without changing FastAPI/main.py.
+FOREGROUND_SEARCH_POLL_SECONDS = float(
+    os.environ.get("SCENTHUNTER_FAMILY_COVERAGE_SEARCH_POLL", "0.5")
+)
+
+
+def _foreground_search_running():
+    """Return True when any ScentHunter foreground search thread is active."""
+    proc_root = Path("/proc")
+    try:
+        for process_dir in proc_root.iterdir():
+            if not process_dir.name.isdigit():
+                continue
+
+            task_dir = process_dir / "task"
+            try:
+                for thread_dir in task_dir.iterdir():
+                    try:
+                        comm = (thread_dir / "comm").read_text(
+                            encoding="utf-8",
+                            errors="ignore",
+                        ).strip()
+                    except (OSError, UnicodeError):
+                        continue
+
+                    if comm.startswith("scenthunter-search-"):
+                        return True
+            except OSError:
+                continue
+    except OSError:
+        return False
+
+    return False
+
+
+def _wait_for_foreground_idle():
+    """Pause background coverage while a user search is running."""
+    announced = False
+
+    while not STOP and _foreground_search_running():
+        if not announced:
+            print(
+                "FAMILY COVERAGE WAIT foreground_search=active",
+                flush=True,
+            )
+            announced = True
+        time.sleep(max(0.1, FOREGROUND_SEARCH_POLL_SECONDS))
+
+    if announced and not STOP:
+        print(
+            "FAMILY COVERAGE RESUME foreground_search=idle",
+            flush=True,
+        )
+
+    return not STOP
+
+
+def _lower_process_priority():
+    """Yield CPU scheduling priority to the foreground application."""
+    try:
+        os.nice(10)
+        print("FAMILY COVERAGE PRIORITY nice=10", flush=True)
+    except (AttributeError, OSError, PermissionError) as exc:
+        print(
+            "FAMILY COVERAGE PRIORITY unavailable "
+            f"error={type(exc).__name__}:{exc}",
+            flush=True,
+        )
+
+
 def _stop(signum, _frame):
     global STOP
     STOP = True
@@ -182,6 +255,9 @@ def _discover_family(session, family_id, queries):
         if STOP:
             break
 
+        if not _wait_for_foreground_idle():
+            break
+
         try:
             urls, product_urls = _discover_urls(session, query)
             returned_total += len(urls)
@@ -209,7 +285,10 @@ def _discover_family(session, family_id, queries):
                 }
             )
 
-    persisted, persist_error = _persist_with_retry(selected_urls)
+    if selected_urls and not _wait_for_foreground_idle():
+        persisted, persist_error = 0, "stopped:foreground_search_active"
+    else:
+        persisted, persist_error = _persist_with_retry(selected_urls)
 
     return {
         "family_id": family_id,
@@ -283,6 +362,8 @@ def main():
         f"interval={INTERVAL_SECONDS}s",
         flush=True,
     )
+
+    _lower_process_priority()
 
     if START_DELAY_SECONDS > 0:
         deadline = time.monotonic() + START_DELAY_SECONDS
