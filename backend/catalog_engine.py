@@ -2630,6 +2630,21 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'size_ml': (
+            ((parsed.get('attributes') or {}).get('size_ml') or {}).get('value')
+            if isinstance((parsed.get('attributes') or {}).get('size_ml'), dict)
+            else parsed.get('size_ml')
+        ),
+        'concentration': (
+            ((parsed.get('attributes') or {}).get('concentration') or {}).get('value')
+            if isinstance((parsed.get('attributes') or {}).get('concentration'), dict)
+            else parsed.get('concentration')
+        ),
+        'gender': (
+            ((parsed.get('attributes') or {}).get('gender') or {}).get('value')
+            if isinstance((parsed.get('attributes') or {}).get('gender'), dict)
+            else parsed.get('gender')
+        ),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2637,6 +2652,55 @@ def _secondary_store_parser(store, final_url, original_url):
         'available': parsed.get('available'),
         'fetched_at': time.time(),
     }
+
+
+def _enrich_from_existing_store_page(store, final_url, data, item):
+    """Enrich a hydrated item from the already-downloaded product page.
+
+    This is deliberately a hydration-only fallback. It never performs another
+    HTTP request and never participates in search_local().
+    """
+    if store != 'sabina' or not isinstance(item, dict):
+        return item
+
+    try:
+        module = importlib.import_module(f'scrapers.{store}.scraper')
+        soup = BeautifulSoup(data or b'', 'html.parser')
+        title = str(item.get('name') or '').strip()
+        if not title:
+            return item
+
+        product = module.first_jsonld_product(
+            soup,
+            expected_url=final_url,
+            expected_title=title or None,
+        ) or {}
+
+        size_ml = None
+        size_helper = getattr(module, 'extract_size_ml_from_product_page', None)
+        if callable(size_helper):
+            size_ml, _ = size_helper(soup, title)
+
+        price = item.get('price_num')
+        if price is None:
+            offer_helper = getattr(module, '_select_product_offer', None)
+            if callable(offer_helper):
+                offer = offer_helper(product, final_url, title, size_ml) or {}
+                price = module.money_to_float(offer.get('price'))
+            if price is None:
+                price_helper = getattr(module, 'extract_price_from_html', None)
+                if callable(price_helper):
+                    price, _ = price_helper(soup)
+
+        if size_ml is not None:
+            item['size_ml'] = size_ml
+        if price is not None:
+            item['price_num'] = price
+            item['price'] = price
+
+        return item
+    except Exception:
+        return item
 
 
 def refresh_url(store, url):
@@ -2655,6 +2719,8 @@ def refresh_url(store, url):
         if not primary_ok:
             item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
+
+        item = _enrich_from_existing_store_page(store, final, data, item)
 
         if not item or not item.get('name'):
             h1_text = ''
@@ -2693,7 +2759,8 @@ def refresh_url(store, url):
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'),
+                item.get('size_ml'), item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
