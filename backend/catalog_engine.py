@@ -2617,6 +2617,20 @@ def _secondary_store_parser(store, final_url, original_url):
         return value
 
     offer = parsed.get('offer') or {}
+    attributes = parsed.get('attributes') or {}
+    size_attr = attributes.get('size_ml')
+    if isinstance(size_attr, dict):
+        size_ml = size_attr.get('value')
+    else:
+        size_ml = size_attr
+    concentration = parsed.get('concentration')
+    if concentration is None:
+        concentration_attr = attributes.get('concentration')
+        concentration = concentration_attr.get('value') if isinstance(concentration_attr, dict) else concentration_attr
+    gender = parsed.get('gender')
+    if gender is None:
+        gender_attr = attributes.get('gender')
+        gender = gender_attr.get('value') if isinstance(gender_attr, dict) else gender_attr
     price = parsed.get('price_num')
     if price is None:
         price = offer.get('price')
@@ -2630,21 +2644,9 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': (
-            ((parsed.get('attributes') or {}).get('size_ml') or {}).get('value')
-            if isinstance((parsed.get('attributes') or {}).get('size_ml'), dict)
-            else parsed.get('size_ml')
-        ),
-        'concentration': (
-            ((parsed.get('attributes') or {}).get('concentration') or {}).get('value')
-            if isinstance((parsed.get('attributes') or {}).get('concentration'), dict)
-            else parsed.get('concentration')
-        ),
-        'gender': (
-            ((parsed.get('attributes') or {}).get('gender') or {}).get('value')
-            if isinstance((parsed.get('attributes') or {}).get('gender'), dict)
-            else parsed.get('gender')
-        ),
+        'size_ml': size_ml,
+        'concentration': concentration,
+        'gender': gender,
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2652,55 +2654,6 @@ def _secondary_store_parser(store, final_url, original_url):
         'available': parsed.get('available'),
         'fetched_at': time.time(),
     }
-
-
-def _enrich_from_existing_store_page(store, final_url, data, item):
-    """Enrich a hydrated item from the already-downloaded product page.
-
-    This is deliberately a hydration-only fallback. It never performs another
-    HTTP request and never participates in search_local().
-    """
-    if store != 'sabina' or not isinstance(item, dict):
-        return item
-
-    try:
-        module = importlib.import_module(f'scrapers.{store}.scraper')
-        soup = BeautifulSoup(data or b'', 'html.parser')
-        title = str(item.get('name') or '').strip()
-        if not title:
-            return item
-
-        product = module.first_jsonld_product(
-            soup,
-            expected_url=final_url,
-            expected_title=title or None,
-        ) or {}
-
-        size_ml = None
-        size_helper = getattr(module, 'extract_size_ml_from_product_page', None)
-        if callable(size_helper):
-            size_ml, _ = size_helper(soup, title)
-
-        price = item.get('price_num')
-        if price is None:
-            offer_helper = getattr(module, '_select_product_offer', None)
-            if callable(offer_helper):
-                offer = offer_helper(product, final_url, title, size_ml) or {}
-                price = module.money_to_float(offer.get('price'))
-            if price is None:
-                price_helper = getattr(module, 'extract_price_from_html', None)
-                if callable(price_helper):
-                    price, _ = price_helper(soup)
-
-        if size_ml is not None:
-            item['size_ml'] = size_ml
-        if price is not None:
-            item['price_num'] = price
-            item['price'] = price
-
-        return item
-    except Exception:
-        return item
 
 
 def refresh_url(store, url):
@@ -2719,8 +2672,19 @@ def refresh_url(store, url):
         if not primary_ok:
             item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
-
-        item = _enrich_from_existing_store_page(store, final, data, item)
+        elif (item.get('size_ml') is None or item.get('price_num') is None or not item.get('image')):
+            # JSON-LD is authoritative for identity, but many stores omit
+            # variant size/price/image from JSON-LD. Enrich only when one of
+            # those offer fields is missing, using the store's existing parser.
+            try:
+                enriched = _secondary_store_parser(store, final, url)
+            except Exception:
+                enriched = None
+            if enriched and enriched.get('name'):
+                secondary_ok = True
+                for key in ('size_ml', 'concentration', 'gender', 'price_num', 'currency', 'availability', 'image', 'sku', 'gtin', 'mpn'):
+                    if item.get(key) in (None, '', 'unknown') and enriched.get(key) not in (None, '', 'unknown'):
+                        item[key] = enriched[key]
 
         if not item or not item.get('name'):
             h1_text = ''
@@ -2759,9 +2723,9 @@ def refresh_url(store, url):
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'),
-                item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                item.get('price_num'), item.get('currency'), item.get('availability'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'),
+                item.get('concentration'), item.get('gender'), item.get('price_num'),
+                item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
         )
@@ -2820,7 +2784,15 @@ def _search_db():
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
-    """Generate bounded local-catalog candidates with one FTS scan per query."""
+    """Generate a bounded local-catalog candidate set for the fast search path.
+
+    FTS is candidate generation only. Whole-token verification and
+    ProductMatcher remain authoritative for identity.
+
+    Alternative catalog terms are searched independently. A single large FTS
+    OR query can return thousands of candidates before the final per-store
+    limit is applied, which then makes the matcher unnecessarily expensive.
+    """
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2842,190 +2814,172 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
     limit = None if unlimited else max(1, int(per_store))
-    total_scan_budget = 2048 if limit is None else max(256, min(2048, limit * 16))
-    # Keep the final per-store candidate cap bounded, but scan a wider
-    # per-store FTS window before exact token verification. FTS ranking can
-    # include rows that later fail the exact normalized-token check; using the
-    # same 64-row limit for both stages can therefore hide valid products that
-    # sit just below the first window.
+
+    if limit is None:
+        total_scan_budget = 2048
+    else:
+        total_scan_budget = max(256, min(2048, limit * 16))
     term_candidate_limit = max(
-        8, min(64, max(1, total_scan_budget // max(1, len(token_sets))))
-    )
-    fts_candidate_limit = max(
-        term_candidate_limit,
-        min(256, term_candidate_limit * 4),
+        8,
+        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
     )
 
-    def interrupted():
-        return (
-            (cancel_event is not None and cancel_event.is_set())
-            or (deadline is not None and time.monotonic() >= float(deadline))
-        )
+    interrupted = False
+
+    def _search_interrupted():
+        if cancel_event is not None and cancel_event.is_set():
+            return True
+        if deadline is not None and time.monotonic() >= float(deadline):
+            return True
+        return False
+
+    def _sqlite_progress():
+        return 1 if _search_interrupted() else 0
 
     try:
-        fts_exists = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
-        ).fetchone()
+        try:
+            fts_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            fts_exists = None
+
         if not fts_exists:
             return _search_local_legacy_sql(
-                conn, token_sets, limit, rows,
-                cancel_event=cancel_event, deadline=deadline,
+                conn,
+                token_sets,
+                limit,
+                rows,
+                cancel_event=cancel_event,
+                deadline=deadline,
             )
 
-        conn.set_progress_handler(lambda: 1 if interrupted() else 0, 1000)
+        conn.set_progress_handler(_sqlite_progress, 1000)
 
-        # One MATCH scan for the whole catalog instead of repeating the same
-        # FTS search once per retailer. Results are partitioned by store in
-        # Python, preserving the exact per-store candidate cap.
-        for ts in token_sets:
-            if interrupted():
+        for store in STORES:
+            if _search_interrupted():
+                interrupted = True
                 break
 
-            fts_query = _fts_query_for_tokens(ts)
-            if not fts_query:
-                continue
+            selected_by_url = {}
 
-            sql = """
-                SELECT url,slug,lastmod,
-                       product_store,product_url,
-                       product_name,product_brand,
-                       product_image,product_sku,
-                       product_gtin,product_mpn,
-                       product_size_ml,
-                       product_concentration,
-                       product_gender,product_price,
-                       product_currency,
-                       product_availability,
-                       product_fetched_at,
-                       fetch_status,
-                       fts_store
-                  FROM (
-                    SELECT u.url AS url,
-                           u.slug AS slug,
-                           u.lastmod AS lastmod,
-                           p.store AS product_store,
-                           p.url AS product_url,
-                           p.name AS product_name,
-                           p.brand AS product_brand,
-                           p.image AS product_image,
-                           p.sku AS product_sku,
-                           p.gtin AS product_gtin,
-                           p.mpn AS product_mpn,
-                           p.size_ml AS product_size_ml,
-                           p.concentration AS product_concentration,
-                           p.gender AS product_gender,
-                           p.price AS product_price,
-                           p.currency AS product_currency,
-                           p.availability AS product_availability,
-                           p.fetched_at AS product_fetched_at,
-                           p.fetch_status AS fetch_status,
-                           f.store AS fts_store,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY f.store
-                               ORDER BY rank
-                           ) AS store_rank
-                      FROM catalog_search_fts f
-                      JOIN store_urls u
-                        ON u.store=f.store AND u.url=f.url
-                      LEFT JOIN store_products p
-                        ON p.store=u.store AND p.url=u.url
-                       AND p.fetch_status='OK'
-                     WHERE catalog_search_fts MATCH ?
-                       AND u.active=1
-                  ) ranked
-                 WHERE store_rank <= ?
-                 ORDER BY store_rank, fts_store
-            """
-            try:
-                candidates = conn.execute(
-                    sql, (fts_query, fts_candidate_limit)
-                ).fetchall()
-            except sqlite3.OperationalError:
-                if interrupted():
+            # One FTS query per alternative term: keep the previous fast path
+            # and avoid a huge OR candidate pool.
+            for ts in token_sets:
+                if _search_interrupted():
+                    interrupted = True
                     break
-                raise
 
-            per_store_counts = {}
-            seen_product_keys = {}
-            for r in candidates:
-                if interrupted():
-                    break
-                store = str(r['fts_store'] or r['product_store'] or '').strip()
-                if store not in STORES:
-                    continue
-                if per_store_counts.get(store, 0) >= term_candidate_limit:
+                fts_query = _fts_query_for_tokens(ts)
+                if not fts_query:
                     continue
 
-                url = str(r['url'] or '').strip()
+                sql = """
+                        SELECT u.url,u.slug,u.lastmod,
+                               p.store AS product_store, p.url AS product_url,
+                               p.name AS product_name, p.brand AS product_brand,
+                               p.image AS product_image, p.sku AS product_sku,
+                               p.gtin AS product_gtin, p.mpn AS product_mpn,
+                               p.size_ml AS product_size_ml,
+                               p.concentration AS product_concentration,
+                               p.gender AS product_gender, p.price AS product_price,
+                               p.currency AS product_currency,
+                               p.availability AS product_availability,
+                               p.fetched_at AS product_fetched_at,
+                               p.fetch_status AS fetch_status
+                          FROM catalog_search_fts f
+                          JOIN store_urls u ON u.store=f.store AND u.url=f.url
+                          LEFT JOIN store_products p
+                            ON p.store=u.store AND p.url=u.url
+                           AND p.fetch_status='OK'
+                         WHERE f.store=?
+                           AND catalog_search_fts MATCH ?
+                           AND u.active=1
+                         ORDER BY rank
+                         LIMIT ?
+                    """
+                try:
+                    candidates = conn.execute(
+                        sql,
+                        (store, fts_query, term_candidate_limit),
+                    ).fetchall()
+                except sqlite3.OperationalError:
+                    if _search_interrupted():
+                        interrupted = True
+                        break
+                    raise
+
+                for r in candidates:
+                    if _search_interrupted():
+                        interrupted = True
+                        break
+
+                    url = str(r['url'] or '').strip()
+                    if not url or url in selected_by_url:
+                        continue
+
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in ('slug', 'product_name', 'product_brand')
+                    )
+                    normalized_tokens = set(norm(search_text).split())
+                    score = sum(1 for token in ts if token in normalized_tokens)
+                    if score != len(ts):
+                        continue
+
+                    previous = selected_by_url.get(url)
+                    item_score = (score + 10, dict(r))
+                    if previous is None or item_score[0] > previous[0]:
+                        selected_by_url[url] = item_score
+
+                if interrupted:
+                    break
+
+            if interrupted:
+                break
+
+            ordered = sorted(
+                selected_by_url.values(),
+                key=lambda item: (-item[0], str(item[1].get('url') or '')),
+            )
+            if limit is not None:
+                ordered = ordered[:limit]
+
+            for _score, r in ordered:
+                url = str(r.get('url') or '').strip()
                 if not url:
                     continue
-
-                search_text = ' '.join(
-                    str(r[key] or '')
-                    for key in ('slug', 'product_name', 'product_brand')
-                )
-                normalized_tokens = set(norm(search_text).split())
-                score = sum(1 for token in ts if token in normalized_tokens)
-                if score != len(ts):
-                    continue
-
-                # A retailer can expose the same commercial product through
-                # several locale/country URLs. Those URLs are different catalog
-                # records but the same retailer product when they share a stable
-                # product identifier (SKU/GTIN/MPN). Do not let mirror URLs
-                # consume the bounded candidate budget before distinct products
-                # are considered. If no stable identifier exists, keep the URL
-                # itself as the fallback identity. This is generic catalog
-                # candidate de-duplication; it does not assign canonical product
-                # identity and does not contain retailer-specific rules.
-                product_key = (
-                    str(r['product_sku'] or '').strip().lower()
-                    or str(r['product_gtin'] or '').strip().lower()
-                    or str(r['product_mpn'] or '').strip().lower()
-                    or url.lower()
-                )
-                store_seen = seen_product_keys.setdefault(store, set())
-                if product_key in store_seen:
-                    continue
-                store_seen.add(product_key)
-
-                per_store_counts[store] = per_store_counts.get(store, 0) + 1
-                rows.append({
-                    'url': url,
-                    'slug': r['slug'] or '',
-                    'lastmod': r['lastmod'] or '',
-                    'name': r['product_name'] or '',
-                    'brand': r['product_brand'] or '',
-                    'image': r['product_image'] or '',
-                    'sku': r['product_sku'] or '',
-                    'gtin': r['product_gtin'] or '',
-                    'mpn': r['product_mpn'] or '',
-                    'size_ml': r['product_size_ml'],
-                    'concentration': r['product_concentration'] or '',
-                    'gender': r['product_gender'] or '',
-                    'price': r['product_price'],
-                    'currency': r['product_currency'] or '',
-                    'availability': r['product_availability'] or '',
-                    'fetched_at': r['product_fetched_at'],
-                    'fetch_status': r['fetch_status'] or 'OK',
-                    'price_num': r['product_price'],
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                    # A row can be marked OK while still lacking both
-                    # commercial price and size data. Treat that as an
-                    # incomplete hydration candidate, without changing FTS
-                    # selection, ranking, limits, or candidate counts.
-                    '_needs_refresh': (
-                        r['product_price'] is None
-                        and r['product_size_ml'] is None
-                    ),
-                }) if r['product_name'] else rows.append({
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                    'url': url,
-                    'name': r['slug'] or url_slug(url),
-                    '_needs_refresh': True,
-                })
+                if r.get('product_name'):
+                    rows.append({
+                        'url': url,
+                        'slug': r.get('slug') or '',
+                        'lastmod': r.get('lastmod') or '',
+                        'name': r.get('product_name') or '',
+                        'brand': r.get('product_brand') or '',
+                        'image': r.get('product_image') or '',
+                        'sku': r.get('product_sku') or '',
+                        'gtin': r.get('product_gtin') or '',
+                        'mpn': r.get('product_mpn') or '',
+                        'size_ml': r.get('product_size_ml'),
+                        'concentration': r.get('product_concentration') or '',
+                        'gender': r.get('product_gender') or '',
+                        'price': r.get('product_price'),
+                        'currency': r.get('product_currency') or '',
+                        'availability': r.get('product_availability') or '',
+                        'fetched_at': r.get('product_fetched_at'),
+                        'fetch_status': r.get('fetch_status') or 'OK',
+                        'price_num': r.get('product_price'),
+                        'store': STORE_LABELS[store],
+                        'store_key': store,
+                    })
+                else:
+                    rows.append({
+                        'store': STORE_LABELS[store],
+                        'store_key': store,
+                        'url': url,
+                        'name': r.get('slug') or url_slug(url),
+                        '_needs_refresh': True,
+                    })
 
         return rows
     finally:
@@ -3034,6 +2988,7 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         except Exception:
             pass
         conn.close()
+
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, deadline=None):
     # Compatibility path for SQLite builds without FTS5.
@@ -3130,13 +3085,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     'fetched_at': r.get('product_fetched_at'),
                     'fetch_status': r.get('fetch_status') or 'OK',
                     'price_num': r.get('product_price'),
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                    # Same generic incomplete-hydration rule as the FTS path.
-                    '_needs_refresh': (
-                        r.get('product_price') is None
-                        and r.get('product_size_ml') is None
-                    ),
+                    'store': STORE_LABELS[store],'store_key': store,
                 })
             else:
                 rows.append({
@@ -3269,6 +3218,25 @@ def _ensure_hydration_queue():
                        VALUES(?,?,?,?,?,?)""",
                     (r['store'], r['url'], state, 0, now, now),
                 )
+
+            # Re-queue already indexed rows that are structurally incomplete.
+            # This is generic: no retailer or product identity is special-cased.
+            # A successful fetch without size or price is not a complete offer
+            # record, so it must be eligible for one enrichment pass.
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PENDING', leased_until=NULL, lease_token=NULL,
+                       available_at=?
+                   WHERE state='DONE'
+                     AND EXISTS (
+                         SELECT 1 FROM store_products p
+                         WHERE p.store=hydration_queue.store
+                           AND p.url=hydration_queue.url
+                           AND p.fetch_status='OK'
+                           AND (p.size_ml IS NULL OR p.price IS NULL)
+                     )""",
+                (now,),
+            )
         return len(rows)
     finally:
         conn.close()
