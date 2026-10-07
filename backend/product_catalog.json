@@ -300,6 +300,11 @@
       "brand_id": "BR-19a1571d8303",
       "brand_name": "Yves Saint Laurent",
       "aliases": []
+    },
+    {
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "aliases": []
     }
   ],
   "products": [
@@ -25280,90 +25285,1884 @@
       "canonical_image": "https://cdn.shopify.com/s/files/1/0798/6898/5693/files/Rayhaan-Cadiz-Perfume-100ml-EDP-by-Rayhaan-181153594.jpg?v=1764454060"
     },
     {
-      "product_id": "SH-0082",
-      "brand_id": "BR-ab5d37630703",
-      "brand_name": "Miu Miu",
-      "family_name": "Miu Miu",
+      "product_id": "SH-0086",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Mon Guerlain",
       "concentration": "Eau de Parfum",
       "gender": "Donna",
       "aliases": [
-        "Miu Miu",
-        "Miu Miu Eau de Parfum",
-        "Miu Miu Miu Miu",
-        "Miu Miu Eau de Parfum Spray",
-        "Miu Miu Miu Miu Eau de Parfum Spray"
+        "Mon Guerlain",
+        "Guerlain Mon Guerlain",
+        "Mon Guerlain Eau de Parfum"
       ],
       "source_status": "verificato",
-      "source_notes": "Prima fragranza Miu Miu; Eau de Parfum femminile, formati 30/50/100 ml verificati su fonti di prodotto.",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
       "verification_sources": [
-        "https://www.idealo.fr/prix/4842844/miu-miu-eau-de-parfum.html"
+        "https://www.guerlain.com/it/it-it/p/mon-guerlain-eau-de-parfum-G013139.html"
       ],
-      "canonical_name": "Miu Miu",
+      "canonical_name": "Mon Guerlain",
       "canonical_image": null
     },
     {
-      "product_id": "SH-0083",
-      "brand_id": "BR-ab5d37630703",
-      "brand_name": "Miu Miu",
-      "family_name": "Twist",
+      "product_id": "SH-0087",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Mon Guerlain Intense",
       "concentration": "Eau de Parfum",
       "gender": "Donna",
       "aliases": [
-        "Miu Miu Twist",
-        "Twist",
-        "Miu Miu Twist Eau de Parfum",
-        "Miu Miu Twist Eau de Parfum Spray"
+        "Mon Guerlain Intense",
+        "Guerlain Mon Guerlain Intense",
+        "Mon Guerlain Eau de Parfum Intense"
       ],
       "source_status": "verificato",
-      "source_notes": "Miu Miu Twist Eau de Parfum verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
       "verification_sources": [
-        "https://www.miumiu.com/lu/en/miumiu-club/fragrances/miumiu-twist.html"
+        "https://www.guerlain.com/it/it-it/fragranze/"
       ],
-      "canonical_name": "Twist",
+      "canonical_name": "Mon Guerlain Intense",
       "canonical_image": null
     },
     {
-      "product_id": "SH-0084",
-      "brand_id": "BR-ab5d37630703",
-      "brand_name": "Miu Miu",
-      "family_name": "Twist",
+      "product_id": "SH-0088",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal",
+      "concentration": "Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal Parfum",
+        "L'Homme Idéal Parfum",
+        "L'Homme Ideal Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0089",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar",
+        "Shalimar",
+        "Shalimar Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/p/shalimar-eau-de-parfum-G011355.html"
+      ],
+      "canonical_name": "Shalimar",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0090",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Insolence",
       "concentration": "Eau de Toilette",
       "gender": "Donna",
       "aliases": [
-        "Miu Miu Twist Eau de Toilette",
-        "Twist Eau de Toilette",
-        "Miu Miu Twist EDT"
+        "Guerlain Insolence",
+        "Insolence",
+        "Insolence Eau de Toilette",
+        "Insolence EDT"
       ],
       "source_status": "verificato",
-      "source_notes": "Miu Miu Twist Eau de Toilette verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
       "verification_sources": [
-        "https://www.miumiu.com/eu/en/miumiu-club/fragrances/miumiu-twist-edt.html"
+        "https://www.guerlain.com/it/it-it/fragranze/"
       ],
-      "canonical_name": "Twist Eau de Toilette",
+      "canonical_name": "Insolence",
       "canonical_image": null
     },
     {
-      "product_id": "SH-0085",
-      "brand_id": "BR-ab5d37630703",
-      "brand_name": "Miu Miu",
-      "family_name": "Fleur d'Argent",
+      "product_id": "SH-0091",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire",
       "concentration": "Eau de Parfum",
       "gender": "Donna",
       "aliases": [
-        "Miu Miu Fleur d'Argent",
-        "Fleur d'Argent",
-        "Miu Miu Fleur D'Argent",
-        "Miu Miu Fleur d'Argent Eau de Parfum",
-        "Miu Miu Fleur D'Argent Absolue",
-        "Miu Miu Fleur d'Argent Absolute",
-        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire",
+        "La Petite Robe Noire Eau de Parfum"
       ],
       "source_status": "verificato",
-      "source_notes": "Miu Miu Fleur d'Argent Eau de Parfum verificata sul sito ufficiale Miu Miu; formati 30/50/100 ml.",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
       "verification_sources": [
-        "https://www.miumiu.com/lu/en/miumiu-club/fragrances/miumiu-fleur-argent.html"
+        "https://www.guerlain.com/it/it-it/p/la-petite-robe-noire-eau-de-parfum-G011470.html"
       ],
-      "canonical_name": "Fleur d'Argent",
+      "canonical_name": "La Petite Robe Noire",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0092",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Ambre Samar",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Guerlain Ambre Samar",
+        "Ambre Samar",
+        "Absolus Allegoria Ambre Samar",
+        "Ambre Samar Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/fr/fr-fr/p/absolus-allegoria-ambre-samar---eau-de-parfum-P062179.html"
+      ],
+      "canonical_name": "Ambre Samar",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0093",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Habit Rouge",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Habit Rouge",
+        "Habit Rouge",
+        "Habit Rouge Eau de Parfum",
+        "Habit Rouge de Guerlain Paris Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/fragranze/uomo/habit-rouge/"
+      ],
+      "canonical_name": "Habit Rouge",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0094",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Insolence",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Insolence",
+        "Insolence",
+        "Insolence Eau de Parfum",
+        "Insolence 2021 Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/p/les-legendaires-insolence---eau-de-parfum-G014323.html"
+      ],
+      "canonical_name": "Insolence",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0095",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Parfum",
+        "L'Homme Idéal Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0096",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal",
+      "concentration": "Eau de Toilette",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Toilette",
+        "L'Homme Idéal Eau de Toilette"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0097",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Florabloom",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Aqua Allegoria Florabloom",
+        "Aqua Allegoria Florabloom",
+        "Florabloom",
+        "Aqua Allegoria Florabloom Eau de Toilette"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/it/it-it/fragranze/fragranze-donna/eu-fragance/eu-fragrance-woman/"
+      ],
+      "canonical_name": "Aqua Allegoria Florabloom",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0098",
+      "brand_id": "BR-cd0f74aa040f",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar L'Essence",
+      "concentration": "Eau de Parfum Intense",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar L'Essence",
+        "Shalimar L'Essence",
+        "Shalimar L'Essence Eau de Parfum Intense",
+        "Shalimar L'Essence"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Guerlain verificata sul sito ufficiale Guerlain; identità e concentrazione confermate. Formati presenti nelle offerte Deloox mostrate e, ove disponibili, nel catalogo ufficiale.",
+      "verification_sources": [
+        "https://www.guerlain.com/fr/fr-fr/p/shalimar-lessence---eau-de-parfum-intense-G014922.html"
+      ],
+      "canonical_name": "Shalimar L'Essence",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0099",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Cuir Intense",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Cuir Intense",
+        "Absolus Allegoria Cuir Intense"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Cuir Intense",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0100",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Florabloom",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Absolus Allegoria Florabloom",
+        "Absolus Allegoria Florabloom"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Florabloom",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0101",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Oud Essentiel",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Oud Essentiel",
+        "Absolus Allegoria Oud Essentiel"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Oud Essentiel",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0102",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Rose Amira",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Rose Amira",
+        "Absolus Allegoria Rose Amira"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Rose Amira",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0103",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Santal Royal",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Santal Royal",
+        "Absolus Allegoria Santal Royal"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Santal Royal",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0104",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Tabac Sahara",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Tabac Sahara",
+        "Absolus Allegoria Tabac Sahara"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Tabac Sahara",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0105",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Absolus Allegoria Épices Exquises",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Absolus Allegoria Épices Exquises",
+        "Absolus Allegoria Épices Exquises"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Absolus Allegoria Épices Exquises",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0107",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Après L'Ondée",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Après L'Ondée",
+        "Après L'Ondée"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Après L'Ondée",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0108",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Bergamote Calabria",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Bergamote Calabria",
+        "Aqua Allegoria Bergamote Calabria"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Bergamote Calabria",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0109",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Flora Cherrysia",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Flora Cherrysia",
+        "Aqua Allegoria Flora Cherrysia"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Flora Cherrysia",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0110",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Flora Salvaggia",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Flora Salvaggia",
+        "Aqua Allegoria Flora Salvaggia"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Flora Salvaggia",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0112",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Florabloom Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Florabloom Forte",
+        "Aqua Allegoria Florabloom Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Florabloom Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0113",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Bosca Vanilla Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Bosca Vanilla Forte",
+        "Aqua Allegoria Bosca Vanilla Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Bosca Vanilla Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0114",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Granada Salvia",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Granada Salvia",
+        "Aqua Allegoria Granada Salvia"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Granada Salvia",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0115",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Herba Fresca",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Herba Fresca",
+        "Aqua Allegoria Herba Fresca"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Herba Fresca",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0116",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Mandarine Basilic",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Mandarine Basilic",
+        "Aqua Allegoria Mandarine Basilic"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Mandarine Basilic",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0117",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Mandarine Basilic Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Mandarine Basilic Forte",
+        "Aqua Allegoria Mandarine Basilic Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Mandarine Basilic Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0118",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Nerolia Vetiver",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Nerolia Vetiver",
+        "Aqua Allegoria Nerolia Vetiver"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Nerolia Vetiver",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0119",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Nerolia Vetiver Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Nerolia Vetiver Forte",
+        "Aqua Allegoria Nerolia Vetiver Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Nerolia Vetiver Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0120",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Nettare di Sole",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Nettare di Sole",
+        "Aqua Allegoria Nettare di Sole"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Nettare di Sole",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0121",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Orange Soleia",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Orange Soleia",
+        "Aqua Allegoria Orange Soleia"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Orange Soleia",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0122",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Oud Yuzu Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Oud Yuzu Forte",
+        "Aqua Allegoria Oud Yuzu Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Oud Yuzu Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0123",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Pamplelune",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Pamplelune",
+        "Aqua Allegoria Pamplelune"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Pamplelune",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0124",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Pera Granita",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Pera Granita",
+        "Aqua Allegoria Pera Granita"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Pera Granita",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0125",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Rosa Palissandro Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Rosa Palissandro Forte",
+        "Aqua Allegoria Rosa Palissandro Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Rosa Palissandro Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0126",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Rosa Rossa",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Rosa Rossa",
+        "Aqua Allegoria Rosa Rossa"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Rosa Rossa",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0127",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Rosa Rossa Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Rosa Rossa Forte",
+        "Aqua Allegoria Rosa Rossa Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Rosa Rossa Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0128",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Aqua Allegoria Rosa Verde",
+      "concentration": "Eau de Toilette",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Aqua Allegoria Rosa Verde",
+        "Aqua Allegoria Rosa Verde"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Aqua Allegoria Rosa Verde",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0129",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Bois Mystérieux",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Bois Mystérieux",
+        "Bois Mystérieux"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Bois Mystérieux",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0130",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Chamade",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Chamade",
+        "Chamade"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Chamade",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0131",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Champs-Élysées",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Champs-Élysées",
+        "Champs-Élysées",
+        "Champs Elysees"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Champs-Élysées",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0132",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Chant d'Arômes",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Chant d'Arômes",
+        "Chant d'Arômes",
+        "Chant d'Aromes"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Chant d'Arômes",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0133",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Cologne du Parfumeur",
+      "concentration": "Eau de Cologne",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Cologne du Parfumeur",
+        "Cologne du Parfumeur"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Cologne du Parfumeur",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0134",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Cuir Intense",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Cuir Intense",
+        "Cuir Intense"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Cuir Intense",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0135",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Du Coq",
+      "concentration": "Eau de Cologne",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Du Coq",
+        "Du Coq"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Du Coq",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0136",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Eau de Fleurs de Cédrat",
+      "concentration": "Eau de Cologne",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Eau de Fleurs de Cédrat",
+        "Eau de Fleurs de Cédrat",
+        "Eau de Fleurs de Cedrat",
+        "Fleurs de Cedrat"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Eau de Fleurs de Cédrat",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0137",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Encens Mythique d'Orient",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Encens Mythique d'Orient",
+        "Encens Mythique d'Orient"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Encens Mythique d'Orient",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0138",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Habit Rouge",
+      "concentration": "Eau de Toilette",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Habit Rouge",
+        "Habit Rouge"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Habit Rouge",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0139",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Habit Rouge",
+      "concentration": "Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Habit Rouge",
+        "Habit Rouge"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Habit Rouge",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0140",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Habit Rouge L'Instinct",
+      "concentration": "Eau de Toilette Intense",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Habit Rouge L'Instinct",
+        "Habit Rouge L'Instinct"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Habit Rouge L'Instinct",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0141",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Habit Rouge Spirit",
+      "concentration": "Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Habit Rouge Spirit",
+        "Habit Rouge Spirit"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Habit Rouge Spirit",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0142",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Héritage",
+      "concentration": "Eau de Toilette",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Héritage",
+        "Héritage",
+        "Heritage"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Héritage",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0143",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Guerlain Homme",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Guerlain Homme",
+        "Guerlain Homme"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Guerlain Homme",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0144",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Idylle",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Idylle",
+        "Idylle"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Idylle",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0145",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Eau de Cologne Impériale",
+      "concentration": "Eau de Cologne",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Eau de Cologne Impériale",
+        "Eau de Cologne Impériale"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Eau de Cologne Impériale",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0146",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Insolence 2021",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Insolence 2021",
+        "Insolence 2021"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Insolence 2021",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0147",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Jardins de Bagatelle",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Jardins de Bagatelle",
+        "Jardins de Bagatelle",
+        "Jardins De Bagatelle"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Jardins de Bagatelle",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0148",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Jicky",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Jicky",
+        "Jicky"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Jicky",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0149",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Heure Bleue",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain L'Heure Bleue",
+        "L'Heure Bleue"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Heure Bleue",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0150",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal Cologne Forte",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal Cologne Forte",
+        "L'Homme Idéal Cologne Forte"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal Cologne Forte",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0151",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal Extreme",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal Extreme",
+        "L'Homme Idéal Extreme",
+        "Guerlain L'Homme Ideal Extreme",
+        "L'Homme Ideal Extreme"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal Extreme",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0152",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Homme Idéal L'Intense",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Homme Idéal L'Intense",
+        "L'Homme Idéal L'Intense",
+        "Guerlain L'Homme Ideal L'Intense",
+        "L'Homme Ideal L'Intense"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Homme Idéal L'Intense",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0153",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Instant de Guerlain pour Homme",
+      "concentration": "Eau de Toilette",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Instant de Guerlain pour Homme",
+        "L'Instant de Guerlain pour Homme"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Instant de Guerlain pour Homme",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0154",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Instant de Guerlain pour Homme",
+      "concentration": "Eau de Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain L'Instant de Guerlain pour Homme",
+        "L'Instant de Guerlain pour Homme"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Instant de Guerlain pour Homme",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0155",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Instant de Guerlain",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain L'Instant de Guerlain",
+        "L'Instant de Guerlain"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Instant de Guerlain",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0156",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "L'Instant Magic",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain L'Instant Magic",
+        "L'Instant Magic"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "L'Instant Magic",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0157",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0158",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire",
+      "concentration": "Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0159",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire Intense",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire Intense",
+        "La Petite Robe Noire Intense"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire Intense",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0160",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire Absolue",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire Absolue",
+        "La Petite Robe Noire Absolue"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire Absolue",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0161",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire Black Perfecto",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire Black Perfecto",
+        "La Petite Robe Noire Black Perfecto"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire Black Perfecto",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0162",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire Honey Rose",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire Honey Rose",
+        "La Petite Robe Noire Honey Rose"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire Honey Rose",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0163",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "La Petite Robe Noire Rose Noire",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain La Petite Robe Noire Rose Noire",
+        "La Petite Robe Noire Rose Noire"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "La Petite Robe Noire Rose Noire",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0164",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Les Absolus d'Orient Épices Exquises",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Les Absolus d'Orient Épices Exquises",
+        "Les Absolus d'Orient Épices Exquises"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Les Absolus d'Orient Épices Exquises",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0165",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Les Eaux Eau de Guerlain",
+      "concentration": "Eau de Cologne",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Les Eaux Eau de Guerlain",
+        "Les Eaux Eau de Guerlain"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Les Eaux Eau de Guerlain",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0166",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Mitsouko",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Mitsouko",
+        "Mitsouko",
+        "Mitsouko 2021"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Mitsouko",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0167",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Mitsouko",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Mitsouko",
+        "Mitsouko",
+        "Mitsouko 2021"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Mitsouko",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0168",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Mon Guerlain Sparkling Bouquet",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Mon Guerlain Sparkling Bouquet",
+        "Mon Guerlain Sparkling Bouquet"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Mon Guerlain Sparkling Bouquet",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0169",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Musc Noble",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Musc Noble",
+        "Musc Noble"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Musc Noble",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0170",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Nahema",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Nahema",
+        "Nahema"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Nahema",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0171",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Oud Essential",
+      "concentration": "Eau de Parfum",
+      "gender": "Unisex",
+      "aliases": [
+        "Guerlain Oud Essential",
+        "Oud Essential"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Oud Essential",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0172",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Samsara",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Samsara",
+        "Samsara"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Samsara",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0173",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar",
+        "Shalimar"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Shalimar",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0174",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar",
+      "concentration": "Extrait de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar",
+        "Shalimar"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Shalimar",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0175",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar Millésime Rose",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar Millésime Rose",
+        "Shalimar Millésime Rose"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Shalimar Millésime Rose",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0176",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Shalimar Souffle de Parfum",
+      "concentration": "Eau de Parfum",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Shalimar Souffle de Parfum",
+        "Shalimar Souffle de Parfum"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Shalimar Souffle de Parfum",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0177",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Terracotta Le Parfum",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Terracotta Le Parfum",
+        "Terracotta Le Parfum"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Terracotta Le Parfum",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0178",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Vetiver",
+      "concentration": "Eau de Toilette",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Vetiver",
+        "Vetiver"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Vetiver",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0179",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Vetiver",
+      "concentration": "Parfum",
+      "gender": "Uomo",
+      "aliases": [
+        "Guerlain Vetiver",
+        "Vetiver"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Vetiver",
+      "canonical_image": null
+    },
+    {
+      "product_id": "SH-0180",
+      "brand_id": "BR-92511d0bc971",
+      "brand_name": "Guerlain",
+      "family_name": "Vol de Nuit",
+      "concentration": "Eau de Toilette",
+      "gender": "Donna",
+      "aliases": [
+        "Guerlain Vol de Nuit",
+        "Vol de Nuit",
+        "Vol De Nuit 2021"
+      ],
+      "source_status": "verificato_nome_catalogo_deloox",
+      "source_notes": "Identità fragranza rilevata nel catalogo Guerlain di Deloox e confrontata con il catalogo ufficiale Guerlain. Nessuna referenza non-profumo è stata promossa.",
+      "verification_sources": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "canonical_name": "Vol de Nuit",
       "canonical_image": null
     }
   ],
@@ -30032,179 +31831,1895 @@
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-7b8e09287bdb7af8",
-      "product_id": "SH-0082",
+      "variant_id": "VAR-1636db9d019e1d75",
+      "product_id": "SH-0086",
       "size_ml": 30,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu",
-        "Miu Miu Eau de Parfum",
-        "Miu Miu Miu Miu",
-        "Miu Miu Eau de Parfum Spray",
-        "Miu Miu Miu Miu Eau de Parfum Spray"
+        "Mon Guerlain",
+        "Guerlain Mon Guerlain",
+        "Mon Guerlain Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-6289376a10303690",
-      "product_id": "SH-0082",
+      "variant_id": "VAR-37bdaf7b733c3107",
+      "product_id": "SH-0086",
       "size_ml": 50,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu",
-        "Miu Miu Eau de Parfum",
-        "Miu Miu Miu Miu",
-        "Miu Miu Eau de Parfum Spray",
-        "Miu Miu Miu Miu Eau de Parfum Spray"
+        "Mon Guerlain",
+        "Guerlain Mon Guerlain",
+        "Mon Guerlain Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-8f3dc1164ac554ac",
-      "product_id": "SH-0082",
+      "variant_id": "VAR-e827e91a5279608f",
+      "product_id": "SH-0086",
       "size_ml": 100,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu",
-        "Miu Miu Eau de Parfum",
-        "Miu Miu Miu Miu",
-        "Miu Miu Eau de Parfum Spray",
-        "Miu Miu Miu Miu Eau de Parfum Spray"
+        "Mon Guerlain",
+        "Guerlain Mon Guerlain",
+        "Mon Guerlain Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-52e4d8934eef30ee",
-      "product_id": "SH-0083",
+      "variant_id": "VAR-a2285782834d3391",
+      "product_id": "SH-0087",
       "size_ml": 30,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist",
-        "Twist",
-        "Miu Miu Twist Eau de Parfum",
-        "Miu Miu Twist Eau de Parfum Spray"
+        "Mon Guerlain Intense",
+        "Guerlain Mon Guerlain Intense",
+        "Mon Guerlain Eau de Parfum Intense"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-9f1bcbd321e0f297",
-      "product_id": "SH-0083",
+      "variant_id": "VAR-4341bab49f21c6b5",
+      "product_id": "SH-0087",
       "size_ml": 50,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist",
-        "Twist",
-        "Miu Miu Twist Eau de Parfum",
-        "Miu Miu Twist Eau de Parfum Spray"
+        "Mon Guerlain Intense",
+        "Guerlain Mon Guerlain Intense",
+        "Mon Guerlain Eau de Parfum Intense"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-eed5886661c9c189",
-      "product_id": "SH-0083",
+      "variant_id": "VAR-7d0c52ee9584ddad",
+      "product_id": "SH-0087",
       "size_ml": 100,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist",
-        "Twist",
-        "Miu Miu Twist Eau de Parfum",
-        "Miu Miu Twist Eau de Parfum Spray"
+        "Mon Guerlain Intense",
+        "Guerlain Mon Guerlain Intense",
+        "Mon Guerlain Eau de Parfum Intense"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-504405c9de2dcbfa",
-      "product_id": "SH-0084",
+      "variant_id": "VAR-62e77a917d8eb58f",
+      "product_id": "SH-0088",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal Parfum",
+        "L'Homme Idéal Parfum",
+        "L'Homme Ideal Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-001a3bcdbf5a92ba",
+      "product_id": "SH-0089",
       "size_ml": 30,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist Eau de Toilette",
-        "Twist Eau de Toilette",
-        "Miu Miu Twist EDT"
+        "Guerlain Shalimar",
+        "Shalimar",
+        "Shalimar Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-56ed60da77dd8d64",
-      "product_id": "SH-0084",
+      "variant_id": "VAR-e8e89f10dfdb31d6",
+      "product_id": "SH-0089",
       "size_ml": 50,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist Eau de Toilette",
-        "Twist Eau de Toilette",
-        "Miu Miu Twist EDT"
+        "Guerlain Shalimar",
+        "Shalimar",
+        "Shalimar Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-9338531960400cbb",
-      "product_id": "SH-0084",
-      "size_ml": 100,
+      "variant_id": "VAR-4b3f3064c71b16d5",
+      "product_id": "SH-0089",
+      "size_ml": 90,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Twist Eau de Toilette",
-        "Twist Eau de Toilette",
-        "Miu Miu Twist EDT"
+        "Guerlain Shalimar",
+        "Shalimar",
+        "Shalimar Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-654a0bb5c1b1a901",
-      "product_id": "SH-0085",
+      "variant_id": "VAR-6da85e7dbe06e077",
+      "product_id": "SH-0090",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Insolence",
+        "Insolence",
+        "Insolence Eau de Toilette",
+        "Insolence EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9f94ddd530ce8072",
+      "product_id": "SH-0091",
       "size_ml": 30,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Fleur d'Argent",
-        "Fleur d'Argent",
-        "Miu Miu Fleur D'Argent",
-        "Miu Miu Fleur d'Argent Eau de Parfum",
-        "Miu Miu Fleur D'Argent Absolue",
-        "Miu Miu Fleur d'Argent Absolute",
-        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire",
+        "La Petite Robe Noire Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-3c91abaeb8c126d4",
-      "product_id": "SH-0085",
+      "variant_id": "VAR-e4d05e2bd55b0089",
+      "product_id": "SH-0091",
       "size_ml": 50,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Fleur d'Argent",
-        "Fleur d'Argent",
-        "Miu Miu Fleur D'Argent",
-        "Miu Miu Fleur d'Argent Eau de Parfum",
-        "Miu Miu Fleur D'Argent Absolue",
-        "Miu Miu Fleur d'Argent Absolute",
-        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire",
+        "La Petite Robe Noire Eau de Parfum"
       ],
       "store_mappings": []
     },
     {
-      "variant_id": "VAR-084e0bb2f20115f0",
-      "product_id": "SH-0085",
+      "variant_id": "VAR-c97092e69bfb20d7",
+      "product_id": "SH-0091",
       "size_ml": 100,
       "gtins": [],
       "mpns": [],
       "aliases": [
-        "Miu Miu Fleur d'Argent",
-        "Fleur d'Argent",
-        "Miu Miu Fleur D'Argent",
-        "Miu Miu Fleur d'Argent Eau de Parfum",
-        "Miu Miu Fleur D'Argent Absolue",
-        "Miu Miu Fleur d'Argent Absolute",
-        "Miu Miu Fleur D'Argent Eau de Parfum Absolute Spray"
+        "Guerlain La Petite Robe Noire",
+        "La Petite Robe Noire",
+        "La Petite Robe Noire Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8e467e9206108068",
+      "product_id": "SH-0092",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Ambre Samar",
+        "Ambre Samar",
+        "Absolus Allegoria Ambre Samar",
+        "Ambre Samar Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-76c57f59cb2123dd",
+      "product_id": "SH-0093",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Habit Rouge",
+        "Habit Rouge",
+        "Habit Rouge Eau de Parfum",
+        "Habit Rouge de Guerlain Paris Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0462c6ec67ebc58f",
+      "product_id": "SH-0093",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Habit Rouge",
+        "Habit Rouge",
+        "Habit Rouge Eau de Parfum",
+        "Habit Rouge de Guerlain Paris Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-15ef6ba2023c8625",
+      "product_id": "SH-0094",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Insolence",
+        "Insolence",
+        "Insolence Eau de Parfum",
+        "Insolence 2021 Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7ea30e9fe00f71a4",
+      "product_id": "SH-0095",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Parfum",
+        "L'Homme Idéal Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5caeb11513f99e97",
+      "product_id": "SH-0095",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Parfum",
+        "L'Homme Idéal Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2ef59e22ad8918c4",
+      "product_id": "SH-0096",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Toilette",
+        "L'Homme Idéal Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-993cfc29d14e1ead",
+      "product_id": "SH-0096",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Toilette",
+        "L'Homme Idéal Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e91077bf5646c1e5",
+      "product_id": "SH-0096",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain L'Homme Idéal",
+        "L'Homme Idéal",
+        "L'Homme Ideal Eau de Toilette",
+        "L'Homme Idéal Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6beb8e0a3fd22d20",
+      "product_id": "SH-0097",
+      "size_ml": 40,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Aqua Allegoria Florabloom",
+        "Aqua Allegoria Florabloom",
+        "Florabloom",
+        "Aqua Allegoria Florabloom Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0b36fec0498f9363",
+      "product_id": "SH-0097",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Aqua Allegoria Florabloom",
+        "Aqua Allegoria Florabloom",
+        "Florabloom",
+        "Aqua Allegoria Florabloom Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5386fbc6508a95a9",
+      "product_id": "SH-0097",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Aqua Allegoria Florabloom",
+        "Aqua Allegoria Florabloom",
+        "Florabloom",
+        "Aqua Allegoria Florabloom Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-090d85ae2446a4cc",
+      "product_id": "SH-0098",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Shalimar L'Essence",
+        "Shalimar L'Essence",
+        "Shalimar L'Essence Eau de Parfum Intense",
+        "Shalimar L'Essence"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5748783bafb7f064",
+      "product_id": "SH-0098",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Shalimar L'Essence",
+        "Shalimar L'Essence",
+        "Shalimar L'Essence Eau de Parfum Intense",
+        "Shalimar L'Essence"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0476b6734b27b293",
+      "product_id": "SH-0098",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Shalimar L'Essence",
+        "Shalimar L'Essence",
+        "Shalimar L'Essence Eau de Parfum Intense",
+        "Shalimar L'Essence"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-bce376ea37be6e3a",
+      "product_id": "SH-0088",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal",
+        "Guerlain L'Homme Idéal"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e0e053cebe3247cb",
+      "product_id": "SH-0091",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5b5a805f5a91dd2b",
+      "product_id": "SH-0099",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Cuir Intense",
+        "Guerlain Absolus Allegoria Cuir Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-79ec4b564bef22d1",
+      "product_id": "SH-0100",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Florabloom",
+        "Guerlain Absolus Allegoria Florabloom"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-bbda6b3e59fb1b97",
+      "product_id": "SH-0101",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Oud Essentiel",
+        "Guerlain Absolus Allegoria Oud Essentiel"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7dfb09fd5b66d33e",
+      "product_id": "SH-0102",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Rose Amira",
+        "Guerlain Absolus Allegoria Rose Amira"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a51a0acd015b001f",
+      "product_id": "SH-0103",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Santal Royal",
+        "Guerlain Absolus Allegoria Santal Royal"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b74713949fd24bb7",
+      "product_id": "SH-0104",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Tabac Sahara",
+        "Guerlain Absolus Allegoria Tabac Sahara"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9c612d6291e06b4a",
+      "product_id": "SH-0105",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Absolus Allegoria Épices Exquises",
+        "Guerlain Absolus Allegoria Épices Exquises"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2a2b873cb3c1ee54",
+      "product_id": "SH-0107",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Après L'Ondée",
+        "Guerlain Après L'Ondée"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-06e2e21fab51d249",
+      "product_id": "SH-0108",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Bergamote Calabria",
+        "Guerlain Aqua Allegoria Bergamote Calabria"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1747f0e4cabc6053",
+      "product_id": "SH-0108",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Bergamote Calabria",
+        "Guerlain Aqua Allegoria Bergamote Calabria"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-995fd640c46014a1",
+      "product_id": "SH-0109",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Flora Cherrysia",
+        "Guerlain Aqua Allegoria Flora Cherrysia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-01460e17e9e64396",
+      "product_id": "SH-0109",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Flora Cherrysia",
+        "Guerlain Aqua Allegoria Flora Cherrysia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9c4e2d8bc3b449e5",
+      "product_id": "SH-0110",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Flora Salvaggia",
+        "Guerlain Aqua Allegoria Flora Salvaggia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6ddaa2a6a05bf790",
+      "product_id": "SH-0110",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Flora Salvaggia",
+        "Guerlain Aqua Allegoria Flora Salvaggia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a4b4a5d028e61f82",
+      "product_id": "SH-0112",
+      "size_ml": 40,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Florabloom Forte",
+        "Guerlain Aqua Allegoria Florabloom Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-048ddec7d2770b31",
+      "product_id": "SH-0112",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Florabloom Forte",
+        "Guerlain Aqua Allegoria Florabloom Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4a73a6f8671005fc",
+      "product_id": "SH-0112",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Florabloom Forte",
+        "Guerlain Aqua Allegoria Florabloom Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8fe6051ad0be83a8",
+      "product_id": "SH-0113",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Bosca Vanilla Forte",
+        "Guerlain Aqua Allegoria Bosca Vanilla Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c5ad56b65a78931d",
+      "product_id": "SH-0113",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Bosca Vanilla Forte",
+        "Guerlain Aqua Allegoria Bosca Vanilla Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d4960b0d511c29eb",
+      "product_id": "SH-0114",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Granada Salvia",
+        "Guerlain Aqua Allegoria Granada Salvia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e47db75b99defa0d",
+      "product_id": "SH-0114",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Granada Salvia",
+        "Guerlain Aqua Allegoria Granada Salvia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-755ba6ec19ee68e5",
+      "product_id": "SH-0115",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Herba Fresca",
+        "Guerlain Aqua Allegoria Herba Fresca"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c762b0c04e58f20e",
+      "product_id": "SH-0115",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Herba Fresca",
+        "Guerlain Aqua Allegoria Herba Fresca"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0fc859770818c9c4",
+      "product_id": "SH-0116",
+      "size_ml": 40,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Mandarine Basilic",
+        "Guerlain Aqua Allegoria Mandarine Basilic"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-735a0de08369cbee",
+      "product_id": "SH-0116",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Mandarine Basilic",
+        "Guerlain Aqua Allegoria Mandarine Basilic"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e201d8012c987365",
+      "product_id": "SH-0116",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Mandarine Basilic",
+        "Guerlain Aqua Allegoria Mandarine Basilic"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a00c80afbf43a862",
+      "product_id": "SH-0117",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Mandarine Basilic Forte",
+        "Guerlain Aqua Allegoria Mandarine Basilic Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-bcbf465f19566a0a",
+      "product_id": "SH-0117",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Mandarine Basilic Forte",
+        "Guerlain Aqua Allegoria Mandarine Basilic Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6d67e01e8edd9095",
+      "product_id": "SH-0118",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Nerolia Vetiver",
+        "Guerlain Aqua Allegoria Nerolia Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5ea63c4e0298dff6",
+      "product_id": "SH-0118",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Nerolia Vetiver",
+        "Guerlain Aqua Allegoria Nerolia Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-db5cb060efde43a8",
+      "product_id": "SH-0119",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Nerolia Vetiver Forte",
+        "Guerlain Aqua Allegoria Nerolia Vetiver Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c0d0600aef02223d",
+      "product_id": "SH-0119",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Nerolia Vetiver Forte",
+        "Guerlain Aqua Allegoria Nerolia Vetiver Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-070f144df9dd52a2",
+      "product_id": "SH-0120",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Nettare di Sole",
+        "Guerlain Aqua Allegoria Nettare di Sole"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7c72b8f4a63dfd7b",
+      "product_id": "SH-0121",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Orange Soleia",
+        "Guerlain Aqua Allegoria Orange Soleia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-907644cb129dfe96",
+      "product_id": "SH-0121",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Orange Soleia",
+        "Guerlain Aqua Allegoria Orange Soleia"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9727138e781fd7c6",
+      "product_id": "SH-0122",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Oud Yuzu Forte",
+        "Guerlain Aqua Allegoria Oud Yuzu Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-93785fa2221aef84",
+      "product_id": "SH-0122",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Oud Yuzu Forte",
+        "Guerlain Aqua Allegoria Oud Yuzu Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e8b9fcee5f0ea278",
+      "product_id": "SH-0123",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Pamplelune",
+        "Guerlain Aqua Allegoria Pamplelune"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6b65147ec1bb3c90",
+      "product_id": "SH-0123",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Pamplelune",
+        "Guerlain Aqua Allegoria Pamplelune"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-fc837e68c21c54b9",
+      "product_id": "SH-0124",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Pera Granita",
+        "Guerlain Aqua Allegoria Pera Granita"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e43da5b1e9d57e9e",
+      "product_id": "SH-0124",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Pera Granita",
+        "Guerlain Aqua Allegoria Pera Granita"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-60456c6fd1fa77a7",
+      "product_id": "SH-0125",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Palissandro Forte",
+        "Guerlain Aqua Allegoria Rosa Palissandro Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-93d0b02cc6481758",
+      "product_id": "SH-0125",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Palissandro Forte",
+        "Guerlain Aqua Allegoria Rosa Palissandro Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c22cb5303abac067",
+      "product_id": "SH-0126",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Rossa",
+        "Guerlain Aqua Allegoria Rosa Rossa"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8c70f68a69a20cb7",
+      "product_id": "SH-0126",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Rossa",
+        "Guerlain Aqua Allegoria Rosa Rossa"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4fcca631227c9a5f",
+      "product_id": "SH-0127",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Rossa Forte",
+        "Guerlain Aqua Allegoria Rosa Rossa Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a667ed1797f9061b",
+      "product_id": "SH-0127",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Rossa Forte",
+        "Guerlain Aqua Allegoria Rosa Rossa Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-12c7210780a820b6",
+      "product_id": "SH-0128",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Verde",
+        "Guerlain Aqua Allegoria Rosa Verde"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a2cff87ba7380d3b",
+      "product_id": "SH-0128",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Aqua Allegoria Rosa Verde",
+        "Guerlain Aqua Allegoria Rosa Verde"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7a24c0373cee004a",
+      "product_id": "SH-0129",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Bois Mystérieux",
+        "Guerlain Bois Mystérieux"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6e76714b1d6ff69d",
+      "product_id": "SH-0130",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Chamade",
+        "Guerlain Chamade"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4141ecaeab11dfd7",
+      "product_id": "SH-0131",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Champs-Élysées",
+        "Guerlain Champs-Élysées"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-eaa947ab2b0821a5",
+      "product_id": "SH-0132",
+      "size_ml": 250,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Chant d'Arômes",
+        "Guerlain Chant d'Arômes"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-83553fe6d51d5e76",
+      "product_id": "SH-0132",
+      "size_ml": 500,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Chant d'Arômes",
+        "Guerlain Chant d'Arômes"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-28058fe73a5a8b6c",
+      "product_id": "SH-0133",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Cologne du Parfumeur",
+        "Guerlain Cologne du Parfumeur"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-456da092382cc0e3",
+      "product_id": "SH-0134",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Cuir Intense",
+        "Guerlain Cuir Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8578f8ed3d936a87",
+      "product_id": "SH-0135",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Du Coq",
+        "Guerlain Du Coq"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d03d4f2ffadf5197",
+      "product_id": "SH-0136",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Eau de Fleurs de Cédrat",
+        "Guerlain Eau de Fleurs de Cédrat"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d9fb498ebf08ef33",
+      "product_id": "SH-0137",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Encens Mythique d'Orient",
+        "Guerlain Encens Mythique d'Orient"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2b3757956cf6c44b",
+      "product_id": "SH-0138",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge",
+        "Guerlain Habit Rouge"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8d14a5136316dab1",
+      "product_id": "SH-0138",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge",
+        "Guerlain Habit Rouge"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4143ca8f210bbf4e",
+      "product_id": "SH-0139",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge",
+        "Guerlain Habit Rouge"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b093c45e319e270f",
+      "product_id": "SH-0139",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge",
+        "Guerlain Habit Rouge"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9a826c3bf5b7f301",
+      "product_id": "SH-0140",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge L'Instinct",
+        "Guerlain Habit Rouge L'Instinct"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d4bdac0d51c76c90",
+      "product_id": "SH-0141",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Habit Rouge Spirit",
+        "Guerlain Habit Rouge Spirit"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-34b9f688b6a8fee4",
+      "product_id": "SH-0142",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Héritage",
+        "Guerlain Héritage"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4d4d9588554948a9",
+      "product_id": "SH-0143",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Guerlain Homme",
+        "Guerlain Guerlain Homme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a3dddd2c2db8ed70",
+      "product_id": "SH-0144",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Idylle",
+        "Guerlain Idylle"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0ba97a4f4ac4db00",
+      "product_id": "SH-0145",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Eau de Cologne Impériale",
+        "Guerlain Eau de Cologne Impériale"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-54d58a6ad4f6d92d",
+      "product_id": "SH-0146",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Insolence 2021",
+        "Guerlain Insolence 2021"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8e1fd530544b5970",
+      "product_id": "SH-0147",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jardins de Bagatelle",
+        "Guerlain Jardins de Bagatelle"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-833527463f005e64",
+      "product_id": "SH-0148",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jicky",
+        "Guerlain Jicky"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c409b8c7d9a81dff",
+      "product_id": "SH-0149",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Heure Bleue",
+        "Guerlain L'Heure Bleue"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-92f74740808631b9",
+      "product_id": "SH-0150",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal Cologne Forte",
+        "Guerlain L'Homme Idéal Cologne Forte"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-fd05ca3b3f8635fd",
+      "product_id": "SH-0151",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal Extreme",
+        "Guerlain L'Homme Idéal Extreme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4872c43e900b1e1c",
+      "product_id": "SH-0151",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal Extreme",
+        "Guerlain L'Homme Idéal Extreme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0497057063754574",
+      "product_id": "SH-0152",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal L'Intense",
+        "Guerlain L'Homme Idéal L'Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-acaec4e1adb717ad",
+      "product_id": "SH-0152",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Homme Idéal L'Intense",
+        "Guerlain L'Homme Idéal L'Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-05f71b5027a951ef",
+      "product_id": "SH-0153",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Instant de Guerlain pour Homme",
+        "Guerlain L'Instant de Guerlain pour Homme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-ea5ef8840d3941c7",
+      "product_id": "SH-0154",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Instant de Guerlain pour Homme",
+        "Guerlain L'Instant de Guerlain pour Homme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9f87cea71eafbf34",
+      "product_id": "SH-0155",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Instant de Guerlain",
+        "Guerlain L'Instant de Guerlain"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d4d4420688f79009",
+      "product_id": "SH-0156",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "L'Instant Magic",
+        "Guerlain L'Instant Magic"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3be2f78edd7822b8",
+      "product_id": "SH-0157",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-392491d340102c9d",
+      "product_id": "SH-0157",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-31ba6074b34307a1",
+      "product_id": "SH-0157",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-09cf871f04187006",
+      "product_id": "SH-0157",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9c3b9793ada4ee94",
+      "product_id": "SH-0158",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-90a10ce8fb252ed6",
+      "product_id": "SH-0158",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-18ea125c321c2e64",
+      "product_id": "SH-0158",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0380434c5d69954c",
+      "product_id": "SH-0158",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire",
+        "Guerlain La Petite Robe Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1f5ec10e954542a4",
+      "product_id": "SH-0159",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Intense",
+        "Guerlain La Petite Robe Noire Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7807571c9f3d2387",
+      "product_id": "SH-0159",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Intense",
+        "Guerlain La Petite Robe Noire Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1c93e870589feab4",
+      "product_id": "SH-0159",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Intense",
+        "Guerlain La Petite Robe Noire Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f08f356c822f34fb",
+      "product_id": "SH-0160",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Absolue",
+        "Guerlain La Petite Robe Noire Absolue"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-85e7fbba22a0153a",
+      "product_id": "SH-0161",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Black Perfecto",
+        "Guerlain La Petite Robe Noire Black Perfecto"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-43e1758e6ccf766f",
+      "product_id": "SH-0162",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Honey Rose",
+        "Guerlain La Petite Robe Noire Honey Rose"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-94730129f1316d61",
+      "product_id": "SH-0163",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "La Petite Robe Noire Rose Noire",
+        "Guerlain La Petite Robe Noire Rose Noire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-130a0460a60332bf",
+      "product_id": "SH-0164",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Les Absolus d'Orient Épices Exquises",
+        "Guerlain Les Absolus d'Orient Épices Exquises"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d9e7f3bbb4a106ed",
+      "product_id": "SH-0165",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Les Eaux Eau de Guerlain",
+        "Guerlain Les Eaux Eau de Guerlain"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-760366c26f634c2a",
+      "product_id": "SH-0166",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Mitsouko",
+        "Guerlain Mitsouko"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0253056ab9432b4c",
+      "product_id": "SH-0167",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Mitsouko",
+        "Guerlain Mitsouko"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8dca100d4780b0c3",
+      "product_id": "SH-0168",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Mon Guerlain Sparkling Bouquet",
+        "Guerlain Mon Guerlain Sparkling Bouquet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e275e9d4e7393bc9",
+      "product_id": "SH-0168",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Mon Guerlain Sparkling Bouquet",
+        "Guerlain Mon Guerlain Sparkling Bouquet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4542c398266db6de",
+      "product_id": "SH-0168",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Mon Guerlain Sparkling Bouquet",
+        "Guerlain Mon Guerlain Sparkling Bouquet"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6f83d48888a2d83c",
+      "product_id": "SH-0169",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Musc Noble",
+        "Guerlain Musc Noble"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5e206b4cb288322a",
+      "product_id": "SH-0170",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Nahema",
+        "Guerlain Nahema"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5182bfac6dcc823c",
+      "product_id": "SH-0171",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Oud Essential",
+        "Guerlain Oud Essential"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0cec6e091012277f",
+      "product_id": "SH-0172",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Samsara",
+        "Guerlain Samsara"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-681496f53d9b710c",
+      "product_id": "SH-0173",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-67c4b21dd727f168",
+      "product_id": "SH-0173",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-66bf69c50433f1cc",
+      "product_id": "SH-0173",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f00046129313c0b3",
+      "product_id": "SH-0174",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d1299e259a8af1dd",
+      "product_id": "SH-0174",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-19a3e089b3bbddf1",
+      "product_id": "SH-0174",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar",
+        "Guerlain Shalimar"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c12aff957d707110",
+      "product_id": "SH-0175",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar Millésime Rose",
+        "Guerlain Shalimar Millésime Rose"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5804a48b18554a53",
+      "product_id": "SH-0176",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar Souffle de Parfum",
+        "Guerlain Shalimar Souffle de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2b8ffb7b269d5032",
+      "product_id": "SH-0176",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Shalimar Souffle de Parfum",
+        "Guerlain Shalimar Souffle de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-148d9d6f5bb8d283",
+      "product_id": "SH-0177",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Terracotta Le Parfum",
+        "Guerlain Terracotta Le Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c99b00a49fea4a6a",
+      "product_id": "SH-0178",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Vetiver",
+        "Guerlain Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8585e0b92277b21f",
+      "product_id": "SH-0178",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Vetiver",
+        "Guerlain Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b4640b98d6c4682b",
+      "product_id": "SH-0179",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Vetiver",
+        "Guerlain Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1d4edd2ebbe6afcb",
+      "product_id": "SH-0179",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Vetiver",
+        "Guerlain Vetiver"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e0c6f02211bc3938",
+      "product_id": "SH-0180",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Vol de Nuit",
+        "Guerlain Vol de Nuit"
       ],
       "store_mappings": []
     }
@@ -30219,10 +33734,10 @@
     "expanded_products_added": 950,
     "expanded_from_verified_catalog_size": 1006,
     "catalog_fix": "Generic canonical display metadata: explicit concentration and audience only; no product-specific exceptions.",
-    "product_count": 1293,
+    "product_count": 1389,
     "deduplication": "brand + canonical_name + concentration + gender",
     "gender_policy": "Only explicit catalog/source/title audience markers are normalized; unknown remains null.",
-    "variant_count": 348,
+    "variant_count": 511,
     "rayhaan_catalog_verification": {
       "verified_against": "https://rayhaanperfumes.com/collections/all",
       "official_product_names": 41,
@@ -30352,7 +33867,7 @@
     "last_audit": "2026-09-25",
     "image_audit": "Gucci image collision resolved using product-specific image sources; no identities merged.",
     "variant_deduplication": "Merged duplicate variant records by product_id + size_ml; unioned aliases/GTIN/MPN/store_mappings; no product identities merged.",
-    "brand_count": 60,
+    "brand_count": 61,
     "image_audit_v14": {
       "missing_images": 0,
       "image_collisions": 0,
@@ -30538,6 +34053,18 @@
         "Zénith Santal",
         "Éclair Affair"
       ]
+    },
+    "guerlain_audit_2026_10_07": {
+      "status": "comprehensive_deloox_guerlain_fragrance_catalog",
+      "basis": [
+        "https://www.deloox.com/it/categoria/1065733/guerlain.html",
+        "https://www.guerlain.com/it/it-it/fragranze/"
+      ],
+      "guerlain_product_identities_added": 93,
+      "guerlain_variant_records_added": 163,
+      "scope": "Fragranze Guerlain presenti/superficiate nel catalogo Deloox; make-up, skincare, haircare, body care, gift set e miniature set non convertiti in identità perfume.",
+      "image_policy": "canonical_image remains null for newly added Guerlain identities unless a direct product-specific image URL was verified; no image URL invented.",
+      "note": "The Deloox brand catalog exposes a broader historical/active Guerlain fragrance assortment than the initial screenshot-based pass; this audit promotes those fragrance identities into the central catalog."
     }
   }
 }
