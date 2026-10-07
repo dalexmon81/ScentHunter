@@ -3011,6 +3011,14 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
                     'price_num': r['product_price'],
                     'store': STORE_LABELS[store],
                     'store_key': store,
+                    # A row can be marked OK while still lacking both
+                    # commercial price and size data. Treat that as an
+                    # incomplete hydration candidate, without changing FTS
+                    # selection, ranking, limits, or candidate counts.
+                    '_needs_refresh': (
+                        r['product_price'] is None
+                        and r['product_size_ml'] is None
+                    ),
                 }) if r['product_name'] else rows.append({
                     'store': STORE_LABELS[store],
                     'store_key': store,
@@ -3122,7 +3130,13 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     'fetched_at': r.get('product_fetched_at'),
                     'fetch_status': r.get('fetch_status') or 'OK',
                     'price_num': r.get('product_price'),
-                    'store': STORE_LABELS[store],'store_key': store,
+                    'store': STORE_LABELS[store],
+                    'store_key': store,
+                    # Same generic incomplete-hydration rule as the FTS path.
+                    '_needs_refresh': (
+                        r.get('product_price') is None
+                        and r.get('product_size_ml') is None
+                    ),
                 })
             else:
                 rows.append({
