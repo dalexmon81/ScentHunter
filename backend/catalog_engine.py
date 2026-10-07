@@ -3308,7 +3308,19 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      ON u.store=q.store AND u.url=q.url
                    WHERE q.store=?
                      AND u.active=1
-                     AND q.state IN ('PENDING','ERROR')
+                     AND (
+                         q.state IN ('PENDING','ERROR')
+                         OR (
+                             q.state='DONE'
+                             AND EXISTS (
+                                 SELECT 1 FROM store_products p3
+                                 WHERE p3.store=q.store
+                                   AND p3.url=q.url
+                                   AND p3.fetch_status='OK'
+                                   AND (p3.size_ml IS NULL OR p3.price IS NULL)
+                             )
+                         )
+                     )
                      AND q.available_at <= ?
                      AND (
                          SELECT COUNT(*)
