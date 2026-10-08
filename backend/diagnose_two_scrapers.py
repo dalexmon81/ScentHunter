@@ -1171,3 +1171,113 @@ def diagnose_catalog_path(
 
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
+
+@router.get("/diagnose-parfumzentrum-product-url")
+def diagnose_parfumzentrum_product_url(
+    url: str = Query(...),
+    q: str = Query(""),
+):
+    """Read-only surgical test of the deployed ParfumZentrum product parser.
+
+    Exactly one call is made to the retailer-specific _extract_product()
+    parser for the supplied product URL. No discovery, catalog search,
+    hydration, matcher, aggregation, or database write is executed.
+    """
+    started = time.monotonic()
+    raw_url = str(url or "").strip()
+    query = str(q or "").strip()
+
+    base = {
+        "diagnostic": "parfumzentrum-single-product-parser-v1",
+        "ok": False,
+        "read_only": True,
+        "store": "parfumzentrum",
+        "query": query,
+        "url": raw_url,
+        "discovery_called": False,
+        "catalog_called": False,
+        "hydration_called": False,
+        "product_matcher_called": False,
+        "database_written": False,
+        "purpose": (
+            "one exact call to the deployed ParfumZentrum "
+            "_extract_product(url, query); no discovery or catalog path"
+        ),
+    }
+
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(raw_url)
+        host = (parsed.hostname or "").lower()
+        if host not in {"parfum-zentrum.de", "www.parfum-zentrum.de"}:
+            return {
+                **base,
+                "error": "url_not_allowed_for_store",
+                "allowed_hosts": [
+                    "parfum-zentrum.de",
+                    "www.parfum-zentrum.de",
+                ],
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        if not parsed.path.lower().endswith("/"):
+            pass
+
+        from scrapers.parfumzentrum import scraper
+
+        parser = getattr(scraper, "_extract_product", None)
+        if not callable(parser):
+            return {
+                **base,
+                "error": "parfumzentrum._extract_product_unavailable",
+                "scraper_module": getattr(scraper, "__file__", None),
+                "elapsed_sec": round(time.monotonic() - started, 3),
+            }
+
+        item = parser(raw_url, query)
+
+        result = {
+            **base,
+            "ok": True,
+            "scraper_module": getattr(scraper, "__file__", None),
+            "parser": "_extract_product",
+            "parser_returned": item is not None,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
+        if isinstance(item, dict):
+            result["item"] = {
+                "name": item.get("name"),
+                "brand": item.get("brand"),
+                "url": item.get("url") or item.get("product_url"),
+                "price": item.get("price"),
+                "price_num": item.get("price_num"),
+                "currency": item.get("currency"),
+                "availability": item.get("availability"),
+                "size_ml": item.get("size_ml"),
+                "sku": item.get("sku"),
+                "product_id": item.get("product_id"),
+            }
+            result["diagnosis"] = (
+                "PARSER_RETURNED_PRODUCT: the deployed ParfumZentrum "
+                "_extract_product() accepted this exact URL. The returned "
+                "price above is the price produced by the scraper itself, "
+                "before catalog persistence, matcher, dedupe, API, or frontend."
+            )
+        else:
+            result["item"] = None
+            result["diagnosis"] = (
+                "PARSER_RETURNED_NONE: the deployed ParfumZentrum parser "
+                "rejected this exact URL. No downstream layer was executed."
+            )
+
+        return result
+
+    except Exception as exc:
+        return {
+            **base,
+            "error": f"{type(exc).__name__}: {exc}",
+            "elapsed_sec": round(time.monotonic() - started, 3),
+        }
+
