@@ -437,7 +437,7 @@ STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
 JOB_TIMEOUT_SECONDS = 30.0
 CATALOG_SEARCH_BUDGET_SECONDS = 12.0
-CATALOG_REFRESH_BUDGET_SECONDS = 12.0
+CATALOG_REFRESH_BUDGET_SECONDS = 8.0
 CATALOG_REFRESH_PER_STORE = 8
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
 NETWORK_SEMAPHORE = threading.Semaphore(NETWORK_WORKERS)
@@ -1498,8 +1498,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     refreshed = []
     if callable(catalog_refresh_candidates):
         try:
-            refresh_budget = min(12.0, max(0.25, float(os.environ.get(
-                'CATALOG_REFRESH_BUDGET_SECONDS', '12'
+            refresh_budget = min(8.0, max(0.25, float(os.environ.get(
+                'CATALOG_REFRESH_BUDGET_SECONDS', '8'
             ))))
             refresh_deadline = started + refresh_budget
             requested = [
