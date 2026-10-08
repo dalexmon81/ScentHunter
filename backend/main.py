@@ -1498,8 +1498,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     refreshed = []
     if callable(catalog_refresh_candidates):
         try:
-            refresh_budget = min(8.0, max(0.25, float(os.environ.get(
-                'CATALOG_REFRESH_BUDGET_SECONDS', '8'
+            refresh_budget = min(12.0, max(0.25, float(os.environ.get(
+                'CATALOG_REFRESH_BUDGET_SECONDS', '12'
             ))))
             refresh_deadline = started + refresh_budget
             requested = [
