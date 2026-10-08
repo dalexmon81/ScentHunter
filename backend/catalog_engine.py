@@ -2588,23 +2588,31 @@ def parse_product(store, url, data):
 
 
 def _secondary_store_parser(store, final_url, original_url):
-    """Use an existing store parser only as a product-page parser fallback.
+    """Run the retailer scraper's exact product-page parser.
 
-    Parser exceptions are deliberately propagated. The hydration layer must
-    preserve the real exception instead of collapsing it into the old opaque
-    ``ERROR:RuntimeError`` record.
+    A store parser, when available, is authoritative for extracting the
+    retailer's own price/identity semantics. The generic catalog parser is
+    only a fallback for stores that do not expose a product-page parser.
     """
     module = importlib.import_module(f'scrapers.{store}.scraper')
-    parser = getattr(module, 'extract_product_page', None)
-    if not callable(parser):
-        return None
 
-    session = requests.Session()
-    session.headers.update({'User-Agent': USER_AGENT})
-    try:
-        parsed = parser(session, final_url, url_slug(final_url))
-    finally:
-        session.close()
+    parser = getattr(module, 'extract_product_page', None)
+    if callable(parser):
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            parsed = parser(session, final_url, url_slug(final_url))
+        finally:
+            session.close()
+    else:
+        # ParfumZentrum's current scraper exposes its exact-URL product parser
+        # as _extract_product(query). Keep this generic for any store adapter
+        # that provides the same callable contract, without embedding store-
+        # specific product names, prices or rules in the catalog engine.
+        parser = getattr(module, '_extract_product', None)
+        if not callable(parser):
+            return None
+        parsed = parser(final_url, url_slug(final_url))
 
     if not isinstance(parsed, dict):
         return None
@@ -2645,16 +2653,27 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
-        # Keep the first HTTP response as the primary source of truth.
-        # The secondary store parser is allowed to fetch again only as a
-        # fallback, but a failed fallback must no longer collapse into the
-        # opaque generic RuntimeError that previously hid the real cause.
-        item = parse_product(store, final, data)
-        primary_ok = bool(item and item.get('name'))
+        # The retailer scraper owns retailer-specific product-page semantics
+        # such as public-vs-code pricing and product-vs-set identity. When a
+        # store exposes that parser, it must run before the generic JSON-LD
+        # fallback; otherwise the generic parser can persist a syntactically
+        # valid but semantically wrong offer.
+        item = None
         secondary_ok = False
-        if not primary_ok:
+        parser_available = False
+        try:
+            module = importlib.import_module(f'scrapers.{store}.scraper')
+            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+        except Exception:
+            parser_available = False
+
+        if parser_available:
             item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
+        else:
+            item = parse_product(store, final, data)
+
+        primary_ok = bool(item and item.get('name'))
 
         if not item or not item.get('name'):
             h1_text = ''
