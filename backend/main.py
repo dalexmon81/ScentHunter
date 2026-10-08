@@ -1501,9 +1501,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             refresh_budget = min(8.0, max(0.25, float(os.environ.get(
                 'CATALOG_REFRESH_BUDGET_SECONDS', '8'
             ))))
-            # The targeted-refresh budget starts when refresh actually begins.
-            # Catalog search has its own independent deadline above; it must not
-            # consume the time reserved for refreshing the selected product pages.
             refresh_deadline = started + refresh_budget
             requested = [
                 row for row in raw_rows
@@ -1559,12 +1556,18 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         item['shop'] = item['store']
         grouped_raw[store_key].append(item)
 
-    # Never call catalog_store_status() here. It performs a catalog-wide
-    # LEFT JOIN to calculate hydration state and can contend with background
-    # hydration writers on SQLite. We only need to know whether each store
-    # has any active catalog URL, which is answered by a cheap indexed flag.
-    indexed_flags = _catalog_indexed_flags(stores)
-    indexed_total = sum(1 for store in stores if indexed_flags.get(store))
+    # Do not open the write-capable catalog connection on the successful
+    # foreground path.  The search above has already proved that the
+    # persistent catalog contains active rows; opening db() here only to ask
+    # the same database a second read-only question can contend with a
+    # hydration writer and add seconds to every search.  The indexed-store
+    # diagnostic is still retained for the genuinely empty-catalog case.
+    if raw_rows:
+        indexed_flags = {store: bool(grouped_raw.get(store)) for store in stores}
+        indexed_total = 1
+    else:
+        indexed_flags = _catalog_indexed_flags(stores)
+        indexed_total = sum(1 for store in stores if indexed_flags.get(store))
 
     # A completely empty catalog means the background bootstrap has not
     # indexed any store yet. Normal searches must wait for that bootstrap;
@@ -1624,7 +1627,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             status, verified, error = 'success', True, None
         elif pending_by_store.get(store, 0) > 0:
             status, verified, error = 'catalog_pending', False, 'product_page_refresh_pending'
-        elif indexed > 0:
+        elif indexed > 0 or raw_rows:
             status, verified, error = 'no_match', True, None
         else:
             status = str(status_info.get('status') or 'unavailable').lower()
