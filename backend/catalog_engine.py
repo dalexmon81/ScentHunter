@@ -2858,9 +2858,12 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
                                p.fetch_status AS fetch_status
                           FROM catalog_search_fts f
                           JOIN store_urls u ON u.store=f.store AND u.url=f.url
+                          LEFT JOIN hydration_queue q
+                            ON q.store=u.store AND q.url=u.url
                           LEFT JOIN store_products p
                             ON p.store=u.store AND p.url=u.url
                            AND p.fetch_status='OK'
+                           AND q.state='DONE'
                          WHERE f.store=?
                            AND catalog_search_fts MATCH ?
                            AND u.active=1
@@ -3001,9 +3004,12 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                        p.fetched_at AS product_fetched_at,
                        p.fetch_status AS fetch_status
                   FROM store_urls u
+                  LEFT JOIN hydration_queue q
+                    ON q.store=u.store AND q.url=u.url
                   LEFT JOIN store_products p
                     ON p.store=u.store AND p.url=u.url
                    AND p.fetch_status='OK'
+                   AND q.state='DONE'
                  WHERE u.store=? AND u.active=1
                    AND {' AND '.join(clauses)}
                  LIMIT ?
