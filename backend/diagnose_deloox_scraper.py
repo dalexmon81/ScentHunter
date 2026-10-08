@@ -372,7 +372,6 @@ def diagnose_catalog_search_pipeline(q: str = Query("Liquid Brun")):
     finally: out["elapsed_sec"]=round(time.monotonic()-started,3)
 
 
-
 @router.get("/diagnose-deloox-search-pagination")
 def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
     """Read-only proof of Deloox search pagination versus deployed _discover().
@@ -443,8 +442,6 @@ def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
             out["pages"] = [{"page": 1, "requested_url": page1_url, "status": page1_response.status_code}]
             return out
 
-        # Prefer retailer-provided pagination links (they may carry the CSRF
-        # token/session parameters), then fall back to explicit page=N URLs.
         pagination_links = {}
         soup = __import__("bs4").BeautifulSoup(page1_response.text, "html.parser")
         for a in soup.find_all("a", href=True):
@@ -534,9 +531,6 @@ def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
                     "error": f"{type(exc).__name__}: {exc}",
                 })
 
-        # Deloox can expose the final page with a harmless trailing space in q
-        # (e.g. Hawas+). If explicit page=3 produced no products, test that
-        # store-generated form once; this remains generic and read-only.
         page3_info = next((x for x in out["pages"] if x.get("page") == 3), None)
         if page3_info and page3_info.get("product_url_count", 0) == 0:
             fallback_url = set_query(page1_response.url, 3, query + " ")
@@ -563,8 +557,6 @@ def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
                         "error": f"{type(exc).__name__}: {exc}",
                     })
 
-        # Execute the exact deployed discovery path once, after the direct page
-        # inspection. This is read-only and is the critical comparison point.
         discover_candidates = list(discover_fn(session, query) or [])
         discover_set = set(discover_candidates)
         page_union = list(all_product_urls)
@@ -599,6 +591,7 @@ def diagnose_deloox_search_pagination(q: str = Query("Hawas")):
         if session is not None:
             session.close()
         out["elapsed_sec"] = round(time.monotonic() - started, 3)
+
 
 @router.get("/catalog-gap-repair-deloox")
 def catalog_gap_repair_deloox(q: str = Query(..., min_length=2)):
@@ -790,6 +783,125 @@ def catalog_gap_repair_deloox(q: str = Query(..., min_length=2)):
         out["error"] = f"{type(exc).__name__}: {exc}"
         return out
 
+    finally:
+        if session is not None:
+            session.close()
+        out["elapsed_sec"] = round(time.monotonic() - started, 3)
+
+
+@router.get("/diagnose-deloox-product-url")
+def diagnose_deloox_product_url(
+    url: str = Query(..., min_length=20),
+    q: str = Query(""),
+):
+    """
+    READ-ONLY, single-URL Deloox product diagnostic.
+
+    This deliberately bypasses _discover() and calls the deployed Deloox
+    _product() parser on exactly one supplied product URL. It makes one
+    product-page HTTP request only. It does not call ProductMatcher,
+    catalog_engine, hydration, discovery, resync, or production search.
+
+    Purpose: isolate the retailer scraper price from the persistent catalog
+    price for a known Deloox product URL.
+    """
+    started = time.monotonic()
+    product_url = str(url or "").strip()
+    query = str(q or "").strip()
+
+    out = {
+        "diagnostic": "deloox-single-product-v1",
+        "ok": False,
+        "read_only": True,
+        "store": "deloox",
+        "query": query,
+        "url": product_url,
+        "writes": False,
+        "discovery_called": False,
+        "product_matcher_called": False,
+        "catalog_called": False,
+        "purpose": (
+            "one HTTP request to one Deloox product page, followed by the "
+            "deployed Deloox _product() parser; isolates scraper output"
+        ),
+    }
+
+    session = None
+    try:
+        from urllib.parse import urlparse
+        from scrapers.deloox import scraper
+
+        parsed = urlparse(product_url)
+        allowed_hosts = set(getattr(scraper, "DELOOX_HOSTS", ()) or ())
+        hostname = str(parsed.hostname or "").lower()
+
+        if hostname not in allowed_hosts:
+            out["error"] = "url_not_allowed_for_deloox"
+            out["allowed_hosts"] = sorted(allowed_hosts)
+            return out
+
+        product_fn = getattr(scraper, "_product", None)
+        if not callable(product_fn):
+            out["error"] = "_product_not_found_in_deployed_deloox_scraper"
+            return out
+
+        headers = getattr(scraper, "HEADERS", HEADERS)
+        timeout = getattr(scraper, "TIMEOUT", (3.5, 8.0))
+
+        session = requests.Session()
+        session.headers.update(headers)
+
+        response = session.get(
+            product_url,
+            headers=headers,
+            timeout=timeout,
+            allow_redirects=True,
+        )
+
+        out["http_status"] = response.status_code
+        out["final_url"] = response.url or product_url
+        out["response_bytes"] = len(response.content or b"")
+
+        if response.status_code >= 400:
+            out["error"] = f"product_http_{response.status_code}"
+            return out
+
+        item = product_fn(out["final_url"], response.text, query)
+
+        if not isinstance(item, dict):
+            out["error"] = "deloox_product_parser_returned_none"
+            return out
+
+        offer = item.get("offer")
+        source = item.get("source")
+        identity = item.get("identity")
+        attributes = item.get("attributes")
+
+        out["product"] = {
+            "name": item.get("name"),
+            "source": source,
+            "identity": identity,
+            "attributes": attributes,
+            "offer": offer,
+            "price": offer.get("price") if isinstance(offer, dict) else None,
+            "currency": offer.get("currency") if isinstance(offer, dict) else None,
+            "availability": (
+                offer.get("availability")
+                if isinstance(offer, dict)
+                else None
+            ),
+        }
+
+        out["diagnosis"] = "DELOOX_SCRAPER_PRODUCT_PARSED"
+        out["ok"] = True
+        return out
+
+    except requests.RequestException as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        return out
     finally:
         if session is not None:
             session.close()
