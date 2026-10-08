@@ -121,6 +121,9 @@ HYDRATION_LEASE_SECONDS = 120.0
 HYDRATION_MAX_ATTEMPTS = 8
 HYDRATION_BACKOFF_SECONDS = (60.0, 300.0, 1800.0, 7200.0, 21600.0, 86400.0)
 HYDRATION_RETRY_JITTER = 0.20
+# A successful product-page hydration is considered fresh for one day.
+# After this TTL, the record becomes eligible for generic re-hydration.
+HYDRATION_REFRESH_SECONDS = 86400.0
 
 # Sitemap protocol limits are per discovered sitemap, not a product limit.
 MAX_SITEMAPS_PER_STORE = 1000
@@ -2880,6 +2883,7 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
                           LEFT JOIN store_products p
                             ON p.store=u.store AND p.url=u.url
                            AND p.fetch_status='OK'
+                           AND p.fetched_at >= ?
                          WHERE f.store=?
                            AND catalog_search_fts MATCH ?
                            AND u.active=1
@@ -2889,7 +2893,8 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
                 try:
                     candidates = conn.execute(
                         sql,
-                        (store, fts_query, term_candidate_limit),
+                        (time.time() - HYDRATION_REFRESH_SECONDS,
+                         store, fts_query, term_candidate_limit),
                     ).fetchall()
                 except sqlite3.OperationalError:
                     if _search_interrupted():
@@ -3023,12 +3028,15 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                   LEFT JOIN store_products p
                     ON p.store=u.store AND p.url=u.url
                    AND p.fetch_status='OK'
+                   AND p.fetched_at >= ?
                  WHERE u.store=? AND u.active=1
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
             candidates = conn.execute(
-                sql, [store, *params, max(128, limit or 128)]
+                sql,
+                [time.time() - HYDRATION_REFRESH_SECONDS,
+                 store, *params, max(128, limit or 128)],
             ).fetchall()
             for r in candidates:
                 url = str(r['url'] or '').strip()
@@ -3277,7 +3285,23 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      ON u.store=q.store AND u.url=q.url
                    WHERE q.store=?
                      AND u.active=1
-                     AND q.state IN ('PENDING','ERROR')
+                     AND (
+                         q.state IN ('PENDING','ERROR')
+                         OR (
+                             q.state='DONE'
+                             AND EXISTS (
+                                 SELECT 1
+                                 FROM store_products sp
+                                 WHERE sp.store=q.store
+                                   AND sp.url=q.url
+                                   AND sp.fetch_status='OK'
+                                   AND (
+                                       sp.fetched_at IS NULL
+                                       OR sp.fetched_at < ?
+                                   )
+                             )
+                         )
+                     )
                      AND q.available_at <= ?
                      AND (
                          SELECT COUNT(*)
@@ -3290,7 +3314,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      q.available_at ASC,
                      q.first_seen_at ASC
                    LIMIT 1""",
-                (store, now),
+                (store, now - HYDRATION_REFRESH_SECONDS, now),
             ).fetchone()
             if row:
                 chosen = row
@@ -3309,7 +3333,23 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                    last_started_at=?,
                    attempts=attempts+1
                WHERE store=? AND url=?
-                 AND state IN ('PENDING','ERROR')
+                 AND (
+                     state IN ('PENDING','ERROR')
+                     OR (
+                         state='DONE'
+                         AND EXISTS (
+                             SELECT 1
+                             FROM store_products sp
+                             WHERE sp.store=hydration_queue.store
+                               AND sp.url=hydration_queue.url
+                               AND sp.fetch_status='OK'
+                               AND (
+                                   sp.fetched_at IS NULL
+                                   OR sp.fetched_at < ?
+                               )
+                         )
+                     )
+                 )
                  AND available_at <= ?""",
             (
                 now + float(lease_seconds),
@@ -3317,6 +3357,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                 now,
                 chosen['store'],
                 chosen['url'],
+                now - HYDRATION_REFRESH_SECONDS,
                 now,
             ),
         ).rowcount
