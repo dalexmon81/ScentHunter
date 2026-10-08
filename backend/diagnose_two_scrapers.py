@@ -1172,107 +1172,174 @@ def diagnose_catalog_path(
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
 
-@router.get("/diagnose-parfumzentrum-product-url")
-def diagnose_parfumzentrum_product_url(
-    url: str = Query(...),
-    q: str = Query(""),
+@router.get("/diagnose-parfumzentrum-catalog-record")
+def diagnose_parfumzentrum_catalog_record(
+    url: str = Query(""),
+    product_id: str = Query(""),
 ):
-    """Read-only surgical test of the deployed ParfumZentrum product parser.
+    """Read-only inspection of the exact ParfumZentrum catalog persistence record.
 
-    Exactly one call is made to the retailer-specific _extract_product()
-    parser for the supplied product URL. No discovery, catalog search,
-    hydration, matcher, aggregation, or database write is executed.
+    This endpoint reads only store_urls, store_products and hydration_queue for
+    one exact URL/product id. It does not call the scraper, discovery,
+    hydration, ProductMatcher, search, or any database write.
     """
     started = time.monotonic()
-    raw_url = str(url or "").strip()
-    query = str(q or "").strip()
+    target_url = str(url or "").strip()
+    target_product_id = str(product_id or "").strip()
 
     base = {
-        "diagnostic": "parfumzentrum-single-product-parser-v1",
+        "diagnostic": "parfumzentrum-catalog-record-v1",
         "ok": False,
         "read_only": True,
         "store": "parfumzentrum",
-        "query": query,
-        "url": raw_url,
+        "url": target_url,
+        "product_id": target_product_id,
+        "scraper_called": False,
         "discovery_called": False,
-        "catalog_called": False,
         "hydration_called": False,
         "product_matcher_called": False,
         "database_written": False,
         "purpose": (
-            "one exact call to the deployed ParfumZentrum "
-            "_extract_product(url, query); no discovery or catalog path"
+            "exact read-only inspection of the persisted ParfumZentrum record "
+            "across store_urls, store_products and hydration_queue"
         ),
     }
 
     try:
-        from urllib.parse import urlparse
+        from catalog_engine import db
 
-        parsed = urlparse(raw_url)
-        host = (parsed.hostname or "").lower()
-        if host not in {"parfum-zentrum.de", "www.parfum-zentrum.de"}:
+        if not target_url and not target_product_id:
             return {
                 **base,
-                "error": "url_not_allowed_for_store",
-                "allowed_hosts": [
-                    "parfum-zentrum.de",
-                    "www.parfum-zentrum.de",
-                ],
+                "error": "url_or_product_id_required",
                 "elapsed_sec": round(time.monotonic() - started, 3),
             }
 
-        if not parsed.path.lower().endswith("/"):
-            pass
+        conn = db()
+        try:
+            def table_columns(table):
+                rows = conn.execute(
+                    "PRAGMA table_info(" + table + ")"
+                ).fetchall()
+                return [str(row[1]) for row in rows]
 
-        from scrapers.parfumzentrum import scraper
+            def fetch_rows(table, where_sql, params):
+                columns = table_columns(table)
+                if not columns:
+                    return {
+                        "table_exists": False,
+                        "columns": [],
+                        "rows": [],
+                    }
+                rows = conn.execute(
+                    "SELECT * FROM " + table + " WHERE " + where_sql,
+                    params,
+                ).fetchall()
+                return {
+                    "table_exists": True,
+                    "columns": columns,
+                    "rows": [dict(row) for row in rows],
+                }
 
-        parser = getattr(scraper, "_extract_product", None)
-        if not callable(parser):
-            return {
+            url_params = []
+            if target_url:
+                url_where = "store = ? AND url = ?"
+                url_params = ["parfumzentrum", target_url]
+            else:
+                url_where = "store = ? AND url LIKE ?"
+                url_params = ["parfumzentrum", "%" + target_product_id + "%"]
+
+            products_where = url_where
+            products_params = list(url_params)
+
+            queue_where = url_where
+            queue_params = list(url_params)
+
+            store_urls = fetch_rows(
+                "store_urls",
+                url_where,
+                url_params,
+            )
+            store_products = fetch_rows(
+                "store_products",
+                products_where,
+                products_params,
+            )
+            hydration_queue = fetch_rows(
+                "hydration_queue",
+                queue_where,
+                queue_params,
+            )
+
+            # Also expose every persisted row for the same product id when the
+            # caller supplied one, without changing any database state.
+            by_id = {}
+            if target_product_id:
+                for table in ("store_urls", "store_products", "hydration_queue"):
+                    columns = table_columns(table)
+                    if "url" not in columns:
+                        continue
+                    rows = conn.execute(
+                        "SELECT * FROM " + table +
+                        " WHERE store = ? AND url LIKE ?",
+                        ("parfumzentrum", "%" + target_product_id + "%"),
+                    ).fetchall()
+                    by_id[table] = [dict(row) for row in rows]
+
+            product_rows = store_products.get("rows", [])
+            queue_rows = hydration_queue.get("rows", [])
+            url_rows = store_urls.get("rows", [])
+
+            persisted_prices = []
+            for row in product_rows:
+                for key in ("price", "price_num", "current_price"):
+                    if key in row:
+                        persisted_prices.append({
+                            "field": key,
+                            "value": row.get(key),
+                        })
+
+            result = {
                 **base,
-                "error": "parfumzentrum._extract_product_unavailable",
-                "scraper_module": getattr(scraper, "__file__", None),
-                "elapsed_sec": round(time.monotonic() - started, 3),
+                "ok": True,
+                "store_urls": store_urls,
+                "store_products": store_products,
+                "hydration_queue": hydration_queue,
+                "product_id_lookup": by_id,
+                "summary": {
+                    "store_urls_rows": len(url_rows),
+                    "store_products_rows": len(product_rows),
+                    "hydration_queue_rows": len(queue_rows),
+                    "persisted_prices": persisted_prices,
+                    "store_product_fetch_statuses": [
+                        row.get("fetch_status")
+                        for row in product_rows
+                        if isinstance(row, dict)
+                    ],
+                    "hydration_states": [
+                        row.get("state")
+                        for row in queue_rows
+                        if isinstance(row, dict)
+                    ],
+                },
             }
 
-        item = parser(raw_url, query)
+            if product_rows:
+                result["diagnosis"] = (
+                    "STORE_PRODUCTS_RECORD_FOUND: the persisted catalog record "
+                    "for this exact ParfumZentrum URL is exposed above. Compare "
+                    "its price/fetch timestamps/state with the live parser result."
+                )
+            else:
+                result["diagnosis"] = (
+                    "NO_STORE_PRODUCTS_RECORD_FOR_EXACT_URL: no persisted "
+                    "store_products row matched this exact ParfumZentrum URL."
+                )
 
-        result = {
-            **base,
-            "ok": True,
-            "scraper_module": getattr(scraper, "__file__", None),
-            "parser": "_extract_product",
-            "parser_returned": item is not None,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-        }
-
-        if isinstance(item, dict):
-            result["item"] = {
-                "name": item.get("name"),
-                "brand": item.get("brand"),
-                "url": item.get("url") or item.get("product_url"),
-                "price": item.get("price"),
-                "price_num": item.get("price_num"),
-                "currency": item.get("currency"),
-                "availability": item.get("availability"),
-                "size_ml": item.get("size_ml"),
-                "sku": item.get("sku"),
-                "product_id": item.get("product_id"),
-            }
-            result["diagnosis"] = (
-                "PARSER_RETURNED_PRODUCT: the deployed ParfumZentrum "
-                "_extract_product() accepted this exact URL. The returned "
-                "price above is the price produced by the scraper itself, "
-                "before catalog persistence, matcher, dedupe, API, or frontend."
-            )
-        else:
-            result["item"] = None
-            result["diagnosis"] = (
-                "PARSER_RETURNED_NONE: the deployed ParfumZentrum parser "
-                "rejected this exact URL. No downstream layer was executed."
-            )
-
-        return result
+            result["elapsed_sec"] = round(time.monotonic() - started, 3)
+            return result
+        finally:
+            conn.close()
 
     except Exception as exc:
         return {
@@ -1280,4 +1347,3 @@ def diagnose_parfumzentrum_product_url(
             "error": f"{type(exc).__name__}: {exc}",
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
-
