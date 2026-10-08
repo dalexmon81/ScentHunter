@@ -2807,9 +2807,15 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         total_scan_budget = 2048
     else:
         total_scan_budget = max(256, min(2048, limit * 16))
+
+    # FTS is only the first candidate-generation stage.  Do not cap the FTS
+    # window at 64 rows: broad family queries can legitimately have hundreds
+    # of catalog rows containing the same tokens, and a hard 64-row cutoff can
+    # hide valid variants before ProductMatcher ever sees them.  Keep the
+    # existing overall budget and distribute it across alternative terms.
     term_candidate_limit = max(
-        8,
-        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
+        64,
+        min(512, max(1, total_scan_budget // max(1, len(token_sets))))
     )
 
     interrupted = False
