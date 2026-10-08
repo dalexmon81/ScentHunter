@@ -265,6 +265,27 @@ _SCHEMA_READY = False
 _LOCAL_SEARCH_INDEX_CACHE = {}
 _LOCAL_SEARCH_INDEX_LOCK = threading.Lock()
 
+# Keep background hydration from starting immediately after a foreground search.
+# A completed search can be followed by another search within seconds; starting
+# HTTP hydration in that gap makes later searches contend for CPU/network/SQLite
+# resources and produces the characteristic 'first searches fast, later searches
+# slow' pattern. This is a generic scheduler guard, not a product exception.
+_SEARCH_IDLE_GRACE_SECONDS = 8.0
+_LAST_FOREGROUND_SEARCH_FINISHED = 0.0
+_LAST_FOREGROUND_SEARCH_LOCK = threading.Lock()
+
+
+def _foreground_search_idle_grace_active():
+    with _LAST_FOREGROUND_SEARCH_LOCK:
+        finished = float(_LAST_FOREGROUND_SEARCH_FINISHED or 0.0)
+    return finished > 0.0 and (time.monotonic() - finished) < _SEARCH_IDLE_GRACE_SECONDS
+
+
+def _mark_foreground_search_finished():
+    global _LAST_FOREGROUND_SEARCH_FINISHED
+    with _LAST_FOREGROUND_SEARCH_LOCK:
+        _LAST_FOREGROUND_SEARCH_FINISHED = time.monotonic()
+
 
 def _update_local_search_index_product(store, url, slug=None, name=None, brand=None):
     """Update one hydrated product inside an already-built local search index.
@@ -2772,6 +2793,20 @@ def _search_db():
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
+    """Run the foreground local search and record its completion time."""
+    try:
+        return _search_local_impl(
+            query,
+            per_store=per_store,
+            search_terms=search_terms,
+            cancel_event=cancel_event,
+            deadline=deadline,
+        )
+    finally:
+        _mark_foreground_search_finished()
+
+
+def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate a bounded local-catalog candidate set for the fast search path.
 
     FTS is candidate generation only. Whole-token verification and
@@ -2807,12 +2842,9 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         total_scan_budget = 2048
     else:
         total_scan_budget = max(256, min(2048, limit * 16))
-
-    # FTS is only the first candidate-generation stage.  Do not cap the FTS
-    # window at 64 rows: broad family queries can legitimately have hundreds
-    # of catalog rows containing the same tokens, and a hard 64-row cutoff can
-    # hide valid variants before ProductMatcher ever sees them.  Keep the
-    # existing overall budget and distribute it across alternative terms.
+    # FTS is only the first candidate-generation stage. Keep the existing
+    # overall scan budget while allowing broad family queries to see more
+    # candidates before the final per-store limit is applied.
     term_candidate_limit = max(
         64,
         min(512, max(1, total_scan_budget // max(1, len(token_sets))))
@@ -4168,7 +4200,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # Background coverage/hydration is lower priority than the
             # foreground catalog search.  Never start another retailer
             # scraper or hydration batch while a user search is active.
-            if _foreground_search_running():
+            if _foreground_search_running() or _foreground_search_idle_grace_active():
                 if stop_event is not None:
                     stop_event.wait(0.25)
                 else:
@@ -4196,7 +4228,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                         flush=True,
                     )
 
-            if _foreground_search_running():
+            if _foreground_search_running() or _foreground_search_idle_grace_active():
                 if stop_event is not None:
                     stop_event.wait(0.25)
                 else:
