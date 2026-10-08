@@ -797,20 +797,17 @@ def diagnose_deloox_product_url(
     """
     READ-ONLY, single-URL Deloox product diagnostic.
 
-    This deliberately bypasses _discover() and calls the deployed Deloox
-    _product() parser on exactly one supplied product URL. It makes one
-    product-page HTTP request only. It does not call ProductMatcher,
-    catalog_engine, hydration, discovery, resync, or production search.
-
-    Purpose: isolate the retailer scraper price from the persistent catalog
-    price for a known Deloox product URL.
+    One HTTP request only. Replays the deployed Deloox parsing gates
+    independently so a None result from _product() can be attributed to the
+    exact gate that rejected the page. It never writes catalog state and never
+    calls discovery, ProductMatcher, hydration, resync or production search.
     """
     started = time.monotonic()
     product_url = str(url or "").strip()
     query = str(q or "").strip()
 
     out = {
-        "diagnostic": "deloox-single-product-v1",
+        "diagnostic": "deloox-single-product-v2",
         "ok": False,
         "read_only": True,
         "store": "deloox",
@@ -821,8 +818,8 @@ def diagnose_deloox_product_url(
         "product_matcher_called": False,
         "catalog_called": False,
         "purpose": (
-            "one HTTP request to one Deloox product page, followed by the "
-            "deployed Deloox _product() parser; isolates scraper output"
+            "one HTTP request to one Deloox product page; expose the exact "
+            "_product() rejection gate and, if reached, the scraper price"
         ),
     }
 
@@ -866,34 +863,85 @@ def diagnose_deloox_product_url(
             out["error"] = f"product_http_{response.status_code}"
             return out
 
-        item = product_fn(out["final_url"], response.text, query)
+        # Reproduce the parsing gates used by the deployed _product(), but
+        # expose each result instead of collapsing every failure to None.
+        from bs4 import BeautifulSoup
 
-        if not isinstance(item, dict):
-            out["error"] = "deloox_product_parser_returned_none"
-            return out
+        soup = BeautifulSoup(response.text, "html.parser")
+        jsonld_fn = getattr(scraper, "_jsonld", None)
+        clean_fn = getattr(scraper, "clean", None)
+        matches_fn = getattr(scraper, "matches", None)
+        url_match_fn = getattr(scraper, "_url_matches_product_name", None)
+        visible_price_fn = getattr(scraper, "_visible_current_price", None)
+        parse_price_fn = getattr(scraper, "parse_price", None)
 
-        offer = item.get("offer")
-        source = item.get("source")
-        identity = item.get("identity")
-        attributes = item.get("attributes")
+        data = jsonld_fn(soup) if callable(jsonld_fn) else {}
+        h1 = soup.find("h1")
+        h1_name = clean_fn(h1.get_text(" ", strip=True)) if h1 and callable(clean_fn) else (
+            h1.get_text(" ", strip=True) if h1 else ""
+        )
 
-        out["product"] = {
-            "name": item.get("name"),
-            "source": source,
-            "identity": identity,
-            "attributes": attributes,
-            "offer": offer,
-            "price": offer.get("price") if isinstance(offer, dict) else None,
-            "currency": offer.get("currency") if isinstance(offer, dict) else None,
-            "availability": (
-                offer.get("availability")
-                if isinstance(offer, dict)
-                else None
-            ),
+        jsonld_name = clean_fn(data.get("name")) if isinstance(data, dict) and callable(clean_fn) else (
+            str(data.get("name") or "").strip() if isinstance(data, dict) else ""
+        )
+        name = jsonld_name or h1_name
+
+        out["gates"] = {
+            "jsonld_product_found": bool(data),
+            "jsonld_name": jsonld_name,
+            "h1_name": h1_name,
+            "selected_name": name,
+            "query_match": bool(matches_fn(name, query)) if callable(matches_fn) else None,
+            "url_name_match": bool(url_match_fn(out["final_url"], name)) if callable(url_match_fn) and name else None,
         }
 
-        out["diagnosis"] = "DELOOX_SCRAPER_PRODUCT_PARSED"
-        out["ok"] = True
+        offers = data.get("offers") if isinstance(data, dict) else None
+        offers_list = offers if isinstance(offers, list) else [offers]
+        offer = next((x for x in offers_list if isinstance(x, dict)), {})
+
+        visible_price = visible_price_fn(soup) if callable(visible_price_fn) else None
+        jsonld_price_raw = offer.get("price") if isinstance(offer, dict) else None
+        jsonld_price = parse_price_fn(jsonld_price_raw) if callable(parse_price_fn) else None
+
+        out["price_sources"] = {
+            "visible_current_price": visible_price,
+            "jsonld_offer_price_raw": jsonld_price_raw,
+            "jsonld_offer_price_parsed": jsonld_price,
+            "would_use_price": visible_price if visible_price is not None else jsonld_price,
+            "jsonld_offer": offer,
+        }
+
+        parser_item = product_fn(out["final_url"], response.text, query)
+
+        if isinstance(parser_item, dict):
+            parser_offer = parser_item.get("offer")
+            out["product"] = {
+                "name": parser_item.get("name"),
+                "offer": parser_offer,
+                "price": parser_offer.get("price") if isinstance(parser_offer, dict) else None,
+                "currency": parser_offer.get("currency") if isinstance(parser_offer, dict) else None,
+                "availability": parser_offer.get("availability") if isinstance(parser_offer, dict) else None,
+            }
+            out["diagnosis"] = "DELOOX_SCRAPER_PRODUCT_PARSED"
+            out["ok"] = True
+            return out
+
+        gate = out["gates"]
+        if not gate["jsonld_product_found"]:
+            reason = "JSONLD_PRODUCT_NOT_FOUND"
+        elif not gate["selected_name"]:
+            reason = "PRODUCT_NAME_NOT_FOUND"
+        elif not gate["query_match"]:
+            reason = "QUERY_MATCH_FAILED"
+        elif gate["url_name_match"] is False:
+            reason = "URL_NAME_MATCH_FAILED"
+        elif visible_price is None and jsonld_price is None:
+            reason = "PRICE_NOT_FOUND"
+        else:
+            reason = "PRODUCT_RETURNED_NONE_DESPITE_VISIBLE_PARSER_GATES"
+
+        out["diagnosis"] = reason
+        out["error"] = "deloox_product_parser_returned_none"
         return out
 
     except requests.RequestException as exc:
@@ -906,3 +954,4 @@ def diagnose_deloox_product_url(
         if session is not None:
             session.close()
         out["elapsed_sec"] = round(time.monotonic() - started, 3)
+
