@@ -632,18 +632,24 @@ def _node_price(node):
 
 
 def _bad_price_context(node):
+    """Return True only when this price node belongs to a non-public price.
+
+    Parfum-Zentrum can show the normal selling price and a lower
+    ``Preis inkl. Code`` price in the same purchase area.  Looking at the
+    text of a large ancestor is unsafe because that ancestor can contain
+    both prices.  Inspect the node itself and only its nearest structural
+    ancestors/labels instead.
+    """
     current = node
 
-    for _ in range(8):
+    for depth in range(5):
         if current is None:
             break
 
-        text = (
-            current.get_text(
-                " ",
-                strip=True,
-            ).lower()
-        )
+        text = current.get_text(
+            " ",
+            strip=True,
+        ).lower()
 
         marker = (
             " ".join(
@@ -655,6 +661,8 @@ def _bad_price_context(node):
             ).lower()
         )
 
+        # The node itself or a very small wrapper explicitly labels this
+        # price as coupon/code/discount pricing.
         if any(
             word in text
             for word in (
@@ -662,11 +670,30 @@ def _bad_price_context(node):
                 "pro liter",
                 "per liter",
                 "€/l",
+                "/l",
                 "preis inkl. code",
                 "preis inkl code",
+                "inkl. code",
+                "inkl code",
+                "coupon",
+                "gutschein",
+                "rabattcode",
+                "discount-code",
+                "discount code",
             )
         ):
-            return True
+            # A purchase container can legitimately contain BOTH the public
+            # price and a code price. If this ancestor contains multiple
+            # monetary values, it is not itself the code-price node.
+            price_count = len(re.findall(
+                r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+                r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€"
+                r"|(?<![\d.,])\d{1,4}\s*€",
+                text,
+                re.I,
+            ))
+            if depth == 0 or (depth <= 1 and price_count <= 1):
+                return True
 
         if any(
             word in marker
@@ -675,16 +702,62 @@ def _bad_price_context(node):
                 "voucher",
                 "gutschein",
                 "rabattcode",
+                "discount-code",
                 "discount",
-                "recommend",
-                "related",
-                "cross-sell",
-                "upsell",
+                "old-price",
+                "old_price",
             )
         ):
             return True
 
         current = current.parent
+
+    # A nearby label can explicitly identify the adjacent price as code-only.
+    parent = node.parent
+    if parent is not None:
+        siblings = list(parent.children)
+        try:
+            index = siblings.index(node)
+        except ValueError:
+            index = -1
+
+        if index >= 0:
+            nearby = []
+            for sibling in siblings[max(0, index - 2): index + 3]:
+                if sibling is node:
+                    continue
+                if hasattr(sibling, "get_text"):
+                    sibling_text = sibling.get_text(" ", strip=True)
+                    if re.search(
+                        r"(?<![\d.,])\d+(?:[.,]\d{1,2})?\s*€",
+                        sibling_text,
+                        re.I,
+                    ):
+                        continue
+                    nearby.append(sibling_text)
+                elif isinstance(sibling, str):
+                    sibling_text = str(sibling)
+                    if re.search(
+                        r"(?<![\d.,])\d+(?:[.,]\d{1,2})?\s*€",
+                        sibling_text,
+                        re.I,
+                    ):
+                        continue
+                    nearby.append(sibling_text)
+
+            nearby_text = _norm(" ".join(nearby))
+            if any(
+                marker in nearby_text
+                for marker in (
+                    "preis inkl code",
+                    "inkl code",
+                    "rabattcode",
+                    "gutschein",
+                    "coupon",
+                    "discount code",
+                )
+            ):
+                return True
 
     return False
 
@@ -734,16 +807,65 @@ def _is_struck(node):
 
 
 def _extract_price(soup, data):
-    """Return the active customer-facing price of the current product.
+    """Return the active public customer-facing price.
 
-    The page contains many other product cards and prices (recommendations,
-    navigation, related products). A global lowest-price scan is therefore
-    unsafe. First anchor extraction to the current product H1 and its
-    purchase area; only then use generic visible/structured fallbacks.
+    The product page can contain multiple prices at once: the public selling
+    price, an old/struck price, a code/coupon price, unit price and prices from
+    related products.  The public selling price must win without relying on a
+    product-specific rule.
     """
-    # PRIMARY: extract from the DOM subtree belonging to the current product.
-    # This prevents unrelated recommendation prices such as 11,95 EUR from
-    # winning simply because they are cheaper.
+    candidates = []
+
+    def add_candidate(node, base_score=0):
+        if node is None or _is_struck(node) or _bad_price_context(node):
+            return
+
+        price = _node_price(node)
+        if price is None:
+            return
+
+        text = _clean(node.get_text(" ", strip=True))
+        low = text.casefold()
+        marker = (
+            " ".join(node.get("class", [])).casefold()
+            + " "
+            + str(node.get("id", "")).casefold()
+        )
+
+        score = base_score
+
+        if node.has_attr("itemprop") and str(node.get("itemprop")).lower() == "price":
+            score += 100
+        if "data-price" in node.attrs or "data-product-price" in node.attrs:
+            score += 90
+        if any(word in marker for word in ("current", "final", "sale", "product-price", "product_price")):
+            score += 45
+        if "in den warenkorb" in low:
+            score += 60
+        if "versandbereit" in low or "auf lager" in low or "sofort lieferbar" in low:
+            score += 40
+        if "inkl. mwst" in low or "inkl mwst" in low:
+            score += 25
+
+        # Explicitly penalise code/coupon wording if it survived the context
+        # filter. It should never beat an otherwise equivalent public price.
+        if any(
+            marker_text in low
+            for marker_text in (
+                "inkl. code",
+                "inkl code",
+                "rabattcode",
+                "gutschein",
+                "coupon",
+                "discount code",
+            )
+        ):
+            score -= 500
+
+        candidates.append((score, price, node))
+
+    # 1) Current product purchase area around H1. Do not scan the whole page
+    # first because recommendations contain unrelated prices.
     h1 = soup.find("h1")
     if h1:
         current = h1
@@ -753,55 +875,160 @@ def _extract_price(soup, data):
                 break
 
             text = current.get_text(" ", strip=True)
-            low = text.lower()
+            low = text.casefold()
             if "€" not in text:
                 continue
 
             purchase_score = 0
             if "in den warenkorb" in low:
                 purchase_score += 300
-            if "auf lager" in low or "versandbereit" in low:
+            if "auf lager" in low or "versandbereit" in low or "sofort lieferbar" in low:
                 purchase_score += 200
             if "inkl. mwst" in low or "inkl mwst" in low:
                 purchase_score += 100
 
-            if purchase_score <= 0:
-                continue
-
             for node in current.find_all(
-                ["span", "div", "p", "strong", "b", "ins"]
+                ["span", "div", "p", "strong", "b", "ins", "meta"]
             ):
-                node_text = node.get_text(" ", strip=True)
-                if "€" not in node_text:
+                if node.name == "meta" and not node.has_attr("content"):
                     continue
+                add_candidate(node, purchase_score)
 
-                node_low = node_text.lower()
-                if any(term in node_low for term in (
-                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
-                    "coupon", "gutschein", "rabattcode", "discount-code",
-                )):
-                    continue
-                if _is_struck(node):
-                    continue
-
-                matches = re.findall(
-                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-                    node_text,
-                    re.I,
-                )
-
-                for match in matches:
-                    price = _parse_price(match)
-                    if price is not None:
-                        return price
-
-            # Do not climb into the entire document.
-            if distance >= 5:
+            if candidates and distance >= 3:
                 break
 
-    # SECONDARY: generic customer-facing visible prices, with context scoring.
-    visible_candidates = []
+    # 2) Semantic price elements anywhere on the page. This is a fallback,
+    # but still uses context scoring and the code/struck-price exclusions.
+    selectors = (
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
+        ".product-price",
+        ".product_price",
+        ".price--current",
+        ".price-current",
+        ".current-price",
+        ".current_price",
+        ".final-price",
+        ".final_price",
+        ".sale-price",
+        ".sale_price",
+    )
+
+    for selector in selectors:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes:
+            add_candidate(node, 50)
+
+    if candidates:
+        candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
+        )
+        return candidates[0][1]
+
+    # 3) JSON-LD is only a fallback. Do not trust it when the page visibly
+    # advertises a separate code/coupon price, because JSON-LD can expose the
+    # discounted offer rather than the public displayed selling price.
+    page_text = _norm(soup.get_text(" ", strip=True))
+    has_code_price = any(
+        marker in page_text
+        for marker in (
+            "preis inkl code",
+            "inkl code",
+            "rabattcode",
+            "gutschein",
+            "coupon",
+        )
+    )
+
+    if not has_code_price:
+        return _jsonld_price(data)
+
+    return None
+
+
+def _identity_texts(soup, data):
+    """Collect independent product-title surfaces for generic validation."""
+    values = []
+
+    jsonld_name = _jsonld_value(data, "name")
+    if jsonld_name:
+        values.append(jsonld_name)
+
+    h1 = soup.find("h1")
+    if h1:
+        values.append(" ".join(h1.stripped_strings))
+
+    title = soup.find("title")
+    if title:
+        values.append(title.get_text(" ", strip=True))
+
+    og_title = soup.select_one('meta[property="og:title"]')
+    if og_title and og_title.get("content"):
+        values.append(og_title.get("content"))
+
+    return [_clean(value) for value in values if _clean(value)]
+
+
+def _looks_like_perfume_identity(values, requested_size=None):
+    texts = [_norm(value) for value in values if value]
+    combined = " ".join(texts)
+
+    # Gift/bundle products must not masquerade as the requested single
+    # fragrance merely because their title also contains the fragrance name.
+    strong_markers = (
+        "geschenkset",
+        "gift set",
+        "giftset",
+        "coffret",
+        "bundle",
+        "geschenk box",
+        "gift box",
+        "geschenkpaket",
+        "set mit",
+    )
+    if any(marker in combined for marker in strong_markers):
+        return False
+
+    # Some pages expose the set wording only in H1/title while JSON-LD names
+    # the underlying fragrance. A mini + deodorant/body product combination is
+    # therefore also a generic set signature.
+    has_mini = " mini " in f" {combined} "
+    has_companion = any(
+        marker in combined
+        for marker in (
+            "deodorant",
+            "deo spray",
+            "deo stick",
+            "body lotion",
+            "body cream",
+            "duschgel",
+            "shampoo",
+        )
+    )
+    if has_mini and has_companion:
+        return False
+
+    # A requested normal-size fragrance should not resolve to a page whose
+    # identity is explicitly dominated by a small mini format.
+    if requested_size is not None and requested_size >= 30 and has_mini:
+        mini_sizes = []
+        for text in texts:
+            for match in re.findall(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b", text):
+                try:
+                    mini_sizes.append(float(match.replace(",", ".")))
+                except ValueError:
+                    pass
+        if mini_sizes and max(mini_sizes) < requested_size:
+            return False
+
+    return True
 
 
 def _extract_name(soup, data):
@@ -1467,8 +1694,17 @@ def _extract_product(url, query):
     ):
         return None
 
-    if not _looks_like_perfume(
-        name
+    identity_texts = _identity_texts(
+        soup,
+        data,
+    )
+
+    if not _looks_like_perfume(name):
+        return None
+
+    if not _looks_like_perfume_identity(
+        identity_texts,
+        requested_size=_requested_size(query),
     ):
         return None
 
