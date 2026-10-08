@@ -1172,175 +1172,106 @@ def diagnose_catalog_path(
     result["elapsed_sec"] = round(time.monotonic() - started, 3)
     return result
 
-@router.get("/diagnose-parfumzentrum-catalog-record")
-def diagnose_parfumzentrum_catalog_record(
-    url: str = Query(""),
-    product_id: str = Query(""),
+@router.get("/diagnose-parfumzentrum-refresh-path")
+def diagnose_parfumzentrum_refresh_path(
+    url: str = Query(...),
 ):
-    """Read-only inspection of the exact ParfumZentrum catalog persistence record.
+    """Read-only replay of catalog_engine.refresh_url() for one ParfumZentrum URL.
 
-    This endpoint reads only store_urls, store_products and hydration_queue for
-    one exact URL/product id. It does not call the scraper, discovery,
-    hydration, ProductMatcher, search, or any database write.
+    The real DB writer is replaced with a capture-only connection, so the exact
+    production refresh path can be executed without persisting anything.
     """
     started = time.monotonic()
-    target_url = str(url or "").strip()
-    target_product_id = str(product_id or "").strip()
-
+    target = str(url or "").strip()
     base = {
-        "diagnostic": "parfumzentrum-catalog-record-v1",
+        "diagnostic": "parfumzentrum-refresh-path-v1",
         "ok": False,
         "read_only": True,
         "store": "parfumzentrum",
-        "url": target_url,
-        "product_id": target_product_id,
-        "scraper_called": False,
-        "discovery_called": False,
-        "hydration_called": False,
-        "product_matcher_called": False,
+        "url": target,
         "database_written": False,
         "purpose": (
-            "exact read-only inspection of the persisted ParfumZentrum record "
-            "across store_urls, store_products and hydration_queue"
+            "execute the deployed catalog_engine.refresh_url() path for one "
+            "exact ParfumZentrum URL while replacing the real DB connection "
+            "with a capture-only connection"
         ),
     }
 
+    if not target.startswith("https://www.parfum-zentrum.de/"):
+        return {**base, "error": "url_not_allowed", "elapsed_sec": round(time.monotonic() - started, 3)}
+
+    class _CaptureConnection:
+        def __init__(self):
+            self.executions = []
+
+        def execute(self, sql, params=()):
+            self.executions.append({
+                "sql": " ".join(str(sql).split()),
+                "params": list(params) if params is not None else [],
+            })
+            return self
+
+        def commit(self):
+            return None
+
+        def close(self):
+            return None
+
     try:
-        from catalog_engine import db
+        import catalog_engine as ce
 
-        if not target_url and not target_product_id:
-            return {
-                **base,
-                "error": "url_or_product_id_required",
-                "elapsed_sec": round(time.monotonic() - started, 3),
-            }
+        capture = _CaptureConnection()
+        real_db = ce.db
+        real_index = getattr(ce, "_update_local_search_index_product", None)
+        ce.db = lambda: capture
+        if callable(real_index):
+            ce._update_local_search_index_product = lambda *args, **kwargs: None
 
-        conn = db()
         try:
-            def table_columns(table):
-                rows = conn.execute(
-                    "PRAGMA table_info(" + table + ")"
-                ).fetchall()
-                return [str(row[1]) for row in rows]
+            item = ce.refresh_url("parfumzentrum", target)
+        finally:
+            ce.db = real_db
+            if callable(real_index):
+                ce._update_local_search_index_product = real_index
 
-            def fetch_rows(table, where_sql, params):
-                columns = table_columns(table)
-                if not columns:
-                    return {
-                        "table_exists": False,
-                        "columns": [],
-                        "rows": [],
-                    }
-                rows = conn.execute(
-                    "SELECT * FROM " + table + " WHERE " + where_sql,
-                    params,
-                ).fetchall()
-                return {
-                    "table_exists": True,
-                    "columns": columns,
-                    "rows": [dict(row) for row in rows],
-                }
+        persisted_params = None
+        for execution in capture.executions:
+            params = execution.get("params") or []
+            if len(params) >= 16 and params[0] == "parfumzentrum" and params[1] == target:
+                persisted_params = params
+                break
 
-            url_params = []
-            if target_url:
-                url_where = "store = ? AND url = ?"
-                url_params = ["parfumzentrum", target_url]
-            else:
-                url_where = "store = ? AND url LIKE ?"
-                url_params = ["parfumzentrum", "%" + target_product_id + "%"]
-
-            products_where = url_where
-            products_params = list(url_params)
-
-            queue_where = url_where
-            queue_params = list(url_params)
-
-            store_urls = fetch_rows(
-                "store_urls",
-                url_where,
-                url_params,
-            )
-            store_products = fetch_rows(
-                "store_products",
-                products_where,
-                products_params,
-            )
-            hydration_queue = fetch_rows(
-                "hydration_queue",
-                queue_where,
-                queue_params,
-            )
-
-            # Also expose every persisted row for the same product id when the
-            # caller supplied one, without changing any database state.
-            by_id = {}
-            if target_product_id:
-                for table in ("store_urls", "store_products", "hydration_queue"):
-                    columns = table_columns(table)
-                    if "url" not in columns:
-                        continue
-                    rows = conn.execute(
-                        "SELECT * FROM " + table +
-                        " WHERE store = ? AND url LIKE ?",
-                        ("parfumzentrum", "%" + target_product_id + "%"),
-                    ).fetchall()
-                    by_id[table] = [dict(row) for row in rows]
-
-            product_rows = store_products.get("rows", [])
-            queue_rows = hydration_queue.get("rows", [])
-            url_rows = store_urls.get("rows", [])
-
-            persisted_prices = []
-            for row in product_rows:
-                for key in ("price", "price_num", "current_price"):
-                    if key in row:
-                        persisted_prices.append({
-                            "field": key,
-                            "value": row.get(key),
-                        })
-
-            result = {
-                **base,
-                "ok": True,
-                "store_urls": store_urls,
-                "store_products": store_products,
-                "hydration_queue": hydration_queue,
-                "product_id_lookup": by_id,
-                "summary": {
-                    "store_urls_rows": len(url_rows),
-                    "store_products_rows": len(product_rows),
-                    "hydration_queue_rows": len(queue_rows),
-                    "persisted_prices": persisted_prices,
-                    "store_product_fetch_statuses": [
-                        row.get("fetch_status")
-                        for row in product_rows
-                        if isinstance(row, dict)
-                    ],
-                    "hydration_states": [
-                        row.get("state")
-                        for row in queue_rows
-                        if isinstance(row, dict)
-                    ],
-                },
+        persisted = None
+        if persisted_params is not None:
+            persisted = {
+                "store": persisted_params[0],
+                "url": persisted_params[1],
+                "name": persisted_params[2],
+                "brand": persisted_params[3],
+                "sku": persisted_params[5],
+                "gtin": persisted_params[6],
+                "price": persisted_params[11],
+                "currency": persisted_params[12],
+                "availability": persisted_params[13],
+                "fetched_at": persisted_params[14],
+                "fetch_status": persisted_params[15],
             }
 
-            if product_rows:
-                result["diagnosis"] = (
-                    "STORE_PRODUCTS_RECORD_FOUND: the persisted catalog record "
-                    "for this exact ParfumZentrum URL is exposed above. Compare "
-                    "its price/fetch timestamps/state with the live parser result."
-                )
-            else:
-                result["diagnosis"] = (
-                    "NO_STORE_PRODUCTS_RECORD_FOR_EXACT_URL: no persisted "
-                    "store_products row matched this exact ParfumZentrum URL."
-                )
-
-            result["elapsed_sec"] = round(time.monotonic() - started, 3)
-            return result
-        finally:
-            conn.close()
-
+        return {
+            **base,
+            "ok": True,
+            "refresh_returned": bool(item),
+            "refresh_item": item,
+            "captured_db_executions": len(capture.executions),
+            "persisted_record_would_be": persisted,
+            "database_write_intercepted": True,
+            "elapsed_sec": round(time.monotonic() - started, 3),
+            "diagnosis": (
+                "REFRESH_PATH_CAPTURED: compare refresh_item.price_num with "
+                "persisted_record_would_be.price. If they differ, the discrepancy "
+                "is inside the deployed refresh/persistence path."
+            ),
+        }
     except Exception as exc:
         return {
             **base,
