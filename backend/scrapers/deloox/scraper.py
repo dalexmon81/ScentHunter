@@ -134,7 +134,7 @@ def parse_price(v):
 
     # Prefer a value explicitly associated with a currency symbol/code.
     money = re.search(
-        r"(?:€\\s*)?(\\d{1,4}(?:[.,]\\d{2})?)(?:\\s*€|\\s*EUR)?",
+        r"(?:€\s*)?(\d{1,4}(?:[.,]\d{2})?)(?:\s*€|\s*EUR)?",
         s,
         re.I,
     )
