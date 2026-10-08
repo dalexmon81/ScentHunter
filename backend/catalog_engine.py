@@ -3100,7 +3100,38 @@ def refresh_candidates(rows, cancel_event=None, deadline=None):
     running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
     but the executor is never waited on after cancellation/deadline expiry.
     """
-    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
+    # Interleave refresh jobs by store instead of preserving the store-grouped
+    # order produced by search_local().  search_local() intentionally collects
+    # candidates store-by-store, but using that order here would let the first
+    # store(s) monopolize the limited refresh workers while later stores remain
+    # pending until the global search budget expires.
+    jobs_by_store = {}
+    store_order = []
+    for row in rows:
+        if not isinstance(row, dict) or not row.get('_needs_refresh'):
+            continue
+        store = str(row.get('store_key') or '').strip()
+        url = str(row.get('url') or '').strip()
+        if not store or not url:
+            continue
+        if store not in jobs_by_store:
+            jobs_by_store[store] = []
+            store_order.append(store)
+        jobs_by_store[store].append((store, url))
+
+    jobs = []
+    round_index = 0
+    while True:
+        added = False
+        for store in store_order:
+            store_jobs = jobs_by_store[store]
+            if round_index < len(store_jobs):
+                jobs.append(store_jobs[round_index])
+                added = True
+        if not added:
+            break
+        round_index += 1
+
     if not jobs:
         return []
     out = []
