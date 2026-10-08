@@ -1501,7 +1501,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             refresh_budget = min(8.0, max(0.25, float(os.environ.get(
                 'CATALOG_REFRESH_BUDGET_SECONDS', '8'
             ))))
-            refresh_deadline = started + refresh_budget
+            # The targeted-refresh budget starts when refresh actually begins.
+            # Catalog search has its own independent deadline above; it must not
+            # consume the time reserved for refreshing the selected product pages.
+            refresh_deadline = time.monotonic() + refresh_budget
             requested = [
                 row for row in raw_rows
                 if isinstance(row, dict) and row.get('_needs_refresh')
