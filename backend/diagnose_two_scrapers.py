@@ -767,19 +767,22 @@ def diagnose_catalog_identity(
     q: str = Query("Rayhaan"),
     max_results: int = Query(100, ge=1, le=500),
 ):
-    """Read-only trace of catalog rows through the production identity layer.
-
-    This deliberately starts from catalog_engine.search_local() and then uses
-    the same main.py clean_result() and _resolve_offer_identity() functions
-    used by catalog-first search. It never calls a retailer scraper,
-    discovery, hydration, /search, or any database write operation.
-    """
+    """Read-only trace with per-phase timings; never invokes live scrapers or writes."""
     started = time.monotonic()
+    phase_sec = {
+        "search_local": 0.0,
+        "filter_and_copy_rows": 0.0,
+        "clean_result_total": 0.0,
+        "resolve_offer_identity_total": 0.0,
+        "diagnostic_payload_build": 0.0,
+    }
+    clean_row_times = []
+    identity_row_times = []
     store_key = str(store or "").strip().lower()
     query = str(q or "").strip()
 
     base = {
-        "diagnostic": "catalog-identity-read-only-v1",
+        "diagnostic": "catalog-identity-read-only-v2-timing",
         "ok": False,
         "production_search_called": False,
         "scraper_called": False,
@@ -793,35 +796,50 @@ def diagnose_catalog_identity(
         "query": query,
     }
 
+    def timing_snapshot():
+        return {
+            "phase_sec": {key: round(value, 4) for key, value in phase_sec.items()},
+            "phase_ms": {key: round(value * 1000, 2) for key, value in phase_sec.items()},
+            "clean_result_rows_timed": len(clean_row_times),
+            "resolve_rows_timed": len(identity_row_times),
+            "clean_result_avg_ms": round(sum(clean_row_times) * 1000 / len(clean_row_times), 3) if clean_row_times else None,
+            "clean_result_max_ms": round(max(clean_row_times) * 1000, 3) if clean_row_times else None,
+            "resolve_avg_ms": round(sum(identity_row_times) * 1000 / len(identity_row_times), 3) if identity_row_times else None,
+            "resolve_max_ms": round(max(identity_row_times) * 1000, 3) if identity_row_times else None,
+        }
+
     try:
         from catalog_engine import STORES, search_local
         if store_key not in tuple(STORES):
             return {**base, "error": "invalid_store: available stores=" + ",".join(str(x) for x in STORES),
-                    "elapsed_sec": round(time.monotonic() - started, 3)}
+                    "elapsed_sec": round(time.monotonic() - started, 3), "timings": timing_snapshot()}
         if not query:
             return {**base, "error": "empty_query",
-                    "elapsed_sec": round(time.monotonic() - started, 3)}
+                    "elapsed_sec": round(time.monotonic() - started, 3), "timings": timing_snapshot()}
 
+        phase_started = time.monotonic()
         raw_rows = search_local(query, per_store=max_results, search_terms=[query])
+        phase_sec["search_local"] = time.monotonic() - phase_started
         base["search_local_called"] = True
+
+        phase_started = time.monotonic()
         rows = []
         for row in list(raw_rows or []):
             item = dict(row) if not isinstance(row, dict) else dict(row)
             if str(item.get("store") or "").strip().lower() == store_key:
                 rows.append(item)
         rows = rows[:max_results]
+        phase_sec["filter_and_copy_rows"] = time.monotonic() - phase_started
 
-        # Import lazily: main.py has already imported this router at startup,
-        # so by request time the production functions are fully defined.
         import main as main_module
         clean_fn = getattr(main_module, "clean_result", None)
         resolve_fn = getattr(main_module, "_resolve_offer_identity", None)
         if not callable(clean_fn):
             return {**base, "error": "main.clean_result_unavailable", "row_count": len(rows),
-                    "elapsed_sec": round(time.monotonic() - started, 3)}
+                    "elapsed_sec": round(time.monotonic() - started, 3), "timings": timing_snapshot()}
         if not callable(resolve_fn):
             return {**base, "error": "main._resolve_offer_identity_unavailable", "row_count": len(rows),
-                    "elapsed_sec": round(time.monotonic() - started, 3)}
+                    "elapsed_sec": round(time.monotonic() - started, 3), "timings": timing_snapshot()}
 
         inspected = []
         for index, raw in enumerate(rows):
@@ -839,7 +857,11 @@ def diagnose_catalog_identity(
                 },
             }
             try:
+                phase_started = time.monotonic()
                 cleaned = clean_fn(dict(raw), store_key)
+                clean_elapsed = time.monotonic() - phase_started
+                phase_sec["clean_result_total"] += clean_elapsed
+                clean_row_times.append(clean_elapsed)
                 base["clean_result_called"] = True
                 if not isinstance(cleaned, dict):
                     item["clean"] = {"type": type(cleaned).__name__, "value": str(cleaned)[:1000]}
@@ -858,7 +880,11 @@ def diagnose_catalog_identity(
                     "store": cleaned.get("store"),
                 }
                 try:
+                    phase_started = time.monotonic()
                     resolved = resolve_fn(dict(cleaned), query)
+                    identity_elapsed = time.monotonic() - phase_started
+                    phase_sec["resolve_offer_identity_total"] += identity_elapsed
+                    identity_row_times.append(identity_elapsed)
                     base["resolve_offer_identity_called"] = True
                     if isinstance(resolved, dict):
                         item["identity"] = {
@@ -888,15 +914,26 @@ def diagnose_catalog_identity(
                 item["clean_error"] = f"{type(exc).__name__}: {exc}"
             inspected.append(item)
 
+        phase_started = time.monotonic()
+        total_elapsed = time.monotonic() - started
+        phase_sec["diagnostic_payload_build"] = max(0.0, time.monotonic() - phase_started)
+        timings = timing_snapshot()
+        timings["total_elapsed_sec"] = round(total_elapsed, 4)
+        timings["unaccounted_sec"] = round(max(0.0, total_elapsed - sum(phase_sec.values())), 4)
+        timings["rows_returned"] = len(inspected)
+        timings["matched_rows"] = sum(1 for row in inspected if (row.get("identity") or {}).get("match_status") == "matched")
+        timings["rejected_rows"] = sum(1 for row in inspected if (row.get("identity") or {}).get("match_status") == "rejected")
+        timings["error_rows"] = sum(1 for row in inspected if "clean_error" in row or ((row.get("identity") or {}).get("returned") is False and (row.get("identity") or {}).get("exception")))
         return {
             **base,
             "ok": True,
             "row_count": len(rows),
             "rows": inspected,
+            "timings": timings,
             "diagnosis": (
-                "TRACE_COMPLETE: catalog search_local rows were passed through "
-                "the production clean_result -> _resolve_offer_identity layer. "
-                "Inspect each row's identity status to locate the loss."
+                "READ_ONLY_TIMING_TRACE: timings separate catalog search, row filtering, "
+                "clean_result, and _resolve_offer_identity. No production search, scraper, "
+                "discovery, hydration, or database write was invoked."
             ),
             "elapsed_sec": round(time.monotonic() - started, 3),
         }
@@ -905,6 +942,7 @@ def diagnose_catalog_identity(
             **base,
             "error": f"{type(exc).__name__}: {exc}",
             "elapsed_sec": round(time.monotonic() - started, 3),
+            "timings": timing_snapshot(),
         }
 
 
