@@ -2806,24 +2806,6 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         _mark_foreground_search_finished()
 
 
-def _catalog_record_needs_refresh(fetched_at, fetch_status, max_age_seconds=86400.0):
-    """Flag successful catalog records whose retailer price may be stale.
-
-    Search results must not treat an old persisted price as current indefinitely.
-    Missing/invalid timestamps are stale; non-OK rows are also refresh candidates.
-    This helper is deliberately retailer- and product-agnostic.
-    """
-    if str(fetch_status or '').strip().upper() != 'OK':
-        return True
-    try:
-        timestamp = float(fetched_at or 0)
-    except (TypeError, ValueError):
-        return True
-    if timestamp <= 0:
-        return True
-    return (time.time() - timestamp) >= max(3600.0, float(max_age_seconds))
-
-
 def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate bounded local-catalog candidates with one FTS scan per query."""
     _diag_t0 = time.monotonic()
@@ -3029,9 +3011,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     'price_num': r['product_price'],
                     'store': STORE_LABELS[store],
                     'store_key': store,
-                    '_needs_refresh': _catalog_record_needs_refresh(
-                        r['product_fetched_at'], r['fetch_status']
-                    ),
                 }) if r['product_name'] else rows.append({
                     'store': STORE_LABELS[store],
                     'store_key': store,
@@ -3153,9 +3132,6 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     'fetch_status': r.get('fetch_status') or 'OK',
                     'price_num': r.get('product_price'),
                     'store': STORE_LABELS[store],'store_key': store,
-                    '_needs_refresh': _catalog_record_needs_refresh(
-                        r.get('product_fetched_at'), r.get('fetch_status')
-                    ),
                 })
             else:
                 rows.append({
