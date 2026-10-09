@@ -2608,7 +2608,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url):
+def _secondary_store_parser(store, final_url, original_url, html=None):
     """Run the retailer scraper's exact product-page parser.
 
     A store parser, when available, is authoritative for extracting the
@@ -2617,23 +2617,30 @@ def _secondary_store_parser(store, final_url, original_url):
     """
     module = importlib.import_module(f'scrapers.{store}.scraper')
 
-    parser = getattr(module, 'extract_product_page', None)
-    if callable(parser):
-        session = requests.Session()
-        session.headers.update({'User-Agent': USER_AGENT})
-        try:
-            parsed = parser(session, final_url, url_slug(final_url))
-        finally:
-            session.close()
+    html_parser = getattr(module, 'extract_product_html', None)
+    if html is not None and callable(html_parser):
+        # Prefer parsing the response already fetched by refresh_url(). This
+        # avoids duplicate HTTP requests and ensures the store parser sees the
+        # same response whose status and final URL were validated.
+        parsed = html_parser(final_url, html, url_slug(final_url))
     else:
-        # ParfumZentrum's current scraper exposes its exact-URL product parser
-        # as _extract_product(query). Keep this generic for any store adapter
-        # that provides the same callable contract, without embedding store-
-        # specific product names, prices or rules in the catalog engine.
-        parser = getattr(module, '_extract_product', None)
-        if not callable(parser):
-            return None
-        parsed = parser(final_url, url_slug(final_url))
+        parser = getattr(module, 'extract_product_page', None)
+        if callable(parser):
+            session = requests.Session()
+            session.headers.update({'User-Agent': USER_AGENT})
+            try:
+                parsed = parser(session, final_url, url_slug(final_url))
+            finally:
+                session.close()
+        else:
+            # ParfumZentrum's current scraper exposes its exact-URL product parser
+            # as _extract_product(query). Keep this generic for any store adapter
+            # that provides the same callable contract, without embedding store-
+            # specific product names, prices or rules in the catalog engine.
+            parser = getattr(module, '_extract_product', None)
+            if not callable(parser):
+                return None
+            parsed = parser(final_url, url_slug(final_url))
 
     if not isinstance(parsed, dict):
         return None
@@ -2684,12 +2691,12 @@ def refresh_url(store, url):
         parser_available = False
         try:
             module = importlib.import_module(f'scrapers.{store}.scraper')
-            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+            parser_available = (callable(getattr(module, 'extract_product_html', None)) or callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None)))
         except Exception:
             parser_available = False
 
         if parser_available:
-            item = _secondary_store_parser(store, final, url)
+            item = _secondary_store_parser(store, final, url, data)
             secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
