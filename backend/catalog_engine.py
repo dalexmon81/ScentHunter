@@ -2833,7 +2833,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     if not token_sets:
         return []
 
-    search_started = time.monotonic()
     conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
@@ -2847,8 +2846,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     # overall scan budget while allowing broad family queries to see more
     # candidates before the final per-store limit is applied.
     term_candidate_limit = max(
-        64,
-        min(512, max(1, total_scan_budget // max(1, len(token_sets))))
+        8,
+        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
     )
 
     interrupted = False
@@ -2884,8 +2883,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         conn.set_progress_handler(_sqlite_progress, 1000)
 
         for store in STORES:
-            store_search_started = time.monotonic()
-            store_candidate_start = len(rows)
             if _search_interrupted():
                 interrupted = True
                 break
@@ -3010,9 +3007,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         '_needs_refresh': True,
                     })
 
-            print(f'CATALOG SQLITE STORE store={store} elapsed={time.monotonic() - store_search_started:.3f}s candidates={len(rows) - store_candidate_start}', flush=True)
-
-        print(f'CATALOG SQLITE TOTAL elapsed={time.monotonic() - search_started:.3f}s candidates={len(rows)} terms={len(token_sets)}', flush=True)
         return rows
     finally:
         try:
