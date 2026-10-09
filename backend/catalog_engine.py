@@ -3269,61 +3269,6 @@ def _ensure_hydration_queue():
         conn.close()
 
 
-def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=100):
-    """Revisit old successful product records through the durable hydration queue.
-
-    Discovery-page refresh and product-page refresh are separate concerns. A
-    completed discovery node can reveal new URLs, but it does not refresh the
-    prices already stored for those product URLs. This routine requeues a
-    bounded number of stale successful product records across all retailers.
-
-    The marker prevents the same still-stale record from being repeatedly
-    pushed to the front of the queue before a worker gets a chance to fetch it.
-    PROCESSING and DEAD tasks are deliberately left alone.
-    """
-    now = time.time()
-    cutoff = now - max(3600.0, float(max_age_seconds))
-    batch_limit = max(1, min(int(limit), 1000))
-    marker = 'periodic_refresh_due'
-    conn = db()
-    try:
-        with conn:
-            rows = conn.execute(
-                """SELECT q.store,q.url
-                     FROM hydration_queue q
-                     JOIN store_urls u
-                       ON u.store=q.store AND u.url=q.url
-                     JOIN store_products p
-                       ON p.store=q.store AND p.url=q.url
-                    WHERE u.active=1
-                      AND p.fetch_status='OK'
-                      AND COALESCE(p.fetched_at,0) < ?
-                      AND q.state IN ('DONE','PENDING','ERROR')
-                      AND (q.last_error IS NULL OR q.last_error != ?)
-                    ORDER BY p.fetched_at ASC
-                    LIMIT ?""",
-                (cutoff, marker, batch_limit),
-            ).fetchall()
-            if not rows:
-                return 0
-            conn.executemany(
-                """UPDATE hydration_queue
-                      SET state='PENDING',
-                          attempts=0,
-                          available_at=?,
-                          leased_until=NULL,
-                          lease_token=NULL,
-                          last_error=?,
-                          last_http_status=NULL
-                    WHERE store=? AND url=?
-                      AND state IN ('DONE','PENDING','ERROR')""",
-                [(now, marker, row['store'], row['url']) for row in rows],
-            )
-            return len(rows)
-    finally:
-        conn.close()
-
-
 def recover_stale_tasks():
     """Return abandoned PROCESSING leases to PENDING after a restart/crash."""
     now = time.time()
@@ -4260,12 +4205,9 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
-    requeued_stale = _requeue_stale_hydration_tasks()
-    refresh_next_at = time.monotonic() + 900.0
     coverage_next_at = 0.0
     print(
-        f'CATALOG HYDRATION START batch={batch_size} workers={workers} '
-        f'recovered={recovered} stale_products_requeued={requeued_stale}',
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
     )
     print(
@@ -4286,15 +4228,6 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
-            if now_mono >= refresh_next_at:
-                refreshed_queue_count = _requeue_stale_hydration_tasks()
-                refresh_next_at = now_mono + 900.0
-                if refreshed_queue_count:
-                    print(
-                        f'CATALOG HYDRATION STALE REFRESH queued={refreshed_queue_count}',
-                        flush=True,
-                    )
-
             # Canonical coverage is a background catalog-maintenance path,
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
