@@ -2781,83 +2781,95 @@ def catalog_hydration_status_endpoint():
         }
 
 
-@app.get('/diagnose-catalog-product')
-def diagnose_catalog_product_endpoint(
+@app.get('/diagnose-catalog-live-parse')
+def diagnose_catalog_live_parse_endpoint(
     store: str = 'deloox',
     url: str = '',
 ):
-    """Read-only diagnostic for one exact product URL in the persistent catalog.
+    """Read-only live fetch + generic catalog parser diagnostic; never writes to SQLite."""
+    import urllib.request
+    from urllib.parse import urlparse
 
-    This endpoint performs SELECT queries only. It does not enqueue, refresh,
-    update, or delete catalog data.
-    """
     store_key = str(store or '').strip().lower()
-    product_url = str(url or '').strip()
-    if store_key not in STORES:
-        return {'ok': False, 'error': f'unknown_store:{store_key}', 'stores': STORES}
-    if not product_url:
-        return {'ok': False, 'error': 'missing_url'}
-    if not callable(catalog_db):
-        return {'ok': False, 'store': store_key, 'url': product_url,
-                'error': 'catalog_db_unavailable'}
+    target_url = str(url or '').strip()
+    allowed_host = 'www.deloox.com'
+    parsed_url = urlparse(target_url)
 
-    conn = None
+    if store_key != 'deloox':
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'unsupported_store', 'store': store_key}
+    if (
+        parsed_url.scheme != 'https'
+        or parsed_url.hostname != allowed_host
+        or not parsed_url.path.startswith('/product/')
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'url_not_allowed',
+                'allowed_host': allowed_host}
+
     try:
-        conn = catalog_db()
+        catalog_module = importlib.import_module('catalog_engine')
+        parser = getattr(catalog_module, 'parse_product', None)
+        if not callable(parser):
+            return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                    'read_only': True, 'store': store_key,
+                    'url': target_url, 'error': 'catalog_parse_product_unavailable'}
 
-        product_row = conn.execute(
-            """SELECT store,url,name,brand,size_ml,price,currency,availability,
-                      fetched_at,fetch_status,sku,gtin,mpn
-               FROM store_products
-               WHERE store=? AND url=?
-               LIMIT 1""",
-            (store_key, product_url),
-        ).fetchone()
+        request = urllib.request.Request(
+            target_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; ScentHunterDiagnostic/1.0)',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            method='GET',
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            http_status = response.status
+            final_url = response.geturl()
+            html = response.read(5 * 1024 * 1024 + 1)
+            if len(html) > 5 * 1024 * 1024:
+                return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                        'read_only': True, 'store': store_key,
+                        'url': target_url, 'http_status': http_status,
+                        'error': 'page_exceeds_5mb'}
+            encoding = response.headers.get_content_charset() or 'utf-8'
+            html_text = html.decode(encoding, errors='replace')
 
-        index_row = conn.execute(
-            """SELECT store,url,slug,lastmod,discovered_at,active
-               FROM store_urls
-               WHERE store=? AND url=?
-               LIMIT 1""",
-            (store_key, product_url),
-        ).fetchone()
-
-        queue_row = conn.execute(
-            """SELECT store,url,state,attempts,available_at,leased_until,
-                      first_seen_at,last_started_at,last_finished_at,
-                      last_error,last_http_status
-               FROM hydration_queue
-               WHERE store=? AND url=?
-               LIMIT 1""",
-            (store_key, product_url),
-        ).fetchone()
-
+        live_parsed = parser(store_key, final_url, html_text)
+        if not isinstance(live_parsed, dict):
+            parsed_result = None
+        else:
+            parsed_result = {
+                key: live_parsed.get(key)
+                for key in (
+                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin', 'mpn',
+                    'price_num', 'price', 'currency', 'availability'
+                )
+            }
         return {
             'ok': True,
-            'diagnostic': 'catalog-product-read-only-v1',
+            'diagnostic': 'catalog-live-parse-v1',
             'read_only': True,
+            'writes_database': False,
             'store': store_key,
-            'url': product_url,
-            'store_product_found': product_row is not None,
-            'store_product': dict(product_row) if product_row is not None else None,
-            'indexed_url_found': index_row is not None,
-            'indexed_url': dict(index_row) if index_row is not None else None,
-            'hydration_queue_found': queue_row is not None,
-            'hydration_queue': dict(queue_row) if queue_row is not None else None,
+            'requested_url': target_url,
+            'final_url': final_url,
+            'http_status': http_status,
+            'parser': 'catalog_engine.parse_product',
+            'parsed_product': parsed_result,
         }
     except Exception as exc:
         return {
             'ok': False,
-            'diagnostic': 'catalog-product-read-only-v1',
+            'diagnostic': 'catalog-live-parse-v1',
             'read_only': True,
+            'writes_database': False,
             'store': store_key,
-            'url': product_url,
-            'error': f'{type(exc).__name__}:{exc}',
+            'requested_url': target_url,
+            'error': f'{type(exc).__name__}: {str(exc)[:500]}',
         }
-    finally:
-        if conn is not None:
-            conn.close()
-
 
 
 
