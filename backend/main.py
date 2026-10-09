@@ -2781,6 +2781,86 @@ def catalog_hydration_status_endpoint():
         }
 
 
+@app.get('/diagnose-catalog-product')
+def diagnose_catalog_product_endpoint(
+    store: str = 'deloox',
+    url: str = '',
+):
+    """Read-only diagnostic for one exact product URL in the persistent catalog.
+
+    This endpoint performs SELECT queries only. It does not enqueue, refresh,
+    update, or delete catalog data.
+    """
+    store_key = str(store or '').strip().lower()
+    product_url = str(url or '').strip()
+    if store_key not in STORES:
+        return {'ok': False, 'error': f'unknown_store:{store_key}', 'stores': STORES}
+    if not product_url:
+        return {'ok': False, 'error': 'missing_url'}
+    if not callable(catalog_db):
+        return {'ok': False, 'store': store_key, 'url': product_url,
+                'error': 'catalog_db_unavailable'}
+
+    conn = None
+    try:
+        conn = catalog_db()
+
+        product_row = conn.execute(
+            """SELECT store,url,name,brand,size_ml,price,currency,availability,
+                      fetched_at,fetch_status,sku,gtin,mpn
+               FROM store_products
+               WHERE store=? AND url=?
+               LIMIT 1""",
+            (store_key, product_url),
+        ).fetchone()
+
+        index_row = conn.execute(
+            """SELECT store,url,slug,lastmod,discovered_at,active
+               FROM store_urls
+               WHERE store=? AND url=?
+               LIMIT 1""",
+            (store_key, product_url),
+        ).fetchone()
+
+        queue_row = conn.execute(
+            """SELECT store,url,state,attempts,available_at,leased_until,
+                      first_seen_at,last_started_at,last_finished_at,
+                      last_error,last_http_status
+               FROM hydration_queue
+               WHERE store=? AND url=?
+               LIMIT 1""",
+            (store_key, product_url),
+        ).fetchone()
+
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-product-read-only-v1',
+            'read_only': True,
+            'store': store_key,
+            'url': product_url,
+            'store_product_found': product_row is not None,
+            'store_product': dict(product_row) if product_row is not None else None,
+            'indexed_url_found': index_row is not None,
+            'indexed_url': dict(index_row) if index_row is not None else None,
+            'hydration_queue_found': queue_row is not None,
+            'hydration_queue': dict(queue_row) if queue_row is not None else None,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-product-read-only-v1',
+            'read_only': True,
+            'store': store_key,
+            'url': product_url,
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+
+
 @app.get('/search-start')
 def search_start(q: str):
     query = str(q or '').strip()
