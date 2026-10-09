@@ -2846,8 +2846,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     # overall scan budget while allowing broad family queries to see more
     # candidates before the final per-store limit is applied.
     term_candidate_limit = max(
-        8,
-        min(64, max(1, total_scan_budget // max(1, len(token_sets))))
+        64,
+        min(512, max(1, total_scan_budget // max(1, len(token_sets))))
     )
 
     interrupted = False
