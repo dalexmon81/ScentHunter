@@ -122,6 +122,14 @@ HYDRATION_MAX_ATTEMPTS = 8
 HYDRATION_BACKOFF_SECONDS = (60.0, 300.0, 1800.0, 7200.0, 21600.0, 86400.0)
 HYDRATION_RETRY_JITTER = 0.20
 
+# Search-triggered stale-price refresh requests are queued asynchronously. They
+# never alter the candidate rows returned to the user and therefore cannot
+# reduce the number of variants shown by a search.
+_STALE_REFRESH_MAX_AGE_SECONDS = 86400.0
+_STALE_REFRESH_MAX_PER_STORE = 2
+_STALE_REFRESH_SCHEDULER_LOCK = threading.Lock()
+_STALE_REFRESH_SCHEDULER_RUNNING = False
+
 # Sitemap protocol limits are per discovered sitemap, not a product limit.
 MAX_SITEMAPS_PER_STORE = 1000
 MAX_SITEMAP_DEPTH = 10
@@ -1719,31 +1727,6 @@ def _deloox_persist_products(product_urls):
                            END""",
                     ('deloox', url, 'PENDING', 0, now, now, now),
                 )
-                # Discovery can encounter a URL whose stored product data is
-                # already stale. Re-queue that URL in the background instead
-                # of changing foreground search results or refreshing every
-                # candidate during a user's search. Only PENDING/DONE tasks
-                # are accelerated; ERROR backoff and active PROCESSING leases
-                # remain untouched.
-                conn.execute(
-                    """UPDATE hydration_queue
-                          SET state='PENDING',
-                              available_at=?,
-                              leased_until=NULL,
-                              lease_token=NULL,
-                              last_error=NULL
-                        WHERE store='deloox' AND url=?
-                          AND state IN ('PENDING','DONE')
-                          AND EXISTS (
-                              SELECT 1 FROM store_products p
-                               WHERE p.store='deloox'
-                                 AND p.url=hydration_queue.url
-                                 AND p.fetch_status='OK'
-                                 AND p.fetched_at IS NOT NULL
-                                 AND p.fetched_at <= ?
-                          )""",
-                    (now, url, now - 86400.0),
-                )
                 count += 1
     finally:
         conn.close()
@@ -2778,26 +2761,41 @@ def refresh_url(store, url):
         )
         return item
     except Exception as exc:
+        error_detail = 'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else '')
         conn = db()
-        conn.execute(
-            '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
-               VALUES(?,?,?,?)
-               ON CONFLICT(store,url) DO UPDATE SET
-               fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
-            (
-                store,
-                url,
-                time.time(),
-                'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else ''),
-            ),
-        )
-        conn.commit()
-        conn.close()
+        try:
+            previous = conn.execute(
+                'SELECT fetch_status,price FROM store_products WHERE store=? AND url=?',
+                (store, url),
+            ).fetchone()
+            # A refresh failure must not destroy a previously valid offer. Keep
+            # the last-known successful row searchable; the hydration queue
+            # records the failure and applies its normal retry backoff.
+            preserve_previous = bool(
+                previous
+                and str(previous['fetch_status'] or '').upper() == 'OK'
+                and previous['price'] is not None
+            )
+            if not preserve_previous:
+                conn.execute(
+                    '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+                       VALUES(?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                       fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+                    (store, url, time.time(), error_detail),
+                )
+            conn.commit()
+        finally:
+            conn.close()
 
-        # A failed refresh is excluded by search_local() because only
-        # fetch_status='OK' rows are indexed. Mirror that state in an existing
-        # in-memory index so a stale successful product cannot remain searchable.
-        _remove_local_search_index_url(store, url)
+        if preserve_previous:
+            print(
+                f'CATALOG REFRESH FAILED; PRESERVED LAST SUCCESSFUL PRICE '
+                f'store={store} url={url} error={error_detail[:240]}',
+                flush=True,
+            )
+        else:
+            _remove_local_search_index_url(store, url)
         return None
 
 
@@ -2817,16 +2815,144 @@ def _search_db():
 
 
 
+def _stale_price_refresh_candidates(rows, now=None):
+    """Select a small, generic set of stale successful price records.
+
+    Selection is based only on age/status and store, never on a product name,
+    brand, or individual URL. The candidate list is used for background queue
+    requests only; it is not used to change search results.
+    """
+    now = time.time() if now is None else float(now)
+    selected = []
+    per_store = {}
+    seen = set()
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        store = str(row.get('store_key') or '').strip()
+        url = str(row.get('url') or '').strip()
+        if store not in STORES or not url or (store, url) in seen:
+            continue
+        if str(row.get('fetch_status') or '').strip().upper() != 'OK':
+            continue
+        if row.get('price') is None and row.get('price_num') is None:
+            continue
+        try:
+            fetched_at = float(row.get('fetched_at') or 0)
+        except (TypeError, ValueError):
+            fetched_at = 0.0
+        if fetched_at <= 0 or now - fetched_at < _STALE_REFRESH_MAX_AGE_SECONDS:
+            continue
+        if per_store.get(store, 0) >= _STALE_REFRESH_MAX_PER_STORE:
+            continue
+        selected.append((store, url))
+        seen.add((store, url))
+        per_store[store] = per_store.get(store, 0) + 1
+    return selected
+
+
+def _enqueue_stale_price_refreshes(candidates):
+    """Promote stale search-hit URLs to the front of the existing background queue."""
+    if not candidates:
+        return 0
+    now = time.time()
+    conn = db()
+    queued = 0
+    try:
+        with conn:
+            for store, url in candidates:
+                # Do not override a live worker lease, terminal DEAD result, or
+                # a retry whose explicit backoff has not elapsed.
+                task = conn.execute(
+                    "SELECT state,available_at FROM hydration_queue WHERE store=? AND url=?",
+                    (store, url),
+                ).fetchone()
+                if task:
+                    state = str(task['state'] or '').upper()
+                    if state in ('PROCESSING', 'DEAD'):
+                        continue
+                    if state == 'ERROR' and float(task['available_at'] or 0) > now:
+                        continue
+                    conn.execute(
+                        """UPDATE hydration_queue
+                              SET state='PENDING', attempts=0, available_at=0,
+                                  first_seen_at=0, leased_until=NULL,
+                                  lease_token=NULL, last_error=NULL,
+                                  last_http_status=NULL
+                            WHERE store=? AND url=?""",
+                        (store, url),
+                    )
+                else:
+                    active = conn.execute(
+                        "SELECT 1 FROM store_urls WHERE store=? AND url=? AND active=1",
+                        (store, url),
+                    ).fetchone()
+                    if not active:
+                        continue
+                    conn.execute(
+                        """INSERT INTO hydration_queue(
+                               store,url,state,attempts,available_at,first_seen_at)
+                           VALUES(?,?,'PENDING',0,0,0)""",
+                        (store, url),
+                    )
+                queued += 1
+    finally:
+        conn.close()
+    if queued:
+        print(f'CATALOG STALE PRICE REFRESH QUEUED count={queued}', flush=True)
+    return queued
+
+
+def _stale_price_refresh_worker(candidates):
+    global _STALE_REFRESH_SCHEDULER_RUNNING
+    try:
+        _enqueue_stale_price_refreshes(candidates)
+    except Exception as exc:
+        print(f'CATALOG STALE PRICE QUEUE ERROR: {type(exc).__name__}: {exc}', flush=True)
+    finally:
+        with _STALE_REFRESH_SCHEDULER_LOCK:
+            _STALE_REFRESH_SCHEDULER_RUNNING = False
+
+
+def _schedule_stale_price_refreshes(rows):
+    """Fire-and-forget a bounded queue request without delaying foreground search."""
+    global _STALE_REFRESH_SCHEDULER_RUNNING
+    candidates = _stale_price_refresh_candidates(rows)
+    if not candidates:
+        return
+    with _STALE_REFRESH_SCHEDULER_LOCK:
+        if _STALE_REFRESH_SCHEDULER_RUNNING:
+            return
+        _STALE_REFRESH_SCHEDULER_RUNNING = True
+    try:
+        worker = threading.Thread(
+            target=_stale_price_refresh_worker,
+            args=(candidates,),
+            name='scenthunter-stale-price-queue',
+            daemon=True,
+        )
+        worker.start()
+    except Exception:
+        with _STALE_REFRESH_SCHEDULER_LOCK:
+            _STALE_REFRESH_SCHEDULER_RUNNING = False
+        raise
+
+
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run the foreground local search and record its completion time."""
     try:
-        return _search_local_impl(
+        rows = _search_local_impl(
             query,
             per_store=per_store,
             search_terms=search_terms,
             cancel_event=cancel_event,
             deadline=deadline,
         )
+        # Queue background refreshes only after the search has produced its
+        # normal result set. This does not wait for network requests and does
+        # not filter, replace, or truncate any result rows.
+        _schedule_stale_price_refreshes(rows)
+        return rows
     finally:
         _mark_foreground_search_finished()
 
@@ -3551,6 +3677,8 @@ def _hydrate_one_task(task):
                 (task['store'], task['url']),
             ).fetchone()
             detail = str(row['fetch_status']) if row and row['fetch_status'] else 'product_parser_not_found'
+            if detail == 'OK':
+                detail = 'refresh_failed_preserved_last_successful_price'
         finally:
             conn.close()
 
@@ -4430,3 +4558,4 @@ def store_status():
 
 if __name__ == '__main__':
     print(json.dumps(sync_all(), indent=2, ensure_ascii=False))
+a
