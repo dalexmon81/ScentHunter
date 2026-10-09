@@ -2808,6 +2808,9 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
 
 def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate bounded local-catalog candidates with one FTS scan per query."""
+    _diag_t0 = time.monotonic()
+    _diag_stage = _diag_t0
+    print(f"CATALOG SEARCH DIAG START query={str(query)[:100]!r}", flush=True)
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2825,7 +2828,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     if not token_sets:
         return []
 
+    _diag_tokenized = time.monotonic()
+    print(f"CATALOG SEARCH DIAG tokenize={_diag_tokenized-_diag_stage:.3f}s terms={len(token_sets)}", flush=True)
+    _diag_stage = time.monotonic()
     conn = _search_db()
+    _diag_opened = time.monotonic()
+    print(f"CATALOG SEARCH DIAG db_open={_diag_opened-_diag_stage:.3f}s", flush=True)
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
     limit = None if unlimited else max(1, int(per_store))
@@ -2850,9 +2858,11 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         )
 
     try:
+        _diag_stage = time.monotonic()
         fts_exists = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
         ).fetchone()
+        print(f"CATALOG SEARCH DIAG fts_check={time.monotonic()-_diag_stage:.3f}s exists={bool(fts_exists)}", flush=True)
         if not fts_exists:
             return _search_local_legacy_sql(
                 conn, token_sets, limit, rows,
@@ -2923,15 +2933,18 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                  WHERE store_rank <= ?
                  ORDER BY store_rank, fts_store
             """
+            _diag_sql_t0 = time.monotonic()
             try:
                 candidates = conn.execute(
                     sql, (fts_query, fts_candidate_limit)
                 ).fetchall()
+                _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
             except sqlite3.OperationalError:
                 if interrupted():
                     break
                 raise
 
+            _diag_process_t0 = time.monotonic()
             per_store_counts = {}
             seen_product_keys = {}
             for r in candidates:
@@ -3005,7 +3018,15 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     'name': r['slug'] or url_slug(url),
                     '_needs_refresh': True,
                 })
+            _diag_process_elapsed = time.monotonic() - _diag_process_t0
+            print(
+                f"CATALOG SEARCH DIAG term={str(ts)!r} sql={_diag_sql_elapsed:.3f}s "
+                f"process={_diag_process_elapsed:.3f}s fetched={len(candidates)} "
+                f"matched_total={len(rows)}",
+                flush=True,
+            )
 
+        print(f"CATALOG SEARCH DIAG total={time.monotonic()-_diag_t0:.3f}s rows={len(rows)}", flush=True)
         return rows
     finally:
         try:
