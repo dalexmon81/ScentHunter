@@ -1466,6 +1466,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             return []
 
         catalog_search_started = time.monotonic()
+        print(
+            f"CATALOG CALLSITE: query={query!r} "
+            f"function_module={getattr(catalog_search_local, '__module__', 'UNKNOWN')} "
+            f"function_file={getattr(getattr(catalog_search_local, '__globals__', {}), '__file__', 'UNKNOWN')}",
+            flush=True,
+        )
         raw_rows = (
             catalog_search_local(
                 query,
