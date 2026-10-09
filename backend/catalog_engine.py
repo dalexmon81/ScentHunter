@@ -2806,6 +2806,24 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         _mark_foreground_search_finished()
 
 
+def _catalog_record_needs_refresh(fetched_at, fetch_status, max_age_seconds=86400.0):
+    """Flag successful catalog records whose retailer price may be stale.
+
+    Search results must not treat an old persisted price as current indefinitely.
+    Missing/invalid timestamps are stale; non-OK rows are also refresh candidates.
+    This helper is deliberately retailer- and product-agnostic.
+    """
+    if str(fetch_status or '').strip().upper() != 'OK':
+        return True
+    try:
+        timestamp = float(fetched_at or 0)
+    except (TypeError, ValueError):
+        return True
+    if timestamp <= 0:
+        return True
+    return (time.time() - timestamp) >= max(3600.0, float(max_age_seconds))
+
+
 def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate bounded local-catalog candidates with one FTS scan per query."""
     _diag_t0 = time.monotonic()
@@ -3011,6 +3029,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     'price_num': r['product_price'],
                     'store': STORE_LABELS[store],
                     'store_key': store,
+                    '_needs_refresh': _catalog_record_needs_refresh(
+                        r['product_fetched_at'], r['fetch_status']
+                    ),
                 }) if r['product_name'] else rows.append({
                     'store': STORE_LABELS[store],
                     'store_key': store,
@@ -3132,6 +3153,9 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     'fetch_status': r.get('fetch_status') or 'OK',
                     'price_num': r.get('product_price'),
                     'store': STORE_LABELS[store],'store_key': store,
+                    '_needs_refresh': _catalog_record_needs_refresh(
+                        r.get('product_fetched_at'), r.get('fetch_status')
+                    ),
                 })
             else:
                 rows.append({
@@ -3265,55 +3289,6 @@ def _ensure_hydration_queue():
                     (r['store'], r['url'], state, 0, now, now),
                 )
         return len(rows)
-    finally:
-        conn.close()
-
-
-def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=100):
-    """Queue a bounded refresh of stale successful product records.
-
-    Only completed tasks and stale successful records stranded in a future
-    PENDING backoff are eligible. ERROR backoff and PROCESSING leases are
-    preserved. Attempts and last_error are never reset/overwritten.
-    """
-    now = time.time()
-    cutoff = now - max(3600.0, float(max_age_seconds))
-    batch_limit = max(1, min(int(limit), 100))
-    conn = db()
-    try:
-        with conn:
-            rows = conn.execute(
-                """SELECT q.store,q.url,q.state
-                     FROM hydration_queue q
-                     JOIN store_urls u
-                       ON u.store=q.store AND u.url=q.url
-                     JOIN store_products p
-                       ON p.store=q.store AND p.url=q.url
-                    WHERE u.active=1
-                      AND p.fetch_status='OK'
-                      AND COALESCE(p.fetched_at,0) < ?
-                      AND (q.state='DONE'
-                           OR (q.state='PENDING' AND q.available_at > ?))
-                    ORDER BY CASE WHEN q.state='PENDING' THEN 0 ELSE 1 END,
-                             COALESCE(p.fetched_at,0) ASC
-                    LIMIT ?""",
-                (cutoff, now, batch_limit),
-            ).fetchall()
-            if not rows:
-                return 0
-            conn.executemany(
-                """UPDATE hydration_queue
-                      SET state='PENDING',
-                          available_at=?,
-                          leased_until=NULL,
-                          lease_token=NULL,
-                          last_http_status=NULL
-                    WHERE store=? AND url=?
-                      AND (state='DONE'
-                           OR (state='PENDING' AND available_at > ?))""",
-                [(now, row['store'], row['url'], now) for row in rows],
-            )
-            return len(rows)
     finally:
         conn.close()
 
@@ -4254,9 +4229,6 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
-    # Defer stale refresh until the loop has passed its foreground-search
-    # priority guard. Never run the stale-record scan as thread startup work.
-    refresh_next_at = 0.0
     coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
@@ -4280,14 +4252,6 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
-            if now_mono >= refresh_next_at:
-                # Run only while foreground search is idle; keep the work
-                # bounded and preserve ERROR retry backoff.
-                refreshed = _requeue_stale_hydration_tasks()
-                refresh_next_at = now_mono + 900.0
-                if refreshed:
-                    print(f'CATALOG HYDRATION STALE REFRESH queued={refreshed}', flush=True)
-
             # Canonical coverage is a background catalog-maintenance path,
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
