@@ -1719,6 +1719,31 @@ def _deloox_persist_products(product_urls):
                            END""",
                     ('deloox', url, 'PENDING', 0, now, now, now),
                 )
+                # Discovery can encounter a URL whose stored product data is
+                # already stale. Re-queue that URL in the background instead
+                # of changing foreground search results or refreshing every
+                # candidate during a user's search. Only PENDING/DONE tasks
+                # are accelerated; ERROR backoff and active PROCESSING leases
+                # remain untouched.
+                conn.execute(
+                    """UPDATE hydration_queue
+                          SET state='PENDING',
+                              available_at=?,
+                              leased_until=NULL,
+                              lease_token=NULL,
+                              last_error=NULL
+                        WHERE store='deloox' AND url=?
+                          AND state IN ('PENDING','DONE')
+                          AND EXISTS (
+                              SELECT 1 FROM store_products p
+                               WHERE p.store='deloox'
+                                 AND p.url=hydration_queue.url
+                                 AND p.fetch_status='OK'
+                                 AND p.fetched_at IS NOT NULL
+                                 AND p.fetched_at <= ?
+                          )""",
+                    (now, url, now - 86400.0),
+                )
                 count += 1
     finally:
         conn.close()
