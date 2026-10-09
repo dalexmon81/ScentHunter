@@ -2608,7 +2608,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url, html=None):
+def _secondary_store_parser(store, final_url, original_url):
     """Run the retailer scraper's exact product-page parser.
 
     A store parser, when available, is authoritative for extracting the
@@ -2617,30 +2617,23 @@ def _secondary_store_parser(store, final_url, original_url, html=None):
     """
     module = importlib.import_module(f'scrapers.{store}.scraper')
 
-    html_parser = getattr(module, 'extract_product_html', None)
-    if html is not None and callable(html_parser):
-        # Prefer parsing the response already fetched by refresh_url(). This
-        # avoids duplicate HTTP requests and ensures the store parser sees the
-        # same response whose status and final URL were validated.
-        parsed = html_parser(final_url, html, url_slug(final_url))
+    parser = getattr(module, 'extract_product_page', None)
+    if callable(parser):
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            parsed = parser(session, final_url, url_slug(final_url))
+        finally:
+            session.close()
     else:
-        parser = getattr(module, 'extract_product_page', None)
-        if callable(parser):
-            session = requests.Session()
-            session.headers.update({'User-Agent': USER_AGENT})
-            try:
-                parsed = parser(session, final_url, url_slug(final_url))
-            finally:
-                session.close()
-        else:
-            # ParfumZentrum's current scraper exposes its exact-URL product parser
-            # as _extract_product(query). Keep this generic for any store adapter
-            # that provides the same callable contract, without embedding store-
-            # specific product names, prices or rules in the catalog engine.
-            parser = getattr(module, '_extract_product', None)
-            if not callable(parser):
-                return None
-            parsed = parser(final_url, url_slug(final_url))
+        # ParfumZentrum's current scraper exposes its exact-URL product parser
+        # as _extract_product(query). Keep this generic for any store adapter
+        # that provides the same callable contract, without embedding store-
+        # specific product names, prices or rules in the catalog engine.
+        parser = getattr(module, '_extract_product', None)
+        if not callable(parser):
+            return None
+        parsed = parser(final_url, url_slug(final_url))
 
     if not isinstance(parsed, dict):
         return None
@@ -2691,12 +2684,12 @@ def refresh_url(store, url):
         parser_available = False
         try:
             module = importlib.import_module(f'scrapers.{store}.scraper')
-            parser_available = (callable(getattr(module, 'extract_product_html', None)) or callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None)))
+            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
         except Exception:
             parser_available = False
 
         if parser_available:
-            item = _secondary_store_parser(store, final, url, data)
+            item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
@@ -3276,45 +3269,57 @@ def _ensure_hydration_queue():
         conn.close()
 
 
-def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=50):
-    """Schedule a bounded batch of old successful product pages for refresh.
+def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=100):
+    """Revisit old successful product records through the durable hydration queue.
 
-    Successful queue entries used to remain DONE forever. That meant a price
-    could stay in store_products indefinitely even after the retailer changed
-    it. Requeue only active, previously successful products whose last fetch is
-    older than the freshness window. This runs in the low-priority background
-    worker, never in foreground search.
+    Discovery-page refresh and product-page refresh are separate concerns. A
+    completed discovery node can reveal new URLs, but it does not refresh the
+    prices already stored for those product URLs. This routine requeues a
+    bounded number of stale successful product records across all retailers.
+
+    The marker prevents the same still-stale record from being repeatedly
+    pushed to the front of the queue before a worker gets a chance to fetch it.
+    PROCESSING and DEAD tasks are deliberately left alone.
     """
     now = time.time()
-    cutoff = now - max(60.0, float(max_age_seconds))
+    cutoff = now - max(3600.0, float(max_age_seconds))
+    batch_limit = max(1, min(int(limit), 1000))
+    marker = 'periodic_refresh_due'
     conn = db()
     try:
         with conn:
             rows = conn.execute(
                 """SELECT q.store,q.url
-                   FROM hydration_queue q
-                   JOIN store_urls u
-                     ON u.store=q.store AND u.url=q.url
-                   JOIN store_products p
-                     ON p.store=q.store AND p.url=q.url
-                   WHERE u.active=1
-                     AND q.state='DONE'
-                     AND p.fetch_status='OK'
-                     AND COALESCE(p.fetched_at,0) < ?
-                   ORDER BY COALESCE(p.fetched_at,0) ASC
-                   LIMIT ?""",
-                (cutoff, max(1, int(limit))),
+                     FROM hydration_queue q
+                     JOIN store_urls u
+                       ON u.store=q.store AND u.url=q.url
+                     JOIN store_products p
+                       ON p.store=q.store AND p.url=q.url
+                    WHERE u.active=1
+                      AND p.fetch_status='OK'
+                      AND COALESCE(p.fetched_at,0) < ?
+                      AND q.state IN ('DONE','PENDING','ERROR')
+                      AND (q.last_error IS NULL OR q.last_error != ?)
+                    ORDER BY p.fetched_at ASC
+                    LIMIT ?""",
+                (cutoff, marker, batch_limit),
             ).fetchall()
-            for row in rows:
-                conn.execute(
-                    """UPDATE hydration_queue
-                       SET state='PENDING', attempts=0, available_at=?,
-                           leased_until=NULL, lease_token=NULL,
-                           last_error='periodic_refresh_due', last_http_status=NULL
-                       WHERE store=? AND url=? AND state='DONE'""",
-                    (now, row['store'], row['url']),
-                )
-        return len(rows)
+            if not rows:
+                return 0
+            conn.executemany(
+                """UPDATE hydration_queue
+                      SET state='PENDING',
+                          attempts=0,
+                          available_at=?,
+                          leased_until=NULL,
+                          lease_token=NULL,
+                          last_error=?,
+                          last_http_status=NULL
+                    WHERE store=? AND url=?
+                      AND state IN ('DONE','PENDING','ERROR')""",
+                [(now, marker, row['store'], row['url']) for row in rows],
+            )
+            return len(rows)
     finally:
         conn.close()
 
@@ -4255,10 +4260,12 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
+    requeued_stale = _requeue_stale_hydration_tasks()
+    refresh_next_at = time.monotonic() + 900.0
     coverage_next_at = 0.0
-    refresh_next_at = 0.0
     print(
-        f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
+        f'CATALOG HYDRATION START batch={batch_size} workers={workers} '
+        f'recovered={recovered} stale_products_requeued={requeued_stale}',
         flush=True,
     )
     print(
@@ -4279,18 +4286,12 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
-            # Revisit old successful product records periodically. This is
-            # deliberately bounded and runs only in the background, so search
-            # latency and foreground retailer work are unaffected.
-            if now_mono >= refresh_next_at and not _foreground_search_running():
-                refresh_next_at = now_mono + 300.0
-                refresh_count = _requeue_stale_hydration_tasks(
-                    max_age_seconds=86400.0,
-                    limit=50,
-                )
-                if refresh_count:
+            if now_mono >= refresh_next_at:
+                refreshed_queue_count = _requeue_stale_hydration_tasks()
+                refresh_next_at = now_mono + 900.0
+                if refreshed_queue_count:
                     print(
-                        f'CATALOG STALE REFRESH QUEUED count={refresh_count} age_seconds=86400',
+                        f'CATALOG HYDRATION STALE REFRESH queued={refreshed_queue_count}',
                         flush=True,
                     )
 
