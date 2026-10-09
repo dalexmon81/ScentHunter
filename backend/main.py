@@ -214,9 +214,9 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 16,
-            'workers': 8,
-            'pause_seconds': 0.25,
+            'batch_size': 2,
+            'workers': 1,
+            'pause_seconds': 2.0,
         },
         daemon=True,
         name='scenthunter-catalog-hydration',
