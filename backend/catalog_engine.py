@@ -2833,6 +2833,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     if not token_sets:
         return []
 
+    _diag_search_started = time.monotonic()
+    print(f"SCENTHUNTER: CATALOG_FTS_DIAG START query={query!r} terms={len(terms)} token_sets={len(token_sets)} stores={len(STORES)}")
     conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
@@ -2883,6 +2885,11 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         conn.set_progress_handler(_sqlite_progress, 1000)
 
         for store in STORES:
+            _diag_store_started = time.monotonic()
+            _diag_sql_seconds = 0.0
+            _diag_verify_seconds = 0.0
+            _diag_query_count = 0
+            _diag_sql_rows = 0
             if _search_interrupted():
                 interrupted = True
                 break
@@ -2925,16 +2932,21 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                          LIMIT ?
                     """
                 try:
+                    _diag_sql_started = time.monotonic()
                     candidates = conn.execute(
                         sql,
                         (store, fts_query, term_candidate_limit),
                     ).fetchall()
+                    _diag_sql_seconds += time.monotonic() - _diag_sql_started
+                    _diag_query_count += 1
+                    _diag_sql_rows += len(candidates)
                 except sqlite3.OperationalError:
                     if _search_interrupted():
                         interrupted = True
                         break
                     raise
 
+                _diag_verify_started = time.monotonic()
                 for r in candidates:
                     if _search_interrupted():
                         interrupted = True
@@ -2957,6 +2969,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     item_score = (score + 10, dict(r))
                     if previous is None or item_score[0] > previous[0]:
                         selected_by_url[url] = item_score
+                _diag_verify_seconds += time.monotonic() - _diag_verify_started
 
                 if interrupted:
                     break
@@ -2971,6 +2984,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             if limit is not None:
                 ordered = ordered[:limit]
 
+            print(
+                f"SCENTHUNTER: CATALOG_FTS_DIAG STORE store={store} "
+                f"queries={_diag_query_count} sql_rows={_diag_sql_rows} "
+                f"sql_s={_diag_sql_seconds:.3f} verify_s={_diag_verify_seconds:.3f} "
+                f"unique_urls={len(selected_by_url)} selected={len(ordered)} "
+                f"store_s={time.monotonic() - _diag_store_started:.3f}"
+            )
             for _score, r in ordered:
                 url = str(r.get('url') or '').strip()
                 if not url:
@@ -3007,6 +3027,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         '_needs_refresh': True,
                     })
 
+        print(
+            f"SCENTHUNTER: CATALOG_FTS_DIAG END query={query!r} "
+            f"token_sets={len(token_sets)} rows={len(rows)} "
+            f"elapsed_s={time.monotonic() - _diag_search_started:.3f} "
+            f"interrupted={interrupted}"
+        )
         return rows
     finally:
         try:
