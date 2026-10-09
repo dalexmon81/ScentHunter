@@ -3276,6 +3276,49 @@ def _ensure_hydration_queue():
         conn.close()
 
 
+def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=50):
+    """Schedule a bounded batch of old successful product pages for refresh.
+
+    Successful queue entries used to remain DONE forever. That meant a price
+    could stay in store_products indefinitely even after the retailer changed
+    it. Requeue only active, previously successful products whose last fetch is
+    older than the freshness window. This runs in the low-priority background
+    worker, never in foreground search.
+    """
+    now = time.time()
+    cutoff = now - max(60.0, float(max_age_seconds))
+    conn = db()
+    try:
+        with conn:
+            rows = conn.execute(
+                """SELECT q.store,q.url
+                   FROM hydration_queue q
+                   JOIN store_urls u
+                     ON u.store=q.store AND u.url=q.url
+                   JOIN store_products p
+                     ON p.store=q.store AND p.url=q.url
+                   WHERE u.active=1
+                     AND q.state='DONE'
+                     AND p.fetch_status='OK'
+                     AND COALESCE(p.fetched_at,0) < ?
+                   ORDER BY COALESCE(p.fetched_at,0) ASC
+                   LIMIT ?""",
+                (cutoff, max(1, int(limit))),
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='PENDING', attempts=0, available_at=?,
+                           leased_until=NULL, lease_token=NULL,
+                           last_error='periodic_refresh_due', last_http_status=NULL
+                       WHERE store=? AND url=? AND state='DONE'""",
+                    (now, row['store'], row['url']),
+                )
+        return len(rows)
+    finally:
+        conn.close()
+
+
 def recover_stale_tasks():
     """Return abandoned PROCESSING leases to PENDING after a restart/crash."""
     now = time.time()
@@ -4213,6 +4256,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
     coverage_next_at = 0.0
+    refresh_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
         flush=True,
@@ -4235,6 +4279,21 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
+            # Revisit old successful product records periodically. This is
+            # deliberately bounded and runs only in the background, so search
+            # latency and foreground retailer work are unaffected.
+            if now_mono >= refresh_next_at and not _foreground_search_running():
+                refresh_next_at = now_mono + 300.0
+                refresh_count = _requeue_stale_hydration_tasks(
+                    max_age_seconds=86400.0,
+                    limit=50,
+                )
+                if refresh_count:
+                    print(
+                        f'CATALOG STALE REFRESH QUEUED count={refresh_count} age_seconds=86400',
+                        flush=True,
+                    )
+
             # Canonical coverage is a background catalog-maintenance path,
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
