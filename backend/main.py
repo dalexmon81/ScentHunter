@@ -1465,6 +1465,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if cancel_event is not None and cancel_event.is_set():
             return []
 
+        catalog_search_started = time.monotonic()
         raw_rows = (
             catalog_search_local(
                 query,
@@ -1475,6 +1476,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             )
             if callable(catalog_search_local) else []
         )
+        print(f'CATALOG LOCAL SEARCH elapsed={time.monotonic() - catalog_search_started:.3f}s candidates={len(raw_rows or [])}', flush=True)
     except TypeError:
         raw_rows = (
             catalog_search_local(
@@ -1501,7 +1503,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             refresh_budget = min(8.0, max(0.25, float(os.environ.get(
                 'CATALOG_REFRESH_BUDGET_SECONDS', '8'
             ))))
-            refresh_deadline = time.monotonic() + refresh_budget
+            refresh_started = time.monotonic()
+            refresh_deadline = refresh_started + refresh_budget
             requested = [
                 row for row in raw_rows
                 if isinstance(row, dict) and row.get('_needs_refresh')
@@ -1514,7 +1517,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 ) or []
                 print(
                     f'CATALOG TARGETED REFRESH requested={len(requested)} '
-                    f'returned={len(refreshed)}',
+                    f'returned={len(refreshed)} elapsed={time.monotonic() - refresh_started:.3f}s',
                     flush=True,
                 )
         except Exception as exc:
@@ -1524,6 +1527,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 flush=True,
             )
 
+    aggregation_started = time.monotonic()
     refreshed_by_key = {}
     for item in refreshed:
         if not isinstance(item, dict):
@@ -1657,6 +1661,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if callable(on_report):
             on_report(report)
 
+    print(f'CATALOG MATCH+AGGREGATION elapsed={time.monotonic() - aggregation_started:.3f}s', flush=True)
     print(f'CATALOG SEARCH END query={query!r} candidates={len(raw_rows)} elapsed={round(time.monotonic() - started, 3)}', flush=True)
     return [reports_by_store[s] for s in stores if s in reports_by_store]
 
