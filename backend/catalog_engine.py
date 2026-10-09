@@ -116,7 +116,7 @@ SYNC_WORKERS = 8
 REFRESH_WORKERS = 2
 
 # Persistent hydration queue configuration.
-HYDRATION_WORKERS = 8
+HYDRATION_WORKERS = 2
 HYDRATION_LEASE_SECONDS = 120.0
 HYDRATION_MAX_ATTEMPTS = 8
 HYDRATION_BACKOFF_SECONDS = (60.0, 300.0, 1800.0, 7200.0, 21600.0, 86400.0)
@@ -264,6 +264,27 @@ _SCHEMA_READY = False
 # existing in-memory index is updated only for that URL.
 _LOCAL_SEARCH_INDEX_CACHE = {}
 _LOCAL_SEARCH_INDEX_LOCK = threading.Lock()
+
+# Keep background hydration from starting immediately after a foreground search.
+# A completed search can be followed by another search within seconds; starting
+# HTTP hydration in that gap makes later searches contend for CPU/network/SQLite
+# resources and produces the characteristic 'first searches fast, later searches
+# slow' pattern. This is a generic scheduler guard, not a product exception.
+_SEARCH_IDLE_GRACE_SECONDS = 8.0
+_LAST_FOREGROUND_SEARCH_FINISHED = 0.0
+_LAST_FOREGROUND_SEARCH_LOCK = threading.Lock()
+
+
+def _foreground_search_idle_grace_active():
+    with _LAST_FOREGROUND_SEARCH_LOCK:
+        finished = float(_LAST_FOREGROUND_SEARCH_FINISHED or 0.0)
+    return finished > 0.0 and (time.monotonic() - finished) < _SEARCH_IDLE_GRACE_SECONDS
+
+
+def _mark_foreground_search_finished():
+    global _LAST_FOREGROUND_SEARCH_FINISHED
+    with _LAST_FOREGROUND_SEARCH_LOCK:
+        _LAST_FOREGROUND_SEARCH_FINISHED = time.monotonic()
 
 
 def _update_local_search_index_product(store, url, slug=None, name=None, brand=None):
@@ -2588,23 +2609,31 @@ def parse_product(store, url, data):
 
 
 def _secondary_store_parser(store, final_url, original_url):
-    """Use an existing store parser only as a product-page parser fallback.
+    """Run the retailer scraper's exact product-page parser.
 
-    Parser exceptions are deliberately propagated. The hydration layer must
-    preserve the real exception instead of collapsing it into the old opaque
-    ``ERROR:RuntimeError`` record.
+    A store parser, when available, is authoritative for extracting the
+    retailer's own price/identity semantics. The generic catalog parser is
+    only a fallback for stores that do not expose a product-page parser.
     """
     module = importlib.import_module(f'scrapers.{store}.scraper')
-    parser = getattr(module, 'extract_product_page', None)
-    if not callable(parser):
-        return None
 
-    session = requests.Session()
-    session.headers.update({'User-Agent': USER_AGENT})
-    try:
-        parsed = parser(session, final_url, url_slug(final_url))
-    finally:
-        session.close()
+    parser = getattr(module, 'extract_product_page', None)
+    if callable(parser):
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            parsed = parser(session, final_url, url_slug(final_url))
+        finally:
+            session.close()
+    else:
+        # ParfumZentrum's current scraper exposes its exact-URL product parser
+        # as _extract_product(query). Keep this generic for any store adapter
+        # that provides the same callable contract, without embedding store-
+        # specific product names, prices or rules in the catalog engine.
+        parser = getattr(module, '_extract_product', None)
+        if not callable(parser):
+            return None
+        parsed = parser(final_url, url_slug(final_url))
 
     if not isinstance(parsed, dict):
         return None
@@ -2645,16 +2674,27 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
-        # Keep the first HTTP response as the primary source of truth.
-        # The secondary store parser is allowed to fetch again only as a
-        # fallback, but a failed fallback must no longer collapse into the
-        # opaque generic RuntimeError that previously hid the real cause.
-        item = parse_product(store, final, data)
-        primary_ok = bool(item and item.get('name'))
+        # The retailer scraper owns retailer-specific product-page semantics
+        # such as public-vs-code pricing and product-vs-set identity. When a
+        # store exposes that parser, it must run before the generic JSON-LD
+        # fallback; otherwise the generic parser can persist a syntactically
+        # valid but semantically wrong offer.
+        item = None
         secondary_ok = False
-        if not primary_ok:
+        parser_available = False
+        try:
+            module = importlib.import_module(f'scrapers.{store}.scraper')
+            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+        except Exception:
+            parser_available = False
+
+        if parser_available:
             item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
+        else:
+            item = parse_product(store, final, data)
+
+        primary_ok = bool(item and item.get('name'))
 
         if not item or not item.get('name'):
             h1_text = ''
@@ -2753,6 +2793,20 @@ def _search_db():
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
+    """Run the foreground local search and record its completion time."""
+    try:
+        return _search_local_impl(
+            query,
+            per_store=per_store,
+            search_terms=search_terms,
+            cancel_event=cancel_event,
+            deadline=deadline,
+        )
+    finally:
+        _mark_foreground_search_finished()
+
+
+def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Generate bounded local-catalog candidates with one FTS scan per query."""
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
@@ -2959,6 +3013,7 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
         except Exception:
             pass
         conn.close()
+
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, deadline=None):
     # Compatibility path for SQLite builds without FTS5.
@@ -3328,6 +3383,27 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
         conn.close()
 
 
+def _queue_release_claim(task):
+    """Return a claimed hydration task to PENDING without recording an error."""
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            conn.execute(
+                """UPDATE hydration_queue
+                   SET state='PENDING',
+                       leased_until=NULL,
+                       lease_token=NULL,
+                       available_at=?,
+                       last_error=NULL
+                 WHERE store=? AND url=? AND lease_token=?
+                   AND state='PROCESSING'""",
+                (now, task['store'], task['url'], task['lease_token']),
+            )
+    finally:
+        conn.close()
+
+
 def _queue_mark_done(task):
     """Commit the successful product result and close the lease atomically."""
     now = time.time()
@@ -3407,7 +3483,15 @@ def _queue_mark_error(task, error, http_status=None):
 
 
 def _hydrate_one_task(task):
-    """Execute one claimed page fetch and transition its queue state."""
+    """Execute one claimed page fetch and transition its queue state.
+
+    Foreground search has strict priority. A task that was claimed just before
+    a search started is released instead of performing another HTTP fetch.
+    """
+    if _foreground_search_running():
+        _queue_release_claim(task)
+        return None
+
     try:
         item = refresh_url(task['store'], task['url'])
         if item and item.get('name'):
@@ -3457,6 +3541,8 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # Claim serially because each claim uses a short BEGIN IMMEDIATE
     # transaction. Once claimed, HTTP work happens completely outside SQLite.
     for _ in range(limit):
+        if _foreground_search_running():
+            break
         if deadline is not None and time.monotonic() >= float(deadline):
             break
         task = _claim_one_hydration_task()
@@ -3467,6 +3553,11 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     if not tasks:
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
+    if _foreground_search_running():
+        for task in tasks:
+            _queue_release_claim(task)
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
     fetched = 0
     errors = 0
     pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
@@ -3474,9 +3565,10 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     try:
         for future in as_completed(futures):
             try:
-                if future.result():
+                result = future.result()
+                if result is True:
                     fetched += 1
-                else:
+                elif result is False:
                     errors += 1
             except Exception:
                 errors += 1
@@ -3553,6 +3645,8 @@ _COVERAGE_WORKERS = 2
 _COVERAGE_RETRY_SECONDS = 86400.0
 _COVERAGE_ERROR_RETRY_SECONDS = 3600.0
 _COVERAGE_TASK_TIMEOUT_SECONDS = 30.0
+_COVERAGE_CANCEL_POLL_SECONDS = 0.25
+_COVERAGE_CANCEL_EVENT = threading.Event()
 
 
 def _foreground_search_running():
@@ -3817,8 +3911,19 @@ def _coverage_persist_urls(store, rows):
     return len(urls)
 
 
-def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS):
-    """Run one retailer coverage search in a killable process group."""
+def _coverage_scraper_process(
+    module_name,
+    queries,
+    timeout_seconds=_COVERAGE_TASK_TIMEOUT_SECONDS,
+    cancel_event=None,
+):
+    """Run one retailer coverage search in a killable process group.
+
+    A foreground user search has priority over background catalog coverage.
+    The child process is therefore polled instead of using communicate(timeout),
+    so an already-running coverage task can be terminated as soon as a
+    foreground search starts.
+    """
     child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                report = search_stream(query) if callable(search_stream) else search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({"query": query, "error": f"{type(exc).__name__}:{exc}"})\n            continue\n        if isinstance(report, dict):\n            if report.get("results"):\n                break\n        elif isinstance(report, list) and report:\n            break\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
     payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
     env = os.environ.copy()
@@ -3836,7 +3941,48 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
     except Exception as exc:
         return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
     try:
-        stdout, _ = process.communicate(input=payload, timeout=float(timeout_seconds))
+        process.stdin.write(payload)
+        process.stdin.close()
+        deadline = time.monotonic() + float(timeout_seconds)
+        while process.poll() is None:
+            if cancel_event is not None and cancel_event.is_set():
+                try:
+                    if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                    else: process.terminate()
+                except Exception:
+                    pass
+                try: process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    try:
+                        if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                        else: process.kill()
+                    except Exception:
+                        pass
+                    try: process.wait(timeout=2.0)
+                    except Exception: pass
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+            if _foreground_search_running():
+                if cancel_event is not None:
+                    cancel_event.set()
+                try:
+                    if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
+                    else: process.terminate()
+                except Exception:
+                    pass
+                try: process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    try:
+                        if os.name != "nt": os.killpg(process.pid, signal.SIGKILL)
+                        else: process.kill()
+                    except Exception:
+                        pass
+                    try: process.wait(timeout=2.0)
+                    except Exception: pass
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+            if time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired([sys.executable, "-c", child_code], float(timeout_seconds))
+            time.sleep(_COVERAGE_CANCEL_POLL_SECONDS)
+        stdout = process.stdout.read() if process.stdout is not None else ""
     except subprocess.TimeoutExpired:
         try:
             if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
@@ -3867,15 +4013,23 @@ def _coverage_scraper_process(module_name, queries, timeout_seconds=_COVERAGE_TA
     return result if isinstance(result, dict) else {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
 
 
-def _coverage_run_task(task):
+def _coverage_run_task(task, cancel_event=None):
+    if cancel_event is not None and cancel_event.is_set():
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
+    if _foreground_search_running():
+        if cancel_event is not None:
+            cancel_event.set()
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
     store = task['store']
     product = task['product']
     queries = _coverage_queries(product)
     module_name = _COVERAGE_STORE_MODULES.get(store)
     if not module_name:
         return {'state': 'ERROR', 'found': 0, 'error': 'store_module_missing'}
-    isolated = _coverage_scraper_process(module_name, queries)
+    isolated = _coverage_scraper_process(module_name, queries, cancel_event=cancel_event)
     reports = isolated.get('reports') or []
+    if isolated.get('cancelled') or (cancel_event is not None and cancel_event.is_set()):
+        return {'state': 'CANCELLED', 'found': 0, 'error': 'coverage_cancelled_foreground_search'}
     if not isolated.get('ok'):
         return {'state': 'RETRY', 'found': 0, 'error': str(isolated.get('error') or 'coverage_process_failed')[:1000]}
     matched_rows = []
@@ -3941,7 +4095,12 @@ def _coverage_claim_tasks(limit):
 def _coverage_finish_task(task, result):
     now = time.time()
     state = str(result.get('state') or 'ERROR')
-    next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+    if state == 'CANCELLED':
+        next_run = now + 5.0
+        db_state = 'PENDING'
+    else:
+        next_run = now + (_COVERAGE_RETRY_SECONDS if state in {'FOUND','NOT_FOUND'} else _COVERAGE_ERROR_RETRY_SECONDS)
+        db_state = state
     conn = db()
     try:
         conn.execute(
@@ -3949,7 +4108,7 @@ def _coverage_finish_task(task, result):
                   SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
                 WHERE store=? AND product_id=?""",
             (
-                state, int(result.get('found') or 0), now, next_run, result.get('error'),
+                db_state, int(result.get('found') or 0), now, next_run, result.get('error'),
                 task['store'], str(task['product'].get('product_id') or ''),
             ),
         )
@@ -3959,14 +4118,22 @@ def _coverage_finish_task(task, result):
 
 
 def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
-    """Advance canonical-product coverage in small bounded batches."""
+    """Advance canonical-product coverage in small bounded batches.
+
+    Coverage is strictly background work. If a foreground search starts,
+    already-running coverage children are terminated and their tasks are
+    returned to PENDING for a later idle window.
+    """
+    _COVERAGE_CANCEL_EVENT.clear()
+    if _foreground_search_running():
+        return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     tasks = _coverage_claim_tasks(max_tasks)
     if not tasks:
         return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     found = not_found = errors = 0
     worker_count = max(1, min(int(workers), len(tasks), _COVERAGE_WORKERS))
     with ThreadPoolExecutor(max_workers=worker_count) as pool:
-        future_map = {pool.submit(_coverage_run_task, task): task for task in tasks}
+        future_map = {pool.submit(_coverage_run_task, task, _COVERAGE_CANCEL_EVENT): task for task in tasks}
         for future in as_completed(future_map):
             task = future_map[future]
             try:
@@ -4032,7 +4199,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # Background coverage/hydration is lower priority than the
             # foreground catalog search.  Never start another retailer
             # scraper or hydration batch while a user search is active.
-            if _foreground_search_running():
+            if _foreground_search_running() or _foreground_search_idle_grace_active():
                 if stop_event is not None:
                     stop_event.wait(0.25)
                 else:
@@ -4044,7 +4211,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
             # store_urls -> hydration pipeline as normal discovery.
-            if now_mono >= coverage_next_at:
+            if now_mono >= coverage_next_at and not _foreground_search_running():
                 coverage_next_at = now_mono + _COVERAGE_INTERVAL_SECONDS
                 coverage = coverage_batch(
                     max_tasks=_COVERAGE_BATCH_SIZE,
@@ -4059,6 +4226,13 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                         f"errors={coverage.get('errors')}",
                         flush=True,
                     )
+
+            if _foreground_search_running() or _foreground_search_idle_grace_active():
+                if stop_event is not None:
+                    stop_event.wait(0.25)
+                else:
+                    time.sleep(0.25)
+                continue
 
             result = hydrate_catalog_batch(
                 max_urls=max(1, int(batch_size)),
