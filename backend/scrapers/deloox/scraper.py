@@ -1393,6 +1393,34 @@ def diagnose_search(session, query):
 
 
 
+
+def extract_product_html(url, html, query=None):
+    """Parse an already-fetched Deloox product page for catalog hydration.
+
+    The catalog engine has already checked the HTTP status and final URL, so
+    this adapter must not perform another network request. The page's own
+    product name is used to validate the exact-URL parse; query is accepted to
+    satisfy the generic catalog parser contract but is not treated as product
+    identity for a known URL.
+    """
+    target = clean(url)
+    if not target or not _is_deloox_url(target):
+        return None
+    if not html:
+        return None
+
+    soup = BeautifulSoup(html, "html.parser")
+    data = _jsonld(soup)
+    h1 = soup.find("h1")
+    page_name = clean(data.get("name")) or (
+        clean(h1.get_text(" ", strip=True)) if h1 else ""
+    )
+    if not page_name:
+        return None
+
+    return _product(target, html, page_name)
+
+
 def extract_product_page(session, url, query=None):
     """Parse one known Deloox product URL for the catalog refresh pipeline.
 
