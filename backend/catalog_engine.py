@@ -343,21 +343,14 @@ def _remove_local_search_index_url(store, url):
 
 
 _SEARCH_FTS_TABLE = 'catalog_search_fts'
-_SEARCH_FTS_SCHEMA_VERSION = '1'
+# Schema v2 indexes the store column, allowing MATCH to restrict postings by
+# retailer instead of finding matches across the whole catalog eight times.
+_SEARCH_FTS_SCHEMA_VERSION = '2'
 
 
 def _ensure_search_fts(conn):
-    """Create and maintain the persistent local-search FTS5 index."""
+    """Create or migrate the persistent FTS index used by foreground search."""
     try:
-        conn.execute(
-            """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
-               USING fts5(
-                   store UNINDEXED,
-                   url UNINDEXED,
-                   search_text,
-                   tokenize='unicode61 remove_diacritics 2'
-               )"""
-        )
         conn.execute(
             """CREATE TABLE IF NOT EXISTS catalog_search_fts_meta(
                    key TEXT PRIMARY KEY,
@@ -369,7 +362,17 @@ def _ensure_search_fts(conn):
         ).fetchone()
         version = str(row['value']) if row else ''
         if version != _SEARCH_FTS_SCHEMA_VERSION:
-            conn.execute("DELETE FROM catalog_search_fts")
+            # FTS5 column options cannot be changed in place. Rebuild once.
+            conn.execute("DROP TABLE IF EXISTS catalog_search_fts")
+            conn.execute(
+                """CREATE VIRTUAL TABLE catalog_search_fts
+                   USING fts5(
+                       store,
+                       url UNINDEXED,
+                       search_text,
+                       tokenize='unicode61 remove_diacritics 2'
+                   )"""
+            )
             conn.execute(
                 """INSERT INTO catalog_search_fts(store,url,search_text)
                    SELECT u.store,u.url,
@@ -389,6 +392,16 @@ def _ensure_search_fts(conn):
                 (_SEARCH_FTS_SCHEMA_VERSION,),
             )
             conn.commit()
+        else:
+            conn.execute(
+                """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
+                   USING fts5(
+                       store,
+                       url UNINDEXED,
+                       search_text,
+                       tokenize='unicode61 remove_diacritics 2'
+                   )"""
+            )
         _ensure_search_fts_triggers(conn)
         return True
     except sqlite3.OperationalError:
@@ -2925,17 +2938,20 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                           LEFT JOIN store_products p
                             ON p.store=u.store AND p.url=u.url
                            AND p.fetch_status='OK'
-                         WHERE f.store=?
-                           AND catalog_search_fts MATCH ?
+                         WHERE catalog_search_fts MATCH ?
                            AND u.active=1
                          ORDER BY rank
                          LIMIT ?
                     """
                 try:
+                    # Store is indexed in FTS schema v2. Constrain postings in
+                    # MATCH itself; WHERE f.store=? filters too late, after FTS
+                    # has found the same term across every retailer.
+                    store_fts_query = f'store : "{store}" AND ({fts_query})'
                     _diag_sql_started = time.monotonic()
                     candidates = conn.execute(
                         sql,
-                        (store, fts_query, term_candidate_limit),
+                        (store_fts_query, term_candidate_limit),
                     ).fetchall()
                     _diag_sql_seconds += time.monotonic() - _diag_sql_started
                     _diag_query_count += 1
