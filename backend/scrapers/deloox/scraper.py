@@ -1392,6 +1392,64 @@ def diagnose_search(session, query):
     return report
 
 
+
+def extract_product_page(session, url, query=None):
+    """Parse one known Deloox product URL for the catalog refresh pipeline.
+
+    This public adapter intentionally reuses the same retailer-specific parser
+    as discovery, so catalog hydration does not fall back to a generic JSON-LD
+    parser that may choose a non-authoritative offer. The URL is fetched with
+    Deloox's normal headers because the generic catalog fetcher may use a
+    different request profile.
+    """
+    target = clean(url)
+    if not target or not _is_deloox_url(target):
+        return None
+
+    try:
+        response = session.get(
+            target,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        raise
+
+    if response.status_code >= 400:
+        response.raise_for_status()
+
+    final_url = clean(getattr(response, "url", "") or target)
+    html = getattr(response, "text", "") or ""
+    if not html:
+        return None
+
+    # A known product URL is already a sufficiently narrow query. Derive the
+    # expected name from the page itself when no explicit query is supplied;
+    # this avoids treating the numeric product ID in the URL as a name token.
+    soup = BeautifulSoup(html, "html.parser")
+    data = _jsonld(soup)
+    h1 = soup.find("h1")
+    page_name = clean(data.get("name")) or (
+        clean(h1.get_text(" ", strip=True)) if h1 else ""
+    )
+    if not page_name:
+        return None
+
+    # This is an exact-URL refresh, not a search result. Validate the parsed
+    # record against its own authoritative page name; _product() still applies
+    # the generic URL-slug/name integrity check.
+    return _product(final_url, html, page_name)
+
+
+def _is_deloox_url(url):
+    try:
+        host = (urlparse(clean(url)).hostname or "").lower()
+    except Exception:
+        return False
+    return host in DELOOX_HOSTS
+
+
 def search(query):
     query = clean(query)
     if not query:
