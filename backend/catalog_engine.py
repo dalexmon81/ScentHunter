@@ -3269,6 +3269,55 @@ def _ensure_hydration_queue():
         conn.close()
 
 
+def _requeue_stale_hydration_tasks(max_age_seconds=86400.0, limit=100):
+    """Queue a bounded refresh of stale successful product records.
+
+    Only completed tasks and stale successful records stranded in a future
+    PENDING backoff are eligible. ERROR backoff and PROCESSING leases are
+    preserved. Attempts and last_error are never reset/overwritten.
+    """
+    now = time.time()
+    cutoff = now - max(3600.0, float(max_age_seconds))
+    batch_limit = max(1, min(int(limit), 100))
+    conn = db()
+    try:
+        with conn:
+            rows = conn.execute(
+                """SELECT q.store,q.url,q.state
+                     FROM hydration_queue q
+                     JOIN store_urls u
+                       ON u.store=q.store AND u.url=q.url
+                     JOIN store_products p
+                       ON p.store=q.store AND p.url=q.url
+                    WHERE u.active=1
+                      AND p.fetch_status='OK'
+                      AND COALESCE(p.fetched_at,0) < ?
+                      AND (q.state='DONE'
+                           OR (q.state='PENDING' AND q.available_at > ?))
+                    ORDER BY CASE WHEN q.state='PENDING' THEN 0 ELSE 1 END,
+                             COALESCE(p.fetched_at,0) ASC
+                    LIMIT ?""",
+                (cutoff, now, batch_limit),
+            ).fetchall()
+            if not rows:
+                return 0
+            conn.executemany(
+                """UPDATE hydration_queue
+                      SET state='PENDING',
+                          available_at=?,
+                          leased_until=NULL,
+                          lease_token=NULL,
+                          last_http_status=NULL
+                    WHERE store=? AND url=?
+                      AND (state='DONE'
+                           OR (state='PENDING' AND available_at > ?))""",
+                [(now, row['store'], row['url'], now) for row in rows],
+            )
+            return len(rows)
+    finally:
+        conn.close()
+
+
 def recover_stale_tasks():
     """Return abandoned PROCESSING leases to PENDING after a restart/crash."""
     now = time.time()
@@ -4205,6 +4254,9 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
     _ensure_hydration_queue()
     _coverage_ensure_schema()
     recovered = recover_stale_tasks()
+    # Defer stale refresh until the loop has passed its foreground-search
+    # priority guard. Never run the stale-record scan as thread startup work.
+    refresh_next_at = 0.0
     coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
@@ -4228,6 +4280,14 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 continue
 
             now_mono = time.monotonic()
+            if now_mono >= refresh_next_at:
+                # Run only while foreground search is idle; keep the work
+                # bounded and preserve ERROR retry backoff.
+                refreshed = _requeue_stale_hydration_tasks()
+                refresh_next_at = now_mono + 900.0
+                if refreshed:
+                    print(f'CATALOG HYDRATION STALE REFRESH queued={refreshed}', flush=True)
+
             # Canonical coverage is a background catalog-maintenance path,
             # not part of foreground search. It is allowed to run only while
             # the foreground search is idle, and it feeds the same durable
