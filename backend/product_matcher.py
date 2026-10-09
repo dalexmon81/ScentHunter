@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import time
+from functools import lru_cache
 from collections import Counter
 import unicodedata
 from dataclasses import dataclass
@@ -965,6 +966,7 @@ class ProductMatcher:
         return None
 
     @staticmethod
+    @lru_cache(maxsize=8192)
     def _variant_specificity_key(value: Any, family_brand: Any = "") -> str:
         """Return identity-bearing variant tokens for specificity comparisons.
 
@@ -1896,6 +1898,7 @@ class ProductMatcher:
         return tuple(values)
 
     @staticmethod
+    @lru_cache(maxsize=16384)
     def _url_identity_text(value: str) -> str:
         """Normalize a URL path while retaining variant and concentration words."""
         text = normalize(value)
