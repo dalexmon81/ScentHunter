@@ -2833,6 +2833,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     if not token_sets:
         return []
 
+    search_started = time.monotonic()
     conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
@@ -2883,6 +2884,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         conn.set_progress_handler(_sqlite_progress, 1000)
 
         for store in STORES:
+            store_search_started = time.monotonic()
+            store_candidate_start = len(rows)
             if _search_interrupted():
                 interrupted = True
                 break
@@ -3007,6 +3010,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         '_needs_refresh': True,
                     })
 
+            print(f'CATALOG SQLITE STORE store={store} elapsed={time.monotonic() - store_search_started:.3f}s candidates={len(rows) - store_candidate_start}', flush=True)
+
+        print(f'CATALOG SQLITE TOTAL elapsed={time.monotonic() - search_started:.3f}s candidates={len(rows)} terms={len(token_sets)}', flush=True)
         return rows
     finally:
         try:
@@ -3130,31 +3136,7 @@ def refresh_candidates(rows, cancel_event=None, deadline=None):
     running HTTP requests are allowed to finish their bounded REFRESH_TIMEOUT,
     but the executor is never waited on after cancellation/deadline expiry.
     """
-    jobs_by_store = {}
-    store_order = []
-    for row in rows:
-        if not isinstance(row, dict) or not row.get('_needs_refresh'):
-            continue
-        store = str(row.get('store_key') or '').strip()
-        url = str(row.get('url') or '').strip()
-        if not store or not url:
-            continue
-        if store not in jobs_by_store:
-            jobs_by_store[store] = []
-            store_order.append(store)
-        jobs_by_store[store].append((store, url))
-    jobs = []
-    round_index = 0
-    while True:
-        added = False
-        for store in store_order:
-            store_jobs = jobs_by_store[store]
-            if round_index < len(store_jobs):
-                jobs.append(store_jobs[round_index])
-                added = True
-        if not added:
-            break
-        round_index += 1
+    jobs = [(r['store_key'], r['url']) for r in rows if r.get('_needs_refresh')]
     if not jobs:
         return []
     out = []
