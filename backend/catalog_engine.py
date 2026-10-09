@@ -2834,7 +2834,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         return []
 
     _diag_search_started = time.monotonic()
-    print(f"SCENTHUNTER: CATALOG_FTS_DIAG START query={query!r} terms={len(terms)} token_sets={len(token_sets)} stores={len(STORES)}")
+    print(f"SCENTHUNTER: CATALOG_FTS_DIAG START query={query!r} terms={len(terms)} token_sets={len(token_sets)} stores={len(STORES)}", flush=True)
     conn = _search_db()
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
@@ -2989,7 +2989,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                 f"queries={_diag_query_count} sql_rows={_diag_sql_rows} "
                 f"sql_s={_diag_sql_seconds:.3f} verify_s={_diag_verify_seconds:.3f} "
                 f"unique_urls={len(selected_by_url)} selected={len(ordered)} "
-                f"store_s={time.monotonic() - _diag_store_started:.3f}"
+                f"store_s={time.monotonic() - _diag_store_started:.3f}",
+                flush=True,
             )
             for _score, r in ordered:
                 url = str(r.get('url') or '').strip()
@@ -3031,7 +3032,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             f"SCENTHUNTER: CATALOG_FTS_DIAG END query={query!r} "
             f"token_sets={len(token_sets)} rows={len(rows)} "
             f"elapsed_s={time.monotonic() - _diag_search_started:.3f} "
-            f"interrupted={interrupted}"
+            f"interrupted={interrupted}",
+            flush=True,
         )
         return rows
     finally:
