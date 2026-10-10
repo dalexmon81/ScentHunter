@@ -4154,7 +4154,7 @@ def diagnose_easycosmetic_queue_position():
             "ok": False,
             "error": f"{type(exc).__name__}: {str(exc)[:400]}",
         }
-        @app.get("/diagnose-easycosmetic-refresh-handoff")
+@app.get("/diagnose-easycosmetic-refresh-handoff")
 def diagnose_easycosmetic_refresh_handoff_endpoint():
     import importlib.util
     from pathlib import Path
