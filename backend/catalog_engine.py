@@ -2560,6 +2560,39 @@ def _first_offer(p):
     return {}
 
 
+def _easycosmetic_size_ml(soup, name=''):
+    """Extract a size only when the Easycosmetic page identifies the selected variant."""
+    def parse_size(value):
+        text = str(value or '').lower().replace(',', '.')
+        match = re.search(r'(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b', text)
+        if not match:
+            return None
+        try:
+            size = float(match.group(1))
+            return size if 1 <= size <= 5000 else None
+        except ValueError:
+            return None
+
+    size = parse_size(name)
+    if size is not None:
+        return size
+    selected = []
+    for node in soup.select('option[selected], input[type="radio"][checked], input[type="radio"][aria-checked="true"], [aria-selected="true"], [aria-checked="true"]'):
+        selected.append(' '.join((node.get_text(' ', strip=True), str(node.get('value') or ''), str(node.get('aria-label') or ''), str(node.get('title') or ''), str(node.get('data-value') or ''))))
+    for text in selected:
+        size = parse_size(text)
+        if size is not None:
+            return size
+    for node in soup.select('[class*="selected"], [class*="current"], [class*="variant"], [class*="size"]'):
+        classes = ' '.join(node.get('class', [])) if isinstance(node.get('class'), list) else str(node.get('class') or '')
+        if not re.search(r'selected|current|active|chosen', classes, re.I):
+            continue
+        size = parse_size(node.get_text(' ', strip=True))
+        if size is not None:
+            return size
+    return None
+
+
 def parse_product(store, url, data):
     soup = BeautifulSoup(data, 'html.parser')
     h1 = soup.find('h1')
@@ -2584,6 +2617,7 @@ def parse_product(store, url, data):
         availability = 'preorder'
     else:
         availability = 'unknown'
+    size_ml = _easycosmetic_size_ml(soup, name) if store == 'easycosmetic' else None
     image = p.get('image')
     if isinstance(image, list):
         image = image[0] if image else None
@@ -2599,6 +2633,7 @@ def parse_product(store, url, data):
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
+        'size_ml': size_ml,
         'price_num': price,
         'price': price,
         'currency': currency,
@@ -2728,12 +2763,13 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                 price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'), None, None,
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
