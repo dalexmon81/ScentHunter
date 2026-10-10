@@ -3404,6 +3404,39 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
         conn.close()
 
 
+HYDRATION_REVISIT_SECONDS = 86400.0
+_HYDRATION_REQUEUE_INTERVAL = 600.0
+_hydration_last_requeue = 0.0
+
+
+def _requeue_stale_hydration_done(revisit_seconds=HYDRATION_REVISIT_SECONDS, limit=50):
+    """Put old DONE product rows back in PENDING so stored prices get refreshed.
+
+    Bounded per call; requeued rows have attempts>0 so brand-new URLs
+    (attempts=0) keep priority.
+    """
+    cutoff = time.time() - max(3600.0, float(revisit_seconds))
+    now = time.time()
+    conn = db()
+    try:
+        with conn:
+            return int(conn.execute(
+                """UPDATE hydration_queue
+                      SET state='PENDING', available_at=?,
+                          leased_until=NULL, lease_token=NULL, last_error=NULL
+                    WHERE state='DONE'
+                      AND (store,url) IN (
+                          SELECT store,url FROM hydration_queue
+                           WHERE state='DONE'
+                             AND COALESCE(last_finished_at,0) < ?
+                           ORDER BY COALESCE(last_finished_at,0) ASC
+                           LIMIT ?)""",
+                (now, cutoff, max(1, int(limit))),
+            ).rowcount or 0)
+    finally:
+        conn.close()
+
+
 def _queue_release_claim(task):
     """Return a claimed hydration task to PENDING without recording an error."""
     now = time.time()
@@ -3416,6 +3449,7 @@ def _queue_release_claim(task):
                        leased_until=NULL,
                        lease_token=NULL,
                        available_at=?,
+                       attempts=MAX(attempts-1,0),
                        last_error=NULL
                  WHERE store=? AND url=? AND lease_token=?
                    AND state='PROCESSING'""",
@@ -3554,6 +3588,14 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
     recover_stale_tasks()
+
+    global _hydration_last_requeue
+    if time.monotonic() - _hydration_last_requeue >= _HYDRATION_REQUEUE_INTERVAL:
+        _hydration_last_requeue = time.monotonic()
+        try:
+            _requeue_stale_hydration_done()
+        except Exception:
+            pass
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
