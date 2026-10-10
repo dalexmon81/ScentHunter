@@ -436,7 +436,7 @@ BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
 JOB_TIMEOUT_SECONDS = 30.0
-CATALOG_SEARCH_BUDGET_SECONDS = 12.0
+CATALOG_SEARCH_BUDGET_SECONDS = 5.0
 CATALOG_REFRESH_BUDGET_SECONDS = 0.25
 CATALOG_REFRESH_PER_STORE = 8
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
@@ -1448,13 +1448,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return []
 
     terms = _catalog_search_terms(query)
-    candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
+    candidate_limit = min(96, max(48, len(terms) * 2)) if len(terms) > 1 else 32
 
     try:
         search_budget = min(
-            12.0,
+            5.0,
             max(
-                2.0,
+                1.5,
                 float(os.environ.get(
                     'CATALOG_SEARCH_BUDGET_SECONDS',
                     str(CATALOG_SEARCH_BUDGET_SECONDS),
