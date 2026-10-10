@@ -3559,3 +3559,184 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
             "error": f"{type(exc).__name__}: {str(exc)[:500]}",
         }
 
+
+
+@app.get("/diagnose-easycosmetic-hydration-state")
+def diagnose_easycosmetic_hydration_state_endpoint():
+    """
+    Read-only diagnostic: inspect production code identity and Easycosmetic
+    hydration queue history for the two target URLs. No writes, no claims,
+    no HTTP fetches to retailer pages.
+    """
+    import hashlib
+    import inspect
+    import os
+    import time
+
+    targets = [
+        {
+            "variant": "Donna",
+            "url": "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx",
+        },
+        {
+            "variant": "Uomo",
+            "url": "https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx",
+        },
+    ]
+
+    report = {
+        "ok": True,
+        "diagnostic": "easycosmetic-hydration-state-read-only-v1",
+        "read_only": True,
+        "database_writes": False,
+        "queue_claims": False,
+        "retailer_http_requests": False,
+        "runtime": {},
+        "code_checks": {},
+        "results": [],
+    }
+
+    try:
+        engine = importlib.import_module("catalog_engine")
+        report["runtime"] = {
+            "app_version": globals().get("APP_VERSION"),
+            "catalog_engine_file": getattr(engine, "__file__", None),
+            "catalog_engine_module_version": getattr(engine, "APP_VERSION", None),
+            "process_id": os.getpid(),
+            "uptime_seconds": round(time.time() - float(globals().get("APP_STARTED_AT", time.time())), 2)
+                if globals().get("APP_STARTED_AT") else None,
+        }
+
+        for name in ("refresh_url", "_hydrate_one_task", "_queue_mark_done",
+                     "_queue_mark_error", "_queue_release_claim", "_claim_one_hydration_task"):
+            fn = getattr(engine, name, None)
+            if not callable(fn):
+                report["code_checks"][name] = {"available": False}
+                continue
+            try:
+                src = inspect.getsource(fn)
+                report["code_checks"][name] = {
+                    "available": True,
+                    "source_sha256": hashlib.sha256(src.encode("utf-8")).hexdigest(),
+                    "source_chars": len(src),
+                    "calls_refresh_url": "refresh_url(" in src if name == "_hydrate_one_task" else None,
+                    "marks_done": "_queue_mark_done(" in src if name == "_hydrate_one_task" else None,
+                    "marks_error": "_queue_mark_error(" in src if name == "_hydrate_one_task" else None,
+                    "releases_claim": "_queue_release_claim(" in src if name == "_hydrate_one_task" else None,
+                }
+            except Exception as exc:
+                report["code_checks"][name] = {
+                    "available": True,
+                    "inspection_error": f"{type(exc).__name__}: {str(exc)[:250]}",
+                }
+
+        opener = getattr(engine, "_search_db", None)
+        if not callable(opener):
+            return {
+                **report,
+                "ok": False,
+                "error": "read_only_database_connection_unavailable",
+            }
+
+        conn = opener()
+        try:
+            try:
+                conn.execute("PRAGMA query_only=ON")
+            except Exception:
+                pass
+
+            tables = {
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            report["runtime"]["queue_table_exists"] = "hydration_queue" in tables
+            report["runtime"]["store_products_table_exists"] = "store_products" in tables
+
+            for target in targets:
+                item = {"variant": target["variant"], "url": target["url"]}
+                try:
+                    q = conn.execute(
+                        """SELECT store,url,state,attempts,available_at,leased_until,
+                                  last_error,last_http_status,last_started_at,last_finished_at,
+                                  first_seen_at,lease_token
+                           FROM hydration_queue
+                           WHERE store=? AND url=? LIMIT 1""",
+                        ("easycosmetic", target["url"]),
+                    ).fetchone()
+                    product = conn.execute(
+                        """SELECT store,url,fetched_at,fetch_status,size_ml,price,image
+                           FROM store_products WHERE store=? AND url=? LIMIT 1""",
+                        ("easycosmetic", target["url"]),
+                    ).fetchone()
+                    item["queue"] = dict(q) if q else None
+                    if item["queue"]:
+                        item["queue"]["lease_token_present"] = bool(item["queue"].pop("lease_token", None))
+                        item["queue"]["available_at_in_past"] = float(item["queue"]["available_at"] or 0) <= time.time()
+                        item["queue"]["leased_until_in_past_or_null"] = (
+                            item["queue"]["leased_until"] is None
+                            or float(item["queue"]["leased_until"]) <= time.time()
+                        )
+                    item["product"] = dict(product) if product else None
+                    if item["queue"] and item["product"]:
+                        item["comparison"] = {
+                            "queue_says_pending_or_error": item["queue"]["state"] in ("PENDING", "ERROR"),
+                            "product_fetch_status_ok": item["product"]["fetch_status"] == "OK",
+                            "product_row_older_than_queue_last_finish": (
+                                item["queue"]["last_finished_at"] is not None
+                                and item["product"]["fetched_at"] is not None
+                                and float(item["product"]["fetched_at"]) < float(item["queue"]["last_finished_at"])
+                            ),
+                            "last_started_after_product_fetch": (
+                                item["queue"]["last_started_at"] is not None
+                                and item["product"]["fetched_at"] is not None
+                                and float(item["queue"]["last_started_at"]) > float(item["product"]["fetched_at"])
+                            ),
+                        }
+                    item["ok"] = True
+                except Exception as exc:
+                    item["ok"] = False
+                    item["error"] = f"{type(exc).__name__}: {str(exc)[:300]}"
+                report["results"].append(item)
+
+            # Aggregate state counts for Easycosmetic without exposing full queue contents.
+            if "hydration_queue" in tables:
+                try:
+                    counts = conn.execute(
+                        """SELECT state,COUNT(*) AS count
+                           FROM hydration_queue WHERE store=?
+                           GROUP BY state ORDER BY state""",
+                        ("easycosmetic",),
+                    ).fetchall()
+                    report["easycosmetic_queue_counts"] = {
+                        row["state"]: row["count"] for row in counts
+                    }
+                    report["easycosmetic_queue_counts_total"] = sum(
+                        report["easycosmetic_queue_counts"].values()
+                    )
+                except Exception as exc:
+                    report["easycosmetic_queue_counts_error"] = (
+                        f"{type(exc).__name__}: {str(exc)[:250]}"
+                    )
+        finally:
+            conn.close()
+
+        report["summary"] = {
+            "tested": len(report["results"]),
+            "rows_found": sum(1 for item in report["results"] if item.get("queue") is not None),
+            "pending_rows": sum(1 for item in report["results"]
+                                if item.get("queue", {}).get("state") == "PENDING"),
+            "processing_rows": sum(1 for item in report["results"]
+                                   if item.get("queue", {}).get("state") == "PROCESSING"),
+            "error_rows": sum(1 for item in report["results"]
+                              if item.get("queue", {}).get("state") == "ERROR"),
+        }
+        report["ok"] = all(item.get("ok") for item in report["results"])
+        return report
+    except Exception as exc:
+        return {
+            **report,
+            "ok": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:500]}",
+        }
+
