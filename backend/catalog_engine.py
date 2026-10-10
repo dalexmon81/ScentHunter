@@ -2734,6 +2734,24 @@ def refresh_url(store, url):
 
         primary_ok = bool(item and item.get('name'))
 
+        # Easycosmetic's dedicated scraper adapter may return a valid offer
+        # without a volume, even when the page JSON-LD/image identifies it.
+        # Preserve the dedicated parser's price and availability, but fill a
+        # missing volume from the generic page parser before persistence.
+        if store == 'easycosmetic' and item and item.get('name') and not item.get('size_ml'):
+            try:
+                generic_item = parse_product(store, final or url, data)
+                if generic_item and generic_item.get('size_ml'):
+                    item['size_ml'] = generic_item['size_ml']
+                if generic_item and not item.get('image') and generic_item.get('image'):
+                    item['image'] = generic_item['image']
+            except Exception as size_exc:
+                print(
+                    f'CATALOG EASYCOSMETIC SIZE FALLBACK ERROR url={url} '
+                    f'error={type(size_exc).__name__}: {size_exc}',
+                    flush=True,
+                )
+
         if not item or not item.get('name'):
             h1_text = ''
             jsonld_count = 0
@@ -3372,6 +3390,8 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                    FROM hydration_queue q
                    JOIN store_urls u
                      ON u.store=q.store AND u.url=q.url
+                   LEFT JOIN store_products sp
+                     ON sp.store=q.store AND sp.url=q.url
                    WHERE q.store=?
                      AND u.active=1
                      AND q.state IN ('PENDING','ERROR')
@@ -3383,6 +3403,12 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     CASE
+                       WHEN q.store='easycosmetic'
+                        AND sp.size_ml IS NULL
+                        AND lower(COALESCE(sp.image,'')) LIKE '%ml.%'
+                       THEN 0 ELSE 1
+                     END ASC,
                      q.available_at ASC,
                      q.first_seen_at ASC,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
