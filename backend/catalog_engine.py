@@ -2560,8 +2560,8 @@ def _first_offer(p):
     return {}
 
 
-def _easycosmetic_size_ml(soup, name=''):
-    """Extract a size only when the Easycosmetic page identifies the selected variant."""
+def _easycosmetic_size_ml(soup, name='', image='', url=''):
+    """Extract size from the product identity, its canonical image/URL, or selected variant controls."""
     def parse_size(value):
         text = str(value or '').lower().replace(',', '.')
         match = re.search(r'(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b', text)
@@ -2573,9 +2573,12 @@ def _easycosmetic_size_ml(soup, name=''):
         except ValueError:
             return None
 
-    size = parse_size(name)
-    if size is not None:
-        return size
+    # Prefer explicit product-name volume; Easycosmetic often puts the actual
+    # selected bottle size in its product image filename (e.g. ...100ml.png).
+    for source in (name, image, url):
+        size = parse_size(source)
+        if size is not None:
+            return size
     selected = []
     for node in soup.select('option[selected], input[type="radio"][checked], input[type="radio"][aria-checked="true"], [aria-selected="true"], [aria-checked="true"]'):
         selected.append(' '.join((node.get_text(' ', strip=True), str(node.get('value') or ''), str(node.get('aria-label') or ''), str(node.get('title') or ''), str(node.get('data-value') or ''))))
@@ -2617,12 +2620,12 @@ def parse_product(store, url, data):
         availability = 'preorder'
     else:
         availability = 'unknown'
-    size_ml = _easycosmetic_size_ml(soup, name) if store == 'easycosmetic' else None
     image = p.get('image')
     if isinstance(image, list):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
+    size_ml = _easycosmetic_size_ml(soup, name, image, url) if store == 'easycosmetic' else None
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
