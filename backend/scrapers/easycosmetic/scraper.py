@@ -606,6 +606,44 @@ def search_stream(query: str, emit=None):
         },
     }
 
+def _extract_size_ml(soup: BeautifulSoup, name: str = "") -> Optional[float]:
+    """Extract only a clearly selected Easycosmetic size, never any page variant."""
+    def parse_size(value: Any) -> Optional[float]:
+        text = _clean(value).lower().replace(",", ".")
+        match = re.search(r"(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b", text)
+        if not match:
+            return None
+        try:
+            size = float(match.group(1))
+            return size if 1 <= size <= 5000 else None
+        except ValueError:
+            return None
+
+    # Product identity often includes the size.
+    size = parse_size(name)
+    if size is not None:
+        return size
+
+    # Read only controls that indicate the currently selected variant.
+    selected = []
+    for node in soup.select('option[selected], input[type="radio"][checked], input[type="radio"][aria-checked="true"], [aria-selected="true"], [aria-checked="true"]'):
+        selected.append(" ".join((node.get_text(" ", strip=True), str(node.get("value") or ""), str(node.get("aria-label") or ""), str(node.get("title") or ""), str(node.get("data-value") or ""))))
+    for text in selected:
+        size = parse_size(text)
+        if size is not None:
+            return size
+
+    # Some pages render the chosen variant in a dedicated current/selected label.
+    for node in soup.select('[class*="selected"], [class*="current"], [class*="variant"], [class*="size"]'):
+        classes = " ".join(node.get("class", [])) if isinstance(node.get("class"), list) else str(node.get("class") or "")
+        if not re.search(r"selected|current|active|chosen", classes, re.I):
+            continue
+        size = parse_size(node.get_text(" ", strip=True))
+        if size is not None:
+            return size
+    return None
+
+
 def parse_product(url: str) -> Optional[Dict[str, Any]]:
     url = _normalise_url(url)
 
@@ -683,8 +721,10 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     if not name:
         return None
 
+    size_ml = _extract_size_ml(soup, name)
     return {
         "shop": STORE,
+        "size_ml": size_ml,
         "brand": brand,
         "name": name,
         "price": f"{price:.2f} €" if price is not None else None,
