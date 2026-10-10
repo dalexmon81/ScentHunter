@@ -2561,13 +2561,15 @@ def _first_offer(p):
 
 
 def _extract_product_size_ml(soup, product, h1text=''):
-    """Extract a product's volume from product-specific metadata, not page-wide recommendations."""
-    candidates = [h1text]
+    """Extract volume only from the current product identity/image, never recommendations."""
+    candidates = []
     if isinstance(product, dict):
-        for key in ('name', 'description', 'sku', 'mpn'):
-            value = product.get(key)
-            if isinstance(value, str) and value.strip():
-                candidates.append(value.strip())
+        # Product names are authoritative when they explicitly include a size.
+        value = product.get('name')
+        if isinstance(value, str) and value.strip():
+            candidates.append(value.strip())
+        # JSON-LD Product image is product-specific on this retailer; the URL
+        # often contains the exact volume (e.g. ...coral-fantasy-spray-100ml.png).
         image = product.get('image')
         if isinstance(image, str):
             candidates.append(image)
@@ -2575,28 +2577,26 @@ def _extract_product_size_ml(soup, product, h1text=''):
             candidates.extend(str(x) for x in image if isinstance(x, str))
         elif isinstance(image, dict):
             candidates.extend(str(image[k]) for k in ('url', 'contentUrl') if image.get(k))
-    for selector in ('meta[property="og:image"]', 'meta[name="twitter:image"]', 'meta[property="og:description"]', 'meta[name="description"]'):
-        node = soup.select_one(selector)
-        if node:
-            value = node.get('content')
-            if value:
-                candidates.append(str(value))
-    # Product-specific image URLs often encode the package size even when the
-    # retailer's JSON-LD omits it. Do not scan all page text: recommendations
-    # can contain different volumes and must not contaminate this offer.
-    for node in soup.select('img[src], img[data-src], meta[property="og:image"]'):
-        value = node.get('src') or node.get('data-src') or node.get('content')
-        if value and any(token in str(value).lower() for token in ('product', 'artikel', 'valentino', 'parfum', 'perfume', '100ml', '50ml', '30ml')):
-            candidates.append(str(value))
+    if h1text:
+        candidates.append(str(h1text))
+
+    # Only use OpenGraph image as a fallback. Do not scan page descriptions or
+    # every image on the page: Easycosmetic includes recommendation tiles with
+    # unrelated 30 ml / 50 ml / 100 ml sizes before or alongside the main item.
+    if not any(re.search(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])|(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(c), re.IGNORECASE) for c in candidates):
+        node = soup.select_one('meta[property="og:image"]')
+        if node and node.get('content'):
+            candidates.append(str(node.get('content')))
+
     pattern = re.compile(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', re.IGNORECASE)
     for candidate in candidates:
-        match = pattern.search(str(candidate))
+        text = str(candidate)
+        match = pattern.search(text)
         if match:
             value = _num(match.group(1))
             if value is not None and 1 <= value <= 2000:
                 return float(value)
-        # Image filenames commonly use `100ml` without a word boundary.
-        match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(candidate), re.IGNORECASE)
+        match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', text, re.IGNORECASE)
         if match:
             value = _num(match.group(1))
             if value is not None and 1 <= value <= 2000:
