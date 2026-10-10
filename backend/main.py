@@ -4154,4 +4154,24 @@ def diagnose_easycosmetic_queue_position():
             "ok": False,
             "error": f"{type(exc).__name__}: {str(exc)[:400]}",
         }
+        @app.get("/diagnose-easycosmetic-refresh-handoff")
+def diagnose_easycosmetic_refresh_handoff_endpoint():
+    import importlib.util
+    from pathlib import Path
+
+    diagnostic_path = Path(__file__).resolve().parent / "diagnose_easycosmetic_refresh_handoff.py"
+    spec = importlib.util.spec_from_file_location(
+        "diagnose_easycosmetic_refresh_handoff_module", diagnostic_path
+    )
+    if spec is None or spec.loader is None:
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-refresh-handoff-v1",
+            "error": "diagnostic_module_load_failed",
+            "path": str(diagnostic_path),
+        }
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.diagnose_easycosmetic_refresh_handoff()
 
