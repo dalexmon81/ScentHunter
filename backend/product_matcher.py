@@ -1555,29 +1555,35 @@ class ProductMatcher:
         query_is_family = catalog_variant_key(query) in family["normalized_query_aliases"]
         requested = self._requested_variant(query, family)
 
-        # A family query can name the shared part of a registered variant
-        # without including its audience suffix (for example, "Born in Roma
-        # Coral Fantasy" for the Donna and Uomo variants). Accept that query
-        # only when every query token is present in this already-resolved
-        # variant's registered identity. Exact variant requests still take
-        # precedence, so explicit Uomo/Donna and EDP/EDT distinctions remain
-        # enforced instead of cross-matching sibling variants.
         if not query_is_family and requested is None:
+            # A generic family query may omit a registered audience suffix
+            # (e.g. "Valentino Born in Roma Coral Fantasy" for Donna and Uomo).
+            # Compare identity tokens after removing the registered brand, and
+            # allow only a subset of the resolved variant identity. Concentration
+            # markers remain intact in this normalization, so explicit EDP/EDT
+            # queries cannot silently cross-match.
             query_identity = self._url_catalog_identity_text(
                 self._remove_brand(query, family.get("brand", ""))
             )
             query_tokens = set(catalog_variant_key(query_identity).split())
-            variant_identity_values = {
-                str(variant.get("canonical_name") or ""),
-                *(str(alias) for alias in variant.get("aliases", ())),
-                *(str(alias) for alias in variant.get("normalized_aliases", ())),
-            }
-            variant_tokens = set()
-            for identity_value in variant_identity_values:
+
+            # Some registry brand labels contain extra wording, so remove their
+            # tokens too rather than depending only on an exact phrase removal.
+            brand_tokens = set(catalog_variant_key(family.get("brand", "")).split())
+            query_tokens.difference_update(brand_tokens)
+
+            variant_identity_tokens = set()
+            for identity_value in (
+                variant.get("canonical_name", ""),
+                *variant.get("aliases", ()),
+                *variant.get("normalized_aliases", ()),
+            ):
                 identity_text = self._url_catalog_identity_text(identity_value)
-                variant_tokens.update(catalog_variant_key(identity_text).split())
-            query_is_variant_subset = bool(query_tokens) and query_tokens.issubset(variant_tokens)
-            if not query_is_variant_subset:
+                identity_tokens = set(catalog_variant_key(identity_text).split())
+                identity_tokens.difference_update(brand_tokens)
+                variant_identity_tokens.update(identity_tokens)
+
+            if not query_tokens or not query_tokens.issubset(variant_identity_tokens):
                 return None
         elif not query_is_family and requested["canonical_name"] != variant["canonical_name"]:
             return None
