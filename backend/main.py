@@ -2733,6 +2733,37 @@ def catalog_status_endpoint():
         }
 
 
+@app.api_route('/catalog/refresh-deloox-url', methods=['GET', 'POST'])
+def catalog_refresh_deloox_url_endpoint(url: str = ''):
+    """Operator tool: force refresh_url('deloox', url) for one product URL.
+
+    Generic: only validates that the URL is an allowed Deloox product URL,
+    then uses the normal refresh path (store_products + search index update).
+    """
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+    import catalog_engine
+    target = catalog_engine._html_product_url('deloox', str(url or '').strip(), 'https://www.deloox.be/')
+    if not target or not str(url or '').strip().lower().startswith(('http://', 'https://')):
+        return {'ok': False, 'error': 'invalid_deloox_product_url', 'url': url}
+    item = catalog_engine.refresh_url('deloox', target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            'SELECT price,currency,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?',
+            ('deloox', target),
+        ).fetchone()
+    finally:
+        conn.close()
+    return {
+        'ok': bool(item),
+        'store': 'deloox',
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': dict(row) if row else None,
+    }
+
+
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors."""
