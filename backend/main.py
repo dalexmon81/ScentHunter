@@ -3740,3 +3740,192 @@ def diagnose_easycosmetic_hydration_state_endpoint():
             "error": f"{type(exc).__name__}: {str(exc)[:500]}",
         }
 
+
+
+@app.get("/diagnose-easycosmetic-hydration-live-path")
+def diagnose_easycosmetic_hydration_live_path():
+    """
+    Read-only runtime snapshot for the Easycosmetic hydration path.
+    Does not claim/release tasks, perform retailer HTTP requests, or write DB.
+    Captures live worker stacks because historical lease transitions cannot be
+    reconstructed from the queue row alone.
+    """
+    import hashlib
+    import inspect
+    import os
+    import sys
+    import threading
+    import time
+    import traceback
+
+    targets = [
+        ("Donna", "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx"),
+        ("Uomo", "https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx"),
+    ]
+    report = {
+        "ok": True,
+        "diagnostic": "easycosmetic-hydration-live-path-read-only-v1",
+        "read_only": True,
+        "database_writes": False,
+        "queue_claims": False,
+        "retailer_http_requests": False,
+        "runtime": {},
+        "functions": {},
+        "workers": [],
+        "target_rows": [],
+    }
+
+    try:
+        engine = importlib.import_module("catalog_engine")
+        report["runtime"] = {
+            "app_version": globals().get("APP_VERSION"),
+            "catalog_engine_file": getattr(engine, "__file__", None),
+            "process_id": os.getpid(),
+            "thread_count": threading.active_count(),
+            "foreground_search_running": bool(
+                getattr(engine, "_foreground_search_running", lambda: False)()
+            ),
+            "foreground_idle_grace_active": bool(
+                getattr(engine, "_foreground_search_idle_grace_active", lambda: False)()
+            ),
+        }
+
+        for name in (
+            "_hydrate_one_task", "_queue_mark_done", "_queue_mark_error",
+            "_queue_release_claim", "hydrate_catalog_batch",
+            "catalog_hydration_loop", "_claim_one_hydration_task",
+        ):
+            fn = getattr(engine, name, None)
+            if callable(fn):
+                try:
+                    source = inspect.getsource(fn)
+                    report["functions"][name] = {
+                        "available": True,
+                        "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+                        "source_chars": len(source),
+                    }
+                except Exception as exc:
+                    report["functions"][name] = {
+                        "available": True,
+                        "inspection_error": f"{type(exc).__name__}: {str(exc)[:200]}",
+                    }
+            else:
+                report["functions"][name] = {"available": False}
+
+        # Snapshot live Python stacks without exposing local variable values.
+        frames = sys._current_frames()
+        for thread in threading.enumerate():
+            worker = {
+                "name": str(thread.name),
+                "alive": bool(thread.is_alive()),
+                "daemon": bool(thread.daemon),
+                "ident": thread.ident,
+                "stack": [],
+            }
+            frame = frames.get(thread.ident)
+            if frame is not None:
+                stack = traceback.extract_stack(frame, limit=18)
+                worker["stack"] = [
+                    {
+                        "file": os.path.basename(entry.filename),
+                        "function": entry.name,
+                        "line": entry.lineno,
+                    }
+                    for entry in stack[-12:]
+                ]
+            if (
+                "hydr" in worker["name"].lower()
+                or "catalog" in worker["name"].lower()
+                or "scenthunter-search-" in worker["name"].lower()
+                or any(
+                    any(word in item["function"].lower() for word in (
+                        "hydrate", "refresh_url", "queue_mark", "claim_one"
+                    ))
+                    for item in worker["stack"]
+                )
+            ):
+                report["workers"].append(worker)
+
+        conn = engine.db()
+        try:
+            conn.execute("PRAGMA query_only=ON")
+            tables = {
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            report["runtime"]["hydration_queue_exists"] = "hydration_queue" in tables
+            report["runtime"]["store_products_exists"] = "store_products" in tables
+            report["runtime"]["store_urls_exists"] = "store_urls" in tables
+
+            for variant, url in targets:
+                result = {"variant": variant, "url": url}
+                try:
+                    q = conn.execute(
+                        """SELECT state,attempts,available_at,leased_until,
+                                  last_started_at,last_finished_at,last_error,
+                                  last_http_status,lease_token
+                           FROM hydration_queue WHERE store=? AND url=? LIMIT 1""",
+                        ("easycosmetic", url),
+                    ).fetchone()
+                    p = conn.execute(
+                        """SELECT fetched_at,fetch_status,size_ml,price,image
+                           FROM store_products WHERE store=? AND url=? LIMIT 1""",
+                        ("easycosmetic", url),
+                    ).fetchone()
+                    u = conn.execute(
+                        """SELECT active,discovered_at FROM store_urls
+                           WHERE store=? AND url=? LIMIT 1""",
+                        ("easycosmetic", url),
+                    ).fetchone()
+                    result["queue"] = dict(q) if q else None
+                    if result["queue"] is not None:
+                        result["queue"]["lease_token_present"] = bool(
+                            result["queue"].pop("lease_token", None)
+                        )
+                        result["queue"]["lease_expired_or_null"] = (
+                            result["queue"]["leased_until"] is None
+                            or float(result["queue"]["leased_until"]) <= time.time()
+                        )
+                        result["queue"]["ready_to_claim_by_time"] = (
+                            result["queue"]["available_at"] is not None
+                            and float(result["queue"]["available_at"]) <= time.time()
+                        )
+                    result["product"] = dict(p) if p else None
+                    result["store_url"] = dict(u) if u else None
+                    result["ok"] = True
+                except Exception as exc:
+                    result["ok"] = False
+                    result["error"] = f"{type(exc).__name__}: {str(exc)[:250]}"
+                report["target_rows"].append(result)
+        finally:
+            conn.close()
+
+        report["summary"] = {
+            "worker_threads_reported": len(report["workers"]),
+            "target_rows_found": sum(
+                1 for item in report["target_rows"] if item.get("queue") is not None
+            ),
+            "target_pending": sum(
+                1 for item in report["target_rows"]
+                if item.get("queue", {}).get("state") == "PENDING"
+            ),
+            "target_processing": sum(
+                1 for item in report["target_rows"]
+                if item.get("queue", {}).get("state") == "PROCESSING"
+            ),
+        }
+        report["interpretation_note"] = (
+            "This is a live snapshot, not historical tracing. If neither target is "
+            "currently PROCESSING, this endpoint cannot prove which earlier branch "
+            "released or completed it; use worker stack evidence when available."
+        )
+        report["ok"] = all(item.get("ok") for item in report["target_rows"])
+        return report
+    except Exception as exc:
+        return {
+            **report,
+            "ok": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:400]}",
+        }
+
