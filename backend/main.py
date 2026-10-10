@@ -3262,6 +3262,85 @@ def diagnose_easycosmetic_size_funnel():
     return report
 
 
+@app.get('/diagnose-easycosmetic-persistence-path')
+def diagnose_easycosmetic_persistence_path():
+    """Read-only inspection of persisted Easycosmetic rows and hydration state."""
+    import sqlite3
+    from urllib.parse import quote
+
+    targets = [
+        {'label': 'donna', 'url': 'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx'},
+        {'label': 'uomo', 'url': 'https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx'},
+    ]
+    report = {
+        'ok': True,
+        'diagnostic': 'easycosmetic-persistence-path-v1',
+        'read_only': True,
+        'database_writes': False,
+        'refresh_sync_hydration_called': False,
+        'network_requests': False,
+        'matcher_called': False,
+        'products': [],
+    }
+    try:
+        catalog_module = importlib.import_module('catalog_engine')
+        db_path = getattr(catalog_module, 'DB_PATH', None)
+        report['database_path_available'] = bool(db_path)
+        try:
+            adapter = importlib.import_module('scrapers.easycosmetic.scraper')
+            report['adapter_functions'] = {
+                'extract_product_page': callable(getattr(adapter, 'extract_product_page', None)),
+                '_extract_product': callable(getattr(adapter, '_extract_product', None)),
+                'parse_product': callable(getattr(adapter, 'parse_product', None)),
+            }
+        except Exception as exc:
+            report['adapter_functions'] = {'import_error': f'{type(exc).__name__}: {str(exc)[:300]}'}
+        if not db_path:
+            report['database_error'] = 'catalog_engine.DB_PATH unavailable'
+            return report
+        db_uri = 'file:' + quote(str(db_path), safe='/') + '?mode=ro'
+        conn = sqlite3.connect(db_uri, uri=True, timeout=3)
+        conn.row_factory = sqlite3.Row
+        try:
+            table_names = {row['name'] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            report['tables_available'] = {name: name in table_names for name in ('store_products', 'store_urls', 'hydration_queue')}
+            for target in targets:
+                entry = {'label': target['label'], 'url': target['url'], 'stages': {}}
+                if 'store_products' in table_names:
+                    row = conn.execute("SELECT store,url,name,brand,image,sku,gtin,mpn,size_ml,price,currency,availability,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?", ('easycosmetic', target['url'])).fetchone()
+                    entry['stages']['store_products_row'] = dict(row) if row else None
+                else:
+                    entry['stages']['store_products_row'] = {'error': 'table_missing'}
+                if 'store_urls' in table_names:
+                    row = conn.execute("SELECT store,url,slug,lastmod,discovered_at,active FROM store_urls WHERE store=? AND url=?", ('easycosmetic', target['url'])).fetchone()
+                    entry['stages']['store_urls_row'] = dict(row) if row else None
+                else:
+                    entry['stages']['store_urls_row'] = {'error': 'table_missing'}
+                if 'hydration_queue' in table_names:
+                    row = conn.execute("SELECT store,url,state,attempts,available_at,leased_until,first_seen_at,last_started_at,last_finished_at,last_error FROM hydration_queue WHERE store=? AND url=?", ('easycosmetic', target['url'])).fetchone()
+                    entry['stages']['hydration_queue_row'] = dict(row) if row else None
+                else:
+                    entry['stages']['hydration_queue_row'] = {'error': 'table_missing'}
+                product_row = entry['stages'].get('store_products_row')
+                queue_row = entry['stages'].get('hydration_queue_row')
+                entry['interpretation_fields'] = {
+                    'persisted_size_ml': product_row.get('size_ml') if isinstance(product_row, dict) else None,
+                    'persisted_fetch_status': product_row.get('fetch_status') if isinstance(product_row, dict) else None,
+                    'persisted_fetched_at': product_row.get('fetched_at') if isinstance(product_row, dict) else None,
+                    'hydration_state': queue_row.get('state') if isinstance(queue_row, dict) else None,
+                    'hydration_attempts': queue_row.get('attempts') if isinstance(queue_row, dict) else None,
+                    'hydration_last_finished_at': queue_row.get('last_finished_at') if isinstance(queue_row, dict) else None,
+                    'hydration_last_error': queue_row.get('last_error') if isinstance(queue_row, dict) else None,
+                }
+                report['products'].append(entry)
+        finally:
+            conn.close()
+    except Exception as exc:
+        report['ok'] = False
+        report['error'] = f'{type(exc).__name__}: {str(exc)[:500]}'
+    return report
+
+
 @app.get('/search-start')
 def search_start(q: str):
     query = str(q or '').strip()
