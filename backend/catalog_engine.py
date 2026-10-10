@@ -2742,12 +2742,14 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                price=excluded.price,currency=excluded.currency,
+                size_ml=excluded.size_ml,concentration=excluded.concentration,
+                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'),
+                item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
