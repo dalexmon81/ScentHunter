@@ -2697,6 +2697,7 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'size_ml': parsed.get('size_ml') or identity_value('size_ml') or parsed.get('volume_ml'),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2740,11 +2741,28 @@ def refresh_url(store, url):
         # missing volume from the generic page parser before persistence.
         if store == 'easycosmetic' and item and item.get('name') and not item.get('size_ml'):
             try:
-                generic_item = parse_product(store, final or url, data)
-                if generic_item and generic_item.get('size_ml'):
-                    item['size_ml'] = generic_item['size_ml']
-                if generic_item and not item.get('image') and generic_item.get('image'):
-                    item['image'] = generic_item['image']
+                # The dedicated Easycosmetic parser may expose the retailer image
+                # but omit volume. The generic JSON-LD image can be different or
+                # absent, so inspect the actual selected item image and URL too.
+                soup = BeautifulSoup(data or b'', 'html.parser')
+                parsed_size = _easycosmetic_size_ml(
+                    soup,
+                    item.get('name') or '',
+                    item.get('image') or '',
+                    final or url,
+                )
+                if not parsed_size:
+                    generic_item = parse_product(store, final or url, data)
+                    parsed_size = generic_item.get('size_ml') if generic_item else None
+                    if generic_item and not item.get('image') and generic_item.get('image'):
+                        item['image'] = generic_item['image']
+                if parsed_size:
+                    item['size_ml'] = parsed_size
+                print(
+                    f'CATALOG EASYCOSMETIC SIZE FALLBACK url={url} '
+                    f'size_ml={item.get("size_ml")!r} image={item.get("image")!r}',
+                    flush=True,
+                )
             except Exception as size_exc:
                 print(
                     f'CATALOG EASYCOSMETIC SIZE FALLBACK ERROR url={url} '
