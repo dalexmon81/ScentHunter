@@ -3360,9 +3360,9 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
-                     CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
-                     q.first_seen_at ASC
+                     q.first_seen_at ASC,
+                     q.attempts ASC
                    LIMIT 1""",
                 (store, now),
             ).fetchone()
