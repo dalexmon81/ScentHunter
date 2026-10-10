@@ -2560,6 +2560,50 @@ def _first_offer(p):
     return {}
 
 
+def _extract_product_size_ml(soup, product, h1text=''):
+    """Extract a product's volume from product-specific metadata, not page-wide recommendations."""
+    candidates = [h1text]
+    if isinstance(product, dict):
+        for key in ('name', 'description', 'sku', 'mpn'):
+            value = product.get(key)
+            if isinstance(value, str) and value.strip():
+                candidates.append(value.strip())
+        image = product.get('image')
+        if isinstance(image, str):
+            candidates.append(image)
+        elif isinstance(image, list):
+            candidates.extend(str(x) for x in image if isinstance(x, str))
+        elif isinstance(image, dict):
+            candidates.extend(str(image[k]) for k in ('url', 'contentUrl') if image.get(k))
+    for selector in ('meta[property="og:image"]', 'meta[name="twitter:image"]', 'meta[property="og:description"]', 'meta[name="description"]'):
+        node = soup.select_one(selector)
+        if node:
+            value = node.get('content')
+            if value:
+                candidates.append(str(value))
+    # Product-specific image URLs often encode the package size even when the
+    # retailer's JSON-LD omits it. Do not scan all page text: recommendations
+    # can contain different volumes and must not contaminate this offer.
+    for node in soup.select('img[src], img[data-src], meta[property="og:image"]'):
+        value = node.get('src') or node.get('data-src') or node.get('content')
+        if value and any(token in str(value).lower() for token in ('product', 'artikel', 'valentino', 'parfum', 'perfume', '100ml', '50ml', '30ml')):
+            candidates.append(str(value))
+    pattern = re.compile(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', re.IGNORECASE)
+    for candidate in candidates:
+        match = pattern.search(str(candidate))
+        if match:
+            value = _num(match.group(1))
+            if value is not None and 1 <= value <= 2000:
+                return float(value)
+        # Image filenames commonly use `100ml` without a word boundary.
+        match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(candidate), re.IGNORECASE)
+        if match:
+            value = _num(match.group(1))
+            if value is not None and 1 <= value <= 2000:
+                return float(value)
+    return None
+
+
 def parse_product(store, url, data):
     soup = BeautifulSoup(data, 'html.parser')
     h1 = soup.find('h1')
@@ -2599,6 +2643,9 @@ def parse_product(store, url, data):
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
+        'size_ml': _extract_product_size_ml(soup, p, h1text),
+        'concentration': '',
+        'gender': '',
         'price_num': price,
         'price': price,
         'currency': currency,
@@ -2728,12 +2775,15 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                concentration=COALESCE(NULLIF(excluded.concentration,''),store_products.concentration),
+                gender=COALESCE(NULLIF(excluded.gender,''),store_products.gender),
                 price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'), item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
