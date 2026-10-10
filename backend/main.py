@@ -3197,6 +3197,222 @@ def diagnose_search_final(store: str, q: str):
         "dedupe_diagnostics": dedupe_diagnostics,
         "non_fragrance_skipped": rejected_or_skipped,
     }
+@app.get("/diagnose-easycosmetic-trace")
+def diagnose_easycosmetic_trace(
+    store: str = "easycosmetic",
+    q: str = "Valentino Born in Roma Coral Fantasy",
+):
+    """Diagnostica read-only dei candidati e del punto di esclusione nella pipeline."""
+    query = str(q or "").strip()
+    store_key = _normalise_store(store, "")
+
+    if not query:
+        return {"ok": False, "diagnostic": "easycosmetic-trace-v1", "error": "missing_query"}
+    if not store_key or store_key not in STORES:
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "error": "unknown_store",
+            "store": store,
+            "known_stores": list(STORES),
+        }
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_search_local):
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "read_only": True,
+            "error": "catalog_engine_unavailable",
+        }
+
+    def snapshot(item):
+        if not isinstance(item, dict):
+            return {"type": type(item).__name__, "value": repr(item)[:300]}
+        keys = (
+            "store", "store_key", "shop", "name", "title", "_raw_name",
+            "brand", "_raw_brand", "size_ml", "concentration", "gender",
+            "price", "currency", "availability", "url", "product_url",
+            "sku", "gtin", "mpn", "category", "category_name",
+            "product_type", "productType", "is_fragrance", "is_perfume",
+            "catalog_id", "canonical_name", "_match_status", "_match_method",
+            "match_method", "_match_score", "match_score",
+        )
+        return {key: item.get(key) for key in keys if key in item}
+
+    # Chiamata diretta al catalogo locale: NON usare
+    # _collect_catalog_reports_isolated, perché può eseguire refresh mirati.
+    try:
+        raw_rows = catalog_search_local(query, per_store=32)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "read_only": True,
+            "store": store_key,
+            "query": query,
+            "error": "catalog_search_local_failed",
+            "exception": f"{type(exc).__name__}: {exc}",
+        }
+
+    candidates = []
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+
+    for raw in raw_rows:
+        if not isinstance(raw, dict):
+            continue
+        candidate_store = _normalise_store(
+            raw.get("store_key") or raw.get("store") or raw.get("shop"), ""
+        )
+        if candidate_store != store_key:
+            continue
+
+        row = {
+            "catalog_candidate": snapshot(raw),
+            "cleaned": None,
+            "matcher_result": None,
+            "stages": [],
+            "loss_point": None,
+            "final_eligible": False,
+        }
+
+        try:
+            prepared = clean_result(raw, store_key)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "clean_result",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "clean_result_exception"
+            candidates.append(row)
+            continue
+
+        if prepared is None:
+            row["stages"].append({"stage": "clean_result", "outcome": "returned_none"})
+            row["loss_point"] = "clean_result_returned_none"
+            candidates.append(row)
+            continue
+
+        row["cleaned"] = snapshot(prepared)
+        row["stages"].append({"stage": "clean_result", "outcome": "kept"})
+
+        try:
+            rejected_before = _is_non_fragrance_offer(prepared)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "non_fragrance_filter_before_match",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "non_fragrance_filter_before_match_exception"
+            candidates.append(row)
+            continue
+
+        row["stages"].append({
+            "stage": "non_fragrance_filter_before_match",
+            "outcome": "rejected" if rejected_before else "kept",
+        })
+        if rejected_before:
+            row["loss_point"] = "non_fragrance_filter_before_match"
+            candidates.append(row)
+            continue
+
+        try:
+            resolved = _resolve_offer_identity(prepared, query)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "ProductMatcher",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "ProductMatcher_exception"
+            candidates.append(row)
+            continue
+
+        if not isinstance(resolved, dict):
+            row["stages"].append({
+                "stage": "ProductMatcher",
+                "outcome": "returned_non_dict",
+                "returned_type": type(resolved).__name__,
+            })
+            row["loss_point"] = "ProductMatcher_returned_non_dict"
+            candidates.append(row)
+            continue
+
+        row["matcher_result"] = snapshot(resolved)
+        row["stages"].append({
+            "stage": "ProductMatcher",
+            "outcome": resolved.get("_match_status") or "status_missing",
+            "catalog_id": resolved.get("catalog_id"),
+            "canonical_name": resolved.get("canonical_name"),
+            "size_ml": resolved.get("size_ml"),
+            "match_method": resolved.get("match_method") or resolved.get("_match_method"),
+            "match_score": resolved.get("match_score") or resolved.get("_match_score"),
+        })
+
+        if resolved.get("_match_status") == "rejected":
+            row["loss_point"] = "ProductMatcher_rejected"
+            candidates.append(row)
+            continue
+
+        try:
+            rejected_after = _is_non_fragrance_offer(resolved)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "non_fragrance_filter_after_match",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "non_fragrance_filter_after_match_exception"
+            candidates.append(row)
+            continue
+
+        row["stages"].append({
+            "stage": "non_fragrance_filter_after_match",
+            "outcome": "rejected" if rejected_after else "kept",
+        })
+        if rejected_after:
+            row["loss_point"] = "non_fragrance_filter_after_match"
+            candidates.append(row)
+            continue
+
+        row["final_eligible"] = True
+        if resolved.get("_match_status") != "matched" or not resolved.get("catalog_id"):
+            row["loss_point"] = "survived_but_unresolved"
+        else:
+            row["loss_point"] = None
+        candidates.append(row)
+
+    lost_by_stage = {}
+    for item in candidates:
+        stage = item["loss_point"] or "matched"
+        lost_by_stage[stage] = lost_by_stage.get(stage, 0) + 1
+
+    return {
+        "ok": True,
+        "diagnostic": "easycosmetic-trace-v1",
+        "read_only": True,
+        "database_writes": False,
+        "sync_refresh_or_hydration_called": False,
+        "production_search_called": False,
+        "store": store_key,
+        "query": query,
+        "pipeline": [
+            "catalog_search_local (direct, no refresh)",
+            "clean_result",
+            "_is_non_fragrance_offer before matcher",
+            "_resolve_offer_identity / ProductMatcher",
+            "_is_non_fragrance_offer after matcher",
+        ],
+        "candidate_count_for_store": len(candidates),
+        "eligible_count": sum(1 for item in candidates if item["final_eligible"]),
+        "lost_by_stage": lost_by_stage,
+        "candidates": candidates,
+        "note": (
+            "Sono mostrati i dati persistiti attualmente. Eventuali valori storici "
+            "sovrascritti non sono ricostruibili se non esistono log/versioni precedenti."
+        ),
+    }
 
 @app.get('/frontend')
 def frontend():
