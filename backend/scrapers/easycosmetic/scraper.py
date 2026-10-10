@@ -606,68 +606,94 @@ def search_stream(query: str, emit=None):
         },
     }
 
-def _extract_size_ml(
-    soup: BeautifulSoup, name: str = "", image: str = "", url: str = ""
-) -> Optional[float]:
-    """Extract the selected Easycosmetic size, avoiding unrelated variant lists."""
-    def parse_size(value: Any) -> Optional[float]:
-        text = _clean(value).lower().replace(",", ".")
-        match = re.search(r"(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b", text)
-        if not match:
+def _extract_size_ml(soup: BeautifulSoup, product_name: str, url: str, product_image: str = "") -> Optional[int]:
+    """Extract a size only from text tied to the current product/selected variant.
+
+    Deliberately does not inspect arbitrary recommendation images: those can
+    describe a different bottle size than the page currently selected.
+    """
+    def parse_size(value: Any) -> Optional[int]:
+        text = _clean(value)
+        if not text:
             return None
+        # Accept explicit volume units, not bare numbers or dimensions.
+        matches = re.findall(
+            r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|milliliter|millilitre|liter|litre|l)\b",
+            text,
+            flags=re.I,
+        )
+        for number, unit in matches:
+            try:
+                amount = float(number.replace(",", "."))
+            except ValueError:
+                continue
+            if unit.lower() in {"l", "liter", "litre"}:
+                amount *= 1000
+            if 1 <= amount <= 10000 and amount.is_integer():
+                return int(amount)
+        return None
+
+    # Product-specific identity sources first.
+    for value in (product_name, url):
+        size = parse_size(value)
+        if size is not None:
+            return size
+
+    # JSON-LD Product name/description are tied to the page product.
+    for script in soup.select('script[type="application/ld+json"]'):
+        raw = script.string or script.get_text(" ", strip=True)
         try:
-            size = float(match.group(1))
-            return size if 1 <= size <= 5000 else None
-        except ValueError:
-            return None
-
-    # Product identity often includes the size.
-    size = parse_size(name)
-    if size is not None:
-        return size
-
-    # Easycosmetic product H1 often omits volume. Its canonical product image
-    # can explicitly encode the actual bottle size (for example, ...100ml.png).
-    # Check only the product image selected by parse_product, not every image on
-    # the page, so thumbnails for other variants cannot contaminate the result.
-    size = parse_size(image)
-    if size is not None:
-        return size
-
-    # Product URLs may explicitly encode a size; use this only after the page's
-    # name and selected product image have been checked.
-    size = parse_size(url)
-    if size is not None:
-        return size
-
-    # Read only controls that indicate the currently selected variant.
-    selected = []
-    for node in soup.select('option[selected], input[type="radio"][checked], input[type="radio"][aria-checked="true"], [aria-selected="true"], [aria-checked="true"]'):
-        selected.append(" ".join((node.get_text(" ", strip=True), str(node.get("value") or ""), str(node.get("aria-label") or ""), str(node.get("title") or ""), str(node.get("data-value") or ""))))
-    for text in selected:
-        size = parse_size(text)
-        if size is not None:
-            return size
-
-    # Some pages render the chosen variant in a dedicated current/selected label.
-    for node in soup.select('[class*="selected"], [class*="current"], [class*="variant"], [class*="size"]'):
-        classes = " ".join(node.get("class", [])) if isinstance(node.get("class"), list) else str(node.get("class") or "")
-        if not re.search(r"selected|current|active|chosen", classes, re.I):
+            payload = json.loads(raw)
+        except (TypeError, ValueError):
             continue
-        size = parse_size(node.get_text(" ", strip=True))
+        objects = payload if isinstance(payload, list) else [payload]
+        while objects:
+            obj = objects.pop(0)
+            if not isinstance(obj, dict):
+                continue
+            if isinstance(obj.get("@graph"), list):
+                objects.extend(obj["@graph"])
+            if isinstance(obj.get("mainEntity"), dict):
+                objects.append(obj["mainEntity"])
+            if str(obj.get("@type", "")).lower() == "product":
+                for key in ("name", "description"):
+                    size = parse_size(obj.get(key))
+                    if size is not None:
+                        return size
+
+    # Selected controls only; never scrape all variant labels as if selected.
+    for node in soup.select(
+        'option[selected], input[type="radio"][checked], '
+        'input[type="radio"][aria-checked="true"], '
+        '[aria-selected="true"], [aria-checked="true"]'
+    ):
+        size = parse_size(" ".join((
+            node.get_text(" ", strip=True),
+            str(node.get("value") or ""),
+            str(node.get("aria-label") or ""),
+            str(node.get("title") or ""),
+            str(node.get("data-value") or ""),
+        )))
         if size is not None:
             return size
+
+    # The image passed here is the page's selected product image (from
+    # Product JSON-LD or the product-image fallback), not every image on the
+    # page. Treat it only as a late fallback after identity/variant text.
+    size = parse_size(product_image)
+    if size is not None:
+        return size
+
     return None
 
 
-def parse_product(url: str) -> Optional[Dict[str, Any]]:
+def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     url = _normalise_url(url)
 
     if not _is_candidate_url(url):
         return None
 
-    html = _request_html(url)
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html or "", "html.parser")
     product_json = _find_product_json(soup)
 
     name = ""
@@ -737,10 +763,8 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     if not name:
         return None
 
-    size_ml = _extract_size_ml(soup, name, image, url)
     return {
         "shop": STORE,
-        "size_ml": size_ml,
         "brand": brand,
         "name": name,
         "price": f"{price:.2f} €" if price is not None else None,
@@ -749,8 +773,34 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
         "available": available,
         "availability": availability,
         "image": image,
+        "size_ml": _extract_size_ml(soup, name, url, image),
         "url": url,
     }
+
+
+def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Catalog-engine adapter. Reuse already fetched HTML when supplied."""
+    normalized_url = _normalise_url(url)
+    if not _is_candidate_url(normalized_url):
+        return None
+    if html is None:
+        response = session.get(
+            normalized_url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        html = response.text
+    return _parse_product_html(normalized_url, html)
+
+
+def parse_product(url: str) -> Optional[Dict[str, Any]]:
+    """Standalone scraper entry point used by diagnostics and direct callers."""
+    normalized_url = _normalise_url(url)
+    if not _is_candidate_url(normalized_url):
+        return None
+    return _parse_product_html(normalized_url, _request_html(normalized_url))
 
 
 def diagnose(query: str) -> Dict[str, Any]:
