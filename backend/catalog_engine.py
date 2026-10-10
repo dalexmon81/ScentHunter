@@ -2561,42 +2561,51 @@ def _first_offer(p):
 
 
 def _extract_product_size_ml(soup, product, h1text=''):
-    """Extract volume only from the current product identity/image, never recommendations."""
+    """Extract volume from the current product's own identity and primary image.
+
+    Do not inspect every image in JSON-LD: ProductGroup image arrays can contain
+    30 ml / 50 ml variants and recommendations unrelated to the offered SKU.
+    """
     candidates = []
     if isinstance(product, dict):
-        # Product names are authoritative when they explicitly include a size.
         value = product.get('name')
         if isinstance(value, str) and value.strip():
             candidates.append(value.strip())
-        # JSON-LD Product image is product-specific on this retailer; the URL
-        # often contains the exact volume (e.g. ...coral-fantasy-spray-100ml.png).
-        image = product.get('image')
-        if isinstance(image, str):
-            candidates.append(image)
-        elif isinstance(image, list):
-            candidates.extend(str(x) for x in image if isinstance(x, str))
-        elif isinstance(image, dict):
-            candidates.extend(str(image[k]) for k in ('url', 'contentUrl') if image.get(k))
     if h1text:
         candidates.append(str(h1text))
 
-    # Only use OpenGraph image as a fallback. Do not scan page descriptions or
-    # every image on the page: Easycosmetic includes recommendation tiles with
-    # unrelated 30 ml / 50 ml / 100 ml sizes before or alongside the main item.
-    if not any(re.search(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])|(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(c), re.IGNORECASE) for c in candidates):
-        node = soup.select_one('meta[property="og:image"]')
-        if node and node.get('content'):
-            candidates.append(str(node.get('content')))
+    # Match the exact primary image that parse_product persists for this offer.
+    # For Easycosmetic the product-specific image URL includes the volume.
+    if isinstance(product, dict):
+        image = product.get('image')
+        if isinstance(image, str):
+            primary_image = image
+        elif isinstance(image, list):
+            primary_image = next((x for x in image if isinstance(x, str) and x.strip()), None)
+        elif isinstance(image, dict):
+            primary_image = image.get('url') or image.get('contentUrl')
+        else:
+            primary_image = None
+        if primary_image:
+            candidates.append(str(primary_image))
 
     pattern = re.compile(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', re.IGNORECASE)
     for candidate in candidates:
-        text = str(candidate)
-        match = pattern.search(text)
+        match = pattern.search(str(candidate))
+        if not match:
+            match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(candidate), re.IGNORECASE)
         if match:
             value = _num(match.group(1))
             if value is not None and 1 <= value <= 2000:
                 return float(value)
-        match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', text, re.IGNORECASE)
+
+    # Last-resort metadata fallback: og:image only, never all page images or
+    # recommendation tiles. Use only when the primary product fields lack size.
+    node = soup.select_one('meta[property="og:image"]')
+    if node and node.get('content'):
+        match = pattern.search(str(node.get('content')))
+        if not match:
+            match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(node.get('content')), re.IGNORECASE)
         if match:
             value = _num(match.group(1))
             if value is not None and 1 <= value <= 2000:
@@ -2633,6 +2642,39 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
+    # Capacity precedence: explicit capacity in the selected Product name, then
+    # the current page H1, then the image actually selected for this offer.
+    # Only after those product-bound signals may the conservative JSON-LD helper
+    # be used. ProductGroup image arrays can contain other bottle sizes, so their
+    # first image must never override the selected product image.
+    size_ml = None
+    size_pattern = re.compile(
+        r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])',
+        re.IGNORECASE,
+    )
+    for size_source in (name, h1text):
+        size_match = size_pattern.search(str(size_source or ''))
+        if size_match:
+            parsed_size = _num(size_match.group(1))
+            if parsed_size is not None and 1 <= parsed_size <= 2000:
+                size_ml = float(parsed_size)
+                break
+    if size_ml is None and isinstance(image, str):
+        # Easycosmetic's selected product image uses a product-specific slug,
+        # e.g. coral-fantasy-eau-de-parfum-spray-100ml.png. This is preferable
+        # to arbitrary images embedded in JSON-LD recommendations.
+        image_match = re.search(
+            r'(?<![0-9])([0-9]{1,4})(?:[.,]0+)?ml(?:[._/?#-]|$)',
+            urllib.parse.urlparse(image).path,
+            re.IGNORECASE,
+        )
+        if image_match:
+            parsed_size = _num(image_match.group(1))
+            if parsed_size is not None and 1 <= parsed_size <= 2000:
+                size_ml = float(parsed_size)
+    if size_ml is None:
+        size_ml = _extract_product_size_ml(soup, p, h1text)
+
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
@@ -2643,7 +2685,7 @@ def parse_product(store, url, data):
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
-        'size_ml': _extract_product_size_ml(soup, p, h1text),
+        'size_ml': size_ml,
         'concentration': '',
         'gender': '',
         'price_num': price,
