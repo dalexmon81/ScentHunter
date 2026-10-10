@@ -3587,15 +3587,35 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # That function scans the whole active catalog and backfills missing queue
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
+    #
+    # Foreground searches have priority over *all* background queue maintenance,
+    # not only over URL claims and HTTP fetches. In particular, recover_stale_tasks()
+    # and _requeue_stale_hydration_done() both write to SQLite and can contend with
+    # the catalog reads performed by the user-facing search path. Check before
+    # maintenance and between the two maintenance operations to narrow the race
+    # where a search starts while this worker is entering the batch.
+    if _foreground_search_running():
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
+
     recover_stale_tasks()
+
+    if _foreground_search_running():
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
 
     global _hydration_last_requeue
     if time.monotonic() - _hydration_last_requeue >= _HYDRATION_REQUEUE_INTERVAL:
-        _hydration_last_requeue = time.monotonic()
-        try:
-            _requeue_stale_hydration_done()
-        except Exception:
-            pass
+        # Do not advance the timer unless the maintenance pass is actually
+        # attempted. If a search has started, leave it due for the next idle pass.
+        if not _foreground_search_running():
+            try:
+                _requeue_stale_hydration_done()
+                _hydration_last_requeue = time.monotonic()
+            except Exception:
+                # Keep the pass due so a transient SQLite error is retried later.
+                pass
+
+    if _foreground_search_running():
+        return {'selected': 0, 'fetched': 0, 'errors': 0}
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
