@@ -3233,8 +3233,11 @@ def diagnose_easycosmetic_trace(
             "price", "currency", "availability", "url", "product_url",
             "sku", "gtin", "mpn", "category", "category_name",
             "product_type", "productType", "is_fragrance", "is_perfume",
-            "catalog_id", "canonical_name", "_match_status", "_match_method",
-            "match_method", "_match_score", "match_score",
+            "catalog_id", "canonical_name", "canonical_brand", "family_id",
+            "family_name", "catalog_variant", "_match_status", "_reject_reason",
+            "_match_error", "_match_method", "match_method", "_match_score",
+            "match_score", "requested_family", "offer_family", "query_family",
+            "_requested_family", "_offer_family", "_query_family",
         )
         return {key: item.get(key) for key in keys if key in item}
 
@@ -3413,6 +3416,7 @@ def diagnose_easycosmetic_trace(
             "sovrascritti non sono ricostruibili se non esistono log/versioni precedenti."
         ),
     }
+
 
 @app.get('/frontend')
 def frontend():
