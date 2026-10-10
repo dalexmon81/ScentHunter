@@ -2560,61 +2560,29 @@ def _first_offer(p):
     return {}
 
 
-def _extract_size_ml(product, name='', url='', image=None):
-    """Extract an explicitly exposed retail format without assigning identity.
+def _extract_size_ml(name='', url='', image=''):
+    """Extract an explicitly stated bottle volume from this product's own fields.
 
-    Prefer structured product properties. If the retailer omits them, inspect
-    only the current product's own name, URL and image filename; never scan
-    unrelated page images or recommendation tiles.
+    This deliberately does not infer volume from related products or catalog
+    families. It only accepts a numeric value followed by ml in the product
+    name, canonical URL, or the retailer-provided image filename.
     """
-    if not isinstance(product, dict):
-        product = {}
-
-    candidates = []
-    for key in ('size_ml', 'size', 'volume', '容量'):
-        value = product.get(key)
-        if isinstance(value, dict):
-            value = value.get('value') or value.get('name')
-        if value is not None:
-            candidates.append(str(value))
-
-    props = product.get('additionalProperty') or []
-    if isinstance(props, dict):
-        props = [props]
-    if isinstance(props, list):
-        for prop in props:
-            if not isinstance(prop, dict):
-                continue
-            prop_name = str(prop.get('name') or '').strip().lower()
-            if any(token in prop_name for token in ('volume', 'size', 'format', 'inhalt')):
-                value = prop.get('value') or prop.get('valueReference')
-                if isinstance(value, dict):
-                    value = value.get('value') or value.get('name')
-                if value is not None:
-                    candidates.append(str(value))
-
-    image_path = ''
-    if isinstance(image, list):
-        image = image[0] if image else None
-    if isinstance(image, dict):
-        image = image.get('url') or image.get('contentUrl')
-    if isinstance(image, str):
-        image_path = urllib.parse.urlparse(image).path.rsplit('/', 1)[-1]
-
-    # Consider only the image attached to this Product object, not arbitrary
-    # images elsewhere on the page.
-    candidates.extend([str(name or ''), str(url or ''), image_path])
-
-    for candidate in candidates:
-        text = html.unescape(candidate).replace(',', '.')
-        match = re.search(r'(?<!\d)(\d+(?:\.\d+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', text, re.I)
-        if match:
+    for source in (image, name, urllib.parse.unquote(str(url or ''))):
+        if not source:
+            continue
+        # Image paths often encode volume as "...-100ml.png"; names and URLs
+        # can also contain spaces or separators around the unit.
+        text = urllib.parse.unquote(str(source)).replace('%20', ' ')
+        matches = re.findall(r'(?<![a-z0-9])(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:-|_)?\s*ml(?![a-z])', text, re.I)
+        if not matches:
+            continue
+        for raw in reversed(matches):
             try:
-                size = float(match.group(1))
-                if 1 <= size <= 5000:
-                    return size
+                value = float(raw.replace(',', '.'))
             except (TypeError, ValueError):
-                pass
+                continue
+            if 1 <= value <= 5000:
+                return value
     return None
 
 
@@ -2654,10 +2622,10 @@ def parse_product(store, url, data):
         'name': name,
         'brand': str(brand or '').strip(),
         'image': image,
+        'size_ml': _extract_size_ml(name=name, url=url, image=image),
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
-        'size_ml': _extract_size_ml(p, name=name, url=url, image=image),
         'price_num': price,
         'price': price,
         'currency': currency,
@@ -2715,16 +2683,14 @@ def _secondary_store_parser(store, final_url, original_url):
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
-        'sku': parsed.get('sku') or identity_value('sku') or '',
-        'gtin': parsed.get('gtin') or identity_value('gtin') or '',
-        'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed.get('size_ml') or identity_value('size_ml') or _extract_size_ml(
-            {}, name=parsed.get('name') or parsed.get('title') or '',
+        'size_ml': parsed.get('size_ml') or _extract_size_ml(
+            name=parsed.get('name') or parsed.get('title') or '',
             url=parsed.get('url') or final_url or original_url,
             image=parsed.get('image') or (parsed.get('source') or {}).get('image'),
         ),
-        'concentration': parsed.get('concentration') or identity_value('concentration') or '',
-        'gender': parsed.get('gender') or identity_value('gender') or '',
+        'sku': parsed.get('sku') or identity_value('sku') or '',
+        'gtin': parsed.get('gtin') or identity_value('gtin') or '',
+        'mpn': parsed.get('mpn') or identity_value('mpn') or '',
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2794,14 +2760,13 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=excluded.size_ml,concentration=excluded.concentration,
-                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'),
-                item.get('size_ml'), item.get('concentration'), item.get('gender'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'), None, None,
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
