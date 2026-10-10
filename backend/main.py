@@ -4036,8 +4036,8 @@ def diagnose_easycosmetic_queue_position():
                     key: row[key] for key in row.keys()
                 })
 
-            # Rank the two exact URLs according to the queue's actual ORDER BY:
-            # attempts=0 first, then available_at, then first_seen_at.
+            # Rank targets using the scheduler order in catalog_engine:
+            # available_at ASC, first_seen_at ASC, attempts ASC.
             # Rank is within Easycosmetic's currently due active tasks; it is
             # not a prediction of global scheduler order because stores rotate.
             for variant, url in targets:
@@ -4076,20 +4076,23 @@ def diagnose_easycosmetic_queue_position():
                                   AND q.state IN ('PENDING','ERROR')
                                   AND q.available_at <= ?
                                   AND (
-                                       CASE WHEN q.attempts=0 THEN 0 ELSE 1 END
-                                         < CASE WHEN ?=0 THEN 0 ELSE 1 END
+                                       q.available_at < ?
                                        OR (
-                                           CASE WHEN q.attempts=0 THEN 0 ELSE 1 END
-                                             = CASE WHEN ?=0 THEN 0 ELSE 1 END
+                                           q.available_at = ?
                                            AND (
-                                               q.available_at < ?
-                                               OR (q.available_at = ? AND q.first_seen_at < ?)
+                                               q.first_seen_at < ?
+                                               OR (
+                                                   q.first_seen_at = ?
+                                                   AND q.attempts < ?
+                                               )
                                            )
                                        )
                                   )""",
                             (
-                                now, row["attempts"], row["attempts"],
-                                row["available_at"], row["available_at"], row["first_seen_at"],
+                                now,
+                                row["available_at"], row["available_at"],
+                                row["first_seen_at"], row["first_seen_at"],
+                                row["attempts"],
                             ),
                         ).fetchone()
                         ahead = int(rank_row["ahead"] or 0) if rank_row else None
@@ -4111,7 +4114,7 @@ def diagnose_easycosmetic_queue_position():
                         )
                         item["due_tasks_ahead_in_same_store"] = ahead
                         item["priority_rule"] = (
-                            "attempts=0 first, then available_at ASC, first_seen_at ASC; "
+                            "available_at ASC, first_seen_at ASC, attempts ASC; "
                             "ties on all three values share the same preceding-task count"
                         )
                     else:
@@ -4151,3 +4154,4 @@ def diagnose_easycosmetic_queue_position():
             "ok": False,
             "error": f"{type(exc).__name__}: {str(exc)[:400]}",
         }
+
