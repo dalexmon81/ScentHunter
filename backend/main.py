@@ -3366,8 +3366,6 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
             "catalog_engine._secondary_store_parser",
             "read-only SELECT store_products",
             "read-only SELECT hydration_queue",
-            "read-only SELECT store_urls registration and active flag",
-            "read-only hydration queue eligibility calculation",
         ],
         "results": [],
     }
@@ -3435,9 +3433,7 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
                     "live_fetch": {},
                     "live_parser": {},
                     "persistent_store_product": None,
-                    "store_url_registration": None,
                     "hydration_task": None,
-                    "hydration_eligibility": None,
                     "comparison": {},
                 }
                 try:
@@ -3494,60 +3490,6 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
                             item["hydration_task"] = dict(task) if task else None
                         except Exception as exc:
                             item["hydration_task_error"] = (
-                                f"{type(exc).__name__}: {str(exc)[:250]}"
-                            )
-
-                        # Inspect whether this URL is registered and selectable by
-                        # the hydration worker. All statements are SELECT-only.
-                        try:
-                            store_url = conn.execute(
-                                """SELECT store,url,active
-                                   FROM store_urls
-                                   WHERE store=? AND url=?
-                                   LIMIT 1""",
-                                ("easycosmetic", target["url"]),
-                            ).fetchone()
-                            item["store_url_registration"] = dict(store_url) if store_url else None
-                        except Exception as exc:
-                            item["store_url_registration_error"] = (
-                                f"{type(exc).__name__}: {str(exc)[:250]}"
-                            )
-
-                        try:
-                            task_row = item.get("hydration_task") or {}
-                            store_url_row = item.get("store_url_registration") or {}
-                            processing_row = conn.execute(
-                                """SELECT COUNT(*) AS n
-                                   FROM hydration_queue
-                                   WHERE store=? AND state='PROCESSING'""",
-                                ("easycosmetic",),
-                            ).fetchone()
-                            processing_count = int(processing_row["n"]) if processing_row else 0
-                            now_ts = time.time()
-                            reasons = []
-                            if not store_url_row:
-                                reasons.append("URL_NOT_REGISTERED_IN_STORE_URLS")
-                            elif int(store_url_row.get("active") or 0) != 1:
-                                reasons.append("STORE_URL_INACTIVE")
-                            if not task_row:
-                                reasons.append("HYDRATION_TASK_MISSING")
-                            else:
-                                if task_row.get("state") not in ("PENDING", "ERROR"):
-                                    reasons.append("QUEUE_STATE_NOT_SELECTABLE")
-                                if float(task_row.get("available_at") or 0) > now_ts:
-                                    reasons.append("NOT_YET_AVAILABLE")
-                            if processing_count >= 2:
-                                reasons.append("PER_STORE_PROCESSING_LIMIT_REACHED")
-                            item["hydration_eligibility"] = {
-                                "selectable_by_queue_query": not reasons,
-                                "reasons": reasons,
-                                "processing_tasks_for_store": processing_count,
-                                "per_store_processing_limit": 2,
-                                "checked_at_unix": now_ts,
-                                "note": "Evaluates store_urls.active, queue state, available_at and the per-store PROCESSING limit only; it does not prove the worker loop is running or unpaused.",
-                            }
-                        except Exception as exc:
-                            item["hydration_eligibility_error"] = (
                                 f"{type(exc).__name__}: {str(exc)[:250]}"
                             )
                     finally:
@@ -4094,8 +4036,8 @@ def diagnose_easycosmetic_queue_position():
                     key: row[key] for key in row.keys()
                 })
 
-            # Rank targets using the scheduler order in catalog_engine:
-            # available_at ASC, first_seen_at ASC, attempts ASC.
+            # Rank the two exact URLs according to the queue's actual ORDER BY:
+            # attempts=0 first, then available_at, then first_seen_at.
             # Rank is within Easycosmetic's currently due active tasks; it is
             # not a prediction of global scheduler order because stores rotate.
             for variant, url in targets:
@@ -4147,10 +4089,8 @@ def diagnose_easycosmetic_queue_position():
                                        )
                                   )""",
                             (
-                                now,
-                                row["available_at"], row["available_at"],
-                                row["first_seen_at"], row["first_seen_at"],
-                                row["attempts"],
+                                now, row["available_at"], row["available_at"],
+                                row["first_seen_at"], row["first_seen_at"], row["attempts"],
                             ),
                         ).fetchone()
                         ahead = int(rank_row["ahead"] or 0) if rank_row else None
@@ -4212,24 +4152,4 @@ def diagnose_easycosmetic_queue_position():
             "ok": False,
             "error": f"{type(exc).__name__}: {str(exc)[:400]}",
         }
-@app.get("/diagnose-easycosmetic-refresh-handoff")
-def diagnose_easycosmetic_refresh_handoff_endpoint():
-    import importlib.util
-    from pathlib import Path
-
-    diagnostic_path = Path(__file__).resolve().parent / "diagnose_easycosmetic_refresh_handoff.py"
-    spec = importlib.util.spec_from_file_location(
-        "diagnose_easycosmetic_refresh_handoff_module", diagnostic_path
-    )
-    if spec is None or spec.loader is None:
-        return {
-            "ok": False,
-            "diagnostic": "easycosmetic-refresh-handoff-v1",
-            "error": "diagnostic_module_load_failed",
-            "path": str(diagnostic_path),
-        }
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.diagnose_easycosmetic_refresh_handoff()
 
