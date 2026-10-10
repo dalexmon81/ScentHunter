@@ -21,6 +21,7 @@ import gzip
 import html
 import heapq
 import importlib
+import inspect
 import json
 import re
 import sqlite3
@@ -2560,59 +2561,6 @@ def _first_offer(p):
     return {}
 
 
-def _extract_product_size_ml(soup, product, h1text=''):
-    """Extract volume from the current product's own identity and primary image.
-
-    Do not inspect every image in JSON-LD: ProductGroup image arrays can contain
-    30 ml / 50 ml variants and recommendations unrelated to the offered SKU.
-    """
-    candidates = []
-    if isinstance(product, dict):
-        value = product.get('name')
-        if isinstance(value, str) and value.strip():
-            candidates.append(value.strip())
-    if h1text:
-        candidates.append(str(h1text))
-
-    # Match the exact primary image that parse_product persists for this offer.
-    # For Easycosmetic the product-specific image URL includes the volume.
-    if isinstance(product, dict):
-        image = product.get('image')
-        if isinstance(image, str):
-            primary_image = image
-        elif isinstance(image, list):
-            primary_image = next((x for x in image if isinstance(x, str) and x.strip()), None)
-        elif isinstance(image, dict):
-            primary_image = image.get('url') or image.get('contentUrl')
-        else:
-            primary_image = None
-        if primary_image:
-            candidates.append(str(primary_image))
-
-    pattern = re.compile(r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', re.IGNORECASE)
-    for candidate in candidates:
-        match = pattern.search(str(candidate))
-        if not match:
-            match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(candidate), re.IGNORECASE)
-        if match:
-            value = _num(match.group(1))
-            if value is not None and 1 <= value <= 2000:
-                return float(value)
-
-    # Last-resort metadata fallback: og:image only, never all page images or
-    # recommendation tiles. Use only when the primary product fields lack size.
-    node = soup.select_one('meta[property="og:image"]')
-    if node and node.get('content'):
-        match = pattern.search(str(node.get('content')))
-        if not match:
-            match = re.search(r'(?<![0-9])([0-9]{1,4})ml(?:[._/-]|$)', str(node.get('content')), re.IGNORECASE)
-        if match:
-            value = _num(match.group(1))
-            if value is not None and 1 <= value <= 2000:
-                return float(value)
-    return None
-
-
 def parse_product(store, url, data):
     soup = BeautifulSoup(data, 'html.parser')
     h1 = soup.find('h1')
@@ -2642,39 +2590,6 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
-    # Capacity precedence: explicit capacity in the selected Product name, then
-    # the current page H1, then the image actually selected for this offer.
-    # Only after those product-bound signals may the conservative JSON-LD helper
-    # be used. ProductGroup image arrays can contain other bottle sizes, so their
-    # first image must never override the selected product image.
-    size_ml = None
-    size_pattern = re.compile(
-        r'(?<![0-9])([0-9]{1,4}(?:[.,][0-9]+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])',
-        re.IGNORECASE,
-    )
-    for size_source in (name, h1text):
-        size_match = size_pattern.search(str(size_source or ''))
-        if size_match:
-            parsed_size = _num(size_match.group(1))
-            if parsed_size is not None and 1 <= parsed_size <= 2000:
-                size_ml = float(parsed_size)
-                break
-    if size_ml is None and isinstance(image, str):
-        # Easycosmetic's selected product image uses a product-specific slug,
-        # e.g. coral-fantasy-eau-de-parfum-spray-100ml.png. This is preferable
-        # to arbitrary images embedded in JSON-LD recommendations.
-        image_match = re.search(
-            r'(?<![0-9])([0-9]{1,4})(?:[.,]0+)?ml(?:[._/?#-]|$)',
-            urllib.parse.urlparse(image).path,
-            re.IGNORECASE,
-        )
-        if image_match:
-            parsed_size = _num(image_match.group(1))
-            if parsed_size is not None and 1 <= parsed_size <= 2000:
-                size_ml = float(parsed_size)
-    if size_ml is None:
-        size_ml = _extract_product_size_ml(soup, p, h1text)
-
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
@@ -2685,9 +2600,6 @@ def parse_product(store, url, data):
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
-        'size_ml': size_ml,
-        'concentration': '',
-        'gender': '',
         'price_num': price,
         'price': price,
         'currency': currency,
@@ -2697,7 +2609,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url):
+def _secondary_store_parser(store, final_url, original_url, page_html=None):
     """Run the retailer scraper's exact product-page parser.
 
     A store parser, when available, is authoritative for extracting the
@@ -2711,7 +2623,17 @@ def _secondary_store_parser(store, final_url, original_url):
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
         try:
-            parsed = parser(session, final_url, url_slug(final_url))
+            # Reuse the HTML already downloaded by refresh_url when the
+            # adapter explicitly supports it; existing adapters keep their
+            # original three-argument contract.
+            try:
+                parser_parameters = inspect.signature(parser).parameters
+            except (TypeError, ValueError):
+                parser_parameters = {}
+            if page_html is not None and 'html' in parser_parameters:
+                parsed = parser(session, final_url, url_slug(final_url), html=page_html.decode('utf-8', errors='replace') if isinstance(page_html, bytes) else page_html)
+            else:
+                parsed = parser(session, final_url, url_slug(final_url))
         finally:
             session.close()
     else:
@@ -2745,6 +2667,9 @@ def _secondary_store_parser(store, final_url, original_url):
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
+        'size_ml': parsed.get('size_ml'),
+        'concentration': parsed.get('concentration') or '',
+        'gender': parsed.get('gender') or '',
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
@@ -2778,7 +2703,7 @@ def refresh_url(store, url):
             parser_available = False
 
         if parser_available:
-            item = _secondary_store_parser(store, final, url)
+            item = _secondary_store_parser(store, final, url, page_html=data)
             secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
@@ -2817,15 +2742,12 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                concentration=COALESCE(NULLIF(excluded.concentration,''),store_products.concentration),
-                gender=COALESCE(NULLIF(excluded.gender,''),store_products.gender),
                 price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'), item.get('concentration'), item.get('gender'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
@@ -3436,6 +3358,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
                      q.first_seen_at ASC
                    LIMIT 1""",
