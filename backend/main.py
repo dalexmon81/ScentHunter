@@ -3929,3 +3929,227 @@ def diagnose_easycosmetic_hydration_live_path():
             "error": f"{type(exc).__name__}: {str(exc)[:400]}",
         }
 
+@app.get("/diagnose-easycosmetic-queue-position")
+def diagnose_easycosmetic_queue_position():
+    """
+    Read-only diagnostic for the persistent hydration scheduler.
+    Measures eligible queue backlog by store and each target's exact position
+    within Easycosmetic's current priority order. Does not claim tasks, perform
+    retailer HTTP requests, or write to the database.
+    """
+    import hashlib
+    import inspect
+    import time
+
+    targets = [
+        ("Donna", "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx"),
+        ("Uomo", "https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx"),
+    ]
+    report = {
+        "ok": True,
+        "diagnostic": "easycosmetic-queue-position-read-only-v1",
+        "read_only": True,
+        "database_writes": False,
+        "queue_claims": False,
+        "retailer_http_requests": False,
+        "runtime": {},
+        "store_backlog": [],
+        "targets": [],
+    }
+
+    try:
+        engine = importlib.import_module("catalog_engine")
+        report["runtime"] = {
+            "app_version": globals().get("APP_VERSION"),
+            "catalog_engine_file": getattr(engine, "__file__", None),
+            "process_id": os.getpid(),
+            "captured_at_epoch": time.time(),
+        }
+        claim_fn = getattr(engine, "_claim_one_hydration_task", None)
+        if callable(claim_fn):
+            try:
+                claim_src = inspect.getsource(claim_fn)
+                report["runtime"]["claim_order_source_sha256"] = hashlib.sha256(
+                    claim_src.encode("utf-8")
+                ).hexdigest()
+                report["runtime"]["claim_order_source_chars"] = len(claim_src)
+            except Exception as exc:
+                report["runtime"]["claim_order_inspection_error"] = (
+                    f"{type(exc).__name__}: {str(exc)[:200]}"
+                )
+
+        conn = engine.db()
+        try:
+            conn.execute("PRAGMA query_only=ON")
+            tables = {
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            required = {"hydration_queue", "store_urls"}
+            if not required.issubset(tables):
+                return {
+                    **report,
+                    "ok": False,
+                    "error": "required_queue_tables_missing",
+                    "tables_found": sorted(required.intersection(tables)),
+                }
+
+            now = time.time()
+            report["runtime"]["db_epoch_now"] = now
+            scheduler = None
+            if "hydration_scheduler" in tables:
+                try:
+                    row = conn.execute(
+                        "SELECT last_store_index FROM hydration_scheduler WHERE id=1"
+                    ).fetchone()
+                    scheduler = dict(row) if row else None
+                except Exception as exc:
+                    report["runtime"]["scheduler_read_error"] = (
+                        f"{type(exc).__name__}: {str(exc)[:200]}"
+                    )
+            report["runtime"]["scheduler_state"] = scheduler
+
+            # The claim function filters to active URLs, due PENDING/ERROR tasks,
+            # and stores below their active-processing cap. This report measures
+            # the due/active subset, and separately reports processing counts.
+            backlog_sql = """
+                SELECT q.store,
+                       COUNT(*) AS active_queue_rows,
+                       SUM(CASE WHEN q.state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                       SUM(CASE WHEN q.state='ERROR' THEN 1 ELSE 0 END) AS error,
+                       SUM(CASE WHEN q.state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                       SUM(CASE WHEN q.state IN ('PENDING','ERROR')
+                                 AND q.available_at <= ? THEN 1 ELSE 0 END) AS due_pending_or_error,
+                       SUM(CASE WHEN q.state IN ('PENDING','ERROR')
+                                 AND q.available_at > ? THEN 1 ELSE 0 END) AS delayed_pending_or_error,
+                       SUM(CASE WHEN q.state='DONE' THEN 1 ELSE 0 END) AS done,
+                       SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead
+                  FROM hydration_queue q
+                  JOIN store_urls u ON u.store=q.store AND u.url=q.url
+                 WHERE u.active=1
+                 GROUP BY q.store
+                 ORDER BY q.store
+            """
+            for row in conn.execute(backlog_sql, (now, now)).fetchall():
+                report["store_backlog"].append({
+                    key: row[key] for key in row.keys()
+                })
+
+            # Rank the two exact URLs according to the queue's actual ORDER BY:
+            # attempts=0 first, then available_at, then first_seen_at.
+            # Rank is within Easycosmetic's currently due active tasks; it is
+            # not a prediction of global scheduler order because stores rotate.
+            for variant, url in targets:
+                item = {"variant": variant, "url": url}
+                try:
+                    row = conn.execute(
+                        """SELECT q.store,q.url,q.state,q.attempts,q.available_at,
+                                  q.first_seen_at,q.last_started_at,q.last_finished_at,
+                                  q.last_error,q.last_http_status,u.active
+                             FROM hydration_queue q
+                             JOIN store_urls u ON u.store=q.store AND u.url=q.url
+                            WHERE q.store=? AND q.url=? LIMIT 1""",
+                        ("easycosmetic", url),
+                    ).fetchone()
+                    item["target_row"] = dict(row) if row else None
+                    if not row:
+                        item["found"] = False
+                        report["targets"].append(item)
+                        continue
+
+                    item["found"] = True
+                    item["eligible_now"] = (
+                        int(row["active"] or 0) == 1
+                        and row["state"] in ("PENDING", "ERROR")
+                        and row["available_at"] is not None
+                        and float(row["available_at"]) <= now
+                    )
+
+                    if item["eligible_now"]:
+                        rank_row = conn.execute(
+                            """SELECT COUNT(*) AS ahead
+                                 FROM hydration_queue q
+                                 JOIN store_urls u ON u.store=q.store AND u.url=q.url
+                                WHERE q.store='easycosmetic'
+                                  AND u.active=1
+                                  AND q.state IN ('PENDING','ERROR')
+                                  AND q.available_at <= ?
+                                  AND (
+                                       CASE WHEN q.attempts=0 THEN 0 ELSE 1 END
+                                         < CASE WHEN ?=0 THEN 0 ELSE 1 END
+                                       OR (
+                                           CASE WHEN q.attempts=0 THEN 0 ELSE 1 END
+                                             = CASE WHEN ?=0 THEN 0 ELSE 1 END
+                                           AND (
+                                               q.available_at < ?
+                                               OR (q.available_at = ? AND q.first_seen_at < ?)
+                                               )
+                                           )
+                                       )
+                                  )""",
+                            (
+                                now, row["attempts"], row["attempts"],
+                                row["available_at"], row["available_at"], row["first_seen_at"],
+                            ),
+                        ).fetchone()
+                        ahead = int(rank_row["ahead"] or 0) if rank_row else None
+                        total_row = conn.execute(
+                            """SELECT COUNT(*) AS total
+                                 FROM hydration_queue q
+                                 JOIN store_urls u ON u.store=q.store AND u.url=q.url
+                                WHERE q.store='easycosmetic'
+                                  AND u.active=1
+                                  AND q.state IN ('PENDING','ERROR')
+                                  AND q.available_at <= ?""",
+                            (now,),
+                        ).fetchone()
+                        item["position_within_easycosmetic_due_queue"] = (
+                            ahead + 1 if ahead is not None else None
+                        )
+                        item["eligible_easycosmetic_due_total"] = (
+                            int(total_row["total"] or 0) if total_row else None
+                        )
+                        item["due_tasks_ahead_in_same_store"] = ahead
+                        item["priority_rule"] = (
+                            "attempts=0 first, then available_at ASC, first_seen_at ASC; "
+                            "ties on all three values share the same preceding-task count"
+                        )
+                    else:
+                        item["position_within_easycosmetic_due_queue"] = None
+                        item["due_tasks_ahead_in_same_store"] = None
+                        item["priority_rule"] = (
+                            "Target is not currently eligible; it cannot have a queue position "
+                            "among due active PENDING/ERROR tasks."
+                        )
+                    report["targets"].append(item)
+                except Exception as exc:
+                    item["ok"] = False
+                    item["error"] = f"{type(exc).__name__}: {str(exc)[:300]}"
+                    report["targets"].append(item)
+
+            report["summary"] = {
+                "targets_found": sum(1 for item in report["targets"] if item.get("found")),
+                "targets_eligible_now": sum(1 for item in report["targets"] if item.get("eligible_now")),
+                "easycosmetic_due_backlog": next(
+                    (int(item["due_pending_or_error"] or 0)
+                     for item in report["store_backlog"] if item.get("store") == "easycosmetic"),
+                    0,
+                ),
+            }
+            report["interpretation_note"] = (
+                "A large same-store rank indicates Easycosmetic backlog priority is a plausible "
+                "delay. It does not prove the scheduler is stalled. Store rotation and the "
+                "per-store PROCESSING cap also affect when a target is claimed."
+            )
+            report["ok"] = all(item.get("ok", True) for item in report["targets"])
+            return report
+        finally:
+            conn.close()
+    except Exception as exc:
+        return {
+            **report,
+            "ok": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:400]}",
+        }
+
