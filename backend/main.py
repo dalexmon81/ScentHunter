@@ -3366,6 +3366,8 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
             "catalog_engine._secondary_store_parser",
             "read-only SELECT store_products",
             "read-only SELECT hydration_queue",
+            "read-only SELECT store_urls registration and active flag",
+            "read-only hydration queue eligibility calculation",
         ],
         "results": [],
     }
@@ -3433,7 +3435,9 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
                     "live_fetch": {},
                     "live_parser": {},
                     "persistent_store_product": None,
+                    "store_url_registration": None,
                     "hydration_task": None,
+                    "hydration_eligibility": None,
                     "comparison": {},
                 }
                 try:
@@ -3490,6 +3494,60 @@ def diagnose_easycosmetic_refresh_persistence_endpoint():
                             item["hydration_task"] = dict(task) if task else None
                         except Exception as exc:
                             item["hydration_task_error"] = (
+                                f"{type(exc).__name__}: {str(exc)[:250]}"
+                            )
+
+                        # Inspect whether this URL is registered and selectable by
+                        # the hydration worker. All statements are SELECT-only.
+                        try:
+                            store_url = conn.execute(
+                                """SELECT store,url,active
+                                   FROM store_urls
+                                   WHERE store=? AND url=?
+                                   LIMIT 1""",
+                                ("easycosmetic", target["url"]),
+                            ).fetchone()
+                            item["store_url_registration"] = dict(store_url) if store_url else None
+                        except Exception as exc:
+                            item["store_url_registration_error"] = (
+                                f"{type(exc).__name__}: {str(exc)[:250]}"
+                            )
+
+                        try:
+                            task_row = item.get("hydration_task") or {}
+                            store_url_row = item.get("store_url_registration") or {}
+                            processing_row = conn.execute(
+                                """SELECT COUNT(*) AS n
+                                   FROM hydration_queue
+                                   WHERE store=? AND state='PROCESSING'""",
+                                ("easycosmetic",),
+                            ).fetchone()
+                            processing_count = int(processing_row["n"]) if processing_row else 0
+                            now_ts = time.time()
+                            reasons = []
+                            if not store_url_row:
+                                reasons.append("URL_NOT_REGISTERED_IN_STORE_URLS")
+                            elif int(store_url_row.get("active") or 0) != 1:
+                                reasons.append("STORE_URL_INACTIVE")
+                            if not task_row:
+                                reasons.append("HYDRATION_TASK_MISSING")
+                            else:
+                                if task_row.get("state") not in ("PENDING", "ERROR"):
+                                    reasons.append("QUEUE_STATE_NOT_SELECTABLE")
+                                if float(task_row.get("available_at") or 0) > now_ts:
+                                    reasons.append("NOT_YET_AVAILABLE")
+                            if processing_count >= 2:
+                                reasons.append("PER_STORE_PROCESSING_LIMIT_REACHED")
+                            item["hydration_eligibility"] = {
+                                "selectable_by_queue_query": not reasons,
+                                "reasons": reasons,
+                                "processing_tasks_for_store": processing_count,
+                                "per_store_processing_limit": 2,
+                                "checked_at_unix": now_ts,
+                                "note": "Evaluates store_urls.active, queue state, available_at and the per-store PROCESSING limit only; it does not prove the worker loop is running or unpaused.",
+                            }
+                        except Exception as exc:
+                            item["hydration_eligibility_error"] = (
                                 f"{type(exc).__name__}: {str(exc)[:250]}"
                             )
                     finally:
