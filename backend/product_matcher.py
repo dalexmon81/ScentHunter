@@ -1555,10 +1555,31 @@ class ProductMatcher:
         query_is_family = catalog_variant_key(query) in family["normalized_query_aliases"]
         requested = self._requested_variant(query, family)
 
+        # A family query can name the shared part of a registered variant
+        # without including its audience suffix (for example, "Born in Roma
+        # Coral Fantasy" for the Donna and Uomo variants). Accept that query
+        # only when every query token is present in this already-resolved
+        # variant's registered identity. Exact variant requests still take
+        # precedence, so explicit Uomo/Donna and EDP/EDT distinctions remain
+        # enforced instead of cross-matching sibling variants.
         if not query_is_family and requested is None:
-            return None
-
-        if not query_is_family and requested["canonical_name"] != variant["canonical_name"]:
+            query_identity = self._url_catalog_identity_text(
+                self._remove_brand(query, family.get("brand", ""))
+            )
+            query_tokens = set(catalog_variant_key(query_identity).split())
+            variant_identity_values = {
+                str(variant.get("canonical_name") or ""),
+                *(str(alias) for alias in variant.get("aliases", ())),
+                *(str(alias) for alias in variant.get("normalized_aliases", ())),
+            }
+            variant_tokens = set()
+            for identity_value in variant_identity_values:
+                identity_text = self._url_catalog_identity_text(identity_value)
+                variant_tokens.update(catalog_variant_key(identity_text).split())
+            query_is_variant_subset = bool(query_tokens) and query_tokens.issubset(variant_tokens)
+            if not query_is_variant_subset:
+                return None
+        elif not query_is_family and requested["canonical_name"] != variant["canonical_name"]:
             return None
 
         return self._build_family_result(offer, family, variant)
