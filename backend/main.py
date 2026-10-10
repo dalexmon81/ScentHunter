@@ -4084,7 +4084,6 @@ def diagnose_easycosmetic_queue_position():
                                            AND (
                                                q.available_at < ?
                                                OR (q.available_at = ? AND q.first_seen_at < ?)
-                                               )
                                            )
                                        )
                                   )""",
