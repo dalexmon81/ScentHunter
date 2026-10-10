@@ -436,7 +436,7 @@ BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
 JOB_TIMEOUT_SECONDS = 30.0
-CATALOG_SEARCH_BUDGET_SECONDS = 5.0
+CATALOG_SEARCH_BUDGET_SECONDS = 12.0
 CATALOG_REFRESH_BUDGET_SECONDS = 0.25
 CATALOG_REFRESH_PER_STORE = 8
 LIGHT_SEMAPHORE = threading.Semaphore(LIGHT_WORKERS)
@@ -1448,13 +1448,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return []
 
     terms = _catalog_search_terms(query)
-    candidate_limit = min(96, max(48, len(terms) * 2)) if len(terms) > 1 else 32
+    candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
 
     try:
         search_budget = min(
-            5.0,
+            12.0,
             max(
-                1.5,
+                2.0,
                 float(os.environ.get(
                     'CATALOG_SEARCH_BUDGET_SECONDS',
                     str(CATALOG_SEARCH_BUDGET_SECONDS),
@@ -2733,37 +2733,6 @@ def catalog_status_endpoint():
         }
 
 
-@app.api_route('/catalog/refresh-deloox-url', methods=['GET', 'POST'])
-def catalog_refresh_deloox_url_endpoint(url: str = ''):
-    """Operator tool: force refresh_url('deloox', url) for one product URL.
-
-    Generic: only validates that the URL is an allowed Deloox product URL,
-    then uses the normal refresh path (store_products + search index update).
-    """
-    if not CATALOG_ENGINE_AVAILABLE:
-        return {'ok': False, 'error': 'catalog_engine_unavailable'}
-    import catalog_engine
-    target = catalog_engine._html_product_url('deloox', str(url or '').strip(), 'https://www.deloox.be/')
-    if not target or not str(url or '').strip().lower().startswith(('http://', 'https://')):
-        return {'ok': False, 'error': 'invalid_deloox_product_url', 'url': url}
-    item = catalog_engine.refresh_url('deloox', target)
-    conn = catalog_db()
-    try:
-        row = conn.execute(
-            'SELECT price,currency,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?',
-            ('deloox', target),
-        ).fetchone()
-    finally:
-        conn.close()
-    return {
-        'ok': bool(item),
-        'store': 'deloox',
-        'url': target,
-        'refreshed': bool(item),
-        'store_product': dict(row) if row else None,
-    }
-
-
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors."""
@@ -2902,6 +2871,395 @@ def diagnose_catalog_live_parse_endpoint(
             'error': f'{type(exc).__name__}: {str(exc)[:500]}',
         }
 
+
+
+@app.get("/diagnose-easycosmetic-trace")
+def diagnose_easycosmetic_trace(
+    store: str = "easycosmetic",
+    q: str = "Valentino Born in Roma Coral Fantasy",
+):
+    """Diagnostica read-only dei candidati e del punto di esclusione nella pipeline."""
+    query = str(q or "").strip()
+    store_key = _normalise_store(store, "")
+
+    if not query:
+        return {"ok": False, "diagnostic": "easycosmetic-trace-v1", "error": "missing_query"}
+    if not store_key or store_key not in STORES:
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "error": "unknown_store",
+            "store": store,
+            "known_stores": list(STORES),
+        }
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_search_local):
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "read_only": True,
+            "error": "catalog_engine_unavailable",
+        }
+
+    def snapshot(item):
+        if not isinstance(item, dict):
+            return {"type": type(item).__name__, "value": repr(item)[:300]}
+        keys = (
+            "store", "store_key", "shop", "name", "title", "_raw_name",
+            "brand", "_raw_brand", "size_ml", "concentration", "gender",
+            "price", "currency", "availability", "url", "product_url",
+            "sku", "gtin", "mpn", "category", "category_name",
+            "product_type", "productType", "is_fragrance", "is_perfume",
+            "catalog_id", "canonical_name", "canonical_brand", "family_id",
+            "family_name", "catalog_variant", "_match_status", "_reject_reason",
+            "_match_error", "_match_method", "match_method", "_match_score",
+            "match_score", "requested_family", "offer_family", "query_family",
+            "_requested_family", "_offer_family", "_query_family",
+        )
+        return {key: item.get(key) for key in keys if key in item}
+
+    # Chiamata diretta al catalogo locale: NON usare
+    # _collect_catalog_reports_isolated, perché può eseguire refresh mirati.
+    try:
+        raw_rows = catalog_search_local(query, per_store=32)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic": "easycosmetic-trace-v1",
+            "read_only": True,
+            "store": store_key,
+            "query": query,
+            "error": "catalog_search_local_failed",
+            "exception": f"{type(exc).__name__}: {exc}",
+        }
+
+    candidates = []
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+
+    for raw in raw_rows:
+        if not isinstance(raw, dict):
+            continue
+        candidate_store = _normalise_store(
+            raw.get("store_key") or raw.get("store") or raw.get("shop"), ""
+        )
+        if candidate_store != store_key:
+            continue
+
+        row = {
+            "catalog_candidate": snapshot(raw),
+            "cleaned": None,
+            "matcher_result": None,
+            "stages": [],
+            "loss_point": None,
+            "final_eligible": False,
+        }
+
+        try:
+            prepared = clean_result(raw, store_key)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "clean_result",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "clean_result_exception"
+            candidates.append(row)
+            continue
+
+        if prepared is None:
+            row["stages"].append({"stage": "clean_result", "outcome": "returned_none"})
+            row["loss_point"] = "clean_result_returned_none"
+            candidates.append(row)
+            continue
+
+        row["cleaned"] = snapshot(prepared)
+        row["stages"].append({"stage": "clean_result", "outcome": "kept"})
+
+        try:
+            rejected_before = _is_non_fragrance_offer(prepared)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "non_fragrance_filter_before_match",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "non_fragrance_filter_before_match_exception"
+            candidates.append(row)
+            continue
+
+        row["stages"].append({
+            "stage": "non_fragrance_filter_before_match",
+            "outcome": "rejected" if rejected_before else "kept",
+        })
+        if rejected_before:
+            row["loss_point"] = "non_fragrance_filter_before_match"
+            candidates.append(row)
+            continue
+
+        try:
+            resolved = _resolve_offer_identity(prepared, query)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "ProductMatcher",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "ProductMatcher_exception"
+            candidates.append(row)
+            continue
+
+        if not isinstance(resolved, dict):
+            row["stages"].append({
+                "stage": "ProductMatcher",
+                "outcome": "returned_non_dict",
+                "returned_type": type(resolved).__name__,
+            })
+            row["loss_point"] = "ProductMatcher_returned_non_dict"
+            candidates.append(row)
+            continue
+
+        row["matcher_result"] = snapshot(resolved)
+        row["stages"].append({
+            "stage": "ProductMatcher",
+            "outcome": resolved.get("_match_status") or "status_missing",
+            "catalog_id": resolved.get("catalog_id"),
+            "canonical_name": resolved.get("canonical_name"),
+            "size_ml": resolved.get("size_ml"),
+            "match_method": resolved.get("match_method") or resolved.get("_match_method"),
+            "match_score": resolved.get("match_score") or resolved.get("_match_score"),
+        })
+
+        if resolved.get("_match_status") == "rejected":
+            row["loss_point"] = "ProductMatcher_rejected"
+            candidates.append(row)
+            continue
+
+        try:
+            rejected_after = _is_non_fragrance_offer(resolved)
+        except Exception as exc:
+            row["stages"].append({
+                "stage": "non_fragrance_filter_after_match",
+                "outcome": "exception",
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            row["loss_point"] = "non_fragrance_filter_after_match_exception"
+            candidates.append(row)
+            continue
+
+        row["stages"].append({
+            "stage": "non_fragrance_filter_after_match",
+            "outcome": "rejected" if rejected_after else "kept",
+        })
+        if rejected_after:
+            row["loss_point"] = "non_fragrance_filter_after_match"
+            candidates.append(row)
+            continue
+
+        row["final_eligible"] = True
+        if resolved.get("_match_status") != "matched" or not resolved.get("catalog_id"):
+            row["loss_point"] = "survived_but_unresolved"
+        else:
+            row["loss_point"] = None
+        candidates.append(row)
+
+    lost_by_stage = {}
+    for item in candidates:
+        stage = item["loss_point"] or "matched"
+        lost_by_stage[stage] = lost_by_stage.get(stage, 0) + 1
+
+    return {
+        "ok": True,
+        "diagnostic": "easycosmetic-trace-v1",
+        "read_only": True,
+        "database_writes": False,
+        "sync_refresh_or_hydration_called": False,
+        "production_search_called": False,
+        "store": store_key,
+        "query": query,
+        "pipeline": [
+            "catalog_search_local (direct, no refresh)",
+            "clean_result",
+            "_is_non_fragrance_offer before matcher",
+            "_resolve_offer_identity / ProductMatcher",
+            "_is_non_fragrance_offer after matcher",
+        ],
+        "candidate_count_for_store": len(candidates),
+        "eligible_count": sum(1 for item in candidates if item["final_eligible"]),
+        "lost_by_stage": lost_by_stage,
+        "candidates": candidates,
+        "note": (
+            "Sono mostrati i dati persistiti attualmente. Eventuali valori storici "
+            "sovrascritti non sono ricostruibili se non esistono log/versioni precedenti."
+        ),
+    }
+
+
+@app.get('/diagnose-easycosmetic-size-funnel')
+def diagnose_easycosmetic_size_funnel():
+    """Read-only live size diagnostic: source HTML -> retailer parser -> catalog parser -> persisted offer."""
+    import urllib.request
+    from urllib.parse import urlparse
+    from bs4 import BeautifulSoup
+
+    targets = [
+        {
+            'label': 'donna',
+            'url': 'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx',
+        },
+        {
+            'label': 'uomo',
+            'url': 'https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx',
+        },
+    ]
+
+    report = {
+        'ok': True,
+        'diagnostic': 'easycosmetic-size-funnel-v1',
+        'read_only': True,
+        'database_writes': False,
+        'refresh_sync_hydration_called': False,
+        'matcher_called': False,
+        'stages': [
+            'live_source_html',
+            'legacy_Easycosmetic_parse_product',
+            'catalog_engine_parse_product',
+            'persistent_catalog_search_local',
+        ],
+        'products': [],
+    }
+
+    def compact_parser_result(value):
+        if not isinstance(value, dict):
+            return {'type': type(value).__name__, 'value': repr(value)[:300]}
+        keys = ('name', 'title', 'brand', 'size_ml', 'image', 'url', 'sku', 'gtin', 'mpn', 'price', 'price_num', 'availability')
+        return {key: value.get(key) for key in keys if key in value}
+
+    for target in targets:
+        item = {'label': target['label'], 'url': target['url'], 'stages': {}}
+        try:
+            parsed_url = urlparse(target['url'])
+            if parsed_url.scheme != 'https' or parsed_url.hostname != 'www.easycosmetic.de':
+                item['error'] = 'url_not_allowed'
+                report['products'].append(item)
+                continue
+
+            request = urllib.request.Request(
+                target['url'],
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (compatible; ScentHunterReadOnlyDiagnostic/1.0)',
+                    'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+                },
+                method='GET',
+            )
+            with urllib.request.urlopen(request, timeout=18) as response:
+                status = response.status
+                final_url = response.geturl()
+                raw = response.read(5 * 1024 * 1024 + 1)
+                content_type = response.headers.get('Content-Type', '')
+                encoding = response.headers.get_content_charset() or 'utf-8'
+            if len(raw) > 5 * 1024 * 1024:
+                item['error'] = 'page_exceeds_5mb'
+                report['products'].append(item)
+                continue
+            html = raw.decode(encoding, errors='replace')
+            soup = BeautifulSoup(html, 'html.parser')
+            h1 = soup.find('h1')
+            image_urls = []
+            for node in soup.select('img, meta[property="og:image"], meta[name="twitter:image"]'):
+                vals = []
+                for attr in ('src', 'data-src', 'data-original', 'data-lazy-src', 'content', 'srcset'):
+                    val = node.get(attr)
+                    if val:
+                        vals.append(str(val))
+                for val in vals:
+                    if 'easycosmetic' in val.lower() and re.search(r'100\s*ml|100ml', val, re.I):
+                        image_urls.append(val[:1000])
+            selected_controls = []
+            for node in soup.select('option[selected], input[checked], [aria-selected="true"], [aria-checked="true"]')[:50]:
+                text_value = ' '.join((node.get_text(' ', strip=True), str(node.get('value') or ''), str(node.get('aria-label') or ''), str(node.get('title') or ''), str(node.get('data-value') or ''))).strip()
+                if text_value:
+                    selected_controls.append(text_value[:300])
+            report['live_html_available'] = True
+            item['stages']['live_source_html'] = {
+                'http_status': status,
+                'final_url': final_url,
+                'content_type': content_type,
+                'html_bytes': len(raw),
+                'h1': h1.get_text(' ', strip=True) if h1 else None,
+                'jsonld_product_names': [str(node.get_text(' ', strip=True))[:300] for node in soup.select('script[type="application/ld+json"]')[:8]],
+                'image_urls_containing_100ml': list(dict.fromkeys(image_urls))[:20],
+                'selected_controls': selected_controls,
+                'raw_html_has_100ml': bool(re.search(r'100\s*ml|100ml', html, re.I)),
+            }
+
+            try:
+                catalog_module = importlib.import_module('catalog_engine')
+                catalog_parser = getattr(catalog_module, 'parse_product', None)
+                if callable(catalog_parser):
+                    parsed = catalog_parser('easycosmetic', final_url, html)
+                    item['stages']['catalog_engine_parse_product'] = compact_parser_result(parsed)
+                else:
+                    item['stages']['catalog_engine_parse_product'] = {'error': 'parse_product_unavailable'}
+            except Exception as exc:
+                item['stages']['catalog_engine_parse_product'] = {'error': f'{type(exc).__name__}: {str(exc)[:400]}'}
+
+            try:
+                import requests
+                catalog_module = importlib.import_module('catalog_engine')
+                adapter_module = importlib.import_module('scrapers.easycosmetic.scraper')
+                adapter_parser = getattr(adapter_module, 'extract_product_page', None)
+                if callable(adapter_parser):
+                    session = requests.Session()
+                    session.headers.update({'User-Agent': 'Mozilla/5.0 (compatible; ScentHunterReadOnlyDiagnostic/1.0)'})
+                    try:
+                        slug_fn = getattr(catalog_module, 'url_slug', None)
+                        slug = slug_fn(final_url) if callable(slug_fn) else final_url.rstrip('/').rsplit('/', 1)[-1]
+                        parsed = adapter_parser(session, final_url, slug)
+                    finally:
+                        session.close()
+                    item['stages']['scrapers.easycosmetic.scraper.extract_product_page'] = compact_parser_result(parsed)
+                else:
+                    item['stages']['scrapers.easycosmetic.scraper.extract_product_page'] = {'error': 'extract_product_page_unavailable'}
+            except Exception as exc:
+                item['stages']['scrapers.easycosmetic.scraper.extract_product_page'] = {'error': f'{type(exc).__name__}: {str(exc)[:400]}'}
+
+            try:
+                legacy_module = importlib.import_module('Easycosmetic')
+                legacy_parser = getattr(legacy_module, 'parse_product', None)
+                if callable(legacy_parser):
+                    parsed = legacy_parser(final_url)
+                    item['stages']['legacy_Easycosmetic_parse_product'] = compact_parser_result(parsed)
+                else:
+                    item['stages']['legacy_Easycosmetic_parse_product'] = {'error': 'parse_product_unavailable'}
+            except Exception as exc:
+                item['stages']['legacy_Easycosmetic_parse_product'] = {'error': f'{type(exc).__name__}: {str(exc)[:400]}'}
+
+            try:
+                if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_search_local):
+                    item['stages']['persistent_catalog_search_local'] = {'error': 'catalog_engine_unavailable'}
+                else:
+                    stored = catalog_search_local('Valentino Born in Roma Coral Fantasy', per_store=32)
+                    offers = []
+                    for candidate in stored if isinstance(stored, list) else []:
+                        if not isinstance(candidate, dict):
+                            continue
+                        store_key = str(candidate.get('store_key') or '').lower()
+                        candidate_url = str(candidate.get('url') or candidate.get('product_url') or '')
+                        if store_key == 'easycosmetic' and (candidate_url == target['url'] or target['label'] in candidate_url.lower()):
+                            offers.append(compact_parser_result(candidate))
+                    item['stages']['persistent_catalog_search_local'] = {
+                        'query': 'Valentino Born in Roma Coral Fantasy',
+                        'matching_url_count': len(offers),
+                        'offers': offers[:10],
+                    }
+            except Exception as exc:
+                item['stages']['persistent_catalog_search_local'] = {'error': f'{type(exc).__name__}: {str(exc)[:400]}'}
+
+        except Exception as exc:
+            item['error'] = f'{type(exc).__name__}: {str(exc)[:500]}'
+        report['products'].append(item)
+
+    return report
 
 
 @app.get('/search-start')
@@ -3197,226 +3555,6 @@ def diagnose_search_final(store: str, q: str):
         "dedupe_diagnostics": dedupe_diagnostics,
         "non_fragrance_skipped": rejected_or_skipped,
     }
-@app.get("/diagnose-easycosmetic-trace")
-def diagnose_easycosmetic_trace(
-    store: str = "easycosmetic",
-    q: str = "Valentino Born in Roma Coral Fantasy",
-):
-    """Diagnostica read-only dei candidati e del punto di esclusione nella pipeline."""
-    query = str(q or "").strip()
-    store_key = _normalise_store(store, "")
-
-    if not query:
-        return {"ok": False, "diagnostic": "easycosmetic-trace-v1", "error": "missing_query"}
-    if not store_key or store_key not in STORES:
-        return {
-            "ok": False,
-            "diagnostic": "easycosmetic-trace-v1",
-            "error": "unknown_store",
-            "store": store,
-            "known_stores": list(STORES),
-        }
-    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_search_local):
-        return {
-            "ok": False,
-            "diagnostic": "easycosmetic-trace-v1",
-            "read_only": True,
-            "error": "catalog_engine_unavailable",
-        }
-
-    def snapshot(item):
-        if not isinstance(item, dict):
-            return {"type": type(item).__name__, "value": repr(item)[:300]}
-        keys = (
-            "store", "store_key", "shop", "name", "title", "_raw_name",
-            "brand", "_raw_brand", "size_ml", "concentration", "gender",
-            "price", "currency", "availability", "url", "product_url",
-            "sku", "gtin", "mpn", "category", "category_name",
-            "product_type", "productType", "is_fragrance", "is_perfume",
-            "catalog_id", "canonical_name", "canonical_brand", "family_id",
-            "family_name", "catalog_variant", "_match_status", "_reject_reason",
-            "_match_error", "_match_method", "match_method", "_match_score",
-            "match_score", "requested_family", "offer_family", "query_family",
-            "_requested_family", "_offer_family", "_query_family",
-        )
-        return {key: item.get(key) for key in keys if key in item}
-
-    # Chiamata diretta al catalogo locale: NON usare
-    # _collect_catalog_reports_isolated, perché può eseguire refresh mirati.
-    try:
-        raw_rows = catalog_search_local(query, per_store=32)
-    except Exception as exc:
-        return {
-            "ok": False,
-            "diagnostic": "easycosmetic-trace-v1",
-            "read_only": True,
-            "store": store_key,
-            "query": query,
-            "error": "catalog_search_local_failed",
-            "exception": f"{type(exc).__name__}: {exc}",
-        }
-
-    candidates = []
-    if not isinstance(raw_rows, list):
-        raw_rows = []
-
-    for raw in raw_rows:
-        if not isinstance(raw, dict):
-            continue
-        candidate_store = _normalise_store(
-            raw.get("store_key") or raw.get("store") or raw.get("shop"), ""
-        )
-        if candidate_store != store_key:
-            continue
-
-        row = {
-            "catalog_candidate": snapshot(raw),
-            "cleaned": None,
-            "matcher_result": None,
-            "stages": [],
-            "loss_point": None,
-            "final_eligible": False,
-        }
-
-        try:
-            prepared = clean_result(raw, store_key)
-        except Exception as exc:
-            row["stages"].append({
-                "stage": "clean_result",
-                "outcome": "exception",
-                "exception": f"{type(exc).__name__}: {exc}",
-            })
-            row["loss_point"] = "clean_result_exception"
-            candidates.append(row)
-            continue
-
-        if prepared is None:
-            row["stages"].append({"stage": "clean_result", "outcome": "returned_none"})
-            row["loss_point"] = "clean_result_returned_none"
-            candidates.append(row)
-            continue
-
-        row["cleaned"] = snapshot(prepared)
-        row["stages"].append({"stage": "clean_result", "outcome": "kept"})
-
-        try:
-            rejected_before = _is_non_fragrance_offer(prepared)
-        except Exception as exc:
-            row["stages"].append({
-                "stage": "non_fragrance_filter_before_match",
-                "outcome": "exception",
-                "exception": f"{type(exc).__name__}: {exc}",
-            })
-            row["loss_point"] = "non_fragrance_filter_before_match_exception"
-            candidates.append(row)
-            continue
-
-        row["stages"].append({
-            "stage": "non_fragrance_filter_before_match",
-            "outcome": "rejected" if rejected_before else "kept",
-        })
-        if rejected_before:
-            row["loss_point"] = "non_fragrance_filter_before_match"
-            candidates.append(row)
-            continue
-
-        try:
-            resolved = _resolve_offer_identity(prepared, query)
-        except Exception as exc:
-            row["stages"].append({
-                "stage": "ProductMatcher",
-                "outcome": "exception",
-                "exception": f"{type(exc).__name__}: {exc}",
-            })
-            row["loss_point"] = "ProductMatcher_exception"
-            candidates.append(row)
-            continue
-
-        if not isinstance(resolved, dict):
-            row["stages"].append({
-                "stage": "ProductMatcher",
-                "outcome": "returned_non_dict",
-                "returned_type": type(resolved).__name__,
-            })
-            row["loss_point"] = "ProductMatcher_returned_non_dict"
-            candidates.append(row)
-            continue
-
-        row["matcher_result"] = snapshot(resolved)
-        row["stages"].append({
-            "stage": "ProductMatcher",
-            "outcome": resolved.get("_match_status") or "status_missing",
-            "catalog_id": resolved.get("catalog_id"),
-            "canonical_name": resolved.get("canonical_name"),
-            "size_ml": resolved.get("size_ml"),
-            "match_method": resolved.get("match_method") or resolved.get("_match_method"),
-            "match_score": resolved.get("match_score") or resolved.get("_match_score"),
-        })
-
-        if resolved.get("_match_status") == "rejected":
-            row["loss_point"] = "ProductMatcher_rejected"
-            candidates.append(row)
-            continue
-
-        try:
-            rejected_after = _is_non_fragrance_offer(resolved)
-        except Exception as exc:
-            row["stages"].append({
-                "stage": "non_fragrance_filter_after_match",
-                "outcome": "exception",
-                "exception": f"{type(exc).__name__}: {exc}",
-            })
-            row["loss_point"] = "non_fragrance_filter_after_match_exception"
-            candidates.append(row)
-            continue
-
-        row["stages"].append({
-            "stage": "non_fragrance_filter_after_match",
-            "outcome": "rejected" if rejected_after else "kept",
-        })
-        if rejected_after:
-            row["loss_point"] = "non_fragrance_filter_after_match"
-            candidates.append(row)
-            continue
-
-        row["final_eligible"] = True
-        if resolved.get("_match_status") != "matched" or not resolved.get("catalog_id"):
-            row["loss_point"] = "survived_but_unresolved"
-        else:
-            row["loss_point"] = None
-        candidates.append(row)
-
-    lost_by_stage = {}
-    for item in candidates:
-        stage = item["loss_point"] or "matched"
-        lost_by_stage[stage] = lost_by_stage.get(stage, 0) + 1
-
-    return {
-        "ok": True,
-        "diagnostic": "easycosmetic-trace-v1",
-        "read_only": True,
-        "database_writes": False,
-        "sync_refresh_or_hydration_called": False,
-        "production_search_called": False,
-        "store": store_key,
-        "query": query,
-        "pipeline": [
-            "catalog_search_local (direct, no refresh)",
-            "clean_result",
-            "_is_non_fragrance_offer before matcher",
-            "_resolve_offer_identity / ProductMatcher",
-            "_is_non_fragrance_offer after matcher",
-        ],
-        "candidate_count_for_store": len(candidates),
-        "eligible_count": sum(1 for item in candidates if item["final_eligible"]),
-        "lost_by_stage": lost_by_stage,
-        "candidates": candidates,
-        "note": (
-            "Sono mostrati i dati persistiti attualmente. Eventuali valori storici "
-            "sovrascritti non sono ricostruibili se non esistono log/versioni precedenti."
-        ),
-    }
-
 
 @app.get('/frontend')
 def frontend():
