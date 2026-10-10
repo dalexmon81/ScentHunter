@@ -21,7 +21,6 @@ import gzip
 import html
 import heapq
 import importlib
-import inspect
 import json
 import re
 import sqlite3
@@ -2609,7 +2608,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url, page_html=None):
+def _secondary_store_parser(store, final_url, original_url):
     """Run the retailer scraper's exact product-page parser.
 
     A store parser, when available, is authoritative for extracting the
@@ -2623,17 +2622,7 @@ def _secondary_store_parser(store, final_url, original_url, page_html=None):
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
         try:
-            # Reuse the HTML already downloaded by refresh_url when the
-            # adapter explicitly supports it; existing adapters keep their
-            # original three-argument contract.
-            try:
-                parser_parameters = inspect.signature(parser).parameters
-            except (TypeError, ValueError):
-                parser_parameters = {}
-            if page_html is not None and 'html' in parser_parameters:
-                parsed = parser(session, final_url, url_slug(final_url), html=page_html.decode('utf-8', errors='replace') if isinstance(page_html, bytes) else page_html)
-            else:
-                parsed = parser(session, final_url, url_slug(final_url))
+            parsed = parser(session, final_url, url_slug(final_url))
         finally:
             session.close()
     else:
@@ -2667,9 +2656,6 @@ def _secondary_store_parser(store, final_url, original_url, page_html=None):
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
-        'size_ml': parsed.get('size_ml'),
-        'concentration': parsed.get('concentration') or '',
-        'gender': parsed.get('gender') or '',
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
@@ -2703,7 +2689,7 @@ def refresh_url(store, url):
             parser_available = False
 
         if parser_available:
-            item = _secondary_store_parser(store, final, url, page_html=data)
+            item = _secondary_store_parser(store, final, url)
             secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
@@ -2742,14 +2728,12 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=excluded.size_ml,concentration=excluded.concentration,
-                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'),
-                item.get('concentration'), item.get('gender'),
+                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
@@ -3360,9 +3344,9 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
-                     q.first_seen_at ASC,
-                     q.attempts ASC
+                     q.first_seen_at ASC
                    LIMIT 1""",
                 (store, now),
             ).fetchone()
