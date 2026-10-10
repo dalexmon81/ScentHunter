@@ -606,8 +606,10 @@ def search_stream(query: str, emit=None):
         },
     }
 
-def _extract_size_ml(soup: BeautifulSoup, name: str = "") -> Optional[float]:
-    """Extract only a clearly selected Easycosmetic size, never any page variant."""
+def _extract_size_ml(
+    soup: BeautifulSoup, name: str = "", image: str = "", url: str = ""
+) -> Optional[float]:
+    """Extract the selected Easycosmetic size, avoiding unrelated variant lists."""
     def parse_size(value: Any) -> Optional[float]:
         text = _clean(value).lower().replace(",", ".")
         match = re.search(r"(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b", text)
@@ -621,6 +623,20 @@ def _extract_size_ml(soup: BeautifulSoup, name: str = "") -> Optional[float]:
 
     # Product identity often includes the size.
     size = parse_size(name)
+    if size is not None:
+        return size
+
+    # Easycosmetic product H1 often omits volume. Its canonical product image
+    # can explicitly encode the actual bottle size (for example, ...100ml.png).
+    # Check only the product image selected by parse_product, not every image on
+    # the page, so thumbnails for other variants cannot contaminate the result.
+    size = parse_size(image)
+    if size is not None:
+        return size
+
+    # Product URLs may explicitly encode a size; use this only after the page's
+    # name and selected product image have been checked.
+    size = parse_size(url)
     if size is not None:
         return size
 
@@ -721,7 +737,7 @@ def parse_product(url: str) -> Optional[Dict[str, Any]]:
     if not name:
         return None
 
-    size_ml = _extract_size_ml(soup, name)
+    size_ml = _extract_size_ml(soup, name, image, url)
     return {
         "shop": STORE,
         "size_ml": size_ml,
