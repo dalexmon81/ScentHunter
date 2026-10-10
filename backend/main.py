@@ -3330,3 +3330,232 @@ def diagnose_easycosmetic_refresh_handoff_endpoint():
             "error": f"{type(exc).__name__}: {exc}",
         }
 
+
+
+@app.get("/diagnose-easycosmetic-refresh-persistence")
+def diagnose_easycosmetic_refresh_persistence_endpoint():
+    """
+    Read-only diagnostic for the exact Easycosmetic refresh stages.
+    Mirrors refresh_url's fetch + retailer-parser handoff, then SELECTs the
+    persistent row and hydration task. It deliberately never calls refresh_url
+    and never executes INSERT/UPDATE/DELETE.
+    """
+    import inspect
+    import requests
+
+    targets = [
+        {
+            "variant": "Donna",
+            "url": "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx",
+        },
+        {
+            "variant": "Uomo",
+            "url": "https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx",
+        },
+    ]
+
+    report = {
+        "ok": True,
+        "diagnostic": "easycosmetic-refresh-persistence-read-only-v1",
+        "read_only": True,
+        "database_writes": False,
+        "refresh_url_called": False,
+        "hydration_queue_modified": False,
+        "stages": [
+            "catalog_engine.http_get",
+            "catalog_engine._secondary_store_parser",
+            "read-only SELECT store_products",
+            "read-only SELECT hydration_queue",
+        ],
+        "results": [],
+    }
+
+    try:
+        engine = importlib.import_module("catalog_engine")
+        fetch = getattr(engine, "http_get", None)
+        parse = getattr(engine, "_secondary_store_parser", None)
+        refresh = getattr(engine, "refresh_url", None)
+        if not callable(fetch) or not callable(parse) or not callable(refresh):
+            return {
+                **report,
+                "ok": False,
+                "error": "catalog_engine_refresh_path_unavailable",
+                "available": {
+                    "http_get": callable(fetch),
+                    "_secondary_store_parser": callable(parse),
+                    "refresh_url": callable(refresh),
+                },
+            }
+
+        try:
+            refresh_source = inspect.getsource(refresh)
+            source_checks = {
+                "fetches_http_before_parse": (
+                    refresh_source.find("http_get(") >= 0
+                    and refresh_source.find("_secondary_store_parser(") > refresh_source.find("http_get(")
+                ),
+                "persists_with_insert_on_conflict": (
+                    "INSERT INTO store_products" in refresh_source
+                    and "ON CONFLICT(store,url) DO UPDATE" in refresh_source
+                ),
+                "commits_after_upsert": (
+                    "conn.commit()" in refresh_source
+                ),
+            }
+        except Exception as exc:
+            source_checks = {
+                "inspection_error": f"{type(exc).__name__}: {str(exc)[:300]}"
+            }
+        report["refresh_url_source_checks"] = source_checks
+
+        # Use the engine's read-only connection where available.
+        def open_read_only():
+            opener = getattr(engine, "_search_db", None)
+            if callable(opener):
+                conn = opener()
+                try:
+                    conn.execute("PRAGMA query_only=ON")
+                except Exception:
+                    pass
+                return conn
+            db_opener = getattr(engine, "db", None)
+            if not callable(db_opener):
+                raise RuntimeError("catalog_database_connection_unavailable")
+            conn = db_opener()
+            conn.execute("PRAGMA query_only=ON")
+            return conn
+
+        with requests.Session() as session:
+            for target in targets:
+                item = {
+                    "variant": target["variant"],
+                    "url": target["url"],
+                    "live_fetch": {},
+                    "live_parser": {},
+                    "persistent_store_product": None,
+                    "hydration_task": None,
+                    "comparison": {},
+                }
+                try:
+                    status, final_url, page_html = fetch(
+                        target["url"], timeout=getattr(engine, "REFRESH_TIMEOUT", 15)
+                    )
+                    item["live_fetch"] = {
+                        "http_status": status,
+                        "final_url": final_url,
+                        "html_bytes": len(page_html or b""),
+                    }
+                    if status >= 400:
+                        raise RuntimeError(f"HTTP {status}")
+
+                    parsed = parse(
+                        "easycosmetic", final_url, target["url"], page_html=page_html
+                    )
+                    if not isinstance(parsed, dict):
+                        raise RuntimeError("retailer_parser_returned_no_product")
+
+                    parser_fields = (
+                        "name", "brand", "image", "sku", "gtin", "mpn",
+                        "size_ml", "concentration", "gender", "price_num",
+                        "price", "currency", "availability", "url",
+                    )
+                    item["live_parser"] = {
+                        "ok": bool(parsed.get("name")),
+                        **{key: parsed.get(key) for key in parser_fields},
+                    }
+
+                    conn = open_read_only()
+                    try:
+                        row = conn.execute(
+                            """SELECT store,url,name,brand,image,sku,gtin,mpn,
+                                      size_ml,concentration,gender,price,currency,
+                                      availability,fetched_at,fetch_status
+                               FROM store_products
+                               WHERE store=? AND url=?
+                               LIMIT 1""",
+                            ("easycosmetic", target["url"]),
+                        ).fetchone()
+                        item["persistent_store_product"] = dict(row) if row else None
+
+                        try:
+                            task = conn.execute(
+                                """SELECT store,url,state,attempts,available_at,
+                                          leased_until,last_error,last_http_status,
+                                          last_started_at,last_finished_at
+                                   FROM hydration_queue
+                                   WHERE store=? AND url=?
+                                   LIMIT 1""",
+                                ("easycosmetic", target["url"]),
+                            ).fetchone()
+                            item["hydration_task"] = dict(task) if task else None
+                        except Exception as exc:
+                            item["hydration_task_error"] = (
+                                f"{type(exc).__name__}: {str(exc)[:250]}"
+                            )
+                    finally:
+                        conn.close()
+
+                    stored = item["persistent_store_product"] or {}
+                    live = item["live_parser"]
+                    fields = (
+                        "name", "brand", "image", "sku", "gtin", "mpn",
+                        "size_ml", "concentration", "gender", "currency",
+                        "availability",
+                    )
+                    differences = {}
+                    for field in fields:
+                        live_value = live.get(field)
+                        stored_value = stored.get(field)
+                        if live_value != stored_value:
+                            differences[field] = {
+                                "live_parser": live_value,
+                                "stored_catalog": stored_value,
+                            }
+                    live_price = live.get("price_num")
+                    stored_price = stored.get("price")
+                    if live_price != stored_price:
+                        differences["price"] = {
+                            "live_parser": live_price,
+                            "stored_catalog": stored_price,
+                        }
+                    item["comparison"] = {
+                        "persistent_row_exists": bool(stored),
+                        "fields_differ": differences,
+                        "stale_or_incomplete_fields": sorted(differences.keys()),
+                        "note": (
+                            "This read-only test does not prove a write succeeds; "
+                            "it compares the exact refresh fetch/parser output with "
+                            "the currently persisted row."
+                        ),
+                    }
+                    item["ok"] = bool(item["live_parser"].get("ok"))
+                except Exception as exc:
+                    item["ok"] = False
+                    item["error"] = f"{type(exc).__name__}: {str(exc)[:500]}"
+                report["results"].append(item)
+
+        report["summary"] = {
+            "tested": len(report["results"]),
+            "passed_live_parse": sum(
+                1 for item in report["results"]
+                if item.get("live_parser", {}).get("ok")
+            ),
+            "persistent_rows_found": sum(
+                1 for item in report["results"]
+                if item.get("comparison", {}).get("persistent_row_exists")
+            ),
+            "rows_with_differences": sum(
+                1 for item in report["results"]
+                if item.get("comparison", {}).get("fields_differ")
+            ),
+            "failed": sum(1 for item in report["results"] if not item.get("ok")),
+        }
+        report["ok"] = report["summary"]["failed"] == 0
+        return report
+    except Exception as exc:
+        return {
+            **report,
+            "ok": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:500]}",
+        }
+
