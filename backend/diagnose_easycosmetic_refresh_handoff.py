@@ -1,15 +1,9 @@
 # ScentHunter — diagnostica read-only Easycosmetic refresh handoff
-# File: diagnose_easycosmetic_refresh_handoff.txt
+# Destinazione: backend/diagnose_easycosmetic_refresh_handoff.py
 #
-# INSERIMENTO:
-# Aggiungere questa funzione in backend/main.py, dopo gli endpoint diagnostici
-# Easycosmetic già presenti. Non sostituisce backend/main.py.
-#
-# Questo endpoint usa http_get() e _secondary_store_parser() del catalog_engine,
-# con lo stesso HTML già scaricato passato a page_html, come fa refresh_url().
-# NON chiama refresh_url(), NON aggiorna SQLite e NON mette task in coda.
+# Questo file contiene una funzione di diagnostica richiamabile da main.py.
+# Non chiama refresh_url(), non scrive su SQLite e non modifica la coda.
 
-@app.get("/diagnose-easycosmetic-refresh-handoff")
 def diagnose_easycosmetic_refresh_handoff():
     """Read-only: verifica il passaggio live HTML -> parser usato da refresh_url."""
     import importlib
@@ -45,7 +39,6 @@ def diagnose_easycosmetic_refresh_handoff():
         http_get = getattr(engine, "http_get", None)
         parser = getattr(engine, "_secondary_store_parser", None)
         url_slug = getattr(engine, "url_slug", None)
-
         if not callable(http_get) or not callable(parser) or not callable(url_slug):
             return {
                 **report,
@@ -76,18 +69,12 @@ def diagnose_easycosmetic_refresh_handoff():
         return {key: value.get(key) for key in keys if key in value}
 
     for target in targets:
-        entry = {
-            "label": target["label"],
-            "requested_url": target["url"],
-            "stages": {},
-        }
-
+        entry = {"label": target["label"], "requested_url": target["url"], "stages": {}}
         parsed_url = urlparse(target["url"])
         if parsed_url.scheme != "https" or parsed_url.hostname != "www.easycosmetic.de":
             entry["error"] = "url_not_allowed"
             report["products"].append(entry)
             continue
-
         try:
             status, final_url, page_html = http_get(target["url"], timeout=18)
             entry["stages"]["http_get"] = {
@@ -96,22 +83,15 @@ def diagnose_easycosmetic_refresh_handoff():
                 "html_type": type(page_html).__name__,
                 "html_bytes": len(page_html or b""),
             }
-
             if status >= 400:
                 entry["error"] = f"http_status_{status}"
                 report["products"].append(entry)
                 continue
 
-            # Identico handoff al refresh_url: final URL, original URL e HTML
-            # appena scaricato. La funzione parser non effettua la persistenza.
             parsed = parser(
-                "easycosmetic",
-                final_url,
-                target["url"],
-                page_html=page_html,
+                "easycosmetic", final_url, target["url"], page_html=page_html
             )
             entry["stages"]["_secondary_store_parser"] = compact(parsed)
-
             if isinstance(parsed, dict):
                 entry["comparison"] = {
                     "parsed_size_ml": parsed.get("size_ml"),
@@ -126,10 +106,7 @@ def diagnose_easycosmetic_refresh_handoff():
                     "returned_type": type(parsed).__name__,
                     "refresh_url_would_accept_parser_result": False,
                 }
-
         except Exception as exc:
             entry["error"] = f"{type(exc).__name__}: {str(exc)[:500]}"
-
         report["products"].append(entry)
-
     return report
