@@ -2560,39 +2560,61 @@ def _first_offer(p):
     return {}
 
 
-def _easycosmetic_size_ml(soup, name='', image='', url=''):
-    """Extract size from the product identity, its canonical image/URL, or selected variant controls."""
-    def parse_size(value):
-        text = str(value or '').lower().replace(',', '.')
-        match = re.search(r'(?<!\d)(\d{1,4}(?:\.\d{1,2})?)\s*(?:ml|milliliter|millilitre)\b', text)
-        if not match:
-            return None
-        try:
-            size = float(match.group(1))
-            return size if 1 <= size <= 5000 else None
-        except ValueError:
-            return None
+def _extract_size_ml(product, name='', url='', image=None):
+    """Extract an explicitly exposed retail format without assigning identity.
 
-    # Prefer explicit product-name volume; Easycosmetic often puts the actual
-    # selected bottle size in its product image filename (e.g. ...100ml.png).
-    for source in (name, image, url):
-        size = parse_size(source)
-        if size is not None:
-            return size
-    selected = []
-    for node in soup.select('option[selected], input[type="radio"][checked], input[type="radio"][aria-checked="true"], [aria-selected="true"], [aria-checked="true"]'):
-        selected.append(' '.join((node.get_text(' ', strip=True), str(node.get('value') or ''), str(node.get('aria-label') or ''), str(node.get('title') or ''), str(node.get('data-value') or ''))))
-    for text in selected:
-        size = parse_size(text)
-        if size is not None:
-            return size
-    for node in soup.select('[class*="selected"], [class*="current"], [class*="variant"], [class*="size"]'):
-        classes = ' '.join(node.get('class', [])) if isinstance(node.get('class'), list) else str(node.get('class') or '')
-        if not re.search(r'selected|current|active|chosen', classes, re.I):
-            continue
-        size = parse_size(node.get_text(' ', strip=True))
-        if size is not None:
-            return size
+    Prefer structured product properties. If the retailer omits them, inspect
+    only the current product's own name, URL and image filename; never scan
+    unrelated page images or recommendation tiles.
+    """
+    if not isinstance(product, dict):
+        product = {}
+
+    candidates = []
+    for key in ('size_ml', 'size', 'volume', '容量'):
+        value = product.get(key)
+        if isinstance(value, dict):
+            value = value.get('value') or value.get('name')
+        if value is not None:
+            candidates.append(str(value))
+
+    props = product.get('additionalProperty') or []
+    if isinstance(props, dict):
+        props = [props]
+    if isinstance(props, list):
+        for prop in props:
+            if not isinstance(prop, dict):
+                continue
+            prop_name = str(prop.get('name') or '').strip().lower()
+            if any(token in prop_name for token in ('volume', 'size', 'format', 'inhalt')):
+                value = prop.get('value') or prop.get('valueReference')
+                if isinstance(value, dict):
+                    value = value.get('value') or value.get('name')
+                if value is not None:
+                    candidates.append(str(value))
+
+    image_path = ''
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get('url') or image.get('contentUrl')
+    if isinstance(image, str):
+        image_path = urllib.parse.urlparse(image).path.rsplit('/', 1)[-1]
+
+    # Consider only the image attached to this Product object, not arbitrary
+    # images elsewhere on the page.
+    candidates.extend([str(name or ''), str(url or ''), image_path])
+
+    for candidate in candidates:
+        text = html.unescape(candidate).replace(',', '.')
+        match = re.search(r'(?<!\d)(\d+(?:\.\d+)?)\s*(?:ml|millilit(?:er|re)s?)(?![a-z])', text, re.I)
+        if match:
+            try:
+                size = float(match.group(1))
+                if 1 <= size <= 5000:
+                    return size
+            except (TypeError, ValueError):
+                pass
     return None
 
 
@@ -2625,7 +2647,6 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
-    size_ml = _easycosmetic_size_ml(soup, name, image, url) if store == 'easycosmetic' else None
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
@@ -2636,7 +2657,7 @@ def parse_product(store, url, data):
         'sku': str(p.get('sku') or '').strip(),
         'gtin': str(p.get('gtin13') or p.get('gtin12') or p.get('gtin14') or p.get('gtin') or '').strip(),
         'mpn': str(p.get('mpn') or '').strip(),
-        'size_ml': size_ml,
+        'size_ml': _extract_size_ml(p, name=name, url=url, image=image),
         'price_num': price,
         'price': price,
         'currency': currency,
@@ -2697,7 +2718,13 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed.get('size_ml') or identity_value('size_ml') or parsed.get('volume_ml'),
+        'size_ml': parsed.get('size_ml') or identity_value('size_ml') or _extract_size_ml(
+            {}, name=parsed.get('name') or parsed.get('title') or '',
+            url=parsed.get('url') or final_url or original_url,
+            image=parsed.get('image') or (parsed.get('source') or {}).get('image'),
+        ),
+        'concentration': parsed.get('concentration') or identity_value('concentration') or '',
+        'gender': parsed.get('gender') or identity_value('gender') or '',
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2735,41 +2762,6 @@ def refresh_url(store, url):
 
         primary_ok = bool(item and item.get('name'))
 
-        # Easycosmetic's dedicated scraper adapter may return a valid offer
-        # without a volume, even when the page JSON-LD/image identifies it.
-        # Preserve the dedicated parser's price and availability, but fill a
-        # missing volume from the generic page parser before persistence.
-        if store == 'easycosmetic' and item and item.get('name') and not item.get('size_ml'):
-            try:
-                # The dedicated Easycosmetic parser may expose the retailer image
-                # but omit volume. The generic JSON-LD image can be different or
-                # absent, so inspect the actual selected item image and URL too.
-                soup = BeautifulSoup(data or b'', 'html.parser')
-                parsed_size = _easycosmetic_size_ml(
-                    soup,
-                    item.get('name') or '',
-                    item.get('image') or '',
-                    final or url,
-                )
-                if not parsed_size:
-                    generic_item = parse_product(store, final or url, data)
-                    parsed_size = generic_item.get('size_ml') if generic_item else None
-                    if generic_item and not item.get('image') and generic_item.get('image'):
-                        item['image'] = generic_item['image']
-                if parsed_size:
-                    item['size_ml'] = parsed_size
-                print(
-                    f'CATALOG EASYCOSMETIC SIZE FALLBACK url={url} '
-                    f'size_ml={item.get("size_ml")!r} image={item.get("image")!r}',
-                    flush=True,
-                )
-            except Exception as size_exc:
-                print(
-                    f'CATALOG EASYCOSMETIC SIZE FALLBACK ERROR url={url} '
-                    f'error={type(size_exc).__name__}: {size_exc}',
-                    flush=True,
-                )
-
         if not item or not item.get('name'):
             h1_text = ''
             jsonld_count = 0
@@ -2802,13 +2794,14 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                price=excluded.price,currency=excluded.currency,
+                size_ml=excluded.size_ml,concentration=excluded.concentration,
+                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), item.get('size_ml'), None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'),
+                item.get('size_ml'), item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
@@ -3408,8 +3401,6 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                    FROM hydration_queue q
                    JOIN store_urls u
                      ON u.store=q.store AND u.url=q.url
-                   LEFT JOIN store_products sp
-                     ON sp.store=q.store AND sp.url=q.url
                    WHERE q.store=?
                      AND u.active=1
                      AND q.state IN ('PENDING','ERROR')
@@ -3421,16 +3412,9 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
-                     CASE
-                       WHEN q.store='easycosmetic'
-                        AND sp.size_ml IS NULL
-                        AND lower(COALESCE(sp.image,'')) LIKE '%ml.%'
-                       THEN 0 ELSE 1
-                     END ASC,
-                     q.available_at ASC,
-                     q.first_seen_at ASC,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
-                     q.attempts ASC
+                     q.available_at ASC,
+                     q.first_seen_at ASC
                    LIMIT 1""",
                 (store, now),
             ).fetchone()
