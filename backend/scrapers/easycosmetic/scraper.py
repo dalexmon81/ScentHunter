@@ -726,12 +726,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    # Never infer a product price from arbitrary page-wide text.
-    # The page can contain reference prices, recommendations, sale banners,
-    # and prices for other sizes. Only use the price attached to the Product
-    # JSON-LD offer. If that authoritative value is missing, leave price unset
-    # rather than creating a misleading offer.
-
+    # Never use the first price found in the entire page as the product price:
+    # it may belong to a recommendation, a crossed-out price, or another variant.
+    # If Product JSON-LD has no unambiguous offer price, keep price=None.
     page_available, page_availability = _availability_from_page(page_text)
 
     available = page_available
@@ -777,6 +774,8 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "availability": availability,
         "image": image,
         "size_ml": _extract_size_ml(soup, name, url, image),
+        "concentration": "",
+        "gender": "",
         "url": url,
     }
 
