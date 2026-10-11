@@ -2807,10 +2807,11 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
 
 
 def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
-    """Generate bounded local-catalog candidates with one FTS scan per query."""
+    """Generate bounded local-catalog candidates with per-store FTS queries."""
     _diag_t0 = time.monotonic()
     _diag_stage = _diag_t0
     print(f"CATALOG SEARCH DIAG START query={str(query)[:100]!r}", flush=True)
+
     raw_terms = search_terms if isinstance(search_terms, (list, tuple)) else [query]
     terms = []
     for value in raw_terms:
@@ -2823,29 +2824,31 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     token_sets = []
     for term in terms[:80]:
         ts = tuple(tokens(term))
-        if ts:
+        if ts and ts not in token_sets:
             token_sets.append(ts)
     if not token_sets:
         return []
 
     _diag_tokenized = time.monotonic()
-    print(f"CATALOG SEARCH DIAG tokenize={_diag_tokenized-_diag_stage:.3f}s terms={len(token_sets)}", flush=True)
+    print(
+        f"CATALOG SEARCH DIAG tokenize={_diag_tokenized-_diag_stage:.3f}s "
+        f"terms={len(token_sets)}",
+        flush=True,
+    )
     _diag_stage = time.monotonic()
     conn = _search_db()
     _diag_opened = time.monotonic()
     print(f"CATALOG SEARCH DIAG db_open={_diag_opened-_diag_stage:.3f}s", flush=True)
+
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
     limit = None if unlimited else max(1, int(per_store))
     total_scan_budget = 2048 if limit is None else max(256, min(2048, limit * 16))
-    # Keep the final per-store candidate cap bounded, but scan a wider
-    # per-store FTS window before exact token verification. FTS ranking can
-    # include rows that later fail the exact normalized-token check; using the
-    # same 64-row limit for both stages can therefore hide valid products that
-    # sit just below the first window.
     term_candidate_limit = max(
         8, min(64, max(1, total_scan_budget // max(1, len(token_sets))))
     )
+    # Inspect a bounded wider window before exact whole-token verification,
+    # but keep the ranking and LIMIT scoped to one retailer at a time.
     fts_candidate_limit = max(
         term_candidate_limit,
         min(256, term_candidate_limit * 4),
@@ -2857,12 +2860,49 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             or (deadline is not None and time.monotonic() >= float(deadline))
         )
 
+    sql = """
+        SELECT u.url AS url,
+               u.slug AS slug,
+               u.lastmod AS lastmod,
+               p.store AS product_store,
+               p.url AS product_url,
+               p.name AS product_name,
+               p.brand AS product_brand,
+               p.image AS product_image,
+               p.sku AS product_sku,
+               p.gtin AS product_gtin,
+               p.mpn AS product_mpn,
+               p.size_ml AS product_size_ml,
+               p.concentration AS product_concentration,
+               p.gender AS product_gender,
+               p.price AS product_price,
+               p.currency AS product_currency,
+               p.availability AS product_availability,
+               p.fetched_at AS product_fetched_at,
+               p.fetch_status AS fetch_status
+          FROM catalog_search_fts f
+          JOIN store_urls u
+            ON u.store=f.store AND u.url=f.url
+          LEFT JOIN store_products p
+            ON p.store=u.store AND p.url=u.url
+           AND p.fetch_status='OK'
+         WHERE f.store=?
+           AND catalog_search_fts MATCH ?
+           AND u.active=1
+         ORDER BY rank
+         LIMIT ?
+    """
+
     try:
         _diag_stage = time.monotonic()
         fts_exists = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog_search_fts'"
         ).fetchone()
-        print(f"CATALOG SEARCH DIAG fts_check={time.monotonic()-_diag_stage:.3f}s exists={bool(fts_exists)}", flush=True)
+        print(
+            f"CATALOG SEARCH DIAG fts_check={time.monotonic()-_diag_stage:.3f}s "
+            f"exists={bool(fts_exists)}",
+            flush=True,
+        )
         if not fts_exists:
             return _search_local_legacy_sql(
                 conn, token_sets, limit, rows,
@@ -2871,162 +2911,130 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
 
         conn.set_progress_handler(lambda: 1 if interrupted() else 0, 1000)
 
-        # One MATCH scan for the whole catalog instead of repeating the same
-        # FTS search once per retailer. Results are partitioned by store in
-        # Python, preserving the exact per-store candidate cap.
-        for ts in token_sets:
+        # Keep the FTS rank/limit operation retailer-scoped. The former global
+        # ROW_NUMBER(PARTITION BY store) ranked all matching catalog rows before
+        # throwing most of them away, which can dominate search latency.
+        for store in STORES:
             if interrupted():
                 break
 
-            fts_query = _fts_query_for_tokens(ts)
-            if not fts_query:
-                continue
-
-            sql = """
-                SELECT url,slug,lastmod,
-                       product_store,product_url,
-                       product_name,product_brand,
-                       product_image,product_sku,
-                       product_gtin,product_mpn,
-                       product_size_ml,
-                       product_concentration,
-                       product_gender,product_price,
-                       product_currency,
-                       product_availability,
-                       product_fetched_at,
-                       fetch_status,
-                       fts_store
-                  FROM (
-                    SELECT u.url AS url,
-                           u.slug AS slug,
-                           u.lastmod AS lastmod,
-                           p.store AS product_store,
-                           p.url AS product_url,
-                           p.name AS product_name,
-                           p.brand AS product_brand,
-                           p.image AS product_image,
-                           p.sku AS product_sku,
-                           p.gtin AS product_gtin,
-                           p.mpn AS product_mpn,
-                           p.size_ml AS product_size_ml,
-                           p.concentration AS product_concentration,
-                           p.gender AS product_gender,
-                           p.price AS product_price,
-                           p.currency AS product_currency,
-                           p.availability AS product_availability,
-                           p.fetched_at AS product_fetched_at,
-                           p.fetch_status AS fetch_status,
-                           f.store AS fts_store,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY f.store
-                               ORDER BY rank
-                           ) AS store_rank
-                      FROM catalog_search_fts f
-                      JOIN store_urls u
-                        ON u.store=f.store AND u.url=f.url
-                      LEFT JOIN store_products p
-                        ON p.store=u.store AND p.url=u.url
-                       AND p.fetch_status='OK'
-                     WHERE catalog_search_fts MATCH ?
-                       AND u.active=1
-                  ) ranked
-                 WHERE store_rank <= ?
-                 ORDER BY store_rank, fts_store
-            """
-            _diag_sql_t0 = time.monotonic()
-            try:
-                candidates = conn.execute(
-                    sql, (fts_query, fts_candidate_limit)
-                ).fetchall()
-                _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
-            except sqlite3.OperationalError:
+            selected_by_url = {}
+            for ts in token_sets:
                 if interrupted():
                     break
-                raise
-
-            _diag_process_t0 = time.monotonic()
-            per_store_counts = {}
-            seen_product_keys = {}
-            for r in candidates:
-                if interrupted():
-                    break
-                store = str(r['fts_store'] or r['product_store'] or '').strip()
-                if store not in STORES:
-                    continue
-                if per_store_counts.get(store, 0) >= term_candidate_limit:
+                fts_query = _fts_query_for_tokens(ts)
+                if not fts_query:
                     continue
 
-                url = str(r['url'] or '').strip()
+                _diag_sql_t0 = time.monotonic()
+                try:
+                    candidates = conn.execute(
+                        sql, (store, fts_query, fts_candidate_limit)
+                    ).fetchall()
+                    _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
+                except sqlite3.OperationalError:
+                    if interrupted():
+                        break
+                    raise
+
+                _diag_process_t0 = time.monotonic()
+                accepted_for_term = 0
+                for r in candidates:
+                    if interrupted():
+                        break
+                    url = str(r['url'] or '').strip()
+                    if not url:
+                        continue
+
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in ('slug', 'product_name', 'product_brand')
+                    )
+                    normalized_tokens = set(norm(search_text).split())
+                    if any(token not in normalized_tokens for token in ts):
+                        continue
+
+                    previous = selected_by_url.get(url)
+                    if previous is None:
+                        selected_by_url[url] = dict(r)
+                        accepted_for_term += 1
+                    if accepted_for_term >= term_candidate_limit:
+                        break
+
+                _diag_process_elapsed = time.monotonic() - _diag_process_t0
+                print(
+                    f"CATALOG SEARCH DIAG term={str(ts)!r} store={store!r} "
+                    f"sql={_diag_sql_elapsed:.3f}s process={_diag_process_elapsed:.3f}s "
+                    f"fetched={len(candidates)} accepted={accepted_for_term} "
+                    f"store_urls={len(selected_by_url)}",
+                    flush=True,
+                )
+
+            if interrupted():
+                break
+
+            # Stable identifiers suppress locale/mirror URLs without introducing
+            # retailer-specific matching rules. URL remains the fallback key.
+            ordered = sorted(
+                selected_by_url.values(),
+                key=lambda r: str(r.get('url') or ''),
+            )
+            seen_product_keys = set()
+            accepted_for_store = 0
+            for r in ordered:
+                url = str(r.get('url') or '').strip()
                 if not url:
                     continue
-
-                search_text = ' '.join(
-                    str(r[key] or '')
-                    for key in ('slug', 'product_name', 'product_brand')
-                )
-                normalized_tokens = set(norm(search_text).split())
-                score = sum(1 for token in ts if token in normalized_tokens)
-                if score != len(ts):
-                    continue
-
-                # A retailer can expose the same commercial product through
-                # several locale/country URLs. Those URLs are different catalog
-                # records but the same retailer product when they share a stable
-                # product identifier (SKU/GTIN/MPN). Do not let mirror URLs
-                # consume the bounded candidate budget before distinct products
-                # are considered. If no stable identifier exists, keep the URL
-                # itself as the fallback identity. This is generic catalog
-                # candidate de-duplication; it does not assign canonical product
-                # identity and does not contain retailer-specific rules.
                 product_key = (
-                    str(r['product_sku'] or '').strip().lower()
-                    or str(r['product_gtin'] or '').strip().lower()
-                    or str(r['product_mpn'] or '').strip().lower()
+                    str(r.get('product_sku') or '').strip().lower()
+                    or str(r.get('product_gtin') or '').strip().lower()
+                    or str(r.get('product_mpn') or '').strip().lower()
                     or url.lower()
                 )
-                store_seen = seen_product_keys.setdefault(store, set())
-                if product_key in store_seen:
+                if product_key in seen_product_keys:
                     continue
-                store_seen.add(product_key)
+                seen_product_keys.add(product_key)
 
-                per_store_counts[store] = per_store_counts.get(store, 0) + 1
-                rows.append({
-                    'url': url,
-                    'slug': r['slug'] or '',
-                    'lastmod': r['lastmod'] or '',
-                    'name': r['product_name'] or '',
-                    'brand': r['product_brand'] or '',
-                    'image': r['product_image'] or '',
-                    'sku': r['product_sku'] or '',
-                    'gtin': r['product_gtin'] or '',
-                    'mpn': r['product_mpn'] or '',
-                    'size_ml': r['product_size_ml'],
-                    'concentration': r['product_concentration'] or '',
-                    'gender': r['product_gender'] or '',
-                    'price': r['product_price'],
-                    'currency': r['product_currency'] or '',
-                    'availability': r['product_availability'] or '',
-                    'fetched_at': r['product_fetched_at'],
-                    'fetch_status': r['fetch_status'] or 'OK',
-                    'price_num': r['product_price'],
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                }) if r['product_name'] else rows.append({
-                    'store': STORE_LABELS[store],
-                    'store_key': store,
-                    'url': url,
-                    'name': r['slug'] or url_slug(url),
-                    '_needs_refresh': True,
-                })
-            _diag_process_elapsed = time.monotonic() - _diag_process_t0
-            print(
-                f"CATALOG SEARCH DIAG term={str(ts)!r} sql={_diag_sql_elapsed:.3f}s "
-                f"process={_diag_process_elapsed:.3f}s fetched={len(candidates)} "
-                f"matched_total={len(rows)}",
-                flush=True,
-            )
+                if r.get('product_name'):
+                    rows.append({
+                        'url': url,
+                        'slug': r.get('slug') or '',
+                        'lastmod': r.get('lastmod') or '',
+                        'name': r.get('product_name') or '',
+                        'brand': r.get('product_brand') or '',
+                        'image': r.get('product_image') or '',
+                        'sku': r.get('product_sku') or '',
+                        'gtin': r.get('product_gtin') or '',
+                        'mpn': r.get('product_mpn') or '',
+                        'size_ml': r.get('product_size_ml'),
+                        'concentration': r.get('product_concentration') or '',
+                        'gender': r.get('product_gender') or '',
+                        'price': r.get('product_price'),
+                        'currency': r.get('product_currency') or '',
+                        'availability': r.get('product_availability') or '',
+                        'fetched_at': r.get('product_fetched_at'),
+                        'fetch_status': r.get('fetch_status') or 'OK',
+                        'price_num': r.get('product_price'),
+                        'store': STORE_LABELS[store],
+                        'store_key': store,
+                    })
+                else:
+                    rows.append({
+                        'store': STORE_LABELS[store],
+                        'store_key': store,
+                        'url': url,
+                        'name': r.get('slug') or url_slug(url),
+                        '_needs_refresh': True,
+                    })
+                accepted_for_store += 1
+                if limit is not None and accepted_for_store >= limit:
+                    break
 
-        print(f"CATALOG SEARCH DIAG total={time.monotonic()-_diag_t0:.3f}s rows={len(rows)}", flush=True)
+        print(
+            f"CATALOG SEARCH DIAG total={time.monotonic()-_diag_t0:.3f}s "
+            f"rows={len(rows)} interrupted={interrupted()}",
+            flush=True,
+        )
         return rows
     finally:
         try:
