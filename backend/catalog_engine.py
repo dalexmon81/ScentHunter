@@ -2746,7 +2746,7 @@ def refresh_url(store, url):
                 for _variant_id in _known_easycosmetic_variants.get(_base_path, ()):
                     variant_urls.add(
                         urllib.parse.urlunparse((
-                            'https', 'www.easycosmetic.de', _base_path,
+                            'https', 'www.easycosmetic.be', _base_path,
                             '', f'variant={_variant_id}', ''
                         ))
                     )
@@ -2985,10 +2985,12 @@ def _ensure_easycosmetic_coral_variants(query):
             item = refresh_url('easycosmetic', variant_url)
             if item and item.get('name'):
                 refreshed += 1
-        _EASYCOSMETIC_CORAL_VARIANTS_DONE = True
+        # Mark complete only when all three URLs were actually parsed and saved;
+        # otherwise allow a later search to retry instead of caching a failed attempt.
+        _EASYCOSMETIC_CORAL_VARIANTS_DONE = (refreshed == len(_EASYCOSMETIC_CORAL_VARIANTS))
         print(
             'CATALOG EASYCOSMETIC CORAL VARIANTS ON_DEMAND '
-            f'persisted={queued} hydrated={refreshed}/3 urls={list(_EASYCOSMETIC_CORAL_VARIANTS)}',
+            f'persisted={queued} hydrated={refreshed}/3 done={_EASYCOSMETIC_CORAL_VARIANTS_DONE} urls={list(_EASYCOSMETIC_CORAL_VARIANTS)}',
             flush=True,
         )
     except Exception as exc:
