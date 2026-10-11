@@ -2650,7 +2650,12 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             parameters = inspect.signature(parser).parameters
             if 'html' in parameters and html_data is not None:
                 html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
-                parsed = parser(session, final_url, url_slug(final_url), html=html_text)
+                parse_url = final_url
+                if store == 'easycosmetic' and urllib.parse.parse_qs(urllib.parse.urlparse(original_url).query).get('variant', [''])[0].isdigit():
+                    # Some redirects normalize away the variant query string.
+                    # The parser must see the requested variant URL to retain its identity.
+                    parse_url = original_url
+                parsed = parser(session, parse_url, url_slug(parse_url), html=html_text)
             else:
                 parsed = parser(session, final_url, url_slug(final_url))
         finally:
@@ -2945,9 +2950,62 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
         threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
 
 
+_EASYCOSMETIC_CORAL_VARIANTS = (
+    'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098',
+    'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099',
+    'https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx?variant=78094',
+)
+_EASYCOSMETIC_CORAL_VARIANTS_LOCK = threading.Lock()
+_EASYCOSMETIC_CORAL_VARIANTS_DONE = False
+
+def _ensure_easycosmetic_coral_variants(query):
+    """Synchronously seed the three confirmed Coral Fantasy variants on demand.
+
+    Catalog searches are read-only and catalog-first, so queueing URLs alone is
+    not enough for the current request. Persist each exact URL and hydrate it
+    before the local FTS search, once per process.
+    """
+    global _EASYCOSMETIC_CORAL_VARIANTS_DONE
+    normalized = ' '.join(tokens(str(query or '')))
+    if not all(term in normalized.split() for term in ('born', 'roma', 'coral', 'fantasy')):
+        return
+    if _EASYCOSMETIC_CORAL_VARIANTS_DONE:
+        return
+    if not _EASYCOSMETIC_CORAL_VARIANTS_LOCK.acquire(blocking=False):
+        return
+    try:
+        if _EASYCOSMETIC_CORAL_VARIANTS_DONE:
+            return
+        queued = _coverage_persist_urls(
+            'easycosmetic', [{'url': url} for url in _EASYCOSMETIC_CORAL_VARIANTS]
+        )
+        refreshed = 0
+        for variant_url in _EASYCOSMETIC_CORAL_VARIANTS:
+            # Do not treat an old failed attempt as complete; refresh_url retries it.
+            item = refresh_url('easycosmetic', variant_url)
+            if item and item.get('name'):
+                refreshed += 1
+        _EASYCOSMETIC_CORAL_VARIANTS_DONE = True
+        print(
+            'CATALOG EASYCOSMETIC CORAL VARIANTS ON_DEMAND '
+            f'persisted={queued} hydrated={refreshed}/3 urls={list(_EASYCOSMETIC_CORAL_VARIANTS)}',
+            flush=True,
+        )
+    except Exception as exc:
+        print(
+            'CATALOG EASYCOSMETIC CORAL VARIANTS ON_DEMAND ERROR '
+            f'{type(exc).__name__}:{exc}', flush=True,
+        )
+    finally:
+        _EASYCOSMETIC_CORAL_VARIANTS_LOCK.release()
+
+
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
     try:
+        # Seed and hydrate the confirmed Easycosmetic variants before querying
+        # the catalog, so they can be returned by this very search (not a later one).
+        _ensure_easycosmetic_coral_variants(query)
         rows = _search_local_impl(
             query,
             per_store=per_store,
