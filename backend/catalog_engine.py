@@ -74,6 +74,13 @@ STORE_LABELS.update({
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
+    'easycosmetic': (
+        # Easycosmetic has localized official storefronts. Include the Belgian
+        # host in generic catalog discovery so valid .be product links are not
+        # discarded by the allowed-host check.
+        'https://www.easycosmetic.de',
+        'https://www.easycosmetic.be',
+    ),
     'deloox': (
         # Official localized Deloox storefronts. This is host-level catalog
         # coverage only; no product, brand, or query-specific URL is used.
@@ -202,7 +209,10 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
     """Fetch with redirects, compression handling and diagnostics."""
     parsed = urllib.parse.urlparse(url)
     host = parsed.netloc.lower()
-    if host in {'easycosmetic.de', 'www.easycosmetic.de'}:
+    if host in {
+        'easycosmetic.de', 'www.easycosmetic.de',
+        'easycosmetic.be', 'www.easycosmetic.be',
+    }:
         # Easycosmetic serves the public storefront to normal browser clients
         # but can stall requests carrying an identifying bot user-agent.
         # Use the same browser-class headers as the production Easycosmetic
@@ -954,6 +964,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
+        # Generic catalog roots on both official localized storefronts.
+        # Product-specific URLs and search queries are intentionally excluded.
         'https://www.easycosmetic.de/',
         'https://www.easycosmetic.de/parfum',
         'https://www.easycosmetic.de/alle-marken',
@@ -963,6 +975,15 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/unisex-parfum',
         'https://www.easycosmetic.de/luxusparfum',
         'https://www.easycosmetic.de/neuheiten',
+        'https://www.easycosmetic.be/',
+        'https://www.easycosmetic.be/parfum',
+        'https://www.easycosmetic.be/alle-marken',
+        'https://www.easycosmetic.be/parfum-marken',
+        'https://www.easycosmetic.be/damenparfum',
+        'https://www.easycosmetic.be/herrenparfum',
+        'https://www.easycosmetic.be/unisex-parfum',
+        'https://www.easycosmetic.be/luxusparfum',
+        'https://www.easycosmetic.be/neuheiten',
     ),
     'deloox': (
         # Broad official catalog surfaces. Both public Deloox hosts are
