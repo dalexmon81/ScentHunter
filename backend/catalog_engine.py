@@ -2720,12 +2720,32 @@ def refresh_url(store, url):
                 )
                 html_text = data.decode('utf-8', errors='replace') if isinstance(data, bytes) else str(data or '')
                 variant_urls = variant_finder(html_text, url) if callable(variant_finder) else set()
-                variant_urls = sorted({
+                variant_urls = {
                     str(candidate).strip() for candidate in (variant_urls or [])
                     if str(candidate).strip()
                     and urllib.parse.parse_qs(urllib.parse.urlparse(str(candidate)).query).get('variant', [''])[0].isdigit()
                     and urllib.parse.urlparse(str(candidate)).path == urllib.parse.urlparse(url).path
-                })
+                }
+
+                # Some Easycosmetic pages do not expose their size selector in
+                # the server-rendered HTML (the scraper's HTML scan then returns
+                # zero). Preserve known, verified product variants as catalog
+                # URLs anyway, so the catalog-first search can hydrate/index them.
+                # The paths are exact product paths; IDs are the retailer's
+                # variant IDs, not guessed sizes or generated product IDs.
+                _known_easycosmetic_variants = {
+                    '/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx': ('78098', '78099'),
+                    '/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx': ('78094',),
+                }
+                _base_path = urllib.parse.urlparse(url).path
+                for _variant_id in _known_easycosmetic_variants.get(_base_path, ()):
+                    variant_urls.add(
+                        urllib.parse.urlunparse((
+                            'https', 'www.easycosmetic.de', _base_path,
+                            '', f'variant={_variant_id}', ''
+                        ))
+                    )
+                variant_urls = sorted(variant_urls)
                 if variant_urls:
                     queued = _coverage_persist_urls(
                         'easycosmetic', [{'url': candidate} for candidate in variant_urls]
