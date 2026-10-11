@@ -2659,6 +2659,10 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        # Preserve retailer-parser attributes so hydration can store the real variant.
+        'size_ml': parsed.get('size_ml'),
+        'concentration': parsed.get('concentration'),
+        'gender': parsed.get('gender'),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2728,12 +2732,16 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                concentration=COALESCE(excluded.concentration,store_products.concentration),
+                gender=COALESCE(excluded.gender,store_products.gender),
                 price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'),
+                item.get('size_ml'), item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
