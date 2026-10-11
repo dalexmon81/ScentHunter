@@ -726,8 +726,11 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    if price is None:
-        price = _extract_price_from_text(page_text)
+    # Never infer a product price from arbitrary page-wide text.
+    # The page can contain reference prices, recommendations, sale banners,
+    # and prices for other sizes. Only use the price attached to the Product
+    # JSON-LD offer. If that authoritative value is missing, leave price unset
+    # rather than creating a misleading offer.
 
     page_available, page_availability = _availability_from_page(page_text)
 
