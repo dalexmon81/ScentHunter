@@ -425,7 +425,7 @@ def _extract_offer_data(
     return None, "EUR", ""
 
 
-def _availability_from_page(text: str) -> Tuple[bool, str]:
+def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
     normalized = _normalise_text(text)
 
     if "nicht auf lager" in normalized:
@@ -441,7 +441,9 @@ def _availability_from_page(text: str) -> Tuple[bool, str]:
     if "lieferbar" in normalized:
         return True, "Available"
 
-    return True, ""
+    # Unknown is not the same as in stock. Do not turn a missing stock signal
+    # into a positive availability claim.
+    return None, ""
 
 
 def _extract_candidate_links(
@@ -856,22 +858,36 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     available = page_available
     if availability:
         normalized = _normalise_text(availability)
+        # Schema.org availability often arrives as a URL, e.g.
+        # https://schema.org/OutOfStock. Normalization turns that into tokens
+        # such as "https schema org outofstock", not "out of stock".
+        compact = re.sub(r"[^a-z0-9]+", "", normalized)
 
         if any(
-            marker in normalized
+            marker in normalized or marker in compact
             for marker in (
                 "out of stock",
+                "outofstock",
+                "sold out",
+                "soldout",
                 "nicht auf lager",
                 "ausverkauft",
                 "unavailable",
                 "nicht verfugbar",
+                "discontinued",
             )
         ):
             available = False
+            availability = "Out of stock"
         elif any(
-            marker in normalized
+            marker in normalized or marker in compact
             for marker in (
                 "in stock",
+                "instock",
+                "limited availability",
+                "limitedavailability",
+                "online only",
+                "onlineonly",
                 "auf lager",
                 "lieferbar",
                 "available",
@@ -879,6 +895,14 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
             )
         ):
             available = True
+            availability = "In stock"
+        elif "preorder" in compact or "pre order" in normalized:
+            available = None
+            availability = "Preorder"
+        else:
+            # Preserve an unknown signal as unknown instead of trusting a
+            # potentially contradictory page-text heuristic.
+            available = None
     else:
         availability = page_availability
 
