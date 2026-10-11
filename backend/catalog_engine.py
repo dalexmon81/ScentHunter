@@ -2951,9 +2951,9 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
 
 
 _EASYCOSMETIC_CORAL_VARIANTS = (
-    'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098',
-    'https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099',
-    'https://www.easycosmetic.de/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx?variant=78094',
+    'https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098',
+    'https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099',
+    'https://www.easycosmetic.be/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx?variant=78094',
 )
 _EASYCOSMETIC_CORAL_VARIANTS_LOCK = threading.Lock()
 _EASYCOSMETIC_CORAL_VARIANTS_DONE = False
