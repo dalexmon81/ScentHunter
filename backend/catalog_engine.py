@@ -2721,11 +2721,51 @@ def refresh_url(store, url):
         except Exception:
             parser_available = False
 
+        parser_error = None
         if parser_available:
-            item = _secondary_store_parser(store, final, url, html_data=data)
-            secondary_ok = bool(item and item.get('name'))
+            try:
+                item = _secondary_store_parser(store, final, url, html_data=data)
+                secondary_ok = bool(item and item.get('name'))
+            except Exception as exc:
+                # A retailer-specific parser can reject a page or fail on a
+                # secondary request. Keep the failure visible, but allow a
+                # tightly gated JSON-LD fallback for pages with exactly one
+                # Product entity. This avoids dropping every otherwise valid
+                # product while avoiding ambiguous multi-Product pages.
+                parser_error = f'{type(exc).__name__}: {exc}'
+                item = None
         else:
             item = parse_product(store, final, data)
+
+        if parser_available and (not item or not item.get('name')):
+            try:
+                soup_fallback = BeautifulSoup(data or b'', 'html.parser')
+                products_fallback = _jsonld(soup_fallback)
+                if len(products_fallback) == 1:
+                    generic_item = parse_product(store, final, data)
+                    generic_price = _num((generic_item or {}).get('price_num'))
+                    generic_name = str((generic_item or {}).get('name') or '').strip()
+                    if generic_name and generic_price is not None and generic_price > 0:
+                        # Recover an explicitly printed ml format from the
+                        # authoritative product name when the generic adapter
+                        # does not expose a separate size field.
+                        size_match = re.search(
+                            r'(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b',
+                            generic_name,
+                            re.IGNORECASE,
+                        )
+                        if not generic_item.get('size_ml') and size_match:
+                            try:
+                                generic_item['size_ml'] = float(
+                                    size_match.group(1).replace(',', '.')
+                                )
+                            except (TypeError, ValueError):
+                                pass
+                        item = generic_item
+                        item['fallback_parser'] = 'generic_jsonld_single_product'
+            except Exception as exc:
+                if not parser_error:
+                    parser_error = f'generic_fallback_{type(exc).__name__}: {exc}'
 
         primary_ok = bool(item and item.get('name'))
         if item and store in ('easycosmetic', 'parfumzentrum'):
@@ -2736,7 +2776,7 @@ def refresh_url(store, url):
                 f"price_num={item.get('price_num')!r} price={item.get('price')!r} " +
                 f"availability={item.get('availability')!r} available={item.get('available')!r} " +
                 f"sku={item.get('sku')!r} gtin={item.get('gtin')!r} " +
-                f"parser={'retailer' if secondary_ok else 'generic'}",
+                f"parser={item.get('fallback_parser') or ('retailer' if secondary_ok else 'generic')}",
                 flush=True,
             )
 
@@ -2757,6 +2797,7 @@ def refresh_url(store, url):
                 f';final={final}'
                 f';primary_parser={"ok" if primary_ok else "none"}'
                 f';secondary_parser={"ok" if secondary_ok else "none"}'
+                f';parser_error={parser_error!r}'
                 f';jsonld_products={jsonld_count}'
                 f';h1={h1_text!r}'
             )
