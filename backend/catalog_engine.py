@@ -1098,59 +1098,6 @@ SITEMAP_DISCOVERY_BUDGET = 45
 HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
 
 
-
-
-def _easycosmetic_variant_urls(data, product_url):
-    """Discover variant URLs advertised by an Easycosmetic product page."""
-    try:
-        page = urllib.parse.urlparse(product_url)
-        if page.netloc.lower() not in {
-            'easycosmetic.de', 'www.easycosmetic.de',
-            'easycosmetic.be', 'www.easycosmetic.be',
-        } or not page.path.lower().endswith('.aspx'):
-            return set()
-    except Exception:
-        return set()
-
-    raw = htmlmod.unescape(
-        bytes(data or b'').decode('utf-8', 'ignore')
-        if isinstance(data, (bytes, bytearray)) else str(data or '')
-    )
-    raw = raw.replace(r'\/', '/').replace(r'\u0026', '&')
-    ids = set()
-
-    # Explicit variant URLs must point to this exact product path.
-    url_pattern = re.compile(
-        r"(?:(?:https?:)?//(?:www\.)?easycosmetic\.(?:de|be))?"
-        r"([^\"'\s<>]*?\.aspx\?[^\"'\s<>#]*?\bvariant(?:=|%3D)(\d+))",
-        re.I,
-    )
-    for match in url_pattern.finditer(raw):
-        candidate_path = urllib.parse.urlparse(
-            urllib.parse.urljoin(product_url, match.group(1))
-        ).path
-        if candidate_path == page.path:
-            ids.add(match.group(2))
-
-    # Some versions expose the selector IDs without full URLs.
-    id_pattern = re.compile(
-        r"(?:data-variant(?:-id)?|data-product-variant|variantId|variant_id)"
-        r"\s*[\"']?\s*[:=]\s*[\"']?(\d+)",
-        re.I,
-    )
-    ids.update(id_pattern.findall(raw))
-
-    result = set()
-    for variant_id in ids:
-        query = urllib.parse.parse_qs(page.query, keep_blank_values=True)
-        query['variant'] = [variant_id]
-        result.add(urllib.parse.urlunparse((
-            'https', page.netloc, page.path, '',
-            urllib.parse.urlencode(query, doseq=True), ''
-        )))
-    return result
-
-
 def _html_product_url(store, raw_url, base_url):
     if not raw_url:
         return None
@@ -2121,21 +2068,11 @@ def _discover_html_catalog(store, seeds, deadline=None):
                 soup=BeautifulSoup(data,'html.parser')
                 page_base=final or requested
 
-                # Variant selectors are often exposed only in product-page
-                # markup/scripts, not in category-page anchors.
-                if store == 'easycosmetic':
-                    requested_product = _html_product_url(store, requested, page_base)
-                    if requested_product:
-                        for variant_url in _easycosmetic_variant_urls(data, requested_product):
-                            product_urls[variant_url] = ''
-
                 for a in soup.find_all('a',href=True):
                     href=a.get('href'); label=a.get_text(' ',strip=True)
                     product=_html_product_url(store,href,page_base)
                     if product:
                         product_urls[product]=''
-                        if store == 'easycosmetic' and depth < HTML_MAX_DEPTH:
-                            add(product,depth+1,requested)
                         continue
                     listing=_html_listing_url(store,href,page_base,label)
                     if listing:
@@ -2154,8 +2091,6 @@ def _discover_html_catalog(store, seeds, deadline=None):
                         product=_html_product_url(store,raw,page_base)
                         if product:
                             product_urls[product]=''
-                            if store == 'easycosmetic' and depth < HTML_MAX_DEPTH:
-                                add(product,depth+1,requested)
                             continue
                         listing=_html_listing_url(
                             store,raw,page_base,
@@ -2771,6 +2706,45 @@ def refresh_url(store, url):
         status, final, data = http_get(url, timeout=REFRESH_TIMEOUT)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
+
+        # Important: the foreground search is catalog-first and does NOT call
+        # scrapers.easycosmetic.scraper.search(). Discover and enqueue variants
+        # from every Easycosmetic product page hydrated by the catalog engine.
+        # Otherwise variants never enter store_urls / FTS and can never appear
+        # in search_local(), even if the standalone scraper knows how to find them.
+        if store == 'easycosmetic':
+            try:
+                variant_finder = getattr(
+                    importlib.import_module('scrapers.easycosmetic.scraper'),
+                    '_extract_variant_urls', None,
+                )
+                html_text = data.decode('utf-8', errors='replace') if isinstance(data, bytes) else str(data or '')
+                variant_urls = variant_finder(html_text, url) if callable(variant_finder) else set()
+                variant_urls = sorted({
+                    str(candidate).strip() for candidate in (variant_urls or [])
+                    if str(candidate).strip()
+                    and urllib.parse.parse_qs(urllib.parse.urlparse(str(candidate)).query).get('variant', [''])[0].isdigit()
+                    and urllib.parse.urlparse(str(candidate)).path == urllib.parse.urlparse(url).path
+                })
+                if variant_urls:
+                    queued = _coverage_persist_urls(
+                        'easycosmetic', [{'url': candidate} for candidate in variant_urls]
+                    )
+                    print(
+                        'CATALOG EASYCOSMETIC VARIANT DISCOVERY '
+                        f'base_url={url} found={len(variant_urls)} queued={queued} '
+                        f'variants={variant_urls[:20]}', flush=True,
+                    )
+                else:
+                    print(
+                        f'CATALOG EASYCOSMETIC VARIANT DISCOVERY base_url={url} found=0',
+                        flush=True,
+                    )
+            except Exception as variant_exc:
+                print(
+                    'CATALOG EASYCOSMETIC VARIANT DISCOVERY ERROR '
+                    f'url={url} error={type(variant_exc).__name__}:{variant_exc}', flush=True,
+                )
 
         # The retailer scraper owns retailer-specific product-page semantics
         # such as public-vs-code pricing and product-vs-set identity. When a
