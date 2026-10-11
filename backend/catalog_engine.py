@@ -2808,16 +2808,75 @@ def _search_db():
 
 
 
+# Stale Easycosmetic records from older catalog versions may have a valid
+# product name/price but no parsed size. Repair only matched rows in the
+# background so the foreground search latency remains unchanged.
+_EASYCOSMETIC_REPAIR_LOCK = threading.Lock()
+_EASYCOSMETIC_REPAIR_IN_FLIGHT = set()
+
+
+def _schedule_easycosmetic_missing_size_repairs(rows):
+    jobs = []
+    for row in rows or []:
+        if str(row.get('store_key') or '').strip().lower() != 'easycosmetic':
+            continue
+        if row.get('_needs_refresh') or row.get('size_ml') not in (None, '', 0):
+            continue
+        url = str(row.get('url') or '').strip()
+        if not url or 'easycosmetic.' not in url.lower():
+            continue
+        jobs.append(('easycosmetic', url))
+
+    if not jobs:
+        return
+
+    for store, url in jobs:
+        key = (store, url)
+        with _EASYCOSMETIC_REPAIR_LOCK:
+            if key in _EASYCOSMETIC_REPAIR_IN_FLIGHT:
+                continue
+            _EASYCOSMETIC_REPAIR_IN_FLIGHT.add(key)
+
+        def _repair(target_store=store, target_url=url, target_key=key):
+            try:
+                result = refresh_url(target_store, target_url)
+                if result:
+                    print(
+                        'CATALOG BACKGROUND REPAIR OK '
+                        f'store={target_store} url={target_url} '
+                        f"size_ml={result.get('size_ml')} price={result.get('price_num')}",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f'CATALOG BACKGROUND REPAIR FAILED store={target_store} url={target_url}',
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(
+                    f'CATALOG BACKGROUND REPAIR ERROR store={target_store} '
+                    f'url={target_url} error={type(exc).__name__}',
+                    flush=True,
+                )
+            finally:
+                with _EASYCOSMETIC_REPAIR_LOCK:
+                    _EASYCOSMETIC_REPAIR_IN_FLIGHT.discard(target_key)
+
+        threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
+
+
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
-    """Run the foreground local search and record its completion time."""
+    """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
     try:
-        return _search_local_impl(
+        rows = _search_local_impl(
             query,
             per_store=per_store,
             search_terms=search_terms,
             cancel_event=cancel_event,
             deadline=deadline,
         )
+        _schedule_easycosmetic_missing_size_repairs(rows)
+        return rows
     finally:
         _mark_foreground_search_finished()
 
