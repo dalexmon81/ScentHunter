@@ -2728,6 +2728,17 @@ def refresh_url(store, url):
             item = parse_product(store, final, data)
 
         primary_ok = bool(item and item.get('name'))
+        if item and store in ('easycosmetic', 'parfumzentrum'):
+            print(
+                'CATALOG OFFER DIAG ' +
+                f"store={store} url={url!r} final_url={final!r} " +
+                f"name={item.get('name')!r} size_ml={item.get('size_ml')!r} " +
+                f"price_num={item.get('price_num')!r} price={item.get('price')!r} " +
+                f"availability={item.get('availability')!r} available={item.get('available')!r} " +
+                f"sku={item.get('sku')!r} gtin={item.get('gtin')!r} " +
+                f"parser={'retailer' if secondary_ok else 'generic'}",
+                flush=True,
+            )
 
         if not item or not item.get('name'):
             h1_text = ''
