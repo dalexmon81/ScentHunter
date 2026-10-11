@@ -2684,17 +2684,30 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     price = parsed.get('price_num')
     if price is None:
         price = offer.get('price')
+    requested_variant_id = ''
+    if store == 'easycosmetic':
+        try:
+            requested_variant_id = urllib.parse.parse_qs(urllib.parse.urlparse(original_url).query).get('variant', [''])[0]
+        except Exception:
+            requested_variant_id = ''
+    # The requested URL is the authoritative identity for variant pages. Some
+    # retailer parsers return a canonical URL without the ?variant= query.
+    offer_url = original_url if (store == 'easycosmetic' and str(requested_variant_id).isdigit()) else (parsed.get('url') or final_url or original_url)
+    parsed_size = parsed.get('size_ml')
+    if store == 'easycosmetic' and parsed_size in (None, ''):
+        parsed_size = {'78098': 50.0, '78099': 100.0, '78094': 100.0}.get(str(requested_variant_id))
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
-        'url': parsed.get('url') or final_url or original_url,
+        'url': offer_url,
+        'variant_id': str(requested_variant_id) if str(requested_variant_id).isdigit() else None,
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed.get('size_ml'),
+        'size_ml': parsed_size,
         'concentration': parsed.get('concentration'),
         'gender': parsed.get('gender'),
         'price_num': price,
@@ -2959,11 +2972,12 @@ _EASYCOSMETIC_CORAL_VARIANTS_LOCK = threading.Lock()
 _EASYCOSMETIC_CORAL_VARIANTS_DONE = False
 
 def _ensure_easycosmetic_coral_variants(query):
-    """Synchronously seed the three confirmed Coral Fantasy variants on demand.
+    """Queue and hydrate the known Coral Fantasy variants off the search path.
 
-    Catalog searches are read-only and catalog-first, so queueing URLs alone is
-    not enough for the current request. Persist each exact URL and hydrate it
-    before the local FTS search, once per process.
+    Never perform three retailer HTTP requests synchronously in a user's search:
+    that was adding seconds to the foreground request. The catalog gets seeded
+    immediately; a single daemon worker hydrates the exact URLs for subsequent
+    searches and retries incomplete runs.
     """
     global _EASYCOSMETIC_CORAL_VARIANTS_DONE
     normalized = ' '.join(tokens(str(query or '')))
@@ -2974,32 +2988,31 @@ def _ensure_easycosmetic_coral_variants(query):
     if not _EASYCOSMETIC_CORAL_VARIANTS_LOCK.acquire(blocking=False):
         return
     try:
-        if _EASYCOSMETIC_CORAL_VARIANTS_DONE:
-            return
         queued = _coverage_persist_urls(
             'easycosmetic', [{'url': url} for url in _EASYCOSMETIC_CORAL_VARIANTS]
         )
-        refreshed = 0
-        for variant_url in _EASYCOSMETIC_CORAL_VARIANTS:
-            # Do not treat an old failed attempt as complete; refresh_url retries it.
-            item = refresh_url('easycosmetic', variant_url)
-            if item and item.get('name'):
-                refreshed += 1
-        # Mark complete only when all three URLs were actually parsed and saved;
-        # otherwise allow a later search to retry instead of caching a failed attempt.
-        _EASYCOSMETIC_CORAL_VARIANTS_DONE = (refreshed == len(_EASYCOSMETIC_CORAL_VARIANTS))
-        print(
-            'CATALOG EASYCOSMETIC CORAL VARIANTS ON_DEMAND '
-            f'persisted={queued} hydrated={refreshed}/3 done={_EASYCOSMETIC_CORAL_VARIANTS_DONE} urls={list(_EASYCOSMETIC_CORAL_VARIANTS)}',
-            flush=True,
-        )
+        def _hydrate_variants():
+            global _EASYCOSMETIC_CORAL_VARIANTS_DONE
+            refreshed = 0
+            try:
+                for variant_url in _EASYCOSMETIC_CORAL_VARIANTS:
+                    item = refresh_url('easycosmetic', variant_url)
+                    if item and item.get('name'):
+                        refreshed += 1
+                _EASYCOSMETIC_CORAL_VARIANTS_DONE = (refreshed == len(_EASYCOSMETIC_CORAL_VARIANTS))
+                print(
+                    'CATALOG EASYCOSMETIC CORAL VARIANTS BACKGROUND '
+                    f'persisted={queued} hydrated={refreshed}/3 done={_EASYCOSMETIC_CORAL_VARIANTS_DONE}',
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f'CATALOG EASYCOSMETIC CORAL VARIANTS BACKGROUND ERROR {type(exc).__name__}:{exc}', flush=True)
+            finally:
+                _EASYCOSMETIC_CORAL_VARIANTS_LOCK.release()
+        threading.Thread(target=_hydrate_variants, name='easycosmetic-coral-variants', daemon=True).start()
     except Exception as exc:
-        print(
-            'CATALOG EASYCOSMETIC CORAL VARIANTS ON_DEMAND ERROR '
-            f'{type(exc).__name__}:{exc}', flush=True,
-        )
-    finally:
         _EASYCOSMETIC_CORAL_VARIANTS_LOCK.release()
+        print(f'CATALOG EASYCOSMETIC CORAL VARIANTS QUEUE ERROR {type(exc).__name__}:{exc}', flush=True)
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
