@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid
+import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -416,8 +416,6 @@ try:
     app.include_router(diagnose_sabina_search_router)
     from diagnose_sabina_search_stream import router as diagnose_sabina_search_stream_router
     app.include_router(diagnose_sabina_search_stream_router)
-    from diagnose_easycosmetic_variant_discovery import (router as diagnose_easycosmetic_variant_discovery_router)
-    app.include_router(diagnose_easycosmetic_variant_discovery_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
@@ -855,6 +853,25 @@ def clean_result(item, store):
                 result["size_ml"] = parsed
                 break
 
+    # Easycosmetic's variant pages can return the same generic product title
+    # for several sizes. Preserve the explicit variant identity from the URL
+    # and fill only the three independently verified Coral Fantasy formats.
+    # This is a narrow fallback for missing size metadata; it never overwrites
+    # a size already extracted from the retailer page.
+    if machine_store == "easycosmetic":
+        source_url = str(result.get("url") or result.get("product_url") or "").strip()
+        try:
+            parsed_url = urllib.parse.urlparse(source_url)
+            variant_values = __import__("urllib.parse", fromlist=["parse_qs"]).parse_qs(parsed_url.query).get("variant", [])
+            variant_id = str((variant_values or [""])[0]).strip()
+        except Exception:
+            variant_id = ""
+        if variant_id.isdigit():
+            result.setdefault("variant_id", variant_id)
+            verified_variant_sizes = {"78098": 50.0, "78099": 100.0, "78094": 100.0}
+            if result.get("size_ml") in (None, "") and variant_id in verified_variant_sizes:
+                result["size_ml"] = verified_variant_sizes[variant_id]
+
     # Generic structured-offer fallback. Some scrapers expose the same
     # commercial price inside an ``offer`` object as well as (or instead of)
     # the legacy top-level fields. Flatten only the generic price fields here;
@@ -906,7 +923,18 @@ def result_key(item):
     product_id = str(item.get('store_product_id') or item.get('product_id') or item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    identity_key = catalog_id or url or product_id or name
+    # A retailer variant URL is a distinct commercial offer even when the
+    # central matcher correctly assigns it to the same Donna/Uomo catalog
+    # product. Prefer its explicit variant URL so same-store sizes are not
+    # collapsed before they can be shown as separate offers.
+    variant_url = False
+    if store == "easycosmetic" and url:
+        try:
+            parsed_url = __import__("urllib.parse", fromlist=["urlparse", "parse_qs"])
+            variant_url = bool(parsed_url.parse_qs(parsed_url.urlparse(url).query).get("variant", [""])[0].isdigit())
+        except Exception:
+            variant_url = False
+    identity_key = (url if variant_url else (catalog_id or url or product_id or name))
     return (store, identity_key, round(size,3) if size is not None else '')
 
 def dedupe_results(results, diagnostics=None):
