@@ -21,6 +21,7 @@ import gzip
 import html
 import heapq
 import importlib
+import inspect
 import json
 import re
 import sqlite3
@@ -2608,7 +2609,7 @@ def parse_product(store, url, data):
     }
 
 
-def _secondary_store_parser(store, final_url, original_url):
+def _secondary_store_parser(store, final_url, original_url, html_data=None):
     """Run the retailer scraper's exact product-page parser.
 
     A store parser, when available, is authoritative for extracting the
@@ -2622,7 +2623,15 @@ def _secondary_store_parser(store, final_url, original_url):
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
         try:
-            parsed = parser(session, final_url, url_slug(final_url))
+            # Some retailer adapters accept the HTML already fetched by
+            # refresh_url(). Reuse it when supported so price/variant data
+            # comes from the same response and no second page request occurs.
+            parameters = inspect.signature(parser).parameters
+            if 'html' in parameters and html_data is not None:
+                html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
+                parsed = parser(session, final_url, url_slug(final_url), html=html_text)
+            else:
+                parsed = parser(session, final_url, url_slug(final_url))
         finally:
             session.close()
     else:
@@ -2659,6 +2668,9 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'size_ml': parsed.get('size_ml'),
+        'concentration': parsed.get('concentration'),
+        'gender': parsed.get('gender'),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
@@ -2689,7 +2701,7 @@ def refresh_url(store, url):
             parser_available = False
 
         if parser_available:
-            item = _secondary_store_parser(store, final, url)
+            item = _secondary_store_parser(store, final, url, html_data=data)
             secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
@@ -2728,12 +2740,16 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                concentration=COALESCE(excluded.concentration,store_products.concentration),
+                gender=COALESCE(excluded.gender,store_products.gender),
                 price=excluded.price,currency=excluded.currency,
                 availability=excluded.availability,fetched_at=excluded.fetched_at,
                 fetch_status=excluded.fetch_status''',
             (
                 store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'), None, None, None,
+                item.get('sku'), item.get('gtin'), item.get('mpn'),
+                item.get('size_ml'), item.get('concentration'), item.get('gender'),
                 item.get('price_num'), item.get('currency'), item.get('availability'),
                 item.get('fetched_at'), 'OK',
             ),
