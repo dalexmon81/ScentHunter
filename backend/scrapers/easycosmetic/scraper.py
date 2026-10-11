@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -70,17 +70,40 @@ def _normalise_text(value: str) -> str:
 
 
 def _normalise_url(url: str) -> str:
+    """Canonicalise Easycosmetic product URLs without merging product variants.
+
+    Easycosmetic links may use either the .de or .be host. The scraper fetches
+    the canonical .de host, while preserving a numeric ``variant`` query value.
+    Tracking and unrelated query parameters are intentionally discarded.
+    """
     absolute = urljoin(BASE_URL, str(url or ""))
     parsed = urlparse(absolute)
 
-    if parsed.netloc.lower() not in {"easycosmetic.de", "www.easycosmetic.de"}:
+    if parsed.netloc.lower() not in {
+        "easycosmetic.de",
+        "www.easycosmetic.de",
+        "easycosmetic.be",
+        "www.easycosmetic.be",
+    }:
         return ""
 
     path = parsed.path or "/"
     if not path.startswith("/"):
         path = "/" + path
 
-    return f"{BASE_URL}{path}".rstrip("/")
+    query = parse_qs(parsed.query, keep_blank_values=False)
+    variant_values = query.get("variant", [])
+    variant = ""
+    for value in variant_values:
+        candidate = _clean(value)
+        if candidate.isdigit():
+            variant = candidate
+            break
+
+    canonical = f"{BASE_URL}{path}".rstrip("/")
+    if variant:
+        canonical = f"{canonical}?variant={variant}"
+    return canonical
 
 
 def _query_tokens(query: str) -> List[str]:
