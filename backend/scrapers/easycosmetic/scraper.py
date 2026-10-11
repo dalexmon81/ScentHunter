@@ -523,6 +523,74 @@ def _extract_candidate_links(
     return ordered
 
 
+
+
+def _extract_variant_urls(html: str, product_url: str) -> List[str]:
+    """Find explicitly advertised numeric variant IDs for this product page.
+
+    Only URLs with the exact same product path are accepted, preventing unrelated
+    product IDs embedded in scripts or recommendations from being mixed in.
+    """
+    base = _normalise_url(product_url)
+    parsed_base = urlparse(base)
+    if not base or not parsed_base.path:
+        return []
+
+    soup = BeautifulSoup(html or "", "html.parser")
+    candidates = set()
+
+    def consider(value: str) -> None:
+        if not value:
+            return
+        value = value.replace("\\/", "/").replace("&amp;", "&").replace("\\u0026", "&")
+        # Full or relative product URL with an explicit variant query.
+        for match in re.finditer(
+            r"""(?:https?://(?:www\.)?easycosmetic\.(?:de|be))?"""
+            r"""[^"\s<>]*?\.aspx\?[^"\s<>#]*?\bvariant(?:=|%3D)(\d+)""",
+            value,
+            flags=re.IGNORECASE,
+        ):
+            variant_id = match.group(1)
+            candidates.add(f"{BASE_URL}{parsed_base.path}?variant={variant_id}")
+        # Selector data may store only the variant ID; accept it only in
+        # attributes whose names clearly identify a variant selector.
+        for match in re.finditer(
+            r"""(?:data-variant(?:-id)?|data-product-variant|variantId|variant_id)"""
+            r"""\s*["\']?\s*[:=]\s*["\']?(\d+)""",
+            value,
+            flags=re.IGNORECASE,
+        ):
+            candidates.add(f"{BASE_URL}{parsed_base.path}?variant={match.group(1)}")
+
+    for tag in soup.find_all(True):
+        for attr, value in tag.attrs.items():
+            if isinstance(value, list):
+                value = " ".join(str(x) for x in value)
+            if isinstance(value, str) and (
+                "variant" in attr.lower()
+                or "easycosmetic" in value.lower()
+                or ".aspx" in value.lower()
+            ):
+                consider(value)
+    for script in soup.find_all("script"):
+        consider(script.string or script.get_text(" ", strip=False))
+    consider(html)
+
+    # Keep only variants on the same exact product path, with numeric IDs.
+    valid = []
+    for candidate in candidates:
+        normalized = _normalise_url(candidate)
+        parsed = urlparse(normalized)
+        params = parse_qs(parsed.query)
+        if (
+            normalized
+            and parsed.path == parsed_base.path
+            and params.get("variant")
+            and params["variant"][0].isdigit()
+        ):
+            valid.append(normalized)
+    return sorted(set(valid))
+
 def search(query: str) -> List[Dict[str, Any]]:
     query = _clean(query)
     if not query:
@@ -539,11 +607,34 @@ def search(query: str) -> List[Dict[str, Any]]:
     candidates = _extract_candidate_links(soup, query)
     results: List[Dict[str, Any]] = []
     product_errors = []
+    # A search result often links only to the default size. Expand the
+    # explicitly advertised variant IDs from each product page before parsing.
+    product_urls: List[str] = []
+    seen_urls = set()
 
     for candidate in candidates:
         url = candidate.get("url")
         if not url:
             continue
+        try:
+            product_html = _request_html(url)
+            discovered = _extract_variant_urls(product_html, url)
+            for variant_url in discovered:
+                if variant_url not in seen_urls:
+                    seen_urls.add(variant_url)
+                    product_urls.append(variant_url)
+            if url not in seen_urls:
+                seen_urls.add(url)
+                product_urls.append(url)
+        except Exception as exc:
+            product_errors.append(exc)
+            # Preserve the original behavior as a fallback if variant
+            # discovery cannot fetch a page.
+            if url not in seen_urls:
+                seen_urls.add(url)
+                product_urls.append(url)
+
+    for url in product_urls:
         try:
             row = parse_product(url)
         except StoreRequestError as exc:
@@ -555,8 +646,18 @@ def search(query: str) -> List[Dict[str, Any]]:
         if row:
             results.append(row)
 
+    # Deduplicate by canonical variant URL, not by product name: same perfume
+    # in 50 ml and 100 ml must remain separate rows.
+    deduplicated = {}
+    for row in results:
+        row_url = _normalise_url(row.get("url", ""))
+        if row_url:
+            deduplicated[row_url] = row
+    results = list(deduplicated.values())
+
     search._last_product_errors = product_errors
     search._last_candidate_count = len(candidates)
+    search._last_variant_url_count = len(product_urls)
     return results
 
 
