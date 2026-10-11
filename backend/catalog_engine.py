@@ -2659,10 +2659,9 @@ def _secondary_store_parser(store, final_url, original_url):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        # Preserve retailer-parser attributes so hydration can store the real variant.
         'size_ml': parsed.get('size_ml'),
-        'concentration': parsed.get('concentration'),
-        'gender': parsed.get('gender'),
+        'concentration': parsed.get('concentration') or '',
+        'gender': parsed.get('gender') or '',
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
