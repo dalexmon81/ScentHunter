@@ -3041,17 +3041,28 @@ def search_perfume(q: str):
                 continue
             all_offers.append(item)
 
+    _diag_before_dedupe = len(all_offers)
     dedupe_diagnostics = []
     all_offers = dedupe_results(
         all_offers,
         dedupe_diagnostics,
     )
+    if any(_normalise_store(x.get("store") or x.get("shop"), "") in {"easycosmetic", "parfumzentrum"} for x in all_offers) or any(_normalise_store(x.get("dropped", {}).get("store"), "") in {"easycosmetic", "parfumzentrum"} for x in dedupe_diagnostics):
+        print(f"SEARCH PIPELINE DIAG query={query!r} offers_before_dedupe={_diag_before_dedupe} offers_after_dedupe={len(all_offers)} dedupe_drops={len(dedupe_diagnostics)}", flush=True)
+        for _drop in dedupe_diagnostics:
+            _store = _normalise_store((_drop.get("dropped") or {}).get("store"), "")
+            if _store in {"easycosmetic", "parfumzentrum"}:
+                print(f"SEARCH DEDUPE DROP store={_store} reason={_drop.get('reason')} key={_drop.get('dedupe_key')} dropped={_drop.get('dropped')} kept={_drop.get('kept')}", flush=True)
 
     grouped, unresolved = (
         _aggregate_identity_results(
             all_offers
         )
     )
+    for _store in ("easycosmetic", "parfumzentrum"):
+        _store_offers = [x for x in all_offers if _normalise_store(x.get("store") or x.get("shop"), "") == _store]
+        if _store_offers:
+            print(f"SEARCH FINAL DIAG query={query!r} store={_store} offers={len(_store_offers)} sizes={[x.get('size_ml') for x in _store_offers]} prices={[x.get('price_num', x.get('price')) for x in _store_offers]} availability={[x.get('availability') or x.get('availability_status') for x in _store_offers]}", flush=True)
 
     return {
         "query": query,
