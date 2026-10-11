@@ -74,13 +74,6 @@ STORE_LABELS.update({
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
-    'easycosmetic': (
-        # Easycosmetic has localized official storefronts. Include the Belgian
-        # host in generic catalog discovery so valid .be product links are not
-        # discarded by the allowed-host check.
-        'https://www.easycosmetic.de',
-        'https://www.easycosmetic.be',
-    ),
     'deloox': (
         # Official localized Deloox storefronts. This is host-level catalog
         # coverage only; no product, brand, or query-specific URL is used.
@@ -209,10 +202,7 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
     """Fetch with redirects, compression handling and diagnostics."""
     parsed = urllib.parse.urlparse(url)
     host = parsed.netloc.lower()
-    if host in {
-        'easycosmetic.de', 'www.easycosmetic.de',
-        'easycosmetic.be', 'www.easycosmetic.be',
-    }:
+    if host in {'easycosmetic.de', 'www.easycosmetic.de'}:
         # Easycosmetic serves the public storefront to normal browser clients
         # but can stall requests carrying an identifying bot user-agent.
         # Use the same browser-class headers as the production Easycosmetic
@@ -964,8 +954,6 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # Generic catalog roots on both official localized storefronts.
-        # Product-specific URLs and search queries are intentionally excluded.
         'https://www.easycosmetic.de/',
         'https://www.easycosmetic.de/parfum',
         'https://www.easycosmetic.de/alle-marken',
@@ -975,15 +963,6 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.easycosmetic.de/unisex-parfum',
         'https://www.easycosmetic.de/luxusparfum',
         'https://www.easycosmetic.de/neuheiten',
-        'https://www.easycosmetic.be/',
-        'https://www.easycosmetic.be/parfum',
-        'https://www.easycosmetic.be/alle-marken',
-        'https://www.easycosmetic.be/parfum-marken',
-        'https://www.easycosmetic.be/damenparfum',
-        'https://www.easycosmetic.be/herrenparfum',
-        'https://www.easycosmetic.be/unisex-parfum',
-        'https://www.easycosmetic.be/luxusparfum',
-        'https://www.easycosmetic.be/neuheiten',
     ),
     'deloox': (
         # Broad official catalog surfaces. Both public Deloox hosts are
@@ -2650,12 +2629,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             parameters = inspect.signature(parser).parameters
             if 'html' in parameters and html_data is not None:
                 html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
-                parse_url = final_url
-                if store == 'easycosmetic' and urllib.parse.parse_qs(urllib.parse.urlparse(original_url).query).get('variant', [''])[0].isdigit():
-                    # Some redirects normalize away the variant query string.
-                    # The parser must see the requested variant URL to retain its identity.
-                    parse_url = original_url
-                parsed = parser(session, parse_url, url_slug(parse_url), html=html_text)
+                parsed = parser(session, final_url, url_slug(final_url), html=html_text)
             else:
                 parsed = parser(session, final_url, url_slug(final_url))
         finally:
@@ -2684,30 +2658,17 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     price = parsed.get('price_num')
     if price is None:
         price = offer.get('price')
-    requested_variant_id = ''
-    if store == 'easycosmetic':
-        try:
-            requested_variant_id = urllib.parse.parse_qs(urllib.parse.urlparse(original_url).query).get('variant', [''])[0]
-        except Exception:
-            requested_variant_id = ''
-    # The requested URL is the authoritative identity for variant pages. Some
-    # retailer parsers return a canonical URL without the ?variant= query.
-    offer_url = original_url if (store == 'easycosmetic' and str(requested_variant_id).isdigit()) else (parsed.get('url') or final_url or original_url)
-    parsed_size = parsed.get('size_ml')
-    if store == 'easycosmetic' and parsed_size in (None, ''):
-        parsed_size = {'78098': 50.0, '78099': 100.0, '78094': 100.0}.get(str(requested_variant_id))
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
-        'url': offer_url,
-        'variant_id': str(requested_variant_id) if str(requested_variant_id).isdigit() else None,
+        'url': parsed.get('url') or final_url or original_url,
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed_size,
+        'size_ml': parsed.get('size_ml'),
         'concentration': parsed.get('concentration'),
         'gender': parsed.get('gender'),
         'price_num': price,
@@ -2724,65 +2685,6 @@ def refresh_url(store, url):
         status, final, data = http_get(url, timeout=REFRESH_TIMEOUT)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
-
-        # Important: the foreground search is catalog-first and does NOT call
-        # scrapers.easycosmetic.scraper.search(). Discover and enqueue variants
-        # from every Easycosmetic product page hydrated by the catalog engine.
-        # Otherwise variants never enter store_urls / FTS and can never appear
-        # in search_local(), even if the standalone scraper knows how to find them.
-        if store == 'easycosmetic':
-            try:
-                variant_finder = getattr(
-                    importlib.import_module('scrapers.easycosmetic.scraper'),
-                    '_extract_variant_urls', None,
-                )
-                html_text = data.decode('utf-8', errors='replace') if isinstance(data, bytes) else str(data or '')
-                variant_urls = variant_finder(html_text, url) if callable(variant_finder) else set()
-                variant_urls = {
-                    str(candidate).strip() for candidate in (variant_urls or [])
-                    if str(candidate).strip()
-                    and urllib.parse.parse_qs(urllib.parse.urlparse(str(candidate)).query).get('variant', [''])[0].isdigit()
-                    and urllib.parse.urlparse(str(candidate)).path == urllib.parse.urlparse(url).path
-                }
-
-                # Some Easycosmetic pages do not expose their size selector in
-                # the server-rendered HTML (the scraper's HTML scan then returns
-                # zero). Preserve known, verified product variants as catalog
-                # URLs anyway, so the catalog-first search can hydrate/index them.
-                # The paths are exact product paths; IDs are the retailer's
-                # variant IDs, not guessed sizes or generated product IDs.
-                _known_easycosmetic_variants = {
-                    '/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx': ('78098', '78099'),
-                    '/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx': ('78094',),
-                }
-                _base_path = urllib.parse.urlparse(url).path
-                for _variant_id in _known_easycosmetic_variants.get(_base_path, ()):
-                    variant_urls.add(
-                        urllib.parse.urlunparse((
-                            'https', 'www.easycosmetic.be', _base_path,
-                            '', f'variant={_variant_id}', ''
-                        ))
-                    )
-                variant_urls = sorted(variant_urls)
-                if variant_urls:
-                    queued = _coverage_persist_urls(
-                        'easycosmetic', [{'url': candidate} for candidate in variant_urls]
-                    )
-                    print(
-                        'CATALOG EASYCOSMETIC VARIANT DISCOVERY '
-                        f'base_url={url} found={len(variant_urls)} queued={queued} '
-                        f'variants={variant_urls[:20]}', flush=True,
-                    )
-                else:
-                    print(
-                        f'CATALOG EASYCOSMETIC VARIANT DISCOVERY base_url={url} found=0',
-                        flush=True,
-                    )
-            except Exception as variant_exc:
-                print(
-                    'CATALOG EASYCOSMETIC VARIANT DISCOVERY ERROR '
-                    f'url={url} error={type(variant_exc).__name__}:{variant_exc}', flush=True,
-                )
 
         # The retailer scraper owns retailer-specific product-page semantics
         # such as public-vs-code pricing and product-vs-set identity. When a
@@ -2963,64 +2865,9 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
         threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
 
 
-_EASYCOSMETIC_CORAL_VARIANTS = (
-    'https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098',
-    'https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099',
-    'https://www.easycosmetic.be/valentino/uomo-born-in-roma/valentino-uomo-born-in-roma-coral-fantasy-eau-de-toilette-spray.aspx?variant=78094',
-)
-_EASYCOSMETIC_CORAL_VARIANTS_LOCK = threading.Lock()
-_EASYCOSMETIC_CORAL_VARIANTS_DONE = False
-
-def _ensure_easycosmetic_coral_variants(query):
-    """Queue and hydrate the known Coral Fantasy variants off the search path.
-
-    Never perform three retailer HTTP requests synchronously in a user's search:
-    that was adding seconds to the foreground request. The catalog gets seeded
-    immediately; a single daemon worker hydrates the exact URLs for subsequent
-    searches and retries incomplete runs.
-    """
-    global _EASYCOSMETIC_CORAL_VARIANTS_DONE
-    normalized = ' '.join(tokens(str(query or '')))
-    if not all(term in normalized.split() for term in ('born', 'roma', 'coral', 'fantasy')):
-        return
-    if _EASYCOSMETIC_CORAL_VARIANTS_DONE:
-        return
-    if not _EASYCOSMETIC_CORAL_VARIANTS_LOCK.acquire(blocking=False):
-        return
-    try:
-        queued = _coverage_persist_urls(
-            'easycosmetic', [{'url': url} for url in _EASYCOSMETIC_CORAL_VARIANTS]
-        )
-        def _hydrate_variants():
-            global _EASYCOSMETIC_CORAL_VARIANTS_DONE
-            refreshed = 0
-            try:
-                for variant_url in _EASYCOSMETIC_CORAL_VARIANTS:
-                    item = refresh_url('easycosmetic', variant_url)
-                    if item and item.get('name'):
-                        refreshed += 1
-                _EASYCOSMETIC_CORAL_VARIANTS_DONE = (refreshed == len(_EASYCOSMETIC_CORAL_VARIANTS))
-                print(
-                    'CATALOG EASYCOSMETIC CORAL VARIANTS BACKGROUND '
-                    f'persisted={queued} hydrated={refreshed}/3 done={_EASYCOSMETIC_CORAL_VARIANTS_DONE}',
-                    flush=True,
-                )
-            except Exception as exc:
-                print(f'CATALOG EASYCOSMETIC CORAL VARIANTS BACKGROUND ERROR {type(exc).__name__}:{exc}', flush=True)
-            finally:
-                _EASYCOSMETIC_CORAL_VARIANTS_LOCK.release()
-        threading.Thread(target=_hydrate_variants, name='easycosmetic-coral-variants', daemon=True).start()
-    except Exception as exc:
-        _EASYCOSMETIC_CORAL_VARIANTS_LOCK.release()
-        print(f'CATALOG EASYCOSMETIC CORAL VARIANTS QUEUE ERROR {type(exc).__name__}:{exc}', flush=True)
-
-
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
     try:
-        # Seed and hydrate the confirmed Easycosmetic variants before querying
-        # the catalog, so they can be returned by this very search (not a later one).
-        _ensure_easycosmetic_coral_variants(query)
         rows = _search_local_impl(
             query,
             per_store=per_store,
