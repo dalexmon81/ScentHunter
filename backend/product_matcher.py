@@ -1025,6 +1025,40 @@ class ProductMatcher:
         if not candidate_key:
             return None
 
+        # Resolve explicit audience labels before alias/subphrase matching.
+        # Without this guard, a generic alias registered under Uomo (for example
+        # "Born In Roma Extradose") can match inside an explicit Donna title.
+        audience_patterns = {
+            "donna": r"\b(?:donna|women|woman|her|femme|dames|damen)\b",
+            "uomo": r"\b(?:uomo|men|man|him|homme|herren|heren)\b",
+        }
+
+        def audience_of(value: Any) -> Optional[str]:
+            text = catalog_variant_key(value)
+            found = [
+                audience for audience, pattern in audience_patterns.items()
+                if re.search(pattern, text, flags=re.I)
+            ]
+            return found[0] if len(found) == 1 else None
+
+        offer_audience = audience_of(candidate_key)
+        eligible_variants = family["variants"]
+        if offer_audience:
+            audience_variants = []
+            for registered_variant in family["variants"]:
+                identity_text = " ".join((
+                    str(registered_variant.get("canonical_name") or ""),
+                    *(str(alias) for alias in registered_variant.get("aliases", ())),
+                ))
+                if audience_of(identity_text) == offer_audience:
+                    audience_variants.append(registered_variant)
+            # Apply the constraint only when the registry has explicit variants
+            # for that audience. Never silently fall back to the opposite gender.
+            if audience_variants:
+                eligible_variants = audience_variants
+            else:
+                return None
+
         excluded = tuple(
             catalog_variant_key(value)
             for value in (*family.get("excluded_products", ()), *family.get("excluded_aliases", ()))
@@ -1034,7 +1068,7 @@ class ProductMatcher:
 
         name_variant: Optional[Dict[str, Any]] = None
 
-        for variant in family["variants"]:
+        for variant in eligible_variants:
             if candidate_key in variant["normalized_aliases"]:
                 name_variant = variant
                 break
@@ -1059,7 +1093,7 @@ class ProductMatcher:
             ]
             stripped_key = " ".join(stripped_tokens).strip()
             if stripped_key != candidate_key:
-                for variant in family["variants"]:
+                for variant in eligible_variants:
                     if stripped_key in variant["normalized_aliases"]:
                         name_variant = variant
                         break
@@ -1075,7 +1109,7 @@ class ProductMatcher:
             )
             stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
             if stripped_for_tokens != candidate_key:
-                for variant in family["variants"]:
+                for variant in eligible_variants:
                     if stripped_for_tokens in variant["normalized_aliases"]:
                         name_variant = variant
                         break
@@ -1089,7 +1123,7 @@ class ProductMatcher:
         # because the family scope has already constrained the candidate set.
         if name_variant is None:
             candidate_tokens = candidate_key.split()
-            for variant in family["variants"]:
+            for variant in eligible_variants:
                 for alias in (variant.get("canonical_name"), *variant.get("aliases", ())):
                     alias_key = catalog_variant_key(alias)
                     if not alias_key:
@@ -1131,7 +1165,7 @@ class ProductMatcher:
             ]
             if candidate_tokens:
                 subset_matches = []
-                for variant in family["variants"]:
+                for variant in eligible_variants:
                     alias_token_sets = []
                     for alias in (
                         variant.get("canonical_name"),
@@ -1210,7 +1244,7 @@ class ProductMatcher:
                 if not url_identity_tokens:
                     url_identity_tokens = url_tokens
 
-                for variant in family["variants"]:
+                for variant in eligible_variants:
                     best_variant_score = 0.0
 
                     for alias in variant.get("aliases", ()):
