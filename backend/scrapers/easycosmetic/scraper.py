@@ -523,8 +523,6 @@ def _extract_candidate_links(
     return ordered
 
 
-
-
 def _extract_variant_urls(html: str, product_url: str) -> List[str]:
     """Find explicitly advertised numeric variant IDs for this product page.
 
@@ -591,11 +589,13 @@ def _extract_variant_urls(html: str, product_url: str) -> List[str]:
             valid.append(normalized)
     return sorted(set(valid))
 
+
 def search(query: str) -> List[Dict[str, Any]]:
     query = _clean(query)
     if not query:
         search._last_product_errors = []
         search._last_candidate_count = 0
+        search._last_variant_url_count = 0
         return []
 
     try:
@@ -607,19 +607,18 @@ def search(query: str) -> List[Dict[str, Any]]:
     candidates = _extract_candidate_links(soup, query)
     results: List[Dict[str, Any]] = []
     product_errors = []
-    # A search result often links only to the default size. Expand the
-    # explicitly advertised variant IDs from each product page before parsing.
+
+    # Search cards often point only to the default bottle size. Fetch each
+    # product page once to collect its explicitly advertised variant URLs.
     product_urls: List[str] = []
     seen_urls = set()
-
     for candidate in candidates:
         url = candidate.get("url")
         if not url:
             continue
         try:
             product_html = _request_html(url)
-            discovered = _extract_variant_urls(product_html, url)
-            for variant_url in discovered:
+            for variant_url in _extract_variant_urls(product_html, url):
                 if variant_url not in seen_urls:
                     seen_urls.add(variant_url)
                     product_urls.append(variant_url)
@@ -628,8 +627,7 @@ def search(query: str) -> List[Dict[str, Any]]:
                 product_urls.append(url)
         except Exception as exc:
             product_errors.append(exc)
-            # Preserve the original behavior as a fallback if variant
-            # discovery cannot fetch a page.
+            # If variant discovery fails, keep the original candidate behavior.
             if url not in seen_urls:
                 seen_urls.add(url)
                 product_urls.append(url)
@@ -646,8 +644,7 @@ def search(query: str) -> List[Dict[str, Any]]:
         if row:
             results.append(row)
 
-    # Deduplicate by canonical variant URL, not by product name: same perfume
-    # in 50 ml and 100 ml must remain separate rows.
+    # Keep distinct selected variant URLs even when product names are identical.
     deduplicated = {}
     for row in results:
         row_url = _normalise_url(row.get("url", ""))
@@ -659,6 +656,7 @@ def search(query: str) -> List[Dict[str, Any]]:
     search._last_candidate_count = len(candidates)
     search._last_variant_url_count = len(product_urls)
     return results
+
 
 
 def search_stream(query: str, emit=None):
