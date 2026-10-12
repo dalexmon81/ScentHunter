@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
 
@@ -12,8 +13,8 @@ from bs4 import BeautifulSoup
 STORE = "Easycosmetic"
 BASE_URL = "https://www.easycosmetic.be"
 SEARCH_URL = BASE_URL + "/suche?searchfor={}"
-TIMEOUT = 15
-BROWSER_TIMEOUT_MS = 15000
+TIMEOUT = 5
+BROWSER_TIMEOUT_MS = 4000
 
 HEADERS = {
     "User-Agent": (
@@ -504,11 +505,13 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
         return None
 
     root = roots[0]
+    # Visible price nodes must win over metadata. Easycosmetic sometimes
+    # leaves an outdated itemprop/meta price in the HTML while the selected
+    # variant's visible price is already updated. Metadata is a last resort.
     selectors = (
-        'meta[itemprop="price"]', '[itemprop="price"]',
-        '[data-price]', '[class*="product-price"]',
-        '[class*="price-current"]', '[class*="priceCurrent"]',
-        '[class~="price"]',
+        '[class*="product-price"]', '[class*="price-current"]',
+        '[class*="priceCurrent"]', '[class~="price"]',
+        '[data-price]', '[itemprop="price"]', 'meta[itemprop="price"]',
     )
     rejected = ("old", "was", "strike", "cross", "regular", "uvp", "list-price", "discount-percent")
     for selector in selectors:
@@ -744,48 +747,76 @@ def search(query: str) -> List[Dict[str, Any]]:
         search._last_variant_url_count = 0
         return []
 
-    try:
-        html = _request_html(SEARCH_URL.format(quote_plus(query)))
-    except Exception:
-        raise
-
+    html = _request_html(SEARCH_URL.format(quote_plus(query)))
     soup = BeautifulSoup(html, "html.parser")
     candidates = _extract_candidate_links(soup, query)
-    results: List[Dict[str, Any]] = []
-    product_errors = []
+    errors: List[Exception] = []
 
-    # Search cards often point only to the default bottle size. Fetch each
-    # product page once to collect its explicitly advertised variant URLs.
+    # Fetch candidate pages concurrently. The previous implementation fetched
+    # each page serially and then fetched every variant again during parsing,
+    # multiplying latency by the number of search results and bottle sizes.
+    max_workers = min(8, max(1, len(candidates)))
+    page_html: Dict[str, str] = {}
+
+    def fetch_candidate(candidate: Dict[str, Any]):
+        url = _normalise_url(candidate.get("url", ""))
+        if not url:
+            return url, None, None
+        try:
+            return url, _request_html(url), None
+        except Exception as exc:
+            return url, None, exc
+
+    if candidates:
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(fetch_candidate, candidate) for candidate in candidates]
+            for future in as_completed(futures):
+                url, candidate_html, error = future.result()
+                if error is not None:
+                    errors.append(error)
+                elif url and candidate_html:
+                    page_html[url] = candidate_html
+
+    # Discover variants from candidate HTML already fetched above.
     product_urls: List[str] = []
     seen_urls = set()
     for candidate in candidates:
-        url = candidate.get("url")
+        url = _normalise_url(candidate.get("url", ""))
         if not url:
             continue
-        try:
-            product_html = _request_html(url)
-            for variant_url in _extract_variant_urls(product_html, url):
-                if variant_url not in seen_urls:
-                    seen_urls.add(variant_url)
-                    product_urls.append(variant_url)
-            if url not in seen_urls:
-                seen_urls.add(url)
-                product_urls.append(url)
-        except Exception as exc:
-            product_errors.append(exc)
-            # If variant discovery fails, keep the original candidate behavior.
-            if url not in seen_urls:
-                seen_urls.add(url)
-                product_urls.append(url)
+        candidate_html = page_html.get(url)
+        discovered = _extract_variant_urls(candidate_html, url) if candidate_html else []
+        for variant_url in discovered:
+            variant_url = _normalise_url(variant_url)
+            if variant_url and variant_url not in seen_urls:
+                seen_urls.add(variant_url)
+                product_urls.append(variant_url)
+        if url not in seen_urls:
+            seen_urls.add(url)
+            product_urls.append(url)
 
+    # Fetch only the variants not already fetched as candidate pages, in
+    # parallel, and parse the same response. This avoids duplicate requests.
+    missing_urls = [url for url in product_urls if url not in page_html]
+    if missing_urls:
+        with ThreadPoolExecutor(max_workers=min(8, len(missing_urls))) as pool:
+            future_to_url = {pool.submit(_request_html, url): url for url in missing_urls}
+            for future in as_completed(future_to_url):
+                url = future_to_url[future]
+                try:
+                    page_html[url] = future.result()
+                except Exception as exc:
+                    errors.append(exc)
+
+    results: List[Dict[str, Any]] = []
     for url in product_urls:
-        try:
-            row = parse_product(url)
-        except StoreRequestError as exc:
-            product_errors.append(exc)
+        page = page_html.get(url)
+        if not page:
             continue
+        try:
+            row = _parse_product_html(url, page)
         except Exception as exc:
-            product_errors.append(exc)
+            errors.append(exc)
             continue
         if row:
             results.append(row)
@@ -798,7 +829,7 @@ def search(query: str) -> List[Dict[str, Any]]:
             deduplicated[row_url] = row
     results = list(deduplicated.values())
 
-    search._last_product_errors = product_errors
+    search._last_product_errors = errors
     search._last_candidate_count = len(candidates)
     search._last_variant_url_count = len(product_urls)
     return results
