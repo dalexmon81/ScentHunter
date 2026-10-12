@@ -2721,51 +2721,11 @@ def refresh_url(store, url):
         except Exception:
             parser_available = False
 
-        parser_error = None
         if parser_available:
-            try:
-                item = _secondary_store_parser(store, final, url, html_data=data)
-                secondary_ok = bool(item and item.get('name'))
-            except Exception as exc:
-                # A retailer-specific parser can reject a page or fail on a
-                # secondary request. Keep the failure visible, but allow a
-                # tightly gated JSON-LD fallback for pages with exactly one
-                # Product entity. This avoids dropping every otherwise valid
-                # product while avoiding ambiguous multi-Product pages.
-                parser_error = f'{type(exc).__name__}: {exc}'
-                item = None
+            item = _secondary_store_parser(store, final, url, html_data=data)
+            secondary_ok = bool(item and item.get('name'))
         else:
             item = parse_product(store, final, data)
-
-        if parser_available and (not item or not item.get('name')):
-            try:
-                soup_fallback = BeautifulSoup(data or b'', 'html.parser')
-                products_fallback = _jsonld(soup_fallback)
-                if len(products_fallback) == 1:
-                    generic_item = parse_product(store, final, data)
-                    generic_price = _num((generic_item or {}).get('price_num'))
-                    generic_name = str((generic_item or {}).get('name') or '').strip()
-                    if generic_name and generic_price is not None and generic_price > 0:
-                        # Recover an explicitly printed ml format from the
-                        # authoritative product name when the generic adapter
-                        # does not expose a separate size field.
-                        size_match = re.search(
-                            r'(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b',
-                            generic_name,
-                            re.IGNORECASE,
-                        )
-                        if not generic_item.get('size_ml') and size_match:
-                            try:
-                                generic_item['size_ml'] = float(
-                                    size_match.group(1).replace(',', '.')
-                                )
-                            except (TypeError, ValueError):
-                                pass
-                        item = generic_item
-                        item['fallback_parser'] = 'generic_jsonld_single_product'
-            except Exception as exc:
-                if not parser_error:
-                    parser_error = f'generic_fallback_{type(exc).__name__}: {exc}'
 
         primary_ok = bool(item and item.get('name'))
         if item and store in ('easycosmetic', 'parfumzentrum'):
@@ -2776,9 +2736,25 @@ def refresh_url(store, url):
                 f"price_num={item.get('price_num')!r} price={item.get('price')!r} " +
                 f"availability={item.get('availability')!r} available={item.get('available')!r} " +
                 f"sku={item.get('sku')!r} gtin={item.get('gtin')!r} " +
-                f"parser={item.get('fallback_parser') or ('retailer' if secondary_ok else 'generic')}",
+                f"parser={'retailer' if secondary_ok else 'generic'}",
                 flush=True,
             )
+
+        if item and store == 'parfumzentrum':
+            # ParfumZentrum may expose placeholder prices (notably 1.00 EUR)
+            # for products that are not actually offered for sale. Never mark
+            # such a page as a successfully hydrated, publishable offer.
+            raw_price = item.get('price_num')
+            if raw_price is None:
+                raw_price = item.get('price')
+            try:
+                parsed_price = float(raw_price)
+            except (TypeError, ValueError):
+                parsed_price = 0.0
+            if parsed_price <= 1.0:
+                raise RuntimeError(
+                    f'invalid_placeholder_price;store={store};price={raw_price!r}'
+                )
 
         if not item or not item.get('name'):
             h1_text = ''
@@ -2797,7 +2773,6 @@ def refresh_url(store, url):
                 f';final={final}'
                 f';primary_parser={"ok" if primary_ok else "none"}'
                 f';secondary_parser={"ok" if secondary_ok else "none"}'
-                f';parser_error={parser_error!r}'
                 f';jsonld_products={jsonld_count}'
                 f';h1={h1_text!r}'
             )
@@ -3026,6 +3001,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
           LEFT JOIN store_products p
             ON p.store=u.store AND p.url=u.url
            AND p.fetch_status='OK'
+           AND (p.store != 'parfumzentrum' OR p.price > 1.0)
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
@@ -3189,6 +3165,7 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                   LEFT JOIN store_products p
                     ON p.store=u.store AND p.url=u.url
                    AND p.fetch_status='OK'
+                   AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
                    AND {' AND '.join(clauses)}
                  LIMIT ?
