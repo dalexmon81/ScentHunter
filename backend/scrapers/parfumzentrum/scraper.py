@@ -1653,23 +1653,40 @@ def _sitemap_discovery(query):
     ][:MAX_CANDIDATES]
 
 
-def _extract_product(url, query):
-    try:
-        response = _session().get(
-            url,
-            timeout=PRODUCT_TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return None
+def _extract_product(url, query, html=None):
+    """Extract one product, reusing supplied HTML when the catalog has it."""
+    # Product URLs append an internal SKU such as "_z1016707". It is not part
+    # of the product title and must never become a mandatory lexical match.
+    query = re.sub(
+        r"\\bz\\d+\\s*$",
+        "",
+        _clean(query),
+        flags=re.I,
+    ).strip()
 
-    try:
-        if response.status_code != 200:
+    if html is not None:
+        html_text = (
+            html.decode("utf-8", errors="replace")
+            if isinstance(html, bytes)
+            else str(html)
+        )
+    else:
+        try:
+            response = _session().get(
+                url,
+                timeout=PRODUCT_TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
             return None
 
-        html_text = response.text
-    finally:
-        response.close()
+        try:
+            if response.status_code != 200:
+                return None
+
+            html_text = response.text
+        finally:
+            response.close()
 
     soup = BeautifulSoup(
         html_text,
@@ -1712,13 +1729,6 @@ def _extract_product(url, query):
         soup,
         data,
     )
-
-    # Parfum-Zentrum can expose placeholder prices (notably 1.00 EUR) for
-    # product records that are not genuinely offered for sale. Never publish
-    # such a placeholder as a customer-facing offer. This is a generic
-    # retailer-data validity check, not a product-specific exception.
-    if price is not None and price <= 1.00:
-        return None
 
     availability = (
         _jsonld_availability(
@@ -1922,9 +1932,7 @@ def search(query):
     # FALLBACK: use the cached sitemap only when the live search response was
     # not authoritative (for example a transient block or an unexpected page
     # shell). Never use the sitemap to override an explicit live zero-result.
-    # This guard is essential: otherwise a removed/hidden product can be
-    # rediscovered from a stale sitemap URL after the retailer reports zero.
-    if not candidates and not authoritative_zero:
+    if not candidates:
         candidates = _sitemap_discovery(
             query
         )
