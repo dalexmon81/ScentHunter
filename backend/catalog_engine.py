@@ -51,7 +51,7 @@ STORES = {
     'perfumemarket': 'https://www.perfumemarket.nl',
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
-    'easycosmetic': 'https://www.easycosmetic.de',
+    'easycosmetic': 'https://www.easycosmetic.be',
     'deloox': 'https://www.deloox.be',
 }
 
@@ -75,10 +75,8 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # Easycosmetic has localized official storefronts. Include the Belgian
-        # host in generic catalog discovery so valid .be product links are not
-        # discarded by the allowed-host check.
-        'https://www.easycosmetic.de',
+        # ScentHunter targets the Belgian market. Keep catalog discovery on the
+        # Belgian storefront so German-market prices cannot enter the same offer set.
         'https://www.easycosmetic.be',
     ),
     'deloox': (
@@ -964,17 +962,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # Generic catalog roots on both official localized storefronts.
-        # Product-specific URLs and search queries are intentionally excluded.
-        'https://www.easycosmetic.de/',
-        'https://www.easycosmetic.de/parfum',
-        'https://www.easycosmetic.de/alle-marken',
-        'https://www.easycosmetic.de/parfum-marken',
-        'https://www.easycosmetic.de/damenparfum',
-        'https://www.easycosmetic.de/herrenparfum',
-        'https://www.easycosmetic.de/unisex-parfum',
-        'https://www.easycosmetic.de/luxusparfum',
-        'https://www.easycosmetic.de/neuheiten',
+        # Generic catalog roots for the Belgian market only. Product-specific
+        # URLs and search queries are intentionally excluded.
         'https://www.easycosmetic.be/',
         'https://www.easycosmetic.be/parfum',
         'https://www.easycosmetic.be/alle-marken',
@@ -3031,6 +3020,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (f.store != 'easycosmetic'
+                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                OR lower(u.url) LIKE 'https://easycosmetic.be/%')
          ORDER BY rank
          LIMIT ?
     """
@@ -3193,11 +3185,14 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (? != 'easycosmetic'
+                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'https://easycosmetic.be/%')
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
             candidates = conn.execute(
-                sql, [store, *params, max(128, limit or 128)]
+                sql, [store, store, *params, max(128, limit or 128)]
             ).fetchall()
             for r in candidates:
                 url = str(r['url'] or '').strip()
