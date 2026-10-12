@@ -248,15 +248,59 @@ def _walk_json_ld(value: Any) -> Iterable[Dict[str, Any]]:
             yield from _walk_json_ld(child)
 
 
-def _find_product_json(soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
+def _find_product_json(
+    soup: BeautifulSoup,
+    requested_url: str = "",
+) -> Optional[Dict[str, Any]]:
+    """Select the JSON-LD Product corresponding to the requested variant URL.
+
+    Easycosmetic can embed Product objects for multiple bottle sizes in one
+    document. Selecting the first Product assigns its size, image, price and
+    stock status to every variant URL.
+    """
+    products: List[Dict[str, Any]] = []
     for item in _extract_json_ld(soup):
         for node in _walk_json_ld(item):
             item_type = node.get("@type")
-            if item_type == "Product":
-                return node
-            if isinstance(item_type, list) and "Product" in item_type:
-                return node
-    return None
+            if item_type == "Product" or (
+                isinstance(item_type, list) and "Product" in item_type
+            ):
+                products.append(node)
+
+    if not products:
+        return None
+
+    requested_values = parse_qs(urlparse(requested_url).query).get("variant", [])
+    requested_variant = requested_values[0] if requested_values else ""
+    if requested_variant:
+        for product in products:
+            candidate_urls: List[str] = []
+            product_url = product.get("url")
+            if isinstance(product_url, str):
+                candidate_urls.append(product_url)
+
+            offers = product.get("offers")
+            offer_list = offers if isinstance(offers, list) else [offers]
+            for offer in offer_list:
+                if isinstance(offer, dict):
+                    offer_url = offer.get("url")
+                    if isinstance(offer_url, str):
+                        candidate_urls.append(offer_url)
+
+            for candidate_url in candidate_urls:
+                candidate_values = parse_qs(
+                    urlparse(candidate_url).query
+                ).get("variant", [])
+                if candidate_values and candidate_values[0] == requested_variant:
+                    return product
+
+    # A variant URL with no matching structured object must not silently be
+    # assigned another variant's JSON-LD data. Return None so callers can use
+    # the requested URL and selected-image evidence instead.
+    if requested_variant:
+        return None
+
+    return products[0]
 
 
 def _extract_image_url(value: Any) -> str:
@@ -733,7 +777,13 @@ def search_stream(query: str, emit=None):
         },
     }
 
-def _extract_size_ml(soup: BeautifulSoup, product_name: str, url: str, product_image: str = "") -> Optional[int]:
+def _extract_size_ml(
+    soup: BeautifulSoup,
+    product_name: str,
+    url: str,
+    product_image: str = "",
+    product_json: Optional[Dict[str, Any]] = None,
+) -> Optional[int]:
     """Extract a size only from text tied to the current product/selected variant.
 
     Deliberately does not inspect arbitrary recommendation images: those can
@@ -766,27 +816,44 @@ def _extract_size_ml(soup: BeautifulSoup, product_name: str, url: str, product_i
         if size is not None:
             return size
 
-    # JSON-LD Product name/description are tied to the page product.
-    for script in soup.select('script[type="application/ld+json"]'):
-        raw = script.string or script.get_text(" ", strip=True)
-        try:
-            payload = json.loads(raw)
-        except (TypeError, ValueError):
-            continue
-        objects = payload if isinstance(payload, list) else [payload]
-        while objects:
-            obj = objects.pop(0)
-            if not isinstance(obj, dict):
+    # Prefer the Product object selected for this exact variant URL.
+    # Its image can encode the bottle size even when its name is generic.
+    if isinstance(product_json, dict):
+        for key in ("name", "description"):
+            size = parse_size(product_json.get(key))
+            if size is not None:
+                return size
+        selected_image = _extract_image_url(product_json.get("image"))
+        size = parse_size(selected_image)
+        if size is not None:
+            return size
+
+    # For a non-variant URL only, retain the legacy JSON-LD fallback.
+    has_variant = bool(parse_qs(urlparse(url).query).get("variant"))
+    if not has_variant:
+        for script in soup.select('script[type="application/ld+json"]'):
+            raw = script.string or script.get_text(" ", strip=True)
+            try:
+                payload = json.loads(raw)
+            except (TypeError, ValueError):
                 continue
-            if isinstance(obj.get("@graph"), list):
-                objects.extend(obj["@graph"])
-            if isinstance(obj.get("mainEntity"), dict):
-                objects.append(obj["mainEntity"])
-            if str(obj.get("@type", "")).lower() == "product":
-                for key in ("name", "description"):
-                    size = parse_size(obj.get(key))
-                    if size is not None:
-                        return size
+            objects = payload if isinstance(payload, list) else [payload]
+            while objects:
+                obj = objects.pop(0)
+                if not isinstance(obj, dict):
+                    continue
+                if isinstance(obj.get("@graph"), list):
+                    objects.extend(obj["@graph"])
+                if isinstance(obj.get("mainEntity"), dict):
+                    objects.append(obj["mainEntity"])
+                item_type = obj.get("@type")
+                if item_type == "Product" or (
+                    isinstance(item_type, list) and "Product" in item_type
+                ):
+                    for key in ("name", "description"):
+                        size = parse_size(obj.get(key))
+                        if size is not None:
+                            return size
 
     # Selected controls only; never scrape all variant labels as if selected.
     for node in soup.select(
@@ -821,7 +888,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         return None
 
     soup = BeautifulSoup(html or "", "html.parser")
-    product_json = _find_product_json(soup)
+    product_json = _find_product_json(soup, url)
 
     name = ""
     brand = ""
@@ -923,7 +990,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "available": available,
         "availability": availability,
         "image": image,
-        "size_ml": _extract_size_ml(soup, name, url, image),
+        "size_ml": _extract_size_ml(
+            soup, name, url, image, product_json=product_json
+        ),
         "url": url,
     }
 
