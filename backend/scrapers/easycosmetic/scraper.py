@@ -120,7 +120,10 @@ def _is_candidate_url(url: str) -> bool:
 
     path = parsed.path.lower()
 
-    if not path.endswith(".aspx"):
+    # Easycosmetic product URLs are not guaranteed to end in .aspx.
+    # Keep the official-host and utility-path checks, but do not discard a
+    # product solely because its URL format changed.
+    if path in {"/", "/parfum", "/damenparfum", "/herrenparfum", "/neuheiten"}:
         return False
 
     if any(part in path for part in BLOCKED_PATH_PARTS):
@@ -544,12 +547,9 @@ def _extract_variant_urls(html: str, product_url: str) -> List[str]:
             return
         value = value.replace("\\/", "/").replace("&amp;", "&").replace("\\u0026", "&")
         # Full or relative product URL with an explicit variant query.
-        # Easycosmetic product pages are not necessarily .aspx URLs.
-        # Discover numeric variant parameters on any URL-like string; the
-        # exact product path is validated below before accepting a candidate.
         for match in re.finditer(
             r"""(?:https?://(?:www\.)?easycosmetic\.(?:de|be))?"""
-            r"""[^"\s<>?#]*\?[^"\s<>#]*?\bvariant(?:=|%3D)(\d+)""",
+            r"""[^"\s<>]*?\?[^"\s<>#]*?\bvariant(?:=|%3D)(\d+)""",
             value,
             flags=re.IGNORECASE,
         ):
@@ -853,10 +853,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    # Never guess the offer price from arbitrary page text: it may be a price
-    # for another bottle size, a crossed-out price, or a recommendation. If
-    # structured offer data is absent, leave the price unknown rather than
-    # publishing a potentially incorrect amount.
+    # Do not infer a variant price from arbitrary page text: the page may
+    # contain prices for other bottle sizes, promotions, or recommendations.
+    # If structured offer data has no price, keep price unknown.
 
     page_available, page_availability = _availability_from_page(page_text)
 
