@@ -147,7 +147,7 @@ def catalog_resync_easycosmetic_endpoint():
 
 @app.get('/catalog/resync-easycosmetic-status')
 def catalog_resync_easycosmetic_status_endpoint(job_id: str = ''):
-    """Read-only status for the isolated Easycosmetic discovery run."""
+    """Read live memory state plus durable catalog state after restarts."""
     with _EASYCOSMETIC_RESYNC_LOCK:
         running = _EASYCOSMETIC_RESYNC_RUNNING
         current_job = _EASYCOSMETIC_RESYNC_JOB_ID
@@ -156,18 +156,64 @@ def catalog_resync_easycosmetic_status_endpoint(job_id: str = ''):
         result = dict(_EASYCOSMETIC_RESYNC_RESULT)
         error = _EASYCOSMETIC_RESYNC_ERROR
 
+    persistent = {}
+    persistent_error = None
+    try:
+        if CATALOG_ENGINE_AVAILABLE and callable(catalog_db):
+            conn = catalog_db()
+            try:
+                row = conn.execute(
+                    'SELECT status,started_at,finished_at,discovered_count,fetched_count,error '
+                    'FROM sync_state WHERE store=?', ('easycosmetic',)
+                ).fetchone()
+                if row:
+                    persistent = {
+                        'status': row['status'],
+                        'started_at': row['started_at'],
+                        'finished_at': row['finished_at'],
+                        'elapsed_sec': round(max(0.0, time.time() - float(row['started_at'] or time.time())), 1),
+                        'discovered_count': int(row['discovered_count'] or 0),
+                        'fetched_count': int(row['fetched_count'] or 0),
+                        'last_progress': row['error'],
+                    }
+            finally:
+                conn.close()
+    except Exception as exc:
+        persistent_error = f'{type(exc).__name__}:{exc}'
+
     if job_id and current_job and job_id != current_job:
-        return {
-            'ok': False, 'status': 'job_not_current',
-            'requested_job_id': job_id, 'current_job_id': current_job,
-        }
+        # The in-memory job ID is lost on restart/deploy. Return durable state
+        # instead of incorrectly hiding it behind job_not_current.
+        if not persistent:
+            return {
+                'ok': False, 'status': 'job_not_current',
+                'requested_job_id': job_id, 'current_job_id': current_job,
+                'persistent_error': persistent_error,
+            }
+
+    if running:
+        public_status = 'running'
+    elif persistent.get('status') == 'DISCOVERY_RUNNING':
+        # This is deliberately NOT reported as live-running: after a process
+        # restart we cannot prove the old worker still exists.
+        public_status = 'stale_running'
+    elif persistent:
+        public_status = 'idle_with_persistent_state'
+    else:
+        public_status = 'finished' if current_job else 'idle'
 
     return {
         'ok': True,
-        'status': 'running' if running else ('finished' if current_job else 'idle'),
-        'job_id': current_job, 'store': 'easycosmetic',
-        'started_at': started, 'finished_at': finished,
-        'error': error, 'result': result,
+        'status': public_status,
+        'job_id': current_job,
+        'requested_job_id': job_id or None,
+        'store': 'easycosmetic',
+        'started_at': started,
+        'finished_at': finished,
+        'error': error,
+        'result': result,
+        'persistent_store_state': persistent,
+        'persistent_error': persistent_error,
     }
 
 # Isolated Deloox operational resync. This endpoint intentionally bypasses
