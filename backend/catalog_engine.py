@@ -670,26 +670,43 @@ def _standard_sitemap_roots(base):
     return [f'{base}/{name}' for name in names] + [f'{base}/v/sitemap.xml']
 
 
-def _seed_sitemaps(store):
-    """Collect sitemap roots from robots.txt plus generic standard candidates."""
+def _seed_sitemaps(store, progress_callback=None):
+    """Collect sitemap roots while exposing progress for each robots.txt request.
+
+    A store must never remain indefinitely at the generic discovery_started
+    marker: persist which host is being checked and the result of each request.
+    """
     roots = []
     robots_diagnostics = []
-    for base in _discovery_bases(store):
+    bases = _discovery_bases(store)
+    for index, base in enumerate(bases, 1):
         base = base.rstrip('/')
         roots.extend(_standard_sitemap_roots(base))
         robots_url = base + '/robots.txt'
+        if progress_callback:
+            progress_callback(
+                f'phase=robots;host={urllib.parse.urlparse(base).netloc};'
+                f'host_index={index};host_total={len(bases)};state=requesting'
+            )
         try:
-            resp = _http_fetch(robots_url, timeout=8)
-            robots_diagnostics.append(_diagnostic(resp, robots_url))
+            resp = _http_fetch(robots_url, timeout=(3.05, 5.0))
+            diagnostic = _diagnostic(resp, robots_url)
+            robots_diagnostics.append(diagnostic)
             if resp['status'] < 400 and resp['data']:
                 text = resp['data'].decode('utf-8', 'ignore')
-                # robots directives are case-insensitive in practice.
                 for raw in re.findall(r'(?im)^\s*sitemap\s*:\s*(\S+)', text):
                     raw = raw.strip().strip('<>')
                     if raw:
                         roots.append(urllib.parse.urljoin(robots_url, raw))
         except Exception as exc:
-            robots_diagnostics.append(f'{type(exc).__name__}:{exc}')
+            diagnostic = f'{type(exc).__name__}:{exc}'
+            robots_diagnostics.append(diagnostic)
+        if progress_callback:
+            progress_callback(
+                f'phase=robots;host={urllib.parse.urlparse(base).netloc};'
+                f'host_index={index};host_total={len(bases)};state=complete;'
+                f'result={diagnostic[:180]}'
+            )
     return list(dict.fromkeys(roots)), robots_diagnostics
 
 
@@ -2405,7 +2422,13 @@ def discover_store(store):
     started_at=time.time()
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
-    roots,robots_diagnostics=_seed_sitemaps(store)
+    def _persist_seed_progress(detail):
+        _set_sync_state(
+            store, 'DISCOVERY_RUNNING', started_at=started_at,
+            discovered_count=0, fetched_count=0, error=detail,
+        )
+
+    roots,robots_diagnostics=_seed_sitemaps(store, progress_callback=_persist_seed_progress)
     queue=[(url,0) for url in roots]
     queued=set(roots); visited=set(); product_urls={}; sitemap_errors=[]
     # Some retailers publish navigation/landing URLs in their sitemap instead
