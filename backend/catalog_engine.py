@@ -35,7 +35,7 @@ import subprocess
 import sys
 import uuid
 import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
 import requests
@@ -51,7 +51,7 @@ STORES = {
     'perfumemarket': 'https://www.perfumemarket.nl',
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
-    'easycosmetic': 'https://www.easycosmetic.be',
+    'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
 }
 
@@ -75,8 +75,10 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # ScentHunter targets the Belgian market. Keep catalog discovery on the
-        # Belgian storefront so German-market prices cannot enter the same offer set.
+        # Easycosmetic has localized official storefronts. Include the Belgian
+        # host in generic catalog discovery so valid .be product links are not
+        # discarded by the allowed-host check.
+        'https://www.easycosmetic.de',
         'https://www.easycosmetic.be',
     ),
     'deloox': (
@@ -962,8 +964,17 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # Generic catalog roots for the Belgian market only. Product-specific
-        # URLs and search queries are intentionally excluded.
+        # Generic catalog roots on both official localized storefronts.
+        # Product-specific URLs and search queries are intentionally excluded.
+        'https://www.easycosmetic.de/',
+        'https://www.easycosmetic.de/parfum',
+        'https://www.easycosmetic.de/alle-marken',
+        'https://www.easycosmetic.de/parfum-marken',
+        'https://www.easycosmetic.de/damenparfum',
+        'https://www.easycosmetic.de/herrenparfum',
+        'https://www.easycosmetic.de/unisex-parfum',
+        'https://www.easycosmetic.de/luxusparfum',
+        'https://www.easycosmetic.de/neuheiten',
         'https://www.easycosmetic.be/',
         'https://www.easycosmetic.be/parfum',
         'https://www.easycosmetic.be/alle-marken',
@@ -2054,9 +2065,14 @@ def _discover_html_catalog(store, seeds, deadline=None):
             if url in visited: continue
             visited.add(url); batch.append((url,depth,source))
         if not batch: continue
-        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS,len(batch))) as pool:
-            futures={pool.submit(_fetch_html_page,store,u):(u,d,source) for u,d,source in batch}
-            for f in as_completed(futures):
+        # Do not let ThreadPoolExecutor's context manager wait indefinitely
+        # for unfinished network tasks when the discovery deadline is reached.
+        pool = ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch)))
+        futures = {pool.submit(_fetch_html_page, store, u): (u, d, source)
+                   for u, d, source in batch}
+        try:
+            remaining = None if deadline is None else max(0.01, deadline - time.time())
+            for f in as_completed(futures, timeout=remaining):
                 requested,depth,source=futures[f]
                 try: _requested,final,data,error=f.result()
                 except Exception as exc:
@@ -2149,6 +2165,14 @@ def _discover_html_catalog(store, seeds, deadline=None):
                             add(listing,depth+1,requested)
                 except Exception:
                     pass
+        except FuturesTimeoutError:
+            pending = [meta[0] for future, meta in futures.items() if not future.done()]
+            errors.append(f'discovery_deadline_reached; pending_pages={len(pending)}')
+        finally:
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
 
     return {
         'product_urls':product_urls,
@@ -2390,9 +2414,14 @@ def discover_store(store):
             if sm in visited: continue
             visited.add(sm); batch.append((sm,depth))
         if not batch: continue
-        with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS,len(batch))) as pool:
-            futures={pool.submit(_fetch_sitemap,store,sm):(sm,depth) for sm,depth in batch}
-            for f in as_completed(futures):
+        # Bound the wait itself, not only the outer loop. A context-managed
+        # executor waits for every worker on exit and can defeat the deadline.
+        pool = ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(batch)))
+        futures = {pool.submit(_fetch_sitemap, store, sm): (sm, depth)
+                   for sm, depth in batch}
+        try:
+            remaining = max(0.01, sitemap_deadline - time.time())
+            for f in as_completed(futures, timeout=remaining):
                 sm,depth=futures[f]
                 try: _source,final,entries,error=f.result()
                 except Exception as exc:
@@ -2405,22 +2434,6 @@ def discover_store(store):
                     if kind=='sitemap':
                         if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
                             queued.add(absolute); queue.append((absolute,depth+1))
-                    elif store == 'easycosmetic':
-                        # Sitemap entries are not trusted to belong to the
-                        # configured storefront: a sitemap URL or redirect can
-                        # expose the German domain. Apply the same strict host
-                        # allowlist used by HTML discovery before indexing it.
-                        candidate = _html_product_url(store, absolute, final or sm)
-                        if candidate and _looks_product(candidate, store):
-                            product_urls[candidate] = lastmod or ''
-                            if len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS:
-                                break
-                        elif store in HTML_DISCOVERY_SEEDS:
-                            listing = _html_listing_url(
-                                store, absolute, final or sm, 'sitemap'
-                            )
-                            if listing:
-                                html_sitemap_seeds.add(listing)
                     elif _looks_product(absolute, store):
                         product_urls[absolute]=lastmod or ''
                         if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
@@ -2429,6 +2442,15 @@ def discover_store(store):
                         listing=_html_listing_url(store,absolute,final or sm,'sitemap')
                         if listing:
                             html_sitemap_seeds.add(listing)
+        except FuturesTimeoutError:
+            sitemap_errors.append(
+                f'sitemap_batch_deadline_reached; pending={sum(1 for f in futures if not f.done())}'
+            )
+        finally:
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
 
     fallback=None
     # Deloox has unreliable sitemap endpoints. Its HTML catalog is therefore
@@ -2456,7 +2478,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store in ('sabina', 'easycosmetic')
+            store == 'sabina'
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
@@ -3036,9 +3058,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
-           AND (f.store != 'easycosmetic'
-                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-                OR lower(u.url) LIKE 'https://easycosmetic.be/%')
          ORDER BY rank
          LIMIT ?
     """
@@ -3201,14 +3220,11 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
-                   AND (? != 'easycosmetic'
-                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-                        OR lower(u.url) LIKE 'https://easycosmetic.be/%')
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
             candidates = conn.execute(
-                sql, [store, store, *params, max(128, limit or 128)]
+                sql, [store, *params, max(128, limit or 128)]
             ).fetchall()
             for r in candidates:
                 url = str(r['url'] or '').strip()
