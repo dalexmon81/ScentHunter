@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 
 STORE = "Easycosmetic"
-BASE_URL = "https://www.easycosmetic.de"
+BASE_URL = "https://www.easycosmetic.be"
 SEARCH_URL = BASE_URL + "/suche?searchfor={}"
 TIMEOUT = 15
 BROWSER_TIMEOUT_MS = 15000
@@ -72,16 +72,14 @@ def _normalise_text(value: str) -> str:
 def _normalise_url(url: str) -> str:
     """Canonicalise Easycosmetic product URLs without merging product variants.
 
-    Easycosmetic links may use either the .de or .be host. The scraper fetches
-    the canonical .de host, while preserving a numeric ``variant`` query value.
+    Keep product URLs on the Belgian storefront to avoid mixing German-market
+    prices into Belgian results, while preserving numeric ``variant`` values.
     Tracking and unrelated query parameters are intentionally discarded.
     """
     absolute = urljoin(BASE_URL, str(url or ""))
     parsed = urlparse(absolute)
 
     if parsed.netloc.lower() not in {
-        "easycosmetic.de",
-        "www.easycosmetic.de",
         "easycosmetic.be",
         "www.easycosmetic.be",
     }:
@@ -115,7 +113,7 @@ def _is_candidate_url(url: str) -> bool:
         return False
 
     parsed = urlparse(url)
-    if parsed.netloc.lower() not in {"easycosmetic.de", "www.easycosmetic.de"}:
+    if parsed.netloc.lower() not in {"easycosmetic.be", "www.easycosmetic.be"}:
         return False
 
     path = parsed.path.lower()
