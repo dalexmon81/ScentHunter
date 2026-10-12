@@ -61,6 +61,115 @@ _CATALOG_RESYNC_FINISHED_AT = None
 _CATALOG_RESYNC_RESULT = {}
 _CATALOG_RESYNC_ERROR = None
 _CATALOG_RESYNC_STORES = ('sabina', 'deloox')
+
+# Isolated Easycosmetic operational resync. This repairs only the Easycosmetic
+# catalog and runs separately from /search and the other store resync jobs.
+_EASYCOSMETIC_RESYNC_LOCK = threading.Lock()
+_EASYCOSMETIC_RESYNC_RUNNING = False
+_EASYCOSMETIC_RESYNC_JOB_ID = None
+_EASYCOSMETIC_RESYNC_STARTED_AT = None
+_EASYCOSMETIC_RESYNC_FINISHED_AT = None
+_EASYCOSMETIC_RESYNC_RESULT = {}
+_EASYCOSMETIC_RESYNC_ERROR = None
+
+
+def _easycosmetic_resync_worker(job_id):
+    global _EASYCOSMETIC_RESYNC_RUNNING, _EASYCOSMETIC_RESYNC_FINISHED_AT
+    global _EASYCOSMETIC_RESYNC_RESULT, _EASYCOSMETIC_RESYNC_ERROR
+
+    result = {}
+    error = None
+    print(f'CATALOG EASYCOSMETIC RESYNC START job={job_id}', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+
+        result = catalog_discover_store('easycosmetic')
+        if not isinstance(result, dict):
+            result = {'status': 'finished', 'result': result}
+
+        print(
+            f'CATALOG EASYCOSMETIC RESYNC END job={job_id} '
+            f'status={result.get("status", "unknown")} '
+            f'count={result.get("count", "?")}',
+            flush=True,
+        )
+    except Exception as exc:
+        error = f'{type(exc).__name__}:{exc}'
+        result = {'status': 'DISCOVERY_ERROR', 'count': 0, 'error': error}
+        print(f'CATALOG EASYCOSMETIC RESYNC ERROR job={job_id}: {error}', flush=True)
+    finally:
+        with _EASYCOSMETIC_RESYNC_LOCK:
+            _EASYCOSMETIC_RESYNC_RESULT = result
+            _EASYCOSMETIC_RESYNC_ERROR = error
+            _EASYCOSMETIC_RESYNC_FINISHED_AT = time.time()
+            _EASYCOSMETIC_RESYNC_RUNNING = False
+
+
+@app.get('/catalog/resync-easycosmetic')
+def catalog_resync_easycosmetic_endpoint():
+    """Start an isolated Easycosmetic-only catalog discovery run."""
+    global _EASYCOSMETIC_RESYNC_RUNNING, _EASYCOSMETIC_RESYNC_JOB_ID
+    global _EASYCOSMETIC_RESYNC_STARTED_AT, _EASYCOSMETIC_RESYNC_FINISHED_AT
+    global _EASYCOSMETIC_RESYNC_RESULT, _EASYCOSMETIC_RESYNC_ERROR
+
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+        return {'ok': False, 'error': 'catalog_discovery_unavailable', 'store': 'easycosmetic'}
+
+    with _EASYCOSMETIC_RESYNC_LOCK:
+        if _EASYCOSMETIC_RESYNC_RUNNING:
+            return {
+                'ok': False, 'status': 'already_running',
+                'job_id': _EASYCOSMETIC_RESYNC_JOB_ID, 'store': 'easycosmetic',
+            }
+
+        job_id = uuid.uuid4().hex[:12]
+        _EASYCOSMETIC_RESYNC_RUNNING = True
+        _EASYCOSMETIC_RESYNC_JOB_ID = job_id
+        _EASYCOSMETIC_RESYNC_STARTED_AT = time.time()
+        _EASYCOSMETIC_RESYNC_FINISHED_AT = None
+        _EASYCOSMETIC_RESYNC_RESULT = {}
+        _EASYCOSMETIC_RESYNC_ERROR = None
+
+    threading.Thread(
+        target=_easycosmetic_resync_worker,
+        args=(job_id,),
+        daemon=True,
+        name='scenthunter-catalog-easycosmetic-resync',
+    ).start()
+
+    return {
+        'ok': True, 'status': 'started', 'job_id': job_id, 'store': 'easycosmetic',
+        'status_endpoint': f'/catalog/resync-easycosmetic-status?job_id={job_id}',
+        'note': 'Easycosmetic-only discovery runs in background and does not run inside /search.',
+    }
+
+
+@app.get('/catalog/resync-easycosmetic-status')
+def catalog_resync_easycosmetic_status_endpoint(job_id: str = ''):
+    """Read-only status for the isolated Easycosmetic discovery run."""
+    with _EASYCOSMETIC_RESYNC_LOCK:
+        running = _EASYCOSMETIC_RESYNC_RUNNING
+        current_job = _EASYCOSMETIC_RESYNC_JOB_ID
+        started = _EASYCOSMETIC_RESYNC_STARTED_AT
+        finished = _EASYCOSMETIC_RESYNC_FINISHED_AT
+        result = dict(_EASYCOSMETIC_RESYNC_RESULT)
+        error = _EASYCOSMETIC_RESYNC_ERROR
+
+    if job_id and current_job and job_id != current_job:
+        return {
+            'ok': False, 'status': 'job_not_current',
+            'requested_job_id': job_id, 'current_job_id': current_job,
+        }
+
+    return {
+        'ok': True,
+        'status': 'running' if running else ('finished' if current_job else 'idle'),
+        'job_id': current_job, 'store': 'easycosmetic',
+        'started_at': started, 'finished_at': finished,
+        'error': error, 'result': result,
+    }
+
 # Isolated Deloox operational resync. This endpoint intentionally bypasses
 # Sabina so Deloox can be rebuilt and measured independently.
 _DELOOX_RESYNC_LOCK = threading.Lock()
