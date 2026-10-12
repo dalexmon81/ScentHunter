@@ -455,6 +455,77 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     return None
 
 
+def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
+    """Read the displayed price from the product detail, not recommendations.
+
+    Easycosmetic's JSON-LD can contain a stale/cached offer that differs from
+    the price currently shown for the selected bottle size. Prefer a price
+    explicitly attached to the product detail (itemprop/data-price or a
+    product-price element); never scan the whole document for the first euro
+    amount, because variant selectors and recommendation cards contain other
+    prices.
+    """
+    h1 = soup.find("h1")
+    if h1 is None:
+        return None
+
+    # Walk outward from the title and stop at a bounded product-detail scope.
+    # This avoids accidentally selecting a price from a recommendation grid.
+    roots = []
+    node = h1
+    for _ in range(7):
+        if node is None:
+            break
+        if getattr(node, "name", None) in {"main", "article"}:
+            roots.append(node)
+            break
+        classes = " ".join(node.get("class", [])).lower() if getattr(node, "attrs", None) else ""
+        node_id = str(node.get("id") or "").lower() if getattr(node, "attrs", None) else ""
+        if any(marker in f"{classes} {node_id}" for marker in (
+            "product-detail", "productdetail", "product-info", "productinfo",
+            "product-price", "productpage", "product-page", "product__info",
+        )):
+            roots.append(node)
+            break
+        node = node.parent
+
+    # Also check the nearest section/container around the title if the site
+    # doesn't use a recognizable product-detail class.
+    if not roots:
+        node = h1
+        for _ in range(4):
+            node = getattr(node, "parent", None)
+            if node is None:
+                break
+            if getattr(node, "name", None) in {"section", "article", "main"}:
+                roots.append(node)
+                break
+    if not roots:
+        return None
+
+    root = roots[0]
+    selectors = (
+        'meta[itemprop="price"]', '[itemprop="price"]',
+        '[data-price]', '[class*="product-price"]',
+        '[class*="price-current"]', '[class*="priceCurrent"]',
+        '[class~="price"]',
+    )
+    rejected = ("old", "was", "strike", "cross", "regular", "uvp", "list-price", "discount-percent")
+    for selector in selectors:
+        for element in root.select(selector):
+            classes = " ".join(element.get("class", [])).lower()
+            element_id = str(element.get("id") or "").lower()
+            if any(marker in f"{classes} {element_id}" for marker in rejected):
+                continue
+            raw = element.get("content") or element.get("data-price") or element.get_text(" ", strip=True)
+            price = _price_to_float(raw)
+            if price is None:
+                price = _extract_price_from_text(_clean(raw))
+            if price is not None and price > 0:
+                return price
+    return None
+
+
 def _extract_brand(product_json: Dict[str, Any]) -> str:
     brand = product_json.get("brand")
 
@@ -946,9 +1017,15 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    # Do not infer a variant price from arbitrary page text: the page may
-    # contain prices for other bottle sizes, promotions, or recommendations.
-    # If structured offer data has no price, keep price unknown.
+    # On a selected Easycosmetic variant URL, the product-detail price is the
+    # authoritative current storefront price. JSON-LD may be cached or may
+    # describe a different offer; use the narrowly scoped visible price when
+    # it is available, while refusing to guess from arbitrary page text.
+    has_selected_variant = bool(parse_qs(urlparse(url).query).get("variant"))
+    if has_selected_variant:
+        displayed_price = _extract_selected_variant_price(soup)
+        if displayed_price is not None:
+            price = displayed_price
 
     page_available, page_availability = _availability_from_page(page_text)
 
