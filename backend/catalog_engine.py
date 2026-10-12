@@ -2830,6 +2830,18 @@ def refresh_url(store, url):
                 'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else ''),
             ),
         )
+        # A ParfumZentrum placeholder price is not a transient network/parser
+        # failure: this URL must stop participating in public search and the
+        # hydration queue. Other failures remain retryable as before.
+        placeholder_offer = (
+            store == 'parfumzentrum'
+            and 'invalid_placeholder_price' in str(exc)
+        )
+        if placeholder_offer:
+            conn.execute(
+                "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                (store, url),
+            )
         conn.commit()
         conn.close()
 
@@ -3553,12 +3565,14 @@ def _queue_mark_error(task, error, http_status=None):
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
 
-        # 404/410 and exhausted retries are terminal. Other failures remain
-        # retryable and get progressively longer backoff.
+        # 404/410, known ParfumZentrum placeholder prices and exhausted
+        # retries are terminal. Placeholder offers are deactivated by
+        # refresh_url(); do not retry them as if they were transient failures.
         terminal_http = http_status in (404, 410)
+        terminal_placeholder = 'invalid_placeholder_price' in str(error)
         next_state = (
             'DEAD'
-            if terminal_http or attempts >= HYDRATION_MAX_ATTEMPTS
+            if terminal_http or terminal_placeholder or attempts >= HYDRATION_MAX_ATTEMPTS
             else 'ERROR'
         )
         conn.execute(
