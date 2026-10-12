@@ -2169,6 +2169,17 @@ def _discover_html_catalog(store, seeds, deadline=None):
             pending = [meta[0] for future, meta in futures.items() if not future.done()]
             errors.append(f'discovery_deadline_reached; pending_pages={len(pending)}')
         finally:
+            _set_sync_state(
+                store, 'DISCOVERY_RUNNING',
+                started_at=(deadline - DISCOVERY_HARD_TIMEOUT if deadline is not None else started),
+                discovered_count=len(product_urls), fetched_count=successes,
+                error=(
+                    f'phase=html_fallback;last_progress_at={time.time():.3f};'
+                    f'visited={len(visited)};queued={len(queue)};'
+                    f'products_found={len(product_urls)};successes={successes};'
+                    f'errors={len(errors)};deadline={deadline}'
+                ),
+            )
             for future in futures:
                 if not future.done():
                     future.cancel()
@@ -2447,6 +2458,16 @@ def discover_store(store):
                 f'sitemap_batch_deadline_reached; pending={sum(1 for f in futures if not f.done())}'
             )
         finally:
+            _set_sync_state(
+                store, 'DISCOVERY_RUNNING', started_at=started_at,
+                discovered_count=len(product_urls), fetched_count=sitemap_successes,
+                error=(
+                    f'phase=sitemap;last_progress_at={time.time():.3f};'
+                    f'visited={len(visited)};queued={len(queue)};'
+                    f'products_found={len(product_urls)};successes={sitemap_successes};'
+                    f'xml_entries={sitemap_url_entries};errors={len(sitemap_errors)}'
+                ),
+            )
             for future in futures:
                 if not future.done():
                     future.cancel()
