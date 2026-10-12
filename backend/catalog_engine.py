@@ -2405,6 +2405,22 @@ def discover_store(store):
                     if kind=='sitemap':
                         if depth+1<=MAX_SITEMAP_DEPTH and absolute not in queued:
                             queued.add(absolute); queue.append((absolute,depth+1))
+                    elif store == 'easycosmetic':
+                        # Sitemap entries are not trusted to belong to the
+                        # configured storefront: a sitemap URL or redirect can
+                        # expose the German domain. Apply the same strict host
+                        # allowlist used by HTML discovery before indexing it.
+                        candidate = _html_product_url(store, absolute, final or sm)
+                        if candidate and _looks_product(candidate, store):
+                            product_urls[candidate] = lastmod or ''
+                            if len(product_urls) >= MAX_TOTAL_DISCOVERED_URLS:
+                                break
+                        elif store in HTML_DISCOVERY_SEEDS:
+                            listing = _html_listing_url(
+                                store, absolute, final or sm, 'sitemap'
+                            )
+                            if listing:
+                                html_sitemap_seeds.add(listing)
                     elif _looks_product(absolute, store):
                         product_urls[absolute]=lastmod or ''
                         if len(product_urls)>=MAX_TOTAL_DISCOVERED_URLS:
@@ -2440,7 +2456,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store == 'sabina'
+            store in ('sabina', 'easycosmetic')
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
