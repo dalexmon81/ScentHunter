@@ -326,6 +326,34 @@ def _extract_image_url(value: Any) -> str:
     return ""
 
 
+def _extract_image_url_for_size(value: Any, size_ml: Optional[int]) -> str:
+    """Choose an image for the parsed bottle size when JSON-LD exposes several."""
+    if size_ml is None:
+        return _extract_image_url(value)
+
+    candidates: List[str] = []
+
+    def collect(item: Any) -> None:
+        if isinstance(item, str):
+            candidate = item.strip()
+            if candidate:
+                candidates.append(urljoin(BASE_URL, candidate))
+        elif isinstance(item, dict):
+            for key in ("contentUrl", "url", "src", "image"):
+                child = item.get(key)
+                if isinstance(child, (str, dict, list)):
+                    collect(child)
+        elif isinstance(item, list):
+            for child in item:
+                collect(child)
+
+    collect(value)
+    for candidate in candidates:
+        if re.search(rf"(?<!\d){size_ml}\s?ml\b", candidate, flags=re.I):
+            return candidate
+    return candidates[0] if candidates else ""
+
+
 def _extract_page_image(
     soup: BeautifulSoup,
     product_name: str = "",
@@ -980,6 +1008,18 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     if not name:
         return None
 
+    size_ml = _extract_size_ml(
+        soup, name, url, image, product_json=product_json
+    )
+    if product_json:
+        # Some Easycosmetic Product objects expose multiple images. Select the
+        # one matching the parsed bottle size instead of blindly taking index 0.
+        variant_image = _extract_image_url_for_size(
+            product_json.get("image"), size_ml
+        )
+        if variant_image:
+            image = variant_image
+
     return {
         "shop": STORE,
         "brand": brand,
@@ -990,9 +1030,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         "available": available,
         "availability": availability,
         "image": image,
-        "size_ml": _extract_size_ml(
-            soup, name, url, image, product_json=product_json
-        ),
+        "size_ml": size_ml,
         "url": url,
     }
 
