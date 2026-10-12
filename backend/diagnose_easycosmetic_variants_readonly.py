@@ -14,13 +14,11 @@ Safety:
 - Does not call search(), ProductMatcher, production API, or database code.
 - Does not write to ScentHunter or Easycosmetic.
 - Only performs HTTP GET requests to the five explicitly listed product URLs.
-- Prints one JSON report to stdout.
+- Returns a JSON report through a read-only FastAPI endpoint, and prints it
+  when run directly as a script.
 
 Run from the repository's backend directory:
     python diagnose_easycosmetic_variants_readonly.py
-
-Required dependencies are already used by the Easycosmetic scraper:
-    requests, beautifulsoup4
 """
 
 from __future__ import annotations
@@ -36,7 +34,9 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from fastapi import APIRouter
 
+router = APIRouter()
 
 URLS = [
     (
@@ -72,7 +72,6 @@ URLS = [
 
 TIMEOUT = (8, 20)
 MAX_CONTEXT = 700
-MAX_HTML_BYTES = 0
 
 
 def load_real_scraper():
@@ -259,9 +258,7 @@ def parse_one(session: requests.Session, scraper, label: str, url: str):
         h1 = soup.find("h1")
         title = soup.find("title")
         og_image = soup.select_one('meta[property="og:image"]')
-        selected_image = (
-            og_image.get("content") if og_image else None
-        )
+        selected_image = og_image.get("content") if og_image else None
         products = jsonld_records(soup)
         visible_text = clean(soup.get_text(" ", strip=True))
 
@@ -319,7 +316,7 @@ def parse_one(session: requests.Session, scraper, label: str, url: str):
     return result
 
 
-def main():
+def run_diagnostic():
     scraper, scraper_path = load_real_scraper()
     session = requests.Session()
     report = {
@@ -364,8 +361,14 @@ def main():
             "errors": item.get("errors", []),
         }
     report["comparison"] = comparison
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    return report
+
+
+@router.get("/diagnose-easycosmetic-variants-read-only")
+def diagnose_easycosmetic_variants_readonly_endpoint():
+    """Run the Easycosmetic variant comparison without writing to the catalog."""
+    return run_diagnostic()
 
 
 if __name__ == "__main__":
-    main()
+    print(json.dumps(run_diagnostic(), ensure_ascii=False, indent=2))
