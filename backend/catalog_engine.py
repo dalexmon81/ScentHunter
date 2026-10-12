@@ -2729,11 +2729,18 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             # refresh_url(). Reuse it when supported so price/variant data
             # comes from the same response and no second page request occurs.
             parameters = inspect.signature(parser).parameters
+            # Keep the originally requested URL as the parser's identity URL.
+            # Retailers can redirect a variant URL (?variant=123) to the
+            # canonical product path while serving the selected variant HTML.
+            # Passing only final_url loses that ID, which can attach the
+            # default bottle size/offer to every variant in the catalog.
+            parser_url = original_url or final_url
+            parser_slug = url_slug(parser_url)
             if 'html' in parameters and html_data is not None:
                 html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
-                parsed = parser(session, final_url, url_slug(final_url), html=html_text)
+                parsed = parser(session, parser_url, parser_slug, html=html_text)
             else:
-                parsed = parser(session, final_url, url_slug(final_url))
+                parsed = parser(session, parser_url, parser_slug)
         finally:
             session.close()
     else:
@@ -2747,8 +2754,9 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         # Retailer product URLs may append an internal SKU (for example,
         # "_z1016707") that is not part of the product name. Do not pass that
         # identifier into the name matcher as a required query token.
-        parser_query = re.sub(r'\bz\d+\s*$', '', url_slug(final_url), flags=re.I).strip()
-        parsed = parser(final_url, parser_query)
+        parser_url = original_url or final_url
+        parser_query = re.sub(r'\bz\d+\s*$', '', url_slug(parser_url), flags=re.I).strip()
+        parsed = parser(parser_url, parser_query)
 
     if not isinstance(parsed, dict):
         return None
@@ -2767,7 +2775,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
-        'url': parsed.get('url') or final_url or original_url,
+        'url': parsed.get('url') or original_url or final_url,
         'name': parsed.get('name') or parsed.get('title') or '',
         'brand': parsed.get('brand') or '',
         'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
