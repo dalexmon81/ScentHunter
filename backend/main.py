@@ -2766,6 +2766,71 @@ def catalog_refresh_deloox_url_endpoint(url: str = ''):
     }
 
 
+@app.api_route('/catalog/refresh-store-url', methods=['GET', 'POST'])
+def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
+    """Refresh exactly one approved product URL for an approved retailer.
+
+    This operational endpoint does not run discovery or a store-wide resync.
+    The URL is admitted by catalog_engine's existing retailer host/path rules,
+    then passed through the same refresh_url persistence path as hydration.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+
+    import urllib.parse
+    import catalog_engine
+
+    store_key = str(store or '').strip().lower()
+    raw_url = str(url or '').strip()
+    if store_key not in STORES:
+        return {'ok': False, 'error': 'unknown_store', 'store': store_key, 'allowed_stores': STORES}
+    if not raw_url.lower().startswith(('https://', 'http://')):
+        return {'ok': False, 'error': 'invalid_product_url', 'store': store_key, 'url': raw_url}
+
+    # _html_product_url applies the store's existing official-host and
+    # product-path admission rules. It does not initiate discovery.
+    try:
+        target = catalog_engine._html_product_url(
+            store_key, raw_url, catalog_engine.STORES[store_key]
+        )
+    except Exception as exc:
+        return {
+            'ok': False, 'error': 'url_validation_failed', 'store': store_key,
+            'detail': f'{type(exc).__name__}: {exc}',
+        }
+    if not target:
+        return {'ok': False, 'error': 'url_not_allowed_for_store', 'store': store_key, 'url': raw_url}
+
+    parsed_target = urllib.parse.urlparse(target)
+    if parsed_target.scheme != 'https':
+        return {'ok': False, 'error': 'https_required', 'store': store_key, 'url': target}
+
+    item = catalog_engine.refresh_url(store_key, target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            """SELECT store,url,name,brand,image,sku,gtin,mpn,size_ml,
+                      concentration,gender,price,currency,availability,
+                      fetched_at,fetch_status
+               FROM store_products WHERE store=? AND url=?""",
+            (store_key, target),
+        ).fetchone()
+        persisted = dict(row) if row else None
+    finally:
+        conn.close()
+
+    return {
+        'ok': bool(item) and bool(persisted) and persisted.get('fetch_status') == 'OK',
+        'diagnostic': 'catalog-targeted-store-url-refresh-v1',
+        'discovery_called': False,
+        'store_resync_called': False,
+        'store': store_key,
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': persisted,
+    }
+
+
 @app.get('/catalog/hydration-errors')
 def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
     """Read-only diagnostic view of recent hydration errors."""
