@@ -1713,6 +1713,13 @@ def _extract_product(url, query):
         data,
     )
 
+    # Parfum-Zentrum can expose placeholder prices (notably 1.00 EUR) for
+    # product records that are not genuinely offered for sale. Never publish
+    # such a placeholder as a customer-facing offer. This is a generic
+    # retailer-data validity check, not a product-specific exception.
+    if price is not None and price <= 1.00:
+        return None
+
     availability = (
         _jsonld_availability(
             data
@@ -1915,7 +1922,9 @@ def search(query):
     # FALLBACK: use the cached sitemap only when the live search response was
     # not authoritative (for example a transient block or an unexpected page
     # shell). Never use the sitemap to override an explicit live zero-result.
-    if not candidates:
+    # This guard is essential: otherwise a removed/hidden product can be
+    # rediscovered from a stale sitemap URL after the retailer reports zero.
+    if not candidates and not authoritative_zero:
         candidates = _sitemap_discovery(
             query
         )
