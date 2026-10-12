@@ -2663,7 +2663,11 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         parser = getattr(module, '_extract_product', None)
         if not callable(parser):
             return None
-        parsed = parser(final_url, url_slug(final_url))
+        # Retailer product URLs may append an internal SKU (for example,
+        # "_z1016707") that is not part of the product name. Do not pass that
+        # identifier into the name matcher as a required query token.
+        parser_query = re.sub(r'\bz\d+\s*$', '', url_slug(final_url), flags=re.I).strip()
+        parsed = parser(final_url, parser_query)
 
     if not isinstance(parsed, dict):
         return None
