@@ -2796,7 +2796,10 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
-        status, final, data = http_get(url, timeout=REFRESH_TIMEOUT)
+        # Easycosmetic can stall on variant pages; keep this store's refresh
+        # bounded so a slow variant does not hold the whole search response.
+        store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
+        status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
