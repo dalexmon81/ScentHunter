@@ -1111,9 +1111,20 @@ def _html_product_url(store, raw_url, base_url):
     path = p.path or '/'
     low = path.lower()
     if store == 'easycosmetic':
-        if not low.endswith('.aspx'):
+        # Easycosmetic product URLs are not guaranteed to end in .aspx.
+        # Accept product-like paths on the official host, while excluding
+        # known utility and navigation endpoints. Preserve the variant query
+        # so separate bottle sizes remain distinct.
+        if any(x in low for x in (
+            '/suche', '/search', '/service', '/kontakt', '/impressum',
+            '/datenschutz', '/agb', '/versand', '/zahlung', '/marken',
+            '/alle-marken', '/faq/', '/login', '/account', '/cart',
+            '/checkout', '/warenkorb', '/kundenkonto',
+        )):
             return None
-        if any(x in low for x in ('/suche', '/service', '/kontakt', '/impressum', '/datenschutz', '/agb', '/versand', '/zahlung', '/marken', '/alle-marken', '/faq/')):
+        if low in ('/', '/parfum', '/damenparfum', '/herrenparfum',
+                   '/unisex-parfum', '/luxusparfum', '/neuheiten',
+                   '/alle-marken', '/parfum-marken'):
             return None
         return absolute
     if store == 'deloox':
