@@ -631,104 +631,18 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
-
-        # Repairable schema migration ledger. CREATE TABLE IF NOT EXISTS does not
-        # add columns to an already-existing table, so inspect and upgrade it in place.
-        conn.execute("""CREATE TABLE IF NOT EXISTS catalog_migrations(
-            migration_key TEXT PRIMARY KEY, applied_at REAL NOT NULL)""")
-        migration_columns = {
-            row['name'] for row in conn.execute('PRAGMA table_info(catalog_migrations)').fetchall()
-        }
-        if 'migration_key' not in migration_columns:
-            # Preserve the old table and its data; rebuild only the migration ledger.
-            conn.execute('ALTER TABLE catalog_migrations RENAME TO catalog_migrations_legacy')
-            conn.execute("""CREATE TABLE catalog_migrations(
-                migration_key TEXT PRIMARY KEY, applied_at REAL NOT NULL)""")
-        else:
-            if 'applied_at' not in migration_columns:
-                conn.execute('ALTER TABLE catalog_migrations ADD COLUMN applied_at REAL NOT NULL DEFAULT 0')
-
-        # Enforce the Belgian storefront on every schema initialization, not only
-        # when a migration marker is absent. German offers/prices must never be
-        # returned for the Belgian Easycosmetic store. Queue .be pages for normal
-        # retailer-page hydration; never copy German prices onto Belgian URLs.
-        german_rows = conn.execute(
-            """SELECT url,slug,lastmod,discovered_at,active
-                 FROM store_urls
-                WHERE store='easycosmetic'
-                  AND (lower(url) LIKE 'https://www.easycosmetic.de/%'
-                       OR lower(url) LIKE 'https://easycosmetic.de/%')"""
-        ).fetchall()
-        for old in german_rows:
-            old_url = str(old['url'] or '')
-            parsed = urllib.parse.urlsplit(old_url)
-            host = (parsed.hostname or '').lower()
-            if host not in ('easycosmetic.de', 'www.easycosmetic.de'):
-                continue
-            target_host = 'www.easycosmetic.be' if host.startswith('www.') else 'easycosmetic.be'
-            new_url = urllib.parse.urlunsplit((parsed.scheme, target_host, parsed.path, parsed.query, parsed.fragment))
-            existing = conn.execute(
-                "SELECT 1 FROM store_urls WHERE store='easycosmetic' AND url=?", (new_url,)
-            ).fetchone()
-            if not existing:
-                conn.execute(
-                    """INSERT OR IGNORE INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                         VALUES('easycosmetic',?,?,?,?,?)""",
-                    (new_url, old['slug'], old['lastmod'], time.time(), 1),
-                )
-            conn.execute(
-                """INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at)
-                     VALUES('easycosmetic',?,'PENDING',0,?,?)
-                     ON CONFLICT(store,url) DO UPDATE SET
-                       state='PENDING', attempts=0, available_at=excluded.available_at,
-                       leased_until=NULL, lease_token=NULL, last_error=NULL, last_http_status=NULL""",
-                (new_url, time.time(), time.time()),
-            )
-            # Delete stale German product facts and catalog identities only.
-            conn.execute("DELETE FROM store_products WHERE store='easycosmetic' AND url=?", (old_url,))
-            conn.execute("DELETE FROM hydration_queue WHERE store='easycosmetic' AND url=?", (old_url,))
-            conn.execute("DELETE FROM store_urls WHERE store='easycosmetic' AND url=?", (old_url,))
-
-        # Also remove any stray German product rows even if their URL row was
-        # already removed by an earlier/partial migration.
-        conn.execute("""DELETE FROM store_products
-                         WHERE store='easycosmetic'
-                           AND (lower(url) LIKE 'https://www.easycosmetic.de/%'
-                                OR lower(url) LIKE 'https://easycosmetic.de/%')""")
-        conn.execute("""DELETE FROM hydration_queue
-                         WHERE store='easycosmetic'
-                           AND (lower(url) LIKE 'https://www.easycosmetic.de/%'
-                                OR lower(url) LIKE 'https://easycosmetic.de/%')""")
-        conn.execute("""DELETE FROM store_urls
-                         WHERE store='easycosmetic'
-                           AND (lower(url) LIKE 'https://www.easycosmetic.de/%'
-                                OR lower(url) LIKE 'https://easycosmetic.de/%')""")
-        conn.execute(
-            """INSERT INTO catalog_migrations(migration_key,applied_at) VALUES(?,?)
-               ON CONFLICT(migration_key) DO UPDATE SET applied_at=excluded.applied_at""",
-            ('easycosmetic_de_to_be_urls_v2', time.time()),
-        )
         conn.commit()
         _SCHEMA_READY = True
 
 
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=30000')
-    try:
-        _ensure_schema(conn)
-        conn.execute('PRAGMA synchronous=NORMAL')
-        return conn
-    except Exception:
-        # Do not leave a failed schema/bootstrap connection holding a lock.
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        conn.close()
-        raise
+    conn.execute('PRAGMA busy_timeout=15000')
+    _ensure_schema(conn)
+    conn.execute('PRAGMA synchronous=NORMAL')
+    return conn
 
 
 def _discovery_bases(store):
