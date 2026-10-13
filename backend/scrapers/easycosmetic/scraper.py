@@ -26,7 +26,8 @@ HEADERS = {
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
         "image/avif,image/webp,image/apng,*/*;q=0.8"
     ),
-    "Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,de;q=0.6,en;q=0.5",
+    "Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,en;q=0.5",
+
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
     "Upgrade-Insecure-Requests": "1",
@@ -691,11 +692,9 @@ def _extract_candidate_links(
 
 
 def _extract_variant_urls(html: str, product_url: str) -> List[str]:
-    """Find explicitly advertised numeric variant IDs for this product page.
+    """Find variant IDs only from links/data explicitly tied to the same
+    Belgian product path. German links are rejected, never rewritten."""
 
-    Only URLs with the exact same product path are accepted, preventing unrelated
-    product IDs embedded in scripts or recommendations from being mixed in.
-    """
     base = _normalise_url(product_url)
     parsed_base = urlparse(base)
     if not base or not parsed_base.path:
@@ -704,57 +703,72 @@ def _extract_variant_urls(html: str, product_url: str) -> List[str]:
     soup = BeautifulSoup(html or "", "html.parser")
     candidates = set()
 
-    def consider(value: str) -> None:
-        if not value:
+    def consider(raw_value: str) -> None:
+        if not raw_value:
             return
-        value = value.replace("\\/", "/").replace("&amp;", "&").replace("\\u0026", "&")
-        # Full or relative product URL with an explicit variant query.
+
+        value = (
+            str(raw_value)
+            .replace("\\/", "/")
+            .replace("&amp;", "&")
+            .replace("\\u0026", "&")
+        )
+
         for match in re.finditer(
-            r"""(?:https?://(?:www\.)?easycosmetic\.(?:de|be))?"""
-            r"""[^"\s<>]*?\?[^"\s<>#]*?\bvariant(?:=|%3D)(\d+)""",
+            r"""https?://[^"'\s<>]+|/[^"'\s<>]+""",
             value,
             flags=re.IGNORECASE,
         ):
-            variant_id = match.group(1)
-            candidates.add(f"{BASE_URL}{parsed_base.path}?variant={variant_id}")
-        # Selector data may store only the variant ID; accept it only in
-        # attributes whose names clearly identify a variant selector.
+            raw_url = match.group(0)
+            absolute = urljoin(base, raw_url)
+            parsed = urlparse(absolute)
+
+            host = (parsed.hostname or "").lower().rstrip(".")
+            if host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+                continue
+
+            if parsed.path.rstrip("/") != parsed_base.path.rstrip("/"):
+                continue
+
+            params = parse_qs(parsed.query, keep_blank_values=False)
+            variant_values = params.get("variant", [])
+            if variant_values and variant_values[0].isdigit():
+                candidates.add(variant_values[0])
+
         for match in re.finditer(
             r"""(?:data-variant(?:-id)?|data-product-variant|variantId|variant_id)"""
-            r"""\s*["\']?\s*[:=]\s*["\']?(\d+)""",
+            r"""\s*["']?\s*[:=]\s*["']?(\d+)""",
             value,
             flags=re.IGNORECASE,
         ):
-            candidates.add(f"{BASE_URL}{parsed_base.path}?variant={match.group(1)}")
+            candidates.add(match.group(1))
 
     for tag in soup.find_all(True):
         for attr, value in tag.attrs.items():
             if isinstance(value, list):
                 value = " ".join(str(x) for x in value)
-            if isinstance(value, str) and (
-                "variant" in attr.lower()
+
+            if not isinstance(value, str):
+                continue
+
+            attr_name = attr.lower()
+            if (
+                "variant" in attr_name
                 or "easycosmetic" in value.lower()
                 or ".aspx" in value.lower()
             ):
                 consider(value)
+
     for script in soup.find_all("script"):
         consider(script.string or script.get_text(" ", strip=False))
-    consider(html)
 
-    # Keep only variants on the same exact product path, with numeric IDs.
-    valid = []
-    for candidate in candidates:
-        normalized = _normalise_url(candidate)
-        parsed = urlparse(normalized)
-        params = parse_qs(parsed.query)
-        if (
-            normalized
-            and parsed.path == parsed_base.path
-            and params.get("variant")
-            and params["variant"][0].isdigit()
-        ):
-            valid.append(normalized)
-    return sorted(set(valid))
+    return sorted(
+        {
+            f"https://www.easycosmetic.be{parsed_base.path}?variant={variant_id}"
+            for variant_id in candidates
+            if variant_id.isdigit()
+        }
+    )
 
 
 def search(query: str) -> List[Dict[str, Any]]:
