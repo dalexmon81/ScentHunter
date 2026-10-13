@@ -71,22 +71,19 @@ def _normalise_text(value: str) -> str:
 
 
 def _normalise_url(url: str) -> str:
-    """Canonicalise Easycosmetic product URLs without merging product variants.
+    """Canonicalise product URLs for the Belgian Easycosmetic storefront only.
 
-    Preserve the official regional storefront (.be or .de) so regional prices
-    are not silently redirected to another market, while preserving numeric
-    ``variant`` values. Tracking and unrelated query parameters are discarded.
+    German storefront URLs are rejected rather than rewritten: regional product
+    paths and variant IDs are not guaranteed to be interchangeable, and silently
+    converting them could attach a Belgian price to the wrong variant. Tracking
+    and unrelated query parameters are discarded while numeric Belgian variant
+    IDs are preserved.
     """
     absolute = urljoin(BASE_URL, str(url or ""))
     parsed = urlparse(absolute)
 
     host = parsed.netloc.lower()
-    allowed_hosts = {
-        "easycosmetic.be",
-        "www.easycosmetic.be",
-        "easycosmetic.de",
-        "www.easycosmetic.de",
-    }
+    allowed_hosts = {"easycosmetic.be", "www.easycosmetic.be"}
     if host not in allowed_hosts:
         return ""
 
@@ -122,8 +119,6 @@ def _is_candidate_url(url: str) -> bool:
     if parsed.netloc.lower() not in {
         "easycosmetic.be",
         "www.easycosmetic.be",
-        "easycosmetic.de",
-        "www.easycosmetic.de",
     }:
         return False
 
@@ -176,6 +171,14 @@ def _request_html(url: str) -> str:
         response = requests.get(
             url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
         )
+        final_host = urlparse(response.url).netloc.lower()
+        if final_host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+            response.close()
+            raise StoreRequestError(
+                "error",
+                f"Belgian storefront redirected outside easycosmetic.be: {response.url}",
+                http_status=response.status_code,
+            )
         if 200 <= response.status_code < 400:
             return response.text
 
@@ -208,6 +211,11 @@ def _request_html(url: str) -> str:
                 )
                 page = context.new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT_MS)
+                final_host = urlparse(page.url).netloc.lower()
+                if final_host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+                    raise RuntimeError(
+                        f"Belgian storefront redirected outside easycosmetic.be: {page.url}"
+                    )
                 html = page.content()
                 if not html or len(html) < 500:
                     raise RuntimeError(f"browser returned insufficient HTML for {url}")
