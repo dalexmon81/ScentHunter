@@ -26,7 +26,7 @@ HEADERS = {
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
         "image/avif,image/webp,image/apng,*/*;q=0.8"
     ),
-    "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    "Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,de;q=0.6,en;q=0.5",
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
     "Upgrade-Insecure-Requests": "1",
@@ -206,8 +206,8 @@ def _request_html(url: str) -> str:
             try:
                 context = browser.new_context(
                     user_agent=HEADERS["User-Agent"],
-                    locale="de-DE",
-                    extra_http_headers={"Accept-Language": "de-DE,de;q=0.9,en;q=0.8"},
+                    locale="nl-BE",
+                    extra_http_headers={"Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,de;q=0.6,en;q=0.5"},
                 )
                 page = context.new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT_MS)
