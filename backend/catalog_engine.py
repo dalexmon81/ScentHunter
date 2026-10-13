@@ -97,7 +97,7 @@ EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
 EASY_COSMETIC_HEADERS = {
     'User-Agent': EASY_COSMETIC_USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Accept-Language': 'nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,de;q=0.6,en;q=0.5',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
@@ -979,17 +979,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # Generic catalog roots on both official localized storefronts.
-        # Product-specific URLs and search queries are intentionally excluded.
-        'https://www.easycosmetic.de/',
-        'https://www.easycosmetic.de/parfum',
-        'https://www.easycosmetic.de/alle-marken',
-        'https://www.easycosmetic.de/parfum-marken',
-        'https://www.easycosmetic.de/damenparfum',
-        'https://www.easycosmetic.de/herrenparfum',
-        'https://www.easycosmetic.de/unisex-parfum',
-        'https://www.easycosmetic.de/luxusparfum',
-        'https://www.easycosmetic.de/neuheiten',
+        # ScentHunter compares the Belgian market. Crawl only Belgian
+        # navigation surfaces; never seed German pages into the Belgian index.
         'https://www.easycosmetic.be/',
         'https://www.easycosmetic.be/parfum',
         'https://www.easycosmetic.be/alle-marken',
@@ -1120,7 +1111,12 @@ def _html_product_url(store, raw_url, base_url):
     p = urllib.parse.urlparse(absolute)
     if p.scheme not in ('http', 'https'):
         return None
-    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
+    allowed_hosts = set()
+    for configured_base in _discovery_bases(store):
+        configured_host = (urllib.parse.urlparse(configured_base).hostname or '').lower().rstrip('.')
+        if configured_host:
+            allowed_hosts.add(configured_host)
+            allowed_hosts.add(configured_host[4:] if configured_host.startswith('www.') else 'www.' + configured_host)
     if p.netloc.lower() not in allowed_hosts:
         return None
     path = p.path or '/'
@@ -1245,7 +1241,12 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         return None
     absolute = urllib.parse.urljoin(base_url, raw_url).split('#', 1)[0]
     p = urllib.parse.urlparse(absolute)
-    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
+    allowed_hosts = set()
+    for configured_base in _discovery_bases(store):
+        configured_host = (urllib.parse.urlparse(configured_base).hostname or '').lower().rstrip('.')
+        if configured_host:
+            allowed_hosts.add(configured_host)
+            allowed_hosts.add(configured_host[4:] if configured_host.startswith('www.') else 'www.' + configured_host)
     if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
         return None
     path = p.path.lower()
