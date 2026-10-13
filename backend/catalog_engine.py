@@ -75,8 +75,7 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # ScentHunter compares the Belgian market: only index Belgian storefront
-        # URLs so German prices can never be published as Belgian offers.
+        # ScentHunter serves the Belgian market: discover Belgian URLs only.
         'https://www.easycosmetic.be',
     ),
     'deloox': (
@@ -97,7 +96,7 @@ EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
 EASY_COSMETIC_HEADERS = {
     'User-Agent': EASY_COSMETIC_USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,de;q=0.6,en;q=0.5',
+    'Accept-Language': 'nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,en;q=0.7',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
@@ -979,8 +978,17 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # ScentHunter compares the Belgian market. Crawl only Belgian
-        # navigation surfaces; never seed German pages into the Belgian index.
+        # Generic catalog roots on both official localized storefronts.
+        # Product-specific URLs and search queries are intentionally excluded.
+        'https://www.easycosmetic.be/',
+        'https://www.easycosmetic.be/parfum',
+        'https://www.easycosmetic.be/alle-marken',
+        'https://www.easycosmetic.be/parfum-marken',
+        'https://www.easycosmetic.be/damenparfum',
+        'https://www.easycosmetic.be/herrenparfum',
+        'https://www.easycosmetic.be/unisex-parfum',
+        'https://www.easycosmetic.be/luxusparfum',
+        'https://www.easycosmetic.be/neuheiten',
         'https://www.easycosmetic.be/',
         'https://www.easycosmetic.be/parfum',
         'https://www.easycosmetic.be/alle-marken',
@@ -1111,12 +1119,7 @@ def _html_product_url(store, raw_url, base_url):
     p = urllib.parse.urlparse(absolute)
     if p.scheme not in ('http', 'https'):
         return None
-    allowed_hosts = set()
-    for configured_base in _discovery_bases(store):
-        configured_host = (urllib.parse.urlparse(configured_base).hostname or '').lower().rstrip('.')
-        if configured_host:
-            allowed_hosts.add(configured_host)
-            allowed_hosts.add(configured_host[4:] if configured_host.startswith('www.') else 'www.' + configured_host)
+    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
     if p.netloc.lower() not in allowed_hosts:
         return None
     path = p.path or '/'
@@ -1241,12 +1244,7 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         return None
     absolute = urllib.parse.urljoin(base_url, raw_url).split('#', 1)[0]
     p = urllib.parse.urlparse(absolute)
-    allowed_hosts = set()
-    for configured_base in _discovery_bases(store):
-        configured_host = (urllib.parse.urlparse(configured_base).hostname or '').lower().rstrip('.')
-        if configured_host:
-            allowed_hosts.add(configured_host)
-            allowed_hosts.add(configured_host[4:] if configured_host.startswith('www.') else 'www.' + configured_host)
+    allowed_hosts = {urllib.parse.urlparse(x).netloc.lower() for x in _discovery_bases(store)}
     if p.scheme not in ('http', 'https') or p.netloc.lower() not in allowed_hosts:
         return None
     path = p.path.lower()
@@ -3112,9 +3110,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
-           AND (f.store != 'easycosmetic'
-                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-                OR lower(u.url) LIKE 'https://easycosmetic.be/%')
          ORDER BY rank
          LIMIT ?
     """
@@ -3277,9 +3272,6 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
-                   AND (u.store != 'easycosmetic'
-                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-                        OR lower(u.url) LIKE 'https://easycosmetic.be/%')
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
