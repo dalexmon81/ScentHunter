@@ -945,6 +945,55 @@ def _extract_size_ml(
 
     has_variant = bool(parse_qs(urlparse(url).query).get("variant"))
 
+    # A variant page may expose its selected size only in the main product
+    # image's alt/title (for example "... Spray (100 ml)"). Use that evidence
+    # only when the page's own article number matches the requested variant ID.
+    # This avoids borrowing a size from stale JSON-LD, generic H1 text, or a
+    # page that redirected to a different variant.
+    if has_variant:
+        requested_values = parse_qs(urlparse(url).query).get("variant", [])
+        requested_variant = next(
+            (str(value).strip() for value in requested_values
+             if str(value).strip().isdigit()),
+            None,
+        )
+        page_text = soup.get_text(" ", strip=True)
+        article_patterns = (
+            r"Artikelnummer\s*[:#]?\s*(\d+)",
+            r"Artikel[- ]?Nr[.]?\s*[:#]?\s*(\d+)",
+            r"article number\s*[:#]?\s*(\d+)",
+            r"num[eé]ro d['’]article\s*[:#]?\s*(\d+)",
+        )
+        page_variant = None
+        for pattern in article_patterns:
+            match = re.search(pattern, page_text, flags=re.I)
+            if match:
+                page_variant = match.group(1)
+                break
+
+        if requested_variant and page_variant == requested_variant:
+            product_tokens = [
+                token for token in _normalise_text(product_name).split()
+                if len(token) >= 3
+            ]
+            image_sizes = set()
+            if product_tokens:
+                for image_node in soup.find_all("img"):
+                    descriptive = _normalise_text(
+                        f"{image_node.get('alt', '')} {image_node.get('title', '')}"
+                    )
+                    if not descriptive:
+                        continue
+                    if not all(token in descriptive for token in product_tokens):
+                        continue
+                    size = parse_size(descriptive)
+                    if size is not None:
+                        image_sizes.add(size)
+            # Accept only an unambiguous size explicitly attached to the
+            # product image(s) for this exact selected variant.
+            if len(image_sizes) == 1:
+                return next(iter(image_sizes))
+
     # For a selected variant, only a control explicitly marked as selected is
     # reliable enough to establish the bottle size. H1, JSON-LD descriptions,
     # and images may be generic or stale across variants. If the selected size
