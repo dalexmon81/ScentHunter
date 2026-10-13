@@ -3110,6 +3110,11 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+                u.store != 'easycosmetic'
+                OR lower(u.url) GLOB 'https://easycosmetic.be/*'
+                OR lower(u.url) GLOB 'https://www.easycosmetic.be/*'
+           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3272,6 +3277,11 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                        u.store != 'easycosmetic'
+                        OR lower(u.url) GLOB 'https://easycosmetic.be/*'
+                        OR lower(u.url) GLOB 'https://www.easycosmetic.be/*'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
