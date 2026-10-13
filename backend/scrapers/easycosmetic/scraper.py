@@ -73,17 +73,21 @@ def _normalise_text(value: str) -> str:
 def _normalise_url(url: str) -> str:
     """Canonicalise Easycosmetic product URLs without merging product variants.
 
-    Keep product URLs on the Belgian storefront to avoid mixing German-market
-    prices into Belgian results, while preserving numeric ``variant`` values.
-    Tracking and unrelated query parameters are intentionally discarded.
+    Preserve the official regional storefront (.be or .de) so regional prices
+    are not silently redirected to another market, while preserving numeric
+    ``variant`` values. Tracking and unrelated query parameters are discarded.
     """
     absolute = urljoin(BASE_URL, str(url or ""))
     parsed = urlparse(absolute)
 
-    if parsed.netloc.lower() not in {
+    host = parsed.netloc.lower()
+    allowed_hosts = {
         "easycosmetic.be",
         "www.easycosmetic.be",
-    }:
+        "easycosmetic.de",
+        "www.easycosmetic.de",
+    }
+    if host not in allowed_hosts:
         return ""
 
     path = parsed.path or "/"
@@ -99,7 +103,8 @@ def _normalise_url(url: str) -> str:
             variant = candidate
             break
 
-    canonical = f"{BASE_URL}{path}".rstrip("/")
+    # Keep the exact official regional host that was requested.
+    canonical = f"{parsed.scheme or 'https'}://{host}{path}".rstrip("/")
     if variant:
         canonical = f"{canonical}?variant={variant}"
     return canonical
@@ -114,7 +119,12 @@ def _is_candidate_url(url: str) -> bool:
         return False
 
     parsed = urlparse(url)
-    if parsed.netloc.lower() not in {"easycosmetic.be", "www.easycosmetic.be"}:
+    if parsed.netloc.lower() not in {
+        "easycosmetic.be",
+        "www.easycosmetic.be",
+        "easycosmetic.de",
+        "www.easycosmetic.de",
+    }:
         return False
 
     path = parsed.path.lower()
