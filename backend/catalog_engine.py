@@ -2884,7 +2884,12 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                size_ml=CASE
+                    WHEN excluded.store='easycosmetic'
+                         AND instr(excluded.url, 'variant=') > 0
+                    THEN excluded.size_ml
+                    ELSE COALESCE(excluded.size_ml,store_products.size_ml)
+                END,
                 concentration=COALESCE(excluded.concentration,store_products.concentration),
                 gender=COALESCE(excluded.gender,store_products.gender),
                 price=excluded.price,currency=excluded.currency,
@@ -4061,25 +4066,49 @@ def _coverage_result_matches(product, row):
 
 
 def _coverage_allowed_url(store, raw_url):
+    """Accept only official hosts configured for this retailer.
+
+    DISCOVERY_BASES is the source of truth for localized storefronts. Keep
+    www/non-www aliases for each configured official host, while preserving
+    the existing base-host behavior for stores without explicit discovery
+    bases. URL paths and query parameters (including selected variants) are
+    intentionally preserved.
+    """
     if not raw_url:
         return ''
     try:
         url = urllib.parse.urljoin(STORES.get(store, ''), str(raw_url)).split('#', 1)[0]
         parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+            return ''
+        # Do not allow credential-bearing URLs to pass host validation.
+        if parsed.username is not None or parsed.password is not None:
+            return ''
+        host = parsed.hostname.lower().rstrip('.')
+        base_host = urllib.parse.urlparse(STORES.get(store, '')).hostname
+        allowed = set()
+        if base_host:
+            base_host = base_host.lower().rstrip('.')
+            allowed.update({
+                base_host,
+                base_host[4:] if base_host.startswith('www.') else 'www.' + base_host,
+            })
+        for base in DISCOVERY_BASES.get(store, ()):
+            try:
+                configured_host = urllib.parse.urlparse(base).hostname
+            except Exception:
+                configured_host = None
+            if configured_host:
+                configured_host = configured_host.lower().rstrip('.')
+                allowed.add(configured_host)
+                allowed.add(
+                    configured_host[4:]
+                    if configured_host.startswith('www.')
+                    else 'www.' + configured_host
+                )
+        return url if host in allowed else ''
     except Exception:
         return ''
-    if parsed.scheme not in ('http', 'https'):
-        return ''
-    host = parsed.netloc.lower().split(':', 1)[0]
-    base_host = urllib.parse.urlparse(STORES.get(store, '')).netloc.lower().split(':', 1)[0]
-    allowed = {base_host, base_host[4:] if base_host.startswith('www.') else 'www.' + base_host}
-    if store == 'deloox':
-        allowed.update({
-            'deloox.be', 'www.deloox.be', 'deloox.nl', 'www.deloox.nl',
-            'deloox.com', 'www.deloox.com', 'deloox.lu', 'www.deloox.lu',
-            'deloox.es', 'www.deloox.es',
-        })
-    return url if host in allowed else ''
 
 
 def _coverage_persist_urls(store, rows):
