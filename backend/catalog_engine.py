@@ -631,6 +631,65 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
+
+        # One-time safety migration: older Easycosmetic catalog runs may have
+        # persisted German storefront URLs (.de), even though this store is
+        # configured for Belgium (.be). Never keep the German price attached to
+        # a Belgian-market offer. Preserve the URL path and variant query, move
+        # the URL identity to .be, discard only the stale German product data,
+        # and enqueue the Belgian page for normal hydration. Existing .be rows
+        # are retained unchanged. This is host-level migration only; no product
+        # names, prices, sizes, or matcher rules are hardcoded here.
+        conn.execute("""CREATE TABLE IF NOT EXISTS catalog_migrations(
+            migration_key TEXT PRIMARY KEY, applied_at REAL NOT NULL)""")
+        migration_key = 'easycosmetic_de_to_be_urls_v1'
+        already_migrated = conn.execute(
+            'SELECT 1 FROM catalog_migrations WHERE migration_key=?',
+            (migration_key,),
+        ).fetchone()
+        if not already_migrated:
+            german_rows = conn.execute(
+                """SELECT url,slug,lastmod,discovered_at,active
+                     FROM store_urls
+                    WHERE store='easycosmetic'
+                      AND lower(url) LIKE 'https://www.easycosmetic.de/%'
+                       OR store='easycosmetic'
+                      AND lower(url) LIKE 'https://easycosmetic.de/%'"""
+            ).fetchall()
+            for old in german_rows:
+                old_url = str(old['url'] or '')
+                parsed = urllib.parse.urlsplit(old_url)
+                host = (parsed.hostname or '').lower()
+                if host not in ('easycosmetic.de', 'www.easycosmetic.de'):
+                    continue
+                target_host = 'www.easycosmetic.be' if host.startswith('www.') else 'easycosmetic.be'
+                new_url = urllib.parse.urlunsplit((parsed.scheme, target_host, parsed.path, parsed.query, parsed.fragment))
+                existing = conn.execute(
+                    "SELECT 1 FROM store_urls WHERE store='easycosmetic' AND url=?",
+                    (new_url,),
+                ).fetchone()
+                if not existing:
+                    conn.execute(
+                        """INSERT OR IGNORE INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                             VALUES('easycosmetic',?,?,?,?,?)""",
+                        (new_url, old['slug'], old['lastmod'], time.time(), 1),
+                    )
+                    conn.execute(
+                        """INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at)
+                             VALUES('easycosmetic',?,'PENDING',0,?,?)
+                             ON CONFLICT(store,url) DO UPDATE SET
+                               state='PENDING', attempts=0, available_at=excluded.available_at,
+                               leased_until=NULL, lease_token=NULL, last_error=NULL, last_http_status=NULL""",
+                        (new_url, time.time(), time.time()),
+                    )
+                # Old German prices and URL are never left in the active catalog.
+                conn.execute("DELETE FROM store_products WHERE store='easycosmetic' AND url=?", (old_url,))
+                conn.execute("DELETE FROM hydration_queue WHERE store='easycosmetic' AND url=?", (old_url,))
+                conn.execute("DELETE FROM store_urls WHERE store='easycosmetic' AND url=?", (old_url,))
+            conn.execute(
+                'INSERT INTO catalog_migrations(migration_key,applied_at) VALUES(?,?)',
+                (migration_key, time.time()),
+            )
         conn.commit()
         _SCHEMA_READY = True
 
