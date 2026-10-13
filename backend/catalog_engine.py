@@ -2884,12 +2884,7 @@ def refresh_url(store, url):
                ON CONFLICT(store,url) DO UPDATE SET
                 name=excluded.name,brand=excluded.brand,image=excluded.image,
                 sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=CASE
-                    WHEN excluded.store='easycosmetic'
-                         AND instr(excluded.url, 'variant=') > 0
-                    THEN excluded.size_ml
-                    ELSE COALESCE(excluded.size_ml,store_products.size_ml)
-                END,
+                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                 concentration=COALESCE(excluded.concentration,store_products.concentration),
                 gender=COALESCE(excluded.gender,store_products.gender),
                 price=excluded.price,currency=excluded.currency,
