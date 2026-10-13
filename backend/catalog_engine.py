@@ -51,7 +51,7 @@ STORES = {
     'perfumemarket': 'https://www.perfumemarket.nl',
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
-    'easycosmetic': 'https://www.easycosmetic.be',
+    'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
 }
 
@@ -75,8 +75,10 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # ScentHunter compares the Belgian Easycosmetic storefront only.
-        # German storefront URLs must never enter discovery or pricing.
+        # Easycosmetic has localized official storefronts. Include the Belgian
+        # host in generic catalog discovery so valid .be product links are not
+        # discarded by the allowed-host check.
+        'https://www.easycosmetic.de',
         'https://www.easycosmetic.be',
     ),
     'deloox': (
@@ -632,28 +634,6 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
-        # One-way market isolation migration. Do not rewrite .de URLs to .be:
-        # product/variant IDs may differ by region. Deactivate German rows so
-        # their prices cannot leak into Belgian comparisons; fresh .be discovery
-        # will enqueue and hydrate the correct Belgian product pages.
-        conn.execute("""UPDATE store_urls SET active=0
-            WHERE store='easycosmetic' AND (
-                lower(url) LIKE 'https://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'http://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'https://easycosmetic.de/%' OR
-                lower(url) LIKE 'http://easycosmetic.de/%')""")
-        conn.execute("""UPDATE hydration_queue SET state='DONE',leased_until=NULL,lease_token=NULL
-            WHERE store='easycosmetic' AND (
-                lower(url) LIKE 'https://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'http://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'https://easycosmetic.de/%' OR
-                lower(url) LIKE 'http://easycosmetic.de/%')""")
-        conn.execute("""DELETE FROM catalog_discovery_queue
-            WHERE store='easycosmetic' AND (
-                lower(url) LIKE 'https://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'http://www.easycosmetic.de/%' OR
-                lower(url) LIKE 'https://easycosmetic.de/%' OR
-                lower(url) LIKE 'http://easycosmetic.de/%')""")
         conn.commit()
         _SCHEMA_READY = True
 
@@ -1001,8 +981,17 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
 # used only when sitemap discovery yields no usable product URLs.
 HTML_DISCOVERY_SEEDS = {
     'easycosmetic': (
-        # Belgian storefront only: discovery must not mix regional prices.
+        # Generic catalog roots on both official localized storefronts.
         # Product-specific URLs and search queries are intentionally excluded.
+        'https://www.easycosmetic.de/',
+        'https://www.easycosmetic.de/parfum',
+        'https://www.easycosmetic.de/alle-marken',
+        'https://www.easycosmetic.de/parfum-marken',
+        'https://www.easycosmetic.de/damenparfum',
+        'https://www.easycosmetic.de/herrenparfum',
+        'https://www.easycosmetic.de/unisex-parfum',
+        'https://www.easycosmetic.de/luxusparfum',
+        'https://www.easycosmetic.de/neuheiten',
         'https://www.easycosmetic.be/',
         'https://www.easycosmetic.be/parfum',
         'https://www.easycosmetic.be/alle-marken',
@@ -1364,13 +1353,8 @@ def _fetch_html_page(store, url):
         if resp['status'] < 400 and resp['data']:
             data = resp['data']
             ctype = (resp.get('content_type') or '').lower()
-            final_url = resp.get('url') or url
-            if store == 'easycosmetic':
-                final_host = (urllib.parse.urlparse(final_url).hostname or '').lower()
-                if final_host not in ('easycosmetic.be', 'www.easycosmetic.be'):
-                    return url, final_url, None, f'REGIONAL_REDIRECT_REJECTED;final={final_url}'
             if 'html' in ctype or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
-                return url, final_url, data, None
+                return url, resp['url'], data, None
             http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
         else:
             http_error = _diagnostic(resp, url)
