@@ -1,16 +1,10 @@
-ScentHunter — diagnostica Easycosmetic.de varianti (sola lettura)
-===================================================================
+#!/usr/bin/env python3
+"""ScentHunter — Easycosmetic.de variant diagnostic (read-only).
 
-ISTRUZIONI
-1. Salva questo file come:
-   backend/diagnose_easycosmetic_de_variants_readonly.py
-2. Eseguilo dall'ambiente backend già configurato:
-   python diagnose_easycosmetic_de_variants_readonly.py
-3. Non avviare refresh o resync. Lo script fa solo richieste HTTP GET e parsing in memoria.
-
-Lo script NON scrive nel database/catalogo, NON chiama ProductMatcher, NON avvia
-scraper di discovery e NON chiama la search di produzione.
-
+GET requests only. Does not call ProductMatcher, production search, discovery,
+catalog hydration, resync, or persistence.
+Can be run as a CLI script or exposed through the FastAPI router.
+"""
 from __future__ import annotations
 
 import importlib.util
@@ -23,6 +17,9 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from fastapi import APIRouter
+
+router = APIRouter()
 
 BASE = (
     "https://www.easycosmetic.de/valentino/donna-born-in-roma/"
@@ -85,13 +82,12 @@ def jsonld_products(soup):
                 if kind == "Product" or (
                     isinstance(kind, list) and "Product" in kind
                 ):
-                    offer = node.get("offers")
                     products.append({
                         "name": node.get("name"),
                         "sku": node.get("sku"),
                         "mpn": node.get("mpn"),
                         "gtin": node.get("gtin"),
-                        "offers": offer,
+                        "offers": node.get("offers"),
                     })
     return products[:20]
 
@@ -119,7 +115,7 @@ def evidence(html, soup):
     return found
 
 
-def run():
+def run_diagnostic():
     scraper, scraper_path = load_real_scraper()
     session = requests.Session()
     report = {
@@ -164,27 +160,27 @@ def run():
                     "bytes": len(response.content),
                     "elapsed_sec": round(response.elapsed.total_seconds(), 3),
                     "redirects": [
-                        {"status_code": h.status_code, "url": h.url,
-                         "location": h.headers.get("Location")}
-                        for h in response.history
+                        {"status_code": hop.status_code, "url": hop.url,
+                         "location": hop.headers.get("Location")}
+                        for hop in response.history
                     ],
                 }
+                visible = clean(soup.get_text(" ", strip=True))
                 item["raw_page"] = {
                     "h1": clean(h1.get_text(" ", strip=True)) if h1 else None,
                     "jsonld_products": jsonld_products(soup),
                     "visible_size_mentions": list(dict.fromkeys(
                         re.findall(r"(?<!\d)(?:10|30|50|100)\s?ml\b",
-                                   clean(soup.get_text(" ", strip=True)), re.I)
+                                   visible, re.I)
                     ))[:30],
                     "article_number_mentions": [
                         clean(m.group(0)) for m in list(re.finditer(
-                            r"Artikelnummer.{0,100}", clean(soup.get_text(" ", strip=True)), re.I
+                            r"Artikelnummer.{0,100}", visible, re.I
                         ))[:10]
                     ],
                     "variant_evidence": evidence(html, soup),
                 }
                 try:
-                    # Esegue il parser reale, mantenendo l'URL variante richiesto.
                     item["real_parser"] = scraper._parse_product_html(url, html)
                 except Exception as exc:
                     item["parser_error"] = f"{type(exc).__name__}: {exc}"
@@ -212,8 +208,13 @@ def run():
             "error": item.get("request_error") or item.get("parser_error")
                     or item.get("http_error"),
         })
-    print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+    return report
+
+
+@router.get("/diagnose-easycosmetic-de-variants-read-only")
+def diagnose_easycosmetic_de_variants_readonly_endpoint():
+    return run_diagnostic()
 
 
 if __name__ == "__main__":
-    run()
+    print(json.dumps(run_diagnostic(), ensure_ascii=False, indent=2, default=str))
