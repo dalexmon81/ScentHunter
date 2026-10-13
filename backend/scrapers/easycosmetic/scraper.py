@@ -976,6 +976,20 @@ def _extract_size_ml(
                 token for token in _normalise_text(product_name).split()
                 if len(token) >= 3
             ]
+
+            # The scraper's selected image can expose the size only in its
+            # filename (for example, ``...-100ml.png``), while alt/title are
+            # empty or generic. Use that evidence only after the exact article
+            # number has matched the requested variant above, and only when
+            # the image URL also identifies this product. This avoids deriving
+            # a size from unrelated gallery images or a stale variant.
+            if product_image and product_tokens:
+                image_description = _normalise_text(product_image)
+                if all(token in image_description for token in product_tokens):
+                    image_size = parse_size(product_image)
+                    if image_size is not None:
+                        return image_size
+
             image_sizes = set()
             if product_tokens:
                 for image_node in soup.find_all("img"):
