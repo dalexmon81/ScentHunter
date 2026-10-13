@@ -573,6 +573,8 @@ try:
     app.include_router(diagnose_sabina_search_stream_router)
     from diagnose_easycosmetic_variants_readonly import router as diagnose_easycosmetic_variants_readonly_router
     app.include_router(diagnose_easycosmetic_variants_readonly_router)
+    from diagnose_easycosmetic_variant_discovery import router as diagnose_easycosmetic_variant_discovery_router
+    app.include_router(diagnose_easycosmetic_variant_discovery_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
