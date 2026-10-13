@@ -907,9 +907,33 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-        product_urls = filtered_urls
+                product_urls = filtered_urls
+
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    """UPDATE store_urls
+                       SET active=0
+                     WHERE store='easycosmetic'
+                       AND (
+                            lower(url) LIKE '%easycosmetic.de%'
+                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       )"""
+                )
+                conn.execute(
+                    """DELETE FROM catalog_search_fts
+                     WHERE store='easycosmetic'
+                       AND (
+                            lower(url) LIKE '%easycosmetic.de%'
+                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       )"""
+                )
+        finally:
+            conn.close()
 
     now = time.time()
+
     new_count = len(product_urls)
     old_count = _existing_count(store)
 
