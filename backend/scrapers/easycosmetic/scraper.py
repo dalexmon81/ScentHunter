@@ -922,7 +922,7 @@ def _extract_size_ml(
     product_image: str = "",
     product_json: Optional[Dict[str, Any]] = None,
 ) -> Optional[int]:
-    """Extract size without inferring selected variants from generic images."""
+    """Extract size without borrowing evidence from a different variant."""
     def parse_size(value: Any) -> Optional[int]:
         text = _clean(value)
         if not text:
@@ -945,74 +945,43 @@ def _extract_size_ml(
 
     has_variant = bool(parse_qs(urlparse(url).query).get("variant"))
 
-    # A variant page may expose its selected size only in the main product
-    # image's alt/title (for example "... Spray (100 ml)"). Use that evidence
-    # only when the page's own article number matches the requested variant ID.
-    # This avoids borrowing a size from stale JSON-LD, generic H1 text, or a
-    # page that redirected to a different variant.
     if has_variant:
-        requested_values = parse_qs(urlparse(url).query).get("variant", [])
-        requested_variant = next(
-            (str(value).strip() for value in requested_values
-             if str(value).strip().isdigit()),
-            None,
+        # The .de storefront often omits the selected article number from
+        # visible text, while the selected main product image contains the
+        # bottle size in its alt text or filename (for example "-10ml.png").
+        # Prefer that selected image over JSON-LD images, which can be stale
+        # or describe a different variant.
+        product_tokens = [
+            token for token in _normalise_text(product_name).split()
+            if len(token) >= 3
+        ]
+        main_image = soup.select_one(
+            ".content-left img.product, img.product, "
+            ".product-image img, #product-image img"
         )
-        page_text = soup.get_text(" ", strip=True)
-        article_patterns = (
-            r"Artikelnummer\s*[:#]?\s*(\d+)",
-            r"Artikel[- ]?Nr[.]?\s*[:#]?\s*(\d+)",
-            r"article number\s*[:#]?\s*(\d+)",
-            r"num[eé]ro d['’]article\s*[:#]?\s*(\d+)",
-        )
-        page_variant = None
-        for pattern in article_patterns:
-            match = re.search(pattern, page_text, flags=re.I)
-            if match:
-                page_variant = match.group(1)
-                break
+        image_candidates = []
+        if main_image:
+            image_candidates.append(" ".join((
+                str(main_image.get("alt") or ""),
+                str(main_image.get("title") or ""),
+                str(main_image.get("src") or ""),
+                str(main_image.get("data-src") or ""),
+            )))
+        if product_image:
+            image_candidates.append(product_image)
 
-        if requested_variant and page_variant == requested_variant:
-            product_tokens = [
-                token for token in _normalise_text(product_name).split()
-                if len(token) >= 3
-            ]
+        for description in image_candidates:
+            normalized = _normalise_text(description)
+            # Require product-name evidence in the image description to avoid
+            # interpreting unrelated gallery artwork as the selected bottle.
+            if product_tokens and all(token in normalized for token in product_tokens):
+                size = parse_size(description)
+                if size is not None:
+                    return size
 
-            # The scraper's selected image can expose the size only in its
-            # filename (for example, ``...-100ml.png``), while alt/title are
-            # empty or generic. Use that evidence only after the exact article
-            # number has matched the requested variant above, and only when
-            # the image URL also identifies this product. This avoids deriving
-            # a size from unrelated gallery images or a stale variant.
-            if product_image and product_tokens:
-                image_description = _normalise_text(product_image)
-                if all(token in image_description for token in product_tokens):
-                    image_size = parse_size(product_image)
-                    if image_size is not None:
-                        return image_size
-
-            image_sizes = set()
-            if product_tokens:
-                for image_node in soup.find_all("img"):
-                    descriptive = _normalise_text(
-                        f"{image_node.get('alt', '')} {image_node.get('title', '')}"
-                    )
-                    if not descriptive:
-                        continue
-                    if not all(token in descriptive for token in product_tokens):
-                        continue
-                    size = parse_size(descriptive)
-                    if size is not None:
-                        image_sizes.add(size)
-            # Accept only an unambiguous size explicitly attached to the
-            # product image(s) for this exact selected variant.
-            if len(image_sizes) == 1:
-                return next(iter(image_sizes))
-
-    # For a selected variant, only a control explicitly marked as selected is
-    # reliable enough to establish the bottle size. H1, JSON-LD descriptions,
-    # and images may be generic or stale across variants. If the selected size
-    # is not exposed in the HTML, return None rather than publish a guessed size.
-    if has_variant:
+        # Selected size controls are also valid when the markup explicitly
+        # marks them as selected. Do not fall back to generic H1/JSON-LD text
+        # for variant URLs, because it may describe another size.
         for node in soup.select(
             'option[selected], input[type="radio"][checked], '
             'input[type="radio"][aria-checked="true"], '
@@ -1090,7 +1059,6 @@ def _extract_size_ml(
         return size
 
     return None
-
 
 def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     url = _normalise_url(url)
