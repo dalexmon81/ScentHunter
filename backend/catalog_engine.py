@@ -888,229 +888,169 @@ def _sync_deloox_search_index(product_urls):
 
 
 def _save_discovery(store, product_urls, started_at, diagnostics):
-    # Enforce the Belgian Easycosmetic storefront at the persistence boundary,
-    # including URLs returned by sitemap indexes or redirects. Never persist
-    # German storefront URLs in the Belgian retailer's catalog.
-    if store == 'easycosmetic':
-        allowed_hosts = _allowed_store_hosts(store)
-        product_urls = {
-            url: lastmod for url, lastmod in product_urls.items()
-            if (urllib.parse.urlparse(str(url)).hostname or '').lower().rstrip('.') in allowed_hosts
-            and urllib.parse.urlparse(str(url)).scheme in ('http', 'https')
+    """Persist discovered URLs in bounded transactions.
+
+    Easycosmetic is incremental: valid Belgian URLs omitted by a partial
+    discovery run must remain active. Known German-host rows are deactivated.
+    """
+
+    if store == "easycosmetic":
+        allowed_hosts = {
+            "easycosmetic.be",
+            "www.easycosmetic.be",
         }
+
+        filtered_urls = {}
+        for url, lastmod in product_urls.items():
+            parsed = urllib.parse.urlparse(str(url or ""))
+            host = (parsed.hostname or "").lower().rstrip(".")
+            if parsed.scheme in ("http", "https") and host in allowed_hosts:
+                filtered_urls[url] = lastmod
+
+        product_urls = filtered_urls
+
     now = time.time()
     new_count = len(product_urls)
     old_count = _existing_count(store)
 
-    # Never replace a known catalog with a suspiciously tiny transient result.
-    if old_count >= MIN_REPLACEMENT_ABSOLUTE and new_count < old_count * MIN_REPLACEMENT_RATIO:
-        conn = db()
+    if (
+        old_count >= MIN_REPLACEMENT_ABSOLUTE
+        and new_count < old_count * MIN_REPLACEMENT_RATIO
+    ):
         detail = (
-            f'partial_catalog_rejected;old={old_count};new={new_count};'
+            f"partial_catalog_rejected;old={old_count};new={new_count};"
             f'visited={diagnostics["visited"]};successes={diagnostics["successes"]};'
             f'entries={diagnostics["entries"]};errors={diagnostics["errors"]}'
         )
-        conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-               started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
-            (store, 'DISCOVERY_PARTIAL', started_at, now, new_count, 0, detail),
+        _set_sync_state(
+            store,
+            "DISCOVERY_PARTIAL",
+            started_at=started_at,
+            finished_at=now,
+            discovered_count=new_count,
+            fetched_count=0,
+            error=detail,
         )
-        conn.commit()
-        conn.close()
-        return 'DISCOVERY_PARTIAL', new_count, detail
+        return "DISCOVERY_PARTIAL", new_count, detail
 
-    conn = db()
-    with conn:
-        if new_count:
-            # Deloox discovery is intentionally incremental: a bounded run is
-            # only one slice of a persistent HTML graph. Never deactivate the
-            # previously discovered Deloox catalog merely because this run did
-            # not reach those branches. A real product disappearance is handled
-            # by product-page hydration/HTTP status, not by crawl omission.
-            # Sabina discovery is also incremental. Its HTML legacy catalog
-            # surface is bounded by time, so a run can legitimately discover
-            # only a subset of the existing catalog. Never deactivate known
-            # Sabina URLs merely because this run did not reach them.
-            if store not in ('deloox', 'sabina'):
-                conn.execute('UPDATE store_urls SET active=0 WHERE store=?', (store,))
-            for url, lastmod in product_urls.items():
-                conn.execute(
-                    '''INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                       slug=excluded.slug,lastmod=excluded.lastmod,
-                       discovered_at=excluded.discovered_at,active=1''',
-                    (store, url, url_slug(url), lastmod, now),
-                )
-                conn.execute(
-                    '''INSERT INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END''',
-                    (store, url, 'PENDING', 0, now, now, now),
-                )
-            status = 'DISCOVERY_OK'
-            error = None
-        else:
-            status = 'DISCOVERY_EMPTY'
-            error = (
-                f'no_product_urls;visited={diagnostics["visited"]};'
-                f'successes={diagnostics["successes"]};entries={diagnostics["entries"]};'
-                f'errors={diagnostics["errors"]}'
+    if not new_count:
+        detail = (
+            f"no_product_urls;visited={diagnostics['visited']};"
+            f"successes={diagnostics['successes']};"
+            f"entries={diagnostics['entries']};"
+            f"errors={diagnostics['errors']}"
+        )
+        _set_sync_state(
+            store,
+            "DISCOVERY_EMPTY",
+            started_at=started_at,
+            finished_at=now,
+            discovered_count=0,
+            fetched_count=0,
+            error=detail,
+        )
+        return "DISCOVERY_EMPTY", 0, detail
+
+    items = list(product_urls.items())
+    batch_size = 250
+    persisted = 0
+    queued = 0
+
+    for offset in range(0, len(items), batch_size):
+        batch = items[offset:offset + batch_size]
+        batch_now = time.time()
+
+        conn = db()
+        try:
+            with conn:
+                for url, lastmod in batch:
+                    conn.execute(
+                        """INSERT INTO store_urls(
+                               store,url,slug,lastmod,discovered_at,active)
+                           VALUES(?,?,?,?,?,1)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               slug=excluded.slug,
+                               lastmod=excluded.lastmod,
+                               discovered_at=excluded.discovered_at,
+                               active=1""",
+                        (store, url, url_slug(url), lastmod, batch_now),
+                    )
+                    conn.execute(
+                        """INSERT INTO hydration_queue(
+                               store,url,state,attempts,available_at,first_seen_at)
+                           VALUES(?,?,?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               state=CASE
+                                   WHEN hydration_queue.state='DONE' THEN 'DONE'
+                                   WHEN hydration_queue.state='PROCESSING'
+                                        AND hydration_queue.leased_until > ?
+                                   THEN 'PROCESSING'
+                                   ELSE hydration_queue.state
+                               END""",
+                        (store, url, "PENDING", 0, batch_now, batch_now, batch_now, batch_now),
+                    )
+
+            persisted += len(batch)
+            queued += len(batch)
+
+            progress = (
+                f"phase=persist;discovered={new_count};saved={persisted};"
+                f"queued={queued};batch_size={len(batch)};"
+                f"elapsed_sec={round(time.time() - started_at, 1)}"
+            )
+            _set_sync_state(
+                store,
+                "DISCOVERY_RUNNING",
+                started_at=started_at,
+                discovered_count=new_count,
+                fetched_count=persisted,
+                error=progress,
             )
 
-        conn.execute(
-            '''INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
-               VALUES(?,?,?,?,?,?,?)
-               ON CONFLICT(store) DO UPDATE SET status=excluded.status,
-               started_at=excluded.started_at,finished_at=excluded.finished_at,
-               discovered_count=excluded.discovered_count,error=excluded.error''',
-            (store, status, started_at, now, new_count, 0, error),
-        )
-    conn.close()
-    if status == 'DISCOVERY_OK' and store == 'deloox':
+            if store == "easycosmetic":
+                conn = db()
+                try:
+                    conn.execute(
+                        "UPDATE store_urls SET active=0 WHERE store=? "
+                        "AND lower(url) LIKE '%easycosmetic.de%'",
+                        (store,),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+
+        except Exception as exc:
+            detail = (
+                f"persist_failed;discovered={new_count};saved={persisted};"
+                f"queued={queued};error={type(exc).__name__}:{exc}"
+            )
+            _set_sync_state(
+                store,
+                "DISCOVERY_PARTIAL",
+                started_at=started_at,
+                finished_at=now,
+                discovered_count=new_count,
+                fetched_count=persisted,
+                error=detail,
+            )
+            return "DISCOVERY_PARTIAL", persisted, detail
+
+    detail = f"persist_complete;discovered={new_count};saved={persisted};queued={queued}"
+    _set_sync_state(
+        store,
+        "DISCOVERY_OK",
+        started_at=started_at,
+        finished_at=now,
+        discovered_count=new_count,
+        fetched_count=persisted,
+        error=detail,
+    )
+
+    if store == "deloox":
         _sync_deloox_search_index(product_urls)
-    return status, new_count, error
 
+    return "DISCOVERY_OK", new_count, detail
 
-
-# HTML catalog-discovery fallback. This is NOT user-query search. It is a
-# background crawl of the retailer's own category/brand/navigation surfaces,
-# used only when sitemap discovery yields no usable product URLs.
-HTML_DISCOVERY_SEEDS = {
-    'easycosmetic': (
-        # Belgian storefront only. Generic catalog/navigation roots; no
-        # product-specific URLs or user-query search URLs are embedded here.
-        'https://www.easycosmetic.be/',
-        'https://www.easycosmetic.be/parfum',
-        'https://www.easycosmetic.be/alle-marken',
-        'https://www.easycosmetic.be/parfum-marken',
-        'https://www.easycosmetic.be/damenparfum',
-        'https://www.easycosmetic.be/herrenparfum',
-        'https://www.easycosmetic.be/unisex-parfum',
-        'https://www.easycosmetic.be/luxusparfum',
-        'https://www.easycosmetic.be/neuheiten',
-    ),
-    'deloox': (
-        # Broad official catalog surfaces. Both public Deloox hosts are
-        # included because the catalog graph is split across storefronts.
-        'https://www.deloox.be/',
-        'https://www.deloox.be/en/',
-        'https://www.deloox.com/',
-        'https://www.deloox.com/en/',
-        'https://www.deloox.be/en/category/1103659/fragrances.html',
-        'https://www.deloox.com/en/category/1103659/fragrances.html',
-        # Current Deloox fragrance-category surfaces used by the public
-        # storefront. These are generic catalog roots, not product/query URLs.
-        'https://www.deloox.be/categorie/1075744/eau-de-toilette-homme.html',
-        'https://www.deloox.com/categorie/1075744/eau-de-toilette-homme.html',
-        'https://www.deloox.be/categorie/1075743/eau-de-parfum-femme.html',
-        'https://www.deloox.com/categorie/1075743/eau-de-parfum-femme.html',
-        'https://www.deloox.be/en/category/1063858/brands.html',
-        'https://www.deloox.com/en/category/1063858/brands.html',
-        'https://www.deloox.be/en/category/1000003/fragrances.html',
-        'https://www.deloox.com/en/category/1000003/fragrances.html',
-        'https://www.deloox.be/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/en/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/en/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/en/category/1075660/womens-perfume.html',
-        'https://www.deloox.be/category/1063858/brands.html',
-        'https://www.deloox.com/category/1063858/brands.html',
-        'https://www.deloox.be/category/1000003/fragrances.html',
-        'https://www.deloox.com/category/1000003/fragrances.html',
-        'https://www.deloox.be/category/1000054/mens-fragrances.html',
-        'https://www.deloox.com/category/1000054/mens-fragrances.html',
-        'https://www.deloox.be/category/1075750/mens-perfume.html',
-        'https://www.deloox.com/category/1075750/mens-perfume.html',
-        'https://www.deloox.be/category/1075660/womens-perfume.html',
-        'https://www.deloox.com/category/1075660/womens-perfume.html',
-        # Deloox's public search is also a retailer-owned catalog surface.
-        # These are fixed, broad fragrance terms used only by background
-        # catalog discovery; the user's search query is never injected here.
-        'https://www.deloox.be/chercher.html?q=parfum',
-        'https://www.deloox.be/chercher.html?q=perfume',
-        'https://www.deloox.be/chercher.html?q=fragrance',
-        'https://www.deloox.com/chercher.html?q=parfum',
-        'https://www.deloox.com/chercher.html?q=perfume',
-        'https://www.deloox.com/chercher.html?q=fragrance',
-        'https://www.deloox.be/en/search?query=parfum',
-        'https://www.deloox.be/en/search?query=perfume',
-        'https://www.deloox.be/en/search?query=fragrance',
-        'https://www.deloox.com/en/search?query=parfum',
-        'https://www.deloox.com/en/search?query=perfume',
-        'https://www.deloox.com/en/search?query=fragrance',
-    ),
-    'sabina': (
-        'https://www.sabina.com/it/',
-        'https://www.sabina.com/it/6-profumi-di-donna',
-        'https://www.sabina.com/it/7-profumi-da-uomo',
-        'https://www.sabina.com/it/30-profumi-donna',
-        'https://www.sabina.com/it/31-profumi-uomo',
-        'https://www.sabina.com/it/890-profumeria-di-nicchia',
-        'https://www.sabina.com/it/s/48/profumi-donna-profumi-uomo',
-        # Sabina's legacy native search is a real catalog enumeration
-        # surface. The live storefront exposes its legacy product-ID field
-        # through the native `?s=` parameter; the `search_query=` variant used
-        # by the old single-letter probes returns no legacy product IDs.
-        #
-        # These are generic fragrance terms, not product/brand-specific
-        # queries. Multiple overlapping terms intentionally provide cumulative
-        # catalog coverage without coupling discovery to the user's search.
-        'https://www.sabina.com/it/ricerca_old?s=parfum',
-        'https://www.sabina.com/it/ricerca_old?s=extrait',
-        # Sabina's Spanish storefront exposes a second native search surface
-        # that is currently used by the runtime scraper. It is a generic
-        # retailer catalog surface: only broad fragrance terms are seeded here,
-        # never the user's query or a product/brand-specific term.
-        'https://www.sabina.com/es/buscar?search_query=parfum',
-        'https://www.sabina.com/es/buscar?search_query=perfume',
-        'https://www.sabina.com/es/buscar?search_query=fragrance',
-        'https://www.sabina.com/es/buscar?search_query=extrait',
-        'https://www.sabina.com/es/buscar?search_query=profumi',
-        # Broad Arabic-fragrance landing surface exposed by Sabina's own
-        # sitemap. It is a catalog/navigation surface, not a product query.
-        'https://www.sabina.com/it/l/profumi-arabi',
-    ),
-}
-# HTML discovery is background catalog work, not request-time search. The old
-# 300-page/5-level ceiling could stop before the retailer's real catalog
-# pagination/navigation surface was exhausted.
-HTML_MAX_PAGES = 800
-HTML_MAX_DEPTH = 8
-HTML_WORKERS = 12
-# Deloox native search paginates through a numeric `page` parameter. Keep
-# this bounded so generic catalog discovery follows the public search surface
-# without becoming an unbounded crawler.
-DELOOX_SEARCH_MAX_PAGES = 10
-# Generic Deloox catalog-search surfaces used only by background discovery.
-# These are retailer-wide terms; the user's request is never injected here.
-DELOOX_GENERIC_CATALOG_QUERIES = (
-    'parfum',
-    'perfume',
-    'fragrance',
-)
-DISCOVERY_HARD_TIMEOUT = 300
-
-# Sitemap discovery gets its own short budget. Some retailers expose broken
-# or slow sitemap roots while their public HTML catalog is available. The
-# generic HTML fallback must always receive a real execution window.
-SITEMAP_DISCOVERY_BUDGET = 45
-
-# A sitemap can be technically valid yet represent only a tiny slice of the
-# retailer catalog. When a store has an HTML catalog surface, supplement very
-# small sitemap discoveries instead of treating them as complete.
-HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
 
 
 def _allowed_store_hosts(store):
