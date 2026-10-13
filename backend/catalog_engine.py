@@ -911,7 +911,9 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-                product_urls = filtered_urls
+        # Always replace the input mapping, including when discovery found no
+        # valid Belgian URLs. Otherwise a .de-only discovery run can leak through.
+        product_urls = filtered_urls
 
         conn = db()
         try:
@@ -920,17 +922,21 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                     """UPDATE store_urls
                        SET active=0
                      WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       AND NOT (
+                            lower(url) LIKE 'https://easycosmetic.be/%'
+                            OR lower(url) LIKE 'https://www.easycosmetic.be/%'
+                            OR lower(url) LIKE 'http://easycosmetic.be/%'
+                            OR lower(url) LIKE 'http://www.easycosmetic.be/%'
                        )"""
                 )
                 conn.execute(
                     """DELETE FROM catalog_search_fts
                      WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       AND NOT (
+                            lower(url) LIKE 'https://easycosmetic.be/%'
+                            OR lower(url) LIKE 'https://www.easycosmetic.be/%'
+                            OR lower(url) LIKE 'http://easycosmetic.be/%'
+                            OR lower(url) LIKE 'http://www.easycosmetic.be/%'
                        )"""
                 )
         finally:
@@ -3100,6 +3106,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+               u.store != 'easycosmetic'
+               OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+               OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+               OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+               OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3154,6 +3167,14 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     url = str(r['url'] or '').strip()
                     if not url:
                         continue
+                    if store == 'easycosmetic':
+                        parsed_url = urllib.parse.urlparse(url)
+                        if (
+                            parsed_url.scheme not in ('http', 'https')
+                            or (parsed_url.hostname or '').lower().rstrip('.')
+                            not in ('easycosmetic.be', 'www.easycosmetic.be')
+                        ):
+                            continue
                     search_text = ' '.join(
                         str(r[key] or '')
                         for key in ('slug', 'product_name', 'product_brand')
@@ -3262,6 +3283,13 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                       u.store != 'easycosmetic'
+                       OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
@@ -3272,6 +3300,14 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                 url = str(r['url'] or '').strip()
                 if not url or url in selected_by_url:
                     continue
+                if store == 'easycosmetic':
+                    parsed_url = urllib.parse.urlparse(url)
+                    if (
+                        parsed_url.scheme not in ('http', 'https')
+                        or (parsed_url.hostname or '').lower().rstrip('.')
+                        not in ('easycosmetic.be', 'www.easycosmetic.be')
+                    ):
+                        continue
                 search_text = ' '.join(
                     str(r[key] or '') for key in ('slug','product_name','product_brand')
                 )
