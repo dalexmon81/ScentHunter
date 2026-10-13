@@ -1054,12 +1054,11 @@ def clean_result(item, store):
     return result
 
 def result_key(item):
-    """Build one stable commercial-offer key.
+    """Build a stable offer key without collapsing unresolved retailer variants.
 
-    The central matcher owns catalog identity. When a catalog_id is available,
-    it is therefore the strongest generic signal for collapsing duplicate
-    listings from the same retailer and format. URL/product-id/name remain
-    fallbacks for unresolved or legacy rows.
+    Catalog identity remains the preferred key. If size is unknown but the
+    retailer URL explicitly selects a variant, preserve that variant ID in the
+    identity so one variant cannot deduplicate away the others.
     """
     store = _normalise_store(item.get('store') or item.get('shop'), '')
     catalog_id = str(item.get('catalog_id') or '').strip().lower()
@@ -1068,7 +1067,13 @@ def result_key(item):
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
     identity_key = catalog_id or url or product_id or name
-    return (store, identity_key, round(size,3) if size is not None else '')
+
+    if size is None and url:
+        variant_match = re.search(r'(?:[?&])variant=(\d+)(?:&|$)', url, flags=re.I)
+        if variant_match:
+            identity_key = f"{identity_key}|variant:{variant_match.group(1)}"
+
+    return (store, identity_key, round(size, 3) if size is not None else '')
 
 def dedupe_results(results, diagnostics=None):
     """Deduplicate offers; optionally record every actual DROP decision."""
