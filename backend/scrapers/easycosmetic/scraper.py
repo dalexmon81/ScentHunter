@@ -912,16 +912,11 @@ def _extract_size_ml(
     product_image: str = "",
     product_json: Optional[Dict[str, Any]] = None,
 ) -> Optional[int]:
-    """Extract a size only from text tied to the current product/selected variant.
-
-    Deliberately does not inspect arbitrary recommendation images: those can
-    describe a different bottle size than the page currently selected.
-    """
+    """Extract size without inferring selected variants from generic images."""
     def parse_size(value: Any) -> Optional[int]:
         text = _clean(value)
         if not text:
             return None
-        # Accept explicit volume units, not bare numbers or dimensions.
         matches = re.findall(
             r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|milliliter|millilitre|liter|litre|l)\b",
             text,
@@ -938,52 +933,70 @@ def _extract_size_ml(
                 return int(amount)
         return None
 
-    # Product-specific identity sources first.
+    has_variant = bool(parse_qs(urlparse(url).query).get("variant"))
+
+    # For a selected variant, only a control explicitly marked as selected is
+    # reliable enough to establish the bottle size. H1, JSON-LD descriptions,
+    # and images may be generic or stale across variants. If the selected size
+    # is not exposed in the HTML, return None rather than publish a guessed size.
+    if has_variant:
+        for node in soup.select(
+            'option[selected], input[type="radio"][checked], '
+            'input[type="radio"][aria-checked="true"], '
+            '[aria-selected="true"], [aria-checked="true"]'
+        ):
+            size = parse_size(" ".join((
+                node.get_text(" ", strip=True),
+                str(node.get("value") or ""),
+                str(node.get("aria-label") or ""),
+                str(node.get("title") or ""),
+                str(node.get("data-value") or ""),
+            )))
+            if size is not None:
+                return size
+        return None
+
+    # Non-variant product pages retain the existing text/JSON-LD fallbacks.
     for value in (product_name, url):
         size = parse_size(value)
         if size is not None:
             return size
 
-    # Prefer the Product object selected for this exact variant URL.
-    # Its image can encode the bottle size even when its name is generic.
     if isinstance(product_json, dict):
         for key in ("name", "description"):
             size = parse_size(product_json.get(key))
             if size is not None:
                 return size
         selected_image = _extract_image_url(product_json.get("image"))
-        size = parse_size(selected_image)
-        if size is not None:
-            return size
+        if selected_image:
+            size = parse_size(selected_image)
+            if size is not None:
+                return size
 
-    # For a non-variant URL only, retain the legacy JSON-LD fallback.
-    has_variant = bool(parse_qs(urlparse(url).query).get("variant"))
-    if not has_variant:
-        for script in soup.select('script[type="application/ld+json"]'):
-            raw = script.string or script.get_text(" ", strip=True)
-            try:
-                payload = json.loads(raw)
-            except (TypeError, ValueError):
+    for script in soup.select('script[type="application/ld+json"]'):
+        raw = script.string or script.get_text(" ", strip=True)
+        try:
+            payload = json.loads(raw)
+        except (TypeError, ValueError):
+            continue
+        objects = payload if isinstance(payload, list) else [payload]
+        while objects:
+            obj = objects.pop(0)
+            if not isinstance(obj, dict):
                 continue
-            objects = payload if isinstance(payload, list) else [payload]
-            while objects:
-                obj = objects.pop(0)
-                if not isinstance(obj, dict):
-                    continue
-                if isinstance(obj.get("@graph"), list):
-                    objects.extend(obj["@graph"])
-                if isinstance(obj.get("mainEntity"), dict):
-                    objects.append(obj["mainEntity"])
-                item_type = obj.get("@type")
-                if item_type == "Product" or (
-                    isinstance(item_type, list) and "Product" in item_type
-                ):
-                    for key in ("name", "description"):
-                        size = parse_size(obj.get(key))
-                        if size is not None:
-                            return size
+            if isinstance(obj.get("@graph"), list):
+                objects.extend(obj["@graph"])
+            if isinstance(obj.get("mainEntity"), dict):
+                objects.append(obj["mainEntity"])
+            item_type = obj.get("@type")
+            if item_type == "Product" or (
+                isinstance(item_type, list) and "Product" in item_type
+            ):
+                for key in ("name", "description"):
+                    size = parse_size(obj.get(key))
+                    if size is not None:
+                        return size
 
-    # Selected controls only; never scrape all variant labels as if selected.
     for node in soup.select(
         'option[selected], input[type="radio"][checked], '
         'input[type="radio"][aria-checked="true"], '
@@ -999,9 +1012,6 @@ def _extract_size_ml(
         if size is not None:
             return size
 
-    # The image passed here is the page's selected product image (from
-    # Product JSON-LD or the product-image fallback), not every image on the
-    # page. Treat it only as a late fallback after identity/variant text.
     size = parse_size(product_image)
     if size is not None:
         return size
