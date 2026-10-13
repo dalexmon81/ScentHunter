@@ -51,7 +51,7 @@ STORES = {
     'perfumemarket': 'https://www.perfumemarket.nl',
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
-    'easycosmetic': 'https://www.easycosmetic.de',
+    'easycosmetic': 'https://www.easycosmetic.be',
     'deloox': 'https://www.deloox.be',
 }
 
@@ -75,10 +75,8 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # Easycosmetic has localized official storefronts. Include the Belgian
-        # host in generic catalog discovery so valid .be product links are not
-        # discarded by the allowed-host check.
-        'https://www.easycosmetic.de',
+        # ScentHunter compares the Belgian market: only index Belgian storefront
+        # URLs so German prices can never be published as Belgian offers.
         'https://www.easycosmetic.be',
     ),
     'deloox': (
@@ -3113,6 +3111,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (f.store != 'easycosmetic'
+                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                OR lower(u.url) LIKE 'https://easycosmetic.be/%')
          ORDER BY rank
          LIMIT ?
     """
@@ -3275,6 +3276,9 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (u.store != 'easycosmetic'
+                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'https://easycosmetic.be/%')
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
