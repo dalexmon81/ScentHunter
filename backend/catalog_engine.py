@@ -908,37 +908,37 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
         for url, lastmod in product_urls.items():
             parsed = urllib.parse.urlparse(str(url or ""))
             host = (parsed.hostname or "").lower().rstrip(".")
-            if parsed.scheme in ("http", "https") and host in allowed_hosts:
+            if parsed.scheme.lower() in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-        # Always use the filtered mapping. An empty/partial discovery must not
-        # accidentally persist German URLs or deactivate existing Belgian rows.
+        # Apply filtering after the loop even when no Belgian URL was found.
         product_urls = filtered_urls
 
+        # Retire only rows whose actual hostname is the German storefront.
+        # Do not deactivate Belgian or other rows just because a discovery run
+        # is partial or returns an unexpected URL format.
         conn = db()
         try:
             with conn:
-                conn.execute(
-                    """UPDATE store_urls
-                       SET active=0
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE 'https://easycosmetic.de/%'
-                            OR lower(url) LIKE 'https://www.easycosmetic.de/%'
-                            OR lower(url) LIKE 'http://easycosmetic.de/%'
-                            OR lower(url) LIKE 'http://www.easycosmetic.de/%'
-                       )"""
-                )
-                conn.execute(
-                    """DELETE FROM catalog_search_fts
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE 'https://easycosmetic.de/%'
-                            OR lower(url) LIKE 'https://www.easycosmetic.de/%'
-                            OR lower(url) LIKE 'http://easycosmetic.de/%'
-                            OR lower(url) LIKE 'http://www.easycosmetic.de/%'
-                       )"""
-                )
+                existing = conn.execute(
+                    "SELECT url FROM store_urls WHERE store='easycosmetic'"
+                ).fetchall()
+                german_urls = []
+                for row in existing:
+                    existing_url = str(row[0] or '').strip()
+                    parsed_existing = urllib.parse.urlparse(existing_url)
+                    host_existing = (parsed_existing.hostname or '').lower().rstrip('.')
+                    if host_existing in ('easycosmetic.de', 'www.easycosmetic.de'):
+                        german_urls.append(existing_url)
+                for german_url in german_urls:
+                    conn.execute(
+                        "UPDATE store_urls SET active=0 WHERE store='easycosmetic' AND url=?",
+                        (german_url,),
+                    )
+                    conn.execute(
+                        "DELETE FROM catalog_search_fts WHERE store='easycosmetic' AND url=?",
+                        (german_url,),
+                    )
         finally:
             conn.close()
 
@@ -3162,11 +3162,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         continue
                     if store == 'easycosmetic':
                         parsed_url = urllib.parse.urlparse(url)
-                        if (
-                            parsed_url.scheme.lower() not in ('http', 'https')
-                            or (parsed_url.hostname or '').lower().rstrip('.')
-                            not in ('easycosmetic.be', 'www.easycosmetic.be')
-                        ):
+                        host_url = (parsed_url.hostname or '').lower().rstrip('.')
+                        if parsed_url.scheme.lower() not in ('http', 'https') or host_url not in ('easycosmetic.be', 'www.easycosmetic.be'):
                             continue
                     search_text = ' '.join(
                         str(r[key] or '')
@@ -3288,11 +3285,8 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     continue
                 if store == 'easycosmetic':
                     parsed_url = urllib.parse.urlparse(url)
-                    if (
-                        parsed_url.scheme.lower() not in ('http', 'https')
-                        or (parsed_url.hostname or '').lower().rstrip('.')
-                        not in ('easycosmetic.be', 'www.easycosmetic.be')
-                    ):
+                    host_url = (parsed_url.hostname or '').lower().rstrip('.')
+                    if parsed_url.scheme.lower() not in ('http', 'https') or host_url not in ('easycosmetic.be', 'www.easycosmetic.be'):
                         continue
                 search_text = ' '.join(
                     str(r[key] or '') for key in ('slug','product_name','product_brand')
