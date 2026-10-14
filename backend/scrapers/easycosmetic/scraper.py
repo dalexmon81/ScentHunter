@@ -1122,15 +1122,13 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    # On a selected Easycosmetic variant URL, the product-detail price is the
-    # authoritative current storefront price. JSON-LD may be cached or may
-    # describe a different offer; use the narrowly scoped visible price when
-    # it is available, while refusing to guess from arbitrary page text.
-    has_selected_variant = bool(parse_qs(urlparse(url).query).get("variant"))
-    if has_selected_variant:
-        displayed_price = _extract_selected_variant_price(soup)
-        if displayed_price is not None:
-            price = displayed_price
+    # The visible price on the Belgian product detail is authoritative for
+    # this storefront, with or without a ?variant= parameter. JSON-LD can be
+    # cached or can describe a different regional/default offer. Only use the
+    # narrowly scoped product-detail price; never guess from arbitrary page text.
+    displayed_price = _extract_selected_variant_price(soup)
+    if displayed_price is not None:
+        price = displayed_price
 
     page_available, page_availability = _availability_from_page(page_text)
 
@@ -1216,20 +1214,23 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Catalog-engine adapter. Reuse already fetched HTML when supplied."""
+    """Catalog-engine adapter that enforces Belgian storefront provenance.
+
+    The catalog engine may supply HTML fetched by its generic request path.
+    That HTML cannot safely be reused here because a regional redirect or
+    cached response can pair a Belgian URL with a German offer. Fetch the
+    normalized Belgian URL through this scraper's guarded request helper,
+    which rejects redirects outside easycosmetic.be, then parse that response.
+    The session/html parameters remain in the signature for adapter compatibility.
+    """
     normalized_url = _normalise_url(url)
     if not _is_candidate_url(normalized_url):
         return None
-    if html is None:
-        response = session.get(
-            normalized_url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-        html = response.text
-    return _parse_product_html(normalized_url, html)
+
+    # _request_html checks the final URL after redirects and refuses non-Belgian
+    # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
+    belgian_html = _request_html(normalized_url)
+    return _parse_product_html(normalized_url, belgian_html)
 
 
 def parse_product(url: str) -> Optional[Dict[str, Any]]:
