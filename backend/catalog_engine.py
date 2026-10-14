@@ -895,46 +895,24 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
     """Persist discovered URLs in bounded transactions.
 
     Easycosmetic is incremental: valid Belgian URLs omitted by a partial
-    discovery run must remain active. Known German-host rows are deactivated.
+    discovery run must remain active. German-host rows are retired only after
+    a non-empty Belgian discovery has been fully persisted.
     """
 
     if store == "easycosmetic":
-        allowed_hosts = {
-            "easycosmetic.be",
-            "www.easycosmetic.be",
+        # Accept only the real Belgian storefront. Filter the whole collection
+        # before calculating replacement safety; never let an empty/partial
+        # sitemap deactivate the currently indexed catalog.
+        allowed_hosts = {"easycosmetic.be", "www.easycosmetic.be"}
+        product_urls = {
+            url: lastmod
+            for url, lastmod in product_urls.items()
+            if (
+                urllib.parse.urlparse(str(url or "")).scheme in ("http", "https")
+                and (urllib.parse.urlparse(str(url or "")).hostname or "").lower().rstrip(".")
+                in allowed_hosts
+            )
         }
-
-        filtered_urls = {}
-        for url, lastmod in product_urls.items():
-            parsed = urllib.parse.urlparse(str(url or ""))
-            host = (parsed.hostname or "").lower().rstrip(".")
-            if parsed.scheme in ("http", "https") and host in allowed_hosts:
-                filtered_urls[url] = lastmod
-
-                product_urls = filtered_urls
-
-        conn = db()
-        try:
-            with conn:
-                conn.execute(
-                    """UPDATE store_urls
-                       SET active=0
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
-                       )"""
-                )
-                conn.execute(
-                    """DELETE FROM catalog_search_fts
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
-                       )"""
-                )
-        finally:
-            conn.close()
 
     now = time.time()
 
@@ -1035,18 +1013,6 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                 error=progress,
             )
 
-            if store == "easycosmetic":
-                conn = db()
-                try:
-                    conn.execute(
-                        "UPDATE store_urls SET active=0 WHERE store=? "
-                        "AND lower(url) LIKE '%easycosmetic.de%'",
-                        (store,),
-                    )
-                    conn.commit()
-                finally:
-                    conn.close()
-
         except Exception as exc:
             detail = (
                 f"persist_failed;discovered={new_count};saved={persisted};"
@@ -1062,6 +1028,33 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                 error=detail,
             )
             return "DISCOVERY_PARTIAL", persisted, detail
+
+    if store == "easycosmetic" and new_count > 0 and persisted == new_count:
+        # Only retire German/non-Belgian records after a complete, non-empty
+        # Belgian discovery. Empty or partial sitemap runs must not damage the
+        # existing Belgian catalog.
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    """UPDATE store_urls
+                       SET active=0
+                     WHERE store='easycosmetic'
+                       AND url NOT LIKE 'https://easycosmetic.be/%'
+                       AND url NOT LIKE 'http://easycosmetic.be/%'
+                       AND url NOT LIKE 'https://www.easycosmetic.be/%'
+                       AND url NOT LIKE 'http://www.easycosmetic.be/%'"""
+                )
+                conn.execute(
+                    """DELETE FROM catalog_search_fts
+                       WHERE store='easycosmetic'
+                       AND url NOT LIKE 'https://easycosmetic.be/%'
+                       AND url NOT LIKE 'http://easycosmetic.be/%'
+                       AND url NOT LIKE 'https://www.easycosmetic.be/%'
+                       AND url NOT LIKE 'http://www.easycosmetic.be/%'"""
+                )
+        finally:
+            conn.close()
 
     detail = f"persist_complete;discovered={new_count};saved={persisted};queued={queued}"
     _set_sync_state(
@@ -2781,12 +2774,44 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     }
 
 
+def _is_easycosmetic_belgian_url(url):
+    """True only for an HTTP(S) URL on Easycosmetic's Belgian storefront."""
+    try:
+        parsed = urllib.parse.urlparse(str(url or "").strip())
+        return (
+            parsed.scheme.lower() in ("http", "https")
+            and (parsed.hostname or "").lower().rstrip(".")
+            in {"easycosmetic.be", "www.easycosmetic.be"}
+        )
+    except Exception:
+        return False
+
+
 def refresh_url(store, url):
+    if store == "easycosmetic" and not _is_easycosmetic_belgian_url(url):
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                    (store, url),
+                )
+                conn.execute(
+                    "DELETE FROM catalog_search_fts WHERE store=? AND url=?",
+                    (store, url),
+                )
+        finally:
+            conn.close()
+        _remove_local_search_index_url(store, url)
+        return None
+
     try:
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
         store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
+        if store == "easycosmetic" and not _is_easycosmetic_belgian_url(final):
+            raise RuntimeError(f"easycosmetic_non_belgian_redirect;final={final}")
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
@@ -3100,6 +3125,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+               f.store != 'easycosmetic'
+               OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+               OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+               OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+               OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3262,6 +3294,13 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                       u.store != 'easycosmetic'
+                       OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                       OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
