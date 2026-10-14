@@ -911,8 +911,30 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-        # Always use the filtered collection, even when empty.
-        product_urls = filtered_urls
+                product_urls = filtered_urls
+
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    """UPDATE store_urls
+                       SET active=0
+                     WHERE store='easycosmetic'
+                       AND (
+                            lower(url) LIKE '%easycosmetic.de%'
+                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       )"""
+                )
+                conn.execute(
+                    """DELETE FROM catalog_search_fts
+                     WHERE store='easycosmetic'
+                       AND (
+                            lower(url) LIKE '%easycosmetic.de%'
+                            OR lower(url) NOT LIKE '%easycosmetic.be%'
+                       )"""
+                )
+        finally:
+            conn.close()
 
     now = time.time()
 
@@ -956,36 +978,6 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             error=detail,
         )
         return "DISCOVERY_EMPTY", 0, detail
-
-    if store == "easycosmetic":
-        # Only retire non-Belgian rows after a non-empty, acceptable Belgian
-        # discovery pass. Search also filters by host to prevent stale German
-        # rows from leaking while discovery is recovering.
-        conn = db()
-        try:
-            with conn:
-                conn.execute(
-                    """UPDATE store_urls SET active=0
-                       WHERE store='easycosmetic'
-                         AND NOT (
-                           lower(url) LIKE 'http://easycosmetic.be/%'
-                           OR lower(url) LIKE 'https://easycosmetic.be/%'
-                           OR lower(url) LIKE 'http://www.easycosmetic.be/%'
-                           OR lower(url) LIKE 'https://www.easycosmetic.be/%'
-                         )"""
-                )
-                conn.execute(
-                    """DELETE FROM catalog_search_fts
-                       WHERE store='easycosmetic'
-                         AND NOT (
-                           lower(url) LIKE 'http://easycosmetic.be/%'
-                           OR lower(url) LIKE 'https://easycosmetic.be/%'
-                           OR lower(url) LIKE 'http://www.easycosmetic.be/%'
-                           OR lower(url) LIKE 'https://www.easycosmetic.be/%'
-                         )"""
-                )
-        finally:
-            conn.close()
 
     items = list(product_urls.items())
     batch_size = 250
@@ -1043,6 +1035,17 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                 error=progress,
             )
 
+            if store == "easycosmetic":
+                conn = db()
+                try:
+                    conn.execute(
+                        "UPDATE store_urls SET active=0 WHERE store=? "
+                        "AND lower(url) LIKE '%easycosmetic.de%'",
+                        (store,),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
 
         except Exception as exc:
             detail = (
@@ -3097,13 +3100,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
-           AND (
-               u.store != 'easycosmetic'
-               OR lower(u.url) LIKE 'http://easycosmetic.be/%'
-               OR lower(u.url) LIKE 'https://easycosmetic.be/%'
-               OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
-               OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3266,13 +3262,6 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
-                   AND (
-                       u.store != 'easycosmetic'
-                       OR lower(u.url) LIKE 'http://easycosmetic.be/%'
-                       OR lower(u.url) LIKE 'https://easycosmetic.be/%'
-                       OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
-                       OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
-                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
