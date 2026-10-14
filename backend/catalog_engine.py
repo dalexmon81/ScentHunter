@@ -89,26 +89,6 @@ DISCOVERY_BASES = {
     ),
 }
 
-
-# Store-wide HTML discovery entry points supplement incomplete sitemaps.
-# Keep these generic: no product names, IDs, or brand-specific URLs.
-HTML_DISCOVERY_SEEDS = {
-    'parfumzentrum': (
-        'https://www.parfum-zentrum.de/',
-        'https://www.parfum-zentrum.de/parfum_k319/',
-    ),
-    'sabina': (
-        'https://www.sabina.com/',
-        'https://www.sabina.com/es/buscar?search_query=parfum',
-        'https://www.sabina.com/it/ricerca_old?s=parfum',
-        'https://www.sabina.com/it/ricerca_old?s=extrait',
-    ),
-    'deloox': (
-        'https://www.deloox.be/',
-        'https://www.deloox.com/en/search?q=perfume',
-    ),
-}
-
 USER_AGENT = 'ScentHunterBot/7.0 (+price-comparison; catalog indexing)'
 EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                            'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -156,10 +136,7 @@ MAX_TOTAL_DISCOVERED_URLS = 250000
 DISCOVERY_HARD_TIMEOUT = 300
 SITEMAP_DISCOVERY_BUDGET = 45
 HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
-# Bounded HTML discovery limits
-HTML_MAX_DEPTH = 8
-HTML_MAX_PAGES = 120
-HTML_WORKERS = 4
+
 # A single failed/partial discovery must never wipe a previously valid catalog.
 # If a new catalog is implausibly smaller than the existing one, retain the old
 # catalog and expose the result as DISCOVERY_PARTIAL instead.
@@ -1311,25 +1288,10 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         if 1 <= len(parts) <= 3 and not path.endswith('.html'):
             return absolute
         return None
-    if store == 'parfumzentrum':
-        # Parfum-Zentrum uses *_vNNN and *_kNNN suffixes for navigation
-        # pages, while product pages use *_zNNNNNNN. Admit generic
-        # category/navigation URLs and pagination only.
-        if re.search(r'(?:^|_)z\d+/?$', p.path, re.I):
-            return None
-        if path in ('', '/'):
-            return absolute
-        if re.search(r'(?:^|_)v\d+/?$', p.path, re.I) or re.search(r'(?:^|_)k\d+/?$', p.path, re.I):
-            return absolute
-        if re.search(r'(?:^|&)(?:page|p|seite|offset|start)=', p.query, re.I):
-            return absolute
-        return None
     if store == 'sabina':
         # Sabina's Spanish native search is a generic catalog enumeration
         # surface used by the runtime scraper. Accept it only with the
-        # retailer's search_query parameter; discovery never injects the
-        # user's request into these URLs. Product pages are excluded here
-        # because _html_product_url handles their numeric-id .html shape.
+        # search_query parameter; discovery never injects the user's request.
         if path.rstrip('/') == '/es/buscar':
             if re.search(r'(?:^|&)(?:search_query)=', p.query, re.I):
                 return absolute
@@ -1342,6 +1304,20 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         parts=[x for x in path.split('/') if x]
         if 1 <= len(parts) <= 3:
+            return absolute
+        return None
+    if store == 'parfumzentrum':
+        # ParfumZentrum category and brand pages use suffixes such as
+        # _k319 (category) and _v829 (brand). Product pages use _z<ID>
+        # and have already been rejected above by _html_product_url's
+        # product classifier. Admit only generic catalog navigation surfaces:
+        # root, category/brand grammar, and explicit pagination parameters.
+        # This is URL-structure logic, not a product-specific exception.
+        if path in ('', '/'):
+            return absolute
+        if re.search(r'_(?:k|v)\d+/?$', path, re.I):
+            return absolute
+        if re.search(r'(?:^|&)(?:page|seite|p|offset|start)=', p.query, re.I):
             return absolute
         return None
     return None
@@ -2545,7 +2521,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store in ('sabina', 'parfumzentrum')
+            store == 'sabina'
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
