@@ -908,39 +908,12 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
         for url, lastmod in product_urls.items():
             parsed = urllib.parse.urlparse(str(url or ""))
             host = (parsed.hostname or "").lower().rstrip(".")
-            if parsed.scheme.lower() in ("http", "https") and host in allowed_hosts:
+            if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-        # Apply filtering after the loop even when no Belgian URL was found.
+        # Apply the allow-list even when discovery finds zero Belgian URLs.
+        # Do not deactivate/delete existing catalog rows here: discovery can be partial.
         product_urls = filtered_urls
-
-        # Retire only rows whose actual hostname is the German storefront.
-        # Do not deactivate Belgian or other rows just because a discovery run
-        # is partial or returns an unexpected URL format.
-        conn = db()
-        try:
-            with conn:
-                existing = conn.execute(
-                    "SELECT url FROM store_urls WHERE store='easycosmetic'"
-                ).fetchall()
-                german_urls = []
-                for row in existing:
-                    existing_url = str(row[0] or '').strip()
-                    parsed_existing = urllib.parse.urlparse(existing_url)
-                    host_existing = (parsed_existing.hostname or '').lower().rstrip('.')
-                    if host_existing in ('easycosmetic.de', 'www.easycosmetic.de'):
-                        german_urls.append(existing_url)
-                for german_url in german_urls:
-                    conn.execute(
-                        "UPDATE store_urls SET active=0 WHERE store='easycosmetic' AND url=?",
-                        (german_url,),
-                    )
-                    conn.execute(
-                        "DELETE FROM catalog_search_fts WHERE store='easycosmetic' AND url=?",
-                        (german_url,),
-                    )
-        finally:
-            conn.close()
 
     now = time.time()
 
@@ -2972,7 +2945,10 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
         if row.get('_needs_refresh') or row.get('size_ml') not in (None, '', 0):
             continue
         url = str(row.get('url') or '').strip()
-        if not url or 'easycosmetic.' not in url.lower():
+        if not url:
+            continue
+        parsed_url = urllib.parse.urlparse(url)
+        if parsed_url.scheme not in ('http', 'https') or (parsed_url.hostname or '').lower().rstrip('.') not in ('easycosmetic.be', 'www.easycosmetic.be'):
             continue
         jobs.append(('easycosmetic', url))
 
@@ -3106,6 +3082,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+                u.store != 'easycosmetic'
+                OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3162,8 +3145,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         continue
                     if store == 'easycosmetic':
                         parsed_url = urllib.parse.urlparse(url)
-                        host_url = (parsed_url.hostname or '').lower().rstrip('.')
-                        if parsed_url.scheme.lower() not in ('http', 'https') or host_url not in ('easycosmetic.be', 'www.easycosmetic.be'):
+                        if parsed_url.scheme not in ('http', 'https') or (parsed_url.hostname or '').lower().rstrip('.') not in ('easycosmetic.be', 'www.easycosmetic.be'):
                             continue
                     search_text = ' '.join(
                         str(r[key] or '')
@@ -3273,6 +3255,13 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                        u.store != 'easycosmetic'
+                        OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
@@ -3283,11 +3272,6 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                 url = str(r['url'] or '').strip()
                 if not url or url in selected_by_url:
                     continue
-                if store == 'easycosmetic':
-                    parsed_url = urllib.parse.urlparse(url)
-                    host_url = (parsed_url.hostname or '').lower().rstrip('.')
-                    if parsed_url.scheme.lower() not in ('http', 'https') or host_url not in ('easycosmetic.be', 'www.easycosmetic.be'):
-                        continue
                 search_text = ' '.join(
                     str(r[key] or '') for key in ('slug','product_name','product_brand')
                 )
