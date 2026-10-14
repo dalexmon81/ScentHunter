@@ -2820,12 +2820,12 @@ def refresh_url(store, url):
 
         primary_ok = bool(item and item.get('name'))
         if store == 'easycosmetic' and item:
-            parsed_item_url = item.get('url') or url
-            if not _store_allowed_url(store, parsed_item_url):
-                raise RuntimeError(
-                    f'easycosmetic_non_be_parser_url_rejected;url={url!r};'
-                    f'item_url={parsed_item_url!r}'
-                )
+            # The requested URL and final response URL have already been
+            # validated as Belgian above. Some product-page metadata exposes
+            # a canonical URL for another market; do not discard a valid
+            # Belgian offer because of that metadata. Persist/index this
+            # offer under its validated Belgian discovery URL.
+            item['url'] = url
         if item and store in ('easycosmetic', 'parfumzentrum'):
             print(
                 'CATALOG OFFER DIAG ' +
