@@ -911,7 +911,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-                product_urls = filtered_urls
+        # Apply the filter even when every discovered URL is invalid.
+        product_urls = filtered_urls
 
         conn = db()
         try:
@@ -2783,12 +2784,20 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
+        # Never fetch or persist Easycosmetic URLs outside the Belgian domain.
+        if store == 'easycosmetic' and not _store_allowed_url(store, url):
+            raise RuntimeError(f'easycosmetic_non_be_url_rejected;url={url!r}')
+
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
         store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
+        if store == 'easycosmetic' and not _store_allowed_url(store, final):
+            raise RuntimeError(
+                f'easycosmetic_non_be_redirect_rejected;url={url!r};final={final!r}'
+            )
 
         # The retailer scraper owns retailer-specific product-page semantics
         # such as public-vs-code pricing and product-vs-set identity. When a
@@ -2811,6 +2820,13 @@ def refresh_url(store, url):
             item = parse_product(store, final, data)
 
         primary_ok = bool(item and item.get('name'))
+        if store == 'easycosmetic' and item:
+            parsed_item_url = item.get('url') or url
+            if not _store_allowed_url(store, parsed_item_url):
+                raise RuntimeError(
+                    f'easycosmetic_non_be_parser_url_rejected;url={url!r};'
+                    f'item_url={parsed_item_url!r}'
+                )
         if item and store in ('easycosmetic', 'parfumzentrum'):
             print(
                 'CATALOG OFFER DIAG ' +
@@ -3100,6 +3116,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+                u.store != 'easycosmetic'
+                OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+           )
          ORDER BY rank
          LIMIT ?
     """
@@ -3262,6 +3285,13 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                        u.store != 'easycosmetic'
+                        OR lower(u.url) LIKE 'https://easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'http://easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'https://www.easycosmetic.be/%'
+                        OR lower(u.url) LIKE 'http://www.easycosmetic.be/%'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
