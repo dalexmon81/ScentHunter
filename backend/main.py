@@ -356,23 +356,6 @@ def _catalog_is_ready():
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
 
-
-def _stores_missing_catalog():
-    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
-        return []
-    try:
-        statuses = catalog_store_status() or {}
-        missing = []
-        for store in STORES:
-            indexed = int((statuses.get(store) or {}).get('indexed_urls') or 0)
-            if indexed <= 0:
-                missing.append(store)
-        return missing
-    except Exception as exc:
-        print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
-        return []
-
-
 def _start_catalog_hydration():
     global _CATALOG_HYDRATION_STARTED
     with _CATALOG_BOOTSTRAP_LOCK:
@@ -557,30 +540,13 @@ def _start_catalog_bootstrap():
         if _CATALOG_BOOTSTRAP_STARTED:
             return
         _CATALOG_BOOTSTRAP_STARTED = True
-        if _catalog_is_ready():
+    if _catalog_is_ready():
         with _CATALOG_BOOTSTRAP_LOCK:
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
         print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
-
-        missing_stores = _stores_missing_catalog()
-        if missing_stores:
-            print(
-                'CATALOG BOOTSTRAP: stores without indexed URLs: '
-                f'{missing_stores}',
-                flush=True,
-            )
-            for store in missing_stores:
-                threading.Thread(
-                    target=catalog_discover_store,
-                    args=(store,),
-                    daemon=True,
-                    name=f'scenthunter-catalog-bootstrap-{store}',
-                ).start()
-
         _start_catalog_hydration()
         return
-
     threading.Thread(
         target=_catalog_bootstrap_worker,
         daemon=True,
