@@ -1291,7 +1291,9 @@ def _html_listing_url(store, raw_url, base_url, label=''):
     if store == 'sabina':
         # Sabina's Spanish native search is a generic catalog enumeration
         # surface used by the runtime scraper. Accept it only with the
-        # search_query parameter; discovery never injects the user's request.
+        # retailer's search_query parameter; discovery never injects the
+        # user's request into these URLs. Product pages are excluded here
+        # because _html_product_url handles their numeric-id .html shape.
         if path.rstrip('/') == '/es/buscar':
             if re.search(r'(?:^|&)(?:search_query)=', p.query, re.I):
                 return absolute
@@ -1307,15 +1309,14 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'parfumzentrum':
-        # ParfumZentrum category and brand pages use suffixes such as
-        # _k319 (category) and _v829 (brand). Product pages use _z<ID>
-        # and have already been rejected above by _html_product_url's
-        # product classifier. Admit only generic catalog navigation surfaces:
-        # root, category/brand grammar, and explicit pagination parameters.
-        # This is URL-structure logic, not a product-specific exception.
-        if path in ('', '/'):
-            return absolute
-        if re.search(r'_(?:k|v)\d+/?$', path, re.I):
+        # ParfumZentrum category URLs encode their navigation IDs in the
+        # path (for example /rasasi_v829/parfum_k319/f/herren/). Product URLs
+        # are handled separately by _html_product_url and end in _z<digits>.
+        # Accept category/facet paths and their pagination variants so the
+        # discovery crawler can traverse the retailer's catalog graph.
+        if re.search(r'(?:^|_)z\d+/?$', path, re.I):
+            return None
+        if re.search(r'(?:^|_)v\d+(?:/|$)|(?:^|_)k\d+(?:/|$)', path, re.I):
             return absolute
         if re.search(r'(?:^|&)(?:page|seite|p|offset|start)=', p.query, re.I):
             return absolute
