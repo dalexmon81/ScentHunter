@@ -911,7 +911,7 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
 
-        # Apply the filter even when every discovered URL is invalid.
+        # Always use the filtered mapping, including when it is empty.
         product_urls = filtered_urls
 
         conn = db()
@@ -2784,20 +2784,19 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
-        # Never fetch or persist Easycosmetic URLs outside the Belgian domain.
-        if store == 'easycosmetic' and not _store_allowed_url(store, url):
-            raise RuntimeError(f'easycosmetic_non_be_url_rejected;url={url!r}')
-
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
         store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
+        if store == 'easycosmetic' and not _store_allowed_url(store, url):
+            raise RuntimeError(f'easycosmetic_non_be_url_rejected;url={url!r}')
+
         status, final, data = http_get(url, timeout=store_timeout)
-        if status >= 400:
-            raise RuntimeError(f'HTTP {status}')
         if store == 'easycosmetic' and not _store_allowed_url(store, final):
             raise RuntimeError(
                 f'easycosmetic_non_be_redirect_rejected;url={url!r};final={final!r}'
             )
+        if status >= 400:
+            raise RuntimeError(f'HTTP {status}')
 
         # The retailer scraper owns retailer-specific product-page semantics
         # such as public-vs-code pricing and product-vs-set identity. When a
