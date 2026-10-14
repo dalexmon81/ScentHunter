@@ -137,6 +137,24 @@ DISCOVERY_HARD_TIMEOUT = 300
 SITEMAP_DISCOVERY_BUDGET = 45
 HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
 
+# Persistent HTML-discovery entry points. Keep these at retailer/category level:
+# no individual products or query-specific exceptions. The homepage lets the
+# generic crawler follow the retailer's own navigation graph when sitemaps are
+# incomplete or contain only a partial set of products.
+HTML_DISCOVERY_SEEDS = {
+    'bplatz': ('https://en.bplatz.de/',),
+    'parfumcity': ('https://www.parfumcity.nl/',),
+    'parfumzentrum': ('https://www.parfum-zentrum.de/',),
+    'perfumemarket': ('https://www.perfumemarket.nl/',),
+    'sabina': ('https://www.sabina.com/',),
+    'orioudh': ('https://orioudh.com/',),
+    'easycosmetic': ('https://www.easycosmetic.be/',),
+    'deloox': (
+        'https://www.deloox.be/',
+        'https://www.deloox.be/chercher.html?q=parfum',
+    ),
+}
+
 # A single failed/partial discovery must never wipe a previously valid catalog.
 # If a new catalog is implausibly smaller than the existing one, retain the old
 # catalog and expose the result as DISCOVERY_PARTIAL instead.
