@@ -156,7 +156,10 @@ MAX_TOTAL_DISCOVERED_URLS = 250000
 DISCOVERY_HARD_TIMEOUT = 300
 SITEMAP_DISCOVERY_BUDGET = 45
 HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
-
+# Bounded HTML discovery limits
+HTML_MAX_DEPTH = 8
+HTML_MAX_PAGES = 120
+HTML_WORKERS = 4
 # A single failed/partial discovery must never wipe a previously valid catalog.
 # If a new catalog is implausibly smaller than the existing one, retain the old
 # catalog and expose the result as DISCOVERY_PARTIAL instead.
