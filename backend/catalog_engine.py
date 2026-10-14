@@ -89,6 +89,26 @@ DISCOVERY_BASES = {
     ),
 }
 
+
+# Store-wide HTML discovery entry points supplement incomplete sitemaps.
+# Keep these generic: no product names, IDs, or brand-specific URLs.
+HTML_DISCOVERY_SEEDS = {
+    'parfumzentrum': (
+        'https://www.parfum-zentrum.de/',
+        'https://www.parfum-zentrum.de/parfum_k319/',
+    ),
+    'sabina': (
+        'https://www.sabina.com/',
+        'https://www.sabina.com/es/buscar?search_query=parfum',
+        'https://www.sabina.com/it/ricerca_old?s=parfum',
+        'https://www.sabina.com/it/ricerca_old?s=extrait',
+    ),
+    'deloox': (
+        'https://www.deloox.be/',
+        'https://www.deloox.com/en/search?q=perfume',
+    ),
+}
+
 USER_AGENT = 'ScentHunterBot/7.0 (+price-comparison; catalog indexing)'
 EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                            'AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -1286,6 +1306,19 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         parts=[x for x in path.split('/') if x]
         if 1 <= len(parts) <= 3 and not path.endswith('.html'):
+            return absolute
+        return None
+    if store == 'parfumzentrum':
+        # Parfum-Zentrum uses *_vNNN and *_kNNN suffixes for navigation
+        # pages, while product pages use *_zNNNNNNN. Admit generic
+        # category/navigation URLs and pagination only.
+        if re.search(r'(?:^|_)z\d+/?$', p.path, re.I):
+            return None
+        if path in ('', '/'):
+            return absolute
+        if re.search(r'(?:^|_)v\d+/?$', p.path, re.I) or re.search(r'(?:^|_)k\d+/?$', p.path, re.I):
+            return absolute
+        if re.search(r'(?:^|&)(?:page|p|seite|offset|start)=', p.query, re.I):
             return absolute
         return None
     if store == 'sabina':
@@ -2509,7 +2542,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store == 'sabina'
+            store in ('sabina', 'parfumzentrum')
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
