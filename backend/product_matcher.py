@@ -1050,10 +1050,17 @@ class ProductMatcher:
                     str(registered_variant.get("canonical_name") or ""),
                     *(str(alias) for alias in registered_variant.get("aliases", ())),
                 ))
-                if audience_of(identity_text) == offer_audience:
+                registered_audience = audience_of(identity_text)
+                # A retailer's explicit audience label must exclude variants
+                # registered for the opposite audience, but it must not exclude
+                # otherwise valid variants whose registry names are audience-
+                # neutral (e.g. Hawas Ice, Atlantis, Chrome, Viper). Those
+                # variants remain eligible for name/URL identity resolution.
+                if registered_audience is None or registered_audience == offer_audience:
                     audience_variants.append(registered_variant)
-            # Apply the constraint only when the registry has explicit variants
-            # for that audience. Never silently fall back to the opposite gender.
+            # If the family explicitly distinguishes audiences, keep the
+            # opposite-audience variants out while allowing neutral variants.
+            # Reject only when the registry provides no compatible candidate.
             if audience_variants:
                 eligible_variants = audience_variants
             else:
