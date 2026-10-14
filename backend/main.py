@@ -344,17 +344,65 @@ def catalog_resync_deloox_status_endpoint(job_id: str = ''):
 
 
 def _catalog_is_ready():
+    """Return whether any persistent catalog data exists.
+
+    This is a global existence check only. Store coverage is checked separately
+    by _stores_missing_catalog(), so one populated retailer cannot hide a
+    missing retailer such as Easycosmetic Belgium.
+    """
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
         return False
     try:
         statuses = catalog_store_status() or {}
         return any(
-            int((statuses.get(store) or {}).get('indexed_urls') or 0) > 0
+            int((statuses.get(store) or {}).get(
+                'valid_indexed_urls',
+                (statuses.get(store) or {}).get('indexed_urls', 0),
+            ) or 0) > 0
             for store in STORES
         )
     except Exception as exc:
         print(f'CATALOG READINESS ERROR: {type(exc).__name__}: {exc}', flush=True)
         return False
+
+
+def _stores_missing_catalog():
+    """List stores without valid catalog URLs, using store-specific coverage."""
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_store_status):
+        return []
+    try:
+        statuses = catalog_store_status() or {}
+        missing = []
+        for store in STORES:
+            state = statuses.get(store) or {}
+            indexed = state.get('valid_indexed_urls', state.get('indexed_urls', 0))
+            try:
+                indexed = int(indexed or 0)
+            except (TypeError, ValueError):
+                indexed = 0
+            if indexed <= 0:
+                missing.append(store)
+        return missing
+    except Exception as exc:
+        print(f'CATALOG STORE COVERAGE ERROR: {type(exc).__name__}: {exc}', flush=True)
+        return []
+
+
+def _discover_missing_catalog_stores(stores):
+    """Discover only retailers with no valid indexed catalog URLs."""
+    for store in stores:
+        if not callable(catalog_discover_store):
+            print(f'CATALOG BOOTSTRAP SKIP: no discover_store for {store}', flush=True)
+            continue
+        try:
+            result = catalog_discover_store(store)
+            print(f'CATALOG STORE DISCOVERY FINISHED store={store} result={result!r}', flush=True)
+        except Exception as exc:
+            print(
+                f'CATALOG STORE DISCOVERY ERROR store={store} '
+                f'{type(exc).__name__}: {exc}',
+                flush=True,
+            )
 
 def _start_catalog_hydration():
     global _CATALOG_HYDRATION_STARTED
@@ -541,10 +589,24 @@ def _start_catalog_bootstrap():
             return
         _CATALOG_BOOTSTRAP_STARTED = True
     if _catalog_is_ready():
+        missing_stores = _stores_missing_catalog()
         with _CATALOG_BOOTSTRAP_LOCK:
             global _CATALOG_BOOTSTRAP_DONE
             _CATALOG_BOOTSTRAP_DONE = True
-        print('CATALOG BOOTSTRAP SKIP: persistent catalog already indexed', flush=True)
+        if missing_stores:
+            print(
+                'CATALOG BOOTSTRAP: stores without valid indexed URLs: '
+                f'{missing_stores}; starting targeted discovery',
+                flush=True,
+            )
+            threading.Thread(
+                target=_discover_missing_catalog_stores,
+                args=(missing_stores,),
+                daemon=True,
+                name='scenthunter-catalog-missing-store-discovery',
+            ).start()
+        else:
+            print('CATALOG BOOTSTRAP SKIP: every store has valid indexed URLs', flush=True)
         _start_catalog_hydration()
         return
     threading.Thread(
