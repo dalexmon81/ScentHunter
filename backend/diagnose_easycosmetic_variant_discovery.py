@@ -1,148 +1,141 @@
-from fastapi import APIRouter, Query
+#!/usr/bin/env python3
+"""Read-only Easycosmetic production-catalog diagnostic.
+
+Replaces the broken variant-discovery diagnostic. It deliberately does not
+import catalog_engine.db(), because db() calls _ensure_schema() and can mutate
+the database. SQLite is opened with mode=ro; no network, discovery, hydration,
+matcher, resync, or writes are performed.
+"""
+from __future__ import annotations
+
+import os
+import sqlite3
 import time
-import urllib.parse
+from pathlib import Path
+from urllib.parse import urlparse
+
+from fastapi import APIRouter
 
 router = APIRouter()
 
 TARGETS = {
-    "donna_50": {
-        "url": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098",
-        "tokens": ["valentino", "donna", "born", "roma", "coral", "fantasy"],
-    },
-    "donna_100": {
-        "url": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099",
-        "tokens": ["valentino", "donna", "born", "roma", "coral", "fantasy"],
-    },
-    "uomo_100": {
-        "url": "",
-        "tokens": ["valentino", "uomo", "born", "roma", "coral", "fantasy"],
-    },
+    "donna_30": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78097",
+    "donna_50": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78098",
+    "donna_100": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=78099",
+    "donna_10": "https://www.easycosmetic.be/valentino/donna-born-in-roma/valentino-donna-born-in-roma-coral-fantasy-eau-de-parfum-spray.aspx?variant=107764",
 }
+TARGET_PATH = urlparse(next(iter(TARGETS.values()))).path.lower()
 
 
-def _row_dict(row):
-    return dict(row) if row is not None else None
+def _db_path() -> Path:
+    configured = os.environ.get("SCENTHUNTER_CATALOG_DB")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return (Path(__file__).resolve().parent / "store_catalog.sqlite3").resolve()
 
 
-def _url_path(url):
+def _table_names(conn):
+    return {row["name"] for row in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type IN ('table','view')").fetchall()}
+
+
+def _columns(conn, table):
+    return [row["name"] for row in conn.execute(
+        f'PRAGMA table_info("{table}")').fetchall()]
+
+
+def _dict_rows(conn, table, where, params=(), limit=30):
+    columns = _columns(conn, table)
+    if not columns:
+        return {"columns": [], "rows": [], "error": "TABLE_NOT_FOUND"}
     try:
-        return urllib.parse.urlparse(str(url or "")).path.rstrip("/").lower()
-    except Exception:
-        return ""
+        rows = conn.execute(
+            f'SELECT * FROM "{table}" WHERE {where} LIMIT ?',
+            tuple(params) + (limit,)).fetchall()
+        return {"columns": columns, "rows": [dict(row) for row in rows]}
+    except Exception as exc:
+        return {"columns": columns, "rows": [], "error": f"{type(exc).__name__}: {exc}"}
 
 
-def _query_rows(conn, table, url, store="easycosmetic", limit=25):
-    # Table names are fixed internally; never taken from request parameters.
-    exact = conn.execute(
-        f"SELECT * FROM {table} WHERE store=? AND url=? LIMIT 10",
-        (store, url),
-    ).fetchall()
-    path = _url_path(url)
-    variants = conn.execute(
-        f"SELECT * FROM {table} WHERE store=? AND lower(url) LIKE ? ORDER BY url LIMIT ?",
-        (store, f"%{path}", limit),
-    ).fetchall() if path else []
-    return {
-        "exact": [_row_dict(row) for row in exact],
-        "same_path": [_row_dict(row) for row in variants],
-    }
+def _url_rows(conn, table, target_url):
+    columns = _columns(conn, table)
+    if not columns:
+        return {"columns": [], "exact": [], "same_product_path": [], "error": "TABLE_NOT_FOUND"}
+    if "url" not in columns:
+        return {"columns": columns, "exact": [], "same_product_path": [], "error": "NO_URL_COLUMN"}
+    store_clause = "store = 'easycosmetic'" if "store" in columns else "1=1"
+    exact = _dict_rows(conn, table, f"{store_clause} AND url = ?", (target_url,), 10)
+    same = _dict_rows(conn, table, f"{store_clause} AND lower(url) LIKE ?",
+                      (f"%{TARGET_PATH}%",), 50)
+    return {"columns": columns, "exact": exact.get("rows", []),
+            "same_product_path": same.get("rows", []),
+            "exact_error": exact.get("error"), "path_error": same.get("error")}
+
+
+def _fts_rows(conn, table, target_url):
+    columns = _columns(conn, table)
+    if not columns:
+        return {"columns": [], "rows": [], "error": "TABLE_NOT_FOUND"}
+    candidates = [c for c in ("url", "store", "name", "title", "text", "content", "search_text") if c in columns]
+    if not candidates:
+        return {"columns": columns, "rows": [], "error": "NO_SEARCHABLE_COLUMNS"}
+    clauses, params = [], []
+    if "url" in columns:
+        clauses.extend(["url = ?", "lower(url) LIKE ?"])
+        params.extend([target_url, f"%{TARGET_PATH}%"])
+    for col in (c for c in candidates if c not in ("url", "store")):
+        clauses.append(f'lower(CAST("{col}" AS TEXT)) LIKE ?')
+        params.append("%coral%fantasy%")
+    store_filter = "store = 'easycosmetic' AND " if "store" in columns else ""
+    try:
+        rows = conn.execute(
+            f'SELECT * FROM "{table}" WHERE {store_filter}(' + " OR ".join(clauses) + ") LIMIT 50",
+            tuple(params)).fetchall()
+        return {"columns": columns, "rows": [dict(row) for row in rows]}
+    except Exception as exc:
+        return {"columns": columns, "rows": [], "error": f"{type(exc).__name__}: {exc}"}
 
 
 @router.get("/diagnose-easycosmetic-variant-discovery")
-def diagnose_easycosmetic_variant_discovery(
-    max_pages: int = Query(120, ge=1, le=300),
-    max_depth: int = Query(8, ge=0, le=12),
-    max_events: int = Query(500, ge=50, le=2000),
-):
-    """
-    Read-only Easycosmetic variant discovery diagnostic.
-
-    The HTML trace makes HTTP requests to public retailer pages but does not
-    run a production search, resync, ProductMatcher, catalog discovery worker,
-    product hydration, or any database write.
-    """
+def diagnose_easycosmetic_variant_discovery():
     started = time.monotonic()
-    out = {
-        "diagnostic": "easycosmetic-variant-discovery-read-only-v1",
-        "ok": False,
-        "read_only": True,
-        "database_written": False,
-        "production_search_called": False,
-        "resync_called": False,
-        "product_matcher_called": False,
-        "catalog_discovery_worker_called": False,
-        "hydration_called": False,
-        "network_called": True,
-        "store": "easycosmetic",
-        "targets": TARGETS,
-        "trace": None,
-        "persistent_rows": {},
-        "diagnosis": None,
+    path = _db_path()
+    report = {
+        "diagnostic": "easycosmetic-production-catalog-read-only-v2",
+        "ok": False, "read_only": True, "database_written": False,
+        "production_search_called": False, "resync_called": False,
+        "product_matcher_called": False, "catalog_discovery_worker_called": False,
+        "hydration_called": False, "network_called": False,
+        "store": "easycosmetic", "database_path_basename": path.name,
+        "database_exists": path.is_file(), "targets": TARGETS,
+        "schema": {}, "persistent_rows": {},
     }
-
+    if not path.is_file():
+        report["error"] = "CATALOG_DATABASE_FILE_NOT_FOUND"
+        report["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return report
     try:
-        import catalog_engine
-
-        trace_fn = getattr(catalog_engine, "diagnose_html_discovery_trace", None)
-        if not callable(trace_fn):
-            out["error"] = "catalog_engine.diagnose_html_discovery_trace_unavailable"
-            return out
-
-        trace = trace_fn(
-            "easycosmetic",
-            query="Valentino Born In Roma Coral Fantasy",
-            max_pages=max_pages,
-            max_depth=max_depth,
-            max_events=max_events,
-        )
-        out["trace"] = trace
-
-        conn = catalog_engine.db()
+        conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=3)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only=ON")
         try:
-            for name, target in TARGETS.items():
-                url = target["url"]
-                if not url:
-                    out["persistent_rows"][name] = {
-                        "note": "Exact target URL not configured; path-family rows still need manual review."
-                    }
-                    continue
-                out["persistent_rows"][name] = {
-                    "store_urls": _query_rows(conn, "store_urls", url),
-                    "hydration_queue": _query_rows(conn, "hydration_queue", url),
-                    "store_products": _query_rows(conn, "store_products", url),
+            names = _table_names(conn)
+            relevant = ("store_urls", "hydration_queue", "store_products", "catalog_search_fts", "sync_state")
+            report["schema"] = {name: _columns(conn, name) if name in names else None for name in relevant}
+            for label, url in TARGETS.items():
+                report["persistent_rows"][label] = {
+                    "store_urls": _url_rows(conn, "store_urls", url) if "store_urls" in names else None,
+                    "hydration_queue": _url_rows(conn, "hydration_queue", url) if "hydration_queue" in names else None,
+                    "store_products": _url_rows(conn, "store_products", url) if "store_products" in names else None,
+                    "catalog_search_fts": _fts_rows(conn, "catalog_search_fts", url) if "catalog_search_fts" in names else None,
                 }
+            if "sync_state" in names:
+                cols = _columns(conn, "sync_state")
+                report["sync_state_easycosmetic"] = _dict_rows(conn, "sync_state", "store = 'easycosmetic'", (), 10) if "store" in cols else {"columns": cols, "error": "NO_STORE_COLUMN"}
         finally:
             conn.close()
-
-        found = []
-        trace_urls = []
-        if isinstance(trace, dict):
-            for event in trace.get("events", []) or []:
-                for item in event.get("query_relevant_links", []) or []:
-                    trace_urls.append(item.get("url", ""))
-            trace_urls.extend(item.get("url", "") for item in trace.get("query_url_hits", []) or [])
-        normalized_trace_urls = {str(url).split("#", 1)[0].lower() for url in trace_urls if url}
-        for name, target in TARGETS.items():
-            url = target["url"]
-            if url and url.split("#", 1)[0].lower() in normalized_trace_urls:
-                found.append(name)
-
-        out["trace_target_hits"] = found
-        if not isinstance(trace, dict) or not trace.get("ok"):
-            out["diagnosis"] = "TRACE_FAILED_OR_INCOMPLETE"
-        elif found:
-            out["diagnosis"] = "TRACE_FOUND_ONE_OR_MORE_TARGET_VARIANTS_CHECK_PERSISTENCE_ROWS"
-        else:
-            out["diagnosis"] = "TARGET_VARIANTS_NOT_VISIBLE_IN_RELEVANT_TRACE_EVENTS"
-        out["ok"] = True
-        return out
-
+        report["ok"] = True
     except Exception as exc:
-        out["error"] = f"{type(exc).__name__}: {exc}"
-        return out
-    finally:
-        out["elapsed_sec"] = round(time.monotonic() - started, 3)
-
-
-if __name__ == "__main__":
-    pass
+        report["error"] = f"{type(exc).__name__}: {exc}"
+    report["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return report
