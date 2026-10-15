@@ -52,7 +52,7 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt|pl|da|tw)/[^/]+/(\d+)-[^/]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
     re.I,
 )
 
@@ -298,17 +298,7 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
 
             item_type = item.get("@type")
             types = item_type if isinstance(item_type, list) else [item_type]
-
-            # Schema.org permits both the short form "Product" and full
-            # type URLs such as "https://schema.org/Product".
-            def is_product_type(value):
-                if not isinstance(value, str):
-                    return False
-                normalized_type = value.strip().rstrip("/")
-                normalized_type = re.split(r"[/#]", normalized_type)[-1]
-                return normalized_type.lower() == "product"
-
-            if not any(is_product_type(value) for value in types):
+            if not any(str(value).lower() == "product" for value in types):
                 continue
 
             score = 0
@@ -1105,27 +1095,37 @@ def _select_product_offer(product, final_url, title, size_ml):
     return priced[0] if priced else candidates[0]
 
 
-def extract_product_page(session, url, query, authoritative_search=False):
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return None
+def extract_product_page(session, url, query, authoritative_search=False, html=None):
+    # The catalog engine supplies HTML for an already-identified product URL.
+    # Reuse that response and do not treat URL path tokens (locale, category,
+    # numeric product ID) as required product-name tokens.
+    if html is None:
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            return None
 
-    if response.status_code >= 400:
-        return None
+        if response.status_code >= 400:
+            return None
 
-    final_url = normalise_url(response.url)
+        final_url = normalise_url(response.url)
+        page_html = response.text
+        status_code = response.status_code
+    else:
+        final_url = normalise_url(url)
+        page_html = html.decode("utf-8", errors="replace") if isinstance(html, bytes) else str(html)
+        status_code = 200
 
     if not final_url or not is_product_url(final_url):
         return None
 
     soup = BeautifulSoup(
-        response.text,
+        page_html,
         "html.parser",
     )
 
@@ -1158,7 +1158,10 @@ def extract_product_page(session, url, query, authoritative_search=False):
     elif raw_brand:
         brand = clean(raw_brand)
 
-    if not authoritative_search and not query_matches(
+    # Search discovery must validate relevance; exact-URL catalog refresh must
+    # parse the identified product even when the URL contains locale/category/ID
+    # tokens that are absent from its commercial title.
+    if html is None and not authoritative_search and not query_matches(
         f"{title} {brand or ''}",
         query,
     ):
@@ -1398,7 +1401,7 @@ def extract_product_page(session, url, query, authoritative_search=False):
 
         "raw_data": {
             "product_url": final_url,
-            "status_code": response.status_code,
+            "status_code": status_code,
             "jsonld_product": product,
         },
 
