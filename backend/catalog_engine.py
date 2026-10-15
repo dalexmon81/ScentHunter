@@ -2947,30 +2947,61 @@ def refresh_url(store, url):
             raise RuntimeError(detail)
 
         conn = db()
-        conn.execute(
-            '''INSERT INTO store_products(
-                store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
-                price,currency,availability,fetched_at,fetch_status)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-               ON CONFLICT(store,url) DO UPDATE SET
-                name=excluded.name,brand=excluded.brand,image=excluded.image,
-                sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                concentration=COALESCE(excluded.concentration,store_products.concentration),
-                gender=COALESCE(excluded.gender,store_products.gender),
-                price=excluded.price,currency=excluded.currency,
-                availability=excluded.availability,fetched_at=excluded.fetched_at,
-                fetch_status=excluded.fetch_status''',
-            (
-                store, url, item.get('name'), item.get('brand'), item.get('image'),
-                item.get('sku'), item.get('gtin'), item.get('mpn'),
-                item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                item.get('price_num'), item.get('currency'), item.get('availability'),
-                item.get('fetched_at'), 'OK',
-            ),
-        )
-        conn.commit()
-        conn.close()
+        try:
+            # A successful targeted refresh must also make this URL part of the
+            # persistent searchable catalog. Previously only store_products
+            # was written, while search_local() and the FTS triggers require an
+            # active store_urls row. This left valid refreshed offers invisible.
+            now = time.time()
+            with conn:
+                conn.execute(
+                    '''INSERT INTO store_urls(
+                           store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           slug=excluded.slug,
+                           discovered_at=excluded.discovered_at,
+                           active=1''',
+                    (store, url, url_slug(url), None, now),
+                )
+                conn.execute(
+                    '''INSERT INTO hydration_queue(
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ?
+                               THEN 'PROCESSING'
+                               ELSE hydration_queue.state
+                           END''',
+                    (store, url, "PENDING", 0, now, now, now, now),
+                )
+                conn.execute(
+                    '''INSERT INTO store_products(
+                        store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
+                        price,currency,availability,fetched_at,fetch_status)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                        name=excluded.name,brand=excluded.brand,image=excluded.image,
+                        sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                        size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                        concentration=COALESCE(excluded.concentration,store_products.concentration),
+                        gender=COALESCE(excluded.gender,store_products.gender),
+                        price=excluded.price,currency=excluded.currency,
+                        availability=excluded.availability,fetched_at=excluded.fetched_at,
+                        fetch_status=excluded.fetch_status''',
+                    (
+                        store, url, item.get('name'), item.get('brand'), item.get('image'),
+                        item.get('sku'), item.get('gtin'), item.get('mpn'),
+                        item.get('size_ml'), item.get('concentration'), item.get('gender'),
+                        item.get('price_num'), item.get('currency'), item.get('availability'),
+                        item.get('fetched_at'), 'OK',
+                    ),
+                )
+        finally:
+            conn.close()
 
         # Keep an already-built search index current without invalidating and
         # rebuilding the whole store catalog. The persistent DB remains the
