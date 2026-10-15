@@ -52,7 +52,7 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl|pt|pl|da|tw)/[^/]+/(\d+)-[^/]+\.html$",
     re.I,
 )
 
@@ -298,7 +298,17 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
 
             item_type = item.get("@type")
             types = item_type if isinstance(item_type, list) else [item_type]
-            if not any(str(value).lower() == "product" for value in types):
+
+            # Schema.org permits both the short form "Product" and full
+            # type URLs such as "https://schema.org/Product".
+            def is_product_type(value):
+                if not isinstance(value, str):
+                    return False
+                normalized_type = value.strip().rstrip("/")
+                normalized_type = re.split(r"[/#]", normalized_type)[-1]
+                return normalized_type.lower() == "product"
+
+            if not any(is_product_type(value) for value in types):
                 continue
 
             score = 0
