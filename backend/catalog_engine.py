@@ -2907,6 +2907,20 @@ def refresh_url(store, url):
             raise RuntimeError(detail)
 
         conn = db()
+        # Successful hydration is the authoritative confirmation that this URL
+        # is a valid catalog offer. Restore the generic store_urls relationship
+        # in the same connection before persisting the parsed product. This
+        # repairs orphaned product rows and keeps FTS triggers in sync without
+        # a full-index rebuild or product-specific exceptions.
+        conn.execute(
+            """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+               VALUES(?,?,?,?,?,1)
+               ON CONFLICT(store,url) DO UPDATE SET
+                   slug=excluded.slug,
+                   discovered_at=excluded.discovered_at,
+                   active=1""",
+            (store, url, url_slug(url), '', time.time()),
+        )
         conn.execute(
             '''INSERT INTO store_products(
                 store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
