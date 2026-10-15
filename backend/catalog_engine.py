@@ -665,43 +665,6 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
-
-        # Reconcile successfully hydrated products whose discovery relationship
-        # was lost in an earlier run. Only valid persisted offers are eligible;
-        # failed/placeholder records remain excluded. The store_urls insert
-        # triggers maintain catalog_search_fts without a full-index rebuild.
-        orphaned_products = conn.execute(
-            """SELECT p.store,p.url,p.fetched_at
-                 FROM store_products p
-                WHERE p.fetch_status='OK'
-                  AND COALESCE(TRIM(p.name),'') <> ''
-                  AND NOT EXISTS (
-                      SELECT 1 FROM store_urls u
-                       WHERE u.store=p.store AND u.url=p.url
-                  )"""
-        ).fetchall()
-        if orphaned_products:
-            reconciled_at = time.time()
-            conn.executemany(
-                """INSERT OR IGNORE INTO store_urls
-                   (store,url,slug,lastmod,discovered_at,active)
-                   VALUES(?,?,?,?,?,1)""",
-                [
-                    (
-                        row['store'],
-                        row['url'],
-                        url_slug(row['url']),
-                        '',
-                        float(row['fetched_at'] or reconciled_at),
-                    )
-                    for row in orphaned_products
-                ],
-            )
-            print(
-                f'CATALOG ORPHAN RECONCILIATION restored={len(orphaned_products)}',
-                flush=True,
-            )
-
         conn.commit()
         _SCHEMA_READY = True
 
@@ -1417,9 +1380,10 @@ def _browser_fetch_html(url, timeout_ms=15000):
         return None, f'BROWSER_{type(exc).__name__}:{exc}'
 
 
-def _fetch_html_page(store, url):
+def _fetch_html_page(store, url, timeout=HTTP_TIMEOUT):
+    """Fetch one HTML page; callers may set a shorter diagnostic timeout."""
     try:
-        resp = _http_fetch(url, timeout=HTTP_TIMEOUT)
+        resp = _http_fetch(url, timeout=timeout)
         if resp['status'] < 400 and resp['data']:
             data = resp['data']
             ctype = (resp.get('content_type') or '').lower()
@@ -2330,15 +2294,22 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         add(seed, 0, 'configured_seed')
 
     started = time.time()
+    # This endpoint is an interactive diagnostic, not a full crawl. Keep each
+    # network request and the overall trace bounded so clients receive JSON
+    # instead of waiting for the production discovery timeout (up to 300 s).
+    trace_budget_seconds = 12.0
+    trace_request_timeout = min(float(HTTP_TIMEOUT), 4.0)
     successes = 0
 
-    while queue and len(visited) < max_pages and (time.time() - started) < DISCOVERY_HARD_TIMEOUT:
+    while queue and len(visited) < max_pages and (time.time() - started) < trace_budget_seconds:
         _priority, _sequence, requested, depth, source = heapq.heappop(queue)
         if requested in visited:
             continue
         visited.add(requested)
         try:
-            _requested, final, data, error = _fetch_html_page(store, requested)
+            _requested, final, data, error = _fetch_html_page(
+                store, requested, timeout=trace_request_timeout
+            )
         except Exception as exc:
             final, data, error = requested, None, f'{type(exc).__name__}:{exc}'
 
@@ -2448,7 +2419,12 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         'required_tokens': required_tokens,
         'production_search_called': False,
         'database_written': False,
-        'parameters': {'max_pages': max_pages, 'max_depth': max_depth, 'max_events': max_events},
+        'parameters': {
+            'max_pages': max_pages, 'max_depth': max_depth, 'max_events': max_events,
+            'max_elapsed_seconds': trace_budget_seconds,
+            'request_timeout_seconds': trace_request_timeout,
+        },
+        'timed_out': bool(queue and (time.time() - started) >= trace_budget_seconds),
         'seeds': seeds,
         'visited': len(visited),
         'successes': successes,
@@ -2944,20 +2920,6 @@ def refresh_url(store, url):
             raise RuntimeError(detail)
 
         conn = db()
-        # Successful hydration is the authoritative confirmation that this URL
-        # is a valid catalog offer. Restore the generic store_urls relationship
-        # in the same connection before persisting the parsed product. This
-        # repairs orphaned product rows and keeps FTS triggers in sync without
-        # a full-index rebuild or product-specific exceptions.
-        conn.execute(
-            """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-               VALUES(?,?,?,?,?,1)
-               ON CONFLICT(store,url) DO UPDATE SET
-                   slug=excluded.slug,
-                   discovered_at=excluded.discovered_at,
-                   active=1""",
-            (store, url, url_slug(url), '', time.time()),
-        )
         conn.execute(
             '''INSERT INTO store_products(
                 store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
