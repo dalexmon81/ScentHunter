@@ -1,9 +1,11 @@
-#!/usr/bin/env python3
-"""Strict read-only ParfumZentrum Hawas gap diagnostic.
+"""Strict read-only diagnostic for the two missing ParfumZentrum Hawas offers.
 
-This endpoint does not import catalog_engine, call search_local(), invoke the
-matcher, contact retailers, or start discovery/hydration/resync. It opens the
-existing SQLite file with mode=ro and PRAGMA query_only=ON.
+Route: GET /diagnose-parfumzentrum-hawas-index?q=La%20Mer
+        GET /diagnose-parfumzentrum-hawas-index?q=Verde
+
+This module deliberately does not call catalog_engine.db(), search_local(), ProductMatcher,
+scrapers, discovery, hydration, or any function that may mutate production state.
+It opens the existing SQLite database in SQLite read-only mode.
 """
 from __future__ import annotations
 
@@ -11,234 +13,234 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from urllib.parse import quote
+from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 router = APIRouter()
 
-STORE = "parfumzentrum"
-TARGETS = {
-    "la_mer": {
-        "terms": ["hawas", "la mer"],
-        "url_fragments": ["z1254703", "la-mer", "la_mer"],
-        "identifiers": ["1254703", "614514331279"],
-        "known_url": "https://www.parfum-zentrum.de/rasasi-hawas-for-him-la-mer-eau-de-parfum-100-ml-man_z1254703/",
-    },
-    "verde": {
-        "terms": ["hawas", "verde"],
-        "url_fragments": ["verde"],
-        "identifiers": [],
-        "known_url": None,
-    },
-}
-TABLES = (
-    "store_urls",
-    "store_products",
-    "store_url_metadata",
-    "hydration_queue",
-    "catalog_discovery_queue",
-    "catalog_search_fts",
-)
 
+def _resolve_db_path() -> Path:
+    """Resolve the catalog DB path without opening it through catalog_engine."""
+    env_candidates = (
+        os.getenv("SCENTHUNTER_DB_PATH"),
+        os.getenv("CATALOG_DB_PATH"),
+        os.getenv("DATABASE_PATH"),
+        os.getenv("SQLITE_DB_PATH"),
+    )
+    for value in env_candidates:
+        if value:
+            candidate = Path(value).expanduser()
+            if candidate.is_file():
+                return candidate.resolve()
 
-def _db_path() -> Path:
-    configured = os.environ.get("SCENTHUNTER_CATALOG_DB")
-    if configured:
-        return Path(configured).expanduser().resolve()
-    return (Path(__file__).resolve().parent / "store_catalog.sqlite3").resolve()
+    # Match common project/runtime locations without invoking DB initialization.
+    here = Path(__file__).resolve()
+    candidates = (
+        here.parent / "store_catalog.sqlite3",
+        here.parent.parent / "store_catalog.sqlite3",
+        Path("/app/store_catalog.sqlite3"),
+        Path("/app/backend/store_catalog.sqlite3"),
+        Path("/data/store_catalog.sqlite3"),
+        Path("/data/store_catalog.db"),
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
 
-
-def _table_names(conn):
-    return {r["name"] for r in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
-    ).fetchall()}
-
-
-def _columns(conn, table):
-    return [r["name"] for r in conn.execute(
-        f'PRAGMA table_info("{table}")'
-    ).fetchall()]
-
-
-def _safe_select(conn, table, clauses, params, limit=40):
-    cols = _columns(conn, table)
-    if not cols:
-        return {"columns": [], "rows": [], "error": "TABLE_NOT_FOUND"}
-    clauses = [c for c in clauses if c]
-    where = " AND ".join(clauses) if clauses else "1=1"
+    # Read path constants only; do not call catalog_engine.db().
     try:
-        rows = conn.execute(
-            f'SELECT * FROM "{table}" WHERE {where} LIMIT ?',
-            tuple(params) + (limit,),
-        ).fetchall()
-        return {"columns": cols, "rows": [dict(r) for r in rows], "truncated_at": limit}
-    except Exception as exc:
-        return {"columns": cols, "rows": [], "error": f"{type(exc).__name__}: {exc}"}
+        import catalog_engine  # type: ignore
+        for attr in ("DB_PATH", "DATABASE_PATH", "DB_FILE", "CATALOG_DB_PATH"):
+            value = getattr(catalog_engine, attr, None)
+            if value:
+                candidate = Path(str(value)).expanduser()
+                if candidate.is_file():
+                    return candidate.resolve()
+    except Exception:
+        pass
+
+    raise FileNotFoundError("Could not resolve existing catalog SQLite database path")
 
 
-def _target_rows(conn, table, target):
-    cols = _columns(conn, table)
-    if not cols:
-        return {"columns": [], "rows": [], "error": "TABLE_NOT_FOUND"}
+def _columns(conn: sqlite3.Connection, table: str) -> list[str]:
+    try:
+        return [str(row[1]) for row in conn.execute(f'PRAGMA table_info("{table}")')]
+    except sqlite3.Error:
+        return []
+
+
+def _dict_rows(conn: sqlite3.Connection, sql: str, params: tuple[Any, ...], limit: int = 12) -> list[dict[str, Any]]:
+    try:
+        cur = conn.execute(sql, params)
+        names = [item[0] for item in (cur.description or [])]
+        out = []
+        for row in cur.fetchmany(limit):
+            item = {}
+            for name, value in zip(names, row):
+                if isinstance(value, bytes):
+                    value = value[:120].decode("utf-8", "replace")
+                item[name] = value
+            out.append(item)
+        return out
+    except sqlite3.Error as exc:
+        return [{"query_error": f"{type(exc).__name__}: {exc}"}]
+
+
+def _like_any(columns: list[str], terms: list[str]) -> tuple[str, list[Any]]:
+    usable = [c for c in columns if c in {
+        "url", "slug", "name", "brand", "sku", "gtin", "mpn", "search_text"
+    }]
+    if not usable:
+        return "0", []
     clauses, params = [], []
-    if "store" in cols:
-        clauses.append("lower(store)=?")
-        params.append(STORE)
-    searchable = [c for c in ("url", "slug", "name", "brand", "search_text", "sku", "gtin", "mpn")
-                  if c in cols]
-    if not searchable:
-        return {"columns": cols, "rows": [], "error": "NO_SEARCHABLE_COLUMNS"}
-    # Return only records with target-specific evidence; generic "hawas" alone
-    # is deliberately not sufficient to claim a target was found.
-    signals = []
-    signal_params = []
-    for term in target["terms"]:
-        term_clause = []
-        for col in searchable:
-            term_clause.append(f'lower(CAST("{col}" AS TEXT)) LIKE ?')
-            signal_params.append("%" + term.lower().replace(" ", "%") + "%")
-        signals.append("(" + " OR ".join(term_clause) + ")")
-    for fragment in target["url_fragments"] + target["identifiers"]:
-        fragment_clause = []
-        for col in searchable:
-            fragment_clause.append(f'lower(CAST("{col}" AS TEXT)) LIKE ?')
-            signal_params.append("%" + fragment.lower() + "%")
-        signals.append("(" + " OR ".join(fragment_clause) + ")")
-    # Specific evidence may be any unique URL fragment/identifier, or both
-    # product-name terms. Generic Hawas rows are not treated as target hits.
-    specific_signal_indexes = range(2, len(signals))
-    specific = [signals[i] for i in specific_signal_indexes]
-    if len(signals) >= 2:
-        specific.append("(" + signals[0] + " AND " + signals[1] + ")")
-    if not specific:
-        return {"columns": cols, "rows": [], "error": "NO_TARGET_SIGNATURE"}
-    # Rebuild params for the actual OR expression to avoid unused bindings.
-    params2 = []
-    for fragment in target["url_fragments"] + target["identifiers"]:
-        for _ in searchable:
-            params2.append("%" + fragment.lower() + "%")
-    for term in target["terms"]:
-        for _ in searchable:
-            params2.append("%" + term.lower().replace(" ", "%") + "%")
-    # Clause order is URL fragments/IDs first, then both terms intersected.
-    exact_clauses = []
-    for fragment in target["url_fragments"] + target["identifiers"]:
-        exact_clauses.append("(" + " OR ".join(
-            f'lower(CAST("{c}" AS TEXT)) LIKE ?' for c in searchable
-        ) + ")")
-    term_clauses = []
-    term_params = []
-    for term in target["terms"]:
-        term_clauses.append("(" + " OR ".join(
-            f'lower(CAST("{c}" AS TEXT)) LIKE ?' for c in searchable
-        ) + ")")
-        term_params.extend(["%" + term.lower().replace(" ", "%") + "%"] * len(searchable))
-    where_target_parts = exact_clauses[:]
-    where_params = []
-    for fragment in target["url_fragments"] + target["identifiers"]:
-        where_params.extend(["%" + fragment.lower() + "%"] * len(searchable))
-    if len(term_clauses) >= 2:
-        where_target_parts.append("(" + " AND ".join(term_clauses) + ")")
-        where_params.extend(term_params)
-    where = []
-    if "store" in cols:
-        where.append("lower(store)=?")
-        where_params.insert(0, STORE)
-    where.append("(" + " OR ".join(where_target_parts) + ")")
-    return _safe_select(conn, table, where, where_params, 60)
+    for col in usable:
+        for term in terms:
+            clauses.append(f'lower(COALESCE("{col}", \'\')) LIKE ?')
+            params.append("%" + term.lower() + "%")
+    return "(" + " OR ".join(clauses) + ")", params
 
 
-def _hawas_comparison(conn, table):
-    cols = _columns(conn, table)
-    if not cols:
-        return {"columns": [], "rows": [], "error": "TABLE_NOT_FOUND"}
-    searchable = [c for c in ("url", "slug", "name", "brand", "search_text", "sku", "gtin", "mpn")
-                  if c in cols]
-    if not searchable:
-        return {"columns": cols, "rows": [], "error": "NO_SEARCHABLE_COLUMNS"}
-    clauses = []
-    params = []
-    if "store" in cols:
-        clauses.append("lower(store)=?")
-        params.append(STORE)
-    clauses.append("(" + " OR ".join(
-        f'lower(CAST("{c}" AS TEXT)) LIKE ?' for c in searchable
-    ) + ")")
-    params.extend(["%hawas%"] * len(searchable))
-    return _safe_select(conn, table, clauses, params, 30)
-
-
-@router.get("/diagnose-parfumzentrum-hawas-gap")
-def diagnose_parfumzentrum_hawas_gap(q: str = ""):
+@router.get("/diagnose-parfumzentrum-hawas-index")
+def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_length=80)):
     started = time.monotonic()
-    path = _db_path()
-    selected = "verde" if "verde" in q.lower() else "la_mer" if ("la" in q.lower() or "mer" in q.lower()) else "both"
-    report = {
-        "diagnostic": "parfumzentrum-hawas-gap-strict-read-only-v3",
+    query = (q or "La Mer").strip()
+    lowered = query.lower()
+    if "verde" in lowered:
+        label = "verde"
+        patterns = ["hawas-verde", "hawas verde", "rasasi-hawas-verde", "rasasi hawas verde", "verde"]
+        exact_url = ""
+        sku = ""
+        gtin = ""
+    else:
+        label = "la_mer"
+        patterns = [
+            "rasasi-hawas-for-him-la-mer",
+            "hawas for him la mer",
+            "hawas la mer",
+            "1254703",
+            "614514331279",
+        ]
+        exact_url = "https://www.parfum-zentrum.de/rasasi-hawas-for-him-la-mer-eau-de-parfum-100-ml-man_z1254703/"
+        sku = "1254703"
+        gtin = "614514331279"
+
+    result: dict[str, Any] = {
+        "diagnostic": "parfumzentrum-hawas-index-read-only-v1",
         "ok": False,
         "read_only": True,
         "database_written": False,
-        "database_path_basename": path.name,
-        "database_exists": path.is_file(),
-        "store": STORE,
-        "requested_query": q,
-        "targets_checked": [selected] if selected != "both" else list(TARGETS),
-        "production_search_called": False,
-        "search_local_called": False,
-        "product_matcher_called": False,
-        "discovery_called": False,
-        "hydration_called": False,
-        "resync_called": False,
-        "network_called": False,
-        "schema": {},
-        "target_rows": {},
-        "hawas_comparison": {},
-        "interpretation": {},
+        "store": "parfumzentrum",
+        "query": query,
+        "target": {"label": label, "url": exact_url or None, "sku": sku or None, "gtin": gtin or None},
+        "calls": {
+            "search_local": False, "production_search": False, "product_matcher": False,
+            "scraper": False, "discovery": False, "hydration": False, "resync": False,
+            "network": False,
+        },
     }
-    if not path.is_file():
-        report["error"] = "CATALOG_DATABASE_FILE_NOT_FOUND"
-        report["elapsed_sec"] = round(time.monotonic() - started, 3)
-        return report
+
     try:
-        conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=3)
+        db_path = _resolve_db_path()
+        result["database_path_basename"] = db_path.name
+        uri = db_path.as_uri() + "?mode=ro"
+        conn = sqlite3.connect(uri, uri=True, timeout=3)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA query_only=ON")
-        try:
-            names = _table_names(conn)
-            report["schema"] = {
-                table: _columns(conn, table) if table in names else None
-                for table in TABLES
+        conn.execute("PRAGMA busy_timeout=3000")
+
+        tables = {
+            str(row[0]) for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
+            )
+        }
+        target_tables = [
+            "store_urls", "store_products", "store_url_metadata",
+            "hydration_queue", "catalog_discovery_queue", "catalog_search_fts",
+        ]
+        result["tables"] = {}
+        for table in target_tables:
+            if table not in tables:
+                result["tables"][table] = {"exists": False, "columns": [], "rows": []}
+                continue
+
+            cols = _columns(conn, table)
+            store_filter = 'lower("store")=? AND ' if "store" in cols else ""
+            where, like_params = _like_any(cols, patterns)
+            params: list[Any] = []
+            if "store" in cols:
+                params.append("parfumzentrum")
+            params.extend(like_params)
+            order = ""
+            if table == "store_urls":
+                order = " ORDER BY CASE WHEN lower(COALESCE(url,'')) LIKE '%hawas%' THEN 0 ELSE 1 END, active DESC"
+            elif table == "store_products":
+                order = " ORDER BY CASE WHEN lower(COALESCE(url,'')) LIKE '%hawas%' THEN 0 ELSE 1 END, fetched_at DESC"
+            sql = f'SELECT * FROM "{table}" WHERE {store_filter}{where}{order} LIMIT 20'
+            rows = _dict_rows(conn, sql, tuple(params), limit=20)
+            result["tables"][table] = {
+                "exists": True,
+                "columns": cols,
+                "match_count_returned": len(rows),
+                "rows": rows,
             }
-            targets = report["targets_checked"]
-            for key in targets:
-                report["target_rows"][key] = {
-                    table: _target_rows(conn, table, TARGETS[key]) if table in names else None
-                    for table in TABLES
-                }
-            for table in ("store_products", "store_urls", "store_url_metadata", "catalog_search_fts"):
-                report["hawas_comparison"][table] = (
-                    _hawas_comparison(conn, table) if table in names else None
+
+        # Explicit joined row for La Mer: reveals active URL, product status and FTS text together.
+        if "store_urls" in tables and "store_products" in tables:
+            if label == "la_mer":
+                result["joined_target"] = _dict_rows(
+                    conn,
+                    """SELECT u.store,u.url,u.slug,u.active,
+                              p.name,p.brand,p.sku,p.gtin,p.price,p.currency,
+                              p.availability,p.fetch_status,
+                              f.search_text AS fts_search_text
+                         FROM store_urls u
+                         LEFT JOIN store_products p ON p.store=u.store AND p.url=u.url
+                         LEFT JOIN catalog_search_fts f ON f.store=u.store AND f.url=u.url
+                        WHERE lower(u.store)='parfumzentrum'
+                          AND (u.url=? OR lower(COALESCE(p.sku,''))=? OR lower(COALESCE(p.gtin,''))=?)
+                        LIMIT 10""",
+                    (exact_url, sku.lower(), gtin.lower()),
+                    10,
                 )
-            for key in targets:
-                all_rows = report["target_rows"][key]
-                present = {
-                    table: len(data.get("rows", []))
-                    for table, data in all_rows.items() if isinstance(data, dict)
-                }
-                report["interpretation"][key] = {
-                    "target_specific_row_counts": present,
-                    "present_in_any_scanned_table": any(present.values()),
-                    "meaning": (
-                        "TARGET_EVIDENCE_FOUND_IN_PERSISTENT_TABLES"
-                        if any(present.values())
-                        else "NO_TARGET_SPECIFIC_EVIDENCE_FOUND_IN_SCANNED_TABLES"
-                    ),
-                }
-        finally:
-            conn.close()
-        report["ok"] = True
+            else:
+                result["joined_target"] = _dict_rows(
+                    conn,
+                    """SELECT u.store,u.url,u.slug,u.active,
+                              p.name,p.brand,p.sku,p.gtin,p.price,p.currency,
+                              p.availability,p.fetch_status,
+                              f.search_text AS fts_search_text
+                         FROM store_urls u
+                         LEFT JOIN store_products p ON p.store=u.store AND p.url=u.url
+                         LEFT JOIN catalog_search_fts f ON f.store=u.store AND f.url=u.url
+                        WHERE lower(u.store)='parfumzentrum'
+                          AND (lower(COALESCE(u.url,'')) LIKE '%hawas%verde%'
+                            OR lower(COALESCE(u.slug,'')) LIKE '%hawas%verde%'
+                            OR (lower(COALESCE(p.name,'')) LIKE '%hawas%'
+                                AND lower(COALESCE(p.name,'')) LIKE '%verde%'))
+                        LIMIT 20""",
+                    (),
+                    20,
+                )
+
+        # Exact FTS candidate lookup, read-only. Does not initialize or rebuild the index.
+        if "catalog_search_fts" in tables:
+            fts_terms = ["hawas", "rasasi", "verde"] if label == "verde" else ["hawas", "rasasi", "la", "mer"]
+            fts_query = " AND ".join('"' + term + '"' for term in fts_terms)
+            result["fts_match"] = _dict_rows(
+                conn,
+                "SELECT store,url,search_text FROM catalog_search_fts WHERE catalog_search_fts MATCH ? AND lower(store)='parfumzentrum' LIMIT 20",
+                (fts_query,),
+                20,
+            )
+        else:
+            result["fts_match"] = {"error": "catalog_search_fts table absent"}
+
+        conn.close()
+        result["ok"] = True
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
     except Exception as exc:
-        report["error"] = f"{type(exc).__name__}: {exc}"
-    report["elapsed_sec"] = round(time.monotonic() - started, 3)
-    return report
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        result["elapsed_sec"] = round(time.monotonic() - started, 3)
+        return result
