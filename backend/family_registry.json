@@ -41,7 +41,8 @@
           "canonical_name": "Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
-            "Hawas Cobra"
+            "Hawas Cobra",
+            "Kobra For Him"
           ]
         },
         {
@@ -79,16 +80,6 @@
           "canonical_name": "Hawas Elixir",
           "aliases": [
             "Hawas Elixir"
-          ]
-        },
-        {
-          "canonical_name": "Hawas Addiction",
-          "aliases": [
-            "Hawas Addiction",
-            "Rasasi Hawas Addiction"
-          ],
-          "formats_ml": [
-            100
           ]
         },
         {
