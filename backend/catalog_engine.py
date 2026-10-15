@@ -665,6 +665,43 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
+
+        # Reconcile successfully hydrated products whose discovery relationship
+        # was lost in an earlier run. Only valid persisted offers are eligible;
+        # failed/placeholder records remain excluded. The store_urls insert
+        # triggers maintain catalog_search_fts without a full-index rebuild.
+        orphaned_products = conn.execute(
+            """SELECT p.store,p.url,p.fetched_at
+                 FROM store_products p
+                WHERE p.fetch_status='OK'
+                  AND COALESCE(TRIM(p.name),'') <> ''
+                  AND NOT EXISTS (
+                      SELECT 1 FROM store_urls u
+                       WHERE u.store=p.store AND u.url=p.url
+                  )"""
+        ).fetchall()
+        if orphaned_products:
+            reconciled_at = time.time()
+            conn.executemany(
+                """INSERT OR IGNORE INTO store_urls
+                   (store,url,slug,lastmod,discovered_at,active)
+                   VALUES(?,?,?,?,?,1)""",
+                [
+                    (
+                        row['store'],
+                        row['url'],
+                        url_slug(row['url']),
+                        '',
+                        float(row['fetched_at'] or reconciled_at),
+                    )
+                    for row in orphaned_products
+                ],
+            )
+            print(
+                f'CATALOG ORPHAN RECONCILIATION restored={len(orphaned_products)}',
+                flush=True,
+            )
+
         conn.commit()
         _SCHEMA_READY = True
 
