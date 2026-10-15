@@ -39,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as
 from pathlib import Path
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(BASE_DIR / 'store_catalog.sqlite3'))).expanduser()
@@ -2324,9 +2324,13 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             continue
 
         successes += 1
-        soup = BeautifulSoup(data, 'html.parser')
-        page_text = soup.get_text(' ', strip=True)
-        page_hit = has_tokens(page_text)
+        # Parse only navigation elements. The retailer's category page can be ~1 MB;
+        # parsing the entire DOM and extracting all text made this diagnostic exceed
+        # its time budget even when only one page was visited.
+        soup = BeautifulSoup(data, 'html.parser', parse_only=SoupStrainer(['a', 'link']))
+        # The page-hit signal is derived from the requested/final URL and link labels;
+        # avoid a full-document text extraction in this read-only diagnostic.
+        page_hit = has_tokens(requested) or has_tokens(final)
         if page_hit and len(query_page_hits) < 100:
             query_page_hits.append({'url': requested, 'final_url': final,
                                     'depth': depth, 'bytes': len(data or b'')})
