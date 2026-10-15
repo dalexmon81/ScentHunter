@@ -139,6 +139,9 @@ HTML_DISCOVERY_SEEDS = {
     'parfumzentrum': (
         'https://www.parfum-zentrum.de/',
         'https://www.parfum-zentrum.de/parfum_k319/',
+        # Retailer brand index for Rasasi; this is a brand-level catalog page,
+        # not a product-specific URL or matching exception.
+        'https://www.parfum-zentrum.de/rasasi_v829/parfum_k319/',
     ),
     'sabina': (
         'https://www.sabina.com/',
