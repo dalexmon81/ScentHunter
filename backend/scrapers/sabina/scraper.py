@@ -1217,7 +1217,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
 
     if image:
         image = urljoin(
-            response.url,
+            final_url,
             image,
         )
 
