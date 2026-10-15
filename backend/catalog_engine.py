@@ -142,6 +142,9 @@ HTML_DISCOVERY_SEEDS = {
         # Retailer brand index for Rasasi; this is a brand-level catalog page,
         # not a product-specific URL or matching exception.
         'https://www.parfum-zentrum.de/rasasi_v829/parfum_k319/',
+        # Generic men's-fragrance subcategory for the Rasasi brand catalog.
+        # This is a navigation surface, not a product-specific URL.
+        'https://www.parfum-zentrum.de/rasasi_v829/parfum_k319/herrendufte_k322/',
     ),
     'sabina': (
         'https://www.sabina.com/',
@@ -1454,6 +1457,15 @@ def _html_discovery_priority(store, url, depth, source=''):
     # the retailer's brand catalog graph instead of spending its early budget
     # on unrelated categories. The rule is URL-structure-only and applies to
     # every brand; it contains no product name, brand name, or product ID.
+    elif (
+        store == 'parfumzentrum'
+        and re.search(r'/(?:[^/]+_v\d+)(?:/|$)', path, re.I)
+        and re.search(r'/(?:herrendufte|herrenduefte|men|male)[^/]*(?:/|$)', path, re.I)
+    ):
+        # Prefer men's-fragrance subcategories within any retailer brand index
+        # over unrelated brand roots. This is generic URL structure, not a
+        # named-brand or product exception.
+        score = -1
     elif store == 'parfumzentrum' and re.search(r'/(?:[^/]+_v\d+)(?:/|$)', path, re.I):
         score = 0
     # Catalog index pages are high-value navigation surfaces because they
