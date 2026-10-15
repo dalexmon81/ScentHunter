@@ -7,11 +7,7 @@
       "brand": "Rasasi",
       "query_aliases": [
         "Hawas",
-        "Rasasi Hawas",
-        "Kobra",
-        "Kobra For Him",
-        "Rasasi Kobra",
-        "Rasasi Kobra For Him"
+        "Rasasi Hawas"
       ],
       "products": [
         {
@@ -45,15 +41,7 @@
           "canonical_name": "Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
-            "Hawas Cobra",
-            "Kobra For Him",
-            "Kobra",
-            "Rasasi Kobra",
-            "Rasasi Kobra For Him",
-            "Kobra For Him Eau de Parfum"
-          ],
-          "formats_ml": [
-            100
+            "Hawas Cobra"
           ]
         },
         {
@@ -91,6 +79,16 @@
           "canonical_name": "Hawas Elixir",
           "aliases": [
             "Hawas Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Addiction",
+          "aliases": [
+            "Hawas Addiction",
+            "Rasasi Hawas Addiction"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -402,4 +400,326 @@
           ]
         },
         {
-          "canonical_name": 
+          "canonical_name": "Eros Parfum",
+          "aliases": [
+            "Eros Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Flame",
+          "aliases": [
+            "Eros Flame",
+            "Eros Flame EDP",
+            "Eros Flame Eau de Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Energy",
+          "aliases": [
+            "Eros Energy",
+            "Eros Energy EDP"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Toilette",
+          "aliases": [
+            "Eros pour Femme Eau de Toilette",
+            "Eros pour Femme EDT",
+            "Eros Pour Femme EDT"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Parfum",
+          "aliases": [
+            "Eros pour Femme Eau de Parfum",
+            "Eros pour Femme EDP",
+            "Eros Pour Femme EDP"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "lattafa_asad",
+      "brand": "Lattafa",
+      "query_aliases": [
+        "Asad",
+        "Lattafa Asad"
+      ],
+      "products": [
+        {
+          "canonical_name": "Asad",
+          "aliases": [
+            "Asad",
+            "Lattafa Asad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Zanzibar",
+          "aliases": [
+            "Asad Zanzibar",
+            "Lattafa Asad Zanzibar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Bourbon",
+          "aliases": [
+            "Asad Bourbon",
+            "Lattafa Asad Bourbon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Elixir",
+          "aliases": [
+            "Asad Elixir",
+            "Lattafa Asad Elixir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "french_avenue_liquid_brun",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Liquid Brun",
+        "French Avenue Liquid Brun"
+      ],
+      "products": [
+        {
+          "canonical_name": "Liquid Brun",
+          "aliases": [
+            "Liquid Brun",
+            "French Avenue Liquid Brun",
+            "French Avenue - Liquid Brun",
+            "Liquid Brun Eau de Parfum",
+            "French Avenue Liquid Brun Eau de Parfum",
+            "Liquid Brun Men",
+            "French Avenue Liquid Brun Men",
+            "French Avenue - Liquid Brun Men"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "gtins": [
+            "6290360375694"
+          ]
+        },
+        {
+          "canonical_name": "Liquid Brun Limited Edition",
+          "aliases": [
+            "Liquid Brun Limited Edition",
+            "French Avenue Liquid Brun Limited Edition",
+            "French Avenue - Liquid Brun Limited Edition",
+            "Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue - Liquid Brun Limited Edition Extrait de Parfum",
+            "Liquid Brun Limited Edition Men",
+            "French Avenue Liquid Brun Limited Edition Men",
+            "French Avenue - Liquid Brun Limited Edition Men"
+          ],
+          "formats_ml": [
+            150
+          ],
+          "gtins": [
+            "6298042001831"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "aromatix_french_avenue",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Aromatix",
+        "Aromatix X French Avenue",
+        "French Avenue Aromatix"
+      ],
+      "products": [
+        {
+          "canonical_name": "Carnal Desire",
+          "aliases": [
+            "Carnal Desire",
+            "Aromatix Carnal Desire",
+            "Aromatix X French Avenue Carnal Desire",
+            "French Avenue Carnal Desire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Forbidden Fruit",
+          "aliases": [
+            "Forbidden Fruit",
+            "Aromatix Forbidden Fruit",
+            "Aromatix X French Avenue Forbidden Fruit",
+            "French Avenue Forbidden Fruit"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Frostbite",
+          "aliases": [
+            "Frostbite",
+            "Aromatix Frostbite",
+            "Aromatix X French Avenue Frostbite",
+            "French Avenue Frostbite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Magnetiq",
+          "aliases": [
+            "Magnetiq",
+            "Aromatix Magnetiq",
+            "Aromatix X French Avenue Magnetiq",
+            "French Avenue Magnetiq"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Naughty Dates",
+          "aliases": [
+            "Naughty Dates",
+            "Aromatix Naughty Dates",
+            "Aromatix X French Avenue Naughty Dates",
+            "French Avenue Naughty Dates"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ora",
+          "aliases": [
+            "Ora",
+            "Aromatix Ora",
+            "Aromatix X French Avenue Ora",
+            "French Avenue Ora"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Platine Blanc",
+          "aliases": [
+            "Platine Blanc",
+            "Aromatix Platine Blanc",
+            "Aromatix X French Avenue Platine Blanc",
+            "French Avenue Platine Blanc"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Taboo",
+          "aliases": [
+            "Royal Taboo",
+            "Aromatix Royal Taboo",
+            "Aromatix X French Avenue Royal Taboo",
+            "French Avenue Royal Taboo"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Roza",
+          "aliases": [
+            "Roza",
+            "Aromatix Roza",
+            "Aromatix X French Avenue Roza",
+            "French Avenue Roza"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sun Kissed",
+          "aliases": [
+            "Sun Kissed",
+            "Aromatix Sun Kissed",
+            "Aromatix X French Avenue Sun Kissed",
+            "French Avenue Sun Kissed"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Teas Me",
+          "aliases": [
+            "Teas Me",
+            "Aromatix Teas Me",
+            "Aromatix X French Avenue Teas Me",
+            "French Avenue Teas Me"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "X Xandal",
+          "aliases": [
+            "X Xandal",
+            "Aromatix X Xandal",
+            "Aromatix X French Avenue X Xandal",
+            "French Avenue X Xandal"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
+    },
+    {
+      "family_id": "rasasi_kobra",
+      "brand": "Rasasi",
+      "query_aliases": [
+        "Kobra",
+        "Kobra For Him",
+        "Rasasi Kobra",
+        "Rasasi Kobra For Him"
+      ],
+      "products": [
+        {
+          "canonical_name": "Kobra For Him",
+          "aliases": [
+            "Kobra For Him",
+            "Kobra",
+            "Rasasi Kobra",
+            "Rasasi Kobra For Him",
+            "Kobra For Him Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
+    }
+  ]
+}
