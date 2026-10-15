@@ -1445,6 +1445,14 @@ def _html_discovery_priority(store, url, depth, source=''):
         and re.search(r'(?:^|&)s=', p.query, re.I)
     ):
         score = 0
+    # ParfumZentrum encodes brand catalog pages with a generic _v<number>
+    # path segment (for example /brand_v123/). Prioritize these brand-level
+    # catalog surfaces over broad category branches so a bounded crawl reaches
+    # the retailer's brand catalog graph instead of spending its early budget
+    # on unrelated categories. The rule is URL-structure-only and applies to
+    # every brand; it contains no product name, brand name, or product ID.
+    elif store == 'parfumzentrum' and re.search(r'/(?:[^/]+_v\d+)(?:/|$)', path, re.I):
+        score = 0
     # Catalog index pages are high-value navigation surfaces because they
     # expose the next level of category/brand pages. This is structural only:
     # no specific retailer brand, product name, product id, or user query is used.
