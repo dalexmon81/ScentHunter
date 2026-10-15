@@ -133,27 +133,39 @@ MAX_SITEMAP_DEPTH = 10
 MAX_URLS_PER_SITEMAP = 50000
 MAX_TOTAL_DISCOVERED_URLS = 250000
 
+# Store-wide HTML discovery entry points supplement incomplete sitemaps.
+# These are generic retailer navigation surfaces, not product-specific URLs.
+HTML_DISCOVERY_SEEDS = {
+    'parfumzentrum': (
+        'https://www.parfum-zentrum.de/',
+        'https://www.parfum-zentrum.de/parfum_k319/',
+    ),
+    'sabina': (
+        'https://www.sabina.com/',
+        'https://www.sabina.com/es/buscar?search_query=parfum',
+        'https://www.sabina.com/it/ricerca_old?s=parfum',
+        'https://www.sabina.com/it/ricerca_old?s=extrait',
+    ),
+    'deloox': (
+        'https://www.deloox.be/',
+        'https://www.deloox.com/en/search?q=perfume',
+    ),
+}
+
+# Bounded HTML discovery settings used by the generic crawler and Deloox frontier.
+HTML_MAX_PAGES = 800
+HTML_MAX_DEPTH = 8
+HTML_WORKERS = 12
+DELOOX_SEARCH_MAX_PAGES = 10
+DELOOX_GENERIC_CATALOG_QUERIES = (
+    'parfum',
+    'perfume',
+    'fragrance',
+)
+
 DISCOVERY_HARD_TIMEOUT = 300
 SITEMAP_DISCOVERY_BUDGET = 45
 HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD = 100
-
-# Persistent HTML-discovery entry points. Keep these at retailer/category level:
-# no individual products or query-specific exceptions. The homepage lets the
-# generic crawler follow the retailer's own navigation graph when sitemaps are
-# incomplete or contain only a partial set of products.
-HTML_DISCOVERY_SEEDS = {
-    'bplatz': ('https://en.bplatz.de/',),
-    'parfumcity': ('https://www.parfumcity.nl/',),
-    'parfumzentrum': ('https://www.parfum-zentrum.de/',),
-    'perfumemarket': ('https://www.perfumemarket.nl/',),
-    'sabina': ('https://www.sabina.com/',),
-    'orioudh': ('https://orioudh.com/',),
-    'easycosmetic': ('https://www.easycosmetic.be/',),
-    'deloox': (
-        'https://www.deloox.be/',
-        'https://www.deloox.be/chercher.html?q=parfum',
-    ),
-}
 
 # A single failed/partial discovery must never wipe a previously valid catalog.
 # If a new catalog is implausibly smaller than the existing one, retain the old
@@ -2074,6 +2086,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
 
 def _discover_html_catalog(store, seeds, deadline=None):
+    started = time.time()
     queue=[]
     queued=set()
     visited=set()
@@ -2540,7 +2553,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store == 'sabina'
+            store in ('sabina', 'parfumzentrum')
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
