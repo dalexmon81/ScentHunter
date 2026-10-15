@@ -641,6 +641,8 @@ try:
     router as diagnose_easycosmetic_de_variants_readonly_router,
     )
     app.include_router(diagnose_easycosmetic_de_variants_readonly_router)
+    from diagnose_parfumzentrum_hawas_gap import router as diagnose_parfumzentrum_hawas_gap_router
+    app.include_router(diagnose_parfumzentrum_hawas_gap_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
