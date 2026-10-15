@@ -2976,7 +2976,7 @@ def refresh_url(store, url):
                                THEN 'PROCESSING'
                                ELSE hydration_queue.state
                            END''',
-                    (store, url, "PENDING", 0, now, now, now, now),
+                    (store, url, "PENDING", 0, now, now, now),
                 )
                 conn.execute(
                     '''INSERT INTO store_products(
