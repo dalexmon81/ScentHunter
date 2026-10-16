@@ -2839,6 +2839,23 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             return value.get('value')
         return value
 
+    # Retailer parsers may expose normalized product attributes either
+    # at the top level or in the structured attributes map. Accept both
+    # shapes so valid size/concentration/gender evidence is not discarded.
+    attributes = parsed.get('attributes') or {}
+
+    def attribute_value(key):
+        value = attributes.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
+    def parsed_attribute(key):
+        value = parsed.get(key)
+        if value is not None and value != '':
+            return value
+        return attribute_value(key)
+
     offer = parsed.get('offer') or {}
     price = parsed.get('price_num')
     if price is None:
@@ -2853,9 +2870,9 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed.get('size_ml'),
-        'concentration': parsed.get('concentration'),
-        'gender': parsed.get('gender'),
+        'size_ml': parsed_attribute('size_ml'),
+        'concentration': parsed_attribute('concentration'),
+        'gender': parsed_attribute('gender'),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
