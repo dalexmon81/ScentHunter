@@ -1544,12 +1544,40 @@ def _fetch_candidate(url, query, authoritative_search=False):
     local_session = requests.Session()
     try:
         try:
-            return extract_product_page(local_session, url, query, authoritative_search=authoritative_search)
+            result = extract_product_page(
+                local_session,
+                url,
+                query,
+                authoritative_search=authoritative_search,
+            )
+            if result is not None:
+                return result
+
+            # During an authoritative refresh the catalog has already selected
+            # this exact product URL. If the rich parser rejects the page
+            # (for example, because Sabina's JSON-LD/H1 markup changed), try
+            # the generic HTML parser once. Ordinary search discovery keeps
+            # the stricter single-parser path to avoid accepting weak matches.
+            if authoritative_search:
+                try:
+                    return _fallback_extract_product_page(
+                        local_session,
+                        url,
+                        query,
+                        authoritative_search=True,
+                    )
+                except Exception:
+                    return None
+            return None
         except Exception:
-            # The fallback is allowed only when the parser itself raises; it
-            # must never be used as a second request after a normal rejection.
+            # Parser exceptions still get the generic HTML fallback.
             try:
-                return _fallback_extract_product_page(local_session, url, query, authoritative_search=authoritative_search)
+                return _fallback_extract_product_page(
+                    local_session,
+                    url,
+                    query,
+                    authoritative_search=authoritative_search,
+                )
             except Exception:
                 return None
     finally:
