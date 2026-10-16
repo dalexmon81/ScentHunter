@@ -206,7 +206,15 @@ def diagnose_sabina_discovery_trace(q: str = Query("9 PM")):
         try:
             out["scraper_module"] = getattr(scraper, "__file__", None)
             trace = {}
-            search_url = f"{scraper.SEARCH_URL}?search_query={quote(q)}"
+            search_endpoint = next(
+                (item for item in scraper.SEARCH_ENDPOINTS if item[0].endswith("/es/buscar")),
+                None,
+            )
+            if search_endpoint is None:
+                raise RuntimeError("Sabina SEARCH_ENDPOINTS has no /es/buscar endpoint")
+            search_base, search_params = search_endpoint
+            search_key = next(iter(search_params))
+            search_url = f"{search_base}?{search_key}={quote(q)}"
             page = _get(
                 search_url,
                 timeout=(2, 8),
