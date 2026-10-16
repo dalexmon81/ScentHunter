@@ -52,7 +52,7 @@ HEADERS = {
 }
 
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt|tw)/[^/]+/(\d+)-[^/]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl|pt|tw|da|pl)/[^/]+/(\d+)-[^/]+\.html$",
     re.I,
 )
 
