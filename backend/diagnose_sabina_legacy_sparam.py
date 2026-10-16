@@ -131,98 +131,95 @@ def _pagination_signature(url: str) -> str:
 
 @router.get("/diagnose-sabina-legacy-sparam")
 def diagnose_sabina_legacy_sparam(
-    q: str = Query("liquid"),
+    q: str = Query("Valentino Born in Roma"),
 ):
+    """
+    Bounded, read-only diagnostic for Sabina's native legacy search.
+    Makes one HTTP request with a short timeout. It does not crawl, launch a
+    browser, call production search/matcher, or write to the catalog.
+    """
     started = time.time()
     ce = _load_engine()
-
-    fn = getattr(ce, "_discover_html_catalog", None)
+    http_fetch = getattr(ce, "_http_fetch", None)
     legacy = getattr(ce, "_sabina_legacy_product_urls", None)
-
-    if fn is None:
-        return {
-            "diagnostic": "sabina-legacy-sparam-v3",
-            "ok": False,
-            "error": "catalog_engine._discover_html_catalog not found",
-            "read_only": True,
-        }
-
     search_url = f"{BASE_URL}?s={quote(q)}"
 
-    old_pages = getattr(ce, "HTML_MAX_PAGES", None)
-    old_depth = getattr(ce, "HTML_MAX_DEPTH", None)
-
-    try:
-        ce.HTML_MAX_PAGES = 1
-        ce.HTML_MAX_DEPTH = 0
-
-        result = fn(
-            "sabina",
-            [search_url],
-            time.time() + 45,
-        )
-
-    except Exception as exc:
+    if http_fetch is None:
         return {
-            "diagnostic": "sabina-legacy-sparam-v3",
+            "diagnostic": "sabina-legacy-sparam-v4",
             "ok": False,
             "query": q,
-            "seed": search_url,
+            "error": "catalog_engine._http_fetch not found",
+            "read_only": True,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "database_written": False,
+        }
+
+    try:
+        # One bounded request only. Do not invoke the full HTML crawler:
+        # its worker pool can wait for outstanding network operations.
+        response = http_fetch(search_url, timeout=4)
+        data = response.get("data") or b""
+        final_url = response.get("url") or search_url
+        raw = data if isinstance(data, bytes) else str(data).encode("utf-8")
+        text_body = raw.decode("utf-8", "ignore")
+        ids = _extract_all_sabina_ids(raw)
+        helper_urls = sorted(legacy(raw, final_url)) if legacy is not None and raw else []
+        query_norm = re.sub(r"[^a-z0-9]+", " ", q.lower()).strip()
+        body_norm = re.sub(r"[^a-z0-9]+", " ", text_body.lower())
+        query_terms = [term for term in query_norm.split() if len(term) > 1]
+        terms_in_body = [term for term in query_terms if term in body_norm]
+        return {
+            "diagnostic": "sabina-legacy-sparam-v4",
+            "ok": bool(raw),
+            "query": q,
+            "request": {
+                "url": search_url,
+                "final_url": final_url,
+                "status": response.get("status"),
+                "content_type": response.get("content_type"),
+                "bytes": len(raw),
+            },
+            "html_signals": {
+                "query_terms_found": terms_in_body,
+                "query_terms_missing": [term for term in query_terms if term not in terms_in_body],
+                "controller_product_id_count": len(ids),
+                "controller_product_id_sample": ids[:30],
+                "candidate_url_count": len(helper_urls),
+                "candidate_url_sample": helper_urls[:30],
+            },
+            "interpretation": (
+                "HTML_HAS_PRODUCT_IDS" if ids else
+                "HTML_HAS_QUERY_TEXT_BUT_NO_PRODUCT_IDS"
+                if len(terms_in_body) >= min(2, len(query_terms)) else
+                "HTML_DOES_NOT_EVIDENCE_QUERY_RESULTS"
+            ),
+            "read_only": True,
+            "production_search_called": False,
+            "product_matcher_called": False,
+            "database_written": False,
+            "catalog_resync_called": False,
+            "network_requests": 1,
+            "timeout_seconds": 4,
+            "elapsed_sec": round(time.time() - started, 3),
+        }
+    except Exception as exc:
+        return {
+            "diagnostic": "sabina-legacy-sparam-v4",
+            "ok": False,
+            "query": q,
+            "request": {"url": search_url},
             "error": f"{type(exc).__name__}:{exc}",
             "read_only": True,
             "production_search_called": False,
             "product_matcher_called": False,
             "database_written": False,
             "catalog_resync_called": False,
+            "network_requests": 1,
+            "timeout_seconds": 4,
             "elapsed_sec": round(time.time() - started, 3),
         }
-
-    finally:
-        if old_pages is not None:
-            ce.HTML_MAX_PAGES = old_pages
-
-        if old_depth is not None:
-            ce.HTML_MAX_DEPTH = old_depth
-
-    product_urls = sorted(
-        (result.get("product_urls") or {}).keys()
-    )
-
-    target_urls = [
-        url for url in product_urls
-        if TARGET_TOKEN in url
-    ]
-
-    return {
-        "diagnostic": "sabina-legacy-sparam-v3",
-        "ok": True,
-        "query": q,
-        "seed": search_url,
-        "source_flags": {
-            "discover_html_catalog_exists": True,
-            "legacy_helper_exists": bool(legacy),
-            "discover_calls_legacy_helper": (
-                "_sabina_legacy_product_urls"
-                in inspect.getsource(fn)
-            ),
-        },
-        "discovery_result": {
-            "visited": result.get("visited"),
-            "successes": result.get("successes"),
-            "error_count": len(result.get("errors") or []),
-            "errors": (result.get("errors") or [])[:10],
-            "product_url_count": len(product_urls),
-            "target_urls": target_urls,
-            "target_found": bool(target_urls),
-        },
-        "sample_product_urls": product_urls[:50],
-        "read_only": True,
-        "production_search_called": False,
-        "product_matcher_called": False,
-        "database_written": False,
-        "catalog_resync_called": False,
-        "elapsed_sec": round(time.time() - started, 3),
-    }
 
 
 @router.get("/diagnose-sabina-500-limit")
