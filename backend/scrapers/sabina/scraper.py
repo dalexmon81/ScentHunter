@@ -298,19 +298,13 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
 
             item_type = item.get("@type")
             types = item_type if isinstance(item_type, list) else [item_type]
-
-            # Schema.org permits @type as either "Product" or a full URI,
-            # such as "https://schema.org/Product". Compare the final type
-            # name so both representations are handled consistently.
-            is_product = False
-            for value in types:
-                if not isinstance(value, str):
-                    continue
-                type_name = re.split(r"[/#]", value.strip().rstrip("/"))[-1]
-                if type_name.lower() == "product":
-                    is_product = True
-                    break
-
+            # Schema.org types may be plain names or full URI values.
+            # Accept Product, https://schema.org/Product and equivalent URI forms.
+            is_product = any(
+                isinstance(value, str)
+                and re.split(r"[/#]", value.strip().rstrip("/"))[-1].lower() == "product"
+                for value in types
+            )
             if not is_product:
                 continue
 
@@ -332,6 +326,18 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
                     score += 50
                 elif query_matches(expected_title, item_name):
                     score += 30
+                else:
+                    # Product-page H1 and JSON-LD names often differ only by
+                    # retailer-added brand words or omitted generic wording.
+                    # Score shared meaningful tokens without requiring every
+                    # H1 token to occur in the structured product name.
+                    title_tokens = set(query_tokens(expected_title))
+                    name_tokens = set(query_tokens(item_name))
+                    if title_tokens and name_tokens:
+                        overlap = len(title_tokens & name_tokens)
+                        coverage = overlap / min(len(title_tokens), len(name_tokens))
+                        if overlap >= 2 and coverage >= 0.5:
+                            score += 30
 
             if item.get("offers"):
                 score += 5
@@ -345,7 +351,21 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
     score, product = candidates[0]
 
     if (expected_path or expected_title_norm) and score < 30:
-        return None
+        # When the page contains exactly one Product JSON-LD object, allow a
+        # modest title mismatch only if the structured name shares meaningful
+        # tokens with the visible H1. Never use this fallback when multiple
+        # Product objects could represent related/recommended products.
+        if len(candidates) != 1 or not expected_title_norm:
+            return None
+        product_name = norm(candidates[0][1].get("name", ""))
+        title_tokens = set(query_tokens(expected_title))
+        name_tokens = set(query_tokens(product_name))
+        overlap = len(title_tokens & name_tokens)
+        if not title_tokens or not name_tokens or overlap < 2:
+            return None
+        if overlap / min(len(title_tokens), len(name_tokens)) < 0.5:
+            return None
+        product = candidates[0][1]
 
     return product
 
