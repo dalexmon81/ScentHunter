@@ -2839,28 +2839,50 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             return value.get('value')
         return value
 
+    source = parsed.get('source') or {}
+    attributes = parsed.get('attributes') or {}
     offer = parsed.get('offer') or {}
+
+    def attribute_value(key):
+        value = attributes.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
     price = parsed.get('price_num')
     if price is None:
         price = offer.get('price')
+
+    availability = (
+        parsed.get('availability')
+        or offer.get('availability')
+        or 'unknown'
+    )
+    available = parsed.get('available')
+    if available is None:
+        if availability == 'in_stock':
+            available = True
+        elif availability == 'out_of_stock':
+            available = False
+
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
-        'url': parsed.get('url') or original_url or final_url,
-        'name': parsed.get('name') or parsed.get('title') or '',
-        'brand': parsed.get('brand') or '',
-        'image': parsed.get('image') or (parsed.get('source') or {}).get('image'),
+        'url': parsed.get('url') or source.get('url') or original_url or final_url,
+        'name': parsed.get('name') or parsed.get('title') or source.get('name') or '',
+        'brand': parsed.get('brand') or source.get('brand') or '',
+        'image': parsed.get('image') or source.get('image'),
         'sku': parsed.get('sku') or identity_value('sku') or '',
         'gtin': parsed.get('gtin') or identity_value('gtin') or '',
         'mpn': parsed.get('mpn') or identity_value('mpn') or '',
-        'size_ml': parsed.get('size_ml'),
-        'concentration': parsed.get('concentration'),
-        'gender': parsed.get('gender'),
+        'size_ml': parsed.get('size_ml') if parsed.get('size_ml') is not None else attribute_value('size_ml'),
+        'concentration': parsed.get('concentration') or attribute_value('concentration'),
+        'gender': parsed.get('gender') or attribute_value('gender'),
         'price_num': price,
         'price': price,
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
-        'availability': parsed.get('availability') or offer.get('availability') or 'unknown',
-        'available': parsed.get('available'),
+        'availability': availability,
+        'available': available,
         'fetched_at': time.time(),
     }
 
