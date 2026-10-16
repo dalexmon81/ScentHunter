@@ -298,7 +298,20 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
 
             item_type = item.get("@type")
             types = item_type if isinstance(item_type, list) else [item_type]
-            if not any(str(value).lower() == "product" for value in types):
+
+            # Schema.org permits @type as either "Product" or a full URI,
+            # such as "https://schema.org/Product". Compare the final type
+            # name so both representations are handled consistently.
+            is_product = False
+            for value in types:
+                if not isinstance(value, str):
+                    continue
+                type_name = re.split(r"[/#]", value.strip().rstrip("/"))[-1]
+                if type_name.lower() == "product":
+                    is_product = True
+                    break
+
+            if not is_product:
                 continue
 
             score = 0
