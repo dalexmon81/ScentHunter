@@ -1693,12 +1693,9 @@ def _catalog_search_terms(query):
             if not candidate or key in seen:
                 continue
             seen.add(key)
-            # Do not discard family aliases merely because their retailer-facing
-            # name omits the query token. For example, "Kobra For Him" is a
-            # registered alias of "Hawas Kobra" and must remain searchable when
-            # the user enters only "Hawas". ProductMatcher still validates the
-            # identity of every returned offer downstream.
             overlap = tokens(candidate) & query_tokens
+            if not overlap:
+                continue
             candidates.append((candidate, overlap))
 
         token_frequency = {
@@ -1714,10 +1711,11 @@ def _catalog_search_terms(query):
             reverse=True,
         )
 
-        # Broad family queries need a wider bounded expansion. Keep aliases
-        # without query-token overlap in the candidate pool so variants whose
-        # retailer titles omit the family word can still be discovered.
-        max_terms = 32
+        # Broad family queries need more than four aliases: otherwise a
+        # variant may never be searched simply because it appears later in
+        # the registry. Keep the expansion bounded, while allowing enough
+        # candidates to cover the common variants of one product family.
+        max_terms = 16
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
