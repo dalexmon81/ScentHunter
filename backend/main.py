@@ -1651,14 +1651,13 @@ def _catalog_indexed_flags(stores):
 
 
 def _catalog_search_terms(query):
-    """Return bounded, family-aware persistent-catalog search terms.
+    """Return bounded persistent-catalog search terms.
 
-    Always search the exact user query first. ProductMatcher supplies the
-    canonical names and aliases for a recognized product family. Do not drop
-    family aliases merely because they share no literal token with the query:
-    retailer titles can omit the brand/family word (for example, "Kobra For
-    Him" for a broad "Hawas" search). ProductMatcher remains solely
-    responsible for deciding the final product identity.
+    Keep the original query first, then include a wider set of family-aware
+    canonical names and aliases. Broad queries such as "Hawas" must be able to
+    retrieve distinct variants whose retailer titles omit the family word
+    (for example, "Kobra For Him"). ProductMatcher remains solely responsible
+    for deciding final product identity.
     """
     text = str(query or "").strip()
     if not text:
@@ -1695,31 +1694,28 @@ def _catalog_search_terms(query):
                 continue
             seen.add(key)
             overlap = tokens(candidate) & query_tokens
-            # Keep zero-overlap aliases too. They can be valid family aliases
-            # even when a retailer omits the queried brand/family token.
+            if not overlap:
+                continue
             candidates.append((candidate, overlap))
 
         token_frequency = {
             token: sum(1 for _, overlap in candidates if token in overlap)
             for token in query_tokens
         }
-        # Matching query tokens rank first. Zero-overlap family aliases follow
-        # in ProductMatcher's original order rather than being discarded.
         candidates.sort(
             key=lambda item: (
-                bool(item[1]),
-                sum(1.0 / token_frequency[token] for token in item[1]
-                    if token_frequency.get(token, 0)),
+                sum(1.0 / token_frequency[token] for token in item[1]),
                 len(item[1]),
                 -len(item[0]),
             ),
             reverse=True,
         )
 
-        # Allow the full bounded family expansion to reach catalog search.
-        # The downstream catalog search has its own candidate cap, and the
-        # central ProductMatcher still determines each offer's final identity.
-        max_terms = 80
+        # Broad family queries need more than four aliases: otherwise a
+        # variant may never be searched simply because it appears later in
+        # the registry. Keep the expansion bounded, while allowing enough
+        # candidates to cover the common variants of one product family.
+        max_terms = 16
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
