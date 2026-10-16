@@ -1651,21 +1651,104 @@ def _catalog_indexed_flags(stores):
 
 
 def _catalog_search_terms(query):
-    """Return only the user's query for normal persistent-catalog search.
+    """Return a small, bounded set of persistent-catalog search terms.
 
-    ProductMatcher.catalog_search_terms() is reserved for catalog URL
-    discovery. It expands a family into many canonical names and aliases,
-    which is correct for discovery but wrong for the interactive search path:
-    passing dozens of terms here multiplies FTS queries across every store
-    and can exhaust the normal search deadline before useful candidates
-    are collected.
-
-    Normal search must therefore search the persistent catalog using the
-    actual user query. ProductMatcher remains responsible for resolving the
-    returned catalog offers to the canonical identity.
+    The original user query is always searched first. ProductMatcher may
+    provide family-aware canonical names and aliases, but its full discovery
+    expansion can contain dozens of terms and is too broad for interactive
+    search. Keep only terms that share at least one meaningful token with the
+    user's query, rank them by how specifically they cover the query tokens,
+    and cap the expansion. ProductMatcher remains solely responsible for
+    deciding the final product identity.
     """
     text = str(query or "").strip()
-    return [text] if text else []
+    if not text:
+        return []
+
+    terms = [text]
+    if PRODUCT_MATCHER is None:
+        return terms
+
+    try:
+        method = getattr(PRODUCT_MATCHER, "catalog_search_terms", None)
+        if not callable(method):
+            return terms
+        expanded = method(text)
+        if not isinstance(expanded, (list, tuple)):
+            return terms
+
+        def tokens(value):
+            return {
+                token for token in re.findall(r"[a-z0-9]+", str(value or "").lower())
+                if len(token) >= 3
+            }
+
+        query_tokens = tokens(text)
+        if not query_tokens:
+            return terms
+
+        candidates = []
+        seen = {text.casefold()}
+        for item in expanded:
+            candidate = str(item or "").strip()
+            key = candidate.casefold()
+            if not candidate or key in seen:
+                continue
+            seen.add(key)
+            overlap = tokens(candidate) & query_tokens
+            if not overlap:
+                continue
+            candidates.append((candidate, overlap))
+
+        # Prefer terms covering more of the user's query. When overlap counts
+        # tie, prefer terms containing less-common query tokens; this helps
+        # retrieve aliases such as "Kobra For Him" for "Hawas Kobra" without
+        # expanding every unrelated Hawas variant.
+        token_frequency = {
+            token: sum(1 for _, overlap in candidates if token in overlap)
+            for token in query_tokens
+        }
+        candidates.sort(
+            key=lambda item: (
+                sum(1.0 / token_frequency[token] for token in item[1]),
+                len(item[1]),
+                -len(item[0]),
+            ),
+            reverse=True,
+        )
+
+        max_terms = 4
+        # Reserve a slot for the best alias covering each rarer query token.
+        # This is important when a retailer's title omits a brand word that
+        # appears in the user's query (for example, "Kobra For Him" vs
+        # "Hawas Kobra").
+        token_order = sorted(
+            query_tokens,
+            key=lambda token: (token_frequency.get(token, 0), token),
+        )
+        selected = set()
+        for token in token_order:
+            for candidate, overlap in candidates:
+                if token in overlap and candidate.casefold() not in selected:
+                    terms.append(candidate)
+                    selected.add(candidate.casefold())
+                    break
+            if len(terms) >= max_terms:
+                return terms[:max_terms]
+
+        for candidate, _ in candidates:
+            if len(terms) >= max_terms:
+                break
+            if candidate.casefold() not in selected:
+                terms.append(candidate)
+                selected.add(candidate.casefold())
+        return terms[:max_terms]
+    except Exception as exc:
+        print(
+            f"CATALOG_SEARCH_TERM_EXPANSION_ERROR: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return terms
 
 
 def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
