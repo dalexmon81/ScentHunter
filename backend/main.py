@@ -1651,15 +1651,13 @@ def _catalog_indexed_flags(stores):
 
 
 def _catalog_search_terms(query):
-    """Return a small, bounded set of persistent-catalog search terms.
+    """Return bounded persistent-catalog search terms.
 
-    The original user query is always searched first. ProductMatcher may
-    provide family-aware canonical names and aliases, but its full discovery
-    expansion can contain dozens of terms and is too broad for interactive
-    search. Keep only terms that share at least one meaningful token with the
-    user's query, rank them by how specifically they cover the query tokens,
-    and cap the expansion. ProductMatcher remains solely responsible for
-    deciding the final product identity.
+    Keep the original query first, then include a wider set of family-aware
+    canonical names and aliases. Broad queries such as "Hawas" must be able to
+    retrieve distinct variants whose retailer titles omit the family word
+    (for example, "Kobra For Him"). ProductMatcher remains solely responsible
+    for deciding final product identity.
     """
     text = str(query or "").strip()
     if not text:
@@ -1700,10 +1698,6 @@ def _catalog_search_terms(query):
                 continue
             candidates.append((candidate, overlap))
 
-        # Prefer terms covering more of the user's query. When overlap counts
-        # tie, prefer terms containing less-common query tokens; this helps
-        # retrieve aliases such as "Kobra For Him" for "Hawas Kobra" without
-        # expanding every unrelated Hawas variant.
         token_frequency = {
             token: sum(1 for _, overlap in candidates if token in overlap)
             for token in query_tokens
@@ -1717,11 +1711,11 @@ def _catalog_search_terms(query):
             reverse=True,
         )
 
-        max_terms = 4
-        # Reserve a slot for the best alias covering each rarer query token.
-        # This is important when a retailer's title omits a brand word that
-        # appears in the user's query (for example, "Kobra For Him" vs
-        # "Hawas Kobra").
+        # Broad family queries need more than four aliases: otherwise a
+        # variant may never be searched simply because it appears later in
+        # the registry. Keep the expansion bounded, while allowing enough
+        # candidates to cover the common variants of one product family.
+        max_terms = 16
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
