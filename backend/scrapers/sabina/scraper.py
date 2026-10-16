@@ -1440,6 +1440,11 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
 
         "name": title,
         "brand": brand,
+        # Expose normalized attributes at the top level for catalog_engine's
+        # existing secondary-store parser; retain the structured evidence above.
+        "size_ml": size_ml,
+        "concentration": concentration,
+        "gender": gender or "unknown",
         "price": (
             f"{price:.2f}".replace(".", ",")
             + " €"
