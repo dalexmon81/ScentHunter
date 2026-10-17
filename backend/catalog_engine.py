@@ -3408,27 +3408,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                             except sqlite3.OperationalError:
                                 variant_rows = []
                         if variant_rows:
-                            # Existing database rows may predate the variant_url
-                            # column or have it NULL. Do not publish a variant
-                            # with the base URL: the retailer can open its
-                            # default size instead of the size shown in the offer.
-                            # Trigger the existing targeted-refresh path to
-                            # persist the scraper's explicit per-variant URL.
-                            has_missing_variant_url = any(
-                                'variant_url' not in vr.keys() or not str(vr['variant_url'] or '').strip()
-                                for vr in variant_rows
-                            )
-                            if has_missing_variant_url:
-                                rows.append({
-                                    'store': STORE_LABELS[store],
-                                    'store_key': store,
-                                    'url': url,
-                                    'name': r['product_name'] or r['slug'] or url_slug(url),
-                                    'brand': r['product_brand'] or '',
-                                    '_needs_refresh': True,
-                                    '_variant_url_missing': True,
-                                })
-                                continue
                             for vr in variant_rows:
                                 if not all(token in set(norm(' '.join((str(r['slug'] or ''), str(r['product_name'] or ''), str(r['product_brand'] or ''), f"{vr['size_ml'] or ''} ml"))).split()) for token in ts):
                                     continue
