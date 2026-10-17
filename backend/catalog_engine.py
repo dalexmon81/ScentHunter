@@ -1147,10 +1147,28 @@ def _allowed_store_hosts(store):
 
 
 def _store_allowed_url(store, raw_url, base_url=None):
-    """Resolve a URL and enforce the configured retailer host boundary."""
+    """Resolve a canonical catalog URL and enforce the retailer host boundary.
+
+    Product identity/discovery URLs deliberately drop fragments so variants of
+    one product do not become separate catalog entries. Do not use this helper
+    for customer-facing variant links: fragments can select a specific size.
+    """
+    absolute = _store_allowed_variant_url(store, raw_url, base_url)
+    if not absolute:
+        return None
+    return absolute.split('#', 1)[0]
+
+
+def _store_allowed_variant_url(store, raw_url, base_url=None):
+    """Resolve an official retailer URL while preserving variant fragments.
+
+    For stores such as Sabina, ``#/dimensione-100_ml`` selects the exact
+    commercial variant. Validate the same host/scheme boundary as catalog URLs
+    without stripping that fragment.
+    """
     if not raw_url:
         return None
-    absolute = urllib.parse.urljoin(base_url or STORES.get(store, ''), str(raw_url)).split('#', 1)[0]
+    absolute = urllib.parse.urljoin(base_url or STORES.get(store, ''), str(raw_url))
     parsed = urllib.parse.urlparse(absolute)
     if parsed.scheme not in ('http', 'https') or not parsed.hostname:
         return None
@@ -3051,7 +3069,7 @@ def refresh_url(store, url):
                                  variant_size,item.get('concentration'),item.get('gender'),variant_price,
                                  variant.get('currency') or item.get('currency') or 'EUR',
                                  variant.get('availability') or item.get('availability'),now,
-                                 variant.get('url') or url),
+                                 _store_allowed_variant_url(store, variant.get('url'), url) or url),
                             )
                 conn.execute(
                     '''INSERT INTO store_products(
