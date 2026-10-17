@@ -651,6 +651,10 @@ try:
         router as diagnose_sabina_variant_queue_read_only_router,
     )
     app.include_router(diagnose_sabina_variant_queue_read_only_router)
+    from diagnose_sabina_refresh_parser_read_only import (
+        router as diagnose_sabina_refresh_parser_read_only_router,
+    )
+    app.include_router(diagnose_sabina_refresh_parser_read_only_router)
 except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
