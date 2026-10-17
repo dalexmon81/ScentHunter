@@ -2913,43 +2913,6 @@ def refresh_url(store, url):
         if parser_available:
             item = _secondary_store_parser(store, final, url, html_data=data)
             secondary_ok = bool(item and item.get('name'))
-            # Sabina product pages sometimes contain valid Product JSON-LD and
-            # a product H1 while its retailer-specific parser rejects the page
-            # (locale/template drift). Use the generic parser only as a
-            # guarded recovery path: require a meaningful H1, a parsed name,
-            # and a brand/name signal before accepting it. This does not turn
-            # unavailable pages into offers; it only recovers structured data
-            # from the exact URL already being refreshed.
-            if not secondary_ok and store == 'sabina':
-                try:
-                    soup = BeautifulSoup(data or b'', 'html.parser')
-                    h1 = soup.find('h1')
-                    h1_text = h1.get_text(' ', strip=True) if h1 else ''
-                    fallback = parse_product(store, final, data)
-                    fallback_name = str((fallback or {}).get('name') or '').strip()
-                    fallback_brand = str((fallback or {}).get('brand') or '').strip()
-                    name_signal = bool(
-                        h1_text and fallback_name and
-                        (fallback_name.casefold() in h1_text.casefold() or
-                         h1_text.casefold() in fallback_name.casefold())
-                    )
-                    brand_signal = bool(
-                        fallback_brand and fallback_brand.casefold() in
-                        (h1_text + ' ' + fallback_name).casefold()
-                    )
-                    if fallback and name_signal and brand_signal:
-                        item = fallback
-                        print(
-                            'CATALOG SABINA GUARDED FALLBACK ' +
-                            f"url={url!r} final={final!r} " +
-                            f"name={fallback_name!r} brand={fallback_brand!r}",
-                            flush=True,
-                        )
-                except Exception as fallback_error:
-                    print(
-                        f'CATALOG SABINA FALLBACK ERROR url={url!r} '
-                        f'error={fallback_error!r}', flush=True
-                    )
         else:
             item = parse_product(store, final, data)
 
