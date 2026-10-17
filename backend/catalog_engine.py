@@ -577,6 +577,15 @@ def _ensure_schema(conn):
             price REAL, currency TEXT, availability TEXT, fetched_at REAL, fetch_status TEXT,
             PRIMARY KEY(store,url))""")
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_products_store_name ON store_products(store,name)')
+        # Multiple retailer bottle sizes can share one canonical product URL.
+        # Keep URL-level hydration/FTS intact and store each offer independently.
+        conn.execute("""CREATE TABLE IF NOT EXISTS store_product_variants(
+            store TEXT NOT NULL, url TEXT NOT NULL, variant_key TEXT NOT NULL,
+            name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
+            size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
+            availability TEXT, fetched_at REAL,
+            PRIMARY KEY(store,url,variant_key))""")
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
         _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
             store TEXT PRIMARY KEY, status TEXT, started_at REAL, finished_at REAL,
@@ -2883,6 +2892,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
         'availability': availability,
         'available': available,
+        'variants': parsed.get('variants') if store == 'sabina' and isinstance(parsed.get('variants'), list) else [],
         'fetched_at': time.time(),
     }
 
@@ -3000,6 +3010,34 @@ def refresh_url(store, url):
                            END''',
                     (store, url, "PENDING", 0, now, now, now),
                 )
+                if store == 'sabina' and item.get('variants'):
+                    conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
+                    for variant in item['variants']:
+                        try:
+                            variant_size = float(variant.get('size_ml'))
+                            variant_price = float(variant.get('price_num'))
+                        except (TypeError, ValueError):
+                            continue
+                        if variant_size <= 0 or variant_price <= 0:
+                            continue
+                        variant_key = f"{variant_size:g}ml:{variant.get('sku') or ''}"
+                        conn.execute(
+                            '''INSERT INTO store_product_variants(
+                                store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                                concentration,gender,price,currency,availability,fetched_at)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                               ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                                name=excluded.name,brand=excluded.brand,image=excluded.image,
+                                sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                                size_ml=excluded.size_ml,concentration=excluded.concentration,
+                                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                                availability=excluded.availability,fetched_at=excluded.fetched_at''',
+                            (store,url,variant_key,item.get('name'),item.get('brand'),item.get('image'),
+                             variant.get('sku') or item.get('sku'),item.get('gtin'),item.get('mpn'),
+                             variant_size,item.get('concentration'),item.get('gender'),variant_price,
+                             variant.get('currency') or item.get('currency') or 'EUR',
+                             variant.get('availability') or item.get('availability'),now),
+                        )
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
@@ -3309,6 +3347,31 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     seen_product_keys.add(product_key)
                     per_store_counts[store] = per_store_counts.get(store, 0) + 1
                     if r['product_name']:
+                        variant_rows = []
+                        if store == 'sabina':
+                            try:
+                                variant_rows = conn.execute(
+                                    "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
+                                    (store, url),
+                                ).fetchall()
+                            except sqlite3.OperationalError:
+                                variant_rows = []
+                        if variant_rows:
+                            for vr in variant_rows:
+                                if not all(token in set(norm(' '.join((str(r['slug'] or ''), str(r['product_name'] or ''), str(r['product_brand'] or ''), f"{vr['size_ml'] or ''} ml"))).split()) for token in ts):
+                                    continue
+                                rows.append({
+                                    'url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
+                                    'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
+                                    'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
+                                    'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
+                                    'size_ml': vr['size_ml'], 'concentration': vr['concentration'] or r['product_concentration'] or '',
+                                    'gender': vr['gender'] or r['product_gender'] or '', 'price': vr['price'],
+                                    'currency': vr['currency'] or 'EUR', 'availability': vr['availability'] or r['product_availability'] or '',
+                                    'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': vr['price'],
+                                    'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
+                                })
+                            continue
                         rows.append({
                             'url': url, 'slug': r['slug'] or '',
                             'lastmod': r['lastmod'] or '',
