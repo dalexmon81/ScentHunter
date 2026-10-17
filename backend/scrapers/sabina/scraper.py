@@ -1214,6 +1214,29 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         size_ml,
     )
 
+    # Expose all independently identified JSON-LD size offers when the page
+    # actually publishes them. The selected page offer remains the legacy
+    # default; catalog_engine persists this list separately by variant.
+    variants = []
+    seen_variant_keys = set()
+    for variant_offer in _offer_list(product or {}):
+        variant_size = _offer_size(variant_offer, product or {})
+        variant_price = money_to_float(variant_offer.get("price"))
+        if variant_size is None or variant_price is None:
+            continue
+        variant_key = (round(float(variant_size), 2), round(float(variant_price), 2))
+        if variant_key in seen_variant_keys:
+            continue
+        seen_variant_keys.add(variant_key)
+        variants.append({
+            "size_ml": float(variant_size),
+            "price_num": float(variant_price),
+            "currency": clean(variant_offer.get("priceCurrency")) or "EUR",
+            "availability": availability_from_product_page(soup, variant_offer)[0],
+            "sku": clean(variant_offer.get("sku")) or None,
+            "url": clean(variant_offer.get("url")) or final_url,
+        })
+
     price = (
         money_to_float(offer.get("price"))
         if isinstance(offer, dict)
@@ -1431,6 +1454,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             "gender": gender_source,
             "packaging_type": "default",
         },
+
+        "variants": variants,
 
         "raw_data": {
             "product_url": final_url,
