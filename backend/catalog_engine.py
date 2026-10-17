@@ -583,8 +583,15 @@ def _ensure_schema(conn):
             store TEXT NOT NULL, url TEXT NOT NULL, variant_key TEXT NOT NULL,
             name TEXT, brand TEXT, image TEXT, sku TEXT, gtin TEXT, mpn TEXT,
             size_ml REAL, concentration TEXT, gender TEXT, price REAL, currency TEXT,
-            availability TEXT, fetched_at REAL,
+            availability TEXT, fetched_at REAL, variant_url TEXT,
             PRIMARY KEY(store,url,variant_key))""")
+        # Migrate existing catalogs in place: retailer variant URLs are distinct
+        # from the canonical product URL (e.g. Sabina's #/dimensione-100_ml).
+        variant_columns = {row['name'] for row in conn.execute(
+            'PRAGMA table_info(store_product_variants)'
+        ).fetchall()}
+        if 'variant_url' not in variant_columns:
+            conn.execute('ALTER TABLE store_product_variants ADD COLUMN variant_url TEXT')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_store_product_variants_store_size ON store_product_variants(store,size_ml)')
         _ensure_search_fts(conn)
         conn.execute("""CREATE TABLE IF NOT EXISTS sync_state(
@@ -3030,19 +3037,21 @@ def refresh_url(store, url):
                             conn.execute(
                                 '''INSERT INTO store_product_variants(
                                     store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                                    concentration,gender,price,currency,availability,fetched_at)
-                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                    concentration,gender,price,currency,availability,fetched_at,variant_url)
+                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                                    ON CONFLICT(store,url,variant_key) DO UPDATE SET
                                     name=excluded.name,brand=excluded.brand,image=excluded.image,
                                     sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
                                     size_ml=excluded.size_ml,concentration=excluded.concentration,
                                     gender=excluded.gender,price=excluded.price,currency=excluded.currency,
-                                    availability=excluded.availability,fetched_at=excluded.fetched_at''',
+                                    availability=excluded.availability,fetched_at=excluded.fetched_at,
+                                    variant_url=excluded.variant_url''',
                                 (store,url,variant_key,item.get('name'),item.get('brand'),item.get('image'),
                                  variant.get('sku') or item.get('sku'),item.get('gtin'),item.get('mpn'),
                                  variant_size,item.get('concentration'),item.get('gender'),variant_price,
                                  variant.get('currency') or item.get('currency') or 'EUR',
-                                 variant.get('availability') or item.get('availability'),now),
+                                 variant.get('availability') or item.get('availability'),now,
+                                 variant.get('url') or url),
                             )
                 conn.execute(
                     '''INSERT INTO store_products(
@@ -3385,7 +3394,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if not all(token in set(norm(' '.join((str(r['slug'] or ''), str(r['product_name'] or ''), str(r['product_brand'] or ''), f"{vr['size_ml'] or ''} ml"))).split()) for token in ts):
                                     continue
                                 rows.append({
-                                    'url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
+                                    'url': (vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url),
+                                    'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
                                     'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
                                     'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
                                     'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
