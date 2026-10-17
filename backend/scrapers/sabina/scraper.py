@@ -309,14 +309,37 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
                 continue
 
             score = 0
-            item_url = normalise_url(item.get("url"))
-            item_path = urlparse(item_url).path if item_url else None
             item_name = clean(item.get("name"))
 
-            if expected_url and item_url == expected_url:
-                score += 100
-            if expected_path and item_path == expected_path:
-                score += 100
+            # Schema.org product entities may identify their canonical page
+            # through @id or mainEntityOfPage instead of a top-level url.
+            # Normalize only Sabina URLs, then match the canonical path.
+            identity_urls = []
+            for raw_url in (item.get("url"), item.get("@id")):
+                if isinstance(raw_url, str):
+                    normalized = normalise_url(raw_url)
+                    if normalized:
+                        identity_urls.append(normalized)
+
+            main_entity = item.get("mainEntityOfPage")
+            if isinstance(main_entity, str):
+                normalized = normalise_url(main_entity)
+                if normalized:
+                    identity_urls.append(normalized)
+            elif isinstance(main_entity, dict):
+                for raw_url in (main_entity.get("@id"), main_entity.get("url")):
+                    if isinstance(raw_url, str):
+                        normalized = normalise_url(raw_url)
+                        if normalized:
+                            identity_urls.append(normalized)
+
+            identity_urls = list(dict.fromkeys(identity_urls))
+            identity_paths = {urlparse(value).path for value in identity_urls}
+
+            if expected_url and expected_url in identity_urls:
+                score += 120
+            if expected_path and expected_path in identity_paths:
+                score += 120
 
             if expected_title_norm and item_name:
                 item_name_norm = norm(item_name)
