@@ -1214,28 +1214,86 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         size_ml,
     )
 
-    # Expose all independently identified JSON-LD size offers when the page
-    # actually publishes them. The selected page offer remains the legacy
-    # default; catalog_engine persists this list separately by variant.
+    # Collect size-specific offers from structured data and variant controls.
+    # Do not infer a price from unrelated product cards or from the selected
+    # page price: a variant is emitted only when size and its own price are
+    # both present in the same offer/control or embedded variant object.
     variants = []
     seen_variant_keys = set()
-    for variant_offer in _offer_list(product or {}):
-        variant_size = _offer_size(variant_offer, product or {})
-        variant_price = money_to_float(variant_offer.get("price"))
-        if variant_size is None or variant_price is None:
-            continue
-        variant_key = (round(float(variant_size), 2), round(float(variant_price), 2))
-        if variant_key in seen_variant_keys:
-            continue
-        seen_variant_keys.add(variant_key)
+
+    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None):
+        variant_size = extract_size_ml(raw_size)
+        variant_price = money_to_float(raw_price)
+        if variant_size is None or variant_price is None or variant_price <= 0:
+            return
+        key = (round(float(variant_size), 2), round(float(variant_price), 2), clean(sku))
+        if key in seen_variant_keys:
+            return
+        seen_variant_keys.add(key)
         variants.append({
-            "size_ml": float(variant_size),
-            "price_num": float(variant_price),
-            "currency": clean(variant_offer.get("priceCurrency")) or "EUR",
-            "availability": availability_from_product_page(soup, variant_offer)[0],
-            "sku": clean(variant_offer.get("sku")) or None,
-            "url": clean(variant_offer.get("url")) or final_url,
+            "size_ml": float(variant_size), "price_num": float(variant_price),
+            "currency": clean(currency) or "EUR",
+            "availability": availability or "unknown", "sku": clean(sku) or None,
+            "url": clean(variant_url) or final_url,
         })
+
+    for variant_offer in _offer_list(product or {}):
+        add_variant(
+            " ".join(str(variant_offer.get(k) or "") for k in ("name", "description", "sku", "url")),
+            variant_offer.get("price"), variant_offer.get("priceCurrency"),
+            availability_from_product_page(soup, variant_offer)[0],
+            variant_offer.get("sku"), variant_offer.get("url"),
+        )
+
+    # Sabina's selector often keeps the full variant matrix in embedded JSON
+    # rather than in Product.offers. Walk JSON script payloads and accept only
+    # objects that independently contain a size-like field and a price field.
+    size_keys = ("size", "size_ml", "volume", "attribute", "label", "name", "title", "value", "public_name")
+    price_keys = ("price", "price_amount", "priceAmount", "amount", "final_price", "finalPrice", "current_price", "currentPrice")
+    sku_keys = ("sku", "reference", "id_product_attribute", "id_product", "variant_id", "id")
+    def walk_variant_data(obj):
+        if isinstance(obj, dict):
+            size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
+            price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
+            size = next((v for v in size_values if extract_size_ml(v) is not None), None)
+            price = next((v for v in price_values if money_to_float(v) is not None), None)
+            if size is not None and price is not None:
+                sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
+                currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
+                raw_availability = clean(obj.get("availability") or obj.get("stock_status") or obj.get("availability_status")).lower()
+                if any(x in raw_availability for x in ("outofstock", "out_of_stock", "unavailable", "soldout")):
+                    availability = "out_of_stock"
+                elif any(x in raw_availability for x in ("instock", "in_stock", "available")):
+                    availability = "in_stock"
+                else:
+                    availability = "unknown"
+                add_variant(size, price, currency, availability, sku, obj.get("url"))
+            for value in obj.values():
+                walk_variant_data(value)
+        elif isinstance(obj, list):
+            for value in obj:
+                walk_variant_data(value)
+
+    for script in soup.select('script[type="application/json"], script[type="application/ld+json"]'):
+        raw_json = script.string or script.get_text()
+        if not raw_json or len(raw_json) > 2_000_000:
+            continue
+        try:
+            walk_variant_data(json.loads(raw_json))
+        except (ValueError, TypeError, RecursionError):
+            continue
+
+    # Variant controls can carry size and price together in data attributes.
+    # A label-only control is deliberately not assigned the selected page price.
+    for node in soup.select('option, [data-size], [data-product-size], [data-volume], [data-variant], [data-product-attribute]'):
+        attrs = node.attrs if hasattr(node, "attrs") else {}
+        label = clean(node.get_text(" ", strip=True))
+        raw_size = " ".join([label] + [str(attrs.get(k) or "") for k in ("value", "data-size", "data-product-size", "data-volume", "aria-label", "title")])
+        raw_price = next((attrs.get(k) for k in ("data-price", "data-product-price", "data-final-price", "data-price-amount") if attrs.get(k) not in (None, "")), None)
+        if raw_price is None:
+            continue
+        add_variant(raw_size, raw_price, attrs.get("data-currency") or "EUR", None,
+                    attrs.get("data-sku") or attrs.get("data-id-product-attribute"), attrs.get("data-url"))
 
     price = (
         money_to_float(offer.get("price"))
