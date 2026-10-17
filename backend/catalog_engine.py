@@ -3302,10 +3302,14 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         # Keep FTS ranking and LIMIT inside each retailer. This avoids the costly
         # global ROW_NUMBER window while ensuring every configured retailer,
         # including Deloox, receives its own candidate budget.
-        for store in STORES:
+        # Search the original query (first token set) across every store before
+        # spending the shared deadline on expanded query variants. The previous
+        # store-first loop could exhaust the budget on earlier retailers before
+        # reaching the requested retailer's exact query.
+        for ts in token_sets:
             if interrupted():
                 break
-            for ts in token_sets:
+            for store in STORES:
                 if interrupted():
                     break
                 per_store_counts = {}
