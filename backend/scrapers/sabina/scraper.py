@@ -1251,14 +1251,16 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     size_keys = ("size", "size_ml", "volume", "attribute", "label", "name", "title", "value", "public_name")
     price_keys = ("price", "price_amount", "priceAmount", "amount", "final_price", "finalPrice", "current_price", "currentPrice")
     sku_keys = ("sku", "reference", "id_product_attribute", "id_product", "variant_id", "id")
-    def walk_variant_data(obj):
+    def walk_variant_data(obj, inherited_size=None, inherited_sku=None):
         if isinstance(obj, dict):
             size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
             price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
-            size = next((v for v in size_values if extract_size_ml(v) is not None), None)
+            local_size = next((v for v in size_values if extract_size_ml(v) is not None), None)
+            effective_size = local_size if local_size is not None else inherited_size
             price = next((v for v in price_values if money_to_float(v) is not None), None)
-            if size is not None and price is not None:
-                sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
+            local_sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
+            effective_sku = local_sku if local_sku is not None else inherited_sku
+            if effective_size is not None and price is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
                 raw_availability = clean(obj.get("availability") or obj.get("stock_status") or obj.get("availability_status")).lower()
                 if any(x in raw_availability for x in ("outofstock", "out_of_stock", "unavailable", "soldout")):
@@ -1267,21 +1269,45 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "in_stock"
                 else:
                     availability = "unknown"
-                add_variant(size, price, currency, availability, sku, obj.get("url"))
+                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"))
             for value in obj.values():
-                walk_variant_data(value)
+                walk_variant_data(value, effective_size, effective_sku)
         elif isinstance(obj, list):
             for value in obj:
-                walk_variant_data(value)
+                walk_variant_data(value, inherited_size, inherited_sku)
 
-    for script in soup.select('script[type="application/json"], script[type="application/ld+json"]'):
+    # Read both explicit JSON script blocks and valid JSON objects embedded in
+    # JavaScript configuration scripts. Sabina may expose combinations through
+    # a JS bootstrap object instead of application/json. Only parse actual JSON
+    # fragments; never evaluate JavaScript.
+    json_decoder = json.JSONDecoder()
+    for script in soup.select("script"):
         raw_json = script.string or script.get_text()
         if not raw_json or len(raw_json) > 2_000_000:
             continue
+        raw_json = raw_json.strip()
+        parsed_any = False
         try:
             walk_variant_data(json.loads(raw_json))
+            parsed_any = True
         except (ValueError, TypeError, RecursionError):
+            pass
+        if parsed_any:
             continue
+        # Limit fragment scanning to scripts that plausibly carry product or
+        # variant data, avoiding unrelated analytics/config payloads.
+        if not re.search(r"variant|combination|attribute|product|price|volume|size", raw_json, re.I):
+            continue
+        for match in re.finditer(r"[\[{]", raw_json):
+            try:
+                fragment, _end = json_decoder.raw_decode(raw_json[match.start():])
+            except (ValueError, TypeError, RecursionError):
+                continue
+            if isinstance(fragment, (dict, list)):
+                try:
+                    walk_variant_data(fragment)
+                except (TypeError, RecursionError):
+                    continue
 
     # Variant controls can carry size and price together in data attributes.
     # A label-only control is deliberately not assigned the selected page price.
