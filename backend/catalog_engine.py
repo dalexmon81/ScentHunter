@@ -3011,33 +3011,39 @@ def refresh_url(store, url):
                     (store, url, "PENDING", 0, now, now, now),
                 )
                 if store == 'sabina' and item.get('variants'):
-                    conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
+                    # Validate the complete extracted set before replacing the
+                    # stored set. A malformed/non-priced extraction must never
+                    # erase previously known good variant offers.
+                    valid_variants = []
                     for variant in item['variants']:
                         try:
                             variant_size = float(variant.get('size_ml'))
                             variant_price = float(variant.get('price_num'))
                         except (TypeError, ValueError):
                             continue
-                        if variant_size <= 0 or variant_price <= 0:
-                            continue
-                        variant_key = f"{variant_size:g}ml:{variant.get('sku') or ''}"
-                        conn.execute(
-                            '''INSERT INTO store_product_variants(
-                                store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                                concentration,gender,price,currency,availability,fetched_at)
-                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                               ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                                name=excluded.name,brand=excluded.brand,image=excluded.image,
-                                sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                                size_ml=excluded.size_ml,concentration=excluded.concentration,
-                                gender=excluded.gender,price=excluded.price,currency=excluded.currency,
-                                availability=excluded.availability,fetched_at=excluded.fetched_at''',
-                            (store,url,variant_key,item.get('name'),item.get('brand'),item.get('image'),
-                             variant.get('sku') or item.get('sku'),item.get('gtin'),item.get('mpn'),
-                             variant_size,item.get('concentration'),item.get('gender'),variant_price,
-                             variant.get('currency') or item.get('currency') or 'EUR',
-                             variant.get('availability') or item.get('availability'),now),
-                        )
+                        if variant_size > 0 and variant_price > 0:
+                            valid_variants.append((variant, variant_size, variant_price))
+                    if valid_variants:
+                        conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
+                        for variant, variant_size, variant_price in valid_variants:
+                            variant_key = f"{variant_size:g}ml:{variant.get('sku') or ''}"
+                            conn.execute(
+                                '''INSERT INTO store_product_variants(
+                                    store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                                    concentration,gender,price,currency,availability,fetched_at)
+                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                   ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                                    name=excluded.name,brand=excluded.brand,image=excluded.image,
+                                    sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                                    size_ml=excluded.size_ml,concentration=excluded.concentration,
+                                    gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                                    availability=excluded.availability,fetched_at=excluded.fetched_at''',
+                                (store,url,variant_key,item.get('name'),item.get('brand'),item.get('image'),
+                                 variant.get('sku') or item.get('sku'),item.get('gtin'),item.get('mpn'),
+                                 variant_size,item.get('concentration'),item.get('gender'),variant_price,
+                                 variant.get('currency') or item.get('currency') or 'EUR',
+                                 variant.get('availability') or item.get('availability'),now),
+                            )
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
@@ -3304,8 +3310,21 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     break
                 per_store_counts = {}
                 seen_product_keys = set()
-                fts_query = _fts_query_for_tokens(ts)
+                # Sabina bottle sizes live in store_product_variants, not in the
+                # URL-level FTS document. Keep size tokens for the variant-level
+                # filter below, but don't require them to exist in the page title.
+                sabina_size_tokens = set()
+                fts_tokens = ts
+                if store == 'sabina' and any(token in ts for token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}):
+                    sabina_size_tokens = {
+                        token for token in ts
+                        if token.isdigit() or token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}
+                    }
+                    fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
+                fts_query = _fts_query_for_tokens(fts_tokens)
                 if not fts_query:
+                    # A size alone is not enough to identify a product page;
+                    # do not turn this into a broad catalog scan.
                     continue
                 _diag_sql_t0 = time.monotonic()
                 try:
@@ -3334,7 +3353,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         for key in ('slug', 'product_name', 'product_brand')
                     )
                     normalized_tokens = set(norm(search_text).split())
-                    if not all(token in normalized_tokens for token in ts):
+                    required_base_tokens = tuple(token for token in ts if token not in sabina_size_tokens) if store == 'sabina' else ts
+                    if not all(token in normalized_tokens for token in required_base_tokens):
                         continue
                     product_key = (
                         str(r['product_sku'] or '').strip().lower()
