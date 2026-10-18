@@ -3107,7 +3107,31 @@ def refresh_url(store, url):
                     if valid_variants:
                         conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
                         for variant, variant_size, variant_price in valid_variants:
-                            variant_key = f"{variant_size:g}ml:{variant.get('sku') or ''}"
+                            # Persist the commercial combination identity, not
+                            # merely size + SKU: Sabina can repeat a parent SKU
+                            # across sizes, and distinct combinations may share
+                            # both size and SKU. The scraper preserves the real
+                            # combination selector in the variant URL fragment.
+                            raw_variant_url = str(variant.get('url') or '').strip()
+                            parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
+                            variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
+                            variant_query = urllib.parse.parse_qs(parsed_variant_url.query)
+                            selector_values = []
+                            for selector_name in ('id_product_attribute', 'id_product_attribute_value', 'variant', 'variant_id', 'combination_id'):
+                                selector_values.extend(str(value).strip() for value in variant_query.get(selector_name, []) if str(value).strip())
+                            if selector_values:
+                                identity_token = 'selector:' + '|'.join(selector_values)
+                            elif variant_selector:
+                                identity_token = 'fragment:' + variant_selector
+                            elif variant.get('gtin'):
+                                identity_token = 'gtin:' + str(variant.get('gtin')).strip()
+                            elif variant.get('mpn'):
+                                identity_token = 'mpn:' + str(variant.get('mpn')).strip()
+                            elif variant.get('sku'):
+                                identity_token = 'sku:' + str(variant.get('sku')).strip()
+                            else:
+                                identity_token = 'price:' + format(variant_price, '.4f')
+                            variant_key = f"{variant_size:g}ml:{identity_token}"
                             # Variant identity must not inherit identifiers that
                             # describe the parent product (notably GTIN/MPN).
                             # A parent-level GTIN is not proof that every size
