@@ -10,15 +10,15 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Query
 
 router = APIRouter()
-DEFAULT_URL = "https://www.sabina.com/es/perfumes-mujer/31434-born-in-roma-donna-extradose-eau-de-parfum-valentino.html"
+DEFAULT_URL = "https://www.sabina.com/it/uomo/10856-valentino-born-in-roma-yellow-dream-uomo-eau-de-toilette.html"
 
-@router.get("/diagnose-sabina-variant-runtime-read-only")
+@router.get("/diagnose-sabina-variant-runtime-v2-read-only")
 def diagnose_sabina_variant_runtime_read_only(url: str = Query(DEFAULT_URL)):
     started = time.monotonic()
     parsed = urlparse(url)
     out = {
         "ok": False,
-        "diagnostic": "sabina-variant-runtime-read-only-v1",
+        "diagnostic": "sabina-variant-runtime-read-only-v2",
         "read_only": True,
         "database_written": False,
         "http_requests": 0,
@@ -40,6 +40,8 @@ def diagnose_sabina_variant_runtime_read_only(url: str = Query(DEFAULT_URL)):
             "refresh_url_source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
             "refresh_url_has_sabina_variant_insert": "INSERT INTO store_product_variants" in source and "store == 'sabina' and item.get('variants')" in source,
             "refresh_url_has_variant_validation": "valid_variants" in source and "variant_size > 0 and variant_price > 0" in source,
+            "refresh_url_preserves_variant_url": "_store_allowed_variant_url(store, variant.get('url'), url) or url" in source,
+            "search_uses_persisted_variant_url": "vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url" in inspect.getsource(ce._search_local_impl),
             "db_path_configured": str(getattr(ce, "DB_PATH", "")),
             "db_path_resolved": str(Path(getattr(ce, "DB_PATH", ".")).resolve()),
             "db_function_source_file": inspect.getsourcefile(ce.db),
@@ -65,7 +67,7 @@ def diagnose_sabina_variant_runtime_read_only(url: str = Query(DEFAULT_URL)):
                 key = url.rstrip("/")
                 queries = [
                     ("base_product", "SELECT store,url,name,brand,sku,size_ml,price,currency,availability,fetched_at,fetch_status FROM store_products WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10", ("sabina", url, key), "store_products"),
-                    ("variants", "SELECT store,url,variant_key,name,brand,sku,size_ml,price,currency,availability,fetched_at FROM store_product_variants WHERE store=? AND (url=? OR RTRIM(url,'/')=?) ORDER BY size_ml,variant_key LIMIT 100", ("sabina", url, key), "store_product_variants"),
+                    ("variants", "SELECT store,url,variant_key,name,brand,sku,size_ml,price,currency,availability,fetched_at,variant_url FROM store_product_variants WHERE store=? AND (url=? OR RTRIM(url,'/')=?) ORDER BY size_ml,variant_key LIMIT 100", ("sabina", url, key), "store_product_variants"),
                     ("hydration_queue", "SELECT store,url,state,attempts,last_started_at,last_finished_at,last_error,last_http_status FROM hydration_queue WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10", ("sabina", url, key), "hydration_queue"),
                 ]
                 for label, sql, params, table in queries:
