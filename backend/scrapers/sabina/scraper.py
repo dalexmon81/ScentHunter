@@ -1418,10 +1418,9 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         )
     )
 
-    gender, gender_source = extract_gender(
-        title,
-        page_text,
-    )
+    # The full page body includes recommendations and related products.
+    # Infer gender from the current product title to avoid cross-product bleed.
+    gender, gender_source = extract_gender(title)
 
     return {
         "store": STORE,
