@@ -1221,7 +1221,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     variants = []
     seen_variant_keys = set()
 
-    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None):
+    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None):
         variant_size = extract_size_ml(raw_size)
         variant_price = money_to_float(raw_price)
         if variant_size is None or variant_price is None or variant_price <= 0:
@@ -1249,6 +1249,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             "size_ml": float(variant_size), "price_num": float(variant_price),
             "currency": clean(currency) or "EUR",
             "availability": availability or "unknown", "sku": clean(sku) or None,
+            "gtin": clean(gtin) or None, "mpn": clean(mpn) or None,
             "url": target_url,
         })
 
@@ -1258,6 +1259,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             variant_offer.get("price"), variant_offer.get("priceCurrency"),
             availability_from_product_page(soup, variant_offer)[0],
             variant_offer.get("sku"), variant_offer.get("url"),
+            next((variant_offer.get(k) for k in ("gtin13", "gtin12", "gtin14", "gtin") if variant_offer.get(k)), None),
+            variant_offer.get("mpn"),
         )
 
     # Sabina's selector often keeps the full variant matrix in embedded JSON
@@ -1266,6 +1269,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     size_keys = ("size", "size_ml", "volume", "attribute", "label", "name", "title", "value", "public_name")
     price_keys = ("price", "price_amount", "priceAmount", "amount", "final_price", "finalPrice", "current_price", "currentPrice")
     sku_keys = ("sku", "reference", "id_product_attribute", "id_product", "variant_id", "id")
+    gtin_keys = ("gtin13", "gtin12", "gtin14", "gtin", "ean", "ean13")
+    mpn_keys = ("mpn", "manufacturer_part_number", "manufacturerPartNumber")
     def walk_variant_data(obj, inherited_size=None, inherited_sku=None):
         if isinstance(obj, dict):
             size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
@@ -1284,7 +1289,9 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "in_stock"
                 else:
                     availability = "unknown"
-                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"))
+                local_gtin = next((obj.get(k) for k in gtin_keys if obj.get(k) not in (None, "")), None)
+                local_mpn = next((obj.get(k) for k in mpn_keys if obj.get(k) not in (None, "")), None)
+                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn)
             for value in obj.values():
                 walk_variant_data(value, effective_size, effective_sku)
         elif isinstance(obj, list):
