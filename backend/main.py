@@ -1205,12 +1205,14 @@ def dedupe_results(results, diagnostics=None):
     return output
 
 def _public_offer_url(item):
-    """Return a retailer URL whose selected Sabina size matches the offer.
+    """Return a Sabina URL that opens the Spanish storefront and the offer's
+    actual size variant.
 
     Sabina product pages encode the selected size in the URL fragment. The
-    catalog's canonical URL can be shared by several sizes, and stale fragments
-    can point at a different size than the offer card. Fix the fragment at the
-    public-offer boundary, using the offer's explicit size as the source of truth.
+    catalog may contain Italian canonical URLs or stale fragments in another
+    locale. Sabina's Spanish page does not honour those fragments, so it would
+    fall back to its default variant. Always normalize the URL to /es/ and
+    regenerate the Spanish fragment from the offer's size.
     """
     raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
     url = str(raw_url or "").strip()
@@ -1230,13 +1232,7 @@ def _public_offer_url(item):
         return url
 
     # Prefer the explicit displayed format when it contains a recognized
-    # volume. Some catalog rows have stale/mismatched size_ml values (e.g.
-    # SKU 408400 paired with size_ml=50 while the offer is 100 ML). Using that
-    # stale numeric field would recreate the wrong Sabina fragment.
-    #
-    # The unit is optional because a catalog/format value may legitimately be
-    # "100" rather than "100 ml". A bare recognized volume must still override
-    # a stale size_ml value.
+    # volume. Some catalog rows have stale/mismatched size_ml values.
     format_value = item.get("format")
     format_match = re.search(
         r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?\b",
@@ -1258,11 +1254,8 @@ def _public_offer_url(item):
     else:
         size_ml = int(match.group(1))
 
-        # Sabina must always open the Spanish storefront. The catalog may contain
-    # Italian canonical URLs, while Sabina can redirect visitors to another
-    # locale and lose the original size fragment. Normalize the product URL to
-    # /es/ and use the Spanish fragment verified on the live Spanish site:
-    # #/30-Tamano-100_ML
+    # Always open the Spanish storefront. Replace only the locale segment;
+    # Sabina resolves the canonical Spanish product path from the product ID.
     if "/es/" not in parsed.path.lower():
         parsed = parsed._replace(
             path=re.sub(
@@ -1273,14 +1266,14 @@ def _public_offer_url(item):
             )
         )
 
+    # Always regenerate the Spanish fragment. Never preserve an Italian or
+    # French fragment: Sabina's Spanish page does not honour it and falls back
+    # to its default size variant.
     new_fragment = f"/30-Tamano-{size_ml}_ML"
 
     return urlunsplit(
         (parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment)
     )
-
-
-
 
 def _public_offer(item):
     """
