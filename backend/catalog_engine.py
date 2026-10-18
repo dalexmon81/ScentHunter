@@ -1179,31 +1179,49 @@ def _store_allowed_variant_url(store, raw_url, base_url=None):
     return absolute
 
 
-def _sabina_variant_url(raw_url, base_url, size_ml):
-    """Return a customer-facing Sabina URL selecting the exact volume.
 
-    Catalog identity remains fragment-free. Older persisted variant rows may
-    contain only the base URL, so derive the size fragment at read time too.
-    """
-    absolute = _store_allowed_variant_url('sabina', raw_url, base_url) or _store_allowed_variant_url('sabina', base_url, base_url)
+def _sabina_variant_url(raw_url, base_url, size_ml):
+    """Return the Spanish Sabina URL for the exact variant."""
+    absolute = (
+        _store_allowed_variant_url('sabina', raw_url, base_url)
+        or _store_allowed_variant_url('sabina', base_url, base_url)
+    )
     if not absolute:
         return base_url
+
     try:
-        size = float(size_ml)
+        size = float(str(size_ml).strip().replace(',', '.'))
     except (TypeError, ValueError):
         return absolute
+
     if size <= 0:
         return absolute
+
     parsed = urllib.parse.urlparse(absolute)
-    if (parsed.hostname or '').lower().rstrip('.') not in {'sabina.com', 'www.sabina.com'}:
+    if (parsed.hostname or '').lower().rstrip('.') not in {
+        'sabina.com', 'www.sabina.com'
+    }:
         return absolute
+
+    if not re.match(r'^/es/', parsed.path, re.I):
+        normalized_path = re.sub(
+            r'^/(?:it|fr|en|de|nl|pt|tw|da|pl)/',
+            '/es/',
+            parsed.path,
+            count=1,
+            flags=re.I,
+        )
+        if not re.match(r'^/es/', normalized_path, re.I):
+            return absolute
+        parsed = parsed._replace(path=normalized_path)
+
     size_label = f"{size:g}".replace('.', '_')
-    expected_fragment = f"/dimensione-{size_label}_ml"
-    fragment = parsed.fragment.lstrip('/')
-    # Replace absent or mismatched size fragments, not just absent fragments.
-    if not re.fullmatch(rf"/?dimensione-{re.escape(size_label)}_ml", parsed.fragment, re.I):
-        return urllib.parse.urlunparse(parsed._replace(fragment=expected_fragment))
-    return absolute
+    fragment = f"/30-Tamano-{size_label}_ML"
+
+    return urllib.parse.urlunparse(
+        parsed._replace(fragment=fragment)
+    )
+
 
 
 def _html_product_url(store, raw_url, base_url):
