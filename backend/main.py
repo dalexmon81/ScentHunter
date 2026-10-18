@@ -1233,9 +1233,13 @@ def _public_offer_url(item):
     # volume. Some catalog rows have stale/mismatched size_ml values (e.g.
     # SKU 408400 paired with size_ml=50 while the offer is 100 ML). Using that
     # stale numeric field would recreate the wrong Sabina fragment.
+    #
+    # The unit is optional because a catalog/format value may legitimately be
+    # "100" rather than "100 ml". A bare recognized volume must still override
+    # a stale size_ml value.
     format_value = item.get("format")
     format_match = re.search(
-        r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)\b",
+        r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?\b",
         str(format_value or ""),
         re.I,
     )
@@ -1270,6 +1274,7 @@ def _public_offer_url(item):
         new_fragment = f"/size-{size_ml}_ml"
 
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment))
+
 
 
 def _public_offer(item):
