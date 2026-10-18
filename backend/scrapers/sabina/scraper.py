@@ -1221,7 +1221,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     variants = []
     seen_variant_keys = set()
 
-    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None):
+    def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
         variant_size = extract_size_ml(raw_size)
         variant_price = money_to_float(raw_price)
         if variant_size is None or variant_price is None or variant_price <= 0:
@@ -1230,11 +1230,9 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         if key in seen_variant_keys:
             return
         seen_variant_keys.add(key)
-        # Sabina uses a URL fragment to select the requested volume. Its
-        # embedded variant data often provides the SKU/size/price but only the
-        # canonical product URL, so preserve an explicit size fragment when
-        # supplied and otherwise build the fragment from this exact variant's
-        # parsed size. The catalog identity remains the fragment-free URL.
+        # Keep the retailer's real combination ID in the URL fragment. A
+        # size-only fragment is not sufficient: Sabina's selector is keyed by
+        # id_product_attribute (e.g. #/25-tama_o-50_ml).
         target_url = clean(variant_url) or final_url
         target_parts = urlparse(target_url)
         is_sabina_url = (target_parts.hostname or "").lower().rstrip(".") in {
@@ -1242,9 +1240,14 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         }
         if is_sabina_url and variant_size is not None:
             fragment = target_parts.fragment
-            if not fragment or not re.search(r"dimensione-\d+(?:[.,]\d+)?_ml", fragment, re.I):
-                size_label = f"{float(variant_size):g}".replace(".", "_")
-                target_url = target_url.split("#", 1)[0] + f"#/dimensione-{size_label}_ml"
+            valid_fragment = re.search(r"(?:^|/)\d+-tama_o-\d+(?:_\d+)?_ml$", fragment, re.I)
+            if not valid_fragment:
+                if str(variant_id or "").strip().isdigit():
+                    size_label = f"{float(variant_size):g}".replace(".", "_")
+                    target_url = target_url.split("#", 1)[0] + f"#/{int(variant_id)}-tama_o-{size_label}_ml"
+                else:
+                    # Never emit a guessed size-only fragment as a variant URL.
+                    target_url = target_url.split("#", 1)[0]
         variants.append({
             "size_ml": float(variant_size), "price_num": float(variant_price),
             "currency": clean(currency) or "EUR",
@@ -1268,10 +1271,11 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     # objects that independently contain a size-like field and a price field.
     size_keys = ("size", "size_ml", "volume", "attribute", "label", "name", "title", "value", "public_name")
     price_keys = ("price", "price_amount", "priceAmount", "amount", "final_price", "finalPrice", "current_price", "currentPrice")
-    sku_keys = ("sku", "reference", "id_product_attribute", "id_product", "variant_id", "id")
+    sku_keys = ("sku", "reference", "id_product", "variant_id", "id")
+    variant_id_keys = ("id_product_attribute", "id_product_attribute_value", "combination_id", "variant_id")
     gtin_keys = ("gtin13", "gtin12", "gtin14", "gtin", "ean", "ean13")
     mpn_keys = ("mpn", "manufacturer_part_number", "manufacturerPartNumber")
-    def walk_variant_data(obj, inherited_size=None, inherited_sku=None):
+    def walk_variant_data(obj, inherited_size=None, inherited_sku=None, inherited_variant_id=None):
         if isinstance(obj, dict):
             size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
             price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
@@ -1280,6 +1284,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             local_sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
             effective_sku = local_sku if local_sku is not None else inherited_sku
+            local_variant_id = next((obj.get(k) for k in variant_id_keys if str(obj.get(k) or "").strip().isdigit()), None)
+            effective_variant_id = local_variant_id if local_variant_id is not None else inherited_variant_id
             if effective_size is not None and price is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
                 raw_availability = clean(obj.get("availability") or obj.get("stock_status") or obj.get("availability_status")).lower()
@@ -1291,12 +1297,12 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "unknown"
                 local_gtin = next((obj.get(k) for k in gtin_keys if obj.get(k) not in (None, "")), None)
                 local_mpn = next((obj.get(k) for k in mpn_keys if obj.get(k) not in (None, "")), None)
-                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn)
+                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn, effective_variant_id)
             for value in obj.values():
-                walk_variant_data(value, effective_size, effective_sku)
+                walk_variant_data(value, effective_size, effective_sku, effective_variant_id)
         elif isinstance(obj, list):
             for value in obj:
-                walk_variant_data(value, inherited_size, inherited_sku)
+                walk_variant_data(value, inherited_size, inherited_sku, inherited_variant_id)
 
     # Read both explicit JSON script blocks and valid JSON objects embedded in
     # JavaScript configuration scripts. Sabina may expose combinations through
@@ -1341,7 +1347,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         if raw_price is None:
             continue
         add_variant(raw_size, raw_price, attrs.get("data-currency") or "EUR", None,
-                    attrs.get("data-sku") or attrs.get("data-id-product-attribute"), attrs.get("data-url"))
+                    attrs.get("data-sku"), attrs.get("data-url"), variant_id=attrs.get("data-id-product-attribute"))
 
     price = (
         money_to_float(offer.get("price"))
