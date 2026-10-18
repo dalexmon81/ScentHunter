@@ -1266,13 +1266,14 @@ def _public_offer_url(item):
             )
         )
 
-    # Always regenerate the Spanish fragment. Never preserve an Italian or
-    # French fragment: Sabina's Spanish page does not honour it and falls back
-    # to its default size variant.
-    new_fragment = f"/30-Tamano-{size_ml}_ML"
+    # Do not invent a fragment from size alone. Preserve Sabina's actual
+    # combination ID (for example #/25-tama_o-50_ml); if the scraper/catalog
+    # did not recover it, return the canonical URL rather than a false variant.
+    if not re.search(r"(?:^|/)\d+-tama_o-\d+(?:_\d+)?_ml$", parsed.fragment, re.I):
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
 
     return urlunsplit(
-        (parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment)
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.query, parsed.fragment)
     )
 
 def _public_offer(item):
