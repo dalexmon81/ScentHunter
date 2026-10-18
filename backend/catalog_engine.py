@@ -1179,6 +1179,33 @@ def _store_allowed_variant_url(store, raw_url, base_url=None):
     return absolute
 
 
+def _sabina_variant_url(raw_url, base_url, size_ml):
+    """Return a customer-facing Sabina URL selecting the exact volume.
+
+    Catalog identity remains fragment-free. Older persisted variant rows may
+    contain only the base URL, so derive the size fragment at read time too.
+    """
+    absolute = _store_allowed_variant_url('sabina', raw_url, base_url) or _store_allowed_variant_url('sabina', base_url, base_url)
+    if not absolute:
+        return base_url
+    try:
+        size = float(size_ml)
+    except (TypeError, ValueError):
+        return absolute
+    if size <= 0:
+        return absolute
+    parsed = urllib.parse.urlparse(absolute)
+    if (parsed.hostname or '').lower().rstrip('.') not in {'sabina.com', 'www.sabina.com'}:
+        return absolute
+    size_label = f"{size:g}".replace('.', '_')
+    expected_fragment = f"/dimensione-{size_label}_ml"
+    fragment = parsed.fragment.lstrip('/')
+    # Replace absent or mismatched size fragments, not just absent fragments.
+    if not re.fullmatch(rf"/?dimensione-{re.escape(size_label)}_ml", parsed.fragment, re.I):
+        return urllib.parse.urlunparse(parsed._replace(fragment=expected_fragment))
+    return absolute
+
+
 def _html_product_url(store, raw_url, base_url):
     if not raw_url:
         return None
@@ -3069,7 +3096,7 @@ def refresh_url(store, url):
                                  variant_size,item.get('concentration'),item.get('gender'),variant_price,
                                  variant.get('currency') or item.get('currency') or 'EUR',
                                  variant.get('availability') or item.get('availability'),now,
-                                 _store_allowed_variant_url(store, variant.get('url'), url) or url),
+                                 _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
                             )
                 conn.execute(
                     '''INSERT INTO store_products(
@@ -3412,7 +3439,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if not all(token in set(norm(' '.join((str(r['slug'] or ''), str(r['product_name'] or ''), str(r['product_brand'] or ''), f"{vr['size_ml'] or ''} ml"))).split()) for token in ts):
                                     continue
                                 rows.append({
-                                    'url': (vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url),
+                                    'url': (_sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']) if store == 'sabina' else (vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url)),
                                     'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
                                     'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
                                     'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
