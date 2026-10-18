@@ -3079,6 +3079,25 @@ def refresh_url(store, url):
                         conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
                         for variant, variant_size, variant_price in valid_variants:
                             variant_key = f"{variant_size:g}ml:{variant.get('sku') or ''}"
+                            # Variant identity must not inherit identifiers that
+                            # describe the parent product (notably GTIN/MPN).
+                            # A parent-level GTIN is not proof that every size
+                            # has that same GTIN.
+                            variant_name = variant.get('name') or item.get('name')
+                            if variant_name and not variant.get('name'):
+                                # Make each offer name describe its own volume.
+                                variant_name = re.sub(
+                                    r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\s*$",
+                                    "",
+                                    str(variant_name),
+                                    flags=re.I,
+                                ).strip()
+                                variant_name = f"{variant_name} {variant_size:g} ML".strip()
+                            variant_gtin = variant.get('gtin')
+                            variant_mpn = variant.get('mpn')
+                            if len(valid_variants) == 1:
+                                variant_gtin = variant_gtin or item.get('gtin')
+                                variant_mpn = variant_mpn or item.get('mpn')
                             conn.execute(
                                 '''INSERT INTO store_product_variants(
                                     store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
@@ -3091,8 +3110,8 @@ def refresh_url(store, url):
                                     gender=excluded.gender,price=excluded.price,currency=excluded.currency,
                                     availability=excluded.availability,fetched_at=excluded.fetched_at,
                                     variant_url=excluded.variant_url''',
-                                (store,url,variant_key,item.get('name'),item.get('brand'),item.get('image'),
-                                 variant.get('sku') or item.get('sku'),item.get('gtin'),item.get('mpn'),
+                                (store,url,variant_key,variant_name,item.get('brand'),item.get('image'),
+                                 variant.get('sku') or item.get('sku'),variant_gtin,variant_mpn,
                                  variant_size,item.get('concentration'),item.get('gender'),variant_price,
                                  variant.get('currency') or item.get('currency') or 'EUR',
                                  variant.get('availability') or item.get('availability'),now,
