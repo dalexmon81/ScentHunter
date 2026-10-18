@@ -1229,9 +1229,19 @@ def _public_offer_url(item):
     if store not in {"sabina", "sabina.com"} and not host.endswith("sabina.com"):
         return url
 
-    size = item.get("size_ml")
+    # Prefer the explicit displayed format when it contains a recognized
+    # volume. Some catalog rows have stale/mismatched size_ml values (e.g.
+    # SKU 408400 paired with size_ml=50 while the offer is 100 ML). Using that
+    # stale numeric field would recreate the wrong Sabina fragment.
+    format_value = item.get("format")
+    format_match = re.search(
+        r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)\b",
+        str(format_value or ""),
+        re.I,
+    )
+    size = format_value if format_match else item.get("size_ml")
     if size is None or str(size).strip() == "":
-        size = item.get("format")
+        size = format_value
     match = re.search(r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?", str(size or ""), re.I)
     if not match:
         try:
