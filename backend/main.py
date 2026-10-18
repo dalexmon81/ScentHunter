@@ -1138,24 +1138,49 @@ def clean_result(item, store):
     return result
 
 def result_key(item):
-    """Build a stable offer key without collapsing unresolved retailer variants.
+    """Return a retailer-offer identity without collapsing distinct variants.
 
-    Catalog identity remains the preferred key. If size is unknown but the
-    retailer URL explicitly selects a variant, preserve that variant ID in the
-    identity so one variant cannot deduplicate away the others.
+    The canonical catalog ID identifies the fragrance, not necessarily the
+    retailer's sellable variant. Size is the strongest generic discriminator;
+    when size is missing, preserve any explicit variant identity supplied by
+    the catalog/scraper, then fall back to a variant selector in the URL.
     """
     store = _normalise_store(item.get('store') or item.get('shop'), '')
     catalog_id = str(item.get('catalog_id') or '').strip().lower()
-    url = str(item.get('url') or item.get('product_url') or '').strip().lower()
-    product_id = str(item.get('store_product_id') or item.get('product_id') or item.get('sku') or '').strip().lower()
+    raw_url = str(item.get('url') or item.get('variant_url') or item.get('product_url') or '').strip()
+    product_url = str(item.get('product_url') or item.get('url') or '').strip()
+    url = raw_url.lower()
+    product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
+    sku = str(item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    identity_key = catalog_id or url or product_id or name
+    identity_key = catalog_id or product_url.lower() or product_id or sku or name
 
-    if size is None and url:
-        variant_match = re.search(r'(?:[?&])variant=(\d+)(?:&|$)', url, flags=re.I)
-        if variant_match:
-            identity_key = f"{identity_key}|variant:{variant_match.group(1)}"
+    if size is None:
+        # Prefer explicit variant IDs/keys over identifiers that may describe
+        # the parent product. Do not append these when size is known: that
+        # would keep duplicate records for the same sized offer.
+        variant_identity = next((str(item.get(field) or '').strip().lower()
+                                 for field in ('variant_key', 'variant_id', 'variant_sku')
+                                 if str(item.get(field) or '').strip()), '')
+        if not variant_identity and sku:
+            variant_identity = f'sku:{sku}'
+        if not variant_identity and url:
+            # Retailers use both query selectors and URL fragments for variants.
+            # Keep the selector opaque instead of assuming every retailer uses
+            # Shopify's `?variant=123` format.
+            query_match = re.search(r'(?:[?&])variant=([^&#]+)', url, flags=re.I)
+            fragment = url.split('#', 1)[1] if '#' in url else ''
+            fragment = fragment.strip('/')
+            if query_match:
+                variant_identity = f'url-variant:{query_match.group(1)}'
+            elif fragment:
+                # Only treat a fragment as variant identity when it contains a
+                # selector-like value; ordinary anchors are not offer IDs.
+                if re.search(r'\d+.*(?:size|tama|ml|variant|attribute|combination)|(?:size|tama|ml|variant|attribute|combination).*\d+', fragment, re.I):
+                    variant_identity = f'url-fragment:{fragment}'
+        if variant_identity:
+            identity_key = f'{identity_key}|{variant_identity}'
 
     return (store, identity_key, round(size, 3) if size is not None else '')
 
