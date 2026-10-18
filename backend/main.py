@@ -1258,22 +1258,27 @@ def _public_offer_url(item):
     else:
         size_ml = int(match.group(1))
 
-    fragment = parsed.fragment or ""
-    if re.search(r"(?i)(?:taille-|dimensione-|size-)(?:30|50|75|100|150|200)(?:_ml|\b)", fragment):
-        if "taille-" in fragment.lower():
-            new_fragment = re.sub(r"(?i)(taille-)(?:30|50|75|100|150|200)(?:_ML)?", lambda m: m.group(1) + str(size_ml) + "_ML", fragment)
-        elif "dimensione-" in fragment.lower():
-            new_fragment = re.sub(r"(?i)(dimensione-)(?:30|50|75|100|150|200)(?:_ml)?", lambda m: m.group(1) + str(size_ml) + "_ml", fragment)
-        else:
-            new_fragment = re.sub(r"(?i)(size-)(?:30|50|75|100|150|200)(?:_ml)?", lambda m: m.group(1) + str(size_ml) + "_ml", fragment)
-    elif "/fr/" in parsed.path.lower():
-        new_fragment = f"/25-Taille-{size_ml}_ML"
-    elif "/it/" in parsed.path.lower():
-        new_fragment = f"/dimensione-{size_ml}_ml"
-    else:
-        new_fragment = f"/size-{size_ml}_ml"
+        # Sabina must always open the Spanish storefront. The catalog may contain
+    # Italian canonical URLs, while Sabina can redirect visitors to another
+    # locale and lose the original size fragment. Normalize the product URL to
+    # /es/ and use the Spanish fragment verified on the live Spanish site:
+    # #/30-Tamano-100_ML
+    if "/es/" not in parsed.path.lower():
+        parsed = parsed._replace(
+            path=re.sub(
+                r"^/(?:it|fr|en|de|nl|pt|tw|da|pl)/",
+                "/es/",
+                parsed.path,
+                count=1,
+            )
+        )
 
-    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment))
+    new_fragment = f"/30-Tamano-{size_ml}_ML"
+
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment)
+    )
+
 
 
 
