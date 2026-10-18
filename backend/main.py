@@ -1204,6 +1204,64 @@ def dedupe_results(results, diagnostics=None):
             })
     return output
 
+def _public_offer_url(item):
+    """Return a retailer URL whose selected Sabina size matches the offer.
+
+    Sabina product pages encode the selected size in the URL fragment. The
+    catalog's canonical URL can be shared by several sizes, and stale fragments
+    can point at a different size than the offer card. Fix the fragment at the
+    public-offer boundary, using the offer's explicit size as the source of truth.
+    """
+    raw_url = item.get("variant_url") or item.get("url") or item.get("product_url")
+    url = str(raw_url or "").strip()
+    if not url:
+        return raw_url
+
+    store = str(item.get("store") or item.get("shop") or "").strip().lower()
+    host = ""
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower()
+    except Exception:
+        return url
+
+    if store not in {"sabina", "sabina.com"} and not host.endswith("sabina.com"):
+        return url
+
+    size = item.get("size_ml")
+    if size is None or str(size).strip() == "":
+        size = item.get("format")
+    match = re.search(r"(?<!\d)(30|50|75|100|150|200)\s*(?:ml|мл)?", str(size or ""), re.I)
+    if not match:
+        try:
+            numeric_size = float(size)
+            if numeric_size not in {30, 50, 75, 100, 150, 200}:
+                return url
+            size_ml = int(numeric_size)
+        except (TypeError, ValueError):
+            return url
+    else:
+        size_ml = int(match.group(1))
+
+    fragment = parsed.fragment or ""
+    if re.search(r"(?i)(?:taille-|dimensione-|size-)(?:30|50|75|100|150|200)(?:_ml|\b)", fragment):
+        if "taille-" in fragment.lower():
+            new_fragment = re.sub(r"(?i)(taille-)(?:30|50|75|100|150|200)(?:_ML)?", lambda m: m.group(1) + str(size_ml) + "_ML", fragment)
+        elif "dimensione-" in fragment.lower():
+            new_fragment = re.sub(r"(?i)(dimensione-)(?:30|50|75|100|150|200)(?:_ml)?", lambda m: m.group(1) + str(size_ml) + "_ml", fragment)
+        else:
+            new_fragment = re.sub(r"(?i)(size-)(?:30|50|75|100|150|200)(?:_ml)?", lambda m: m.group(1) + str(size_ml) + "_ml", fragment)
+    elif "/fr/" in parsed.path.lower():
+        new_fragment = f"/25-Taille-{size_ml}_ML"
+    elif "/it/" in parsed.path.lower():
+        new_fragment = f"/dimensione-{size_ml}_ml"
+    else:
+        new_fragment = f"/size-{size_ml}_ml"
+
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, new_fragment))
+
+
 def _public_offer(item):
     """
     Return only commercial retailer data.
@@ -1235,7 +1293,7 @@ def _public_offer(item):
         "format": item.get("format"),
         "size_ml": item.get("size_ml"),
         "variant_id": item.get("variant_id"),
-        "url": item.get("url") or item.get("product_url"),
+        "url": _public_offer_url(item),
         "retailer_image": item.get("image") or item.get("image_url"),
         # Preserve the scraper's explicit availability signal in the public
         # offer contract. Previously only `available` survived aggregation,
