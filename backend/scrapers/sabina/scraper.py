@@ -309,37 +309,14 @@ def first_jsonld_product(soup, expected_url=None, expected_title=None):
                 continue
 
             score = 0
+            item_url = normalise_url(item.get("url"))
+            item_path = urlparse(item_url).path if item_url else None
             item_name = clean(item.get("name"))
 
-            # Schema.org product entities may identify their canonical page
-            # through @id or mainEntityOfPage instead of a top-level url.
-            # Normalize only Sabina URLs, then match the canonical path.
-            identity_urls = []
-            for raw_url in (item.get("url"), item.get("@id")):
-                if isinstance(raw_url, str):
-                    normalized = normalise_url(raw_url)
-                    if normalized:
-                        identity_urls.append(normalized)
-
-            main_entity = item.get("mainEntityOfPage")
-            if isinstance(main_entity, str):
-                normalized = normalise_url(main_entity)
-                if normalized:
-                    identity_urls.append(normalized)
-            elif isinstance(main_entity, dict):
-                for raw_url in (main_entity.get("@id"), main_entity.get("url")):
-                    if isinstance(raw_url, str):
-                        normalized = normalise_url(raw_url)
-                        if normalized:
-                            identity_urls.append(normalized)
-
-            identity_urls = list(dict.fromkeys(identity_urls))
-            identity_paths = {urlparse(value).path for value in identity_urls}
-
-            if expected_url and expected_url in identity_urls:
-                score += 120
-            if expected_path and expected_path in identity_paths:
-                score += 120
+            if expected_url and item_url == expected_url:
+                score += 100
+            if expected_path and item_path == expected_path:
+                score += 100
 
             if expected_title_norm and item_name:
                 item_name_norm = norm(item_name)
@@ -1253,11 +1230,26 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         if key in seen_variant_keys:
             return
         seen_variant_keys.add(key)
+        # Sabina uses a URL fragment to select the requested volume. Its
+        # embedded variant data often provides the SKU/size/price but only the
+        # canonical product URL, so preserve an explicit size fragment when
+        # supplied and otherwise build the fragment from this exact variant's
+        # parsed size. The catalog identity remains the fragment-free URL.
+        target_url = clean(variant_url) or final_url
+        target_parts = urlparse(target_url)
+        is_sabina_url = (target_parts.hostname or "").lower().rstrip(".") in {
+            "sabina.com", "www.sabina.com"
+        }
+        if is_sabina_url and variant_size is not None:
+            fragment = target_parts.fragment
+            if not fragment or not re.search(r"dimensione-\d+(?:[.,]\d+)?_ml", fragment, re.I):
+                size_label = f"{float(variant_size):g}".replace(".", "_")
+                target_url = target_url.split("#", 1)[0] + f"#/dimensione-{size_label}_ml"
         variants.append({
             "size_ml": float(variant_size), "price_num": float(variant_price),
             "currency": clean(currency) or "EUR",
             "availability": availability or "unknown", "sku": clean(sku) or None,
-            "url": clean(variant_url) or final_url,
+            "url": target_url,
         })
 
     for variant_offer in _offer_list(product or {}):
