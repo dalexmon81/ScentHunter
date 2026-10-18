@@ -1215,12 +1215,23 @@ def _sabina_variant_url(raw_url, base_url, size_ml):
             return absolute
         parsed = parsed._replace(path=normalized_path)
 
+    # Sabina's variant selector requires the real product-attribute ID, e.g.
+    # #/25-tama_o-50_ml. Never synthesize the old /30-Tamano-* fragment:
+    # it does not select the requested commercial variant.
     size_label = f"{size:g}".replace('.', '_')
-    fragment = f"/30-Tamano-{size_label}_ML"
+    fragment = (parsed.fragment or '').strip().lstrip('/')
+    match = re.fullmatch(r'(\d+)-tama_o-(\d+(?:_\d+)?)_ml', fragment, re.I)
+    if match:
+        try:
+            fragment_size = float(match.group(2).replace('_', '.'))
+        except (TypeError, ValueError):
+            fragment_size = None
+        if fragment_size is not None and abs(fragment_size - size) < 0.01:
+            return urllib.parse.urlunparse(parsed._replace(fragment='/' + fragment))
 
-    return urllib.parse.urlunparse(
-        parsed._replace(fragment=fragment)
-    )
+    # If the source URL has no verified combination ID for this size, return
+    # the canonical product URL rather than inventing a misleading variant URL.
+    return urllib.parse.urlunparse(parsed._replace(fragment=''))
 
 
 
