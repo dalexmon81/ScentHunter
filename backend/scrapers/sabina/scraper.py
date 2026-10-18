@@ -1226,7 +1226,19 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         variant_price = money_to_float(raw_price)
         if variant_size is None or variant_price is None or variant_price <= 0:
             return
-        key = (round(float(variant_size), 2), round(float(variant_price), 2), clean(sku))
+        # A variant is not identified by size and price alone. Retailers can
+        # legitimately expose separate combinations with the same price/SKU,
+        # while one product-level SKU may be inherited by every size. Preserve
+        # distinct retailer combination IDs and direct variant URLs.
+        key = (
+            round(float(variant_size), 2),
+            round(float(variant_price), 2),
+            clean(sku),
+            str(variant_id or "").strip(),
+            clean(gtin),
+            clean(mpn),
+            clean(variant_url),
+        )
         if key in seen_variant_keys:
             return
         seen_variant_keys.add(key)
@@ -1264,6 +1276,10 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             variant_offer.get("sku"), variant_offer.get("url"),
             next((variant_offer.get(k) for k in ("gtin13", "gtin12", "gtin14", "gtin") if variant_offer.get(k)), None),
             variant_offer.get("mpn"),
+            next((variant_offer.get(k) for k in (
+                "id_product_attribute", "id_product_attribute_value",
+                "combination_id", "variant_id", "idProductAttribute",
+            ) if str(variant_offer.get(k) or "").strip().isdigit()), None),
         )
 
     # Sabina's selector often keeps the full variant matrix in embedded JSON
@@ -1271,8 +1287,14 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     # objects that independently contain a size-like field and a price field.
     size_keys = ("size", "size_ml", "volume", "attribute", "label", "name", "title", "value", "public_name")
     price_keys = ("price", "price_amount", "priceAmount", "amount", "final_price", "finalPrice", "current_price", "currentPrice")
-    sku_keys = ("sku", "reference", "id_product", "variant_id", "id")
-    variant_id_keys = ("id_product_attribute", "id_product_attribute_value", "combination_id", "variant_id")
+    # Keep product-level IDs out of SKU inheritance: id_product/id often
+    # identify the parent page, not a purchasable size combination.
+    sku_keys = ("sku", "reference", "reference_to_display", "product_reference")
+    variant_id_keys = (
+        "id_product_attribute", "id_product_attribute_value",
+        "combination_id", "variant_id", "id_variant",
+        "idProductAttribute", "combinationId",
+    )
     gtin_keys = ("gtin13", "gtin12", "gtin14", "gtin", "ean", "ean13")
     mpn_keys = ("mpn", "manufacturer_part_number", "manufacturerPartNumber")
     def walk_variant_data(obj, inherited_size=None, inherited_sku=None, inherited_variant_id=None):
