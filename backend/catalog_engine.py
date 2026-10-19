@@ -2980,6 +2980,15 @@ def refresh_url(store, url):
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
+        if store == 'easycosmetic':
+            # Never hydrate or publish a German catalog entry from a response
+            # that redirected to a different regional storefront.
+            final_host = (urllib.parse.urlparse(str(final or '')).hostname or '').lower().rstrip('.')
+            if final_host not in {'easycosmetic.de', 'www.easycosmetic.de'}:
+                raise RuntimeError(
+                    f'non_german_easycosmetic_redirect;final={final}'
+                )
+
         # The retailer scraper owns retailer-specific product-page semantics
         # such as public-vs-code pricing and product-vs-set identity. When a
         # store exposes that parser, it must run before the generic JSON-LD
@@ -3400,6 +3409,17 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
          WHERE catalog_search_fts MATCH ?
            AND f.store=?
            AND u.active=1
+           AND (
+               f.store != 'easycosmetic'
+               OR lower(u.url) LIKE 'https://www.easycosmetic.de/%'
+               OR lower(u.url) LIKE 'http://www.easycosmetic.de/%'
+               OR lower(u.url) LIKE 'https://easycosmetic.de/%'
+               OR lower(u.url) LIKE 'http://easycosmetic.de/%'
+               OR lower(u.url) = 'https://www.easycosmetic.de'
+               OR lower(u.url) = 'http://www.easycosmetic.de'
+               OR lower(u.url) = 'https://easycosmetic.de'
+               OR lower(u.url) = 'http://easycosmetic.de'
+           )
          ORDER BY rank
          LIMIT ?
     """
