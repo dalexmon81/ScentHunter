@@ -3600,7 +3600,31 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                 size_value = float(str(raw_size).strip().replace(',', '.')) if raw_size not in (None, '') else None
             except (TypeError, ValueError):
                 size_value = None
-            if size_value is not None and size_value > 0:
+            # Prefer the catalog's stable variant key, then a real URL selector.
+            # Size is a fallback discriminator only: it must not collapse two
+            # same-size commercial combinations with different selector URLs.
+            variant_key = str(item.get('variant_key') or '').strip().lower()
+            selector = ''
+            if '#' in offer_url:
+                candidate_fragment = offer_url.split('#', 1)[1].strip('/')
+                if re.search(
+                    r'\d+.*(?:size|tama|ml|variant|attribute|combination)|'
+                    r'(?:size|tama|ml|variant|attribute|combination).*\d+',
+                    candidate_fragment, re.I,
+                ):
+                    selector = 'fragment:' + candidate_fragment
+            if not selector:
+                selector_match = re.search(
+                    r'[?&](?:variant|variant_id|id_product_attribute|combination_id)=([^&#]+)',
+                    offer_url, re.I,
+                )
+                if selector_match:
+                    selector = 'query:' + selector_match.group(1)
+            if variant_key:
+                offer_variant = ('variant_key', variant_key)
+            elif selector:
+                offer_variant = ('selector', selector, round(size_value, 3) if size_value and size_value > 0 else '')
+            elif size_value is not None and size_value > 0:
                 offer_variant = ('size_ml', round(size_value, 3))
             else:
                 offer_variant = ('url', offer_url)
