@@ -2973,6 +2973,21 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
+        if store == 'easycosmetic':
+            # Enforce the German storefront on the requested URL as well as
+            # the final redirect URL. Checking only the final URL can otherwise
+            # persist a legacy .be (or other regional) URL after it redirects
+            # to .de, leaving a non-canonical URL in the durable catalog.
+            requested = urllib.parse.urlparse(str(url or ''))
+            requested_host = (requested.hostname or '').lower().rstrip('.')
+            if (
+                requested.scheme not in ('http', 'https')
+                or requested_host not in {'easycosmetic.de', 'www.easycosmetic.de'}
+            ):
+                raise RuntimeError(
+                    f'non_german_easycosmetic_url;requested={url}'
+                )
+
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
         store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
