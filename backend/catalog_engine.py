@@ -4136,37 +4136,56 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Continuously advance durable catalog discovery in the background.
+    """Incrementally advance discovery for every retailer in the background.
 
-    This loop is intentionally independent from hydration. It only advances
-    the Deloox navigation frontier; search remains read-only and hydration
-    keeps its existing workers/claim/retry behavior unchanged.
+    Only one retailer is crawled per interval, in round-robin order. The loop
+    yields while foreground searches are active or in their idle grace period.
+    This does not add network work to the user-facing search request; the
+    existing local index remains the only search-time catalog source.
     """
-    pause = max(30.0, float(interval_seconds))
+    pause = max(60.0, float(interval_seconds))
+    stores = tuple(STORES.keys())
+    if not stores:
+        print('CATALOG DISCOVERY STOP: no configured stores', flush=True)
+        return
+    next_index = 0
     print(
-        f'CATALOG DISCOVERY START store=deloox interval={pause:g}s',
+        f'CATALOG DISCOVERY START stores={len(stores)} interval={pause:g}s',
         flush=True,
     )
     while stop_event is None or not stop_event.is_set():
+        # Avoid starting a new crawl while a user search is active or another
+        # search is likely to arrive immediately after the previous one.
+        if _foreground_search_running() or _foreground_search_idle_grace_active():
+            if stop_event is not None:
+                stop_event.wait(0.5)
+            else:
+                time.sleep(0.5)
+            continue
+
+        store = stores[next_index % len(stores)]
+        next_index = (next_index + 1) % len(stores)
         started = time.time()
         try:
-            result = discover_store('deloox')
-            frontier = {}
-            if isinstance(result, dict):
-                # The frontier is also persisted in sync_state.error for
-                # operators, so this remains observable without a new API.
-                frontier = (result.get('html_fallback') or {}) if False else {}
+            result = discover_store(store)
+            if not isinstance(result, dict):
+                result = {'status': 'unknown', 'count': '?'}
             print(
                 'CATALOG DISCOVERY BATCH '
-                f'store=deloox status={result.get("status","unknown") if isinstance(result,dict) else "unknown"} '
-                f'count={result.get("count","?") if isinstance(result,dict) else "?"}',
+                f'store={store} status={result.get("status", "unknown")} '
+                f'count={result.get("count", "?")}',
                 flush=True,
             )
         except Exception as exc:
             print(
-                f'CATALOG DISCOVERY ERROR store=deloox: {type(exc).__name__}: {exc}',
+                f'CATALOG DISCOVERY ERROR store={store}: '
+                f'{type(exc).__name__}: {exc}',
                 flush=True,
             )
+
+        # Wait between stores. The event wait allows clean shutdown and keeps
+        # discovery from immediately starting another potentially expensive
+        # retailer crawl.
         elapsed = time.time() - started
         wait_for = max(1.0, pause - elapsed)
         if stop_event is not None:
