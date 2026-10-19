@@ -1229,8 +1229,8 @@ def extract_product_page(session, url: str, slug: str = "", html: Optional[str] 
 
     # _request_html checks the final URL after redirects and refuses non-German
     # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
-    belgian_html = _request_html(normalized_url)
-    return _parse_product_html(normalized_url, belgian_html)
+    german_html = _request_html(normalized_url)
+    return _parse_product_html(normalized_url, german_html)
 
 
 def parse_product(url: str) -> Optional[Dict[str, Any]]:
