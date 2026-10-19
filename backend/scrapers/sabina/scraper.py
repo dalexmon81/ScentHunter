@@ -1308,18 +1308,26 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     )
     gtin_keys = ("gtin13", "gtin12", "gtin14", "gtin", "ean", "ean13")
     mpn_keys = ("mpn", "manufacturer_part_number", "manufacturerPartNumber")
-    def walk_variant_data(obj, inherited_size=None, inherited_sku=None, inherited_variant_id=None):
+    def walk_variant_data(obj, inherited_sku=None):
+        """Accept a variant only when its own object binds size and price.
+
+        Parent product objects often contain the selected 30 ml price and a
+        parent/first-combination ID. Inheriting either into child variant data
+        silently assigns that price or URL to every size. SKU inheritance is
+        retained only as a weak reference; size, price and combination ID must
+        belong to the same object before a commercial variant is emitted.
+        """
         if isinstance(obj, dict):
             size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
             price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
             local_size = next((v for v in size_values if extract_size_ml(v) is not None), None)
-            effective_size = local_size if local_size is not None else inherited_size
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             local_sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
             effective_sku = local_sku if local_sku is not None else inherited_sku
+            # A combination ID is valid only when declared on this exact
+            # size/price object. Never inherit the parent's selected variant ID.
             local_variant_id = next((obj.get(k) for k in variant_id_keys if str(obj.get(k) or "").strip().isdigit()), None)
-            effective_variant_id = local_variant_id if local_variant_id is not None else inherited_variant_id
-            if effective_size is not None and price is not None:
+            if local_size is not None and price is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
                 raw_availability = clean(obj.get("availability") or obj.get("stock_status") or obj.get("availability_status")).lower()
                 if any(x in raw_availability for x in ("outofstock", "out_of_stock", "unavailable", "soldout")):
@@ -1330,12 +1338,12 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "unknown"
                 local_gtin = next((obj.get(k) for k in gtin_keys if obj.get(k) not in (None, "")), None)
                 local_mpn = next((obj.get(k) for k in mpn_keys if obj.get(k) not in (None, "")), None)
-                add_variant(effective_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn, effective_variant_id)
+                add_variant(local_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn, local_variant_id)
             for value in obj.values():
-                walk_variant_data(value, effective_size, effective_sku, effective_variant_id)
+                walk_variant_data(value, effective_sku)
         elif isinstance(obj, list):
             for value in obj:
-                walk_variant_data(value, inherited_size, inherited_sku, inherited_variant_id)
+                walk_variant_data(value, inherited_sku)
 
     # Read both explicit JSON script blocks and valid JSON objects embedded in
     # JavaScript configuration scripts. Sabina may expose combinations through
@@ -1389,8 +1397,10 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     )
     price_source = "sabina_jsonld"
 
-    # If JSON-LD has no usable price, use the product-page HTML fallback.
-    # This fallback deliberately ignores struck-through/reference prices.
+    # This is the base product-page price only. It must never be copied into
+    # the variants array: each variant is admitted only from its own size/price
+    # pair above. Catalog search must prefer the variant table when available.
+    # The fallback deliberately ignores struck-through/reference prices.
     if price is None:
         price, price_source = extract_price_from_html(soup)
 
