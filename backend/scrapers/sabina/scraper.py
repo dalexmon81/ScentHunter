@@ -1037,13 +1037,24 @@ def _legacy_search_product_urls(session, query):
 
 
 def _discover_product_candidates(session, query):
-    """Return (URL, authoritative_search) candidates."""
-    sellboost_candidates = _sellboost_search_candidates(session, query)
+    """Prefer Sabina's Spanish storefront; use Sellboost only as fallback.
 
-    if sellboost_candidates is not None:
+    Sellboost is configured for the Italian market (country=IT). Its results
+    must not take priority over Sabina's Spanish native catalogue, because the
+    resulting product page and its customer-facing price can belong to a
+    different national storefront. The product-page parser remains the source
+    of the price; this function only chooses where product URLs are discovered.
+    """
+    spanish_candidates = _legacy_search_product_urls(session, query)
+    if spanish_candidates:
+        return [(url, False) for url in spanish_candidates[:MAX_CANDIDATES]]
+
+    # Fallback only: the Sellboost integration is explicitly Italian.
+    sellboost_candidates = _sellboost_search_candidates(session, query)
+    if sellboost_candidates:
         return [(url, True) for url in sellboost_candidates[:MAX_CANDIDATES]]
 
-    return [(url, False) for url in _legacy_search_product_urls(session, query)[:MAX_CANDIDATES]]
+    return []
 
 
 def discover_product_urls(session, query):
