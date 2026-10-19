@@ -2726,6 +2726,7 @@ def match_product(
 
 
 def offer_key(offer: Dict[str, Any]) -> Tuple[str, str, str, str]:
+    """Build a stable offer key without erasing commercial variant selectors."""
     store = normalize(
         offer.get("store") or _nested_source(offer).get("store") or ""
     )
@@ -2734,13 +2735,28 @@ def offer_key(offer: Dict[str, Any]) -> Tuple[str, str, str, str]:
     )
     resolved_size = size_ml(offer)
     size = "" if resolved_size is None else f"{resolved_size:g}"
-    url = (
-        str(offer.get("url") or _nested_source(offer).get("url") or "")
-        .split("#", 1)[0]
-        .split("?", 1)[0]
-        .strip()
-        .lower()
+    variant_identity = normalize(
+        offer.get("variant_key") or offer.get("variant_id") or offer.get("variant_sku") or ""
     )
+    raw_url = str(offer.get("url") or _nested_source(offer).get("url") or "").strip().lower()
+    if not variant_identity and raw_url:
+        query_match = re.search(
+            r"[?&](?:variant|variant_id|id_product_attribute|combination_id)=([^&#]+)",
+            raw_url, re.I,
+        )
+        fragment = raw_url.split("#", 1)[1].strip("/") if "#" in raw_url else ""
+        if query_match:
+            variant_identity = "selector " + query_match.group(1)
+        elif fragment and re.search(
+            r"\d+.*(?:size|tama|ml|variant|attribute|combination)|"
+            r"(?:size|tama|ml|variant|attribute|combination).*\d+", fragment, re.I,
+        ):
+            variant_identity = "fragment " + fragment
+    # Remove tracking/query noise from the base URL but retain selector identity
+    # separately so two sellable variants of one product remain distinct.
+    url = raw_url.split("#", 1)[0].split("?", 1)[0]
+    if variant_identity:
+        url = f"{url}|{variant_identity}"
     return store, identity, size, url
 
 
