@@ -3654,6 +3654,17 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                    AND p.fetch_status='OK'
                    AND (p.store != 'parfumzentrum' OR p.price > 1.0)
                  WHERE u.store=? AND u.active=1
+                   AND (
+                       u.store != 'easycosmetic'
+                       OR lower(u.url) LIKE 'https://www.easycosmetic.de/%'
+                       OR lower(u.url) LIKE 'http://www.easycosmetic.de/%'
+                       OR lower(u.url) LIKE 'https://easycosmetic.de/%'
+                       OR lower(u.url) LIKE 'http://easycosmetic.de/%'
+                       OR lower(u.url) = 'https://www.easycosmetic.de'
+                       OR lower(u.url) = 'http://www.easycosmetic.de'
+                       OR lower(u.url) = 'https://easycosmetic.de'
+                       OR lower(u.url) = 'http://easycosmetic.de'
+                   )
                    AND {' AND '.join(clauses)}
                  LIMIT ?
             """
