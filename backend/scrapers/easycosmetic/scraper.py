@@ -1214,21 +1214,21 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Catalog-engine adapter that enforces German storefront provenance.
+    """Parse a German storefront page while preserving regional provenance.
 
-    The catalog engine may supply HTML fetched by its generic request path.
-    That HTML cannot safely be reused here because a regional redirect or
-    cached response can pair a German URL with a German offer. Fetch the
-    normalized German URL through this scraper's guarded request helper,
-    which rejects redirects outside easycosmetic.de, then parse that response.
-    The session/html parameters remain in the signature for adapter compatibility.
+    The catalog engine validates the final response host before calling this
+    adapter and passes the HTML from that same response. Reusing that HTML
+    avoids a second request that could time out or return different variant
+    content. Standalone callers without HTML use the guarded request helper,
+    which rejects redirects outside easycosmetic.de.
     """
     normalized_url = _normalise_url(url)
     if not _is_candidate_url(normalized_url):
         return None
 
-    # _request_html checks the final URL after redirects and refuses non-German
-    # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
+    if html is not None:
+        return _parse_product_html(normalized_url, html)
+
     german_html = _request_html(normalized_url)
     return _parse_product_html(normalized_url, german_html)
 
