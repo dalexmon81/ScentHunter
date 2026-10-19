@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 
 STORE = "Easycosmetic"
-BASE_URL = "https://www.easycosmetic.be"
+BASE_URL = "https://www.easycosmetic.de"
 SEARCH_URL = BASE_URL + "/suche?searchfor={}"
 TIMEOUT = 5
 BROWSER_TIMEOUT_MS = 4000
@@ -26,7 +26,7 @@ HEADERS = {
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
         "image/avif,image/webp,image/apng,*/*;q=0.8"
     ),
-    "Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,en;q=0.5",
+    "Accept-Language": "de-DE,de;q=0.9,en;q=0.6",
 
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
@@ -72,19 +72,19 @@ def _normalise_text(value: str) -> str:
 
 
 def _normalise_url(url: str) -> str:
-    """Canonicalise product URLs for the Belgian Easycosmetic storefront only.
+    """Canonicalise product URLs for the German Easycosmetic storefront only.
 
     German storefront URLs are rejected rather than rewritten: regional product
     paths and variant IDs are not guaranteed to be interchangeable, and silently
-    converting them could attach a Belgian price to the wrong variant. Tracking
-    and unrelated query parameters are discarded while numeric Belgian variant
+    converting them could attach a German price to the wrong variant. Tracking
+    and unrelated query parameters are discarded while numeric German variant
     IDs are preserved.
     """
     absolute = urljoin(BASE_URL, str(url or ""))
     parsed = urlparse(absolute)
 
     host = parsed.netloc.lower()
-    allowed_hosts = {"easycosmetic.be", "www.easycosmetic.be"}
+    allowed_hosts = {"easycosmetic.de", "www.easycosmetic.de"}
     if host not in allowed_hosts:
         return ""
 
@@ -118,8 +118,8 @@ def _is_candidate_url(url: str) -> bool:
 
     parsed = urlparse(url)
     if parsed.netloc.lower() not in {
-        "easycosmetic.be",
-        "www.easycosmetic.be",
+        "easycosmetic.de",
+        "www.easycosmetic.de",
     }:
         return False
 
@@ -173,11 +173,11 @@ def _request_html(url: str) -> str:
             url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
         )
         final_host = urlparse(response.url).netloc.lower()
-        if final_host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+        if final_host not in {"easycosmetic.de", "www.easycosmetic.de"}:
             response.close()
             raise StoreRequestError(
                 "error",
-                f"Belgian storefront redirected outside easycosmetic.be: {response.url}",
+                f"German storefront redirected outside easycosmetic.de: {response.url}",
                 http_status=response.status_code,
             )
         if 200 <= response.status_code < 400:
@@ -207,16 +207,16 @@ def _request_html(url: str) -> str:
             try:
                 context = browser.new_context(
                     user_agent=HEADERS["User-Agent"],
-                    locale="nl-BE",
-                    extra_http_headers={"Accept-Language": "nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,en;q=0.5",
+                    locale="de-DE",
+                    extra_http_headers={"Accept-Language": "de-DE,de;q=0.9,en;q=0.6",
 },
                 )
                 page = context.new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT_MS)
                 final_host = urlparse(page.url).netloc.lower()
-                if final_host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+                if final_host not in {"easycosmetic.de", "www.easycosmetic.de"}:
                     raise RuntimeError(
-                        f"Belgian storefront redirected outside easycosmetic.be: {page.url}"
+                        f"German storefront redirected outside easycosmetic.de: {page.url}"
                     )
                 html = page.content()
                 if not html or len(html) < 500:
@@ -694,7 +694,7 @@ def _extract_candidate_links(
 
 def _extract_variant_urls(html: str, product_url: str) -> List[str]:
     """Find variant IDs only from links/data explicitly tied to the same
-    Belgian product path. German links are rejected, never rewritten."""
+    German product path. German links are rejected, never rewritten."""
 
     base = _normalise_url(product_url)
     parsed_base = urlparse(base)
@@ -725,7 +725,7 @@ def _extract_variant_urls(html: str, product_url: str) -> List[str]:
             parsed = urlparse(absolute)
 
             host = (parsed.hostname or "").lower().rstrip(".")
-            if host not in {"easycosmetic.be", "www.easycosmetic.be"}:
+            if host not in {"easycosmetic.de", "www.easycosmetic.de"}:
                 continue
 
             if parsed.path.rstrip("/") != parsed_base.path.rstrip("/"):
@@ -765,7 +765,7 @@ def _extract_variant_urls(html: str, product_url: str) -> List[str]:
 
     return sorted(
         {
-            f"https://www.easycosmetic.be{parsed_base.path}?variant={variant_id}"
+            f"https://www.easycosmetic.de{parsed_base.path}?variant={variant_id}"
             for variant_id in candidates
             if variant_id.isdigit()
         }
@@ -1122,7 +1122,7 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_text = _clean(soup.get_text(" ", strip=True))
 
-    # The visible price on the Belgian product detail is authoritative for
+    # The visible price on the German product detail is authoritative for
     # this storefront, with or without a ?variant= parameter. JSON-LD can be
     # cached or can describe a different regional/default offer. Only use the
     # narrowly scoped product-detail price; never guess from arbitrary page text.
@@ -1214,20 +1214,20 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Catalog-engine adapter that enforces Belgian storefront provenance.
+    """Catalog-engine adapter that enforces German storefront provenance.
 
     The catalog engine may supply HTML fetched by its generic request path.
     That HTML cannot safely be reused here because a regional redirect or
-    cached response can pair a Belgian URL with a German offer. Fetch the
-    normalized Belgian URL through this scraper's guarded request helper,
-    which rejects redirects outside easycosmetic.be, then parse that response.
+    cached response can pair a German URL with a German offer. Fetch the
+    normalized German URL through this scraper's guarded request helper,
+    which rejects redirects outside easycosmetic.de, then parse that response.
     The session/html parameters remain in the signature for adapter compatibility.
     """
     normalized_url = _normalise_url(url)
     if not _is_candidate_url(normalized_url):
         return None
 
-    # _request_html checks the final URL after redirects and refuses non-Belgian
+    # _request_html checks the final URL after redirects and refuses non-German
     # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
     belgian_html = _request_html(normalized_url)
     return _parse_product_html(normalized_url, belgian_html)
