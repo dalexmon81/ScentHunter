@@ -1308,42 +1308,72 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     )
     gtin_keys = ("gtin13", "gtin12", "gtin14", "gtin", "ean", "ean13")
     mpn_keys = ("mpn", "manufacturer_part_number", "manufacturerPartNumber")
-    def walk_variant_data(obj, inherited_sku=None):
-        """Accept a variant only when its own object binds size and price.
+    def walk_variant_data(obj, inherited_sku=None, inherited_variant=None):
+        """Extract nested Product -> Offer pairs without mixing format prices.
 
-        Parent product objects often contain the selected 30 ml price and a
-        parent/first-combination ID. Inheriting either into child variant data
-        silently assigns that price or URL to every size. SKU inheritance is
-        retained only as a weak reference; size, price and combination ID must
-        belong to the same object before a commercial variant is emitted.
+        Schema.org commonly stores a variant's size and URL on its Product
+        object, while its own price and availability live one level deeper in
+        offers. Carry that variant context into descendants, but never carry a
+        parent's price into a child or a selected format into sibling variants.
         """
         if isinstance(obj, dict):
             size_values = [obj.get(k) for k in size_keys if obj.get(k) not in (None, "")]
-            price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
             local_size = next((v for v in size_values if extract_size_ml(v) is not None), None)
-            price = next((v for v in price_values if money_to_float(v) is not None), None)
             local_sku = next((obj.get(k) for k in sku_keys if obj.get(k) not in (None, "")), None)
             effective_sku = local_sku if local_sku is not None else inherited_sku
-            # A combination ID is valid only when declared on this exact
-            # size/price object. Never inherit the parent's selected variant ID.
-            local_variant_id = next((obj.get(k) for k in variant_id_keys if str(obj.get(k) or "").strip().isdigit()), None)
-            if local_size is not None and price is not None:
+            local_variant_id = next(
+                (obj.get(k) for k in variant_id_keys
+                 if str(obj.get(k) or "").strip().isdigit()),
+                None,
+            )
+            local_gtin = next((obj.get(k) for k in gtin_keys if obj.get(k) not in (None, "")), None)
+            local_mpn = next((obj.get(k) for k in mpn_keys if obj.get(k) not in (None, "")), None)
+
+            # A Product node can carry format/URL while its nested Offer owns
+            # the price. Only establish inherited context from an object that
+            # actually identifies a size, so parent product prices are not
+            # propagated to every variant.
+            current_variant = inherited_variant
+            if local_size is not None:
+                current_variant = {
+                    "size": local_size,
+                    "url": obj.get("url") or (inherited_variant or {}).get("url"),
+                    "variant_id": local_variant_id,
+                    "sku": effective_sku,
+                    "gtin": local_gtin,
+                    "mpn": local_mpn,
+                }
+
+            price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
+            price = next((v for v in price_values if money_to_float(v) is not None), None)
+            effective_size = local_size if local_size is not None else (current_variant or {}).get("size")
+            if effective_size is not None and price is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
-                raw_availability = clean(obj.get("availability") or obj.get("stock_status") or obj.get("availability_status")).lower()
+                raw_availability = clean(
+                    obj.get("availability") or obj.get("stock_status")
+                    or obj.get("availability_status")
+                ).lower()
                 if any(x in raw_availability for x in ("outofstock", "out_of_stock", "unavailable", "soldout")):
                     availability = "out_of_stock"
                 elif any(x in raw_availability for x in ("instock", "in_stock", "available")):
                     availability = "in_stock"
                 else:
                     availability = "unknown"
-                local_gtin = next((obj.get(k) for k in gtin_keys if obj.get(k) not in (None, "")), None)
-                local_mpn = next((obj.get(k) for k in mpn_keys if obj.get(k) not in (None, "")), None)
-                add_variant(local_size, price, currency, availability, effective_sku, obj.get("url"), local_gtin, local_mpn, local_variant_id)
+                variant_context = current_variant or {}
+                add_variant(
+                    effective_size, price, currency, availability,
+                    effective_sku or variant_context.get("sku"),
+                    obj.get("url") or variant_context.get("url"),
+                    local_gtin or variant_context.get("gtin"),
+                    local_mpn or variant_context.get("mpn"),
+                    local_variant_id or variant_context.get("variant_id"),
+                )
+
             for value in obj.values():
-                walk_variant_data(value, effective_sku)
+                walk_variant_data(value, effective_sku, current_variant)
         elif isinstance(obj, list):
             for value in obj:
-                walk_variant_data(value, inherited_sku)
+                walk_variant_data(value, inherited_sku, inherited_variant)
 
     # Read both explicit JSON script blocks and valid JSON objects embedded in
     # JavaScript configuration scripts. Sabina may expose combinations through
