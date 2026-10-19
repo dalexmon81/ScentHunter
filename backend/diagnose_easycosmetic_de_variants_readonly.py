@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""ScentHunter — Easycosmetic.de variant diagnostic (read-only).
+"""ScentHunter — Easycosmetic.de diagnostics, read-only.
 
-GET requests only. Does not call ProductMatcher, production search, discovery,
-catalog hydration, resync, or persistence.
-Can be run as a CLI script or exposed through the FastAPI router.
+Keeps the existing five-variant diagnostic endpoint and adds a direct test of
+the exact catalog-engine handoff used by refresh_url(). No SQLite writes,
+hydration queue changes, discovery, matcher calls, or production search.
 """
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import re
@@ -31,6 +32,14 @@ URLS = [
     ("de_variant_107764_10ml", BASE + "?variant=107764"),
     ("de_variant_78098_50ml", BASE + "?variant=78098"),
     ("de_variant_78099_100ml", BASE + "?variant=78099"),
+]
+HANDOFF_URLS = [
+    ("l_occitane_hand_cream",
+     "https://www.easycosmetic.de/loccitane/karite/"
+     "loccitane-karite-creme-mains.aspx"),
+    ("madara_scalp_peel",
+     "https://www.easycosmetic.de/madara/hair-care/"
+     "madara-hair-care-scalp-peel-serum.aspx"),
 ]
 TIMEOUT = (8, 20)
 
@@ -115,11 +124,11 @@ def evidence(html, soup):
     return found
 
 
-def run_diagnostic():
+def run_variant_diagnostic():
     scraper, scraper_path = load_real_scraper()
     session = requests.Session()
     report = {
-        "diagnostic": "easycosmetic-de-variant-raw-html-vs-real-parser-read-only-v1",
+        "diagnostic": "easycosmetic-de-variant-raw-html-vs-real-parser-read-only-v2",
         "read_only": True,
         "database_written": False,
         "catalog_written": False,
@@ -143,10 +152,8 @@ def run_diagnostic():
             }
             try:
                 response = session.get(
-                    url,
-                    headers=getattr(scraper, "HEADERS", {}),
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
+                    url, headers=getattr(scraper, "HEADERS", {}),
+                    timeout=TIMEOUT, allow_redirects=True,
                 )
                 html = response.text or ""
                 soup = BeautifulSoup(html, "html.parser")
@@ -211,10 +218,117 @@ def run_diagnostic():
     return report
 
 
+def run_handoff_diagnostic():
+    """Exercise catalog_engine's actual parser handoff using live HTML, read-only."""
+    report = {
+        "diagnostic": "easycosmetic-refresh-handoff-read-only-v2",
+        "ok": True,
+        "read_only": True,
+        "database_writes": False,
+        "refresh_url_called": False,
+        "hydration_queue_touched": False,
+        "production_search_called": False,
+        "product_matcher_called": False,
+        "targets": [],
+    }
+    try:
+        engine = importlib.import_module("catalog_engine")
+        http_get = getattr(engine, "http_get", None)
+        parser = getattr(engine, "_secondary_store_parser", None)
+        parse_product = getattr(engine, "parse_product", None)
+        if not callable(http_get) or not callable(parser):
+            report.update(ok=False, error="required_catalog_engine_function_unavailable")
+            return report
+    except Exception as exc:
+        report.update(ok=False, error=f"{type(exc).__name__}: {str(exc)[:400]}")
+        return report
+
+    for label, url in HANDOFF_URLS:
+        entry = {"label": label, "requested_url": url}
+        parsed_url = urlparse(url)
+        if parsed_url.scheme != "https" or parsed_url.hostname != "www.easycosmetic.de":
+            entry["error"] = "url_not_allowed"
+            report["targets"].append(entry)
+            continue
+        try:
+            status, final_url, html_data = http_get(url, timeout=18)
+            entry["http"] = {
+                "status": status,
+                "final_url": final_url,
+                "html_type": type(html_data).__name__,
+                "bytes": len(html_data or b""),
+            }
+            final_host = urlparse(final_url).hostname
+            if final_host not in {"easycosmetic.de", "www.easycosmetic.de"}:
+                entry["error"] = "final_host_not_allowed"
+                report["targets"].append(entry)
+                continue
+            if status >= 400:
+                entry["error"] = f"http_status_{status}"
+                report["targets"].append(entry)
+                continue
+
+            # Exact keyword accepted by the current catalog_engine function.
+            retailer_result = parser(
+                "easycosmetic", final_url, url, html_data=html_data
+            )
+            entry["retailer_parser"] = {
+                "type": type(retailer_result).__name__,
+                "name": retailer_result.get("name") if isinstance(retailer_result, dict) else None,
+                "price": retailer_result.get("price") if isinstance(retailer_result, dict) else None,
+                "price_num": retailer_result.get("price_num") if isinstance(retailer_result, dict) else None,
+                "size_ml": retailer_result.get("size_ml") if isinstance(retailer_result, dict) else None,
+                "url": retailer_result.get("url") if isinstance(retailer_result, dict) else None,
+                "accepted_by_refresh_url": bool(
+                    isinstance(retailer_result, dict) and retailer_result.get("name")
+                ),
+            }
+
+            generic_result = None
+            generic_error = None
+            if callable(parse_product):
+                try:
+                    generic_result = parse_product("easycosmetic", final_url, html_data)
+                except Exception as exc:
+                    generic_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+            entry["generic_parser"] = {
+                "available": callable(parse_product),
+                "type": type(generic_result).__name__ if generic_result is not None else None,
+                "name": generic_result.get("name") if isinstance(generic_result, dict) else None,
+                "price": generic_result.get("price") if isinstance(generic_result, dict) else None,
+                "price_num": generic_result.get("price_num") if isinstance(generic_result, dict) else None,
+                "error": generic_error,
+                "accepted_by_refresh_url": bool(
+                    isinstance(generic_result, dict) and generic_result.get("name")
+                ),
+            }
+            entry["interpretation"] = (
+                "retailer_parser_failed_generic_succeeded"
+                if not entry["retailer_parser"]["accepted_by_refresh_url"]
+                and entry["generic_parser"]["accepted_by_refresh_url"]
+                else "both_parsers_failed"
+                if not entry["retailer_parser"]["accepted_by_refresh_url"]
+                and not entry["generic_parser"]["accepted_by_refresh_url"]
+                else "retailer_parser_succeeded"
+            )
+        except Exception as exc:
+            entry["error"] = f"{type(exc).__name__}: {str(exc)[:500]}"
+        report["targets"].append(entry)
+    return report
+
+
 @router.get("/diagnose-easycosmetic-de-variants-read-only")
 def diagnose_easycosmetic_de_variants_readonly_endpoint():
-    return run_diagnostic()
+    return run_variant_diagnostic()
+
+
+@router.get("/diagnose-easycosmetic-refresh-handoff-read-only")
+def diagnose_easycosmetic_refresh_handoff_endpoint():
+    return run_handoff_diagnostic()
 
 
 if __name__ == "__main__":
-    print(json.dumps(run_diagnostic(), ensure_ascii=False, indent=2, default=str))
+    print(json.dumps({
+        "variants": run_variant_diagnostic(),
+        "handoff": run_handoff_diagnostic(),
+    }, ensure_ascii=False, indent=2, default=str))
