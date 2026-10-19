@@ -38,7 +38,7 @@ except Exception as exc:
     catalog_hydration_status = None
     print(f'CATALOG_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}', flush=True)
 
-APP_VERSION = '5.7-catalog-targeted-refresh'
+APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
@@ -2086,9 +2086,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         elif indexed > 0 or raw_rows:
             status, verified, error = 'no_match', True, None
         else:
-            status = str(status_info.get('status') or 'unavailable').lower()
+            # This branch is reachable only when the catalog did not provide
+            # candidates for this store and the global catalog-index check did
+            # not establish that the store is indexed. Do not read an undefined
+            # `status_info`: report an explicit, non-authoritative state.
+            status = 'catalog_not_indexed'
             verified = False
-            error = status_info.get('error') or 'catalog_not_indexed'
+            error = 'catalog_not_indexed'
 
         report = {
             'store': store,
@@ -2334,11 +2338,12 @@ def _publish_result(job_id, row):
 
 
 def _publish_store(job_id, report):
-    """Publish one completed store report without running aggregation.
+    """Publish one store batch and refresh the cached public snapshot.
 
-    Store reports are the authoritative batch boundary for the catalog-first
-    search path. Keep this operation short: it only updates job state.
-    Dedupe and identity grouping happen once, after all reports are returned.
+    Aggregation runs once per completed store batch (not once per offer), so
+    clients polling /search-status can see products before the slowest store
+    finishes. Work is performed outside JOBS_LOCK; a revision guard prevents
+    an older concurrent aggregation from overwriting a newer snapshot.
     """
     if not isinstance(report, dict):
         return
@@ -2361,13 +2366,44 @@ def _publish_store(job_id, report):
             "count": report.get("count", 0),
             "details": dict(report.get("details") or {}),
         }
-
         if report.get("error"):
             job["errors"][store] = report["error"]
+        else:
+            job.setdefault("errors", {}).pop(store, None)
 
         for item in report.get("results", []):
             if isinstance(item, dict):
                 job.setdefault("offers", []).append(item)
+
+        job["aggregate_revision"] = int(job.get("aggregate_revision", 0)) + 1
+        revision = job["aggregate_revision"]
+        offers_snapshot = list(job.get("offers", []))
+
+    # Never hold the global lock while dedupe or ProductMatcher aggregation runs.
+    diagnostics = []
+    try:
+        deduped = dedupe_results(offers_snapshot, diagnostics)
+        grouped, unresolved = _aggregate_identity_results(deduped)
+    except Exception as exc:
+        print(
+            f"SEARCH PROGRESSIVE AGGREGATION ERROR job={job_id} "
+            f"revision={revision} {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("completed"):
+            return
+        if int(job.get("aggregate_revision", 0)) != revision:
+            # A newer store batch has arrived; its aggregation owns publication.
+            return
+        job["offers"] = deduped
+        job["results"] = grouped
+        job["unresolved_offers"] = unresolved
+        job["dedupe_diagnostics"] = diagnostics
+        job["progressive_snapshot_revision"] = revision
 
 
 def _run_job_impl(job_id, query):
@@ -2423,10 +2459,10 @@ def _run_job(job_id, query):
                     if t.name.startswith("scenthunter-store-")
                 ]
 
-        # Copy only the mutable inputs while holding JOBS_LOCK.  Dedupe and
-        # ProductMatcher aggregation can be expensive and MUST remain outside
-        # the global job lock, otherwise /search-status and /search-start can
-        # block behind matcher/catalog work.
+        # Copy only mutable inputs while holding JOBS_LOCK. Dedupe and identity
+        # aggregation are performed outside the lock. The progressive snapshot
+        # is already available to /search-status; this final pass reconciles it
+        # against the complete set of store reports.
         with JOBS_LOCK:
             if job is None:
                 elapsed = round(time.monotonic() - started, 3)
@@ -2443,9 +2479,9 @@ def _run_job(job_id, query):
                     flush=True,
                 )
 
-            # Aggregate exactly once after every store report has arrived.
-            # This is the only expensive dedupe/identity pass for a normal
-            # catalog-first search.
+            # Reconcile once at completion as a final consistency pass. During
+            # collection, _publish_store already refreshes the cached snapshot
+            # once per store batch, never once per product.
             deduped = dedupe_results(offers, diagnostics)
             grouped, unresolved = _aggregate_identity_results(deduped)
 
