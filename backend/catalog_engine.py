@@ -3435,7 +3435,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                OR lower(u.url) = 'https://easycosmetic.de'
                OR lower(u.url) = 'http://easycosmetic.de'
            )
-         ORDER BY rank
+         ORDER BY CASE WHEN p.name IS NOT NULL THEN 0 ELSE 1 END, rank
          LIMIT ?
     """
 
