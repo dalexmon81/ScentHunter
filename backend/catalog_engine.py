@@ -51,7 +51,7 @@ STORES = {
     'perfumemarket': 'https://www.perfumemarket.nl',
     'sabina': 'https://www.sabina.com',
     'orioudh': 'https://orioudh.com',
-    'easycosmetic': 'https://www.easycosmetic.be',
+    'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
 }
 
@@ -75,8 +75,8 @@ STORE_LABELS.update({
 # catalog discovery, not product-specific logic.
 DISCOVERY_BASES = {
     'easycosmetic': (
-        # ScentHunter serves the Belgian market: discover Belgian URLs only.
-        'https://www.easycosmetic.be',
+        # ScentHunter uses the German market: discover German URLs only.
+        'https://www.easycosmetic.de',
     ),
     'deloox': (
         # Official localized Deloox storefronts. This is host-level catalog
@@ -96,7 +96,7 @@ EASY_COSMETIC_USER_AGENT = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
 EASY_COSMETIC_HEADERS = {
     'User-Agent': EASY_COSMETIC_USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'nl-BE,nl;q=0.9,fr-BE,fr;q=0.8,en;q=0.7',
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.7',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
@@ -248,7 +248,6 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
     host = parsed.netloc.lower()
     if host in {
         'easycosmetic.de', 'www.easycosmetic.de',
-        'easycosmetic.be', 'www.easycosmetic.be',
     }:
         # Easycosmetic serves the public storefront to normal browser clients
         # but can stall requests carrying an identifying bot user-agent.
@@ -946,45 +945,51 @@ def _sync_deloox_search_index(product_urls):
 def _save_discovery(store, product_urls, started_at, diagnostics):
     """Persist discovered URLs in bounded transactions.
 
-    Easycosmetic is incremental: valid Belgian URLs omitted by a partial
-    discovery run must remain active. Known German-host rows are deactivated.
+    Easycosmetic is incremental: valid German URLs omitted by a partial
+    discovery run must remain active. Non-German-host rows are deactivated.
     """
 
     if store == "easycosmetic":
+        # German Easycosmetic is the only canonical market for this store.
+        # Filter before any counts, guards, persistence, or hydration queuing.
         allowed_hosts = {
-            "easycosmetic.be",
-            "www.easycosmetic.be",
+            "easycosmetic.de",
+            "www.easycosmetic.de",
         }
-
         filtered_urls = {}
         for url, lastmod in product_urls.items():
             parsed = urllib.parse.urlparse(str(url or ""))
             host = (parsed.hostname or "").lower().rstrip(".")
             if parsed.scheme in ("http", "https") and host in allowed_hosts:
                 filtered_urls[url] = lastmod
-
-                product_urls = filtered_urls
+        product_urls = filtered_urls
 
         conn = db()
         try:
-            with conn:
-                conn.execute(
-                    """UPDATE store_urls
-                       SET active=0
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
-                       )"""
-                )
-                conn.execute(
-                    """DELETE FROM catalog_search_fts
-                     WHERE store='easycosmetic'
-                       AND (
-                            lower(url) LIKE '%easycosmetic.de%'
-                            OR lower(url) NOT LIKE '%easycosmetic.be%'
-                       )"""
-                )
+            # Validate the actual URL hostname instead of substring-matching
+            # SQL. This retires legacy/non-German URLs without allowing a URL
+            # that merely contains "easycosmetic.de" in its path or query.
+            rows = conn.execute(
+                "SELECT url FROM store_urls WHERE store='easycosmetic'"
+            ).fetchall()
+            invalid_urls = []
+            for row in rows:
+                stored_url = str(row[0] or "")
+                parsed = urllib.parse.urlparse(stored_url)
+                host = (parsed.hostname or "").lower().rstrip(".")
+                if parsed.scheme not in ("http", "https") or host not in allowed_hosts:
+                    invalid_urls.append(stored_url)
+
+            if invalid_urls:
+                with conn:
+                    conn.executemany(
+                        "UPDATE store_urls SET active=0 WHERE store='easycosmetic' AND url=?",
+                        ((url,) for url in invalid_urls),
+                    )
+                    conn.executemany(
+                        "DELETE FROM catalog_search_fts WHERE store='easycosmetic' AND url=?",
+                        ((url,) for url in invalid_urls),
+                    )
         finally:
             conn.close()
 
@@ -1086,18 +1091,6 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                 fetched_count=persisted,
                 error=progress,
             )
-
-            if store == "easycosmetic":
-                conn = db()
-                try:
-                    conn.execute(
-                        "UPDATE store_urls SET active=0 WHERE store=? "
-                        "AND lower(url) LIKE '%easycosmetic.de%'",
-                        (store,),
-                    )
-                    conn.commit()
-                finally:
-                    conn.close()
 
         except Exception as exc:
             detail = (
