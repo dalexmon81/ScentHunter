@@ -1174,31 +1174,33 @@ def result_key(item):
     size = _safe_float(item.get('size_ml'))
     identity_key = catalog_id or product_url.lower() or product_id or sku or name
 
-    if size is None:
-        # Prefer explicit variant IDs/keys over identifiers that may describe
-        # the parent product. Do not append these when size is known: that
-        # would keep duplicate records for the same sized offer.
-        variant_identity = next((str(item.get(field) or '').strip().lower()
-                                 for field in ('variant_key', 'variant_id', 'variant_sku')
-                                 if str(item.get(field) or '').strip()), '')
-        if not variant_identity and sku:
-            variant_identity = f'sku:{sku}'
-        if not variant_identity and url:
-            # Retailers use both query selectors and URL fragments for variants.
-            # Keep the selector opaque instead of assuming every retailer uses
-            # Shopify's `?variant=123` format.
-            query_match = re.search(r'(?:[?&])variant=([^&#]+)', url, flags=re.I)
-            fragment = url.split('#', 1)[1] if '#' in url else ''
-            fragment = fragment.strip('/')
-            if query_match:
-                variant_identity = f'url-variant:{query_match.group(1)}'
-            elif fragment:
-                # Only treat a fragment as variant identity when it contains a
-                # selector-like value; ordinary anchors are not offer IDs.
-                if re.search(r'\d+.*(?:size|tama|ml|variant|attribute|combination)|(?:size|tama|ml|variant|attribute|combination).*\d+', fragment, re.I):
-                    variant_identity = f'url-fragment:{fragment}'
-        if variant_identity:
-            identity_key = f'{identity_key}|{variant_identity}'
+    # Preserve commercial variant identity even when size is known. Size alone
+    # is not sufficient: retailers can expose multiple sellable combinations
+    # with the same volume, and their selector URLs must not be merged.
+    variant_identity = next((str(item.get(field) or '').strip().lower()
+                             for field in ('variant_key', 'variant_id', 'variant_sku')
+                             if str(item.get(field) or '').strip()), '')
+    if not variant_identity and url:
+        # Keep explicit query selectors and selector-like fragments, while
+        # ignoring ordinary page anchors and unrelated tracking parameters.
+        query_match = re.search(
+            r'(?:[?&])(?:variant|variant_id|id_product_attribute|combination_id)=([^&#]+)',
+            url, flags=re.I,
+        )
+        fragment = url.split('#', 1)[1] if '#' in url else ''
+        fragment = fragment.strip('/')
+        if query_match:
+            variant_identity = f'url-selector:{query_match.group(1)}'
+        elif fragment and re.search(
+            r'\d+.*(?:size|tama|ml|variant|attribute|combination)|'
+            r'(?:size|tama|ml|variant|attribute|combination).*\d+',
+            fragment, re.I,
+        ):
+            variant_identity = f'url-fragment:{fragment}'
+    if not variant_identity and size is None and sku:
+        variant_identity = f'sku:{sku}'
+    if variant_identity:
+        identity_key = f'{identity_key}|{variant_identity}'
 
     return (store, identity_key, round(size, 3) if size is not None else '')
 
@@ -1310,9 +1312,20 @@ def _public_offer_url(item):
         )
 
     # Do not invent a fragment from size alone. Preserve Sabina's actual
-    # combination ID (for example #/25-tama_o-50_ml); if the scraper/catalog
-    # did not recover it, return the canonical URL rather than a false variant.
-    if not re.search(r"(?:^|/)\d+-tama_o-\d+(?:_\d+)?_ml$", parsed.fragment, re.I):
+    # combination ID only when the volume encoded in that selector agrees with
+    # the offer's resolved volume. A stale/mismatched fragment silently opens
+    # another size (often the default 30 ml), so strip it rather than mislabel it.
+    fragment_match = re.search(
+        r"(?:^|/)\d+-tama_o-(\d+(?:_\d+)?)_ml$",
+        parsed.fragment, re.I,
+    )
+    if not fragment_match:
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+    try:
+        fragment_size = float(fragment_match.group(1).replace("_", "."))
+    except (TypeError, ValueError):
+        fragment_size = None
+    if fragment_size is None or abs(fragment_size - size_ml) >= 0.01:
         return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
 
     return urlunsplit(
