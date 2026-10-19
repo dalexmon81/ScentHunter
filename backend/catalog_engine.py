@@ -3557,8 +3557,36 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     flush=True,
                 )
 
-        print(f"CATALOG SEARCH DIAG total={time.monotonic()-_diag_t0:.3f}s rows={len(rows)}", flush=True)
-        return rows
+        # Expanded query terms can match the same catalog URL repeatedly.
+        # Deduplicate only after collecting all terms, so a later size-specific
+        # term can still contribute a distinct retailer variant. Keep separate
+        # bottle sizes, and otherwise use the actual offer URL as identity.
+        unique_rows = []
+        seen_local_offer_keys = set()
+        for item in rows:
+            store_key = str(item.get('store_key') or item.get('store') or '').strip().lower()
+            parent_url = str(item.get('product_url') or item.get('url') or '').strip().lower()
+            offer_url = str(item.get('url') or item.get('product_url') or '').strip().lower()
+            raw_size = item.get('size_ml')
+            try:
+                size_value = float(str(raw_size).strip().replace(',', '.')) if raw_size not in (None, '') else None
+            except (TypeError, ValueError):
+                size_value = None
+            if size_value is not None and size_value > 0:
+                offer_variant = ('size_ml', round(size_value, 3))
+            else:
+                offer_variant = ('url', offer_url)
+            local_key = (store_key, parent_url, offer_variant)
+            if local_key in seen_local_offer_keys:
+                continue
+            seen_local_offer_keys.add(local_key)
+            unique_rows.append(item)
+
+        print(
+            f"CATALOG SEARCH DIAG total={time.monotonic()-_diag_t0:.3f}s "
+            f"rows={len(rows)} unique_rows={len(unique_rows)}", flush=True
+        )
+        return unique_rows
     finally:
         try:
             conn.set_progress_handler(None, 0)
