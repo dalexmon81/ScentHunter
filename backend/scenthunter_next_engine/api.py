@@ -65,7 +65,10 @@ def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
             loaded[table] = rows
             counts[table] = len(rows)
         if "store_products" not in existing:
-            raise HTTPException(status_code=409, detail="Legacy table store_products is missing; no import performed.")
+            raise HTTPException(
+                status_code=409,
+                detail="Legacy table store_products is missing; no import performed.",
+            )
         return loaded["store_products"], loaded["store_product_variants"], counts
     finally:
         conn.close()
@@ -116,11 +119,13 @@ def _build_entries(
             entries.append({"store": store, "product_row": product, "variant_row": None})
 
     orphan_variants = sum(
-        len(rows) for key, rows in by_key.items()
+        len(rows)
+        for key, rows in by_key.items()
         if key not in used_variant_keys and product_groups.get(key, 0) == 0
     )
     ambiguous_variant_rows = sum(
-        len(rows) for key, rows in by_key.items()
+        len(rows)
+        for key, rows in by_key.items()
         if product_groups.get(key, 0) > 1
     )
     return entries, {
@@ -176,18 +181,26 @@ def create_router(db_path: str | Path | None = None):
             )
         legacy_path = Path(legacy_setting).expanduser().resolve()
         if legacy_path == path.expanduser().resolve():
-            raise HTTPException(status_code=500, detail="Legacy and next-engine database paths must differ.")
+            raise HTTPException(
+                status_code=500,
+                detail="Legacy and next-engine database paths must differ.",
+            )
         if not legacy_path.is_file():
-            raise HTTPException(status_code=503, detail="Configured legacy database file is unavailable.")
+            raise HTTPException(
+                status_code=503,
+                detail="Configured legacy database file is unavailable.",
+            )
 
         products, variants, table_counts = _read_legacy_rows(legacy_path)
         entries, pairing = _build_entries(products, variants)
         if not entries:
-            raise HTTPException(status_code=409, detail="No legacy product rows found; no import performed.")
+            raise HTTPException(
+                status_code=409,
+                detail="No legacy product rows found; no import performed.",
+            )
 
-        # Keep preview lightweight. Full row validation is performed in the
-        # isolated staging database during mode=apply. If any row is rejected,
-        # the staged import is discarded before the live V2 DB is touched.
+        # Full row validation is performed in the isolated staging database.
+        # Any rejected row causes the entire staged import to be discarded.
         safe = (
             pairing["products_without_store_or_url"] == 0
             and pairing["duplicate_product_keys"] == 0
@@ -221,10 +234,12 @@ def create_router(db_path: str | Path | None = None):
         return {"engine": "next", **metrics.snapshot()}
 
     @router.get("/search")
-    def search(q: str = Query(default="", max_length=200),
-               store: str | None = Query(default=None, max_length=64),
-               currency: str | None = Query(default=None, min_length=3, max_length=3),
-               limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
+    def search(
+        q: str = Query(default="", max_length=200),
+        store: str | None = Query(default=None, max_length=64),
+        currency: str | None = Query(default=None, min_length=3, max_length=3),
+        limit: int = Query(default=50, ge=1, le=200),
+    ) -> dict[str, Any]:
         try:
             request = SearchRequest(query=q, store=store, currency=currency, limit=limit)
             return search_service.search(request)
@@ -236,15 +251,21 @@ def create_router(db_path: str | Path | None = None):
         try:
             if any(repository.counts().values()):
                 raise RuntimeError("The V2 database is not empty. No import performed.")
+
             fd, temp_name = tempfile.mkstemp(
-                prefix=f".{path.name}.migration-", suffix=".sqlite3", dir=str(path.parent)
+                prefix=f".{path.name}.migration-",
+                suffix=".sqlite3",
+                dir=str(path.parent),
             )
             os.close(fd)
             stage_path = Path(temp_name)
             stage = SQLiteOfferRepository(stage_path)
+
             staged_result = import_legacy_snapshot(entries, stage)
             staged_counts = stage.counts()
-                        rejected_count = int(staged_result.get("rejected_count", 0))
+            rejected_count = int(staged_result.get("rejected_count", 0))
+
+            # Fail closed: do not publish an empty or partially imported stage.
             if staged_counts["observations"] == 0 or rejected_count > 0:
                 sample = staged_result.get("rejected", [])[:10]
                 raise RuntimeError(
@@ -255,30 +276,50 @@ def create_router(db_path: str | Path | None = None):
                     f"rejection_sample={sample!r}. "
                     "Live V2 database was not changed."
                 )
+
             if any(repository.counts().values()):
-                raise RuntimeError("The V2 database changed during migration. Staged data was discarded.")
+                raise RuntimeError(
+                    "The V2 database changed during migration. Staged data was discarded."
+                )
+
+            # Retained from the existing implementation. This is not an atomic
+            # file replacement; do not use this migration against a populated
+            # live database.
             with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
                 with sqlite3.connect(str(path), timeout=30) as destination_conn:
                     source_conn.backup(destination_conn)
+
             result = {
                 "legacy_tables": summary["legacy_tables"],
                 "pairing": summary["pairing"],
                 "processed": staged_result["processed"],
                 "imported": staged_result["imported"],
                 "replayed": staged_result["replayed"],
-                "rejected_count": staged_result["rejected_count"],
+                "rejected_count": rejected_count,
                 "rejected_sample": staged_result.get("rejected", [])[:10],
-                "partial_import": staged_result["rejected_count"] > 0,
+                "partial_import": rejected_count > 0,
                 "counts": repository.counts(),
             }
             with migration_lock:
-                migration_job.update({"status": "completed", "result": result, "error": None})
+                migration_job.update(
+                    {"status": "completed", "result": result, "error": None}
+                )
         except Exception as exc:
             with migration_lock:
-                migration_job.update({"status": "failed", "result": None, "error": f"{type(exc).__name__}: {exc}"})
+                migration_job.update(
+                    {
+                        "status": "failed",
+                        "result": None,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
         finally:
             if stage_path is not None:
-                for candidate in (stage_path, Path(str(stage_path) + "-wal"), Path(str(stage_path) + "-shm")):
+                for candidate in (
+                    stage_path,
+                    Path(str(stage_path) + "-wal"),
+                    Path(str(stage_path) + "-shm"),
+                ):
                     try:
                         candidate.unlink(missing_ok=True)
                     except OSError:
@@ -286,7 +327,10 @@ def create_router(db_path: str | Path | None = None):
 
     @router.get("/migration/legacy/status")
     def migration_status(
-        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
+        migration_token: str | None = Header(
+            default=None,
+            alias="X-ScentHunter-Migration-Token",
+        ),
     ) -> dict[str, Any]:
         authorize(migration_token)
         with migration_lock:
@@ -296,38 +340,107 @@ def create_router(db_path: str | Path | None = None):
     @router.post("/migration/legacy")
     def migrate_legacy(
         mode: str = Query(default="preview", pattern="^(preview|apply)$"),
-        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
+        migration_token: str | None = Header(
+            default=None,
+            alias="X-ScentHunter-Migration-Token",
+        ),
     ) -> dict[str, Any]:
         authorize(migration_token)
+
         if mode == "apply":
             with migration_lock:
                 if migration_job["status"] in ("preparing", "running"):
-                    return {"ok": True, "mode": "apply", "status": migration_job["status"], "message": "Migration already active; do not submit apply again."}
+                    return {
+                        "ok": True,
+                        "mode": "apply",
+                        "status": migration_job["status"],
+                        "message": "Migration already active; do not submit apply again.",
+                    }
                 if migration_job["status"] == "completed":
                     return {"ok": True, "mode": "apply", **migration_job}
-                migration_job.update({"status": "preparing", "result": None, "error": None})
+                migration_job.update(
+                    {"status": "preparing", "result": None, "error": None}
+                )
+
         try:
             entries, summary = preflight()
+
             if not summary["safe_to_apply"]:
                 if mode == "apply":
                     with migration_lock:
-                        migration_job.update({"status": "failed", "result": None, "error": "Preflight found unsafe pairing structure."})
-                return {"ok": False, "mode": mode, "message": "Preflight found unsafe pairing structure. Nothing was written to the live V2 database.", **summary}
+                        migration_job.update(
+                            {
+                                "status": "failed",
+                                "result": None,
+                                "error": "Preflight found unsafe pairing structure.",
+                            }
+                        )
+                return {
+                    "ok": False,
+                    "mode": mode,
+                    "message": (
+                        "Preflight found unsafe pairing structure. "
+                        "Nothing was written to the live V2 database."
+                    ),
+                    **summary,
+                }
+
             if mode == "preview":
-                return {"ok": True, "mode": "preview", "message": "Structural preflight passed. Full row validation is deferred to the isolated staging import during mode=apply. No live database was changed.", **summary}
+                return {
+                    "ok": True,
+                    "mode": "preview",
+                    "message": (
+                        "Structural preflight passed. Full row validation is deferred "
+                        "to the isolated staging import during mode=apply. "
+                        "No live database was changed."
+                    ),
+                    **summary,
+                }
+
             if any(repository.counts().values()):
                 with migration_lock:
-                    migration_job.update({"status": "failed", "result": None, "error": "V2 database is not empty; no import performed."})
-                raise HTTPException(status_code=409, detail="The V2 database is not empty. No import performed.")
+                    migration_job.update(
+                        {
+                            "status": "failed",
+                            "result": None,
+                            "error": "V2 database is not empty; no import performed.",
+                        }
+                    )
+                raise HTTPException(
+                    status_code=409,
+                    detail="The V2 database is not empty. No import performed.",
+                )
+
             with migration_lock:
                 migration_job["status"] = "running"
-            Thread(target=run_migration, args=(entries, summary), daemon=True, name="scenthunter-legacy-migration").start()
-            return {"ok": True, "mode": "apply", "status": "running", "message": "Migration accepted in background. Poll GET /v2/migration/legacy/status; do not submit apply again."}
+
+            Thread(
+                target=run_migration,
+                args=(entries, summary),
+                daemon=True,
+                name="scenthunter-legacy-migration",
+            ).start()
+
+            return {
+                "ok": True,
+                "mode": "apply",
+                "status": "running",
+                "message": (
+                    "Migration accepted in background. Poll "
+                    "GET /v2/migration/legacy/status; do not submit apply again."
+                ),
+            }
         except Exception as exc:
             if mode == "apply":
                 with migration_lock:
                     if migration_job["status"] == "preparing":
-                        migration_job.update({"status": "failed", "result": None, "error": f"{type(exc).__name__}: {exc}"})
+                        migration_job.update(
+                            {
+                                "status": "failed",
+                                "result": None,
+                                "error": f"{type(exc).__name__}: {exc}",
+                            }
+                        )
             raise
 
     return router
