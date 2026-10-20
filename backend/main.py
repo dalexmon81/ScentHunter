@@ -421,8 +421,8 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 16,
-            'workers': 8,
+            'batch_size': 4,
+            'workers': 2,
             'pause_seconds': 0.25,
         },
         daemon=True,
@@ -3357,13 +3357,13 @@ def catalog_hydration_status_endpoint():
     try:
         statuses = catalog_hydration_status() if callable(catalog_hydration_status) else {}
         return {
-            'workers': 8,
+            'workers': 2,
             'max_workers_per_store': 2,
             'statuses': statuses,
         }
     except Exception as exc:
         return {
-            'workers': 8,
+            'workers': 2,
             'max_workers_per_store': 2,
             'statuses': {},
             'error': f'{type(exc).__name__}:{exc}',
