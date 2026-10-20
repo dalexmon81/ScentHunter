@@ -2828,7 +2828,32 @@ def parse_product(store, url, data):
     h1 = soup.find('h1')
     h1text = h1.get_text(' ', strip=True) if h1 else ''
     products = _jsonld(soup)
-    p = products[0] if products else {}
+
+    # Retailer pages can contain several Product JSON-LD objects (variants,
+    # recommendations, related products). Prefer the object that matches the
+    # visible page title instead of blindly taking the first JSON-LD Product.
+    def _name_key(value):
+        value = unicodedata.normalize('NFKD', str(value or '')).encode('ascii', 'ignore').decode('ascii')
+        return re.sub(r'[^a-z0-9]+', ' ', value.lower()).strip()
+
+    p = {}
+    if products and h1text:
+        title_key = _name_key(h1text)
+        title_tokens = set(title_key.split())
+        best_score = -1.0
+        for candidate in products:
+            candidate_name = _name_key(candidate.get('name'))
+            if not candidate_name:
+                continue
+            candidate_tokens = set(candidate_name.split())
+            overlap = len(title_tokens & candidate_tokens) / max(1, len(title_tokens | candidate_tokens))
+            containment = 1.0 if title_key in candidate_name or candidate_name in title_key else 0.0
+            score = containment + overlap
+            if score > best_score:
+                best_score, p = score, candidate
+    elif products:
+        p = products[0]
+
     name = str(p.get('name') or h1text or '').strip()
     if not name:
         return None
@@ -2904,19 +2929,44 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         finally:
             session.close()
     else:
-        # ParfumZentrum's current scraper exposes its exact-URL product parser
-        # as _extract_product(query). Keep this generic for any store adapter
-        # that provides the same callable contract, without embedding store-
-        # specific product names, prices or rules in the catalog engine.
+        # Some adapters expose _extract_product with different historical
+        # signatures: (url, query), (session, url, query), or keyword-only
+        # query/session arguments. Bind by parameter name so a valid adapter
+        # is not permanently dead-lettered because its calling convention
+        # differs from ParfumZentrum's.
         parser = getattr(module, '_extract_product', None)
         if not callable(parser):
             return None
-        # Retailer product URLs may append an internal SKU (for example,
-        # "_z1016707") that is not part of the product name. Do not pass that
-        # identifier into the name matcher as a required query token.
         parser_url = original_url or final_url
         parser_query = re.sub(r'\bz\d+\s*$', '', url_slug(parser_url), flags=re.I).strip()
-        parsed = parser(parser_url, parser_query)
+        parameters = inspect.signature(parser).parameters
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            args = []
+            kwargs = {}
+            for parameter in parameters.values():
+                if parameter.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                    continue
+                name = parameter.name.lower()
+                if name in {'session', 'sess', 'client', 'http', 'http_session'}:
+                    value = session
+                elif name in {'url', 'product_url', 'page_url', 'final_url'}:
+                    value = parser_url
+                elif name in {'query', 'search_query', 'product_query', 'q'}:
+                    value = parser_query
+                elif parameter.default is not inspect.Parameter.empty:
+                    continue
+                else:
+                    # Unknown required parameter: do not guess its meaning.
+                    raise TypeError(f'unsupported _extract_product parameter: {parameter.name}')
+                if parameter.kind == inspect.Parameter.KEYWORD_ONLY:
+                    kwargs[parameter.name] = value
+                else:
+                    args.append(value)
+            parsed = parser(*args, **kwargs)
+        finally:
+            session.close()
 
     if not isinstance(parsed, dict):
         return None
@@ -2996,7 +3046,10 @@ def refresh_url(store, url):
 
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
-        store_timeout = REFRESH_TIMEOUT
+        # Easycosmetic pages repeatedly time out at the legacy 6-second
+        # threshold. Give this retailer a bounded 25-second read window while
+        # retaining the configured timeout for all other stores.
+        store_timeout = max(25, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
@@ -3024,9 +3077,21 @@ def refresh_url(store, url):
         except Exception:
             parser_available = False
 
+        parser_error = None
         if parser_available:
-            item = _secondary_store_parser(store, final, url, html_data=data)
-            secondary_ok = bool(item and item.get('name'))
+            try:
+                item = _secondary_store_parser(store, final, url, html_data=data)
+                secondary_ok = bool(item and item.get('name'))
+            except Exception as exc:
+                # A retailer adapter bug must not discard an otherwise valid
+                # product page. Keep the exception in diagnostics and attempt
+                # the structured-data fallback before recording a queue error.
+                parser_error = f'{type(exc).__name__}:{exc}'
+                item = None
+            if not item or not item.get('name'):
+                fallback_item = parse_product(store, final, data)
+                if fallback_item and fallback_item.get('name'):
+                    item = fallback_item
         else:
             item = parse_product(store, final, data)
 
@@ -3077,6 +3142,7 @@ def refresh_url(store, url):
                 f';primary_parser={"ok" if primary_ok else "none"}'
                 f';secondary_parser={"ok" if secondary_ok else "none"}'
                 f';jsonld_products={jsonld_count}'
+                f';parser_error={parser_error!r}'
                 f';h1={h1_text!r}'
             )
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
