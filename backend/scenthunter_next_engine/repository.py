@@ -196,6 +196,72 @@ class SQLiteOfferRepository:
                  json.dumps(payload, ensure_ascii=False, sort_keys=True)))
             return True
 
+    def save_observations_batch(self, observations: list[SourceObservation]) -> int:
+        """Save a batch in one transaction. Returns newly inserted observation count."""
+        if not observations:
+            return 0
+        saved = 0
+        with self._connection() as conn:
+            for obs in observations:
+                key = self._observation_key(obs)
+                if conn.execute("SELECT 1 FROM observations WHERE observation_key=?", (key,)).fetchone():
+                    continue
+                payload = {
+                    "product": {"product_id": obs.product.product_id, "brand": obs.product.brand,
+                                "canonical_name": obs.product.canonical_name, "gtin": obs.product.gtin,
+                                "mpn": obs.product.mpn},
+                    "variant": {"variant_id": obs.variant.variant_id, "product_id": obs.variant.product_id,
+                                "concentration": obs.variant.concentration,
+                                "size_ml": str(obs.variant.size_ml) if obs.variant.size_ml is not None else None,
+                                "pack_count": obs.variant.pack_count, "gender": obs.variant.gender},
+                    "offer": {"offer_id": obs.offer.offer_id, "variant_id": obs.offer.variant_id,
+                              "store": obs.offer.store, "product_url": obs.offer.product_url,
+                              "price_minor": obs.offer.price_minor, "currency": obs.offer.currency,
+                              "availability": obs.offer.availability, "source_sku": obs.offer.source_sku},
+                }
+                conn.execute(
+                    """INSERT INTO products VALUES(?,?,?,?,?,?)
+                       ON CONFLICT(product_id) DO UPDATE SET brand=excluded.brand,
+                       canonical_name=excluded.canonical_name, gtin=COALESCE(excluded.gtin,products.gtin),
+                       mpn=COALESCE(excluded.mpn,products.mpn), updated_at=excluded.updated_at
+                       WHERE excluded.updated_at >= products.updated_at""",
+                    (obs.product.product_id, obs.product.brand, obs.product.canonical_name,
+                     obs.product.gtin, obs.product.mpn, obs.observed_at))
+                conn.execute(
+                    """INSERT INTO variants VALUES(?,?,?,?,?,?,?)
+                       ON CONFLICT(variant_id) DO UPDATE SET product_id=excluded.product_id,
+                       concentration=excluded.concentration, size_ml=excluded.size_ml,
+                       pack_count=excluded.pack_count, gender=excluded.gender, updated_at=excluded.updated_at
+                       WHERE excluded.updated_at >= variants.updated_at""",
+                    (obs.variant.variant_id, obs.variant.product_id, obs.variant.concentration,
+                     str(obs.variant.size_ml) if obs.variant.size_ml is not None else None,
+                     obs.variant.pack_count, obs.variant.gender, obs.observed_at))
+                conn.execute(
+                    """INSERT INTO offers(offer_id,variant_id,store,product_url,price_minor,currency,
+                       availability,source_sku,first_seen_at,last_seen_at,last_valid_at,is_current)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,1)
+                       ON CONFLICT(store,product_url,variant_id) DO UPDATE SET price_minor=excluded.price_minor,
+                       currency=excluded.currency, availability=excluded.availability,
+                       source_sku=excluded.source_sku, last_seen_at=excluded.last_seen_at,
+                       last_valid_at=excluded.last_valid_at, is_current=1
+                       WHERE excluded.last_seen_at >= offers.last_seen_at""",
+                    (obs.offer.offer_id, obs.offer.variant_id, obs.offer.store, obs.offer.product_url,
+                     obs.offer.price_minor, obs.offer.currency, obs.offer.availability,
+                     obs.offer.source_sku, obs.observed_at, obs.observed_at, obs.observed_at))
+                actual_offer = conn.execute(
+                    "SELECT offer_id FROM offers WHERE store=? AND product_url=? AND variant_id=?",
+                    (obs.offer.store, obs.offer.product_url, obs.offer.variant_id),
+                ).fetchone()
+                if not actual_offer:
+                    raise RuntimeError("offer upsert did not produce a persisted offer")
+                conn.execute(
+                    "INSERT INTO observations VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (key, str(actual_offer["offer_id"]), obs.store, obs.source_url, obs.observed_at,
+                     obs.parser_version, obs.trace_id, obs.raw_title, obs.raw_price,
+                     json.dumps(payload, ensure_ascii=False, sort_keys=True)))
+                saved += 1
+        return saved
+
     def record_failure(self, *, store: str, source_url: str, kind: str, message: str,
                        retryable: bool, occurred_at: str, trace_id: str | None = None) -> None:
         with self._connection() as conn:
