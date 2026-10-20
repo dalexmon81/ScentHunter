@@ -1,22 +1,56 @@
 """Read-only-input migration helpers for an explicitly supplied legacy snapshot."""
 from __future__ import annotations
-from collections.abc import Iterable, Mapping
+
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from .legacy_bridge import observation_from_legacy_rows
 from .repository import SQLiteOfferRepository
 
 
-def import_legacy_snapshot(rows: Iterable[Mapping[str, Any]], repository: SQLiteOfferRepository) -> dict[str, Any]:
-    """Import paired legacy rows into the next DB only; never opens legacy DB.
+def import_legacy_snapshot(
+    rows: Iterable[Mapping[str, Any]],
+    repository: SQLiteOfferRepository,
+    *,
+    batch_size: int = 500,
+    progress_callback: Callable[[int, int, int], None] | None = None,
+) -> dict[str, Any]:
+    """Import paired legacy rows into the next DB only; never opens the legacy DB.
 
-    Each input record contains `store`, `product_row`, and optional `variant_row`.
-    Invalid rows are rejected with a reason and do not abort other records.
+    Requires ``SQLiteOfferRepository.save_observations_batch`` so each batch is
+    written using a bounded number of SQLite transactions, rather than opening
+    and committing a connection for every row. Invalid rows are reported and
+    do not abort the rest of the import.
+
+    ``progress_callback`` receives (processed, imported, rejected_count). Its
+    exceptions are intentionally ignored so status reporting cannot abort data
+    migration.
     """
+    if batch_size < 1:
+        raise ValueError("batch_size must be >= 1")
+    if not callable(getattr(repository, "save_observations_batch", None)):
+        raise RuntimeError(
+            "SQLiteOfferRepository.save_observations_batch is required; "
+            "deploy the matching repository.py optimization before migration"
+        )
+
     imported = 0
     replayed = 0
     rejected: list[dict[str, Any]] = []
     processed = 0
+    batch = []
+
+    def flush_batch() -> None:
+        nonlocal imported, replayed, batch
+        if not batch:
+            return
+        # Returns the number of newly inserted observations; identical replays
+        # are counted separately. The repository commits each batch atomically.
+        newly_saved = repository.save_observations_batch(batch)
+        imported += newly_saved
+        replayed += len(batch) - newly_saved
+        batch = []
+
     for index, entry in enumerate(rows):
         processed += 1
         store = str(entry.get("store") or "").strip().casefold()
@@ -25,7 +59,12 @@ def import_legacy_snapshot(rows: Iterable[Mapping[str, Any]], repository: SQLite
         source_url = ""
         variant_mapping = variant_row if isinstance(variant_row, Mapping) else {}
         if isinstance(product_row, Mapping):
-            source_url = str(variant_mapping.get("variant_url") or variant_mapping.get("url") or product_row.get("url") or "")
+            source_url = str(
+                variant_mapping.get("variant_url")
+                or variant_mapping.get("url")
+                or product_row.get("url")
+                or ""
+            )
         try:
             if not store or not isinstance(product_row, Mapping):
                 raise ValueError("entry requires store and product_row mapping")
@@ -36,10 +75,9 @@ def import_legacy_snapshot(rows: Iterable[Mapping[str, Any]], repository: SQLite
                 trace_id="legacy-snapshot-v1",
                 parser_version="legacy-row-v1",
             )
-            if repository.save_observation(observation):
-                imported += 1
-            else:
-                replayed += 1
+            batch.append(observation)
+            if len(batch) >= batch_size:
+                flush_batch()
         except Exception as exc:
             rejected.append({
                 "index": index,
@@ -47,6 +85,19 @@ def import_legacy_snapshot(rows: Iterable[Mapping[str, Any]], repository: SQLite
                 "url": source_url or None,
                 "error": f"{type(exc).__name__}: {exc}"[:1000],
             })
+        if progress_callback and (processed % batch_size == 0 or processed == 1):
+            try:
+                progress_callback(processed, imported, len(rejected))
+            except Exception:
+                pass
+
+    flush_batch()
+    if progress_callback:
+        try:
+            progress_callback(processed, imported, len(rejected))
+        except Exception:
+            pass
+
     return {
         "processed": processed,
         "imported": imported,
