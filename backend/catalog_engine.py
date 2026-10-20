@@ -1388,13 +1388,14 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         return None
     if store == 'deloox':
+        # Ingredient encyclopaedia pages are not catalog listings and can
+        # otherwise keep the durable graph busy without yielding products.
+        if re.search(r'/(?:ingredients?|ingredienten|ingr[eé]dients?)(?:/|$)', path, re.I):
+            return None
         # The Deloox homepage is the root of the catalog graph.
         if path in ('', '/'):
             return absolute
-        # Deloox exposes a public search surface which is useful for
-        # background catalog enumeration. It is accepted only as a generic
-        # retailer navigation page; product-specific/user queries are not
-        # introduced by catalog discovery.
+        # Public search is useful for generic catalog enumeration.
         if re.search(r'/(?:chercher|search)(?:\.html)?$', path, re.I):
             if re.search(r'(?:^|&)(?:q|query)=', p.query, re.I):
                 return absolute
