@@ -9,27 +9,50 @@ from .legacy_bridge import observation_from_legacy_rows
 from .repository import SQLiteOfferRepository
 
 
-def _is_unpriced_category(entry: Mapping[str, Any]) -> bool:
-    """Identify obvious category/listing URLs that have no offer price.
+def _is_non_product_page(entry: Mapping[str, Any]) -> bool:
+    """Recognize obvious crawl/navigation URLs that cannot be sellable offers.
 
-    These rows are navigation pages, not sellable offers. Skip only when the
-    URL path explicitly identifies a category and neither paired row has a
-    price, so genuine priced products are never discarded by this rule.
+    This deliberately uses URL structure and price presence, not guessed brand
+    or product data. Crawl-control files are always skipped. Listing/collection
+    pages are skipped only when neither row has a price.
     """
     product_row = entry.get("product_row")
     variant_row = entry.get("variant_row")
     if not isinstance(product_row, Mapping):
         return False
     variant = variant_row if isinstance(variant_row, Mapping) else {}
-    url = str(variant.get("variant_url") or variant.get("url") or product_row.get("url") or "")
-    path = urlparse(url).path.casefold()
-    category_path = any(part in path.split("/") for part in ("kategorie", "category", "categories", "categorie", "categorias"))
-    if not category_path:
-        return False
+    url = str(
+        variant.get("variant_url")
+        or variant.get("url")
+        or product_row.get("url")
+        or ""
+    ).strip()
+    parsed = urlparse(url)
+    path = parsed.path.casefold().rstrip("/")
+    filename = path.rsplit("/", 1)[-1]
+
+    # A crawler control file is never a product page, regardless of price fields.
+    if filename in {"agents.md", "robots.txt", "sitemap.xml", "humans.txt"}:
+        return True
+
     price = variant.get("price")
     if price in (None, ""):
         price = product_row.get("price")
-    return price in (None, "")
+    has_price = price not in (None, "")
+
+    segments = [part for part in path.split("/") if part]
+    listing_markers = {
+        "collection", "collections", "category", "categories", "categorie",
+        "categorias", "kategorie", "catalog", "catalogue", "search", "suche",
+        "tag", "tags", "brand", "brands",
+    }
+    is_listing_path = any(part in listing_markers for part in segments)
+
+    # Common category pages use a slug like /miu-miu-parfum.html without a
+    # category directory. Recognize only known listing suffixes, and only when
+    # the row has no price; priced records remain eligible for normal validation.
+    listing_suffix = filename.endswith(("-parfum.html", "-perfume.html", "-haartools.html", "-kosmetik.html"))
+    return (is_listing_path or listing_suffix) and not has_price
 
 
 def import_legacy_snapshot(
@@ -41,8 +64,8 @@ def import_legacy_snapshot(
 ) -> dict[str, Any]:
     """Import paired legacy rows into the next DB only; never opens the legacy DB.
 
-    Obvious unpriced category/listing pages are skipped, since they are not
-    sellable offers. Other invalid rows are reported and cause staging
+    Obvious crawl-control files and unpriced category/listing pages are skipped,
+    since they are not sellable offers. Other invalid rows are reported and cause staging
     validation to fail at the API layer. No legacy data is modified.
     """
     if batch_size < 1:
@@ -80,7 +103,7 @@ def import_legacy_snapshot(
         try:
             if not store or not isinstance(product_row, Mapping):
                 raise ValueError("entry requires store and product_row mapping")
-            if _is_unpriced_category(entry):
+            if _is_non_product_page(entry):
                 skipped += 1
                 continue
             observation = observation_from_legacy_rows(
