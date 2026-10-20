@@ -122,6 +122,23 @@ def _url_fallback(
             ("vera wang", "Vera Wang"),
             ("anna sui", "Anna Sui"),
             ("victoria secret", "Victoria's Secret"),
+            ("valentino", "Valentino"),
+            ("rasasi", "Rasasi"),
+            ("bois 1920", "Bois 1920"),
+            ("floris", "Floris"),
+            ("miu miu", "Miu Miu"),
+            ("versace", "Versace"),
+            ("dior", "Dior"),
+            ("chanel", "Chanel"),
+            ("givenchy", "Givenchy"),
+            ("burberry", "Burberry"),
+            ("prada", "Prada"),
+            ("gucci", "Gucci"),
+            ("hermes", "Hermès"),
+            ("montblanc", "Montblanc"),
+            ("lancome", "Lancôme"),
+            ("hugo boss", "Hugo Boss"),
+            ("boss", "BOSS"),
         )
         for prefix, canonical_brand in known_brand_prefixes:
             if normalized_slug == prefix or normalized_slug.startswith(prefix + " "):
@@ -129,6 +146,44 @@ def _url_fallback(
                 if original_name_missing:
                     name = normalized_slug[len(prefix):].strip()
                 break
+
+        # Some retailer slugs place the brand after the fragrance name, e.g.
+        # "hawas-for-him-rasasi-sample". Recognize only explicit known brands
+        # as whole tokens, and remove that token from a URL-derived title.
+        if not brand:
+            known_brand_tokens = (
+                ("rasasi", "Rasasi"),
+                ("valentino", "Valentino"),
+                ("floris", "Floris"),
+                ("bois 1920", "Bois 1920"),
+                ("miu miu", "Miu Miu"),
+                ("hugo boss", "Hugo Boss"),
+                ("giorgio armani", "Giorgio Armani"),
+                ("jean paul gaultier", "Jean Paul Gaultier"),
+                ("dolce gabbana", "Dolce & Gabbana"),
+                ("calvin klein", "Calvin Klein"),
+                ("carolina herrera", "Carolina Herrera"),
+                ("narciso rodriguez", "Narciso Rodriguez"),
+                ("yves saint laurent", "Yves Saint Laurent"),
+                ("paco rabanne", "Rabanne"),
+                ("dior", "Dior"),
+                ("chanel", "Chanel"),
+                ("versace", "Versace"),
+                ("prada", "Prada"),
+                ("gucci", "Gucci"),
+                ("givenchy", "Givenchy"),
+                ("burberry", "Burberry"),
+                ("hermes", "Hermès"),
+                ("montblanc", "Montblanc"),
+                ("lancome", "Lancôme"),
+            )
+            for token, canonical_brand in known_brand_tokens:
+                if re.search(r"(?:^| )" + re.escape(token) + r"(?:$| )", normalized_slug):
+                    brand = canonical_brand
+                    if original_name_missing:
+                        name = re.sub(r"(?:^| )" + re.escape(token) + r"(?:$| )", " ", normalized_slug)
+                        name = re.sub(r"\s+", " ", name).strip()
+                    break
 
     # A path segment can be a brand only for explicit, known brand slugs.
     # Never infer the first arbitrary retailer/category segment as a brand.
