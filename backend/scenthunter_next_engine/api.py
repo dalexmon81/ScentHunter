@@ -11,6 +11,7 @@ from pathlib import Path
 import secrets
 import sqlite3
 import tempfile
+import time
 from threading import Lock, Thread
 from typing import Any
 
@@ -52,8 +53,6 @@ def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
                 loaded[table] = []
                 counts[table] = 0
                 continue
-            # Fetch in bounded batches. The returned lists still hold all rows,
-            # but this avoids a single unbounded SQLite fetch operation.
             sql = "SELECT " + ",".join(f'"{col}"' for col in columns) + f' FROM "{table}"'
             cursor = conn.execute(sql)
             rows: list[dict[str, Any]] = []
@@ -199,8 +198,6 @@ def create_router(db_path: str | Path | None = None):
                 detail="No legacy product rows found; no import performed.",
             )
 
-        # Full row validation is performed in the isolated staging database.
-        # Any rejected row causes the entire staged import to be discarded.
         safe = (
             pairing["products_without_store_or_url"] == 0
             and pairing["duplicate_product_keys"] == 0
@@ -230,7 +227,6 @@ def create_router(db_path: str | Path | None = None):
 
     @router.get("/metrics")
     def engine_metrics() -> dict[str, Any]:
-        # No URL, query, or user-level labels are exposed in this endpoint.
         return {"engine": "next", **metrics.snapshot()}
 
     @router.get("/search")
@@ -248,10 +244,10 @@ def create_router(db_path: str | Path | None = None):
 
     def run_migration(entries: list[dict[str, Any]], summary: dict[str, Any]) -> None:
         stage_path: Path | None = None
+        backup_path: Path | None = None
+        stage: SQLiteOfferRepository | None = None
         try:
-            if any(repository.counts().values()):
-                raise RuntimeError("The V2 database is not empty. No import performed.")
-
+            # All import and validation happens in a separate staging database.
             fd, temp_name = tempfile.mkstemp(
                 prefix=f".{path.name}.migration-",
                 suffix=".sqlite3",
@@ -265,7 +261,8 @@ def create_router(db_path: str | Path | None = None):
             staged_counts = stage.counts()
             rejected_count = int(staged_result.get("rejected_count", 0))
 
-            # Fail closed: do not publish an empty or partially imported stage.
+            # Never publish an incomplete stage. This deliberately rejects the
+            # current known name/brand mapping failures rather than losing rows.
             if staged_counts["observations"] == 0 or rejected_count > 0:
                 sample = staged_result.get("rejected", [])[:10]
                 raise RuntimeError(
@@ -277,17 +274,45 @@ def create_router(db_path: str | Path | None = None):
                     "Live V2 database was not changed."
                 )
 
-            if any(repository.counts().values()):
-                raise RuntimeError(
-                    "The V2 database changed during migration. Staged data was discarded."
-                )
+            # Stage must be finalized before backup/publish. Repository methods
+            # close each connection; no persistent SQLite connection is retained.
+            with sqlite3.connect(str(stage_path), timeout=30) as stage_conn:
+                stage_conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                stage_conn.commit()
+                stage_conn.execute("PRAGMA journal_mode=DELETE")
+                stage_conn.commit()
 
-            # Retained from the existing implementation. This is not an atomic
-            # file replacement; do not use this migration against a populated
-            # live database.
-            with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
-                with sqlite3.connect(str(path), timeout=30) as destination_conn:
-                    source_conn.backup(destination_conn)
+            # Serialize publication against another migration and back up the
+            # existing V2 database before replacing its contents.
+            with migration_lock:
+                if migration_job["status"] not in ("running", "preparing"):
+                    raise RuntimeError("Migration state changed; publication cancelled.")
+
+                # Create a standalone backup of the current V2 DB, including
+                # the partial import from a previous run, before overwriting it.
+                if path.exists():
+                    backup_path = path.with_name(
+                        f"{path.name}.pre-migration-{int(time.time())}.bak"
+                    )
+                    with sqlite3.connect(str(path), timeout=30) as live_conn:
+                        live_conn.execute("PRAGMA wal_checkpoint(FULL)")
+                        live_conn.commit()
+                        with sqlite3.connect(str(backup_path), timeout=30) as backup_conn:
+                            live_conn.backup(backup_conn)
+
+                # Publish via SQLite's backup API, not os.replace: this avoids
+                # stale -wal/-shm sidecars and keeps SQLite's file handling intact.
+                with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
+                    with sqlite3.connect(str(path), timeout=30) as destination_conn:
+                        source_conn.backup(destination_conn)
+
+            result_counts = repository.counts()
+            if result_counts != staged_counts:
+                raise RuntimeError(
+                    "Published V2 counts differ from validated staging counts; "
+                    f"staged={staged_counts!r}; published={result_counts!r}; "
+                    f"backup={str(backup_path) if backup_path else None}"
+                )
 
             result = {
                 "legacy_tables": summary["legacy_tables"],
@@ -297,8 +322,9 @@ def create_router(db_path: str | Path | None = None):
                 "replayed": staged_result["replayed"],
                 "rejected_count": rejected_count,
                 "rejected_sample": staged_result.get("rejected", [])[:10],
-                "partial_import": rejected_count > 0,
-                "counts": repository.counts(),
+                "partial_import": False,
+                "counts": result_counts,
+                "previous_v2_backup": str(backup_path) if backup_path else None,
             }
             with migration_lock:
                 migration_job.update(
@@ -314,6 +340,7 @@ def create_router(db_path: str | Path | None = None):
                     }
                 )
         finally:
+            stage = None
             if stage_path is not None:
                 for candidate in (
                     stage_path,
@@ -324,6 +351,9 @@ def create_router(db_path: str | Path | None = None):
                         candidate.unlink(missing_ok=True)
                     except OSError:
                         pass
+            # A failed migration may leave an empty backup file if creation
+            # itself failed before SQLite could populate it. Keep it for forensic
+            # inspection rather than deleting a potentially useful recovery file.
 
     @router.get("/migration/legacy/status")
     def migration_status(
@@ -397,20 +427,8 @@ def create_router(db_path: str | Path | None = None):
                     **summary,
                 }
 
-            if any(repository.counts().values()):
-                with migration_lock:
-                    migration_job.update(
-                        {
-                            "status": "failed",
-                            "result": None,
-                            "error": "V2 database is not empty; no import performed.",
-                        }
-                    )
-                raise HTTPException(
-                    status_code=409,
-                    detail="The V2 database is not empty. No import performed.",
-                )
-
+            # Existing V2 data is permitted: staging is validated first, then
+            # the live V2 DB is backed up and replaced only after zero rejects.
             with migration_lock:
                 migration_job["status"] = "running"
 
