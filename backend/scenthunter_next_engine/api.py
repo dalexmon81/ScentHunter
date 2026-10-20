@@ -25,7 +25,6 @@ except ImportError:  # Core package and tests remain standard-library only.
     APIRouter = None
 
 
-_MAX_ROWS_PER_TABLE = 50_000
 
 
 def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
@@ -54,16 +53,17 @@ def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
                 loaded[table] = []
                 counts[table] = 0
                 continue
-            sql = (
-                "SELECT " + ",".join(f'"{col}"' for col in columns)
-                + f' FROM "{table}" LIMIT ?'
-            )
-            rows = [dict(row) for row in conn.execute(sql, (_MAX_ROWS_PER_TABLE + 1,)).fetchall()]
-            if len(rows) > _MAX_ROWS_PER_TABLE:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"Legacy table {table} exceeds the safe limit of {_MAX_ROWS_PER_TABLE} rows; no import performed.",
-                )
+            # Read every row in bounded batches, supporting catalogs larger than
+            # 50,000 rows without one giant SQLite fetch operation. Validation still
+            # completes before any write to the live V2 database.
+            sql = "SELECT " + ",".join(f'"{col}"' for col in columns) + f' FROM "{table}"'
+            cursor = conn.execute(sql)
+            rows: list[dict[str, Any]] = []
+            while True:
+                batch = cursor.fetchmany(5_000)
+                if not batch:
+                    break
+                rows.extend(dict(row) for row in batch)
             loaded[table] = rows
             counts[table] = len(rows)
         if "store_products" not in existing:
