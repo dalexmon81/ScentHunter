@@ -66,11 +66,12 @@ def _url_fallback(
     product_row: Mapping[str, Any],
     variant_row: Mapping[str, Any],
 ) -> tuple[str, str]:
-    """Recover missing fields from stored URLs where the evidence is adequate.
+    """Recover missing title/brand from stored URL evidence, without network I/O.
 
-    No network access is performed. URL-derived guesses are conservative:
-    generic URL path prefixes are not treated as brands, and a brand inferred
-    from a repeated slug prefix is only used when the prefix repeats exactly.
+    Retailer URL path segments are not treated as brands by default. A brand
+    is inferred from a repeated slug prefix or a curated brand prefix in the
+    product slug. This avoids turning generic paths such as ``product`` into
+    brands or inventing a brand from an arbitrary first word.
     """
     url = _text(
         variant_row.get("variant_url")
@@ -78,39 +79,95 @@ def _url_fallback(
         or product_row.get("url")
     )
     parsed = urlparse(url)
-    segments = [part for part in parsed.path.split("/") if part]
+    segments = [_slug_text(part) for part in parsed.path.split("/") if part]
 
     name = _text(variant_row.get("name") or product_row.get("name"))
     brand = _text(variant_row.get("brand") or product_row.get("brand"))
-    slug = _slug_text(segments[-1]) if segments else ""
+    slug = segments[-1] if segments else ""
+    original_name_missing = not name
 
+    # Some feeds repeat the brand at the start of a slug (e.g. "boss-boss").
+    # Accept only exact repeated tokens; do not guess from a single token.
+    if not brand and slug:
+        words = slug.split()
+        folded = [word.casefold() for word in words]
+        for size in range(min(4, len(words) // 2), 0, -1):
+            if folded[:size] == folded[size : 2 * size]:
+                brand = " ".join(words[:size])
+                if original_name_missing:
+                    name = " ".join(words[size:])
+                break
+
+    # Retailer URLs often use /product/<id>/<brand-and-title-slug>. The slug,
+    # not the generic path segment, is the useful evidence. Match known brands
+    # only at the beginning of the slug and preserve the remainder as title.
+    if not brand and slug:
+        normalized_slug = re.sub(r"[^a-z0-9]+", " ", slug.casefold()).strip()
+        known_brand_prefixes = (
+            ("hugo boss", "Hugo Boss"),
+            ("giorgio armani", "Giorgio Armani"),
+            ("jean paul gaultier", "Jean Paul Gaultier"),
+            ("dolce gabbana", "Dolce & Gabbana"),
+            ("calvin klein", "Calvin Klein"),
+            ("carolina herrera", "Carolina Herrera"),
+            ("narciso rodriguez", "Narciso Rodriguez"),
+            ("yves saint laurent", "Yves Saint Laurent"),
+            ("paco rabanne", "Rabanne"),
+            ("ysl beauty", "Yves Saint Laurent"),
+            ("issey miyake", "Issey Miyake"),
+            ("tom ford", "Tom Ford"),
+            ("ralph lauren", "Ralph Lauren"),
+            ("estee lauder", "Estée Lauder"),
+            ("maison margiela", "Maison Margiela"),
+            ("vera wang", "Vera Wang"),
+            ("anna sui", "Anna Sui"),
+            ("victoria secret", "Victoria's Secret"),
+        )
+        for prefix, canonical_brand in known_brand_prefixes:
+            if normalized_slug == prefix or normalized_slug.startswith(prefix + " "):
+                brand = canonical_brand
+                if original_name_missing:
+                    name = normalized_slug[len(prefix):].strip()
+                break
+
+    # A path segment can be a brand only for explicit, known brand slugs.
+    # Never infer the first arbitrary retailer/category segment as a brand.
+    if not brand and len(segments) >= 2:
+        prefix_key = re.sub(r"[^a-z0-9]+", "", segments[0].casefold())
+        known_path_brands = {
+            "hugoboss": "Hugo Boss",
+            "boss": "BOSS",
+            "chanel": "Chanel",
+            "dior": "Dior",
+            "armani": "Armani",
+            "giorgioarmani": "Giorgio Armani",
+            "ysl": "Yves Saint Laurent",
+            "versace": "Versace",
+            "prada": "Prada",
+            "gucci": "Gucci",
+            "givenchy": "Givenchy",
+            "hermes": "Hermès",
+            "jeanpaulgaultier": "Jean Paul Gaultier",
+            "rabanne": "Rabanne",
+            "valentino": "Valentino",
+            "dolcegabbana": "Dolce & Gabbana",
+            "calvinklein": "Calvin Klein",
+            "burberry": "Burberry",
+            "mugler": "Mugler",
+            "lancome": "Lancôme",
+            "yvesrocher": "Yves Rocher",
+            "mancera": "Mancera",
+            "montblanc": "Montblanc",
+            "isseymiyake": "Issey Miyake",
+        }
+        brand = known_path_brands.get(prefix_key, "")
+
+    # If the legacy row has no title, use the product slug as the raw title.
+    # Commercial size/concentration descriptors are stripped downstream.
     if not name:
         name = slug
 
-    # Some retailer URLs have the brand as the first path segment, e.g.
-    # /hugo-boss/boss-bottled-night/...
-    if not brand and len(segments) >= 2:
-        prefix = _slug_text(segments[0])
-        if (
-            prefix
-            and len(prefix) <= 40
-            and prefix.casefold() not in _GENERIC_PATH_SEGMENTS
-        ):
-            brand = prefix
-
-    # Some slugs repeat the brand at the beginning, e.g. "boss-boss-bottled".
-    if not brand and slug:
-        words = slug.split()
-        for size in range(min(3, len(words) // 2), 0, -1):
-            first = [word.casefold() for word in words[:size]]
-            second = [word.casefold() for word in words[size : 2 * size]]
-            if first == second:
-                brand = " ".join(words[:size])
-                name = " ".join(words[size:])
-                break
-
     return name, brand
-
 
 def _timestamp(value: Any) -> str:
     if value in (None, ""):
