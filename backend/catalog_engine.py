@@ -847,6 +847,11 @@ def _looks_product(url, store=None):
         return False
     if NON_PRODUCT_PATH.search(p.path):
         return False
+    # Ingredient glossary pages (notably Easycosmetic /ingredients/<slug>)
+    # are informational content, not product offers. Reject them during URL
+    # discovery so they never enter the hydration queue.
+    if re.search(r'(?:^|/)ingredients?(?:/|$)', path_lower, re.I):
+        return False
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
     # because their slugs contain multiple words, so exclude them here while
