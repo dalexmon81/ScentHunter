@@ -949,7 +949,7 @@ def extract_product_page(session, url, query):
     mpn = str(product.get("mpn") or "").strip()
 
     return {
-        "store": STORE,
+        "store": "PerfumeMarket",
         "name": title,
         "brand": brand,
         "url": final_url,
