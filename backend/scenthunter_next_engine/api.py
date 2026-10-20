@@ -25,8 +25,6 @@ except ImportError:  # Core package and tests remain standard-library only.
     APIRouter = None
 
 
-
-
 def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     """Read the legacy catalog in SQLite read-only mode; never mutate it."""
     conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
@@ -53,9 +51,8 @@ def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
                 loaded[table] = []
                 counts[table] = 0
                 continue
-            # Read every row in bounded batches, supporting catalogs larger than
-            # 50,000 rows without one giant SQLite fetch operation. Validation still
-            # completes before any write to the live V2 database.
+            # Fetch in bounded batches. The returned lists still hold all rows,
+            # but this avoids a single unbounded SQLite fetch operation.
             sql = "SELECT " + ",".join(f'"{col}"' for col in columns) + f' FROM "{table}"'
             cursor = conn.execute(sql)
             rows: list[dict[str, Any]] = []
@@ -107,7 +104,6 @@ def _build_entries(
         matches = by_key.get(key, [])
         if product_groups[key] > 1:
             ambiguous_product_keys += 1
-            # Keep the base row for diagnostics, but do not assign variants.
             entries.append({"store": store, "product_row": product, "variant_row": None})
             continue
         if matches:
@@ -186,30 +182,26 @@ def create_router(db_path: str | Path | None = None):
         if not entries:
             raise HTTPException(status_code=409, detail="No legacy product rows found; no import performed.")
 
-        # Preflight uses an in-memory repository and cannot write to the live V2 DB.
-        scratch = SQLiteOfferRepository(":memory:")
-        result = import_legacy_snapshot(entries, scratch)
+        # Keep preview lightweight. Full row validation is performed in the
+        # isolated staging database during mode=apply. If any row is rejected,
+        # the staged import is discarded before the live V2 DB is touched.
         safe = (
-            result["rejected_count"] == 0
-            and pairing["products_without_store_or_url"] == 0
+            pairing["products_without_store_or_url"] == 0
             and pairing["duplicate_product_keys"] == 0
             and pairing["orphan_variant_rows"] == 0
             and pairing["variants_under_ambiguous_product_keys"] == 0
-            and result["processed"] > 0
+            and len(entries) > 0
         )
         summary = {
             "safe_to_apply": safe,
             "legacy_tables": table_counts,
             "pairing": pairing,
             "preflight": {
-                "processed": result["processed"],
-                "valid": result["imported"] + result["replayed"],
-                "rejected_count": result["rejected_count"],
-                # Deliberately omit URLs and row contents from the API response.
-                "rejections": [
-                    {"index": item.get("index"), "store": item.get("store"), "error": item.get("error")}
-                    for item in result["rejected"][:20]
-                ],
+                "processed": len(entries),
+                "valid": None,
+                "rejected_count": None,
+                "validation": "deferred_to_staging_apply",
+                "rejections": [],
             },
             "target_counts_before": repository.counts(),
         }
@@ -247,14 +239,17 @@ def create_router(db_path: str | Path | None = None):
             return {
                 "ok": False,
                 "mode": mode,
-                "message": "Preflight found unsafe or invalid rows. Nothing was written to the live V2 database.",
+                "message": "Preflight found unsafe pairing structure. Nothing was written to the live V2 database.",
                 **summary,
             }
         if mode == "preview":
             return {
                 "ok": True,
                 "mode": "preview",
-                "message": "Preflight passed. No live database was changed. Repeat with mode=apply to import.",
+                "message": (
+                    "Structural preflight passed. Full row validation is deferred to the isolated "
+                    "staging import during mode=apply. No live database was changed."
+                ),
                 **summary,
             }
 
