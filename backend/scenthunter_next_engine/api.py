@@ -243,11 +243,14 @@ def create_router(db_path: str | Path | None = None):
             stage_path = Path(temp_name)
             stage = SQLiteOfferRepository(stage_path)
             staged_result = import_legacy_snapshot(entries, stage)
-            if staged_result["rejected_count"] != 0:
-                raise RuntimeError("Staging import rejected rows. Live V2 database was not changed.")
             staged_counts = stage.counts()
             if staged_counts["observations"] == 0:
-                raise RuntimeError("Staging import produced no observations. Live V2 database was not changed.")
+                sample = staged_result.get("rejected", [])[:10]
+                raise RuntimeError(
+                    "Staging import produced no observations. "
+                    f"rejected_count={staged_result.get('rejected_count', 0)}; "
+                    f"rejection_sample={sample!r}. Live V2 database was not changed."
+                )
             if any(repository.counts().values()):
                 raise RuntimeError("The V2 database changed during migration. Staged data was discarded.")
             with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
@@ -260,6 +263,8 @@ def create_router(db_path: str | Path | None = None):
                 "imported": staged_result["imported"],
                 "replayed": staged_result["replayed"],
                 "rejected_count": staged_result["rejected_count"],
+                "rejected_sample": staged_result.get("rejected", [])[:10],
+                "partial_import": staged_result["rejected_count"] > 0,
                 "counts": repository.counts(),
             }
             with migration_lock:
