@@ -41,6 +41,15 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+# Optional isolated next engine. It is deliberately opt-in and uses a database
+# that must be separate from the legacy catalog. When disabled, the legacy
+# application starts exactly as before and the next-engine package is not loaded.
+_NEXT_ENGINE_MOUNTED = False
+if str(os.environ.get('SCENTHUNTER_NEXT_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    from scenthunter_next_engine.runtime import mount_next_engine
+    _NEXT_ENGINE_MOUNTED = mount_next_engine(app)
+
+
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
 # so discovery must be bootstrapped in the background when the application
 # starts. Normal user searches never run discovery themselves.
