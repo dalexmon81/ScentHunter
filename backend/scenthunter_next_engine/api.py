@@ -244,12 +244,16 @@ def create_router(db_path: str | Path | None = None):
             stage = SQLiteOfferRepository(stage_path)
             staged_result = import_legacy_snapshot(entries, stage)
             staged_counts = stage.counts()
-            if staged_counts["observations"] == 0:
+                        rejected_count = int(staged_result.get("rejected_count", 0))
+            if staged_counts["observations"] == 0 or rejected_count > 0:
                 sample = staged_result.get("rejected", [])[:10]
                 raise RuntimeError(
-                    "Staging import produced no observations. "
-                    f"rejected_count={staged_result.get('rejected_count', 0)}; "
-                    f"rejection_sample={sample!r}. Live V2 database was not changed."
+                    "Staging import failed validation; partial imports are forbidden. "
+                    f"imported={staged_result.get('imported', 0)}; "
+                    f"observations={staged_counts['observations']}; "
+                    f"rejected_count={rejected_count}; "
+                    f"rejection_sample={sample!r}. "
+                    "Live V2 database was not changed."
                 )
             if any(repository.counts().values()):
                 raise RuntimeError("The V2 database changed during migration. Staged data was discarded.")
