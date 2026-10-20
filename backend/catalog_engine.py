@@ -312,6 +312,12 @@ _SCHEMA_READY = False
 _LOCAL_SEARCH_INDEX_CACHE = {}
 _LOCAL_SEARCH_INDEX_LOCK = threading.Lock()
 
+# A failed refresh must not destroy the last known-good offer. Keep the most
+# recent attempt error separately so the hydration queue can record the real
+# failure while store_products continues to represent the last successful fetch.
+_LAST_REFRESH_ERRORS = {}
+_LAST_REFRESH_ERRORS_LOCK = threading.Lock()
+
 # Keep background hydration from starting immediately after a foreground search.
 # A completed search can be followed by another search within seconds; starting
 # HTTP hydration in that gap makes later searches contend for CPU/network/SQLite
@@ -846,11 +852,6 @@ def _looks_product(url, store=None):
     if path_lower in ('/robots.txt', '/humans.txt', '/ads.txt', '/security.txt', '/llms.txt', '/agents.md'):
         return False
     if NON_PRODUCT_PATH.search(p.path):
-        return False
-    # Ingredient glossary pages (notably Easycosmetic /ingredients/<slug>)
-    # are informational content, not product offers. Reject them during URL
-    # discovery so they never enter the hydration queue.
-    if re.search(r'(?:^|/)ingredients?(?:/|$)', path_lower, re.I):
         return False
     # Sabina's /l/ and /s/ paths are landing/search/navigation pages, not
     # products. They can look like products to the generic slug heuristic
@@ -2995,7 +2996,7 @@ def refresh_url(store, url):
 
         # Easycosmetic can stall on variant pages; keep this store's refresh
         # bounded so a slow variant does not hold the whole search response.
-        store_timeout = min(6, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
+        store_timeout = REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
@@ -3227,40 +3228,52 @@ def refresh_url(store, url):
             name=item.get('name'),
             brand=item.get('brand'),
         )
+        with _LAST_REFRESH_ERRORS_LOCK:
+            _LAST_REFRESH_ERRORS.pop((store, url), None)
         return item
     except Exception as exc:
-        conn = db()
-        conn.execute(
-            '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
-               VALUES(?,?,?,?)
-               ON CONFLICT(store,url) DO UPDATE SET
-               fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
-            (
-                store,
-                url,
-                time.time(),
-                'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else ''),
-            ),
-        )
-        # A ParfumZentrum placeholder price is not a transient network/parser
-        # failure: this URL must stop participating in public search and the
-        # hydration queue. Other failures remain retryable as before.
-        placeholder_offer = (
-            store == 'parfumzentrum'
-            and 'invalid_placeholder_price' in str(exc)
-        )
-        if placeholder_offer:
-            conn.execute(
-                "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
-                (store, url),
-            )
-        conn.commit()
-        conn.close()
+        error_detail = 'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else '')
+        with _LAST_REFRESH_ERRORS_LOCK:
+            _LAST_REFRESH_ERRORS[(store, url)] = error_detail
 
-        # A failed refresh is excluded by search_local() because only
-        # fetch_status='OK' rows are indexed. Mirror that state in an existing
-        # in-memory index so a stale successful product cannot remain searchable.
-        _remove_local_search_index_url(store, url)
+        conn = db()
+        try:
+            # Do not replace a previously successful offer with a transient
+            # timeout/parser/SQLite error. Search and price comparison must
+            # continue using the last known-good price until a newer fetch
+            # succeeds. Only create an ERROR row when no valid offer exists.
+            existing = conn.execute(
+                "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
+                (store, url),
+            ).fetchone()
+            has_good_offer = bool(existing and existing['fetch_status'] == 'OK')
+            if not has_good_offer:
+                conn.execute(
+                    '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+                       VALUES(?,?,?,?)
+                       ON CONFLICT(store,url) DO UPDATE SET
+                       fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+                    (store, url, time.time(), error_detail),
+                )
+            # A ParfumZentrum placeholder price is a known terminal outcome.
+            placeholder_offer = (
+                store == 'parfumzentrum'
+                and 'invalid_placeholder_price' in str(exc)
+            )
+            if placeholder_offer:
+                conn.execute(
+                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                    (store, url),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Preserve an existing valid offer in both SQLite and the in-memory
+        # index after transient failures. A known invalid placeholder remains
+        # terminal and is removed from search.
+        if placeholder_offer or not has_good_offer:
+            _remove_local_search_index_url(store, url)
         return None
 
 
@@ -4095,16 +4108,15 @@ def _queue_mark_error(task, error, http_status=None):
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
 
-        # 404/410, known ParfumZentrum placeholder prices and exhausted
-        # retries are terminal. Placeholder offers are deactivated by
-        # refresh_url(); do not retry them as if they were transient failures.
+        # Only known terminal outcomes are dead-lettered. Network timeouts,
+        # parser failures and temporary SQLite contention remain retryable after
+        # the initial attempt budget, at the capped 24-hour backoff interval.
         terminal_http = http_status in (404, 410)
         terminal_placeholder = 'invalid_placeholder_price' in str(error)
-        next_state = (
-            'DEAD'
-            if terminal_http or terminal_placeholder or attempts >= HYDRATION_MAX_ATTEMPTS
-            else 'ERROR'
-        )
+        next_state = 'DEAD' if terminal_http or terminal_placeholder else 'ERROR'
+        if next_state == 'ERROR' and attempts >= HYDRATION_MAX_ATTEMPTS:
+            delay = float(HYDRATION_BACKOFF_SECONDS[-1])
+            next_time = now + delay + delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         conn.execute(
             """UPDATE hydration_queue
                SET state=?,
@@ -4148,15 +4160,18 @@ def _hydrate_one_task(task):
             _queue_mark_done(task)
             return True
         # refresh_url records the concrete fetch failure in store_products.
-        conn = db()
-        try:
-            row = conn.execute(
-                "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
-                (task['store'], task['url']),
-            ).fetchone()
-            detail = str(row['fetch_status']) if row and row['fetch_status'] else 'product_parser_not_found'
-        finally:
-            conn.close()
+        with _LAST_REFRESH_ERRORS_LOCK:
+            detail = _LAST_REFRESH_ERRORS.get((task['store'], task['url']))
+        if not detail:
+            conn = db()
+            try:
+                row = conn.execute(
+                    "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
+                    (task['store'], task['url']),
+                ).fetchone()
+                detail = str(row['fetch_status']) if row and row['fetch_status'] else 'product_parser_not_found'
+            finally:
+                conn.close()
 
         match = re.search(r'(?:HTTP\s+|http_status=)(\d+)', detail)
         http_status = int(match.group(1)) if match else None
