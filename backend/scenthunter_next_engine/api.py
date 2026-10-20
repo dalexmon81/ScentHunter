@@ -11,6 +11,7 @@ from pathlib import Path
 import secrets
 import sqlite3
 import tempfile
+from threading import Lock, Thread
 from typing import Any
 
 from .migration import import_legacy_snapshot
@@ -150,6 +151,8 @@ def create_router(db_path: str | Path | None = None):
     repository = SQLiteOfferRepository(path)
     search_service = SearchService(repository)
     router = APIRouter(prefix="/v2", tags=["next-engine"])
+    migration_lock = Lock()
+    migration_job: dict[str, Any] = {"status": "idle", "result": None, "error": None}
 
     def authorize(token: str | None) -> None:
         configured = os.environ.get("SCENTHUNTER_MIGRATION_TOKEN", "").strip()
@@ -228,42 +231,11 @@ def create_router(db_path: str | Path | None = None):
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    @router.post("/migration/legacy")
-    def migrate_legacy(
-        mode: str = Query(default="preview", pattern="^(preview|apply)$"),
-        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
-    ) -> dict[str, Any]:
-        authorize(migration_token)
-        entries, summary = preflight()
-        if not summary["safe_to_apply"]:
-            return {
-                "ok": False,
-                "mode": mode,
-                "message": "Preflight found unsafe pairing structure. Nothing was written to the live V2 database.",
-                **summary,
-            }
-        if mode == "preview":
-            return {
-                "ok": True,
-                "mode": "preview",
-                "message": (
-                    "Structural preflight passed. Full row validation is deferred to the isolated "
-                    "staging import during mode=apply. No live database was changed."
-                ),
-                **summary,
-            }
-
-        # This endpoint is intentionally a one-time initial migration: never overwrite
-        # or merge into a non-empty live V2 database.
-        before = repository.counts()
-        if any(before.values()):
-            raise HTTPException(
-                status_code=409,
-                detail="The V2 database is not empty. Refusing to replace or merge it; no import performed.",
-            )
-
+    def run_migration(entries: list[dict[str, Any]], summary: dict[str, Any]) -> None:
         stage_path: Path | None = None
         try:
+            if any(repository.counts().values()):
+                raise RuntimeError("The V2 database is not empty. No import performed.")
             fd, temp_name = tempfile.mkstemp(
                 prefix=f".{path.name}.migration-", suffix=".sqlite3", dir=str(path.parent)
             )
@@ -272,52 +244,81 @@ def create_router(db_path: str | Path | None = None):
             stage = SQLiteOfferRepository(stage_path)
             staged_result = import_legacy_snapshot(entries, stage)
             if staged_result["rejected_count"] != 0:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Staging import rejected rows. Live V2 database was not changed.",
-                )
+                raise RuntimeError("Staging import rejected rows. Live V2 database was not changed.")
             staged_counts = stage.counts()
             if staged_counts["observations"] == 0:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Staging import produced no observations. Live V2 database was not changed.",
-                )
-
-            # Recheck the destination immediately before copying. SQLite backup copies
-            # the fully validated staging DB; the legacy DB is never opened for writes.
+                raise RuntimeError("Staging import produced no observations. Live V2 database was not changed.")
             if any(repository.counts().values()):
-                raise HTTPException(
-                    status_code=409,
-                    detail="The V2 database changed during migration. Staged data was discarded.",
-                )
-            with sqlite3.connect(str(stage_path), timeout=10) as source_conn:
-                with sqlite3.connect(str(path), timeout=10) as destination_conn:
+                raise RuntimeError("The V2 database changed during migration. Staged data was discarded.")
+            with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
+                with sqlite3.connect(str(path), timeout=30) as destination_conn:
                     source_conn.backup(destination_conn)
-            return {
-                "ok": True,
-                "mode": "apply",
-                "message": "Legacy import completed. The legacy database was read-only; V2 was populated from a validated staging database.",
+            result = {
                 "legacy_tables": summary["legacy_tables"],
                 "pairing": summary["pairing"],
-                "preflight": summary["preflight"],
-                "import": {
-                    "processed": staged_result["processed"],
-                    "imported": staged_result["imported"],
-                    "replayed": staged_result["replayed"],
-                    "rejected_count": staged_result["rejected_count"],
-                },
+                "processed": staged_result["processed"],
+                "imported": staged_result["imported"],
+                "replayed": staged_result["replayed"],
+                "rejected_count": staged_result["rejected_count"],
                 "counts": repository.counts(),
             }
+            with migration_lock:
+                migration_job.update({"status": "completed", "result": result, "error": None})
+        except Exception as exc:
+            with migration_lock:
+                migration_job.update({"status": "failed", "result": None, "error": f"{type(exc).__name__}: {exc}"})
         finally:
             if stage_path is not None:
-                for candidate in (
-                    stage_path,
-                    Path(str(stage_path) + "-wal"),
-                    Path(str(stage_path) + "-shm"),
-                ):
+                for candidate in (stage_path, Path(str(stage_path) + "-wal"), Path(str(stage_path) + "-shm")):
                     try:
                         candidate.unlink(missing_ok=True)
                     except OSError:
                         pass
+
+    @router.get("/migration/legacy/status")
+    def migration_status(
+        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
+    ) -> dict[str, Any]:
+        authorize(migration_token)
+        with migration_lock:
+            snapshot = dict(migration_job)
+        return {"ok": snapshot["status"] != "failed", "mode": "apply", **snapshot}
+
+    @router.post("/migration/legacy")
+    def migrate_legacy(
+        mode: str = Query(default="preview", pattern="^(preview|apply)$"),
+        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
+    ) -> dict[str, Any]:
+        authorize(migration_token)
+        if mode == "apply":
+            with migration_lock:
+                if migration_job["status"] in ("preparing", "running"):
+                    return {"ok": True, "mode": "apply", "status": migration_job["status"], "message": "Migration already active; do not submit apply again."}
+                if migration_job["status"] == "completed":
+                    return {"ok": True, "mode": "apply", **migration_job}
+                migration_job.update({"status": "preparing", "result": None, "error": None})
+        try:
+            entries, summary = preflight()
+            if not summary["safe_to_apply"]:
+                if mode == "apply":
+                    with migration_lock:
+                        migration_job.update({"status": "failed", "result": None, "error": "Preflight found unsafe pairing structure."})
+                return {"ok": False, "mode": mode, "message": "Preflight found unsafe pairing structure. Nothing was written to the live V2 database.", **summary}
+            if mode == "preview":
+                return {"ok": True, "mode": "preview", "message": "Structural preflight passed. Full row validation is deferred to the isolated staging import during mode=apply. No live database was changed.", **summary}
+            if any(repository.counts().values()):
+                with migration_lock:
+                    migration_job.update({"status": "failed", "result": None, "error": "V2 database is not empty; no import performed."})
+                raise HTTPException(status_code=409, detail="The V2 database is not empty. No import performed.")
+            with migration_lock:
+                migration_job["status"] = "running"
+            Thread(target=run_migration, args=(entries, summary), daemon=True, name="scenthunter-legacy-migration").start()
+            return {"ok": True, "mode": "apply", "status": "running", "message": "Migration accepted in background. Poll GET /v2/migration/legacy/status; do not submit apply again."}
+        except Exception as exc:
+            if mode == "apply":
+                with migration_lock:
+                    if migration_job["status"] == "preparing":
+                        migration_job.update({"status": "failed", "result": None, "error": f"{type(exc).__name__}: {exc}"})
+            raise
 
     return router
