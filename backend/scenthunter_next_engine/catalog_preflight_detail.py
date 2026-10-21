@@ -1,4 +1,4 @@
-"""Detailed, read-only classification of canonical catalog preflight findings."""
+"""Detailed, read-only catalog classification with a complete JSON report artifact."""
 from __future__ import annotations
 
 import json
@@ -27,7 +27,7 @@ def build_detail_report(raw: dict[str, Any]) -> dict[str, Any]:
         if row.get("product_id") is not None and str(row.get("product_id")).strip()
     }
     variants_by_product: dict[str, list[dict[str, Any]]] = {}
-    orphan_variant_rows = []
+    orphan_variant_rows: list[dict[str, Any]] = []
     for row in variant_rows:
         pid = _label(row.get("product_id"), "")
         if not pid or pid not in product_ids:
@@ -38,14 +38,15 @@ def build_detail_report(raw: dict[str, Any]) -> dict[str, Any]:
         else:
             variants_by_product.setdefault(pid, []).append(row)
 
-    without_variants = []
-    missing_images = []
-    missing_names = []
-    missing_brands = []
+    without_variants: list[dict[str, Any]] = []
+    missing_images: list[dict[str, Any]] = []
+    missing_names: list[dict[str, Any]] = []
+    missing_brands: list[dict[str, Any]] = []
     for row in product_rows:
         pid = _label(row.get("product_id"), "")
         details = {
             "product_id": row.get("product_id"),
+            "brand_id": row.get("brand_id"),
             "brand_name": row.get("brand_name"),
             "canonical_name": row.get("canonical_name") or row.get("name"),
             "family_name": row.get("family_name"),
@@ -75,25 +76,25 @@ def build_detail_report(raw: dict[str, Any]) -> dict[str, Any]:
             "count": len(without_variants),
             "by_family": grouped(without_variants, "family_name"),
             "by_source_status": grouped(without_variants, "source_status"),
-            "examples_first_25": without_variants[:25],
+            "all_records": without_variants,
         },
         "products_missing_canonical_image": {
             "count": len(missing_images),
             "by_family": grouped(missing_images, "family_name"),
             "by_source_status": grouped(missing_images, "source_status"),
-            "examples_first_25": missing_images[:25],
+            "all_records": missing_images,
         },
         "products_missing_name": {
             "count": len(missing_names),
-            "examples_first_25": missing_names[:25],
+            "all_records": missing_names,
         },
         "products_missing_brand": {
             "count": len(missing_brands),
-            "examples_first_25": missing_brands[:25],
+            "all_records": missing_brands,
         },
         "orphan_variants": {
             "count": len(orphan_variant_rows),
-            "examples_first_25": orphan_variant_rows[:25],
+            "all_records": orphan_variant_rows,
         },
         "interpretation": (
             "This report groups structural findings for human review. It does not infer "
@@ -106,15 +107,31 @@ def build_detail_report(raw: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     catalog_path = root / "backend" / "product_catalog.json"
+    report_path = root / "catalog-preflight-detail.json"
     try:
         with catalog_path.open("r", encoding="utf-8") as handle:
             raw = json.load(handle)
         report = build_detail_report(raw)
+        report["catalog_path"] = "backend/product_catalog.json"
+        report_path.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False, indent=2))
         return 2
-    report["catalog_path"] = str(catalog_path)
-    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps({
+        "status": "complete",
+        "read_only_catalog": True,
+        "report_file": str(report_path.relative_to(root)),
+        "product_count": report["product_count"],
+        "variant_count": report["variant_count"],
+        "products_without_variants": report["products_without_variants"]["count"],
+        "products_missing_canonical_image": report["products_missing_canonical_image"]["count"],
+        "products_missing_name": report["products_missing_name"]["count"],
+        "products_missing_brand": report["products_missing_brand"]["count"],
+        "orphan_variants": report["orphan_variants"]["count"],
+    }, ensure_ascii=False, indent=2))
     return 0
 
 
