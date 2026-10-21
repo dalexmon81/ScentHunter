@@ -1,26 +1,29 @@
-# ScentHunter Fly.io configuration
+ScentHunter Fly.io configuration
 
-app = 'scenthunter'
-primary_region = 'ams'
+app = ‘scenthunter’
+primary_region = ‘ams’
 
 [build]
 
 [env]
-  SCENTHUNTER_CATALOG_DB = '/data/store_catalog.sqlite3'
+SCENTHUNTER_CATALOG_DB = ‘/data/store_catalog.sqlite3’
 
 [http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ['app']
+internal_port = 8080
+force_https = true
+auto_stop_machines = ‘stop’
+auto_start_machines = true
+min_machines_running = 1
+processes = [‘app’]
 
 [mounts]
-  source = 'scenthunter_data'
-  destination = '/data'
+source = ‘scenthunter_data’
+destination = ‘/data’
+auto_extend_size_threshold = 70
+auto_extend_size_increment = ‘1GB’
+auto_extend_size_limit = ‘5GB’
 
 [[vm]]
-  memory = '2gb'
-  cpu_kind = 'shared'
-  cpus = 1
+memory = ‘2gb’
+cpu_kind = ‘shared’
+cpus = 1
