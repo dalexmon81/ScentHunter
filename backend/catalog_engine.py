@@ -698,9 +698,9 @@ def _ensure_schema(conn):
 
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn = sqlite3.connect(DB_PATH, timeout=45)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=15000')
+    conn.execute('PRAGMA busy_timeout=45000')
     _ensure_schema(conn)
     conn.execute('PRAGMA synchronous=NORMAL')
     return conn
@@ -3921,57 +3921,76 @@ def hydration_pending_counts():
 
 
 def _ensure_hydration_queue():
-    """Backfill the durable queue from every currently active discovered URL.
+    """Backfill the durable queue using short, bounded SQLite transactions.
 
-    This makes the new queue safe to introduce on an already-populated Fly
-    volume: the existing ~65k store_urls rows become durable work items without
-    requiring another discovery run.
+    The catalog database is shared by the API process and the separate
+    family-coverage worker on Fly. A single transaction covering the entire
+    catalog (tens of thousands of URLs) can hold SQLite's writer lock long
+    enough to starve discovery, hydration, and foreground refreshes. Keep the
+    scan read-only, then persist changes in small batches so other processes
+    get frequent opportunities to write. INSERT OR IGNORE makes this safe to
+    rerun after interruption.
     """
     now = time.time()
+    batch_size = 250
     conn = db()
     try:
-        with conn:
-            # Older catalog versions could accidentally persist category/listing
-            # URLs (for example Shopify /collections/... pages) as product URLs.
-            # Remove those invalid catalog entries before rebuilding the durable
-            # hydration queue. This is generic and applies to every store.
-            invalid_rows = conn.execute(
-                "SELECT store,url FROM store_urls WHERE active=1"
-            ).fetchall()
-            for r in invalid_rows:
-                if _looks_product(r['url'], r['store']):
-                    continue
-                conn.execute(
+        # Read candidate rows without holding a write transaction. In WAL mode
+        # this allows readers to proceed while other processes persist results.
+        invalid_rows = conn.execute(
+            "SELECT store,url FROM store_urls WHERE active=1"
+        ).fetchall()
+
+        invalid_batch = []
+        for row in invalid_rows:
+            if not _looks_product(row['url'], row['store']):
+                invalid_batch.append((row['store'], row['url']))
+
+        for offset in range(0, len(invalid_batch), batch_size):
+            batch = invalid_batch[offset:offset + batch_size]
+            with conn:
+                conn.executemany(
                     "DELETE FROM hydration_queue WHERE store=? AND url=?",
-                    (r['store'], r['url']),
+                    batch,
                 )
-                conn.execute(
+                conn.executemany(
                     "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
-                    (r['store'], r['url']),
+                    batch,
                 )
 
-            rows = conn.execute(
-                """SELECT u.store,u.url
-                   FROM store_urls u
-                   WHERE u.active=1
-                     AND NOT EXISTS (
-                         SELECT 1 FROM hydration_queue q
-                         WHERE q.store=u.store AND q.url=u.url
-                     )"""
-            ).fetchall()
-            for r in rows:
+        # Fetch missing queue candidates after invalid URLs have been retired.
+        # The result is a snapshot; concurrent discovery may insert some of
+        # these URLs too, so INSERT OR IGNORE is required for idempotency.
+        rows = conn.execute(
+            """SELECT u.store,u.url
+                 FROM store_urls u
+                WHERE u.active=1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM hydration_queue q
+                       WHERE q.store=u.store AND q.url=u.url
+                  )"""
+        ).fetchall()
+
+        inserted = 0
+        for offset in range(0, len(rows), batch_size):
+            batch = rows[offset:offset + batch_size]
+            prepared = []
+            for row in batch:
                 existing = conn.execute(
                     "SELECT 1 FROM store_products WHERE store=? AND url=? AND fetch_status='OK'",
-                    (r['store'], r['url']),
+                    (row['store'], row['url']),
                 ).fetchone()
                 state = 'DONE' if existing else 'PENDING'
-                conn.execute(
+                prepared.append((row['store'], row['url'], state, 0, now, now))
+            with conn:
+                conn.executemany(
                     """INSERT OR IGNORE INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)""",
-                    (r['store'], r['url'], state, 0, now, now),
+                    prepared,
                 )
-        return len(rows)
+            inserted += len(prepared)
+        return inserted
     finally:
         conn.close()
 
