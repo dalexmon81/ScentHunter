@@ -32,3 +32,6 @@ jobs:
 
       - name: Audit real catalog without modifying it
         run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+
+      - name: Detailed catalog classification (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
