@@ -9,10 +9,22 @@ jobs:
   deploy:
     name: Deploy ScentHunter
     runs-on: ubuntu-latest
-    concurrency: deploy-group
+
+    concurrency:
+      group: deploy-group
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Reject stale deployment
+        run: |
+          git fetch origin main --quiet
+
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "Refusing to deploy stale commit." >&2
+            exit 1
+          fi
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -23,7 +35,7 @@ jobs:
           if flyctl volumes list --app scenthunter | grep -q 'scenthunter_data'; then
             echo "Volume scenthunter_data already exists."
           else
-            echo "Creating volume scenthunter_data in ams..."
+            echo "Creating catalog volume in ams..."
             flyctl volumes create scenthunter_data \
               --app scenthunter \
               --region ams \
