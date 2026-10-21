@@ -21,13 +21,22 @@ except ImportError:
 def _atomic_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\\n", encoding="utf-8")
+    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
     os.replace(temp, path)
 
 
 def _load_job(path: Path) -> dict[str, Any]:
     try:
-        state = json.loads(path.read_text(encoding="utf-8"))
+        raw = path.read_text(encoding="utf-8")
+        try:
+            state = json.loads(raw)
+        except json.JSONDecodeError:
+            # Compatibility with files written by the previous buggy serializer,
+            # which appended the two literal characters backslash+n.
+            if raw.endswith("\\n"):
+                state = json.loads(raw[:-2])
+            else:
+                raise
         if not isinstance(state, dict):
             raise ValueError("state must be an object")
     except FileNotFoundError:
@@ -228,6 +237,63 @@ def create_router(db_path: str | Path | None = None):
             return search_service.search(SearchRequest(query=q, store=store, currency=currency, limit=limit))
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.get("/migration/legacy/quarantine-summary")
+    def migration_quarantine_summary(
+        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
+    ) -> dict[str, Any]:
+        """Read aggregate quarantine diagnostics from the latest preview report.
+
+        This endpoint is read-only: it does not rerun preflight or touch either database.
+        """
+        authorize(migration_token)
+        with preview_lock:
+            state = dict(preview_job)
+        if state.get("status") != "completed" or not isinstance(state.get("result"), dict):
+            raise HTTPException(409, "No completed preview report is available. Run preview first.")
+        report_value = state["result"].get("quarantine_report")
+        if not report_value:
+            raise HTTPException(404, "The completed preview does not reference a quarantine report.")
+        report_path = Path(str(report_value)).expanduser().resolve()
+        expected_prefix = path.name + ".preflight-"
+        if report_path.parent != path.parent or not report_path.name.startswith(expected_prefix):
+            raise HTTPException(403, "Quarantine report path is outside the expected report directory.")
+        try:
+            raw = report_path.read_text(encoding="utf-8")
+            try:
+                report_data = json.loads(raw)
+            except json.JSONDecodeError:
+                # Also read reports created before the serializer newline fix.
+                if raw.endswith("\\n"):
+                    report_data = json.loads(raw[:-2])
+                else:
+                    raise
+        except FileNotFoundError as exc:
+            raise HTTPException(404, "Quarantine report file is missing from the service volume.") from exc
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise HTTPException(500, "Quarantine report exists but is not valid JSON.") from exc
+
+        quarantine = report_data.get("quarantine", [])
+        if not isinstance(quarantine, list):
+            raise HTTPException(500, "Quarantine report has an invalid quarantine section.")
+        def count_field(field: str) -> list[dict[str, Any]]:
+            counts: dict[str, int] = {}
+            for item in quarantine:
+                value = item.get(field) if isinstance(item, dict) else None
+                key = str(value).strip() if value not in (None, "") else "unknown"
+                counts[key] = counts.get(key, 0) + 1
+            return [{"value": key, "count": count} for key, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+
+        return {
+            "ok": True,
+            "mode": "preview",
+            "snapshot_sha256": report_data.get("snapshot_sha256"),
+            "quarantine_total": len(quarantine),
+            "by_class": count_field("class"),
+            "by_reason": count_field("reason"),
+            "by_store": count_field("store"),
+            "message": "Read-only aggregate of the existing preview report; no migration or database writes were performed.",
+        }
 
     @router.get("/migration/legacy/status")
     def migration_status(mode: str = Query(default="preview", pattern="^(preview|apply)$"),
