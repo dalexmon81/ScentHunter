@@ -1,8 +1,8 @@
-"""Read-only adapter for the existing ScentHunter canonical product catalog.
+"""Read-only adapter for ScentHunter's actual product_catalog.json schema.
 
-This module deliberately does not write to product_catalog.json or to SQLite.
-Because the legacy catalog schema has evolved, parsing is defensive: unknown
-shapes are reported instead of silently inventing product or variant IDs.
+The canonical catalog is read-only. Product identities live in ``products``;
+real variant identities live in the separate top-level ``variants`` array and
+are linked by ``product_id``. This module never synthesizes canonical IDs.
 """
 from __future__ import annotations
 
@@ -17,22 +17,14 @@ class CatalogFormatError(ValueError):
     """Raised when the catalog cannot be interpreted safely."""
 
 
-def _first(mapping: Mapping[str, Any], *keys: str) -> Any:
-    for key in keys:
-        value = mapping.get(key)
-        if value is not None and value != "":
-            return value
-    return None
-
-
-def _as_text(value: Any) -> str | None:
+def _text(value: Any) -> str | None:
     if value is None:
         return None
-    text = str(value).strip()
-    return text or None
+    result = str(value).strip()
+    return result or None
 
 
-def _as_positive_int(value: Any) -> int | None:
+def _positive_int(value: Any) -> int | None:
     if value is None or isinstance(value, bool):
         return None
     try:
@@ -42,28 +34,41 @@ def _as_positive_int(value: Any) -> int | None:
     return number if number > 0 else None
 
 
-def _records(value: Any) -> list[Mapping[str, Any]]:
-    """Return dictionary records from a list or a dictionary of records."""
-    if isinstance(value, list):
-        return [item for item in value if isinstance(item, Mapping)]
-    if isinstance(value, dict):
-        if any(key in value for key in ("id", "product_id", "catalog_id", "name")):
-            return [value]
-        return [item for item in value.values() if isinstance(item, Mapping)]
-    return []
+def _list_of_mappings(value: Any) -> list[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, Mapping)]
 
 
 class CatalogRepository:
-    """Immutable in-memory view of canonical products loaded from JSON."""
+    """Immutable in-memory view of canonical products and explicit variants."""
 
-    def __init__(self, products: Iterable[CanonicalProduct], source: Path) -> None:
+    def __init__(
+        self,
+        products: Iterable[CanonicalProduct],
+        source: Path,
+        *,
+        skipped_product_count: int = 0,
+        skipped_variant_count: int = 0,
+        source_variant_count: int = 0,
+    ) -> None:
         items = tuple(products)
         ids = [item.product_id for item in items]
         if len(ids) != len(set(ids)):
             raise CatalogFormatError("Duplicate canonical product IDs in catalog")
+        variant_ids = [
+            variant.variant_id
+            for product in items
+            for variant in product.variants
+        ]
+        if len(variant_ids) != len(set(variant_ids)):
+            raise CatalogFormatError("Duplicate canonical variant IDs in catalog")
         self._products = items
         self._by_id = {item.product_id: item for item in items}
         self.source = source
+        self._skipped_product_count = skipped_product_count
+        self._skipped_variant_count = skipped_variant_count
+        self._source_variant_count = source_variant_count
 
     @classmethod
     def from_file(cls, path: str | Path) -> "CatalogRepository":
@@ -79,88 +84,85 @@ class CatalogRepository:
         if not isinstance(raw, Mapping):
             raise CatalogFormatError("Catalog root must be a JSON object")
 
-        product_source = _first(raw, "products", "catalog", "items")
-        if product_source is None:
-            # Some catalog exports are grouped by brand.
-            brands = raw.get("brands")
-            if isinstance(brands, list):
-                gathered: list[Mapping[str, Any]] = []
-                for brand_record in brands:
-                    if not isinstance(brand_record, Mapping):
-                        continue
-                    brand_name = _as_text(_first(brand_record, "name", "brand"))
-                    nested = _records(_first(brand_record, "products", "items"))
-                    for item in nested:
-                        item_copy = dict(item)
-                        if brand_name and not _first(item_copy, "brand", "brand_name"):
-                            item_copy["brand"] = brand_name
-                        gathered.append(item_copy)
-                product_source = gathered
+        # These names are taken from the actual product_catalog.json schema.
+        product_records = _list_of_mappings(raw.get("products"))
+        variant_records = _list_of_mappings(raw.get("variants"))
+        if not product_records:
+            raise CatalogFormatError("Catalog has no records in the top-level products array")
+        if "variants" not in raw or not isinstance(raw.get("variants"), list):
+            raise CatalogFormatError("Catalog is missing the top-level variants array")
 
-        records = _records(product_source)
-        if not records:
-            raise CatalogFormatError(
-                "No product records found in the catalog's recognized structures"
-            )
+        variants_by_product: dict[str, list[CanonicalVariant]] = {}
+        skipped_variants = 0
+        for record in variant_records:
+            variant_id = _text(record.get("variant_id"))
+            product_id = _text(record.get("product_id"))
+            if not variant_id or not product_id:
+                skipped_variants += 1
+                continue
+            size_ml = _positive_int(record.get("size_ml"))
+            aliases = record.get("aliases")
+            label = next(
+                (_text(alias) for alias in aliases if _text(alias)),
+                None,
+            ) if isinstance(aliases, list) else None
+            try:
+                variant = CanonicalVariant(
+                    variant_id=variant_id,
+                    size_ml=size_ml,
+                    label=label,
+                )
+            except ValueError:
+                skipped_variants += 1
+                continue
+            variants_by_product.setdefault(product_id, []).append(variant)
 
         products: list[CanonicalProduct] = []
-        skipped: list[str] = []
-        for index, record in enumerate(records):
-            product_id = _as_text(_first(record, "id", "product_id", "catalog_id", "canonical_id"))
-            name = _as_text(_first(record, "name", "product_name", "title"))
-            brand = _as_text(_first(record, "brand", "brand_name", "manufacturer"))
-            if not product_id or not name or not brand:
-                skipped.append(f"record {index}: missing product ID, brand, or name")
+        skipped_products = 0
+        seen_product_ids: set[str] = set()
+        for record in product_records:
+            product_id = _text(record.get("product_id"))
+            brand = _text(record.get("brand_name"))
+            name = _text(record.get("canonical_name"))
+            if not product_id or not brand or not name:
+                skipped_products += 1
                 continue
-
-            variant_source = _first(record, "variants", "sizes", "formats")
-            variants: list[CanonicalVariant] = []
-            for variant_index, variant in enumerate(_records(variant_source)):
-                variant_id = _as_text(
-                    _first(variant, "id", "variant_id", "canonical_variant_id")
-                )
-                if not variant_id:
-                    # Never synthesize a canonical variant identifier.
-                    continue
-                size_ml = _as_positive_int(
-                    _first(variant, "size_ml", "volume_ml", "format_ml", "ml", "size")
-                )
-                label = _as_text(_first(variant, "label", "name", "format", "display_name"))
-                try:
-                    variants.append(
-                        CanonicalVariant(
-                            variant_id=variant_id,
-                            size_ml=size_ml,
-                            label=label or f"variant {variant_index + 1}",
-                        )
-                    )
-                except ValueError:
-                    continue
-
-            image_url = _as_text(
-                _first(record, "canonical_image_url", "image_url", "image", "img")
-            )
+            if product_id in seen_product_ids:
+                raise CatalogFormatError(f"Duplicate canonical product ID: {product_id}")
+            seen_product_ids.add(product_id)
+            image_url = _text(record.get("canonical_image"))
             try:
                 products.append(
                     CanonicalProduct(
                         product_id=product_id,
                         brand=brand,
                         name=name,
-                        variants=tuple(variants),
+                        variants=tuple(variants_by_product.get(product_id, ())),
                         canonical_image_url=image_url,
                     )
                 )
-            except ValueError as exc:
-                skipped.append(f"record {index}: {exc}")
+            except ValueError:
+                skipped_products += 1
 
         if not products:
-            detail = "; ".join(skipped[:5])
-            raise CatalogFormatError(
-                "Catalog was readable but no safe canonical products could be parsed. "
-                + detail
-            )
+            raise CatalogFormatError("No safe canonical products could be parsed")
 
-        return cls(products, source)
+        # Detect variants that point to a product ID absent from the canonical products.
+        orphan_variant_ids = {
+            _text(record.get("variant_id"))
+            for record in variant_records
+            if _text(record.get("product_id")) not in seen_product_ids
+        }
+        orphan_variant_ids.discard(None)
+        skipped_variants += len(orphan_variant_ids)
+
+        return cls(
+            products,
+            source,
+            skipped_product_count=skipped_products,
+            skipped_variant_count=skipped_variants,
+            source_variant_count=len(variant_records),
+        )
 
     def get(self, product_id: str) -> CanonicalProduct | None:
         """Return a product by its exact canonical ID."""
@@ -173,6 +175,14 @@ class CatalogRepository:
     def product_count(self) -> int:
         return len(self._products)
 
+    def skipped_product_count(self) -> int:
+        return self._skipped_product_count
+
+    def source_variant_count(self) -> int:
+        return self._source_variant_count
+
     def skipped_variant_count(self) -> int:
-        """Count is not available without retaining raw records; returns zero."""
-        return 0
+        return self._skipped_variant_count
+
+    def variant_count(self) -> int:
+        return sum(len(product.variants) for product in self._products)
