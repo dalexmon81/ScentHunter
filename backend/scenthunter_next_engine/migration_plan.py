@@ -204,6 +204,23 @@ def preflight_entries(entries: Sequence[Mapping[str, Any]], pairing_quarantine: 
             item = _quarantine("TECHNICAL_FAILURE", "candidate_missing_product_or_store", store or None, url or None, "candidate_entries", index, entry)
             quarantine.append(item); dispositions.append(item)
             continue
+        # Reject known placeholder/invalid price observations before creating offers.
+        fetch_status = str(
+            (variant or {}).get("fetch_status") or product.get("fetch_status") or ""
+        ).strip().casefold()
+        invalid_price_statuses = {
+            "invalid_placeholder_price", "invalid_price", "placeholder_price",
+            "price_invalid", "invalid", "error", "failed",
+        }
+        if fetch_status in invalid_price_statuses:
+            counts["INCOMPLETE"] += 1
+            item = _quarantine(
+                "INCOMPLETE", f"source_fetch_status_rejects_price:{fetch_status}",
+                store, url or None, "candidate_entries", index, entry,
+            )
+            quarantine.append(item); dispositions.append(item)
+            continue
+
         non_product = non_product_reason(product, variant)
         if non_product:
             counts["NON_PRODUCT_CONFIRMED"] += 1
