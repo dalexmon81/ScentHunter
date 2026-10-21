@@ -42,12 +42,28 @@ APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
 # Optional isolated next engine. It is deliberately opt-in and uses a database
-# that must be separate from the legacy catalog. When disabled, the legacy
-# application starts exactly as before and the next-engine package is not loaded.
+# that must be separate from the legacy catalog. If the optional package is not
+# present in this deployment, keep the legacy application available instead of
+# crashing Uvicorn during import. The warning makes the incomplete opt-in clear.
 _NEXT_ENGINE_MOUNTED = False
 if str(os.environ.get('SCENTHUNTER_NEXT_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
-    from scenthunter_next_engine.runtime import mount_next_engine
-    _NEXT_ENGINE_MOUNTED = mount_next_engine(app)
+    try:
+        from scenthunter_next_engine.runtime import mount_next_engine
+        _NEXT_ENGINE_MOUNTED = mount_next_engine(app)
+    except ModuleNotFoundError as exc:
+        if exc.name != 'scenthunter_next_engine' and not str(exc.name or '').startswith('scenthunter_next_engine.'):
+            raise
+        print(
+            'NEXT_ENGINE_UNAVAILABLE: package scenthunter_next_engine is missing; '
+            'starting with the legacy catalog only',
+            flush=True,
+        )
+    except Exception as exc:
+        print(
+            f'NEXT_ENGINE_UNAVAILABLE: {type(exc).__name__}: {exc}; '
+            'starting with the legacy catalog only',
+            flush=True,
+        )
 
 
 # The persistent catalog lives on the Fly volume. A new volume starts empty,
