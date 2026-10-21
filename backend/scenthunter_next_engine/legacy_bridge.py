@@ -26,11 +26,6 @@ _CONCENTRATION_RE = re.compile(
     re.I,
 )
 
-_GENERIC_PATH_SEGMENTS = {
-    "product", "products", "produit", "produits",
-    "artikel", "articolo", "item", "items", "p",
-}
-
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
@@ -54,6 +49,59 @@ def _canonical_name(name: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip(" -|,/")
 
 
+def _size_from_title(title: str) -> Decimal | None:
+    """Extract a volume from a title only when it has a recognized unit."""
+    match = _SIZE_RE.search(title)
+    if not match:
+        return None
+
+    number_match = re.match(
+        r"(\d+(?:[.,]\d+)?)\s*(.*)",
+        match.group(0).strip().lower(),
+    )
+    if not number_match:
+        return None
+
+    try:
+        amount = Decimal(number_match.group(1).replace(",", "."))
+    except InvalidOperation:
+        return None
+
+    unit = re.sub(r"\s+", "", number_match.group(2).replace(".", ""))
+    factors = {
+        "ml": Decimal("1"),
+        "cl": Decimal("10"),
+        "l": Decimal("1000"),
+        "liter": Decimal("1000"),
+        "liters": Decimal("1000"),
+        "litre": Decimal("1000"),
+        "litres": Decimal("1000"),
+        "floz": Decimal("29.5735295625"),
+        "oz": Decimal("29.5735295625"),
+    }
+    factor = factors.get(unit)
+    if factor is None:
+        return None
+
+    result = amount * factor
+    return result if result.is_finite() and result > 0 else None
+
+
+def _concentration_from_title(title: str) -> str | None:
+    """Extract and normalize a concentration descriptor from the raw title."""
+    match = _CONCENTRATION_RE.search(title)
+    if not match:
+        return None
+
+    value = re.sub(r"\s+", " ", match.group(0)).strip().lower()
+    return {
+        "edp": "eau de parfum",
+        "edt": "eau de toilette",
+        "edc": "eau de cologne",
+        "perfume": "parfum",
+    }.get(value, value)
+
+
 def _slug_text(value: str) -> str:
     """Convert a stored URL slug into readable text."""
     value = re.sub(r"\.(?:html?|aspx?)$", "", value, flags=re.I)
@@ -73,9 +121,6 @@ def _url_fallback(
     product slug. This avoids turning generic paths such as ``product`` into
     brands or inventing a brand from an arbitrary first word.
     """
-    # Evaluate every stored URL instead of blindly preferring variant_url.
-    # Some legacy variant URLs are generic (for example /product/123), while
-    # the parent product URL contains the useful title and brand slug.
     urls = [
         _text(variant_row.get("variant_url")),
         _text(variant_row.get("url")),
@@ -88,11 +133,11 @@ def _url_fallback(
         parts = [_slug_text(part) for part in parsed_url.path.split("/") if part]
         candidate_slug = parts[-1] if parts else ""
         normalized = re.sub(r"[^a-z0-9]+", " ", candidate_slug.casefold()).strip()
-        # Prefer informative title slugs over IDs, generic route segments, and
-        # numeric-only paths. This is deterministic and uses only stored data.
-        generic = {"product", "products", "produit", "produits", "artikel",
-                   "articolo", "item", "items", "p", "shop", "category",
-                   "categorie", "search", "catalog"}
+        generic = {
+            "product", "products", "produit", "produits", "artikel",
+            "articolo", "item", "items", "p", "shop", "category",
+            "categorie", "search", "catalog",
+        }
         words = normalized.split()
         informative = bool(words) and normalized not in generic and not all(
             word.isdigit() for word in words
@@ -112,7 +157,7 @@ def _url_fallback(
                 "clinique", "shiseido", "elizabeth arden", "byredo",
                 "diptyque", "creed", "xerjoff", "initio", "amouage",
                 "lattafa", "armaf", "ajmal", "azzaro", "michael kors",
-                "burberry", "boss",
+                "boss",
             )
         )
         return (int(informative), int(known_brand), min(len(normalized), 180))
@@ -126,21 +171,16 @@ def _url_fallback(
     slug = segments[-1] if segments else ""
     original_name_missing = not name
 
-    # Some feeds repeat the brand at the start of a slug (e.g. "boss-boss").
-    # Accept only exact repeated tokens; do not guess from a single token.
     if not brand and slug:
         words = slug.split()
         folded = [word.casefold() for word in words]
         for size in range(min(4, len(words) // 2), 0, -1):
-            if folded[:size] == folded[size : 2 * size]:
+            if folded[:size] == folded[size:2 * size]:
                 brand = " ".join(words[:size])
                 if original_name_missing:
                     name = " ".join(words[size:])
                 break
 
-    # Retailer URLs often use /product/<id>/<brand-and-title-slug>. The slug,
-    # not the generic path segment, is the useful evidence. Match known brands
-    # only at the beginning of the slug and preserve the remainder as title.
     if not brand and slug:
         normalized_slug = re.sub(r"[^a-z0-9]+", " ", slug.casefold()).strip()
         known_brand_prefixes = (
@@ -177,7 +217,6 @@ def _url_fallback(
             ("hermes", "Hermès"),
             ("montblanc", "Montblanc"),
             ("lancome", "Lancôme"),
-            ("hugo boss", "Hugo Boss"),
             ("boss", "BOSS"),
         )
         for prefix, canonical_brand in known_brand_prefixes:
@@ -187,9 +226,6 @@ def _url_fallback(
                     name = normalized_slug[len(prefix):].strip()
                 break
 
-        # Some retailer slugs place the brand after the fragrance name, e.g.
-        # "hawas-for-him-rasasi-sample". Recognize only explicit known brands
-        # as whole tokens, and remove that token from a URL-derived title.
         if not brand:
             known_brand_tokens = (
                 ("rasasi", "Rasasi"),
@@ -221,12 +257,14 @@ def _url_fallback(
                 if re.search(r"(?:^| )" + re.escape(token) + r"(?:$| )", normalized_slug):
                     brand = canonical_brand
                     if original_name_missing:
-                        name = re.sub(r"(?:^| )" + re.escape(token) + r"(?:$| )", " ", normalized_slug)
+                        name = re.sub(
+                            r"(?:^| )" + re.escape(token) + r"(?:$| )",
+                            " ",
+                            normalized_slug,
+                        )
                         name = re.sub(r"\s+", " ", name).strip()
                     break
 
-    # A path segment can be a brand only for explicit, known brand slugs.
-    # Never infer the first arbitrary retailer/category segment as a brand.
     if not brand and len(segments) >= 2:
         prefix_key = re.sub(r"[^a-z0-9]+", "", segments[0].casefold())
         known_path_brands = {
@@ -257,19 +295,17 @@ def _url_fallback(
         }
         brand = known_path_brands.get(prefix_key, "")
 
-    # If the legacy row has no title, use the product slug as the raw title.
-    # Commercial size/concentration descriptors are stripped downstream.
     if not name:
         name = slug
 
     return name, brand
+
 
 def _timestamp(value: Any) -> str:
     if value in (None, ""):
         raise ValueError(
             "legacy row has no fetched_at timestamp; refusing to invent freshness"
         )
-    # Legacy catalog stores fetched_at as Unix seconds (REAL).
     try:
         numeric = float(value)
         if numeric > 0:
@@ -324,8 +360,6 @@ def observation_from_legacy_rows(
     raw_name = _text(variant_row.get("name") or product_row.get("name"))
     brand = _text(variant_row.get("brand") or product_row.get("brand"))
 
-    # Recover missing name/brand only from the URL already stored in the
-    # legacy database. If the URL is insufficient, reject the row explicitly.
     if not raw_name or not brand:
         fallback_name, fallback_brand = _url_fallback(product_row, variant_row)
         raw_name = raw_name or fallback_name
@@ -343,23 +377,29 @@ def observation_from_legacy_rows(
         )
 
     product_id = _id("prod", brand, canonical_name)
+
+    # Structured source values take precedence. Fall back to descriptors in
+    # the raw title only when the corresponding field is absent.
     size_ml = _size(product_row, variant_row)
+    if size_ml is None:
+        size_ml = _size_from_title(raw_name)
+
     concentration = (
         _text(variant_row.get("concentration") or product_row.get("concentration"))
-        or None
+        or _concentration_from_title(raw_name)
     )
     gender = _text(variant_row.get("gender") or product_row.get("gender")) or None
     sku = _text(variant_row.get("sku") or product_row.get("sku")) or None
     gtin = _text(variant_row.get("gtin") or product_row.get("gtin")) or None
     mpn = _text(variant_row.get("mpn") or product_row.get("mpn")) or None
-    # Preserve the source's explicit variant discriminator when available.
-    variant_key = _text(variant_row.get("variant_key") or product_row.get("variant_key")) or None
+    variant_key = _text(
+        variant_row.get("variant_key") or product_row.get("variant_key")
+    ) or None
 
     pack_count = int(
         variant_row.get("pack_count") or product_row.get("pack_count") or 1
     )
 
-    # GTIN/MPN usually identify a sellable variant, not the abstract product.
     variant_id = _id(
         "var",
         product_id,
