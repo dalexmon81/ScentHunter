@@ -35,3 +35,11 @@ jobs:
 
       - name: Detailed catalog classification (read-only)
         run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
+
+      - name: Upload detailed catalog report
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-preflight-detail
+          path: catalog-preflight-detail.json
+          if-no-files-found: error
+          retention-days: 7
