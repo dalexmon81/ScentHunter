@@ -1,11 +1,11 @@
-"""Optional FastAPI adapter for the isolated next engine.
+"""Opt-in FastAPI adapter for the isolated Next Engine and safe migration.
 
-Mount this router only behind an explicit feature flag and configure a separate
-SCENTHUNTER_NEXT_DB path. Importing this module does not open the database.
+The migration API uses the same read-only snapshot exporter, pairing plan,
+preflight, and importer as the CLI. It never writes to the legacy database.
 """
 from __future__ import annotations
 
-from collections import defaultdict
+import json
 import os
 from pathlib import Path
 import secrets
@@ -16,125 +16,64 @@ from threading import Lock, Thread
 from typing import Any
 
 from .migration import import_legacy_snapshot
+from .migration_plan import build_entries, preflight_entries, snapshot_digest
 from .repository import SQLiteOfferRepository
 from .search import SearchRequest, SearchService
+from .sqlite_export import export_catalog
 from .telemetry import metrics
-from .sqlite_export import TABLE_COLUMNS
 
 try:
     from fastapi import APIRouter, Header, HTTPException, Query
-except ImportError:  # Core package and tests remain standard-library only.
+except ImportError:  # Keep core package importable without FastAPI installed.
     APIRouter = None
 
 
-def _read_legacy_rows(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    """Read the legacy catalog in SQLite read-only mode; never mutate it."""
-    conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA query_only=ON")
+def _atomic_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _read_snapshot(legacy_path: Path) -> dict[str, Any]:
+    """Export one complete immutable-format snapshot from a read-only SQLite handle."""
+    fd, name = tempfile.mkstemp(prefix="scenthunter-legacy-snapshot-", suffix=".json")
+    os.close(fd)
+    snapshot_path = Path(name)
     try:
-        existing = {
-            str(row[0])
-            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        }
-        loaded: dict[str, list[dict[str, Any]]] = {}
-        counts: dict[str, int] = {}
-        for table in ("store_products", "store_product_variants"):
-            if table not in existing:
-                loaded[table] = []
-                counts[table] = 0
-                continue
-            actual = {
-                str(row["name"])
-                for row in conn.execute(f'PRAGMA table_info("{table}")')
-            }
-            columns = [col for col in TABLE_COLUMNS[table] if col in actual]
-            if not columns:
-                loaded[table] = []
-                counts[table] = 0
-                continue
-            sql = "SELECT " + ",".join(f'"{col}"' for col in columns) + f' FROM "{table}"'
-            cursor = conn.execute(sql)
-            rows: list[dict[str, Any]] = []
-            while True:
-                batch = cursor.fetchmany(5_000)
-                if not batch:
-                    break
-                rows.extend(dict(row) for row in batch)
-            loaded[table] = rows
-            counts[table] = len(rows)
-        if "store_products" not in existing:
-            raise HTTPException(
-                status_code=409,
-                detail="Legacy table store_products is missing; no import performed.",
-            )
-        return loaded["store_products"], loaded["store_product_variants"], counts
+        snapshot = export_catalog(legacy_path, snapshot_path, limit_per_table=500000)
+        for table, data in snapshot.get("tables", {}).items():
+            if isinstance(data, dict) and data.get("truncated"):
+                raise HTTPException(status_code=409, detail=f"Legacy snapshot is truncated at table {table}; no import performed.")
+        tables = snapshot.get("tables", {})
+        product_table = tables.get("store_products", {})
+        variant_table = tables.get("store_product_variants", {})
+        if not isinstance(product_table, dict) or product_table.get("present") is not True:
+            raise HTTPException(status_code=409, detail="Legacy table store_products is missing; no import performed.")
+        if not isinstance(variant_table, dict) or variant_table.get("present") is not True:
+            raise HTTPException(status_code=409, detail="Legacy table store_product_variants is missing; complete migration cannot be proven.")
+        return snapshot
     finally:
-        conn.close()
+        try:
+            snapshot_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
-def _build_entries(
-    products: list[dict[str, Any]], variants: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Pair variants only by exact normalized (store, base URL); never fuzzy-match."""
-    by_key: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-    for variant in variants:
-        store = str(variant.get("store") or "").strip().casefold()
-        url = str(variant.get("url") or "").strip()
-        if store and url:
-            by_key[(store, url)].append(variant)
-
-    product_groups: dict[tuple[str, str], int] = defaultdict(int)
-    for product in products:
-        store = str(product.get("store") or "").strip().casefold()
-        url = str(product.get("url") or "").strip()
-        if store and url:
-            product_groups[(store, url)] += 1
-
-    entries: list[dict[str, Any]] = []
-    used_variant_keys: set[tuple[str, str]] = set()
-    missing_product_keys = 0
-    ambiguous_product_keys = 0
-    paired_variants = 0
-    for product in products:
-        store = str(product.get("store") or "").strip().casefold()
-        url = str(product.get("url") or "").strip()
-        if not store or not url:
-            missing_product_keys += 1
-            entries.append({"store": store, "product_row": product, "variant_row": None})
-            continue
-        key = (store, url)
-        matches = by_key.get(key, [])
-        if product_groups[key] > 1:
-            ambiguous_product_keys += 1
-            entries.append({"store": store, "product_row": product, "variant_row": None})
-            continue
-        if matches:
-            used_variant_keys.add(key)
-            paired_variants += len(matches)
-            for variant in matches:
-                entries.append({"store": store, "product_row": product, "variant_row": variant})
-        else:
-            entries.append({"store": store, "product_row": product, "variant_row": None})
-
-    orphan_variants = sum(
-        len(rows)
-        for key, rows in by_key.items()
-        if key not in used_variant_keys and product_groups.get(key, 0) == 0
-    )
-    ambiguous_variant_rows = sum(
-        len(rows)
-        for key, rows in by_key.items()
-        if product_groups.get(key, 0) > 1
-    )
-    return entries, {
-        "products_without_store_or_url": missing_product_keys,
-        "duplicate_product_keys": ambiguous_product_keys,
-        "orphan_variant_rows": orphan_variants,
-        "variants_under_ambiguous_product_keys": ambiguous_variant_rows,
-        "paired_variant_rows": paired_variants,
-        "candidate_observations": len(entries),
-    }
+def _load_job(path: Path) -> dict[str, Any]:
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(state, dict):
+            raise ValueError("migration state must be an object")
+    except FileNotFoundError:
+        return {"status": "idle", "result": None, "error": None, "snapshot_sha256": None}
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        return {"status": "interrupted", "result": None, "error": "Persisted migration state is unreadable.", "snapshot_sha256": None}
+    if state.get("status") in {"preparing", "running"}:
+        state.update({"status": "interrupted", "result": None,
+                      "error": "Process restarted while migration was active. No automatic resume was attempted."})
+        _atomic_json(path, state)
+    return state
 
 
 def create_router(db_path: str | Path | None = None):
@@ -145,85 +84,163 @@ def create_router(db_path: str | Path | None = None):
         path = validated_database_path()
     else:
         path = Path(db_path).expanduser().resolve()
-        legacy_path = (
-            os.environ.get("SCENTHUNTER_LEGACY_DB")
-            or os.environ.get("SCENTHUNTER_CATALOG_DB", "")
-        ).strip()
-        if legacy_path and path == Path(legacy_path).expanduser().resolve():
+        legacy_setting = (os.environ.get("SCENTHUNTER_LEGACY_DB") or os.environ.get("SCENTHUNTER_CATALOG_DB", "")).strip()
+        if legacy_setting and path == Path(legacy_setting).expanduser().resolve():
             raise RuntimeError("next-engine database must not be the legacy catalog database")
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     repository = SQLiteOfferRepository(path)
     search_service = SearchService(repository)
     router = APIRouter(prefix="/v2", tags=["next-engine"])
     migration_lock = Lock()
-    migration_job: dict[str, Any] = {"status": "idle", "result": None, "error": None}
+    job_path = path.with_name(path.name + ".migration-job.json")
+    migration_job: dict[str, Any] = _load_job(job_path)
+
+    def persist_job() -> None:
+        _atomic_json(job_path, migration_job)
 
     def authorize(token: str | None) -> None:
         configured = os.environ.get("SCENTHUNTER_MIGRATION_TOKEN", "").strip()
         if not configured:
-            raise HTTPException(
-                status_code=503,
-                detail="Legacy migration is disabled: SCENTHUNTER_MIGRATION_TOKEN is not configured.",
-            )
+            raise HTTPException(status_code=503, detail="Legacy migration is disabled: SCENTHUNTER_MIGRATION_TOKEN is not configured.")
         if not token or not secrets.compare_digest(token, configured):
             raise HTTPException(status_code=401, detail="Invalid migration token.")
 
     def preflight() -> tuple[list[dict[str, Any]], dict[str, Any]]:
-        legacy_setting = (
-            os.environ.get("SCENTHUNTER_LEGACY_DB")
-            or os.environ.get("SCENTHUNTER_CATALOG_DB", "")
-        ).strip()
+        legacy_setting = (os.environ.get("SCENTHUNTER_LEGACY_DB") or os.environ.get("SCENTHUNTER_CATALOG_DB", "")).strip()
         if not legacy_setting:
-            raise HTTPException(
-                status_code=503,
-                detail="Legacy migration is disabled: SCENTHUNTER_CATALOG_DB is not configured.",
-            )
+            raise HTTPException(status_code=503, detail="Legacy migration is disabled: SCENTHUNTER_CATALOG_DB is not configured.")
         legacy_path = Path(legacy_setting).expanduser().resolve()
-        if legacy_path == path.expanduser().resolve():
-            raise HTTPException(
-                status_code=500,
-                detail="Legacy and next-engine database paths must differ.",
-            )
+        if legacy_path == path:
+            raise HTTPException(status_code=500, detail="Legacy and next-engine database paths must differ.")
         if not legacy_path.is_file():
-            raise HTTPException(
-                status_code=503,
-                detail="Configured legacy database file is unavailable.",
-            )
+            raise HTTPException(status_code=503, detail="Configured legacy database file is unavailable.")
 
-        products, variants, table_counts = _read_legacy_rows(legacy_path)
-        entries, pairing = _build_entries(products, variants)
-        if not entries:
-            raise HTTPException(
-                status_code=409,
-                detail="No legacy product rows found; no import performed.",
-            )
-
-        safe = (
-            pairing["products_without_store_or_url"] == 0
-            and pairing["duplicate_product_keys"] == 0
-            and pairing["orphan_variant_rows"] == 0
-            and pairing["variants_under_ambiguous_product_keys"] == 0
-            and len(entries) > 0
-        )
-        summary = {
-            "safe_to_apply": safe,
-            "legacy_tables": table_counts,
+        snapshot = _read_snapshot(legacy_path)
+        tables = snapshot.get("tables", {})
+        product_table = tables.get("store_products", {})
+        variant_table = tables.get("store_product_variants", {})
+        products = product_table.get("rows", []) if isinstance(product_table, dict) else []
+        variants = variant_table.get("rows", []) if isinstance(variant_table, dict) else []
+        if not isinstance(products, list) or not isinstance(variants, list):
+            raise HTTPException(status_code=409, detail="Legacy snapshot rows are malformed; no import performed.")
+        entries, pairing, pairing_quarantine = build_entries(products, variants)
+        plan = preflight_entries(entries, pairing_quarantine)
+        digest = snapshot_digest(snapshot)
+        report_path = path.with_name(f"{path.name}.preflight-{digest[:16]}.json")
+        public_plan = {key: value for key, value in plan.items() if not key.startswith("_")}
+        report_document = {
+            "snapshot_sha256": digest,
+            "legacy_tables": {name: {"present": data.get("present"), "rows": len(data.get("rows", [])), "truncated": data.get("truncated", False)} for name, data in tables.items() if isinstance(data, dict)},
             "pairing": pairing,
-            "preflight": {
-                "processed": len(entries),
-                "valid": None,
-                "rejected_count": None,
-                "validation": "deferred_to_staging_apply",
-                "rejections": [],
-            },
+            "preflight": public_plan,
+            "dispositions": plan["_dispositions"],
+            "quarantine": plan["_quarantine"],
+        }
+        _atomic_json(report_path, report_document)
+        summary = {
+            "safe_to_apply": bool(plan["safe_to_apply"] and entries),
+            "snapshot_sha256": digest,
+            "legacy_tables": {name: len(data.get("rows", [])) for name, data in tables.items() if isinstance(data, dict)},
+            "pairing": pairing,
+            "preflight": public_plan,
             "target_counts_before": repository.counts(),
+            "quarantine_report": str(report_path),
+            "_quarantine": plan["_quarantine"],
         }
         return entries, summary
 
+    def run_migration(entries: list[dict[str, Any]], summary: dict[str, Any]) -> None:
+        stage_path: Path | None = None
+        backup_path: Path | None = None
+        try:
+            fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.migration-", suffix=".sqlite3", dir=str(path.parent))
+            os.close(fd)
+            stage_path = Path(temporary_name)
+            stage = SQLiteOfferRepository(stage_path)
+            staged_result = import_legacy_snapshot(entries, stage)
+            staged_counts = stage.counts()
+            expected_observations = int(summary["preflight"].get("valid_candidates", 0))
+            if (staged_result.get("rejected_count", 0) != 0 or staged_result.get("replayed", 0) != 0
+                    or staged_counts.get("observations") != expected_observations
+                    or staged_result.get("imported", 0) + staged_result.get("skipped_count", 0) != len(entries)):
+                raise RuntimeError("Staging validation failed; no live publication attempted. "
+                                   f"candidates={len(entries)}; result={staged_result!r}; counts={staged_counts!r}")
+
+            # Flush stage journal before copying. No target writes occur before this point.
+            with sqlite3.connect(str(stage_path), timeout=30) as stage_conn:
+                stage_conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                stage_conn.commit()
+                stage_conn.execute("PRAGMA journal_mode=DELETE")
+                stage_conn.commit()
+
+            with migration_lock:
+                if migration_job.get("status") != "running":
+                    raise RuntimeError("Migration state changed; publication cancelled.")
+                if path.exists():
+                    backup_path = path.with_name(f"{path.name}.pre-migration-{time.time_ns()}.bak")
+                    with sqlite3.connect(str(path), timeout=30) as live_conn:
+                        live_conn.execute("PRAGMA wal_checkpoint(FULL)")
+                        live_conn.commit()
+                        with sqlite3.connect(str(backup_path), timeout=30) as backup_conn:
+                            live_conn.backup(backup_conn)
+                target_existed_before_publish = path.exists()
+                try:
+                    with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
+                        with sqlite3.connect(str(path), timeout=30) as destination_conn:
+                            source_conn.backup(destination_conn)
+                    published_counts = repository.counts()
+                    if published_counts != staged_counts:
+                        raise RuntimeError(f"Post-publication count mismatch: stage={staged_counts!r}; published={published_counts!r}")
+                except Exception:
+                    if backup_path and backup_path.exists():
+                        with sqlite3.connect(str(backup_path), timeout=30) as backup_conn:
+                            with sqlite3.connect(str(path), timeout=30) as destination_conn:
+                                backup_conn.backup(destination_conn)
+                    elif not target_existed_before_publish:
+                        # A failed first publication has no prior database to restore.
+                        # Remove the unverified target and SQLite sidecars rather than
+                        # leave a database that appears usable but failed validation.
+                        for candidate in (path, Path(str(path) + "-wal"), Path(str(path) + "-shm")):
+                            try:
+                                candidate.unlink(missing_ok=True)
+                            except OSError:
+                                pass
+                    raise
+
+                result = {
+                    "snapshot_sha256": summary["snapshot_sha256"],
+                    "legacy_tables": summary["legacy_tables"],
+                    "pairing": summary["pairing"],
+                    "processed": staged_result["processed"],
+                    "imported": staged_result["imported"],
+                    "replayed": staged_result["replayed"],
+                    "rejected_count": 0,
+                    "partial_import": False,
+                    "counts": published_counts,
+                    "previous_v2_backup": str(backup_path) if backup_path else None,
+                    "quarantine_report": summary["quarantine_report"],
+                }
+                migration_job.update({"status": "completed", "result": result, "error": None,
+                                      "snapshot_sha256": summary["snapshot_sha256"]})
+                persist_job()
+        except Exception as exc:
+            with migration_lock:
+                migration_job.update({"status": "failed", "result": None,
+                                      "error": f"{type(exc).__name__}: {exc}",
+                                      "snapshot_sha256": summary.get("snapshot_sha256")})
+                persist_job()
+        finally:
+            if stage_path is not None:
+                for candidate in (stage_path, Path(str(stage_path) + "-wal"), Path(str(stage_path) + "-shm")):
+                    try:
+                        candidate.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+
     @router.get("/health")
     def health() -> dict[str, Any]:
-        counts = repository.counts()
-        return {"ok": True, "engine": "next", "database": "separate", "counts": counts}
+        return {"ok": True, "engine": "next", "database": "separate", "counts": repository.counts()}
 
     @router.get("/metrics")
     def engine_metrics() -> dict[str, Any]:
@@ -237,228 +254,72 @@ def create_router(db_path: str | Path | None = None):
         limit: int = Query(default=50, ge=1, le=200),
     ) -> dict[str, Any]:
         try:
-            request = SearchRequest(query=q, store=store, currency=currency, limit=limit)
-            return search_service.search(request)
+            return search_service.search(SearchRequest(query=q, store=store, currency=currency, limit=limit))
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    def run_migration(entries: list[dict[str, Any]], summary: dict[str, Any]) -> None:
-        stage_path: Path | None = None
-        backup_path: Path | None = None
-        stage: SQLiteOfferRepository | None = None
-        try:
-            # All import and validation happens in a separate staging database.
-            fd, temp_name = tempfile.mkstemp(
-                prefix=f".{path.name}.migration-",
-                suffix=".sqlite3",
-                dir=str(path.parent),
-            )
-            os.close(fd)
-            stage_path = Path(temp_name)
-            stage = SQLiteOfferRepository(stage_path)
-
-            staged_result = import_legacy_snapshot(entries, stage)
-            staged_counts = stage.counts()
-            rejected_count = int(staged_result.get("rejected_count", 0))
-
-            # Never publish an incomplete stage. This deliberately rejects the
-            # current known name/brand mapping failures rather than losing rows.
-            if staged_counts["observations"] == 0 or rejected_count > 0:
-                sample = staged_result.get("rejected", [])[:10]
-                raise RuntimeError(
-                    "Staging import failed validation; partial imports are forbidden. "
-                    f"imported={staged_result.get('imported', 0)}; "
-                    f"observations={staged_counts['observations']}; "
-                    f"rejected_count={rejected_count}; "
-                    f"rejection_sample={sample!r}. "
-                    "Live V2 database was not changed."
-                )
-
-            # Stage must be finalized before backup/publish. Repository methods
-            # close each connection; no persistent SQLite connection is retained.
-            with sqlite3.connect(str(stage_path), timeout=30) as stage_conn:
-                stage_conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                stage_conn.commit()
-                stage_conn.execute("PRAGMA journal_mode=DELETE")
-                stage_conn.commit()
-
-            # Serialize publication against another migration and back up the
-            # existing V2 database before replacing its contents.
-            with migration_lock:
-                if migration_job["status"] not in ("running", "preparing"):
-                    raise RuntimeError("Migration state changed; publication cancelled.")
-
-                # Create a standalone backup of the current V2 DB, including
-                # the partial import from a previous run, before overwriting it.
-                if path.exists():
-                    backup_path = path.with_name(
-                        f"{path.name}.pre-migration-{int(time.time())}.bak"
-                    )
-                    with sqlite3.connect(str(path), timeout=30) as live_conn:
-                        live_conn.execute("PRAGMA wal_checkpoint(FULL)")
-                        live_conn.commit()
-                        with sqlite3.connect(str(backup_path), timeout=30) as backup_conn:
-                            live_conn.backup(backup_conn)
-
-                # Publish via SQLite's backup API, not os.replace: this avoids
-                # stale -wal/-shm sidecars and keeps SQLite's file handling intact.
-                with sqlite3.connect(str(stage_path), timeout=30) as source_conn:
-                    with sqlite3.connect(str(path), timeout=30) as destination_conn:
-                        source_conn.backup(destination_conn)
-
-            result_counts = repository.counts()
-            if result_counts != staged_counts:
-                raise RuntimeError(
-                    "Published V2 counts differ from validated staging counts; "
-                    f"staged={staged_counts!r}; published={result_counts!r}; "
-                    f"backup={str(backup_path) if backup_path else None}"
-                )
-
-            result = {
-                "legacy_tables": summary["legacy_tables"],
-                "pairing": summary["pairing"],
-                "processed": staged_result["processed"],
-                "imported": staged_result["imported"],
-                "replayed": staged_result["replayed"],
-                "rejected_count": rejected_count,
-                "rejected_sample": staged_result.get("rejected", [])[:10],
-                "partial_import": False,
-                "counts": result_counts,
-                "previous_v2_backup": str(backup_path) if backup_path else None,
-            }
-            with migration_lock:
-                migration_job.update(
-                    {"status": "completed", "result": result, "error": None}
-                )
-        except Exception as exc:
-            with migration_lock:
-                migration_job.update(
-                    {
-                        "status": "failed",
-                        "result": None,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
-                )
-        finally:
-            stage = None
-            if stage_path is not None:
-                for candidate in (
-                    stage_path,
-                    Path(str(stage_path) + "-wal"),
-                    Path(str(stage_path) + "-shm"),
-                ):
-                    try:
-                        candidate.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-            # A failed migration may leave an empty backup file if creation
-            # itself failed before SQLite could populate it. Keep it for forensic
-            # inspection rather than deleting a potentially useful recovery file.
-
     @router.get("/migration/legacy/status")
-    def migration_status(
-        migration_token: str | None = Header(
-            default=None,
-            alias="X-ScentHunter-Migration-Token",
-        ),
-    ) -> dict[str, Any]:
+    def migration_status(migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token")) -> dict[str, Any]:
         authorize(migration_token)
         with migration_lock:
             snapshot = dict(migration_job)
-        return {"ok": snapshot["status"] != "failed", "mode": "apply", **snapshot}
+        return {"ok": snapshot.get("status") not in {"failed", "interrupted"}, "mode": "apply", **snapshot}
 
     @router.post("/migration/legacy")
     def migrate_legacy(
         mode: str = Query(default="preview", pattern="^(preview|apply)$"),
-        migration_token: str | None = Header(
-            default=None,
-            alias="X-ScentHunter-Migration-Token",
-        ),
+        migration_token: str | None = Header(default=None, alias="X-ScentHunter-Migration-Token"),
     ) -> dict[str, Any]:
         authorize(migration_token)
-
+        previous_completed = None
         if mode == "apply":
             with migration_lock:
-                if migration_job["status"] in ("preparing", "running"):
-                    return {
-                        "ok": True,
-                        "mode": "apply",
-                        "status": migration_job["status"],
-                        "message": "Migration already active; do not submit apply again.",
-                    }
-                if migration_job["status"] == "completed":
-                    return {"ok": True, "mode": "apply", **migration_job}
-                migration_job.update(
-                    {"status": "preparing", "result": None, "error": None}
-                )
-
+                if migration_job.get("status") in {"preparing", "running"}:
+                    return {"ok": True, "mode": "apply", "status": migration_job["status"],
+                            "message": "Migration already active; do not submit apply again."}
+                if migration_job.get("status") == "completed":
+                    previous_completed = {"snapshot_sha256": migration_job.get("snapshot_sha256"), "result": migration_job.get("result")}
+                migration_job.update({"status": "preparing", "result": None, "error": None})
+                persist_job()
         try:
             entries, summary = preflight()
-
+            public_summary = {key: value for key, value in summary.items() if not key.startswith("_")}
             if not summary["safe_to_apply"]:
                 if mode == "apply":
                     with migration_lock:
-                        migration_job.update(
-                            {
-                                "status": "failed",
-                                "result": None,
-                                "error": "Preflight found unsafe pairing structure.",
-                            }
-                        )
-                return {
-                    "ok": False,
-                    "mode": mode,
-                    "message": (
-                        "Preflight found unsafe pairing structure. "
-                        "Nothing was written to the live V2 database."
-                    ),
-                    **summary,
-                }
-
+                        migration_job.update({"status": "failed", "result": None,
+                                              "error": "Complete preflight found quarantined or invalid candidates.",
+                                              "snapshot_sha256": summary["snapshot_sha256"]})
+                        persist_job()
+                return {"ok": False, "mode": mode,
+                        "message": "Preflight classified every candidate, but unresolved records remain in quarantine. No live database was changed.",
+                        **public_summary}
             if mode == "preview":
-                return {
-                    "ok": True,
-                    "mode": "preview",
-                    "message": (
-                        "Structural preflight passed. Full row validation is deferred "
-                        "to the isolated staging import during mode=apply. "
-                        "No live database was changed."
-                    ),
-                    **summary,
-                }
-
-            # Existing V2 data is permitted: staging is validated first, then
-            # the live V2 DB is backed up and replaced only after zero rejects.
+                return {"ok": True, "mode": "preview",
+                        "message": "Complete preflight passed. No live database was changed.", **public_summary}
+            if previous_completed and previous_completed.get("snapshot_sha256") == summary["snapshot_sha256"]:
+                with migration_lock:
+                    migration_job.update({"status": "completed", "result": previous_completed.get("result"), "error": None,
+                                          "snapshot_sha256": summary["snapshot_sha256"]})
+                    persist_job()
+                    return {"ok": True, "mode": "apply", **migration_job}
             with migration_lock:
-                migration_job["status"] = "running"
-
-            Thread(
-                target=run_migration,
-                args=(entries, summary),
-                daemon=True,
-                name="scenthunter-legacy-migration",
-            ).start()
-
-            return {
-                "ok": True,
-                "mode": "apply",
-                "status": "running",
-                "message": (
-                    "Migration accepted in background. Poll "
-                    "GET /v2/migration/legacy/status; do not submit apply again."
-                ),
-            }
+                migration_job.update({"status": "running", "result": None, "error": None,
+                                      "snapshot_sha256": summary["snapshot_sha256"]})
+                persist_job()
+            Thread(target=run_migration, args=(entries, summary), daemon=True,
+                   name="scenthunter-legacy-migration").start()
+            return {"ok": True, "mode": "apply", "status": "running",
+                    "snapshot_sha256": summary["snapshot_sha256"],
+                    "message": "Migration accepted. Poll GET /v2/migration/legacy/status; do not submit apply again."}
         except Exception as exc:
             if mode == "apply":
                 with migration_lock:
-                    if migration_job["status"] == "preparing":
-                        migration_job.update(
-                            {
-                                "status": "failed",
-                                "result": None,
-                                "error": f"{type(exc).__name__}: {exc}",
-                            }
-                        )
-            raise
+                    migration_job.update({"status": "failed", "result": None,
+                                          "error": f"{type(exc).__name__}: {exc}"})
+                    persist_job()
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(status_code=500, detail=f"Migration preflight failed safely: {type(exc).__name__}: {exc}") from exc
 
     return router
