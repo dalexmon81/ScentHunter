@@ -73,11 +73,51 @@ def _url_fallback(
     product slug. This avoids turning generic paths such as ``product`` into
     brands or inventing a brand from an arbitrary first word.
     """
-    url = _text(
-        variant_row.get("variant_url")
-        or variant_row.get("url")
-        or product_row.get("url")
-    )
+    # Evaluate every stored URL instead of blindly preferring variant_url.
+    # Some legacy variant URLs are generic (for example /product/123), while
+    # the parent product URL contains the useful title and brand slug.
+    urls = [
+        _text(variant_row.get("variant_url")),
+        _text(variant_row.get("url")),
+        _text(product_row.get("url")),
+    ]
+    urls = list(dict.fromkeys(url for url in urls if url))
+
+    def url_evidence(url: str) -> tuple[int, int, int]:
+        parsed_url = urlparse(url)
+        parts = [_slug_text(part) for part in parsed_url.path.split("/") if part]
+        candidate_slug = parts[-1] if parts else ""
+        normalized = re.sub(r"[^a-z0-9]+", " ", candidate_slug.casefold()).strip()
+        # Prefer informative title slugs over IDs, generic route segments, and
+        # numeric-only paths. This is deterministic and uses only stored data.
+        generic = {"product", "products", "produit", "produits", "artikel",
+                   "articolo", "item", "items", "p", "shop", "category",
+                   "categorie", "search", "catalog"}
+        words = normalized.split()
+        informative = bool(words) and normalized not in generic and not all(
+            word.isdigit() for word in words
+        )
+        known_brand = any(
+            re.search(r"(?:^| )" + re.escape(token) + r"(?:$| )", normalized)
+            for token in (
+                "hugo boss", "giorgio armani", "jean paul gaultier",
+                "dolce gabbana", "calvin klein", "carolina herrera",
+                "narciso rodriguez", "yves saint laurent", "paco rabanne",
+                "issey miyake", "tom ford", "ralph lauren", "estee lauder",
+                "maison margiela", "victoria secret", "bois 1920",
+                "miu miu", "versace", "dior", "chanel", "givenchy",
+                "burberry", "prada", "gucci", "hermes", "montblanc",
+                "lancome", "rasasi", "floris", "valentino", "mancera",
+                "mugler", "yves rocher", "bvlgari", "bulgari", "sisley",
+                "clinique", "shiseido", "elizabeth arden", "byredo",
+                "diptyque", "creed", "xerjoff", "initio", "amouage",
+                "lattafa", "armaf", "ajmal", "azzaro", "michael kors",
+                "burberry", "boss",
+            )
+        )
+        return (int(informative), int(known_brand), min(len(normalized), 180))
+
+    url = max(urls, key=url_evidence) if urls else ""
     parsed = urlparse(url)
     segments = [_slug_text(part) for part in parsed.path.split("/") if part]
 
