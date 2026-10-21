@@ -1,0 +1,32 @@
+name: ScentHunter Next Engine Tests
+
+on:
+  push:
+    branches:
+      - scenthunter-next-engine
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  next-engine-tests:
+    name: Isolated next-engine unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out dedicated branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run isolated next-engine tests
+        run: |
+          python -m unittest discover -s tests -p "test_scenthunter_next_engine.py"
+          python -m unittest discover -s tests -p "test_canonical_matcher.py"
+          python -m unittest discover -s tests -p "test_offer_aggregator.py"
+          python -m unittest discover -s tests -p "test_next_engine_service.py"
