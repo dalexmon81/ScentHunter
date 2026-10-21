@@ -257,7 +257,19 @@ def preflight_entries(entries: Sequence[Mapping[str, Any]], pairing_quarantine: 
             continue
         discriminator_fields = ("sku", "gtin", "mpn", "size_ml", "concentration", "variant_key")
         source_rows = [product] + ([variant] if variant else [])
-        if not any(str(row.get(field) or "").strip() for row in source_rows for field in discriminator_fields):
+        has_structured_discriminator = any(
+            str(row.get(field) or "").strip()
+            for row in source_rows
+            for field in discriminator_fields
+        )
+        # Match the bridge: titles can supply a recognized size or concentration.
+        from .legacy_bridge import _concentration_from_title, _size_from_title
+        title = str((variant or {}).get("name") or product.get("name") or "").strip()
+        has_title_discriminator = bool(
+            _size_from_title(title) is not None
+            or _concentration_from_title(title)
+        )
+        if not has_structured_discriminator and not has_title_discriminator:
             counts["IDENTITY_REVIEW"] += 1
             item = _quarantine("IDENTITY_REVIEW", "no_source_variant_discriminator_sku_gtin_mpn_size_or_concentration", store, url or None, "candidate_entries", index, entry)
             quarantine.append(item); dispositions.append(item)
