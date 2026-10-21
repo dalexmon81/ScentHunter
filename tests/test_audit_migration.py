@@ -5,21 +5,19 @@ import unittest
 from backend.scenthunter_next_engine.audit_migration_reports import audit_reports
 
 
+def group(records):
+    return {"count": len(records), "all_records": records}
+
+
 def make_reports():
     detail = {
         "product_count": 3,
         "variant_count": 2,
-        "products_without_variants": [
-            {"product_id": "p1"},
-        ],
-        "products_missing_canonical_image": [
-            {"product_id": "p2"},
-        ],
-        "structural_audit": {
-            "orphan_variants": 0,
-            "products_missing_brand": 0,
-            "products_missing_name": 0,
-        },
+        "products_without_variants": group([{"product_id": "p1"}]),
+        "products_missing_canonical_image": group([{"product_id": "p2"}]),
+        "orphan_variants": group([]),
+        "products_missing_brand": group([]),
+        "products_missing_name": group([]),
     }
     plan = {
         "status": "complete",
@@ -66,9 +64,14 @@ class TestMigrationReportAudit(unittest.TestCase):
 
     def test_review_group_overlap_fails(self):
         detail, plan = make_reports()
-        detail["products_missing_canonical_image"].append({"product_id": "p1"})
-        plan["records_requiring_review"].append({"product_id": "p3"})
-        plan["records_requiring_review_count"] = 3
+        detail["products_missing_canonical_image"] = group(
+            [{"product_id": "p2"}, {"product_id": "p1"}]
+        )
+        plan["records_requiring_review"] = [
+            {"product_id": "p1"},
+            {"product_id": "p2"},
+        ]
+        plan["records_requiring_review_count"] = 2
         plan["review_reasons"]["missing_canonical_image"] = 2
 
         with self.assertRaisesRegex(ValueError, "overlap"):
