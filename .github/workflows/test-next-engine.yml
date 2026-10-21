@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   next-engine-tests:
-    name: Isolated next-engine tests and catalog preflight
+    name: Isolated next-engine tests and read-only catalog reports
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -36,10 +36,15 @@ jobs:
       - name: Detailed catalog classification (read-only)
         run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
 
-      - name: Upload detailed catalog report
+      - name: Build migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_migration_plan
+
+      - name: Upload read-only catalog reports
         uses: actions/upload-artifact@v4
         with:
-          name: catalog-preflight-detail
-          path: catalog-preflight-detail.json
+          name: catalog-migration-review
+          path: |
+            catalog-preflight-detail.json
+            catalog-migration-plan.json
           if-no-files-found: error
           retention-days: 7
