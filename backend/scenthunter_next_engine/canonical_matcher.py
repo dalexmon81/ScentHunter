@@ -15,7 +15,7 @@ from .catalog_repository import CatalogRepository
 from .models import MatchStatus, OfferMatch, RetailerOffer, CanonicalProduct
 
 
-_SPACE_RE = re.compile(r"\\s+")
+_SPACE_RE = re.compile(r"\s+")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 
 # Generic descriptors frequently appended to product titles; never product-specific.
