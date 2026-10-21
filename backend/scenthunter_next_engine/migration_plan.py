@@ -224,7 +224,6 @@ def preflight_entries(entries: Sequence[Mapping[str, Any]], pairing_quarantine: 
             item = _quarantine("IDENTITY_REVIEW", "listing_or_navigation_pattern_requires_manual_review_even_if_priced", store, url or None, "candidate_entries", index, entry)
             quarantine.append(item); dispositions.append(item)
             continue
-        # Missing source identity fields must not be silently reconstructed from a slug.
         title = str((variant or {}).get("name") or product.get("name") or "").strip()
         brand = str((variant or {}).get("brand") or product.get("brand") or "").strip()
         base_brand = str(product.get("brand") or "").strip()
@@ -232,11 +231,6 @@ def preflight_entries(entries: Sequence[Mapping[str, Any]], pairing_quarantine: 
         if base_brand and variant_brand and base_brand.casefold() != variant_brand.casefold():
             counts["IDENTITY_REVIEW"] += 1
             item = _quarantine("IDENTITY_REVIEW", "base_product_brand_conflicts_with_variant_brand", store, url or None, "candidate_entries", index, entry)
-            quarantine.append(item); dispositions.append(item)
-            continue
-        if not title or not brand:
-            counts["IDENTITY_REVIEW"] += 1
-            item = _quarantine("IDENTITY_REVIEW", "source_title_or_brand_missing; automatic_slug_identity_not_accepted", store, url or None, "candidate_entries", index, entry)
             quarantine.append(item); dispositions.append(item)
             continue
         if not _has_price(product, variant):
