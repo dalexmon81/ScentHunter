@@ -4547,12 +4547,14 @@ def _coverage_queries(product):
 
 
 def _coverage_seed_tasks(conn, products):
-    """Create the complete store x canonical-product coverage matrix idempotently."""
-    if not products:
-        return
-    expected = len(products) * len(STORES)
-    existing = int(conn.execute('SELECT COUNT(*) c FROM catalog_coverage').fetchone()['c'] or 0)
-    if existing >= expected:
+    """Keep the store x canonical-product coverage matrix complete and current.
+
+    Do not use a total-row-count shortcut here: coverage is a matrix keyed by
+    (store, product_id), so the same row count can hide missing combinations
+    when products or configured stores change. Existing tasks remain untouched
+    unless their canonical identity/query changes; changed tasks are reopened.
+    """
+    if not products or not STORES:
         return
     now = time.time()
     rows = []
@@ -4565,11 +4567,35 @@ def _coverage_seed_tasks(conn, products):
         primary = queries[0]
         for store in STORES:
             rows.append((store, product_id, canonical, primary, now))
+    if not rows:
+        return
     conn.executemany(
         """INSERT INTO catalog_coverage(
                store,product_id,canonical_name,query,state,next_run_at)
            VALUES(?,?,?,?, 'PENDING', ?)
-           ON CONFLICT(store,product_id) DO NOTHING""",
+           ON CONFLICT(store,product_id) DO UPDATE SET
+               state=CASE
+                   WHEN catalog_coverage.canonical_name != excluded.canonical_name
+                     OR catalog_coverage.query != excluded.query
+                   THEN 'PENDING' ELSE catalog_coverage.state END,
+               next_run_at=CASE
+                   WHEN catalog_coverage.canonical_name != excluded.canonical_name
+                     OR catalog_coverage.query != excluded.query
+                   THEN excluded.next_run_at ELSE catalog_coverage.next_run_at END,
+               found_urls=CASE
+                   WHEN catalog_coverage.canonical_name != excluded.canonical_name
+                     OR catalog_coverage.query != excluded.query
+                   THEN 0 ELSE catalog_coverage.found_urls END,
+               last_error=CASE
+                   WHEN catalog_coverage.canonical_name != excluded.canonical_name
+                     OR catalog_coverage.query != excluded.query
+                   THEN NULL ELSE catalog_coverage.last_error END,
+               last_finished_at=CASE
+                   WHEN catalog_coverage.canonical_name != excluded.canonical_name
+                     OR catalog_coverage.query != excluded.query
+                   THEN NULL ELSE catalog_coverage.last_finished_at END,
+               canonical_name=excluded.canonical_name,
+               query=excluded.query""",
         rows,
     )
     conn.commit()
