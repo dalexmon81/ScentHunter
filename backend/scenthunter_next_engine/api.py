@@ -21,7 +21,7 @@ except ImportError:
 def _atomic_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    temp.write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True, default=str) + "\n", encoding="utf-8")
     os.replace(temp, path)
 
 
@@ -124,18 +124,36 @@ def create_router(db_path: str | Path | None = None):
         report = path.with_name(f"{path.name}.preflight-{digest[:16]}.json")
         public_plan = {k: v for k, v in plan.items() if not k.startswith("_")}
         tables_summary = {n: len(d.get("rows", [])) for n, d in tables.items() if isinstance(d, dict)}
+        quarantine_rows = plan["_quarantine"]
+        def aggregate_quarantine(field: str) -> list[dict[str, Any]]:
+            counts: dict[str, int] = {}
+            for item in quarantine_rows:
+                value = item.get(field) if isinstance(item, dict) else None
+                key = str(value).strip() if value not in (None, "") else "unknown"
+                counts[key] = counts.get(key, 0) + 1
+            return [{"value": key, "count": count}
+                    for key, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+        quarantine_summary = {
+            "total": len(quarantine_rows),
+            "by_class": aggregate_quarantine("class"),
+            "by_reason": aggregate_quarantine("reason"),
+            "by_store": aggregate_quarantine("store"),
+        }
+        # Persist aggregate diagnostics only. Storing every quarantined row in
+        # a pretty-printed JSON report can exhaust the persistent Fly volume.
         _atomic_json(report, {
             "snapshot_sha256": digest,
             "legacy_tables": {n: {"present": d.get("present"), "rows": len(d.get("rows", [])), "truncated": d.get("truncated", False)} for n, d in tables.items() if isinstance(d, dict)},
             "pairing": pairing, "preflight": public_plan,
-            "dispositions": plan["_dispositions"], "quarantine": plan["_quarantine"],
+            "dispositions": plan["_dispositions"],
+            "quarantine_summary": quarantine_summary,
         })
         summary = {
             "safe_to_apply": bool(plan["safe_to_apply"] and entries),
             "snapshot_sha256": digest, "legacy_tables": tables_summary,
             "pairing": pairing, "preflight": public_plan,
             "target_counts_before": repository.counts(),
-            "quarantine_report": str(report), "_quarantine": plan["_quarantine"],
+            "quarantine_report": str(report),
         }
         return entries, summary
 
@@ -273,25 +291,38 @@ def create_router(db_path: str | Path | None = None):
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise HTTPException(500, "Quarantine report exists but is not valid JSON.") from exc
 
-        quarantine = report_data.get("quarantine", [])
-        if not isinstance(quarantine, list):
-            raise HTTPException(500, "Quarantine report has an invalid quarantine section.")
-        def count_field(field: str) -> list[dict[str, Any]]:
-            counts: dict[str, int] = {}
-            for item in quarantine:
-                value = item.get(field) if isinstance(item, dict) else None
-                key = str(value).strip() if value not in (None, "") else "unknown"
-                counts[key] = counts.get(key, 0) + 1
-            return [{"value": key, "count": count} for key, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+        saved_summary = report_data.get("quarantine_summary")
+        if isinstance(saved_summary, dict):
+            quarantine_total = int(saved_summary.get("total", 0))
+            by_class = saved_summary.get("by_class", [])
+            by_reason = saved_summary.get("by_reason", [])
+            by_store = saved_summary.get("by_store", [])
+        else:
+            # Backward compatibility with reports created before aggregate-only
+            # persistence was introduced.
+            quarantine = report_data.get("quarantine", [])
+            if not isinstance(quarantine, list):
+                raise HTTPException(500, "Quarantine report has an invalid quarantine section.")
+            def count_field(field: str) -> list[dict[str, Any]]:
+                counts: dict[str, int] = {}
+                for item in quarantine:
+                    value = item.get(field) if isinstance(item, dict) else None
+                    key = str(value).strip() if value not in (None, "") else "unknown"
+                    counts[key] = counts.get(key, 0) + 1
+                return [{"value": key, "count": count} for key, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+            quarantine_total = len(quarantine)
+            by_class = count_field("class")
+            by_reason = count_field("reason")
+            by_store = count_field("store")
 
         return {
             "ok": True,
             "mode": "preview",
             "snapshot_sha256": report_data.get("snapshot_sha256"),
-            "quarantine_total": len(quarantine),
-            "by_class": count_field("class"),
-            "by_reason": count_field("reason"),
-            "by_store": count_field("store"),
+            "quarantine_total": quarantine_total,
+            "by_class": by_class,
+            "by_reason": by_reason,
+            "by_store": by_store,
             "message": "Read-only aggregate of the existing preview report; no migration or database writes were performed.",
         }
 
