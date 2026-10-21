@@ -39,6 +39,9 @@ jobs:
       - name: Build migration review plan (read-only)
         run: python -m backend.scenthunter_next_engine.catalog_migration_plan
 
+      - name: Validate generated migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.validate_generated_migration_plan
+
       - name: Upload read-only catalog reports
         uses: actions/upload-artifact@v4
         with:
