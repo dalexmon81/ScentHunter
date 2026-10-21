@@ -21,7 +21,7 @@ except ImportError:
 def _atomic_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    temp.write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True, default=str) + "\n", encoding="utf-8")
     os.replace(temp, path)
 
 
@@ -124,11 +124,28 @@ def create_router(db_path: str | Path | None = None):
         report = path.with_name(f"{path.name}.preflight-{digest[:16]}.json")
         public_plan = {k: v for k, v in plan.items() if not k.startswith("_")}
         tables_summary = {n: len(d.get("rows", [])) for n, d in tables.items() if isinstance(d, dict)}
+        # Store compact diagnostics rather than duplicating full candidate records.
+        # quarantine-summary only consumes class/reason/store, so no detail is lost
+        # for that endpoint. Disposition totals preserve aggregate visibility.
+        quarantine_compact = [
+            {
+                "class": str(item.get("class") or "unknown"),
+                "reason": str(item.get("reason") or "unknown"),
+                "store": str(item.get("store") or "unknown"),
+            }
+            for item in plan["_quarantine"]
+            if isinstance(item, dict)
+        ]
+        disposition_counts: dict[str, int] = {}
+        for item in plan["_dispositions"]:
+            key = str(item.get("disposition") or item.get("status") or "unknown") if isinstance(item, dict) else "unknown"
+            disposition_counts[key] = disposition_counts.get(key, 0) + 1
         _atomic_json(report, {
             "snapshot_sha256": digest,
             "legacy_tables": {n: {"present": d.get("present"), "rows": len(d.get("rows", [])), "truncated": d.get("truncated", False)} for n, d in tables.items() if isinstance(d, dict)},
             "pairing": pairing, "preflight": public_plan,
-            "dispositions": plan["_dispositions"], "quarantine": plan["_quarantine"],
+            "dispositions_summary": disposition_counts,
+            "quarantine": quarantine_compact,
         })
         summary = {
             "safe_to_apply": bool(plan["safe_to_apply"] and entries),
