@@ -352,6 +352,8 @@ def observation_from_legacy_rows(
     sku = _text(variant_row.get("sku") or product_row.get("sku")) or None
     gtin = _text(variant_row.get("gtin") or product_row.get("gtin")) or None
     mpn = _text(variant_row.get("mpn") or product_row.get("mpn")) or None
+    # Preserve the source's explicit variant discriminator when available.
+    variant_key = _text(variant_row.get("variant_key") or product_row.get("variant_key")) or None
 
     pack_count = int(
         variant_row.get("pack_count") or product_row.get("pack_count") or 1
@@ -367,6 +369,7 @@ def observation_from_legacy_rows(
         gender or "",
         gtin or "",
         mpn or "",
+        variant_key or "",
     )
 
     base_url = _text(product_row.get("url"))
