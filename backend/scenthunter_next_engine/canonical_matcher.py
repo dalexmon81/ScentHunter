@@ -230,6 +230,31 @@ class CanonicalMatcher:
                 reason="no_exact_canonical_name_and_brand_match",
             )
 
+        if len(candidates) > 1 and offer.size_ml is not None:
+            # Disambiguate only when the offer's literal title (before accent
+            # normalization) and its explicitly declared size identify exactly
+            # one catalog product. Size alone must not override duplicate or
+            # merely normalized identities.
+            raw_offer_title = " ".join((offer.raw_name or "").split()).casefold()
+            exact_title_and_size = []
+            for candidate_product, candidate_variant_aliases in candidates:
+                literal_titles = [candidate_product.name, *candidate_product.aliases]
+                has_literal_title = any(
+                    " ".join(value.split()).casefold() == raw_offer_title
+                    for value in literal_titles
+                )
+                size_variants = [
+                    variant
+                    for variant in candidate_product.variants
+                    if variant.size_ml == offer.size_ml
+                ]
+                if has_literal_title and len(size_variants) == 1:
+                    exact_title_and_size.append(
+                        (candidate_product, candidate_variant_aliases)
+                    )
+            if len(exact_title_and_size) == 1:
+                candidates = exact_title_and_size
+
         if len(candidates) > 1:
             return OfferMatch(
                 offer=offer,
