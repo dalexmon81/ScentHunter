@@ -1,25 +1,19 @@
-name: Manual Live Next Engine Shadow
+name: ScentHunter Next Engine Tests
 
 on:
+  push:
+    branches:
+      - scenthunter-next-engine
   workflow_dispatch:
-    inputs:
-      confirm_live_read_only:
-        description: "Confirm live retailer requests only; no production search, database, or catalog writes"
-        required: true
-        type: choice
-        options:
-          - "no"
-          - "yes"
-        default: "no"
 
 permissions:
   contents: read
 
 jobs:
-  live-shadow:
-    if: ${{ inputs.confirm_live_read_only == 'yes' }}
+  next-engine-tests:
+    name: Isolated next-engine tests and read-only catalog reports
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
       - name: Check out dedicated branch
@@ -30,19 +24,65 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install scraper and test dependencies
-        run: python -m pip install requests beautifulsoup4 pytest fastapi httpx
+      - name: Install test dependencies
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4
 
-      - name: Run manual bounded live-offer shadow comparison
-        env:
-          PYTHONUNBUFFERED: "1"
-        run: python -m tests.run_next_engine_live_shadow
+      - name: Run isolated next-engine tests
+        run: >-
+          python -m pytest -q
+          tests/test_scenthunter_next_engine.py
+          tests/test_canonical_matcher.py
+          tests/test_offer_aggregator.py
+          tests/test_next_engine_service.py
+          tests/test_real_catalog_end_to_end.py
+          tests/test_real_variant_separation.py
+          tests/test_catalog_preflight.py
+          tests/test_migration_plan_validator.py
+          tests/test_audit_migration.py
+          tests/test_next_engine_integration_contract.py
+          tests/test_next_engine_runtime_preview.py
+          tests/test_next_engine_runtime_batch_preview.py
+          tests/test_next_engine_realistic_batch.py
+          tests/test_next_engine_main_boot_gate.py
+          tests/test_next_engine_shadow_comparison.py
 
-      - name: Upload live comparison report
-        if: always()
+      - name: Run real-catalog smoke entry point (read-only)
+        run: python -m backend.scenthunter_next_engine.smoke_entrypoint
+
+      - name: Audit real catalog without modifying it
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+
+      - name: Detailed catalog classification (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
+
+      - name: Build migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_migration_plan
+
+      - name: Validate generated migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.validate_generated_migration_plan
+
+      - name: Audit consistency between generated reports (read-only)
+        run: >-
+          python -m backend.scenthunter_next_engine.audit_migration_reports
+          --detail catalog-preflight-detail.json
+          --plan catalog-migration-plan.json
+          --output migration-report-audit.json
+
+      - name: Upload read-only catalog reports
         uses: actions/upload-artifact@v4
         with:
-          name: next-engine-live-shadow-comparison
-          path: next-engine-live-shadow-comparison.json
-          if-no-files-found: warn
+          name: catalog-migration-review
+          path: |
+            catalog-preflight-detail.json
+            catalog-migration-plan.json
+            migration-report-audit.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload legacy-versus-next shadow comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-shadow-comparison
+          path: next-engine-shadow-comparison.json
+          if-no-files-found: error
           retention-days: 7
