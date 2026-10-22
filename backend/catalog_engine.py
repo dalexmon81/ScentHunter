@@ -4283,7 +4283,15 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # That function scans the whole active catalog and backfills missing queue
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
-    recover_stale_tasks()
+    try:
+        recover_stale_tasks()
+    except sqlite3.OperationalError as exc:
+        print(
+            'CATALOG HYDRATION STAGE ERROR: stage=recover_stale_tasks '
+            f'{type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        raise
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
