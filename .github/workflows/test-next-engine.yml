@@ -24,8 +24,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install test runner
-        run: python -m pip install pytest
+      - name: Install test dependencies
+        run: python -m pip install pytest fastapi httpx
 
       - name: Run isolated next-engine tests
         run: >-
