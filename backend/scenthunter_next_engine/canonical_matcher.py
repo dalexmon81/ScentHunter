@@ -35,8 +35,8 @@ def normalize_identity_text(value: str | None) -> str:
     return _SPACE_RE.sub(" ", value).strip()
 
 
-def _name_forms(value: str, brand: str | None) -> set[str]:
-    """Return exact normalized forms with only safe leading-brand/suffix removal."""
+def _strict_name_forms(value: str, brand: str | None) -> set[str]:
+    """Return exact normalized forms without dropping product-title suffixes."""
     normalized = normalize_identity_text(value)
     if not normalized:
         return set()
@@ -44,7 +44,12 @@ def _name_forms(value: str, brand: str | None) -> set[str]:
     brand_norm = normalize_identity_text(brand)
     if brand_norm and normalized.startswith(brand_norm + " "):
         forms.add(normalized[len(brand_norm):].strip())
+    return forms
 
+
+def _name_forms(value: str, brand: str | None) -> set[str]:
+    """Return strict forms plus conservative suffix-stripped fallback forms."""
+    forms = _strict_name_forms(value, brand)
     expanded = set(forms)
     for form in tuple(forms):
         for suffix in _GENERIC_TITLE_SUFFIXES:
@@ -76,8 +81,7 @@ class CanonicalMatcher:
         self._catalog = catalog
 
     def match(self, offer: RetailerOffer) -> OfferMatch:
-        offer_forms = _name_forms(offer.raw_name, offer.brand_raw)
-        if not offer_forms:
+        if not _name_forms(offer.raw_name, offer.brand_raw):
             return OfferMatch(
                 offer=offer,
                 status=MatchStatus.UNRESOLVED,
@@ -85,20 +89,38 @@ class CanonicalMatcher:
             )
 
         offer_brand = normalize_identity_text(offer.brand_raw) if offer.brand_raw else None
-        candidates: list[tuple[CanonicalProduct, tuple[CanonicalVariant, ...]]] = []
-        for product in self._catalog.all_products():
-            if offer_brand and offer_brand != normalize_identity_text(product.brand):
-                continue
+        products = self._catalog.all_products()
 
-            product_forms = _catalog_forms(
-                [product.name, *product.aliases], product.brand
-            )
-            matched_variant_aliases = tuple(
-                variant for variant in product.variants
-                if offer_forms & _variant_forms(variant, product.brand)
-            )
-            if offer_forms & product_forms or matched_variant_aliases:
-                candidates.append((product, matched_variant_aliases))
+        def collect_candidates(strict: bool) -> list[tuple[CanonicalProduct, tuple[CanonicalVariant, ...]]]:
+            candidates: list[tuple[CanonicalProduct, tuple[CanonicalVariant, ...]]] = []
+            name_forms = _strict_name_forms if strict else _name_forms
+            normalized_offer_forms = name_forms(offer.raw_name, offer.brand_raw)
+            for product in products:
+                if offer_brand and offer_brand != normalize_identity_text(product.brand):
+                    continue
+
+                product_forms: set[str] = set()
+                for value in [product.name, *product.aliases]:
+                    product_forms.update(name_forms(value, product.brand))
+
+                matched_variant_aliases = tuple(
+                    variant for variant in product.variants
+                    if normalized_offer_forms & {
+                        form
+                        for value in [*variant.aliases, *([variant.label] if variant.label else [])]
+                        for form in name_forms(value, product.brand)
+                    }
+                )
+                if normalized_offer_forms & product_forms or matched_variant_aliases:
+                    candidates.append((product, matched_variant_aliases))
+            return candidates
+
+        # Full-title identity takes priority. Suffix-stripped matching is only
+        # a fallback when no strict candidate exists, so "Code" and
+        # "Code Parfum" do not collapse when a strict title distinguishes them.
+        candidates = collect_candidates(strict=True)
+        if not candidates:
+            candidates = collect_candidates(strict=False)
 
         if not candidates:
             return OfferMatch(
