@@ -26,23 +26,27 @@ class CanonicalVariant:
     variant_id: str
     size_ml: int | None = None
     label: str | None = None
+    aliases: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         if not self.variant_id.strip():
             raise ValueError("variant_id must not be empty")
         if self.size_ml is not None and self.size_ml <= 0:
             raise ValueError("size_ml must be positive when provided")
+        if any(not alias.strip() for alias in self.aliases):
+            raise ValueError("variant aliases must not be empty strings")
 
 
 @dataclass(frozen=True, slots=True)
 class CanonicalProduct:
-    """Canonical product identity and its declared variants."""
+    """Canonical product identity and its explicitly declared aliases/variants."""
 
     product_id: str
     brand: str
     name: str
     variants: tuple[CanonicalVariant, ...] = field(default_factory=tuple)
     canonical_image_url: str | None = None
+    aliases: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         if not self.product_id.strip():
@@ -51,6 +55,8 @@ class CanonicalProduct:
             raise ValueError("brand must not be empty")
         if not self.name.strip():
             raise ValueError("name must not be empty")
+        if any(not alias.strip() for alias in self.aliases):
+            raise ValueError("product aliases must not be empty strings")
         ids = [variant.variant_id for variant in self.variants]
         if len(ids) != len(set(ids)):
             raise ValueError("variant_id values must be unique within a product")
