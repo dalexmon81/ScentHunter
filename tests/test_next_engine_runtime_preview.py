@@ -99,7 +99,7 @@ def test_preview_returns_read_only_service_results(monkeypatch):
     monkeypatch.setattr(
         runtime.NextEngineService,
         "from_catalog_file",
-        lambda path: FakeService(),
+        staticmethod(lambda path: FakeService()),
     )
 
     assert runtime.mount_next_engine(app) is True
