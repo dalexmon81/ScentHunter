@@ -49,6 +49,42 @@ class CatalogPreflightTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_catalog_data({"products": []})
 
+    def test_invalid_variant_sizes_are_reported_without_mutation(self):
+        invalid_values = [0, -1, "abc", " ", True, float("inf"), float("nan")]
+        source = {
+            "products": [{
+                "product_id": "p1", "canonical_name": "Example",
+                "brand_id": "b1", "canonical_image": "https://example.test/p.jpg",
+            }],
+            "variants": [
+                {"variant_id": f"v{i}", "product_id": "p1", "size_ml": value}
+                for i, value in enumerate(invalid_values)
+            ],
+        }
+        before = repr(source)
+        report = audit_catalog_data(source)
+        findings = {item["code"]: item["count"] for item in report["findings"]}
+        self.assertEqual(findings["variants_invalid_size"], len(invalid_values))
+        self.assertNotIn("variants_missing_size", findings)
+        self.assertFalse(report["safe_to_consider_migration"])
+        self.assertTrue(report["read_only"])
+        self.assertEqual(report["automatic_repairs"], 0)
+        self.assertEqual(repr(source), before)
+
+    def test_missing_and_invalid_sizes_are_counted_separately(self):
+        source = {
+            "products": [{"product_id": "p1", "canonical_name": "Example", "brand_id": "b1"}],
+            "variants": [
+                {"variant_id": "v1", "product_id": "p1", "size_ml": None},
+                {"variant_id": "v2", "product_id": "p1", "size_ml": ""},
+                {"variant_id": "v3", "product_id": "p1", "size_ml": -5},
+            ],
+        }
+        report = audit_catalog_data(source)
+        findings = {item["code"]: item["count"] for item in report["findings"]}
+        self.assertEqual(findings["variants_missing_size"], 2)
+        self.assertEqual(findings["variants_invalid_size"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
