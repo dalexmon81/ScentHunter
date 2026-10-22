@@ -27,6 +27,7 @@ import re
 import sqlite3
 import threading
 import time
+import traceback
 import unicodedata
 import urllib.parse
 import os
@@ -5109,6 +5110,7 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
                 flush=True,
             )
+            traceback.print_exc()
             if stop_event is not None:
                 stop_event.wait(5.0)
             else:
