@@ -44,6 +44,7 @@ jobs:
           tests/test_next_engine_runtime_batch_preview.py
           tests/test_next_engine_realistic_batch.py
           tests/test_next_engine_main_boot_gate.py
+          tests/test_next_engine_shadow_comparison.py
 
       - name: Run real-catalog smoke entry point (read-only)
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
@@ -75,5 +76,13 @@ jobs:
             catalog-preflight-detail.json
             catalog-migration-plan.json
             migration-report-audit.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload legacy-versus-next shadow comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-shadow-comparison
+          path: next-engine-shadow-comparison.json
           if-no-files-found: error
           retention-days: 7
