@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: python -m pip install pytest fastapi httpx requests
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4
 
       - name: Run isolated next-engine tests
         run: >-
@@ -44,7 +44,7 @@ jobs:
           tests/test_next_engine_runtime_batch_preview.py
           tests/test_next_engine_realistic_batch.py
           tests/test_next_engine_main_boot_gate.py
-          
+
       - name: Run real-catalog smoke entry point (read-only)
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
 
