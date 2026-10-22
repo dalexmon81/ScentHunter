@@ -17,7 +17,7 @@ def _run_api_import(next_enabled: str, preview_enabled: str) -> str:
     env["SCENTHUNTER_NEXT_ENABLED"] = next_enabled
     env["SCENTHUNTER_NEXT_PREVIEW_ENABLED"] = preview_enabled
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(ROOT), str(ROOT / "backend"), env.get("PYTHONPATH", "")]
+        [str(ROOT / "backend"), str(ROOT), env.get("PYTHONPATH", "")]
     )
     result = subprocess.run(
         [
@@ -26,6 +26,14 @@ def _run_api_import(next_enabled: str, preview_enabled: str) -> str:
             (
                 "import main; "
                 "paths = {getattr(route, 'path', '') for route in main.app.routes}; "
+                "preview_routes = sorted("
+                "str(getattr(route, 'path', '')) + ':' + "
+                "','.join(sorted(getattr(route, 'methods', set()) or set())) "
+                "for route in main.app.routes "
+                "if getattr(route, 'path', None) == '/next-engine/preview'); "
+                "print('MAIN_FILE=' + str(main.__file__)); "
+                "print('NEXT_ENGINE_MOUNT_FLAG=' + str(getattr(main, '_NEXT_ENGINE_MOUNTED', None))); "
+                "print('NEXT_ENGINE_PREVIEW_ROUTES=' + repr(preview_routes)); "
                 "print('NEXT_ENGINE_ROUTE_PRESENT=' + "
                 "str('/next-engine/preview' in paths))"
             ),
@@ -57,4 +65,5 @@ def test_preview_flag_alone_does_not_mount_route():
 def test_both_explicit_flags_mount_only_the_read_only_preview_route():
     output = _run_api_import("1", "1")
     assert "NEXT_ENGINE_PREVIEW_MOUNTED: POST /next-engine/preview" in output
-    assert "NEXT_ENGINE_ROUTE_PRESENT=True" in output
+    assert "NEXT_ENGINE_MOUNT_FLAG=True" in output, output
+    assert "NEXT_ENGINE_ROUTE_PRESENT=True" in output, output
