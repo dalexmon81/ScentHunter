@@ -27,7 +27,9 @@ def _valid_size_ml(value: Any) -> bool:
         return False
     if not isinstance(value, (int, float, str)):
         return False
-    if isinstance(value, str) and not value.strip():
+    # An exactly empty string is treated as missing. Whitespace-only strings
+    # are malformed values and are therefore reported as invalid.
+    if isinstance(value, str) and value == "":
         return False
     try:
         numeric = float(value)
@@ -86,14 +88,16 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         for row in product_rows
     )
 
+    # Keep absent values distinct from malformed values. None and "" are
+    # missing; whitespace-only strings, booleans, non-numeric strings,
+    # non-finite numbers, zero, and negative sizes are invalid.
     missing_size_count = sum(
-        row.get("size_ml") is None
-        or (isinstance(row.get("size_ml"), str) and not row.get("size_ml").strip())
+        row.get("size_ml") is None or row.get("size_ml") == ""
         for row in variant_rows
     )
     invalid_size_count = sum(
         row.get("size_ml") is not None
-        and not (isinstance(row.get("size_ml"), str) and not row.get("size_ml").strip())
+        and row.get("size_ml") != ""
         and not _valid_size_ml(row.get("size_ml"))
         for row in variant_rows
     )
