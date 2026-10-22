@@ -230,6 +230,21 @@ class CanonicalMatcher:
                 reason="no_exact_canonical_name_and_brand_match",
             )
 
+        if len(candidates) > 1 and offer.size_ml is not None:
+            # An explicit size may safely disambiguate duplicate canonical
+            # names only when exactly one candidate declares that size.
+            # Products without declared variants are not treated as matches.
+            size_candidates = [
+                (product, matched_variants)
+                for product, matched_variants in candidates
+                if any(
+                    variant.size_ml == offer.size_ml
+                    for variant in product.variants
+                )
+            ]
+            if len(size_candidates) == 1:
+                candidates = size_candidates
+
         if len(candidates) > 1:
             return OfferMatch(
                 offer=offer,
