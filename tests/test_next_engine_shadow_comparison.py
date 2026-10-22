@@ -1,8 +1,7 @@
 """Read-only shadow comparison of legacy and next matchers on real catalog identities.
 
-This is a diagnostic sample, not a production traffic replay: offers are generated
-from canonical catalog entries so both matchers receive the same known identities.
-The JSON report is written only to the CI workspace and uploaded as an artifact.
+Synthetic offers are keyed by their unique URL, never by brand + name: duplicate
+canonical identities must not overwrite one another in the diagnostic report.
 """
 from __future__ import annotations
 
@@ -25,8 +24,9 @@ def _key(value: object) -> str:
     return " ".join(str(value or "").casefold().split())
 
 
-def _identity_key(brand: object, name: object) -> str:
-    return f"{_key(brand)}::{_key(name)}"
+def _record_key(record: dict) -> str:
+    """Stable per-offer key; canonical brand/name pairs are not unique."""
+    return str(record["url"])
 
 
 def test_generate_read_only_legacy_vs_next_shadow_report():
@@ -64,21 +64,21 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         for index, (product, variant) in enumerate(candidates)
     ]
     next_result = service.process_records(records, retailer="shadow-comparison")
-    next_by_name = {}
+    next_by_record = {}
     for group in next_result.groups:
         for offer in group.offers:
-            next_by_name[_identity_key(offer.brand_raw, offer.raw_name)] = {
+            next_by_record[str(offer.product_url)] = {
                 "status": "matched",
                 "product_id": group.canonical_product_id,
                 "variant_id": group.canonical_variant_id,
             }
     for item in next_result.unresolved:
-        next_by_name[_identity_key(item.offer.brand_raw, item.offer.raw_name)] = {
+        next_by_record[str(item.offer.product_url)] = {
             "status": "unresolved",
             "reason": item.reason,
         }
     for item in next_result.ambiguous:
-        next_by_name[_identity_key(item.offer.brand_raw, item.offer.raw_name)] = {
+        next_by_record[str(item.offer.product_url)] = {
             "status": "ambiguous",
             "candidate_product_ids": list(item.candidate_product_ids),
         }
@@ -102,7 +102,7 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         except Exception as exc:
             old_summary = {"status": "error", "error_type": type(exc).__name__}
 
-        new_summary = next_by_name.get(_identity_key(product.brand, product.name), {"status": "missing_result"})
+        new_summary = next_by_record.get(_record_key(record), {"status": "missing_result"})
         status_counts[f"legacy_{old_summary['status']}"] += 1
         status_counts[f"next_{new_summary['status']}"] += 1
 
@@ -110,6 +110,8 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         next_name = _key(product.name) if new_summary["status"] == "matched" else ""
         comparisons.append({
             "sample": index,
+            "expected_product_id": product.product_id,
+            "expected_variant_id": variant.variant_id,
             "expected_canonical_name": product.name,
             "expected_brand": product.brand,
             "expected_size_ml": variant.size_ml,
@@ -146,3 +148,8 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
     assert report["sample_count"] > 0
+
+
+if __name__ == "__main__":
+    import pytest
+    raise SystemExit(pytest.main([__file__, "-q"]))
