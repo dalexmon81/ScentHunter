@@ -80,6 +80,18 @@ class CanonicalMatcherTests(unittest.TestCase):
                         "canonical_name": "Code Parfum",
                         "aliases": [],
                     },
+                    {
+                        "product_id": "P-CODE",
+                        "brand_name": "Armani",
+                        "canonical_name": "Code",
+                        "aliases": [],
+                    },
+                    {
+                        "product_id": "P-CODE-PARFUM",
+                        "brand_name": "Armani",
+                        "canonical_name": "Code Parfum",
+                        "aliases": [],
+                    },
                 ],
                 "variants": [
                     {"variant_id": "V-100", "product_id": "P-ONE", "size_ml": 100},
@@ -119,6 +131,8 @@ class CanonicalMatcherTests(unittest.TestCase):
                         "size_ml": 100,
                         "aliases": ["Liquid Brun 100 ML"],
                     },
+                    {"variant_id": "V-CODE-100", "product_id": "P-CODE", "size_ml": 100},
+                    {"variant_id": "V-CODE-PARFUM-100", "product_id": "P-CODE-PARFUM", "size_ml": 100},
                     {"variant_id": "V-CODE-100", "product_id": "P-CODE", "size_ml": 100},
                     {
                         "variant_id": "V-CODE-PARFUM-100",
