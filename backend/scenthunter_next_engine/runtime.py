@@ -1,7 +1,7 @@
-"""Explicitly gated preview router for the isolated next engine.
+"""Explicitly gated preview route for the isolated next engine.
 
-This router is not mounted unless BOTH opt-in environment flags are enabled.
-It never writes to the database or catalog and does not replace existing routes.
+The route is not mounted unless both opt-in environment flags are enabled.
+It is read-only: it does not write to the database or catalog.
 """
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 
 from .next_engine_service import NextEngineService
 
 
 def mount_next_engine(app: FastAPI) -> bool:
-    """Mount a read-only preview endpoint only after a second explicit opt-in."""
+    """Mount the read-only preview endpoint after the second explicit opt-in."""
     enabled = str(os.environ.get("SCENTHUNTER_NEXT_PREVIEW_ENABLED", "0")).strip().lower()
     if enabled not in {"1", "true", "yes", "on"}:
         print(
@@ -27,9 +27,7 @@ def mount_next_engine(app: FastAPI) -> bool:
 
     root = Path(__file__).resolve().parents[2]
     catalog_path = root / "backend" / "product_catalog.json"
-    router = APIRouter(prefix="/next-engine", tags=["next-engine-preview"])
 
-    @router.post("/preview")
     def preview_offers(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         """Preview a batch against the read-only canonical catalog."""
         retailer = payload.get("retailer")
@@ -92,6 +90,16 @@ def mount_next_engine(app: FastAPI) -> bool:
             "groups": groups,
         }
 
-    app.include_router(router)
+    app.add_api_route(
+        "/next-engine/preview",
+        preview_offers,
+        methods=["POST"],
+        tags=["next-engine-preview"],
+        name="next_engine_read_only_preview",
+    )
     print("NEXT_ENGINE_PREVIEW_MOUNTED: POST /next-engine/preview", flush=True)
-    return True
+    return any(
+        getattr(route, "path", None) == "/next-engine/preview"
+        and "POST" in (getattr(route, "methods", set()) or set())
+        for route in app.routes
+    )
