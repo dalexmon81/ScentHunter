@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping
+from math import isfinite
 from typing import Any
 
 
@@ -18,6 +19,21 @@ def _records(value: Any) -> list[Mapping[str, Any]]:
 
 def _nonempty(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _valid_size_ml(value: Any) -> bool:
+    """Accept finite positive numeric ml values, including numeric strings."""
+    if value is None or isinstance(value, bool):
+        return False
+    if not isinstance(value, (int, float, str)):
+        return False
+    if isinstance(value, str) and not value.strip():
+        return False
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return isfinite(numeric) and numeric > 0
 
 
 def audit_catalog_data(raw: Any) -> dict[str, Any]:
@@ -35,7 +51,6 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
     product_ids = [row.get("product_id") for row in product_rows]
     variant_ids = [row.get("variant_id") for row in variant_rows]
     valid_product_ids = {value for value in product_ids if _nonempty(value)}
-    valid_variant_ids = {value for value in variant_ids if _nonempty(value)}
 
     duplicate_products = sorted(
         value for value, count in Counter(
@@ -70,9 +85,16 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         not _nonempty(row.get("brand_name")) and not _nonempty(row.get("brand_id"))
         for row in product_rows
     )
+
     missing_size_count = sum(
-        row.get("size_ml") is None or isinstance(row.get("size_ml"), bool)
-        or not str(row.get("size_ml")).strip()
+        row.get("size_ml") is None
+        or (isinstance(row.get("size_ml"), str) and not row.get("size_ml").strip())
+        for row in variant_rows
+    )
+    invalid_size_count = sum(
+        row.get("size_ml") is not None
+        and not (isinstance(row.get("size_ml"), str) and not row.get("size_ml").strip())
+        and not _valid_size_ml(row.get("size_ml"))
         for row in variant_rows
     )
     missing_image_count = sum(
@@ -91,6 +113,7 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         ("products_missing_name", missing_name_count),
         ("products_missing_brand", missing_brand_count),
         ("variants_missing_size", missing_size_count),
+        ("variants_invalid_size", invalid_size_count),
         ("products_missing_canonical_image", missing_image_count),
     ]
     for code, count in checks:
@@ -112,3 +135,14 @@ def audit_catalog_data(raw: Any) -> dict[str, Any]:
         "read_only": True,
         "automatic_repairs": 0,
     }
+
+
+if __name__ == "__main__":
+    import json
+    from pathlib import Path
+
+    repository_root = Path(__file__).resolve().parents[2]
+    catalog_path = repository_root / "backend" / "product_catalog.json"
+    with catalog_path.open("r", encoding="utf-8") as catalog_file:
+        catalog_data = json.load(catalog_file)
+    print(json.dumps(audit_catalog_data(catalog_data), ensure_ascii=False, indent=2))
