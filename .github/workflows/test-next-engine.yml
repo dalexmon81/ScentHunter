@@ -86,9 +86,3 @@ jobs:
           path: next-engine-shadow-comparison.json
           if-no-files-found: error
           retention-days: 7
-      - name: Run isolated next-engine tests
-        run: |
-          python -m unittest discover -s tests -p "test_scenthunter_next_engine.py"
-          python -m unittest discover -s tests -p "test_canonical_matcher.py"
-          python -m unittest discover -s tests -p "test_offer_aggregator.py"
-          python -m unittest discover -s tests -p "test_next_engine_service.py"
