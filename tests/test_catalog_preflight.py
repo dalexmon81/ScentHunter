@@ -78,12 +78,13 @@ class CatalogPreflightTests(unittest.TestCase):
                 {"variant_id": "v1", "product_id": "p1", "size_ml": None},
                 {"variant_id": "v2", "product_id": "p1", "size_ml": ""},
                 {"variant_id": "v3", "product_id": "p1", "size_ml": -5},
+                {"variant_id": "v4", "product_id": "p1", "size_ml": "   "},
             ],
         }
         report = audit_catalog_data(source)
         findings = {item["code"]: item["count"] for item in report["findings"]}
         self.assertEqual(findings["variants_missing_size"], 2)
-        self.assertEqual(findings["variants_invalid_size"], 1)
+        self.assertEqual(findings["variants_invalid_size"], 2)
 
 
 if __name__ == "__main__":
