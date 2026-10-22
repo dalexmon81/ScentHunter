@@ -35,6 +35,7 @@ jobs:
           tests/test_offer_aggregator.py
           tests/test_next_engine_service.py
           tests/test_real_catalog_end_to_end.py
+          tests/test_real_variant_separation.py
           tests/test_catalog_preflight.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
