@@ -39,6 +39,7 @@ jobs:
           tests/test_catalog_preflight.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
+          tests/test_next_engine_integration_contract.py
 
       - name: Audit real catalog without modifying it
         run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
