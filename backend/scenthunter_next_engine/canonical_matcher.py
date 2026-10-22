@@ -236,22 +236,32 @@ class CanonicalMatcher:
             # one catalog product. Size alone must not override duplicate or
             # merely normalized identities.
             raw_offer_title = " ".join((offer.raw_name or "").split()).casefold()
+            raw_offer_brand = " ".join((offer.brand or "").split()).casefold()
             exact_title_and_size = []
-            for candidate_product, candidate_variant_aliases in candidates:
-                literal_titles = [candidate_product.name, *candidate_product.aliases]
-                has_literal_title = any(
-                    " ".join(value.split()).casefold() == raw_offer_title
-                    for value in literal_titles
-                )
-                size_variants = [
-                    variant
-                    for variant in candidate_product.variants
-                    if variant.size_ml == offer.size_ml
-                ]
-                if has_literal_title and len(size_variants) == 1:
-                    exact_title_and_size.append(
-                        (candidate_product, candidate_variant_aliases)
+            # Require an explicit brand and an exact canonical product name.
+            # Aliases and brandless offers must never break a genuine collision.
+            if raw_offer_brand:
+                for candidate_product, candidate_variant_aliases in candidates:
+                    canonical_title_matches = (
+                        " ".join(candidate_product.name.split()).casefold()
+                        == raw_offer_title
                     )
+                    explicit_brand_matches = (
+                        " ".join(candidate_product.brand.split()).casefold()
+                        == raw_offer_brand
+                    )
+                    size_variants = [
+                        variant for variant in candidate_product.variants
+                        if variant.size_ml == offer.size_ml
+                    ]
+                    if (
+                        canonical_title_matches
+                        and explicit_brand_matches
+                        and len(size_variants) == 1
+                    ):
+                        exact_title_and_size.append(
+                            (candidate_product, candidate_variant_aliases)
+                        )
             if len(exact_title_and_size) == 1:
                 candidates = exact_title_and_size
 
