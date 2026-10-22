@@ -1,9 +1,9 @@
 """Conservative, catalog-only matcher for the isolated ScentHunter next engine.
 
-Only exact normalized canonical names are eligible. This module does not use
-retailer images, prices, scraped identifiers, fuzzy guesses, network calls, or
-database writes to establish identity. If identity or format is not sufficiently
-certain, the offer remains unresolved or ambiguous.
+Only exact normalized canonical names and explicitly catalogued aliases are
+eligible. This module does not use retailer images, prices, fuzzy guesses,
+network calls, or database writes to establish identity. If identity or format
+is not sufficiently certain, the offer remains unresolved or ambiguous.
 """
 from __future__ import annotations
 
@@ -12,13 +12,12 @@ import unicodedata
 from decimal import Decimal
 
 from .catalog_repository import CatalogRepository
-from .models import MatchStatus, OfferMatch, RetailerOffer, CanonicalProduct
+from .models import CanonicalProduct, CanonicalVariant, MatchStatus, OfferMatch, RetailerOffer
 
 
 _SPACE_RE = re.compile(r"\s+")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 
-# Generic descriptors frequently appended to product titles; never product-specific.
 _GENERIC_TITLE_SUFFIXES = (
     "eau de parfum", "eau de toilette", "eau de cologne",
     "parfum", "perfume", "for men", "for women", "unisex",
@@ -37,7 +36,7 @@ def normalize_identity_text(value: str | None) -> str:
 
 
 def _name_forms(value: str, brand: str | None) -> set[str]:
-    """Return conservative forms after removing only a leading brand and generic suffixes."""
+    """Return exact normalized forms with only safe leading-brand/suffix removal."""
     normalized = normalize_identity_text(value)
     if not normalized:
         return set()
@@ -56,8 +55,22 @@ def _name_forms(value: str, brand: str | None) -> set[str]:
     return expanded
 
 
+def _catalog_forms(values: tuple[str, ...] | list[str], brand: str) -> set[str]:
+    forms: set[str] = set()
+    for value in values:
+        forms.update(_name_forms(value, brand))
+    return forms
+
+
+def _variant_forms(variant: CanonicalVariant, brand: str) -> set[str]:
+    values = list(variant.aliases)
+    if variant.label:
+        values.append(variant.label)
+    return _catalog_forms(values, brand)
+
+
 class CanonicalMatcher:
-    """Resolve retailer offers only when canonical name, brand and format are safe."""
+    """Resolve offers using exact catalog identity, alias, brand and format data."""
 
     def __init__(self, catalog: CatalogRepository) -> None:
         self._catalog = catalog
@@ -71,23 +84,21 @@ class CanonicalMatcher:
                 reason="empty_normalized_name",
             )
 
-        candidates: list[CanonicalProduct] = []
+        offer_brand = normalize_identity_text(offer.brand_raw) if offer.brand_raw else None
+        candidates: list[tuple[CanonicalProduct, tuple[CanonicalVariant, ...]]] = []
         for product in self._catalog.all_products():
-            product_name = normalize_identity_text(product.name)
-            if not product_name or not any(
-                product_name in _name_forms(form, None)
-                for form in offer_forms
-            ):
-                # Compare normalized product name against the generated offer forms
-                # directly; no edit-distance or token-only matching is performed.
-                if product_name not in offer_forms:
-                    continue
-            if offer.brand_raw:
-                offer_brand = normalize_identity_text(offer.brand_raw)
-                product_brand = normalize_identity_text(product.brand)
-                if offer_brand != product_brand:
-                    continue
-            candidates.append(product)
+            if offer_brand and offer_brand != normalize_identity_text(product.brand):
+                continue
+
+            product_forms = _catalog_forms(
+                [product.name, *product.aliases], product.brand
+            )
+            matched_variant_aliases = tuple(
+                variant for variant in product.variants
+                if offer_forms & _variant_forms(variant, product.brand)
+            )
+            if offer_forms & product_forms or matched_variant_aliases:
+                candidates.append((product, matched_variant_aliases))
 
         if not candidates:
             return OfferMatch(
@@ -101,10 +112,10 @@ class CanonicalMatcher:
                 offer=offer,
                 status=MatchStatus.AMBIGUOUS,
                 reason="multiple_canonical_products_match",
-                candidate_product_ids=tuple(sorted(item.product_id for item in candidates)),
+                candidate_product_ids=tuple(sorted(item[0].product_id for item in candidates)),
             )
 
-        product = candidates[0]
+        product, matched_variant_aliases = candidates[0]
         variants = product.variants
         if not variants:
             return OfferMatch(
@@ -116,15 +127,12 @@ class CanonicalMatcher:
 
         if offer.size_ml is not None:
             matching_variants = [item for item in variants if item.size_ml == offer.size_ml]
-            if len(matching_variants) == 1:
-                variant = matching_variants[0]
+            if not matching_variants:
                 return OfferMatch(
                     offer=offer,
-                    status=MatchStatus.MATCHED,
-                    canonical_product_id=product.product_id,
-                    canonical_variant_id=variant.variant_id,
-                    confidence=Decimal("1.0"),
-                    reason="exact_name_brand_and_size",
+                    status=MatchStatus.UNRESOLVED,
+                    reason="explicit_size_has_no_canonical_variant",
+                    candidate_product_ids=(product.product_id,),
                 )
             if len(matching_variants) > 1:
                 return OfferMatch(
@@ -133,10 +141,39 @@ class CanonicalMatcher:
                     reason="duplicate_variants_for_explicit_size",
                     candidate_product_ids=(product.product_id,),
                 )
+            selected = matching_variants[0]
+            if matched_variant_aliases and selected not in matched_variant_aliases:
+                return OfferMatch(
+                    offer=offer,
+                    status=MatchStatus.UNRESOLVED,
+                    reason="matched_variant_alias_conflicts_with_explicit_size",
+                    candidate_product_ids=(product.product_id,),
+                )
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.MATCHED,
+                canonical_product_id=product.product_id,
+                canonical_variant_id=selected.variant_id,
+                confidence=Decimal("1.0"),
+                reason="exact_name_brand_alias_and_size" if matched_variant_aliases else "exact_name_brand_and_size",
+            )
+
+        if len(matched_variant_aliases) == 1:
+            selected = matched_variant_aliases[0]
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.MATCHED,
+                canonical_product_id=product.product_id,
+                canonical_variant_id=selected.variant_id,
+                confidence=Decimal("1.0"),
+                reason="exact_variant_alias_and_brand",
+            )
+
+        if len(matched_variant_aliases) > 1:
             return OfferMatch(
                 offer=offer,
                 status=MatchStatus.UNRESOLVED,
-                reason="explicit_size_has_no_canonical_variant",
+                reason="variant_alias_does_not_identify_unique_format",
                 candidate_product_ids=(product.product_id,),
             )
 
@@ -148,7 +185,7 @@ class CanonicalMatcher:
                 canonical_product_id=product.product_id,
                 canonical_variant_id=variant.variant_id,
                 confidence=Decimal("0.95"),
-                reason="exact_name_brand_and_only_declared_variant",
+                reason="exact_name_brand_alias_and_only_declared_variant",
             )
 
         return OfferMatch(
