@@ -1,13 +1,13 @@
 """Manual, bounded, read-only live-offer shadow comparison.
 
-Runs the existing Deloox and Sabina scraper adapters for one fixed query, then
-feeds the same real retailer rows to the legacy matcher and next engine.
-It does not import catalog_engine, access a database, write the catalog, or
-trigger a production search/resync. The only output is a CI report artifact.
+Uses the existing Deloox and Sabina scraper adapters for one fixed query.
+The same flattened retailer rows are evaluated by the legacy matcher and the
+isolated next engine. No production search, database access, or catalog writes.
 """
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections import Counter
 from pathlib import Path
@@ -26,7 +26,69 @@ MAX_PER_RETAILER = 20
 
 
 def _text(value):
-    return " ".join(str(value or "").split())
+    if value is None or isinstance(value, (dict, list, tuple, set)):
+        return ""
+    return " ".join(str(value).split())
+
+
+def _nested_value(row, *path):
+    value = row
+    for key in path:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    if isinstance(value, dict):
+        return value.get("value")
+    return value
+
+
+def _price_number(value):
+    if isinstance(value, (int, float)):
+        return value
+    raw = _text(value).replace("€", "").replace("EUR", "").replace(" ", "")
+    if not raw:
+        return None
+    # Retailer adapters may emit e.g. "34,95 €"; normalize decimal comma.
+    raw = raw.replace(".", "").replace(",", ".") if re.search(r",\d{1,2}$", raw) else raw
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _flatten(raw, retailer):
+    """Map known scraper output fields without guessing missing identity data."""
+    row = dict(raw)
+    row["store"] = retailer
+    row["name"] = _text(raw.get("name") or raw.get("title") or raw.get("product_name"))
+    row["brand"] = _text(raw.get("brand") or _nested_value(raw, "product", "brand"))
+    row["url"] = _text(raw.get("url") or raw.get("product_url") or _nested_value(raw, "raw_data", "product_url"))
+    row["size_ml"] = (
+        raw.get("size_ml")
+        or _nested_value(raw, "attributes", "size_ml")
+        or _nested_value(raw, "attributes", "volume_ml")
+    )
+    if row["size_ml"] is None:
+        # Do not infer size from a title; the next engine deliberately requires
+        # explicit size fields. The legacy matcher can still inspect the title.
+        row["size_ml"] = None
+    offer = raw.get("offer") if isinstance(raw.get("offer"), dict) else {}
+    row["price"] = _price_number(offer.get("price", raw.get("price")))
+    row["currency"] = _text(offer.get("currency") or raw.get("currency") or "EUR") or "EUR"
+    row["availability"] = offer.get("availability", raw.get("availability", raw.get("available")))
+    identity = raw.get("identity") if isinstance(raw.get("identity"), dict) else {}
+    for key in ("sku", "gtin", "mpn", "store_product_id"):
+        value = identity.get(key)
+        if isinstance(value, dict):
+            value = value.get("value")
+        if value:
+            row.setdefault("retailer_product_id", _text(value))
+            break
+    # Normalize the next engine's explicit aliases while retaining original data.
+    row["raw_name"] = row["name"]
+    row["brand_raw"] = row["brand"]
+    row["product_url"] = row["url"]
+    return row
 
 
 def _status_counts(result):
@@ -50,78 +112,59 @@ def main():
 
     source_results = {}
     errors = {}
-    for retailer, module in (("deloox", deloox), ("sabina", sabina)):
+    for retailer, module in (("Deloox", deloox), ("Sabina", sabina)):
         try:
             rows = module.search(QUERY)
             source_results[retailer] = [
-                dict(row) for row in (rows or [])
+                _flatten(row, retailer) for row in (rows or [])
                 if isinstance(row, dict)
             ][:MAX_PER_RETAILER]
         except Exception as exc:
             source_results[retailer] = []
             errors[retailer] = type(exc).__name__
 
-    records = []
+    records = [row for rows in source_results.values() for row in rows]
+    legacy_rows = []
+    for index, record in enumerate(records):
+        query = " ".join(filter(None, (
+            _text(record.get("brand")),
+            _text(record.get("name")),
+            _text(record.get("size_ml")),
+        ))) or QUERY
+        try:
+            old = legacy.match(record, query=query)
+            if old is None:
+                summary = {"status": "unmatched"}
+            else:
+                summary = {
+                    "status": "matched",
+                    "canonical_name": old.get("canonical_name") or old.get("name"),
+                    "product_identity": old.get("product_identity") or old.get("catalog_id"),
+                    "variant_id": old.get("variant_id"),
+                    "size_ml": old.get("size_ml"),
+                    "match_method": old.get("match_method"),
+                }
+        except Exception as exc:
+            summary = {"status": "error", "error_type": type(exc).__name__}
+        legacy_rows.append({
+            "index": index,
+            "retailer": record["store"],
+            "raw_name": record["name"],
+            "brand": record["brand"],
+            "size_ml": record.get("size_ml"),
+            "price": record.get("price"),
+            "url": record.get("url"),
+            "legacy": summary,
+        })
+
+    next_rows = []
+    next_counts = {}
     for retailer, rows in source_results.items():
-        for row in rows:
-            record = dict(row)
-            record.setdefault("store", retailer)
-            records.append(record)
-
-    if not records:
-        report = {
-            "mode": "manual bounded live retailer shadow comparison",
-            "query": QUERY,
-            "source": "existing Deloox and Sabina scraper search() functions",
-            "live_network_requests_attempted": True,
-            "production_search_called": False,
-            "database_accessed": False,
-            "catalog_modified": False,
-            "status": "no_live_rows",
-            "rows_by_retailer": {k: len(v) for k, v in source_results.items()},
-            "scraper_exception_types": errors,
-            "elapsed_sec": round(time.monotonic() - started, 3),
-            "interpretation": "No live offer rows were returned; this run cannot compare matcher quality.",
-        }
-    else:
-        next_result = next_engine.process_records(records, retailer="live-retailer-shadow")
-        legacy_rows = []
-        for index, record in enumerate(records):
-            query = " ".join(filter(None, (
-                _text(record.get("brand") or record.get("source_brand")),
-                _text(record.get("name") or record.get("title") or record.get("source_name")),
-                _text(record.get("size_ml")),
-            )))
-            try:
-                old = legacy.match(record, query=query or QUERY)
-                if old is None:
-                    summary = {"status": "unmatched"}
-                else:
-                    summary = {
-                        "status": "matched",
-                        "canonical_name": old.get("canonical_name") or old.get("name"),
-                        "product_identity": old.get("product_identity") or old.get("catalog_id"),
-                        "variant_id": old.get("variant_id"),
-                        "size_ml": old.get("size_ml"),
-                        "match_method": old.get("match_method"),
-                    }
-            except Exception as exc:
-                summary = {"status": "error", "error_type": type(exc).__name__}
-            legacy_rows.append({
-                "index": index,
-                "retailer": _text(record.get("store")),
-                "raw_name": _text(record.get("name") or record.get("title") or record.get("source_name")),
-                "brand": _text(record.get("brand") or record.get("source_brand")),
-                "size_ml": record.get("size_ml"),
-                "price": record.get("price"),
-                "url": _text(record.get("url")),
-                "legacy": summary,
-            })
-
-        new_rows = []
-        for group in next_result.groups:
+        result = next_engine.process_records(rows, retailer=retailer)
+        next_counts[retailer] = _status_counts(result)
+        for group in result.groups:
             for offer in group.offers:
-                new_rows.append({
+                next_rows.append({
                     "retailer": offer.retailer,
                     "raw_name": offer.raw_name,
                     "brand": offer.brand_raw,
@@ -134,7 +177,7 @@ def main():
                         "variant_id": group.canonical_variant_id,
                     },
                 })
-        new_rows.extend({
+        next_rows.extend({
             "retailer": item.offer.retailer,
             "raw_name": item.offer.raw_name,
             "brand": item.offer.brand_raw,
@@ -142,8 +185,8 @@ def main():
             "price": str(item.offer.price) if item.offer.price is not None else None,
             "url": item.offer.product_url,
             "next": {"status": "unresolved", "reason": item.reason},
-        } for item in next_result.unresolved)
-        new_rows.extend({
+        } for item in result.unresolved)
+        next_rows.extend({
             "retailer": item.offer.retailer,
             "raw_name": item.offer.raw_name,
             "brand": item.offer.brand_raw,
@@ -151,40 +194,40 @@ def main():
             "price": str(item.offer.price) if item.offer.price is not None else None,
             "url": item.offer.product_url,
             "next": {"status": "ambiguous", "candidate_product_ids": list(item.candidate_product_ids)},
-        } for item in next_result.ambiguous)
+        } for item in result.ambiguous)
 
-        report = {
-            "mode": "manual bounded live retailer shadow comparison",
-            "query": QUERY,
-            "source": "existing Deloox and Sabina scraper search() functions",
-            "live_network_requests_attempted": True,
-            "production_search_called": False,
-            "database_accessed": False,
-            "catalog_modified": False,
-            "status": "completed_with_live_rows",
-            "rows_by_retailer": {k: len(v) for k, v in source_results.items()},
-            "input_row_count": len(records),
-            "legacy_status_counts": dict(Counter(row["legacy"]["status"] for row in legacy_rows)),
-            "next_status_counts": _status_counts(next_result),
-            "scraper_exception_types": errors,
-            "legacy_rows": legacy_rows,
-            "next_rows": new_rows,
-            "interpretation": (
-                "These are real rows returned by the current retailer scrapers. "
-                "Matcher disagreement is diagnostic, not ground-truth accuracy: "
-                "each row still needs review against its retailer page and canonical identity."
-            ),
-            "elapsed_sec": round(time.monotonic() - started, 3),
-        }
+    status = "completed_with_live_rows" if records else "no_live_rows"
+    report = {
+        "mode": "manual bounded live retailer shadow comparison",
+        "query": QUERY,
+        "source": "existing Deloox and Sabina scraper search() functions",
+        "live_network_requests_attempted": True,
+        "production_search_called": False,
+        "database_accessed": False,
+        "catalog_modified": False,
+        "status": status,
+        "rows_by_retailer": {key: len(value) for key, value in source_results.items()},
+        "input_row_count": len(records),
+        "legacy_status_counts": dict(Counter(row["legacy"]["status"] for row in legacy_rows)),
+        "next_status_counts_by_retailer": next_counts,
+        "scraper_exception_types": errors,
+        "legacy_rows": legacy_rows,
+        "next_rows": next_rows,
+        "interpretation": (
+            "Rows come from current retailer scraper responses. Agreement is diagnostic, "
+            "not ground-truth accuracy; retailer pages and canonical identities still need review."
+        ) if records else "No live offer rows were returned; matcher quality cannot be compared.",
+        "elapsed_sec": round(time.monotonic() - started, 3),
+    }
 
     if CATALOG_PATH.read_bytes() != catalog_before:
         raise AssertionError("Canonical catalog changed during live shadow comparison")
     if FAMILY_PATH.read_bytes() != family_before:
         raise AssertionError("Family registry changed during live shadow comparison")
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({k: v for k, v in report.items() if k not in {"legacy_rows", "next_rows"}}, ensure_ascii=False, indent=2))
-    if report["status"] == "no_live_rows":
-        raise SystemExit("No live retailer rows; report artifact was still written for diagnosis.")
+    print(json.dumps({key: value for key, value in report.items() if key not in {"legacy_rows", "next_rows"}}, ensure_ascii=False, indent=2))
+    if status == "no_live_rows":
+        raise SystemExit("No live retailer rows; report artifact was written for diagnosis.")
 
 
 if __name__ == "__main__":
