@@ -2,7 +2,8 @@
 
 The canonical catalog is read-only. Product identities live in ``products``;
 real variant identities live in the separate top-level ``variants`` array and
-are linked by ``product_id``. This module never synthesizes canonical IDs.
+are linked by ``product_id``. Explicit product and variant aliases are retained
+for exact matching; this module never synthesizes canonical IDs.
 """
 from __future__ import annotations
 
@@ -22,6 +23,20 @@ def _text(value: Any) -> str | None:
         return None
     result = str(value).strip()
     return result or None
+
+
+def _aliases(value: Any) -> tuple[str, ...]:
+    """Keep only non-empty string aliases, preserving order without duplicates."""
+    if not isinstance(value, list):
+        return ()
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        alias = _text(item)
+        if alias and alias not in seen:
+            seen.add(alias)
+            result.append(alias)
+    return tuple(result)
 
 
 def _positive_int(value: Any) -> int | None:
@@ -84,7 +99,6 @@ class CatalogRepository:
         if not isinstance(raw, Mapping):
             raise CatalogFormatError("Catalog root must be a JSON object")
 
-        # These names are taken from the actual product_catalog.json schema.
         product_records = _list_of_mappings(raw.get("products"))
         variant_records = _list_of_mappings(raw.get("variants"))
         if not product_records:
@@ -101,16 +115,14 @@ class CatalogRepository:
                 skipped_variants += 1
                 continue
             size_ml = _positive_int(record.get("size_ml"))
-            aliases = record.get("aliases")
-            label = next(
-                (_text(alias) for alias in aliases if _text(alias)),
-                None,
-            ) if isinstance(aliases, list) else None
+            variant_aliases = _aliases(record.get("aliases"))
+            label = variant_aliases[0] if variant_aliases else None
             try:
                 variant = CanonicalVariant(
                     variant_id=variant_id,
                     size_ml=size_ml,
                     label=label,
+                    aliases=variant_aliases,
                 )
             except ValueError:
                 skipped_variants += 1
@@ -131,6 +143,7 @@ class CatalogRepository:
                 raise CatalogFormatError(f"Duplicate canonical product ID: {product_id}")
             seen_product_ids.add(product_id)
             image_url = _text(record.get("canonical_image"))
+            product_aliases = _aliases(record.get("aliases"))
             try:
                 products.append(
                     CanonicalProduct(
@@ -139,6 +152,7 @@ class CatalogRepository:
                         name=name,
                         variants=tuple(variants_by_product.get(product_id, ())),
                         canonical_image_url=image_url,
+                        aliases=product_aliases,
                     )
                 )
             except ValueError:
@@ -147,7 +161,6 @@ class CatalogRepository:
         if not products:
             raise CatalogFormatError("No safe canonical products could be parsed")
 
-        # Detect variants that point to a product ID absent from the canonical products.
         orphan_variant_ids = {
             _text(record.get("variant_id"))
             for record in variant_records
