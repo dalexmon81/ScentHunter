@@ -68,6 +68,18 @@ class CanonicalMatcherTests(unittest.TestCase):
                         "canonical_name": "Liquid Brun",
                         "aliases": ["Liquid Brun 100 ML"],
                     },
+                    {
+                        "product_id": "P-CODE",
+                        "brand_name": "Armani",
+                        "canonical_name": "Code",
+                        "aliases": [],
+                    },
+                    {
+                        "product_id": "P-CODE-PARFUM",
+                        "brand_name": "Armani",
+                        "canonical_name": "Code Parfum",
+                        "aliases": [],
+                    },
                 ],
                 "variants": [
                     {"variant_id": "V-100", "product_id": "P-ONE", "size_ml": 100},
@@ -106,6 +118,12 @@ class CanonicalMatcherTests(unittest.TestCase):
                         "product_id": "P-LIQUID-BASE",
                         "size_ml": 100,
                         "aliases": ["Liquid Brun 100 ML"],
+                    },
+                    {"variant_id": "V-CODE-100", "product_id": "P-CODE", "size_ml": 100},
+                    {
+                        "variant_id": "V-CODE-PARFUM-100",
+                        "product_id": "P-CODE-PARFUM",
+                        "size_ml": 100,
                     },
                 ],
             },
@@ -258,6 +276,22 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertEqual(result.status, MatchStatus.MATCHED)
         self.assertEqual(result.canonical_product_id, "P-LIQUID-BASE")
         self.assertEqual(result.canonical_variant_id, "V-LIQUID-100")
+
+    def test_strict_full_title_wins_over_suffix_stripped_collision(self):
+        result = self.matcher.match(
+            self.offer("Code Parfum", "Armani", 100)
+        )
+        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "P-CODE-PARFUM")
+        self.assertEqual(result.canonical_variant_id, "V-CODE-PARFUM-100")
+
+    def test_short_title_prefers_exact_title_over_suffix_fallback_collision(self):
+        result = self.matcher.match(
+            self.offer("Code", "Armani", 100)
+        )
+        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "P-CODE")
+        self.assertEqual(result.canonical_variant_id, "V-CODE-100")
 
 
 if __name__ == "__main__":
