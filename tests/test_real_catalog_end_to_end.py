@@ -1,8 +1,8 @@
-"""End-to-end read-only smoke test for the isolated ScentHunter next engine.
+"""Read-only end-to-end smoke test for the isolated ScentHunter next engine.
 
-Loads the real canonical catalog, discovers a product/variant that the current
-conservative matcher can resolve, then exercises normalization, matching and
-aggregation through NextEngineService. It never writes to the catalog or DB.
+Checks that two differently priced retailer offers for the same real canonical
+variant stay together without losing either price. Also checks rejection and
+unresolved handling, and verifies the catalog remains unchanged.
 """
 from pathlib import Path
 
@@ -19,7 +19,7 @@ def test_real_catalog_end_to_end_pipeline_is_read_only():
     products_before = service.catalog.all_products()
 
     # Select a real catalog entry with one explicit, sized variant that the
-    # existing matcher resolves to its actual canonical IDs. Do not invent IDs.
+    # conservative matcher resolves to its actual canonical IDs.
     selected = None
     for product in service.catalog.all_products():
         if len(product.variants) != 1:
@@ -71,6 +71,13 @@ def test_real_catalog_end_to_end_pipeline_is_read_only():
     assert group.canonical_product_id == product.product_id
     assert group.canonical_variant_id == variant.variant_id
     assert len(group.offers) == 2
+
+    # Different prices from two shops must both survive aggregation unchanged.
+    assert {str(offer.price) for offer in group.offers} == {"49.90", "54.90"}
+    assert {offer.url for offer in group.offers} == {
+        "https://shop-a.example/product",
+        "https://shop-b.example/product",
+    }
 
     assert len(result.rejected_rows) == 1
     assert len(result.unresolved) == 1
