@@ -25,11 +25,12 @@ def _run_api_import(next_enabled: str, preview_enabled: str) -> str:
             "-c",
             (
                 "import main; "
-                "paths = {getattr(route, 'path', '') for route in main.app.routes}; "
+                "routes = list(main.app.router.routes); "
+                "paths = {getattr(route, 'path', '') for route in routes}; "
                 "preview_routes = sorted("
                 "str(getattr(route, 'path', '')) + ':' + "
                 "','.join(sorted(getattr(route, 'methods', set()) or set())) "
-                "for route in main.app.routes "
+                "for route in routes "
                 "if getattr(route, 'path', None) == '/next-engine/preview'); "
                 "print('MAIN_FILE=' + str(main.__file__)); "
                 "print('NEXT_ENGINE_MOUNT_FLAG=' + str(getattr(main, '_NEXT_ENGINE_MOUNTED', None))); "
