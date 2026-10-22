@@ -4304,7 +4304,15 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
             break
         if deadline is not None and time.monotonic() >= float(deadline):
             break
-        task = _claim_one_hydration_task()
+        try:
+            task = _claim_one_hydration_task()
+        except sqlite3.OperationalError as exc:
+            print(
+                'CATALOG HYDRATION STAGE ERROR: stage=claim_hydration_task '
+                f'{type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            raise
         if not task:
             break
         tasks.append(task)
@@ -4329,7 +4337,19 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
                     fetched += 1
                 elif result is False:
                     errors += 1
-            except Exception:
+            except sqlite3.OperationalError as exc:
+                print(
+                    'CATALOG HYDRATION STAGE ERROR: stage=hydrate_task '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+                errors += 1
+            except Exception as exc:
+                print(
+                    'CATALOG HYDRATION TASK ERROR: '
+                    f'{type(exc).__name__}: {exc}',
+                    flush=True,
+                )
                 errors += 1
         return {
             'selected': len(tasks),
