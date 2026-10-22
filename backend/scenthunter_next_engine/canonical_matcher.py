@@ -236,7 +236,7 @@ class CanonicalMatcher:
             # one catalog product. Size alone must not override duplicate or
             # merely normalized identities.
             raw_offer_title = " ".join((offer.raw_name or "").split()).casefold()
-            raw_offer_brand = " ".join((offer.brand or "").split()).casefold()
+            raw_offer_brand = " ".join((offer.brand_raw or "").split()).casefold()
             exact_title_and_size = []
             # Require an explicit brand and an exact canonical product name.
             # Aliases and brandless offers must never break a genuine collision.
