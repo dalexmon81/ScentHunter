@@ -231,39 +231,43 @@ class CanonicalMatcher:
             )
 
         if len(candidates) > 1 and offer.size_ml is not None:
-            # Disambiguate only when the offer's literal title (before accent
-            # normalization) and its explicitly declared size identify exactly
-            # one catalog product. Size alone must not override duplicate or
-            # merely normalized identities.
-            raw_offer_title = " ".join((offer.raw_name or "").split()).casefold()
-            raw_offer_brand = " ".join((offer.brand_raw or "").split()).casefold()
-            exact_title_and_size = []
-            # Require an explicit brand and an exact canonical product name.
-            # Aliases and brandless offers must never break a genuine collision.
-            if raw_offer_brand:
-                for candidate_product, candidate_variant_aliases in candidates:
-                    canonical_title_matches = (
-                        " ".join(candidate_product.name.split()).casefold()
-                        == raw_offer_title
-                    )
-                    explicit_brand_matches = (
-                        " ".join(candidate_product.brand.split()).casefold()
-                        == raw_offer_brand
-                    )
-                    size_variants = [
-                        variant for variant in candidate_product.variants
-                        if variant.size_ml == offer.size_ml
-                    ]
-                    if (
-                        canonical_title_matches
-                        and explicit_brand_matches
-                        and len(size_variants) == 1
-                    ):
-                        exact_title_and_size.append(
-                            (candidate_product, candidate_variant_aliases)
+            # A duplicate canonical title is a genuine catalog collision:
+            # size must never silently choose between duplicate product records.
+            normalized_candidate_titles = {
+                normalize_identity_text(product.name)
+                for product, _ in candidates
+            }
+            # Disambiguate only across distinct canonical titles, and only
+            # when explicit brand + literal canonical title + size identify
+            # exactly one candidate. Aliases and brandless offers cannot do so.
+            if len(normalized_candidate_titles) > 1:
+                raw_offer_title = " ".join((offer.raw_name or "").split()).casefold()
+                raw_offer_brand = " ".join((offer.brand_raw or "").split()).casefold()
+                exact_title_and_size = []
+                if raw_offer_brand:
+                    for candidate_product, candidate_variant_aliases in candidates:
+                        canonical_title_matches = (
+                            " ".join(candidate_product.name.split()).casefold()
+                            == raw_offer_title
                         )
-            if len(exact_title_and_size) == 1:
-                candidates = exact_title_and_size
+                        explicit_brand_matches = (
+                            " ".join(candidate_product.brand.split()).casefold()
+                            == raw_offer_brand
+                        )
+                        size_variants = [
+                            variant for variant in candidate_product.variants
+                            if variant.size_ml == offer.size_ml
+                        ]
+                        if (
+                            canonical_title_matches
+                            and explicit_brand_matches
+                            and len(size_variants) == 1
+                        ):
+                            exact_title_and_size.append(
+                                (candidate_product, candidate_variant_aliases)
+                            )
+                if len(exact_title_and_size) == 1:
+                    candidates = exact_title_and_size
 
         if len(candidates) > 1:
             return OfferMatch(
