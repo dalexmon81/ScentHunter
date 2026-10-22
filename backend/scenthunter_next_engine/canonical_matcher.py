@@ -115,12 +115,27 @@ class CanonicalMatcher:
                     candidates.append((product, matched_variant_aliases))
             return candidates
 
-        # Full-title identity takes priority. Suffix-stripped matching is only
-        # a fallback when no strict candidate exists, so "Code" and
-        # "Code Parfum" do not collapse when a strict title distinguishes them.
-        candidates = collect_candidates(strict=True)
-        if not candidates:
-            candidates = collect_candidates(strict=False)
+        # Prefer an exact canonical title over suffix-stripped fallback matches.
+        # However, if the strict hit is only a catalog alias (not the product's
+        # canonical title), preserve any fallback collisions: shared aliases must
+        # remain ambiguous rather than silently resolving to one product.
+        strict_candidates = collect_candidates(strict=True)
+        strict_canonical_ids: set[str] = set()
+        strict_offer_forms = _strict_name_forms(offer.raw_name, offer.brand_raw)
+        for product, _matched_variants in strict_candidates:
+            canonical_forms = _strict_name_forms(product.name, product.brand)
+            if strict_offer_forms & canonical_forms:
+                strict_canonical_ids.add(product.product_id)
+
+        if strict_canonical_ids:
+            candidates = strict_candidates
+        else:
+            fallback_candidates = collect_candidates(strict=False)
+            by_id = {product.product_id: (product, variants)
+                     for product, variants in fallback_candidates}
+            for product, variants in strict_candidates:
+                by_id[product.product_id] = (product, variants)
+            candidates = list(by_id.values())
 
         if not candidates:
             return OfferMatch(
