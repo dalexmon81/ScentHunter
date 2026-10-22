@@ -25,6 +25,7 @@ import inspect
 import json
 import re
 import sqlite3
+import traceback
 import threading
 import time
 import unicodedata
@@ -4013,6 +4014,14 @@ def recover_stale_tasks():
                 (now, now),
             )
             return int(result.rowcount or 0)
+    except sqlite3.OperationalError as exc:
+        print(
+            f'CATALOG HYDRATION STAGE ERROR: stage=recover_stale_tasks '
+            f'error={type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        traceback.print_exc()
+        raise
     finally:
         conn.close()
 
@@ -4125,6 +4134,14 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             conn.rollback()
         except Exception:
             pass
+        raise
+    except sqlite3.OperationalError as exc:
+        print(
+            f'CATALOG HYDRATION STAGE ERROR: stage=claim_hydration_task '
+            f'error={type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        traceback.print_exc()
         raise
     finally:
         conn.close()
@@ -4263,6 +4280,19 @@ def _hydrate_one_task(task):
         http_status = int(match.group(1)) if match else None
         _queue_mark_error(task, detail, http_status=http_status)
         return False
+    except sqlite3.OperationalError as exc:
+        print(
+            f'CATALOG HYDRATION STAGE ERROR: stage=hydrate_task '
+            f'store={task.get("store")} url={task.get("url")} '
+            f'error={type(exc).__name__}: {exc}',
+            flush=True,
+        )
+        traceback.print_exc()
+        try:
+            _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        except Exception:
+            traceback.print_exc()
+        return False
     except Exception as exc:
         _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
         return False
@@ -4321,7 +4351,16 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
                     fetched += 1
                 elif result is False:
                     errors += 1
+            except sqlite3.OperationalError as exc:
+                print(
+                    f'CATALOG HYDRATION STAGE ERROR: stage=hydration_future '
+                    f'error={type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+                traceback.print_exc()
+                errors += 1
             except Exception:
+                traceback.print_exc()
                 errors += 1
         return {
             'selected': len(tasks),
@@ -5076,11 +5115,23 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 stop_event.wait(max(0.1, float(pause_seconds)))
             else:
                 time.sleep(max(0.1, float(pause_seconds)))
+        except sqlite3.OperationalError as exc:
+            print(
+                f'CATALOG HYDRATION STAGE ERROR: stage=hydration_loop '
+                f'error={type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            traceback.print_exc()
+            if stop_event is not None:
+                stop_event.wait(5.0)
+            else:
+                time.sleep(5.0)
         except Exception as exc:
             print(
                 f'CATALOG HYDRATION ERROR: {type(exc).__name__}: {exc}',
                 flush=True,
             )
+            traceback.print_exc()
             if stop_event is not None:
                 stop_event.wait(5.0)
             else:
