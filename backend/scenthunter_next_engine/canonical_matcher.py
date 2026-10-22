@@ -21,7 +21,7 @@ from .models import (
 )
 
 
-_SPACE_RE = re.compile(r"\s+")
+_SPACE_RE = re.compile(r"\\s+")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 
 _GENERIC_TITLE_SUFFIXES = (
