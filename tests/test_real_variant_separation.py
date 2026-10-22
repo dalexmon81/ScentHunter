@@ -1,6 +1,7 @@
 """Read-only real-catalog regression test for variant separation."""
 from pathlib import Path
 
+from backend.scenthunter_next_engine.canonical_matcher import normalize_identity_text
 from backend.scenthunter_next_engine.next_engine_service import NextEngineService
 
 
@@ -11,19 +12,40 @@ CATALOG = ROOT / "backend" / "product_catalog.json"
 def test_real_catalog_keeps_distinct_sizes_in_distinct_canonical_groups():
     service = NextEngineService.from_catalog_file(CATALOG)
     products_before = service.catalog.all_products()
-    selected = None
 
+    # The real catalog can contain duplicate product names/brands. Select a
+    # product whose normalized name + brand identifies exactly one catalog item,
+    # so this test measures variant separation rather than duplicate-product
+    # ambiguity (which the matcher correctly refuses to guess through).
+    identity_counts = {}
+    for item in products_before:
+        key = (
+            normalize_identity_text(item.name),
+            normalize_identity_text(item.brand),
+        )
+        identity_counts[key] = identity_counts.get(key, 0) + 1
+
+    selected = None
     for product in products_before:
+        key = (
+            normalize_identity_text(product.name),
+            normalize_identity_text(product.brand),
+        )
+        if identity_counts[key] != 1:
+            continue
+
         variants_by_size = {}
         for variant in product.variants:
             if variant.size_ml is not None:
                 variants_by_size.setdefault(variant.size_ml, variant)
+
         if len(variants_by_size) >= 2:
             selected = (product, list(variants_by_size.values())[:2])
             break
 
     assert selected is not None, (
-        "No real catalog product with two distinct explicit variant sizes was found."
+        "No uniquely identifiable real catalog product with two distinct "
+        "explicit variant sizes was found."
     )
 
     product, variants = selected
