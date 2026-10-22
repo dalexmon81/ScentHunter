@@ -4608,8 +4608,7 @@ def _coverage_seed_tasks(conn, products):
             rows.append((store, product_id, canonical, primary, now))
     if not rows:
         return
-    conn.executemany(
-        """INSERT INTO catalog_coverage(
+    statement = """INSERT INTO catalog_coverage(
                store,product_id,canonical_name,query,state,next_run_at)
            VALUES(?,?,?,?, 'PENDING', ?)
            ON CONFLICT(store,product_id) DO UPDATE SET
@@ -4634,10 +4633,29 @@ def _coverage_seed_tasks(conn, products):
                      OR catalog_coverage.query != excluded.query
                    THEN NULL ELSE catalog_coverage.last_finished_at END,
                canonical_name=excluded.canonical_name,
-               query=excluded.query""",
-        rows,
-    )
-    conn.commit()
+               query=excluded.query"""
+    # Keep each write transaction small. Coverage seeding runs alongside catalog
+    # hydration, discovery and searches, so one large executemany can monopolize
+    # SQLite's single-writer lock.
+    chunk_size = 100
+    for offset in range(0, len(rows), chunk_size):
+        chunk = rows[offset:offset + chunk_size]
+        for attempt in range(5):
+            try:
+                conn.executemany(statement, chunk)
+                conn.commit()
+                break
+            except sqlite3.OperationalError as exc:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                message = str(exc).lower()
+                if "locked" not in message and "busy" not in message:
+                    raise
+                if attempt >= 4:
+                    raise
+                time.sleep(0.25 * (2 ** attempt))
 
 
 def _coverage_token_match(text, target):

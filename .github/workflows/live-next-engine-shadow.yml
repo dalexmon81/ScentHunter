@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out dedicated branch
         uses: actions/checkout@v4
+        with:
+          ref: scenthunter-next-engine
 
       - name: Set up Python
         uses: actions/setup-python@v5
