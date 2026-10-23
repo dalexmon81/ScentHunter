@@ -489,7 +489,7 @@
       "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
       "Keep both Armani product-ID pairs separate until the parser regression and explicit mapping evidence are complete."
     ],
-    "parser_regression_gate": "pending"
+    "parser_regression_gate": "pending_workflow"
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
@@ -549,7 +549,7 @@
     },
     "real_extraction_regressions": {
       "checked_at": "2026-10-23",
-      "status": "added_pending_workflow",
+      "status": "pending_workflow_after_test_contract_adjustment",
       "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
       "test_file": "tests/test_retailer_parser_html_reuse.py",
       "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
@@ -561,7 +561,9 @@
       ],
       "evidence_scope": "Synthetic, realistic HTML/JSON-LD fixtures directly exercise the production extraction functions. This validates parser behavior on the stated fixture shape only, not live current pages and not canonical matcher assignments.",
       "production_database_mutated": false,
-      "next_required_gate": "Confirm GitHub Actions result for commit 654a9390b3243769bf8d9d37acf7c228c5b29383, then run a bounded live parse of the two known public URLs with the branch parser code and no production database writes."
+      "next_required_gate": "Confirm GitHub Actions result for commit 654a9390b3243769bf8d9d37acf7c228c5b29383, then run a bounded live parse of the two known public URLs with the branch parser code and no production database writes.",
+      "follow_up_commit": "7ff668b4d2c16afc9251052b88a56ed3a4a6165c",
+      "note": "The first run exposed an incorrect test assumption: Deloox deliberately permits a recognized product page with unknown price/availability. The test was corrected to assert that unknowns remain explicit rather than demand the parser return null."
     }
   }
 }
