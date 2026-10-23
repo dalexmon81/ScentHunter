@@ -319,7 +319,15 @@ class CanonicalMatcher:
                 reason="verified_gtin_packaging_conflict",
                 candidate_product_ids=(product.product_id,),
             )
-        offer_forms = _offer_name_forms(offer.raw_name, offer.brand_raw)
+        # Packaging adjectives describe the bottle, not the fragrance identity.
+        # Remove them only for the GTIN-backed name consistency check; true
+        # refill-pack terms have already been rejected above.
+        identity_title = re.sub(
+            r"\\b(?:nachfullbar|refillable|rechargeable)\\b",
+            " ",
+            normalize_identity_text(offer.raw_name),
+        )
+        offer_forms = _offer_name_forms(identity_title, offer.brand_raw)
         catalog_forms = _catalog_forms([product.name, *product.aliases], product.brand)
         if not offer_forms.intersection(catalog_forms):
             return OfferMatch(
