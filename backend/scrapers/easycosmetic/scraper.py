@@ -1143,6 +1143,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     h1 = soup.find("h1")
     if h1:
         name = _clean(h1.get_text(" ", strip=True))
+        # Stock badges can be included in the rendered H1; they belong in offer
+        # availability, not in the canonical product identity.
+        name = re.sub(r"\\s+(?:auf\\s+lager|sofort\\s+lieferbar|lieferbar|ausverkauft)\\s*$", "", name, flags=re.IGNORECASE).strip()
 
     if product_json:
         jsonld_name = _clean(product_json.get("name"))
