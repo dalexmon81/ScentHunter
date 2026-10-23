@@ -75,6 +75,39 @@ def page_probe(url, adapter_name=None):
         h1 = soup.find("h1")
         result["h1"] = clean(h1.get_text(" ", strip=True)) if h1 else None
         result["products"] = _jsonld_products(soup)
+        if adapter_name == "easycosmetic":
+            # Capture bounded structural evidence to diagnose price/stock
+            # selectors without storing or uploading the full retailer HTML.
+            h1_node = soup.find("h1")
+            ancestors = []
+            node = h1_node
+            for _ in range(7):
+                if node is None:
+                    break
+                ancestors.append({
+                    "tag": getattr(node, "name", None),
+                    "id": str(node.get("id") or "")[:100] if getattr(node, "attrs", None) else "",
+                    "class": " ".join(node.get("class", []))[:160] if getattr(node, "attrs", None) else "",
+                    "text": clean(node.get_text(" ", strip=True))[:220],
+                })
+                node = node.parent
+            result["product_structure"] = {
+                "h1_ancestors": ancestors,
+                "price_nodes": [],
+                "stock_phrases": [],
+            }
+            for node in soup.select('[class*="price"], [data-price], [itemprop="price"], [class*="stock"], [class*="availability"]')[:35]:
+                result["product_structure"]["price_nodes"].append({
+                    "tag": node.name,
+                    "class": " ".join(node.get("class", []))[:140],
+                    "data_price": str(node.get("data-price") or "")[:60],
+                    "content": str(node.get("content") or "")[:60],
+                    "text": clean(node.get_text(" ", strip=True))[:120],
+                })
+            normalized_page = clean(soup.get_text(" ", strip=True)).lower()
+            for phrase in ("auf lager", "nicht auf lager", "sofort lieferbar", "ausverkauft", "nicht verfügbar", "nicht verfugbar", "lieferbar"):
+                if phrase in normalized_page:
+                    result["product_structure"]["stock_phrases"].append(phrase)
         if adapter_name:
             if adapter_name == "easycosmetic":
                 # Parse the fetched HTML directly to isolate extraction from a
