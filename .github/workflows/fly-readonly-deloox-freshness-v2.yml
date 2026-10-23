@@ -24,4 +24,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3,json; c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True,timeout=5); c.row_factory=sqlite3.Row; c.execute(\"PRAGMA query_only=ON\"); p=(\"deloox\",); out={\"read_only\":True,\"database_mutated\":False,\"store\":\"deloox\",\"products_total\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=?\",p).fetchone()[0],\"fetch_status_categories\":{str(r[0]):r[1] for r in c.execute(\"SELECT CASE WHEN fetch_status=\\\x27OK\\\x27 THEN \\\x27OK\\\x27 WHEN fetch_status LIKE \\\x27ERROR:RuntimeError: HTTP 404%\\\x27 THEN \\\x27HTTP_404\\\x27 WHEN fetch_status LIKE \\\x27%product_parser_not_found%\\\x27 THEN \\\x27PARSER_NOT_FOUND\\\x27 WHEN fetch_status LIKE \\\x27ERROR:%\\\x27 THEN \\\x27OTHER_ERROR\\\x27 ELSE COALESCE(fetch_status,\\\x27NULL\\\x27) END,COUNT(*) FROM store_products WHERE store=? GROUP BY 1\",p)},\"products_with_price\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=? AND price IS NOT NULL\",p).fetchone()[0],\"products_with_availability\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=? AND availability IS NOT NULL\",p).fetchone()[0],\"freshness_buckets\":{str(r[0]):r[1] for r in c.execute(\"SELECT CASE WHEN fetched_at IS NULL THEN \\\x27UNKNOWN\\\x27 WHEN fetched_at>=strftime(\\\x27%s\\\x27,\\\x27now\\\x27)-86400 THEN \\\x27LAST_24_HOURS\\\x27 WHEN fetched_at>=strftime(\\\x27%s\\\x27,\\\x27now\\\x27)-604800 THEN \\\x27LAST_7_DAYS\\\x27 WHEN fetched_at>=strftime(\\\x27%s\\\x27,\\\x27now\\\x27)-2592000 THEN \\\x27LAST_30_DAYS\\\x27 ELSE \\\x27OLDER_THAN_30_DAYS\\\x27 END,COUNT(*) FROM store_products WHERE store=? GROUP BY 1\",p)},\"fetched_at_min_max\":list(c.execute(\"SELECT MIN(fetched_at),MAX(fetched_at) FROM store_products WHERE store=?\",p).fetchone()),\"variants_total\":c.execute(\"SELECT COUNT(*) FROM store_product_variants WHERE store=?\",p).fetchone()[0],\"hydration_state_counts\":{str(r[0]):r[1] for r in c.execute(\"SELECT state,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY state\",p)},\"queue_latest_finished\":c.execute(\"SELECT MAX(last_finished_at) FROM hydration_queue WHERE store=?\",p).fetchone()[0],\"queue_latest_started\":c.execute(\"SELECT MAX(last_started_at) FROM hydration_queue WHERE store=?\",p).fetchone()[0],\"queue_with_error\":c.execute(\"SELECT COUNT(*) FROM hydration_queue WHERE store=? AND length(last_error)>0\",p).fetchone()[0],\"http_status_counts\":{str(r[0]):r[1] for r in c.execute(\"SELECT last_http_status,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY last_http_status\",p)}}; print(json.dumps(out)); c.close()'"
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3,json,time
+c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True,timeout=5)
+c.execute(\"PRAGMA query_only=ON\")
+p=(\"deloox\",)
+q=lambda sql,args=p:c.execute(sql,args).fetchone()[0]
+out={\"read_only\":True,\"database_mutated\":False,\"store\":\"deloox\"}
+out[\"products_total\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=?\")
+out[\"fetch_ok\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status=?\",p+(\"OK\",))
+out[\"http_404\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status LIKE ?\",p+(\"ERROR:RuntimeError: HTTP 404%\",))
+out[\"parser_not_found\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status LIKE ?\",p+(\"%product_parser_not_found%\",))
+out[\"products_with_price\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND price IS NOT NULL\")
+out[\"products_with_availability\"]=q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND availability IS NOT NULL\")
+out[\"fetched_at_min_max\"]=list(c.execute(\"SELECT MIN(fetched_at),MAX(fetched_at) FROM store_products WHERE store=?\",p).fetchone())
+now=time.time()
+buckets={0:\"UNKNOWN\",1:\"LAST_24_HOURS\",2:\"LAST_7_DAYS\",3:\"LAST_30_DAYS\",4:\"OLDER_THAN_30_DAYS\"}
+raw=c.execute(\"SELECT CASE WHEN fetched_at IS NULL THEN 0 WHEN fetched_at>=? THEN 1 WHEN fetched_at>=? THEN 2 WHEN fetched_at>=? THEN 3 ELSE 4 END,COUNT(*) FROM store_products WHERE store=? GROUP BY 1\",(now-86400,now-604800,now-2592000,\"deloox\")).fetchall()
+out[\"freshness_buckets\"]={buckets[r[0]]:r[1] for r in raw}
+out[\"hydration_state_counts\"]={str(r[0]):r[1] for r in c.execute(\"SELECT state,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY state\",p)}
+out[\"queue_http_status_counts\"]={str(r[0]):r[1] for r in c.execute(\"SELECT last_http_status,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY last_http_status\",p)}
+out[\"queue_latest_finished\"]=q(\"SELECT MAX(last_finished_at) FROM hydration_queue WHERE store=?\")
+out[\"queue_latest_started\"]=q(\"SELECT MAX(last_started_at) FROM hydration_queue WHERE store=?\")
+out[\"queue_with_error\"]=q(\"SELECT COUNT(*) FROM hydration_queue WHERE store=? AND length(last_error)>0\")
+print(json.dumps(out))
+c.close()'"
