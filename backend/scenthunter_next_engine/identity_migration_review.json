@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "status": "review_required",
+  "purpose": "Explicit, reversible review plan for known Armani canonical-identity collisions. This is a proposal only; it is not an executable migration.",
+  "read_only": true,
+  "catalog_mutated": false,
+  "database_mutated": false,
+  "automatic_merge_allowed": false,
+  "approval_requirements": [
+    "Verify product identity and concentration against authoritative manufacturer references.",
+    "Verify each affected size/variant against an authoritative source or GTIN/MPN.",
+    "Inventory all offer mappings and downstream references before moving or retiring any product_id.",
+    "Prepare a backup and rollback mapping before any catalog write.",
+    "Run the migration validator and end-to-end tests against a copy before review."
+  ],
+  "cases": [
+    {
+      "case_id": "ARMANI-ACQUA-DI-GIO-EDT",
+      "product_ids": [
+        "SH-AUTO-0288",
+        "SH-AUTO-0018"
+      ],
+      "evidence": {
+        "SH_AUTO_0288": {
+          "canonical_name": "Acqua di Gio",
+          "concentration": "",
+          "variant_sizes_ml": [],
+          "alias_count": 3
+        },
+        "SH_AUTO_0018": {
+          "canonical_name": "Acqua di Giò",
+          "concentration": "Eau de Toilette",
+          "variant_sizes_ml": [
+            50,
+            100,
+            200
+          ],
+          "alias_count": 4
+        }
+      },
+      "diagnosis": "Probable incomplete duplicate/legacy parent record, but SH-AUTO-0288 has no declared concentration or variants and must not be silently merged.",
+      "proposed_action": "Review SH-AUTO-0288 as a possible legacy alias/redirect to SH-AUTO-0018 only after confirming the official identity and finding every reference to SH-AUTO-0288. Preserve the old ID as a redirect/compatibility mapping if the repository supports it.",
+      "blocking_questions": [
+        "Does every existing reference to SH-AUTO-0288 refer specifically to the EDT product?",
+        "Are there any non-EDT Acqua di Gio products or historical references represented by this record?"
+      ],
+      "migration_allowed": false
+    },
+    {
+      "case_id": "ARMANI-ACQUA-DI-GIO-PROFONDO-EDP",
+      "product_ids": [
+        "SH-0043",
+        "SH-AUTO-0019"
+      ],
+      "evidence": {
+        "SH_0043": {
+          "canonical_name": "Acqua di Gio Profondo",
+          "concentration": "Eau de Parfum",
+          "variant_sizes_ml": [
+            75,
+            125
+          ],
+          "variant_ids": [
+            "VAR-89c2a2a86bedb3c5",
+            "VAR-09a73d0a5594cf49"
+          ],
+          "canonical_image_url_mentions_size_ml": 50
+        },
+        "SH_AUTO_0019": {
+          "canonical_name": "Acqua di Giò Profondo",
+          "concentration": "Eau de Parfum",
+          "variant_sizes_ml": [
+            50,
+            100,
+            200
+          ],
+          "variant_ids": [
+            "VAR-30ce093fd9e9ab47",
+            "VAR-46b03c1f1cff0a6e",
+            "VAR-f79ca5b3b5fd237f"
+          ]
+        }
+      },
+      "diagnosis": "Same normalized brand, canonical name and concentration split across two product IDs. Available records alone do not prove whether the sizes belong to one identity or whether a historical/release distinction is missing.",
+      "proposed_action": "Do not merge yet. Verify 75 ml and 125 ml with authoritative sources and verify all five variants independently. If they are the same product identity, nominate one canonical product ID, move variants without changing variant IDs, consolidate aliases without losing provenance, and preserve an old-ID redirect/reference map. Correct or validate the SH-0043 canonical image separately.",
+      "blocking_questions": [
+        "Are the 75 ml and 125 ml EDP formats valid for the exact same Profondo release/market?",
+        "Which product ID is referenced by persisted offers, scraper mappings, analytics, or external clients?",
+        "Does the image currently attached to SH-0043 actually depict the canonical product and size?"
+      ],
+      "migration_allowed": false
+    }
+  ],
+  "rollback_plan": [
+    "Export and checksum the pre-migration product and variant records plus all references to affected product IDs.",
+    "Apply the approved mapping transactionally on a staging copy.",
+    "Validate unique product/variant IDs, variant ownership, GTIN/MPN uniqueness, reference integrity, and unchanged unaffected-record counts.",
+    "If any validation fails, restore the exact pre-migration snapshot and report the failure without publishing."
+  ]
+}
