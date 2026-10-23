@@ -491,14 +491,13 @@
     }
   },
   "next_gate": {
-    "status": "refillable_bottle_semantics_fix_regex_corrected_ci_pending",
+    "status": "gtin_variant_resolution_verified_packaging_semantics_and_ci_passed_deloox_transport_pending",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "A follow-up CI failure traced to an over-escaped regex word-boundary in the packaging-adjective cleanup. Corrected the expression to use actual word boundaries; the German and English refillable-bottle regressions are queued for a fresh full test run. No production DB writes, merge, or deploy.",
+    "latest_evidence": "On commit 5e1094c12f52812c16ebd540d8f993285ed7f966, the Next Engine test workflow passed (100 tests) and the read-only runtime SQLite audit passed. The matcher now treats German nachfüllbar and English refillable bottle as packaging adjectives, while true 'Refill' pack listings fail closed. GTIN 3614273953849 resolves to the exact existing 100 ml EDP bottle variant SH-AUTO-0019 / VAR-46b03c1f1cff0a6e. Verified 75 ml and 125 ml mappings remain on SH-0043. Product IDs are not merged; no production database writes, merge, or deploy.",
     "required_next_steps": [
-      "Verify CI for the refillable-bottle versus refill-pack distinction and the 100 ml GTIN mapping.",
-      "Keep SH-0043 and SH-AUTO-0019 separate until all references are reconciled; their verified 75/125 ml and 100 ml mappings are variant evidence, not permission to merge IDs.",
       "Resolve Deloox HTTP 403 through an allowed live-fetch path and separately restore retailer discovery/search.",
+      "Keep SH-0043 and SH-AUTO-0019 separate until every reference is reconciled; verified GTIN mappings are variant evidence, not permission to merge IDs.",
       "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic Acqua di Gio record is classified."
     ],
     "parser_regression_gate": "live_parfumzentrum_parse_gtin_variant_matcher_and_ci_passed_deloox_http_403",
@@ -837,20 +836,21 @@
               "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
             ],
             "result": "verified_100ml_refillable_bottle_not_refill_pack",
-            "note": "German nachfüllbar means refillable bottle. The matcher now distinguishes this from an actual refill pack."
+            "note": "Live Parfum-Zentrum Product JSON-LD reports this GTIN for the exact 100 ml EDP product. German nachfüllbar means refillable bottle; the matcher distinguishes it from a true refill pack."
           }
         ],
         "tests": {
-          "run_id": 39950630203,
+          "run_id": 39951400016,
           "conclusion": "success",
-          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39950630203",
-          "commit": "fa88c668e7d614c78601192cc55261bc2a005a51"
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39951400016",
+          "commit": "5e1094c12f52812c16ebd540d8f993285ed7f966",
+          "result": "100 tests passed; includes German and English refillable-bottle matching plus true refill-pack fail-closed check"
         },
         "read_only_runtime_audit": {
-          "run_id": 39950630200,
+          "run_id": 39951400024,
           "conclusion": "success",
-          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39950630200",
-          "commit": "fa88c668e7d614c78601192cc55261bc2a005a51",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39951400024",
+          "commit": "5e1094c12f52812c16ebd540d8f993285ed7f966",
           "production_database_mutated": false
         },
         "note": "Both 75 ml and 125 ml EDP GTINs now resolve only to their exact declared variants; size conflicts fail closed. SH-0043 and SH-AUTO-0019 remain separate product IDs. No production DB write, catalog file modification, merge, or deploy."
