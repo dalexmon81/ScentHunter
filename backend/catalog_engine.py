@@ -2391,11 +2391,13 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             return False
         if len(queued) >= max_pages * 2:
             return False
-        sequence += 1        priority = _html_discovery_priority(store, key, depth, source)
+        sequence += 1
+        priority = _html_discovery_priority(store, key, depth, source)
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
         if has_tokens(key) and len(query_url_hits) < 100:
-            query_url_hits.append({'url': key, 'depth': depth, 'source': source})        return True
+            query_url_hits.append({'url': key, 'depth': depth, 'source': source})
+        return True
 
     seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
     for seed in seeds:
