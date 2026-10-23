@@ -135,9 +135,21 @@
         "url": "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/",
         "finding": "Official catalog lists Acqua di Giò EDT in 50 ml and 100 ml and distinguishes EDT, EDP, Parfum and Profondo products.",
         "scope_limit": "US catalog is corroborating product-family evidence, not definitive Luxembourg variant evidence."
+      },
+      {
+        "name": "Profumeria Rossi retailer listing for Acqua di Gio Profondo EDP 125 ml",
+        "url": "https://www.profumeriarossi.it/armani-acqua-di-gio-profondo-eau-de-parfum-125ml",
+        "finding": "Lists Acqua di Gio Profondo Eau de Parfum 125 ml with EAN 3614272865235.",
+        "scope_limit": "Independent retailer corroboration of the GTIN and 125 ml product, not an official manufacturer source and not proof of mapping to SH-0043 or SH-AUTO-0019."
+      },
+      {
+        "name": "Hinta.fi product data for Acqua di Gio Profondo 125 ml",
+        "url": "https://hinta.fi/2077662/giorgio-armani-public-acqua-di-gio-profondo-125-ml/tiedot",
+        "finding": "Lists 125 ml and GTIN 3614272865235.",
+        "scope_limit": "Third-party product-data source; corroborates the identifier but does not establish the canonical catalog ID."
       }
     ],
-    "outcome": "Current official evidence supports treating the Profondo 75 ml and 125 ml variants as unverified, not as confirmed invalid. Keep the migration blocked until variant-level evidence and downstream references are checked."
+    "outcome": "The 125 ml EDP product and EAN 3614272865235 are corroborated by multiple independent retailer/product-data sources. This does not establish which canonical catalog record owns that variant, and the 75 ml variant remains unverified. Keep migration blocked."
   },
   "dependency_inventory": {
     "checked_at": "2026-10-23",
@@ -482,12 +494,12 @@
     "status": "blocked_pending_targeted_parser_regression_and_explicit_variant_mapping",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Both Deloox and ParfumZentrum now expose catalog hydration paths that can reuse already-fetched HTML. Next Engine tests and read-only runtime audit passed on commit 253016d529c5c34c18f35127f7cd7c0373b65c82. No production database writes, merge, or deployment.",
+    "latest_evidence": "Next Engine tests and read-only runtime audit both completed successfully on branch head 257806cd4be5c691e7ff8122f0460083ab70e984. Independent public sources corroborate Acqua di Gio Profondo EDP 125 ml and EAN 3614272865235. Live parsing of the known retailer URLs and explicit canonical variant ownership remain unverified.",
     "required_next_steps": [
-      "Add targeted regression tests for Deloox and ParfumZentrum product-page adapters using representative HTML containing JSON-LD Product data and verify size, concentration, SKU/GTIN extraction.",
-      "Check the previously failing live Deloox and ParfumZentrum URLs through the parser without writing to the production database; confirm product_parser_not_found changes and normalized size_ml values.",
-      "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
-      "Keep both Armani product-ID pairs separate until the parser regression and explicit mapping evidence are complete."
+      "Run the existing manual live-shadow/parser workflow against the two known retailer URLs with no production database access, then record the actual parser outputs and distinguish download errors from parse failures.",
+      "Resolve exact retailer URL/EAN/size to canonical variant ownership through the actual ingestion/matching path; do not infer ownership from name similarity alone.",
+      "Verify the 75 ml variant independently and keep SH-0043 and SH-AUTO-0019 separate until both size-level evidence and downstream references are reconciled.",
+      "Keep the Armani EDT collision SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic record is classified."
     ],
     "parser_regression_gate": "adapter_integration_ci_pending"
   },
@@ -549,7 +561,7 @@
     },
     "real_extraction_regressions": {
       "checked_at": "2026-10-23",
-      "status": "previous_ci_passed_adapter_integration_fixtures_pending",
+      "status": "fixture_and_adapter_tests_passed_live_url_verification_pending",
       "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
       "test_file": "tests/test_retailer_parser_html_reuse.py",
       "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
@@ -572,7 +584,23 @@
       "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
       "validated_commit": "6ab8ddc5e14f00ec18c4c9cd4f30c339810c28f1",
       "test_result": "Full isolated next-engine workflow completed successfully, including parser fixtures, catalog smoke, identity audits and generated-report consistency checks.",
-      "workflow_run_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695"
+      "workflow_run_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
+      "latest_verified_commit": "257806cd4be5c691e7ff8122f0460083ab70e984",
+      "latest_test_workflow": {
+        "run_id": 39946212567,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946212567",
+        "commit": "257806cd4be5c691e7ff8122f0460083ab70e984"
+      },
+      "latest_read_only_runtime_audit": {
+        "run_id": 39946212576,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946212576",
+        "commit": "257806cd4be5c691e7ff8122f0460083ab70e984",
+        "production_database_mutated": false
+      },
+      "live_url_status": "not_executed",
+      "live_url_blocker": "The available GitHub connector can inspect workflow runs and rerun failed jobs, but does not expose a workflow_dispatch action for the existing manual live-shadow workflow. Do not silently change the workflow trigger or run unrelated retailer searches as a substitute."
     }
   }
 }
