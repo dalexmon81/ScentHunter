@@ -37,6 +37,7 @@ jobs:
           tests/test_real_catalog_end_to_end.py
           tests/test_real_variant_separation.py
           tests/test_catalog_preflight.py
+          tests/test_catalog_identity_audit.py
           tests/test_catalog_sqlite_contention.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
@@ -52,6 +53,9 @@ jobs:
 
       - name: Audit real catalog without modifying it
         run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+
+      - name: Audit canonical identities (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_identity_audit
 
       - name: Detailed catalog classification (read-only)
         run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
