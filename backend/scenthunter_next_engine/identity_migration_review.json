@@ -494,7 +494,7 @@
     "status": "parfumzentrum_live_parse_confirmed_discovery_and_deloox_transport_pending",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "On commit baf5cdd8524d927e4f33d9ea103372966de2d5c2, the full Next Engine tests, read-only runtime SQLite audit, and bounded live parser workflow all passed. The live probe fetched two exact Parfum-Zentrum product pages and the current adapter extracted 125 ml EDP with GTIN 3614272865235 and 100 ml refill EDP with GTIN 3614273953849. Deloox exact pages returned HTTP 403 from the GitHub-hosted runner, so its parser remains unverified live. Both retailers' broad search adapters returned zero results, meaning discovery still needs diagnosis. No production DB writes, merge, or deployment.",
+    "latest_evidence": "On commit baf5cdd8524d927e4f33d9ea103372966de2d5c2, the full Next Engine tests, read-only runtime SQLite audit, and bounded live parser workflow all passed. The live probe fetched two exact Parfum-Zentrum product pages and the current adapter extracted 125 ml EDP with GTIN 3614272865235 and 100 ml refill EDP with GTIN 3614273953849. Deloox exact pages returned HTTP 403 from the GitHub-hosted runner, so its parser remains unverified live. Both retailers' broad search adapters returned zero results, meaning discovery still needs diagnosis. No production DB writes, merge, or deployment. An isolated end-to-end matcher regression passed on commit 5cffd7d53e9c3d50565e89dad8e67213ea3e2ce0: captured live Parfum-Zentrum Profondo EDP 125 ml resolves to SH-0043 / VAR-09a73d0a5594cf49; the 100 ml refill is not mapped to the regular 100 ml EDP variant. This validates local matching for captured payloads, not persisted production offer ownership.",
     "required_next_steps": [
       "Diagnose why Deloox and Parfum-Zentrum live search/discovery returns zero results despite exact Parfum-Zentrum pages being parseable; keep transport 403 separate from parser failure.",
       "Verify Deloox exact-URL parsing through a fetch path not blocked by the GitHub-hosted runner or by using captured retailer HTML from an authorized read-only source; do not infer parser success from fixtures.",
@@ -502,7 +502,30 @@
       "Keep SH-0043 and SH-AUTO-0019 separate until exact variant mappings and all downstream references are reconciled; 125 ml EDP has independent live GTIN evidence but canonical ownership is not yet proven.",
       "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic record is classified."
     ],
-    "parser_regression_gate": "parfumzentrum_exact_live_urls_passed_deloox_live_fetch_blocked"
+    "parser_regression_gate": "parfumzentrum_exact_live_urls_passed_deloox_live_fetch_blocked",
+    "variant_resolution_regression": {
+      "checked_at": "2026-10-23",
+      "commit": "5cffd7d53e9c3d50565e89dad8e67213ea3e2ce0",
+      "test_file": "tests/test_live_retailer_identity_resolution.py",
+      "test_workflow_run_id": 39946894043,
+      "test_workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946894043",
+      "test_status": "success",
+      "findings": {
+        "live_profondo_125ml_edp": {
+          "expected_product_id": "SH-0043",
+          "expected_variant_id": "VAR-09a73d0a5594cf49",
+          "result": "matched",
+          "basis": "Captured output from live Parfum-Zentrum product page, including GTIN 3614272865235, size 125 ml and Eau de Parfum."
+        },
+        "live_profondo_100ml_refill": {
+          "result": "not_matched_to_regular_100ml_edp",
+          "basis": "Captured live refill page with GTIN 3614273953849; it must remain distinct from the regular 100 ml EDP."
+        }
+      },
+      "production_database_mutated": false,
+      "catalog_modified": false,
+      "note": "This deterministic CI test uses captured live parser output. The separate live probe checks the current public pages; no DB writes are made."
+    }
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
