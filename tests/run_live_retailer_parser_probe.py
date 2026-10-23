@@ -25,7 +25,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ScentHunterReadOnlyParserProb
 
 
 def clean(value):
-    return re.sub(r"\\s+", " ", str(value or "")).strip()
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _jsonld_products(soup):
