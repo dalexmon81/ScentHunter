@@ -89,25 +89,19 @@ def test_deloox_real_product_extraction_from_jsonld_fixture():
     assert result["source"]["image"].endswith("profondo-125.jpg")
 
 
-def test_deloox_does_not_treat_size_as_a_price():
-    # Keep the title size after a deliberately non-price suffix because the
-    # generic page-text fallback currently searches the whole document for a
-    # numeric price. This regression records that behavior precisely.
+def test_deloox_rejects_page_without_public_price():
+    # A product title includes "125 ml", but that is not a public price.
     html = """
     <html><body>
     <h1>Acqua di Gio Profondo Eau de Parfum 125 ml</h1>
     <p>Fragrance description only; no currency or offer data.</p>
     </body></html>
     """
-    result = deloox._product(
+    assert deloox._product(
         "https://www.deloox.nl/en/product/123/acqua-di-gio-profondo-eau-de-parfum-125-ml",
         html,
         "Acqua di Gio Profondo Eau de Parfum",
-    )
-    assert result is not None
-    assert result["attributes"]["size_ml"]["value"] == 125
-    assert result["offer"]["availability"] == "unknown"
-    assert result["offer"]["price"] is None
+    ) is None
 
 
 def test_parfumzentrum_real_product_extraction_from_jsonld_fixture():
