@@ -65,6 +65,24 @@ class CatalogIdentityAuditTests(unittest.TestCase):
         self.assertEqual(report["shared_product_aliases"]["count"], 1)
         self.assertEqual(report["shared_product_aliases"]["items"][0]["alias"], "shared product alias")
 
+    def test_flags_expanded_brand_alias_as_candidate_without_hiding_collision(self):
+        source = {
+            "products": [
+                {"product_id": "p1", "brand_name": "Armani", "canonical_name": "Acqua di Gio", "aliases": ["Giorgio Armani"]},
+                {"product_id": "p2", "brand_name": "Armani", "canonical_name": "My Way", "aliases": ["Giorgio Armani"]},
+                {"product_id": "p3", "brand_name": "Dior", "canonical_name": "Sauvage", "aliases": ["Christian Dior"]},
+                {"product_id": "p4", "brand_name": "Dior", "canonical_name": "J'adore", "aliases": ["Christian Dior"]},
+            ],
+            "variants": [],
+        }
+        report = build_identity_audit(source)
+        candidates = {item["alias"] for item in report["possible_brand_aliases_for_review"]["items"]}
+        self.assertEqual(candidates, {"giorgio armani", "christian dior"})
+        # Candidates remain visible as collisions; this is not a confirmed correction.
+        self.assertEqual(report["shared_product_aliases"]["count"], 2)
+        self.assertTrue(all(item["classification"] == "possible_brand_alias_not_confirmed"
+                            for item in report["possible_brand_aliases_for_review"]["items"]))
+
     def test_requires_product_and_variant_arrays(self):
         with self.assertRaises(ValueError):
             build_identity_audit({"products": []})
