@@ -107,8 +107,14 @@ def page_probe(url, adapter_name=None):
 
 def adapter_probe(module):
     started = time.monotonic()
+    contract = None
     try:
-        rows = module.search(QUERY) or []
+        stream = getattr(module, "search_stream", None)
+        if callable(stream):
+            contract = stream(QUERY)
+            rows = contract.get("results", []) if isinstance(contract, dict) else []
+        else:
+            rows = module.search(QUERY) or []
         clean_rows = []
         for row in rows[:8]:
             if not isinstance(row, dict):
@@ -128,10 +134,21 @@ def adapter_probe(module):
                 "availability": offer.get("availability", row.get("availability")),
                 "gtin": gtin.get("value") if isinstance(gtin, dict) else row.get("gtin"),
             })
-        return {"status": "results" if clean_rows else "zero_results", "rows": clean_rows,
-                "row_count": len(rows), "elapsed_seconds": round(time.monotonic() - started, 2)}
+        result = {
+            "status": (contract.get("status") if isinstance(contract, dict) else None)
+                      or ("results" if clean_rows else "zero_results"),
+            "verified": contract.get("verified") if isinstance(contract, dict) else bool(clean_rows),
+            "rows": clean_rows,
+            "row_count": len(rows),
+            "elapsed_seconds": round(time.monotonic() - started, 2),
+        }
+        if isinstance(contract, dict):
+            result["error"] = contract.get("error")
+            result["details"] = contract.get("details")
+        return result
     except Exception as exc:
-        return {"status": "error", "error": type(exc).__name__ + ": " + clean(exc)[:240],
+        return {"status": "error", "verified": False,
+                "error": type(exc).__name__ + ": " + clean(exc)[:240],
                 "elapsed_seconds": round(time.monotonic() - started, 2)}
 
 
