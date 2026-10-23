@@ -4832,7 +4832,8 @@ def _coverage_persist_urls(store, rows):
         with conn:
             for url in urls:
                 conn.execute(
-                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)                       VALUES(?,?,?,?,?,1)
+                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
+                       VALUES(?,?,?,?,?,1)
                        ON CONFLICT(store,url) DO UPDATE SET
                            slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
                     (store, url, url_slug(url), '', now),
