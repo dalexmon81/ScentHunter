@@ -388,12 +388,75 @@
         "The scan returns a few sample values per column, not all matching retailer records.",
         "No write was made to the deployed database."
       ]
+    },
+    "profondo_size_reconciliation": {
+      "checked_at": "2026-10-23",
+      "workflow_run_id": 39940481860,
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39940481860",
+      "query_scope": "Read-only SQLite query on deployed /data/store_catalog.sqlite3: retailer rows whose names contain Profondo and whose size_ml is 75/125 or name contains 75ml/125ml; limited to 100 rows.",
+      "rows_returned": 3,
+      "rows": [
+        {
+          "store": "easycosmetic",
+          "name": "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray",
+          "size_ml": 125,
+          "price": 96.99,
+          "currency": "EUR",
+          "availability": "In stock",
+          "fetch_status": "OK",
+          "sku": "",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx"
+        },
+        {
+          "store": "perfumemarket",
+          "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Mannen",
+          "size_ml": 125,
+          "price": 129.99,
+          "currency": "EUR",
+          "availability": "in_stock",
+          "fetch_status": "OK",
+          "sku": "3614272865235",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml"
+        },
+        {
+          "store": "perfumemarket",
+          "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Men",
+          "size_ml": null,
+          "price": 129.99,
+          "currency": "EUR",
+          "availability": "in_stock",
+          "fetch_status": "OK",
+          "sku": "3614272865235",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://perfumemarket.nl/en/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml"
+        }
+      ],
+      "interpretation": "Production retailer data contains two distinct retailer listings for Profondo EDP 125 ml, with the PerfumeMarket listing carrying SKU 3614272865235. The English PerfumeMarket duplicate has no size_ml value. This is retailer evidence for a 125 ml listing, not manufacturer-authoritative proof and not proof that either catalog variant is correctly mapped to these rows.",
+      "limitations": [
+        "The query returned no 75 ml row.",
+        "GTIN and MPN fields were empty for all three returned rows.",
+        "The SKU resembles a GTIN-13 format but is stored in sku, not gtin; do not promote it to a verified GTIN without independent validation.",
+        "The query is name/size-filtered and capped at 100 rows; it does not establish all possible references or offer-to-variant links."
+      ],
+      "safety": "Read-only connection with SQLite URI mode=ro and PRAGMA query_only=ON; no production data was changed."
     }
   },
   "next_gate": {
     "status": "blocked_pending_variant_level_reconciliation",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
-    "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge."
+    "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
+    "latest_evidence": "Read-only production scan found 125 ml Profondo EDP retailer listings at easycosmetic and PerfumeMarket, but no 75 ml row in the targeted result. Neither GTIN/MPN nor explicit canonical variant mapping was confirmed.",
+    "required_next_steps": [
+      "Inspect the store_products schema and mapping/offer-related tables to identify how retailer URLs/SKUs are associated with canonical product and variant IDs.",
+      "Search exact URL, SKU, and normalized name references across deployed SQLite tables and views, without writes.",
+      "Keep both SH-0043 and SH-AUTO-0019 unchanged until every affected variant and downstream reference has been reconciled.",
+      "Run Next Engine tests after any repository change; no merge or production deployment as part of this audit."
+    ]
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
