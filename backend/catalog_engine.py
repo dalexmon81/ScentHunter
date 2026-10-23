@@ -3191,7 +3191,11 @@ def refresh_url(store, url):
                             continue
                         if variant_size > 0 and variant_price > 0:
                             valid_variants.append((variant, variant_size, variant_price))
-                    if valid_variants:                        conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
+                    if valid_variants:
+                        conn.execute(
+                            'DELETE FROM store_product_variants WHERE store=? AND url=?',
+                            (store, url),
+                        )
                         for variant, variant_size, variant_price in valid_variants:
                             # Persist the commercial combination identity, not
                             # merely size + SKU: Sabina can repeat a parent SKU
