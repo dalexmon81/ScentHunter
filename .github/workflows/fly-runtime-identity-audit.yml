@@ -20,5 +20,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app scenthunter --select=false -C 'sqlite3 -readonly /data/store_catalog.sqlite3 ".tables"'
-          flyctl ssh console --app scenthunter --select=false -C 'sqlite3 -readonly /data/store_catalog.sqlite3 ".schema"'
+          flyctl ssh console --app scenthunter --select=false -C 'python3 -c "import sqlite3; p=\"file:/data/store_catalog.sqlite3?mode=ro\"; c=sqlite3.connect(p, uri=True); c.execute(\"PRAGMA query_only=ON\"); print(\"TABLES\"); [print(r[0]) for r in c.execute(\"SELECT name FROM sqlite_master WHERE type IN (\\\"table\\\",\\\"view\\\") ORDER BY name\")]; print(\"SCHEMA\"); [print(r[0]) for r in c.execute(\"SELECT sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name\")]; c.close()"'
