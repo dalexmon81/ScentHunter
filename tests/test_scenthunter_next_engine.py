@@ -174,10 +174,10 @@ class MatchContractTests(unittest.TestCase):
 
 class HydrationSQLiteRetryTests(unittest.TestCase):
     def test_retries_transient_sqlite_locked_error(self):
-        from unittest.mock import patch
+        from unittest.mock import Mock, patch
         from backend import catalog_engine
 
-        operation = unittest.mock.Mock(
+        operation = Mock(
             side_effect=[__import__("sqlite3").OperationalError("database is locked"), "ok"]
         )
         with patch.object(catalog_engine.time, "sleep") as sleep:
@@ -189,6 +189,7 @@ class HydrationSQLiteRetryTests(unittest.TestCase):
         sleep.assert_called_once_with(0.10)
 
     def test_does_not_retry_non_lock_sqlite_error(self):
+        from unittest.mock import Mock
         from backend import catalog_engine
         import sqlite3
 
@@ -200,7 +201,7 @@ class HydrationSQLiteRetryTests(unittest.TestCase):
         self.assertEqual(operation.call_count, 1)
 
     def test_raises_after_bounded_lock_retries(self):
-        from unittest.mock import patch
+        from unittest.mock import Mock, patch
         from backend import catalog_engine
         import sqlite3
 
