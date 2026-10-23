@@ -1,0 +1,27 @@
+name: Fly read-only Deloox catalog inventory
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scenthunter-next-engine
+    paths:
+      - ".github/workflows/fly-readonly-deloox-inventory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Count Deloox records (SQLite read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3,json; c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True,timeout=5); c.row_factory=sqlite3.Row; c.execute(\"PRAGMA query_only=ON\"); tables=(\"store_urls\",\"store_products\",\"store_product_variants\",\"store_url_metadata\",\"hydration_queue\"); out={\"read_only\":True,\"database_mutated\":False,\"store\":\"deloox\",\"tables\":{}}; names={r[0] for r in c.execute(\"SELECT name FROM sqlite_master WHERE type=\\\x27table\\\x27\")}; exec(\"for t in tables:\\n if t not in names: out[\\\x27tables\\\x27][t]={\\\x27present\\\x27:False}; continue\\n cols={x[1] for x in c.execute(\\\x27PRAGMA table_info(\\\x27+t+\\\x27)\\\x27)}\\n if \\\x27store\\\x27 not in cols: out[\\\x27tables\\\x27][t]={\\\x27present\\\x27:True}; continue\\n out[\\\x27tables\\\x27][t]={\\\x27present\\\x27:True,\\\x27row_count\\\x27:c.execute(\\\x27SELECT COUNT(*) FROM \\\"\\\x27+t+\\\x27\\\" WHERE lower(store)=?\\\x27,(\\\x27deloox\\\x27,)).fetchone()[0]}\"); print(json.dumps(out)); c.close()'"
