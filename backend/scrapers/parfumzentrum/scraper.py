@@ -1658,7 +1658,7 @@ def _extract_product(url, query, html=None):
     # Product URLs append an internal SKU such as "_z1016707". It is not part
     # of the product title and must never become a mandatory lexical match.
     query = re.sub(
-        r"\bz\d+\s*$",
+        r"(?:^|[_\s-])z\d+\s*$",
         "",
         _clean(query),
         flags=re.I,
