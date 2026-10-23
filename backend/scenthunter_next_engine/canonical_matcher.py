@@ -213,22 +213,32 @@ class CanonicalMatcher:
                         name_forms(value, product.brand)
                     )
 
+                # Variant aliases must retain explicit format tokens. The
+                # product-level title normalizer strips generic suffixes and
+                # sizes for conservative product identity; reusing those forms
+                # here can make "75 ml" match a "30 ml" alias after both collapse
+                # to the same base title. Match variant aliases on exact
+                # normalized text (plus an explicit brand-prefix form) only.
                 matched_variant_aliases = tuple(
                     variant
                     for variant in product.variants
-                    if offer_forms
-                    & {
-                        form
+                    if any(
+                        normalize_identity_text(offer.raw_name)
+                        == normalize_identity_text(value)
+                        or (
+                            offer_brand
+                            and normalize_identity_text(offer.raw_name).startswith(
+                                normalize_identity_text(product.brand) + " "
+                            )
+                            and normalize_identity_text(offer.raw_name)[
+                                len(normalize_identity_text(product.brand)) + 1:
+                            ] == normalize_identity_text(value)
+                        )
                         for value in [
                             *variant.aliases,
-                            *(
-                                [variant.label]
-                                if variant.label
-                                else []
-                            ),
+                            *([variant.label] if variant.label else []),
                         ]
-                        for form in name_forms(value, product.brand)
-                    }
+                    )
                 )
 
                 if (
