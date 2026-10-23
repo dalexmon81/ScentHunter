@@ -172,5 +172,46 @@ class MatchContractTests(unittest.TestCase):
             )
 
 
+class HydrationSQLiteRetryTests(unittest.TestCase):
+    def test_retries_transient_sqlite_locked_error(self):
+        from unittest.mock import patch
+        from backend import catalog_engine
+
+        operation = unittest.mock.Mock(
+            side_effect=[__import__("sqlite3").OperationalError("database is locked"), "ok"]
+        )
+        with patch.object(catalog_engine.time, "sleep") as sleep:
+            self.assertEqual(
+                catalog_engine._retry_sqlite_busy(operation, "test", attempts=3),
+                "ok",
+            )
+        self.assertEqual(operation.call_count, 2)
+        sleep.assert_called_once_with(0.10)
+
+    def test_does_not_retry_non_lock_sqlite_error(self):
+        from backend import catalog_engine
+        import sqlite3
+
+        operation = unittest.mock.Mock(
+            side_effect=sqlite3.OperationalError("no such table: missing")
+        )
+        with self.assertRaisesRegex(sqlite3.OperationalError, "no such table"):
+            catalog_engine._retry_sqlite_busy(operation, "test", attempts=3)
+        self.assertEqual(operation.call_count, 1)
+
+    def test_raises_after_bounded_lock_retries(self):
+        from unittest.mock import patch
+        from backend import catalog_engine
+        import sqlite3
+
+        operation = unittest.mock.Mock(
+            side_effect=sqlite3.OperationalError("database is locked")
+        )
+        with patch.object(catalog_engine.time, "sleep"):
+            with self.assertRaisesRegex(sqlite3.OperationalError, "database is locked"):
+                catalog_engine._retry_sqlite_busy(operation, "test", attempts=3)
+        self.assertEqual(operation.call_count, 3)
+
+
 if __name__ == "__main__":
     unittest.main()
