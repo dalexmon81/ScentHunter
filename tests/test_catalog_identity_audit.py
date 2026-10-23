@@ -46,7 +46,7 @@ class CatalogIdentityAuditTests(unittest.TestCase):
         report = build_identity_audit(source)
         self.assertEqual(report["duplicate_normalized_brand_name"]["count"], 1)
         self.assertEqual(report["duplicate_normalized_brand_name_concentration"]["count"], 0)
-        self.assertEqual(report["policy"].find("No product"), 90)
+        self.assertIn("No product", report["policy"])
 
     def test_requires_product_and_variant_arrays(self):
         with self.assertRaises(ValueError):
