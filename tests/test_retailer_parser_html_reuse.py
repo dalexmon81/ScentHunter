@@ -107,10 +107,7 @@ def test_deloox_does_not_treat_size_as_a_price():
     assert result is not None
     assert result["attributes"]["size_ml"]["value"] == 125
     assert result["offer"]["availability"] == "unknown"
-    # The existing extraction fallback mistakes the visible "125 ml" for a
-    # price (125.0). This assertion temporarily documents the defect and will
-    # become price is None when the parser fix is implemented.
-    assert result["offer"]["price"] == 125.0
+    assert result["offer"]["price"] is None
 
 
 def test_parfumzentrum_real_product_extraction_from_jsonld_fixture():
