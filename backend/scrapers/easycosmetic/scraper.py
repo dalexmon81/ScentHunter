@@ -1132,55 +1132,57 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
     page_available, page_availability = _availability_from_page(page_text)
 
-    available = page_available
-    if availability:
-        normalized = _normalise_text(availability)
-        # Schema.org availability often arrives as a URL, e.g.
-        # https://schema.org/OutOfStock. Normalization turns that into tokens
-        # such as "https schema org outofstock", not "out of stock".
-        compact = re.sub(r"[^a-z0-9]+", "", normalized)
+    # Availability must be conservative: explicit sold-out text in the
+    # storefront page overrides stale JSON-LD that still says InStock.
+    # This prevents cached structured data from advertising unavailable
+    # products as purchasable.
+    normalized = _normalise_text(availability)
+    compact = re.sub(r"[^a-z0-9]+", "", normalized)
 
-        if any(
-            marker in normalized or marker in compact
-            for marker in (
-                "out of stock",
-                "outofstock",
-                "sold out",
-                "soldout",
-                "nicht auf lager",
-                "ausverkauft",
-                "unavailable",
-                "nicht verfugbar",
-                "discontinued",
-            )
-        ):
-            available = False
-            availability = "Out of stock"
-        elif any(
-            marker in normalized or marker in compact
-            for marker in (
-                "in stock",
-                "instock",
-                "limited availability",
-                "limitedavailability",
-                "online only",
-                "onlineonly",
-                "auf lager",
-                "lieferbar",
-                "available",
-                "verfugbar",
-            )
-        ):
-            available = True
-            availability = "In stock"
-        elif "preorder" in compact or "pre order" in normalized:
-            available = None
-            availability = "Preorder"
-        else:
-            # Preserve an unknown signal as unknown instead of trusting a
-            # potentially contradictory page-text heuristic.
-            available = None
+    structured_out_of_stock = any(
+        marker in normalized or marker in compact
+        for marker in (
+            "out of stock",
+            "outofstock",
+            "sold out",
+            "soldout",
+            "nicht auf lager",
+            "ausverkauft",
+            "unavailable",
+            "nicht verfugbar",
+            "discontinued",
+        )
+    )
+    structured_in_stock = any(
+        marker in normalized or marker in compact
+        for marker in (
+            "in stock",
+            "instock",
+            "limited availability",
+            "limitedavailability",
+            "online only",
+            "onlineonly",
+            "auf lager",
+            "lieferbar",
+            "available",
+            "verfugbar",
+        )
+    )
+
+    if page_available is False:
+        available = False
+        availability = page_availability or "Out of stock"
+    elif structured_out_of_stock:
+        available = False
+        availability = "Out of stock"
+    elif "preorder" in compact or "pre order" in normalized:
+        available = None
+        availability = "Preorder"
+    elif structured_in_stock:
+        available = True
+        availability = "In stock"
     else:
+        available = page_available
         availability = page_availability
 
     if not name:
@@ -1214,21 +1216,21 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Parse a German storefront page while preserving regional provenance.
+    """Catalog-engine adapter that enforces German storefront provenance.
 
-    The catalog engine validates the final response host before calling this
-    adapter and passes the HTML from that same response. Reusing that HTML
-    avoids a second request that could time out or return different variant
-    content. Standalone callers without HTML use the guarded request helper,
-    which rejects redirects outside easycosmetic.de.
+    The catalog engine may supply HTML fetched by its generic request path.
+    That HTML cannot safely be reused here because a regional redirect or
+    cached response can pair a German URL with a German offer. Fetch the
+    normalized German URL through this scraper's guarded request helper,
+    which rejects redirects outside easycosmetic.de, then parse that response.
+    The session/html parameters remain in the signature for adapter compatibility.
     """
     normalized_url = _normalise_url(url)
     if not _is_candidate_url(normalized_url):
         return None
 
-    if html is not None:
-        return _parse_product_html(normalized_url, html)
-
+    # _request_html checks the final URL after redirects and refuses non-German
+    # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
     german_html = _request_html(normalized_url)
     return _parse_product_html(normalized_url, german_html)
 
