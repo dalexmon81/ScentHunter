@@ -4329,6 +4329,30 @@ def _hydrate_one_task(task):
         return False
 
 
+def _retry_sqlite_busy(operation, stage, attempts=4):
+    """Retry short queue operations after transient SQLite lock contention.
+
+    Each operation opens and closes its own connection, so retries start from
+    a clean transaction. Non-lock OperationalErrors are never swallowed.
+    """
+    delays = (0.10, 0.25, 0.50, 1.00)
+    for attempt in range(attempts):
+        try:
+            return operation()
+        except sqlite3.OperationalError as exc:
+            message = str(exc).lower()
+            if 'locked' not in message and 'busy' not in message:
+                raise
+            if attempt >= attempts - 1:
+                print(
+                    f'CATALOG HYDRATION CONTENTION: stage={stage} '
+                    f'attempts={attempts} error={type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+                raise
+            time.sleep(delays[min(attempt, len(delays) - 1)])
+
+
 def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
     """Process a small durable queue batch.
 
@@ -4344,7 +4368,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # That function scans the whole active catalog and backfills missing queue
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
-    recover_stale_tasks()
+    _retry_sqlite_busy(recover_stale_tasks, 'recover_stale_tasks')
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
@@ -4357,7 +4381,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
             break
         if deadline is not None and time.monotonic() >= float(deadline):
             break
-        task = _claim_one_hydration_task()
+        task = _retry_sqlite_busy(_claim_one_hydration_task, 'claim_hydration_task')
         if not task:
             break
         tasks.append(task)
