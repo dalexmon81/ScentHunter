@@ -21,7 +21,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ScentHunterReadOnlyParserProb
 
 
 def clean(value):
-    return re.sub(r"\\s+", " ", str(value or "")).strip()
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def page_probe(url):
@@ -107,6 +107,29 @@ def main():
         "known_page_probes": {name: page_probe(url) for name, url in KNOWN_URLS.items()},
         "deloox_adapter": adapter_probe(deloox),
         "parfumzentrum_adapter": adapter_probe(parfumzentrum),
+    }
+    # Separate transport/retailer blocking from parser extraction results.
+    report["diagnosis"] = {
+        "page_probe_summary": {
+            name: {
+                "http_status": item.get("http_status"),
+                "has_product_jsonld": bool(item.get("products")),
+                "jsonld_product_count": len(item.get("products") or []),
+                "error_type": (item.get("error") or "").split(":", 1)[0] or None,
+            }
+            for name, item in report["known_page_probes"].items()
+        },
+        "adapter_summary": {
+            "deloox": {
+                "status": report["deloox_adapter"].get("status"),
+                "parsed_row_count": report["deloox_adapter"].get("row_count", 0),
+            },
+            "parfumzentrum": {
+                "status": report["parfumzentrum_adapter"].get("status"),
+                "parsed_row_count": report["parfumzentrum_adapter"].get("row_count", 0),
+            },
+        },
+        "interpretation": "HTTP blocking/errors are transport outcomes, not parser failures. Adapter rows show current live scraper output. This probe is diagnostic and does not claim canonical variant ownership.",
     }
     REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
