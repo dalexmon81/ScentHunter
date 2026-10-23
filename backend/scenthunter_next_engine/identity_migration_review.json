@@ -443,7 +443,16 @@
         "The SKU resembles a GTIN-13 format but is stored in sku, not gtin; do not promote it to a verified GTIN without independent validation.",
         "The query is name/size-filtered and capped at 100 rows; it does not establish all possible references or offer-to-variant links."
       ],
-      "safety": "Read-only connection with SQLite URI mode=ro and PRAGMA query_only=ON; no production data was changed."
+      "safety": "Read-only connection with SQLite URI mode=ro and PRAGMA query_only=ON; no production data was changed.",
+      "follow_up": {
+        "checked_at": "2026-10-23",
+        "next_engine_tests_run_id": 39942336408,
+        "next_engine_tests_conclusion": "success",
+        "expanded_schema_audit_run_id": 39942336412,
+        "expanded_schema_audit_conclusion": "failure",
+        "failure_reason": "The new workflow's inline Python command has a quoting SyntaxError before executing its database query; the connection was opened read-only and no database mutation occurred.",
+        "conclusion": "The targeted 125 ml retailer evidence is recorded, but mapping-table schema and exact retailer-to-canonical-variant links remain unverified. Do not merge or migrate either Armani identity collision on current evidence."
+      }
     }
   },
   "next_gate": {
