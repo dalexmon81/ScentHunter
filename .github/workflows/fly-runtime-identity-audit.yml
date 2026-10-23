@@ -2,6 +2,9 @@ name: Fly read-only runtime SQLite identity audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - scenthunter-next-engine
 
 permissions:
   contents: read
