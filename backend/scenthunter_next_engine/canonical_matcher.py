@@ -304,10 +304,15 @@ class CanonicalMatcher:
                     reason="verified_gtin_concentration_conflict",
                     candidate_product_ids=(product.product_id,),
                 )
-        if any(
-            token in normalize_identity_text(offer.raw_name).split()
-            for token in ("refill", "nachfullbar", "nachfullung", "recharge")
-        ) and not evidence.get("refill"):
+        # Distinguish a refill pack from a refillable bottle. German
+        # "nachfüllbar" (nachfullbar) means refillable, not a refill product.
+        # Only explicit pack terms must be kept separate from a regular bottle.
+        packaging_tokens = set(normalize_identity_text(offer.raw_name).split())
+        is_refill_pack = bool(
+            packaging_tokens
+            & {"refill", "refills", "nachfullung", "nachfullpackung", "recharge"}
+        )
+        if is_refill_pack and not evidence.get("refill"):
             return OfferMatch(
                 offer=offer,
                 status=MatchStatus.UNRESOLVED,
