@@ -489,7 +489,7 @@
       "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
       "Keep both Armani product-ID pairs separate until the parser regression and explicit mapping evidence are complete."
     ],
-    "parser_regression_gate": "pending_workflow"
+    "parser_regression_gate": "synthetic_ci_passed_live_url_check_pending"
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
@@ -549,7 +549,7 @@
     },
     "real_extraction_regressions": {
       "checked_at": "2026-10-23",
-      "status": "pending_workflow_after_price_fallback_fix",
+      "status": "ci_passed_synthetic_fixtures_live_pages_pending",
       "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
       "test_file": "tests/test_retailer_parser_html_reuse.py",
       "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
@@ -561,10 +561,15 @@
       ],
       "evidence_scope": "Synthetic fixture directly exercises Deloox and Parfum-Zentrum product extraction functions. It is not yet a live-page verification.",
       "production_database_mutated": false,
-      "next_required_gate": "Confirm automated tests on the latest branch head. Then run bounded live parsing against the known easycosmetic and PerfumeMarket Profondo EDP 125 ml URLs without any production database access.",
+      "next_required_gate": "Run live URL-only parser checks for easycosmetic and PerfumeMarket with current branch code; no production database access. Then reassess canonical variant mapping without automatic merge.",
       "follow_up_commit": "925e97f25debe1f24445740b41252a6026f89c42",
       "note": "The first run exposed an incorrect test assumption: Deloox deliberately permits a recognized product page with unknown price/availability. The test was corrected to assert that unknowns remain explicit rather than demand the parser return null.",
-      "finding": "A direct fixture exposed that Deloox parsed the 125 ml title token as a fallback price when the actual page had no offer price. The full scraper file was updated to exclude the H1 title from fallback price text, and the fixture now asserts that a title-only numeric value is not treated as a public price."
+      "finding": "Deloox false-price regression fixed and verified by the synthetic test: title text '125 ml' is no longer considered a fallback price when no offer price exists. Parfum-Zentrum fixture extraction also passes.",
+      "workflow_run_id": 39946081695,
+      "workflow_conclusion": "success",
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
+      "validated_commit": "6ab8ddc5e14f00ec18c4c9cd4f30c339810c28f1",
+      "test_result": "Full isolated next-engine workflow completed successfully, including parser fixtures, catalog smoke, identity audits and generated-report consistency checks."
     }
   }
 }
