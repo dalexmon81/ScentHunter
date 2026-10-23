@@ -491,15 +491,14 @@
     }
   },
   "next_gate": {
-    "status": "profondo_75_125_gtin_variant_resolution_verified_deloox_transport_and_duplicate_reconciliation_pending",
+    "status": "gtin_variant_resolution_verified_packaging_semantics_regression_pending_ci",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "The verified GTIN registry now covers both Profondo EDP 75 ml (3614272865228 -> SH-0043 / VAR-89c2a2a86bedb3c5) and 125 ml (3614272865235 -> SH-0043 / VAR-09a73d0a5594cf49). The 75 ml GTIN is corroborated by a Sephora product-catalog PDF and an independent retailer; the 125 ml GTIN is corroborated by the live Parfum-Zentrum Product JSON-LD and independent product listings. Regression tests prove both map to exact variants and conflicting sizes fail closed. Latest Next Engine tests and read-only runtime SQLite audit passed on fa88c668e7d614c78601192cc55261bc2a005a51 (runs 39950630203 and 39950630200). The refill GTIN 3614273953849 remains unmapped because no canonical refill variant exists. Deloox remains blocked by HTTP 403 from GitHub-hosted runners. SH-0043 and SH-AUTO-0019 remain separate; SH-AUTO-0288 versus SH-AUTO-0018 remains unresolved. No merge, deploy, production DB write, or product_catalog.json modification.",
+    "latest_evidence": "Identified and corrected a false packaging conflict: Parfum-Zentrum's live 100 ml Profondo EDP title says 'nachfüllbar' (refillable bottle), not a refill pack. GTIN 3614273953849 maps to the existing 100 ml EDP bottle variant VAR-46b03c1f1cff0a6e under SH-AUTO-0019. The matcher now only blocks explicit refill-pack terms, and regression tests assert both that this bottle maps and that a true 'Refill' listing does not. This mapping does not merge SH-AUTO-0019 with SH-0043. CI pending for this change; previous Next Engine tests and read-only runtime SQLite audit passed on fa88c668e7d614c78601192cc55261bc2a005a51. No production DB writes, merge, or deploy.",
     "required_next_steps": [
-      "Resolve the Deloox HTTP 403 through an allowed live-fetch path or captured page source; keep it distinct from parser regressions.",
-      "Investigate why Parfum-Zentrum broad search is partial/unverified even though exact product pages parse, and restore discovery of current retailer offers.",
-      "Keep the verified 75 ml and 125 ml GTIN mappings constrained to exact size/brand/concentration/name checks; do not merge SH-0043 and SH-AUTO-0019 based on GTIN mappings alone.",
-      "Do not map refill GTIN 3614273953849 until the canonical catalog explicitly represents a verified refill variant.",
+      "Verify CI for the refillable-bottle versus refill-pack distinction and the 100 ml GTIN mapping.",
+      "Keep SH-0043 and SH-AUTO-0019 separate until all references are reconciled; their verified 75/125 ml and 100 ml mappings are variant evidence, not permission to merge IDs.",
+      "Resolve Deloox HTTP 403 through an allowed live-fetch path and separately restore retailer discovery/search.",
       "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic Acqua di Gio record is classified."
     ],
     "parser_regression_gate": "live_parfumzentrum_parse_gtin_variant_matcher_and_ci_passed_deloox_http_403",
@@ -800,7 +799,7 @@
         "workflow_run_id": 39947671434
       },
       "gtin_variant_resolution": {
-        "status": "verified_with_regression_tests",
+        "status": "verified_with_packaging_semantics_regression",
         "registry": "backend/scenthunter_next_engine/verified_gtin_variant_map.json",
         "findings": [
           {
@@ -831,8 +830,14 @@
           {
             "gtin": "3614273953849",
             "size_ml": 100,
-            "concentration": "Eau de Parfum refill",
-            "result": "unresolved_and_intentionally_not_mapped_to_regular_EDP_100ml"
+            "concentration": "Eau de Parfum",
+            "product_id": "SH-AUTO-0019",
+            "variant_id": "VAR-46b03c1f1cff0a6e",
+            "source_urls": [
+              "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+            ],
+            "result": "verified_100ml_refillable_bottle_not_refill_pack",
+            "note": "German nachfüllbar means refillable bottle. The matcher now distinguishes this from an actual refill pack."
           }
         ],
         "tests": {
