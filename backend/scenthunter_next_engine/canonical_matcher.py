@@ -84,6 +84,18 @@ def _retailer_title_core(value: str) -> str:
     return core
 
 
+_BRAND_ALIASES = {
+    # Retailer feeds commonly use the parent brand while the catalog stores
+    # the product brand. Exact alias only: do not collapse Emporio Armani.
+    "giorgio armani": "armani",
+}
+
+
+def normalize_brand_text(value: str | None) -> str:
+    normalized = normalize_identity_text(value)
+    return _BRAND_ALIASES.get(normalized, normalized)
+
+
 def _strict_name_forms(value: str, brand: str | None) -> set[str]:
     """Return exact normalized forms, including a possible brand prefix."""
     normalized = normalize_identity_text(value)
@@ -91,15 +103,23 @@ def _strict_name_forms(value: str, brand: str | None) -> set[str]:
         return set()
 
     forms = {normalized}
+    brand_norm = normalize_identity_text(brand)
+
+    if brand_norm and normalized.startswith(brand_norm + " "):
+        forms.add(normalized[len(brand_norm):].strip())
+
+    return forms
+
+
+def _offer_name_forms(value: str, brand: str | None) -> set[str]:
+    """Add generic retailer-only suffix normalization to incoming offer titles."""
+    forms = _strict_name_forms(value, brand)
     core = _retailer_title_core(value)
     if core:
         forms.add(core)
-    brand_norm = normalize_identity_text(brand)
-
-    for form in tuple(forms):
-        if brand_norm and form.startswith(brand_norm + " "):
-            forms.add(form[len(brand_norm):].strip())
-
+        brand_norm = normalize_identity_text(brand)
+        if brand_norm and core.startswith(brand_norm + " "):
+            forms.add(core[len(brand_norm):].strip())
     return forms
 
 
@@ -157,7 +177,7 @@ class CanonicalMatcher:
             )
 
         offer_brand = (
-            normalize_identity_text(offer.brand_raw)
+            normalize_brand_text(offer.brand_raw)
             if offer.brand_raw
             else None
         )
@@ -173,7 +193,7 @@ class CanonicalMatcher:
             ] = []
 
             name_forms = _strict_name_forms if strict else _name_forms
-            offer_forms = name_forms(
+            offer_forms = _offer_name_forms(
                 offer.raw_name,
                 offer.brand_raw,
             )
@@ -182,7 +202,7 @@ class CanonicalMatcher:
                 if (
                     offer_brand
                     and offer_brand
-                    != normalize_identity_text(product.brand)
+                    != normalize_brand_text(product.brand)
                 ):
                     continue
 
