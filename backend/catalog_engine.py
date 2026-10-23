@@ -45,8 +45,6 @@ from bs4 import BeautifulSoup, SoupStrainer
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(BASE_DIR / 'store_catalog.sqlite3'))).expanduser()
 
-print(f'SCENTHUNTER CATALOG DB CONFIG pid={os.getpid()} db_path={DB_PATH.resolve()}', flush=True)
-
 STORES = {
     'bplatz': 'https://en.bplatz.de',
     'parfumcity': 'https://www.parfumcity.nl',
@@ -797,8 +795,7 @@ def _parse_xml_entries(data, url=''):
                         loc = (child.text or '').strip()
                     elif ck == 'lastmod':
                         lastmod = (child.text or '').strip()
-                if loc:
-                    out.append(('sitemap', loc, lastmod))
+                if loc:                    out.append(('sitemap', loc, lastmod))
             return out, None if out else 'EMPTY_SITEMAP_INDEX'
 
         if kind == 'urlset':
@@ -1597,8 +1594,7 @@ def _deloox_queue_allowed(url):
     """Return True only for URLs on an official configured Deloox host."""
     if not url:
         return False
-    try:
-        p = urllib.parse.urlparse(url.split('#', 1)[0])
+    try:        p = urllib.parse.urlparse(url.split('#', 1)[0])
     except Exception:
         return False
     if p.scheme not in ('http', 'https'):
@@ -2397,8 +2393,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
             return False
         if len(queued) >= max_pages * 2:
             return False
-        sequence += 1
-        priority = _html_discovery_priority(store, key, depth, source)
+        sequence += 1        priority = _html_discovery_priority(store, key, depth, source)
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
         if has_tokens(key) and len(query_url_hits) < 100:
@@ -3197,8 +3192,7 @@ def refresh_url(store, url):
                             continue
                         if variant_size > 0 and variant_price > 0:
                             valid_variants.append((variant, variant_size, variant_price))
-                    if valid_variants:
-                        conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
+                    if valid_variants:                        conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
                         for variant, variant_size, variant_price in valid_variants:
                             # Persist the commercial combination identity, not
                             # merely size + SKU: Sabina can repeat a parent SKU
@@ -3380,24 +3374,24 @@ def _search_db():
 # does not wait for retailer HTTP requests or SQLite writes.
 _EASYCOSMETIC_REPAIR_LOCK = threading.Lock()
 _EASYCOSMETIC_REPAIR_IN_FLIGHT = set()
-_EASYCOSMETIC_REPAIR_LAST_ATTEMPT = {}
-_EASYCOSMETIC_REPAIR_COOLDOWN_SECONDS = 6 * 60 * 60
 
 
 def _schedule_easycosmetic_missing_size_repairs(rows):
-    """Refresh matching Easycosmetic product pages asynchronously, with cooldown."""
-    now = time.monotonic()
+    """Refresh only matched Easycosmetic rows whose size is still unknown.
+
+    Keep the repair targeted: refreshing every Easycosmetic result on every
+    search adds retailer traffic and SQLite writes to the hot search path.
+    The in-flight set prevents concurrent duplicate work within this process.
+    """
     jobs = []
     seen_urls = set()
     for row in rows or []:
         if str(row.get('store_key') or '').strip().lower() != 'easycosmetic':
             continue
-        url = str(row.get('url') or '').strip()
-        if not url or 'easycosmetic.' not in url.lower():
+        if row.get('_needs_refresh') or row.get('size_ml') not in (None, '', 0):
             continue
-        # Do not repeatedly refresh the same URL when localized/duplicate
-        # catalog rows for one offer appear in the same search.
-        if url in seen_urls:
+        url = str(row.get('url') or '').strip()
+        if not url or 'easycosmetic.' not in url.lower() or url in seen_urls:
             continue
         seen_urls.add(url)
         jobs.append(('easycosmetic', url))
@@ -3407,11 +3401,7 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
         with _EASYCOSMETIC_REPAIR_LOCK:
             if key in _EASYCOSMETIC_REPAIR_IN_FLIGHT:
                 continue
-            last_attempt = _EASYCOSMETIC_REPAIR_LAST_ATTEMPT.get(key, 0.0)
-            if now - last_attempt < _EASYCOSMETIC_REPAIR_COOLDOWN_SECONDS:
-                continue
             _EASYCOSMETIC_REPAIR_IN_FLIGHT.add(key)
-            _EASYCOSMETIC_REPAIR_LAST_ATTEMPT[key] = now
 
         def _repair(target_store=store, target_url=url, target_key=key):
             try:
@@ -3439,7 +3429,6 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
                     _EASYCOSMETIC_REPAIR_IN_FLIGHT.discard(target_key)
 
         threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
-
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run local search and asynchronously refresh matched Easycosmetic offers."""
@@ -3997,8 +3986,7 @@ def _ensure_hydration_queue():
 
         inserted = 0
         for offset in range(0, len(rows), batch_size):
-            batch = rows[offset:offset + batch_size]
-            prepared = []
+            batch = rows[offset:offset + batch_size]            prepared = []
             for row in batch:
                 existing = conn.execute(
                     "SELECT 1 FROM store_products WHERE store=? AND url=? AND fetch_status='OK'",
@@ -4797,8 +4785,7 @@ def _coverage_persist_urls(store, rows):
     for row in rows:
         if not isinstance(row, dict):
             continue
-        raw = row.get('url') or row.get('product_url') or row.get('link')
-        url = _coverage_allowed_url(store, raw)
+        raw = row.get('url') or row.get('product_url') or row.get('link')        url = _coverage_allowed_url(store, raw)
         if url and url not in seen:
             seen.add(url)
             urls.append(url)
