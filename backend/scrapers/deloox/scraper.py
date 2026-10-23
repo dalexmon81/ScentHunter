@@ -307,7 +307,15 @@ def _product(url, html, query):
 
     price = parse_price(offer.get("price"))
     if price is None:
-        price = parse_price(text)
+        # Only consider visible text outside the product title when falling
+        # back to page-price extraction. Otherwise a title such as "125 ml"
+        # can be misread as a 125.00 price when JSON-LD omits its offer.
+        price_text = text
+        if h1 is not None:
+            title_text = clean(h1.get_text(" ", strip=True))
+            if title_text:
+                price_text = price_text.replace(title_text, " ", 1)
+        price = parse_price(price_text)
     if price is None:
         return None
 
