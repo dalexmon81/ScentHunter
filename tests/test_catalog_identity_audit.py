@@ -1,0 +1,57 @@
+"""Tests for the read-only catalog identity audit."""
+import copy
+import unittest
+
+from backend.scenthunter_next_engine.catalog_identity_audit import build_identity_audit
+
+
+class CatalogIdentityAuditTests(unittest.TestCase):
+    def test_detects_duplicate_identity_and_does_not_mutate_catalog(self):
+        source = {
+            "products": [
+                {"product_id": "p1", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Giò Profondo", "concentration": "Eau de Parfum", "aliases": ["Profondo"], "canonical_image": "https://example.test/1.jpg"},
+                {"product_id": "p2", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio Profondo", "concentration": "Eau de Parfum", "aliases": ["Profondo"], "canonical_image": "https://example.test/2.jpg"},
+                {"product_id": "p3", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio", "concentration": "Eau de Toilette", "aliases": [], "canonical_image": ""},
+            ],
+            "variants": [
+                {"variant_id": "v1", "product_id": "p1", "size_ml": 75},
+                {"variant_id": "v2", "product_id": "p2", "size_ml": 100},
+                {"variant_id": "v3", "product_id": "p3", "size_ml": 50},
+                {"variant_id": "v3", "product_id": "p3", "size_ml": 50},
+            ],
+        }
+        before = copy.deepcopy(source)
+        report = build_identity_audit(source)
+        self.assertEqual(report["duplicate_normalized_brand_name"]["count"], 1)
+        self.assertEqual(report["duplicate_normalized_brand_name_concentration"]["count"], 1)
+        self.assertEqual(report["shared_product_aliases"]["count"], 1)
+        self.assertEqual(report["duplicate_variant_ids"]["count"], 1)
+        self.assertEqual(report["duplicate_sizes_within_product"]["count"], 1)
+        self.assertEqual(report["products_missing_image"]["count"], 1)
+        self.assertEqual(source, before)
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["catalog_mutated"])
+
+    def test_distinct_concentrations_are_reviewed_not_merged(self):
+        source = {
+            "products": [
+                {"product_id": "edt", "brand_name": "Guerlain", "canonical_name": "Shalimar", "concentration": "Eau de Toilette"},
+                {"product_id": "edp", "brand_name": "Guerlain", "canonical_name": "Shalimar", "concentration": "Eau de Parfum"},
+            ],
+            "variants": [
+                {"variant_id": "v1", "product_id": "edt", "size_ml": 50},
+                {"variant_id": "v2", "product_id": "edp", "size_ml": 50},
+            ],
+        }
+        report = build_identity_audit(source)
+        self.assertEqual(report["duplicate_normalized_brand_name"]["count"], 1)
+        self.assertEqual(report["duplicate_normalized_brand_name_concentration"]["count"], 0)
+        self.assertEqual(report["policy"].find("No product"), 90)
+
+    def test_requires_product_and_variant_arrays(self):
+        with self.assertRaises(ValueError):
+            build_identity_audit({"products": []})
+
+
+if __name__ == "__main__":
+    unittest.main()
