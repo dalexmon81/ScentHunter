@@ -494,9 +494,9 @@
     "status": "blocked_pending_targeted_parser_regression_and_explicit_variant_mapping",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Next Engine tests and read-only runtime audit both passed on branch head 257806cd4be5c691e7ff8122f0460083ab70e984. Live parsing and explicit canonical variant ownership remain unverified. No merge, deploy or production database write.",
+    "latest_evidence": "Unit tests and read-only runtime audit previously passed at 257806cd4be5c691e7ff8122f0460083ab70e984. A new bounded public-HTTP live parser probe has been added. Its first narrow adapter query returned zero results from both Deloox and ParfumZentrum; a broadened query and direct probes of the known easycosmetic and PerfumeMarket Profondo URLs are running in GitHub Actions. No merge, deploy, or production database write.",
     "required_next_steps": [
-      "Run the existing manual live-shadow/parser workflow against the two known retailer URLs with no production database access, then record the actual parser outputs and distinguish download errors from parse failures.",
+      "Inspect the new live retailer parser probe artifact for direct easycosmetic/PerfumeMarket page metadata and broadened Deloox/ParfumZentrum search results; if a target URL is found, run the exact existing adapter against its fetched HTML without any database access.",
       "Resolve exact retailer URL/EAN/size to canonical variant ownership through the actual ingestion/matching path; do not infer ownership from name similarity alone.",
       "Verify the 75 ml variant independently and keep SH-0043 and SH-AUTO-0019 separate until both size-level evidence and downstream references are reconciled.",
       "Keep the Armani EDT collision SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic record is classified."
@@ -600,7 +600,28 @@
         "production_database_mutated": false
       },
       "live_url_status": "not_executed",
-      "live_url_blocker": "The available GitHub connector exposes workflow inspection and rerun actions but not workflow_dispatch for the existing manual live-shadow workflow. Do not change the workflow trigger or substitute unrelated searches."
+      "live_url_blocker": "The available GitHub connector exposes workflow inspection and rerun actions but not workflow_dispatch for the existing manual live-shadow workflow. Do not change the workflow trigger or substitute unrelated searches.",
+      "live_probe_workflow": {
+        "path": ".github/workflows/live-retailer-parser-probe.yml",
+        "script": "tests/run_live_retailer_parser_probe.py",
+        "scope": "Public retailer searches plus direct read-only HTTP checks of known easycosmetic and PerfumeMarket pages; no production database or catalog writes.",
+        "initial_adapter_probe": {
+          "run_id": 39946468635,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946468635",
+          "query": "Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml",
+          "deloox": "zero_results",
+          "parfumzentrum": "zero_results",
+          "interpretation": "Search surfaces returned no candidates for the narrow query. This is not proof the product pages cannot be parsed; broadened query and direct known-page probes were added."
+        },
+        "latest_run": {
+          "run_id": 39946551067,
+          "status": "in_progress",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946551067",
+          "commit": "c1f432c43e4c57d43f6d879b93ef0167da7b1089"
+        },
+        "production_database_mutated": false
+      }
     }
   }
 }
