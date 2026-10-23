@@ -1912,6 +1912,17 @@ def _extract_product(url, query, html=None):
     }
 
 
+
+def extract_product_page(session, url, query=None, html=None):
+    """Catalog hydration adapter using the already-fetched retailer HTML."""
+    target = _product_url(url)
+    if not target:
+        return None
+    page_query = _clean(query) or unquote(urlparse(target).path.rsplit("/", 1)[-1])
+    # _extract_product owns ParfumZentrum-specific identity, size, price and
+    # availability validation. Passing html prevents an unnecessary refetch.
+    return _extract_product(target, page_query, html=html)
+
 def search(query):
     query = _clean(query)
 
