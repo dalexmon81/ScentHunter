@@ -7,9 +7,12 @@ is not sufficiently certain, the offer remains unresolved or ambiguous.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
+from collections.abc import Mapping
 from decimal import Decimal
+from pathlib import Path
 
 from .catalog_repository import CatalogRepository
 from .models import (
@@ -162,13 +165,177 @@ def _variant_forms(
     return _catalog_forms(values, brand)
 
 
+def _validated_gtin(value: object) -> str | None:
+    """Return a valid GTIN with check digit, or None for untrusted values."""
+    if value is None or isinstance(value, (dict, list, tuple, bool)):
+        return None
+    digits = re.sub(r"\D", "", str(value))
+    if len(digits) not in {8, 12, 13, 14}:
+        return None
+    total = 0
+    for offset, digit in enumerate(reversed(digits[:-1])):
+        total += int(digit) * (3 if offset % 2 == 0 else 1)
+    expected = (10 - total % 10) % 10
+    return digits if expected == int(digits[-1]) else None
+
+
+def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
+    """Extract GTIN only from explicit GTIN/EAN fields, never from a generic SKU."""
+    identity = raw_payload.get("identity")
+    candidates = [
+        raw_payload.get("gtin13"),
+        raw_payload.get("gtin"),
+        raw_payload.get("ean13"),
+        raw_payload.get("ean"),
+        identity.get("gtin") if isinstance(identity, Mapping) else None,
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, Mapping):
+            candidate = candidate.get("value")
+        normalized = _validated_gtin(candidate)
+        if normalized:
+            return normalized
+    return None
+
+
 class CanonicalMatcher:
-    """Resolve offers using exact catalog identity, aliases and format data."""
+    """Resolve offers using exact catalog identity, aliases, formats and verified GTINs."""
 
     def __init__(self, catalog: CatalogRepository) -> None:
         self._catalog = catalog
+        registry_path = (
+            catalog.source.parent
+            / "scenthunter_next_engine"
+            / "verified_gtin_variant_map.json"
+        )
+        self._gtin_registry = self._load_gtin_registry(registry_path)
+
+    @staticmethod
+    def _load_gtin_registry(path: Path) -> dict[str, dict[str, object]]:
+        """Load reviewed GTIN-to-variant evidence; absent sidecars are allowed."""
+        if not path.is_file():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Cannot read verified GTIN registry: {path}") from exc
+        if not isinstance(data, dict) or data.get("schema_version") != 1:
+            raise ValueError("Verified GTIN registry has an unsupported schema")
+        records = data.get("records")
+        if not isinstance(records, list):
+            raise ValueError("Verified GTIN registry records must be a list")
+        registry: dict[str, dict[str, object]] = {}
+        for record in records:
+            if not isinstance(record, dict) or record.get("status") != "verified":
+                continue
+            gtin = _validated_gtin(record.get("gtin"))
+            product_id = record.get("product_id")
+            variant_id = record.get("variant_id")
+            source_urls = record.get("source_urls")
+            if (
+                not gtin
+                or not isinstance(product_id, str)
+                or not product_id.strip()
+                or not isinstance(variant_id, str)
+                or not variant_id.strip()
+                or not isinstance(source_urls, list)
+                or not source_urls
+            ):
+                raise ValueError("Verified GTIN records require valid IDs and source URLs")
+            if gtin in registry and (
+                registry[gtin]["product_id"] != product_id
+                or registry[gtin]["variant_id"] != variant_id
+            ):
+                raise ValueError(f"Conflicting canonical targets for GTIN {gtin}")
+            registry[gtin] = record
+        return registry
+
+    def _match_verified_gtin(self, offer: RetailerOffer) -> OfferMatch | None:
+        gtin = _offer_gtin(offer.raw_payload)
+        if not gtin or gtin not in self._gtin_registry:
+            return None
+        evidence = self._gtin_registry[gtin]
+        product_id = str(evidence["product_id"])
+        variant_id = str(evidence["variant_id"])
+        product = self._catalog.get(product_id)
+        variant = next(
+            (item for item in product.variants if item.variant_id == variant_id),
+            None,
+        ) if product else None
+        if product is None or variant is None:
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason="verified_gtin_target_missing_from_catalog",
+            )
+        expected_size = evidence.get("size_ml")
+        if (
+            not isinstance(expected_size, int)
+            or offer.size_ml != expected_size
+            or variant.size_ml != expected_size
+        ):
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason="verified_gtin_size_conflict",
+                candidate_product_ids=(product.product_id,),
+            )
+        if offer.brand_raw and (
+            normalize_brand_text(offer.brand_raw)
+            != normalize_brand_text(product.brand)
+        ):
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason="verified_gtin_brand_conflict",
+                candidate_product_ids=(product.product_id,),
+            )
+        if evidence.get("concentration"):
+            title = normalize_identity_text(offer.raw_name)
+            concentration = normalize_identity_text(str(evidence["concentration"]))
+            abbreviations = {"eau de parfum": "edp", "eau de toilette": "edt"}
+            short = abbreviations.get(concentration)
+            if concentration not in title and not (
+                short and re.search(rf"\b{re.escape(short)}\b", title)
+            ):
+                return OfferMatch(
+                    offer=offer,
+                    status=MatchStatus.UNRESOLVED,
+                    reason="verified_gtin_concentration_conflict",
+                    candidate_product_ids=(product.product_id,),
+                )
+        if any(
+            token in normalize_identity_text(offer.raw_name).split()
+            for token in ("refill", "nachfullbar", "nachfullung", "recharge")
+        ) and not evidence.get("refill"):
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason="verified_gtin_packaging_conflict",
+                candidate_product_ids=(product.product_id,),
+            )
+        offer_forms = _offer_name_forms(offer.raw_name, offer.brand_raw)
+        catalog_forms = _catalog_forms([product.name, *product.aliases], product.brand)
+        if not offer_forms.intersection(catalog_forms):
+            return OfferMatch(
+                offer=offer,
+                status=MatchStatus.UNRESOLVED,
+                reason="verified_gtin_name_conflict",
+                candidate_product_ids=(product.product_id,),
+            )
+        return OfferMatch(
+            offer=offer,
+            status=MatchStatus.MATCHED,
+            canonical_product_id=product.product_id,
+            canonical_variant_id=variant.variant_id,
+            confidence=Decimal("1.0"),
+            reason="verified_gtin_exact_variant",
+        )
 
     def match(self, offer: RetailerOffer) -> OfferMatch:
+        gtin_match = self._match_verified_gtin(offer)
+        if gtin_match is not None:
+            return gtin_match
         if not _name_forms(offer.raw_name, offer.brand_raw):
             return OfferMatch(
                 offer=offer,
