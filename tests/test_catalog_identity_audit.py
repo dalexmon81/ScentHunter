@@ -68,10 +68,12 @@ class CatalogIdentityAuditTests(unittest.TestCase):
     def test_flags_expanded_brand_alias_as_candidate_without_hiding_collision(self):
         source = {
             "products": [
-                {"product_id": "p1", "brand_name": "Armani", "canonical_name": "Acqua di Gio", "aliases": ["Giorgio Armani"]},
+                {"product_id": "p1", "brand_name": "Armani", "canonical_name": "Acqua di Gio", "aliases": ["Giorgio Armani", "Giorgio Armani Acqua di Gio"]},
                 {"product_id": "p2", "brand_name": "Armani", "canonical_name": "My Way", "aliases": ["Giorgio Armani"]},
                 {"product_id": "p3", "brand_name": "Dior", "canonical_name": "Sauvage", "aliases": ["Christian Dior"]},
                 {"product_id": "p4", "brand_name": "Dior", "canonical_name": "J'adore", "aliases": ["Christian Dior"]},
+                {"product_id": "p5", "brand_name": "Guerlain", "canonical_name": "Shalimar", "aliases": ["Guerlain Shalimar"]},
+                {"product_id": "p6", "brand_name": "Guerlain", "canonical_name": "Mitsouko", "aliases": ["Guerlain Mitsouko"]},
             ],
             "variants": [],
         }
@@ -79,7 +81,7 @@ class CatalogIdentityAuditTests(unittest.TestCase):
         candidates = {item["alias"] for item in report["possible_brand_aliases_for_review"]["items"]}
         self.assertEqual(candidates, {"giorgio armani", "christian dior"})
         # Candidates remain visible as collisions; this is not a confirmed correction.
-        self.assertEqual(report["shared_product_aliases"]["count"], 2)
+        self.assertEqual(report["shared_product_aliases"]["count"], 3)
         self.assertTrue(all(item["classification"] == "possible_brand_alias_not_confirmed"
                             for item in report["possible_brand_aliases_for_review"]["items"]))
 
