@@ -3989,7 +3989,8 @@ def _ensure_hydration_queue():
 
         inserted = 0
         for offset in range(0, len(rows), batch_size):
-            batch = rows[offset:offset + batch_size]            prepared = []
+            batch = rows[offset:offset + batch_size]
+            prepared = []
             for row in batch:
                 existing = conn.execute(
                     "SELECT 1 FROM store_products WHERE store=? AND url=? AND fetch_status='OK'",
@@ -4000,7 +4001,8 @@ def _ensure_hydration_queue():
             with conn:
                 conn.executemany(
                     """INSERT OR IGNORE INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)                       VALUES(?,?,?,?,?,?)""",
+                           store,url,state,attempts,available_at,first_seen_at)
+                       VALUES(?,?,?,?,?,?)""",
                     prepared,
                 )
             inserted += len(prepared)
