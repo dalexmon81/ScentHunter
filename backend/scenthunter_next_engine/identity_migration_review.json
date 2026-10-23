@@ -491,10 +491,10 @@
     }
   },
   "next_gate": {
-    "status": "refillable_bottle_semantics_fix_pending_ci",
+    "status": "refillable_bottle_semantics_fix_regex_corrected_ci_pending",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "The first CI run for the 100 ml mapping failed because the matcher also compared the retailer's packaging adjective against canonical fragrance aliases. Updated the GTIN-backed identity check to strip only refillable-bottle adjectives after the separate true-refill-pack guard. Added a second regression for English 'refillable bottle'; rerunning full CI is required before treating this as verified. The prior read-only runtime audit succeeded and no production data was modified.",
+    "latest_evidence": "A follow-up CI failure traced to an over-escaped regex word-boundary in the packaging-adjective cleanup. Corrected the expression to use actual word boundaries; the German and English refillable-bottle regressions are queued for a fresh full test run. No production DB writes, merge, or deploy.",
     "required_next_steps": [
       "Verify CI for the refillable-bottle versus refill-pack distinction and the 100 ml GTIN mapping.",
       "Keep SH-0043 and SH-AUTO-0019 separate until all references are reconciled; their verified 75/125 ml and 100 ml mappings are variant evidence, not permission to merge IDs.",
