@@ -491,40 +491,52 @@
     }
   },
   "next_gate": {
-    "status": "parfumzentrum_live_parse_confirmed_discovery_and_deloox_transport_pending",
+    "status": "live_parfumzentrum_parse_verified_duplicate_identity_blocked_deloox_transport_blocked",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "On commit baf5cdd8524d927e4f33d9ea103372966de2d5c2, the full Next Engine tests, read-only runtime SQLite audit, and bounded live parser workflow all passed. The live probe fetched two exact Parfum-Zentrum product pages and the current adapter extracted 125 ml EDP with GTIN 3614272865235 and 100 ml refill EDP with GTIN 3614273953849. Deloox exact pages returned HTTP 403 from the GitHub-hosted runner, so its parser remains unverified live. Both retailers' broad search adapters returned zero results, meaning discovery still needs diagnosis. No production DB writes, merge, or deployment. An isolated end-to-end matcher regression passed on commit 5cffd7d53e9c3d50565e89dad8e67213ea3e2ce0: captured live Parfum-Zentrum Profondo EDP 125 ml resolves to SH-0043 / VAR-09a73d0a5594cf49; the 100 ml refill is not mapped to the regular 100 ml EDP variant. This validates local matching for captured payloads, not persisted production offer ownership.",
+    "latest_evidence": "On branch commit ac1b8d99d37fd58b184686db447df24acd072fc6, the Next Engine test workflow passed (run 39947364618) and the read-only runtime SQLite audit passed (run 39947364603). A live Parfum-Zentrum page was parsed by the actual adapter: Profondo EDP 125 ml, price €95.44, GTIN 3614272865235. A live 100 ml refill was parsed separately with GTIN 3614273953849. The new end-to-end matcher test exposed that the 125 ml offer must remain ambiguous between SH-0043 and SH-AUTO-0019 because both records share a canonical name and the catalog lacks canonical GTIN-to-variant evidence. The 100 ml refill remains unmapped to the regular 100 ml EDP. Deloox direct pages return HTTP 403 from GitHub-hosted runners; its parser is not yet live-verified. No merge, deploy or production DB write.",
     "required_next_steps": [
-      "Diagnose why Deloox and Parfum-Zentrum live search/discovery returns zero results despite exact Parfum-Zentrum pages being parseable; keep transport 403 separate from parser failure.",
-      "Verify Deloox exact-URL parsing through a fetch path not blocked by the GitHub-hosted runner or by using captured retailer HTML from an authorized read-only source; do not infer parser success from fixtures.",
-      "Trace the live parsed offer through the actual canonical matcher and variant assignment in an isolated test/copy; do not write to production.",
-      "Keep SH-0043 and SH-AUTO-0019 separate until exact variant mappings and all downstream references are reconciled; 125 ml EDP has independent live GTIN evidence but canonical ownership is not yet proven.",
-      "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic record is classified."
+      "Add a general, auditable GTIN-to-variant identity mechanism to canonical catalog data and test it with verified GTIN 3614272865235; only then should the 125 ml offer resolve from ambiguity to SH-0043 / VAR-09a73d0a5594cf49.",
+      "Keep the 100 ml refill distinct from regular EDP; verify the refill GTIN against canonical data before matching it.",
+      "Diagnose Deloox search returning zero rows separately from HTTP 403 transport restrictions; do not claim its live parser works until a live page body is successfully parsed.",
+      "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until all references to the generic Acqua di Gio record are classified.",
+      "Keep production database read-only; no merge or deployment until variant ownership and migration validation are complete."
     ],
-    "parser_regression_gate": "parfumzentrum_exact_live_urls_passed_deloox_live_fetch_blocked",
+    "parser_regression_gate": "parfumzentrum_live_parse_and_ci_passed_duplicate_profondo_identity_remains_ambiguous_deloox_http_403",
     "variant_resolution_regression": {
       "checked_at": "2026-10-23",
-      "commit": "5cffd7d53e9c3d50565e89dad8e67213ea3e2ce0",
+      "commit": "24ee7297eb0ab76bc44804f599f7ceb4659fe77a",
       "test_file": "tests/test_live_retailer_identity_resolution.py",
-      "test_workflow_run_id": 39946894043,
-      "test_workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946894043",
-      "test_status": "success",
+      "latest_test_workflow": {
+        "run_id": 39947364618,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947364618",
+        "validated_commit": "ac1b8d99d37fd58b184686db447df24acd072fc6"
+      },
+      "latest_read_only_runtime_audit": {
+        "run_id": 39947364603,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947364603",
+        "validated_commit": "ac1b8d99d37fd58b184686db447df24acd072fc6",
+        "production_database_mutated": false
+      },
       "findings": {
         "live_profondo_125ml_edp": {
-          "expected_product_id": "SH-0043",
-          "expected_variant_id": "VAR-09a73d0a5594cf49",
-          "result": "matched",
-          "basis": "Captured output from live Parfum-Zentrum product page, including GTIN 3614272865235, size 125 ml and Eau de Parfum."
+          "result": "ambiguous_not_auto_assigned",
+          "candidate_product_ids": [
+            "SH-0043",
+            "SH-AUTO-0019"
+          ],
+          "basis": "Live Parfum-Zentrum page exposes GTIN 3614272865235, size 125 ml, Eau de Parfum. Catalog currently has duplicate canonical identities but no canonical GTIN mapping to prove ownership."
         },
         "live_profondo_100ml_refill": {
-          "result": "not_matched_to_regular_100ml_edp",
-          "basis": "Captured live refill page with GTIN 3614273953849; it must remain distinct from the regular 100 ml EDP."
+          "result": "not_mapped_to_regular_100ml_edp",
+          "basis": "Live page is explicitly a refill and exposes GTIN 3614273953849."
         }
       },
       "production_database_mutated": false,
       "catalog_modified": false,
-      "note": "This deterministic CI test uses captured live parser output. The separate live probe checks the current public pages; no DB writes are made."
+      "note": "The regression gate is green because it asserts conservative ambiguity rather than claiming the canonical identity is resolved."
     }
   },
   "runtime_audit_tool": {
@@ -585,7 +597,7 @@
     },
     "real_extraction_regressions": {
       "checked_at": "2026-10-23",
-      "status": "live_parfumzentrum_adapter_verified_deloox_transport_blocked",
+      "status": "live_parfumzentrum_parse_verified_deloox_http_403_matcher_identity_ambiguity_exposed",
       "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
       "test_file": "tests/test_retailer_parser_html_reuse.py",
       "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
@@ -609,21 +621,21 @@
       "validated_commit": "6ab8ddc5e14f00ec18c4c9cd4f30c339810c28f1",
       "test_result": "Full isolated next-engine workflow completed successfully, including parser fixtures, catalog smoke, identity audits and generated-report consistency checks.",
       "workflow_run_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
-      "latest_verified_commit": "257806cd4be5c691e7ff8122f0460083ab70e984",
+      "latest_verified_commit": "ac1b8d99d37fd58b184686db447df24acd072fc6",
       "latest_test_workflow": {
-        "run_id": 39946212567,
+        "run_id": 39947364618,
         "conclusion": "success",
-        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946212567",
-        "commit": "257806cd4be5c691e7ff8122f0460083ab70e984"
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947364618",
+        "commit": "ac1b8d99d37fd58b184686db447df24acd072fc6"
       },
       "latest_read_only_runtime_audit": {
-        "run_id": 39946212576,
+        "run_id": 39947364603,
         "conclusion": "success",
-        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946212576",
-        "commit": "257806cd4be5c691e7ff8122f0460083ab70e984",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947364603",
+        "commit": "ac1b8d99d37fd58b184686db447df24acd072fc6",
         "production_database_mutated": false
       },
-      "live_url_status": "not_executed",
+      "live_url_status": "parfumzentrum_exact_urls_parsed; deloox_http_403; identity_resolution_remains_ambiguous",
       "live_url_blocker": "The available GitHub connector exposes workflow inspection and rerun actions but not workflow_dispatch for the existing manual live-shadow workflow. Do not change the workflow trigger or substitute unrelated searches.",
       "live_probe_workflow": {
         "path": ".github/workflows/live-retailer-parser-probe.yml",
