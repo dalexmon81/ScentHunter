@@ -797,7 +797,6 @@ def _parse_xml_entries(data, url=''):
                         lastmod = (child.text or '').strip()
                 if loc:                    out.append(('sitemap', loc, lastmod))
             return out, None if out else 'EMPTY_SITEMAP_INDEX'
-
         if kind == 'urlset':
             out = []
             for node in list(root):
@@ -1597,8 +1596,7 @@ def _deloox_queue_allowed(url):
     try:        p = urllib.parse.urlparse(url.split('#', 1)[0])
     except Exception:
         return False
-    if p.scheme not in ('http', 'https'):
-        return False
+    if p.scheme not in ('http', 'https'):        return False
     allowed_hosts = {
         urllib.parse.urlparse(x).netloc.lower()
         for x in _discovery_bases('deloox')
@@ -2397,8 +2395,7 @@ def diagnose_html_discovery_trace(store, query='', max_pages=120, max_depth=8, m
         heapq.heappush(queue, (priority, sequence, key, depth, source))
         queued.add(key)
         if has_tokens(key) and len(query_url_hits) < 100:
-            query_url_hits.append({'url': key, 'depth': depth, 'source': source})
-        return True
+            query_url_hits.append({'url': key, 'depth': depth, 'source': source})        return True
 
     seeds = list(dict.fromkeys(HTML_DISCOVERY_SEEDS.get(store, ())))
     for seed in seeds:
@@ -3197,8 +3194,7 @@ def refresh_url(store, url):
                             # Persist the commercial combination identity, not
                             # merely size + SKU: Sabina can repeat a parent SKU
                             # across sizes, and distinct combinations may share
-                            # both size and SKU. The scraper preserves the real
-                            # combination selector in the variant URL fragment.
+                            # both size and SKU. The scraper preserves the real                            # combination selector in the variant URL fragment.
                             raw_variant_url = str(variant.get('url') or '').strip()
                             parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
                             variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
@@ -3369,9 +3365,9 @@ def _search_db():
 
 
 
-# Refresh matched Easycosmetic offers in the background to prevent catalog prices
-# from remaining stale indefinitely. The foreground search stays read-only and
-# does not wait for retailer HTTP requests or SQLite writes.
+# Repair legacy Easycosmetic rows with a missing parsed size in the background.
+# The foreground search stays read-only and does not wait for retailer HTTP
+# requests or SQLite writes.
 _EASYCOSMETIC_REPAIR_LOCK = threading.Lock()
 _EASYCOSMETIC_REPAIR_IN_FLIGHT = set()
 
@@ -3997,8 +3993,7 @@ def _ensure_hydration_queue():
             with conn:
                 conn.executemany(
                     """INSERT OR IGNORE INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)""",
+                           store,url,state,attempts,available_at,first_seen_at)                       VALUES(?,?,?,?,?,?)""",
                     prepared,
                 )
             inserted += len(prepared)
@@ -4797,8 +4792,7 @@ def _coverage_persist_urls(store, rows):
         with conn:
             for url in urls:
                 conn.execute(
-                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
+                    """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)                       VALUES(?,?,?,?,?,1)
                        ON CONFLICT(store,url) DO UPDATE SET
                            slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
                     (store, url, url_slug(url), '', now),
