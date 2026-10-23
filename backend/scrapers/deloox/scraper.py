@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from urllib.parse import parse_qsl, quote_plus, urljoin, urlparse, urlencode, urlunparse
 
 import requests
@@ -68,7 +69,10 @@ def clean(v):
 
 
 def norm(v):
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
+    # Normalize accented product names (e.g. Giò -> Gio) before token matching.
+    text = unicodedata.normalize("NFKD", clean(v).lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", text)).strip()
 
 
 def tokens(v):
@@ -348,9 +352,9 @@ def _product(url, html, query):
         },
         "attributes": {
             "size_ml": {
-                "value": size_ml(name),
-                "source": "product_name",
-            } if size_ml(name) is not None else None,
+                "value": size_ml(name, url),
+                "source": "product_name_or_url",
+            } if size_ml(name, url) is not None else None,
             "concentration": {
                 "value": concentration(name),
                 "source": "product_name",
