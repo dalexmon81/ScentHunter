@@ -51,6 +51,39 @@ def normalize_identity_text(value: str | None) -> str:
     return _SPACE_RE.sub(" ", value).strip()
 
 
+_SIZE_SUFFIX_RE = re.compile(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl\s*oz)$")
+_RETAILER_GENDER_SUFFIXES = {"man", "men", "herren", "male", "woman", "women", "damen", "female", "unisex"}
+
+
+def _retailer_title_core(value: str) -> str:
+    """Strip only generic retailer suffix metadata; preserve variant qualifiers.
+
+    This handles titles such as "... Eau de Parfum 125 ml (man)" while
+    deliberately retaining words such as "refill"/"nachfüllbar", which can
+    distinguish a different sellable product.
+    """
+    core = normalize_identity_text(value)
+    changed = True
+    while core and changed:
+        changed = False
+        parts = core.split()
+        if parts and parts[-1] in _RETAILER_GENDER_SUFFIXES:
+            core = " ".join(parts[:-1]).strip()
+            changed = True
+            continue
+        sized = _SIZE_SUFFIX_RE.sub("", core).strip()
+        if sized != core:
+            core = sized
+            changed = True
+            continue
+        for suffix in _GENERIC_TITLE_SUFFIXES:
+            if core.endswith(" " + suffix):
+                core = core[: -(len(suffix) + 1)].strip()
+                changed = True
+                break
+    return core
+
+
 def _strict_name_forms(value: str, brand: str | None) -> set[str]:
     """Return exact normalized forms, including a possible brand prefix."""
     normalized = normalize_identity_text(value)
@@ -58,10 +91,14 @@ def _strict_name_forms(value: str, brand: str | None) -> set[str]:
         return set()
 
     forms = {normalized}
+    core = _retailer_title_core(value)
+    if core:
+        forms.add(core)
     brand_norm = normalize_identity_text(brand)
 
-    if brand_norm and normalized.startswith(brand_norm + " "):
-        forms.add(normalized[len(brand_norm):].strip())
+    for form in tuple(forms):
+        if brand_norm and form.startswith(brand_norm + " "):
+            forms.add(form[len(brand_norm):].strip())
 
     return forms
 
