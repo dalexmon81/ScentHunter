@@ -89,18 +89,24 @@ def test_deloox_real_product_extraction_from_jsonld_fixture():
     assert result["source"]["image"].endswith("profondo-125.jpg")
 
 
-def test_deloox_rejects_page_without_public_price_or_known_stock():
+def test_deloox_extraction_preserves_unknown_price_and_availability():
     html = """
     <html><body>
     <h1>Acqua di Gio Profondo Eau de Parfum 125 ml</h1>
     <p>Fragrance description only.</p>
     </body></html>
     """
-    assert deloox._product(
+    result = deloox._product(
         "https://www.deloox.nl/en/product/123/acqua-di-gio-profondo-eau-de-parfum-125-ml",
         html,
         "Acqua di Gio Profondo Eau de Parfum",
-    ) is None
+    )
+    # Deloox intentionally allows a syntactically valid product with no offer
+    # state to be represented, rather than fabricating price/availability.
+    assert result is not None
+    assert result["attributes"]["size_ml"]["value"] == 125
+    assert result["offer"]["price"] is None
+    assert result["offer"]["availability"] == "unknown"
 
 
 def test_parfumzentrum_real_product_extraction_from_jsonld_fixture():
