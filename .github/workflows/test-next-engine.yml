@@ -49,6 +49,7 @@ jobs:
           tests/test_next_engine_realistic_batch.py
           tests/test_next_engine_main_boot_gate.py
           tests/test_next_engine_shadow_comparison.py
+          tests/test_live_retailer_identity_resolution.py
 
       - name: Run real-catalog smoke entry point (read-only)
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
