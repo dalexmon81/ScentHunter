@@ -8,6 +8,7 @@ on:
       - "tests/run_live_retailer_parser_probe.py"
       - ".github/workflows/live-retailer-parser-probe.yml"
       - "backend/scrapers/deloox/scraper.py"
+      - "backend/scrapers/easycosmetic/scraper.py"
       - "backend/scrapers/parfumzentrum/scraper.py"
   workflow_dispatch:
 
