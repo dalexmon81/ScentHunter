@@ -854,6 +854,49 @@
           "production_database_mutated": false
         },
         "note": "Both 75 ml and 125 ml EDP GTINs now resolve only to their exact declared variants; size conflicts fail closed. SH-0043 and SH-AUTO-0019 remain separate product IDs. No production DB write, catalog file modification, merge, or deploy."
+      },
+      "latest_deloox_discovery_diagnostic": {
+        "checked_at": "2026-10-23",
+        "commit": "6c9d0796b0273b29b4eaeb19c7c6f8638dd16e7f",
+        "workflow_run_id": 39978154303,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154303",
+        "conclusion": "success",
+        "search_status": "unavailable",
+        "search_pages_ok": 0,
+        "search_pages_failed": 12,
+        "search_failure_reasons": {
+          "http_403": 12
+        },
+        "search_verified": false,
+        "category_verified": false,
+        "sitemap_verified": false,
+        "technical_failure": true,
+        "interpretation": "All 12 bounded Deloox search requests returned HTTP 403 from the GitHub-hosted runner, including discovery after deloox.lu was added. This is an access/transport denial before product-page parsing, not a verified zero-result and not evidence that the HTML parser is broken. Do not bypass anti-bot controls; keep Deloox explicitly unavailable until an authorized access path or retailer-supported feed/API exists.",
+        "production_database_mutated": false,
+        "catalog_modified": false
+      },
+      "latest_validation": {
+        "checked_at": "2026-10-23",
+        "commit": "6c9d0796b0273b29b4eaeb19c7c6f8638dd16e7f",
+        "next_engine_tests": {
+          "run_id": 39978154377,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154377"
+        },
+        "read_only_runtime_audit": {
+          "run_id": 39978154321,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154321",
+          "production_database_mutated": false
+        },
+        "live_retailer_probe": {
+          "run_id": 39978154303,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154303"
+        },
+        "scope": "All three workflows passed. Workflow success means the probe reported its findings correctly; it does not mean Deloox search itself is available.",
+        "production_database_mutated": false,
+        "catalog_modified": false
       }
     }
   }
