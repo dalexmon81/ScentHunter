@@ -251,3 +251,32 @@ def test_deloox_accent_normalization_and_url_size():
     assert result["attributes"]["size_ml"]["value"] == 30
     assert result["offer"]["price"] == 60.59
     assert result["identity"]["gtin"]["value"] == "3614273953863"
+
+
+def test_parfumzentrum_strips_internal_product_sku_from_query():
+    html = """
+    <html><head>
+    <script type="application/ld+json">
+    {
+      "@type": "Product",
+      "name": "Afnan 9 PM Eau de Parfum 100 ml",
+      "brand": {"@type": "Brand", "name": "Afnan"},
+      "offers": {
+        "@type": "Offer",
+        "price": "29.90",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock"
+      }
+    }
+    </script></head><body>
+    <h1>Afnan 9 PM Eau de Parfum 100 ml</h1>
+    </body></html>
+    """
+    result = parfumzentrum._extract_product(
+        "https://www.parfum-zentrum.de/afnan-9-pm-edp-100-ml_z12345",
+        "Afnan 9 PM Eau de Parfum 100 ml _z12345",
+        html=html,
+    )
+    assert result is not None
+    assert result["size_ml"] == 100
+    assert result["price_num"] == 29.90
