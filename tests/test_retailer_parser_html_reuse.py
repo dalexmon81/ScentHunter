@@ -312,3 +312,4 @@ def test_easycosmetic_uses_matching_size_price_and_stock_not_sibling_options():
     assert result["price_num"] == 96.99
     assert result["available"] is True
     assert result["availability"] == "In stock"
+    assert "auf Lager" not in result["name"]
