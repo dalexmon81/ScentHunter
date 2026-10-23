@@ -16,94 +16,36 @@
   "cases": [
     {
       "case_id": "ARMANI-ACQUA-DI-GIO-EDT",
-      "product_ids": [
-        "SH-AUTO-0288",
-        "SH-AUTO-0018"
-      ],
+      "product_ids": ["SH-AUTO-0288", "SH-AUTO-0018"],
       "evidence": {
-        "SH_AUTO_0288": {
-          "canonical_name": "Acqua di Gio",
-          "concentration": "",
-          "variant_sizes_ml": [],
-          "alias_count": 3
-        },
-        "SH_AUTO_0018": {
-          "canonical_name": "Acqua di Giò",
-          "concentration": "Eau de Toilette",
-          "variant_sizes_ml": [
-            50,
-            100,
-            200
-          ],
-          "alias_count": 4
-        }
+        "SH_AUTO_0288": {"canonical_name": "Acqua di Gio", "concentration": "", "variant_sizes_ml": [], "alias_count": 3},
+        "SH_AUTO_0018": {"canonical_name": "Acqua di Giò", "concentration": "Eau de Toilette", "variant_sizes_ml": [50, 100, 200], "alias_count": 4}
       },
       "diagnosis": "Probable incomplete duplicate/legacy parent record, but SH-AUTO-0288 has no declared concentration or variants and must not be silently merged.",
       "proposed_action": "Review SH-AUTO-0288 as a possible legacy alias/redirect to SH-AUTO-0018 only after confirming the official identity and finding every reference to SH-AUTO-0288. Preserve the old ID as a redirect/compatibility mapping if the repository supports it.",
-      "blocking_questions": [
-        "Does every existing reference to SH-AUTO-0288 refer specifically to the EDT product?",
-        "Are there any non-EDT Acqua di Gio products or historical references represented by this record?"
-      ],
+      "blocking_questions": ["Does every existing reference to SH-AUTO-0288 refer specifically to the EDT product?", "Are there any non-EDT Acqua di Gio products or historical references represented by this record?"],
       "migration_allowed": false,
       "external_check": {
         "status": "partially_confirmed",
-        "source_urls": [
-          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
-          "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/"
-        ],
+        "source_urls": ["https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/", "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/"],
         "conclusion": "The official catalog distinguishes Acqua di Giò EDT from other concentrations and Profondo. SH-AUTO-0018 is consistent with an EDT identity and declared 50/100/200 ml sizes; SH-AUTO-0288 remains an incomplete generic record. This does not establish that every reference to SH-AUTO-0288 is an EDT reference."
       },
       "dependency_status": "catalog_snapshot_no_variants_or_offer_mappings; runtime_references_not_fully_verified"
     },
     {
       "case_id": "ARMANI-ACQUA-DI-GIO-PROFONDO-EDP",
-      "product_ids": [
-        "SH-0043",
-        "SH-AUTO-0019"
-      ],
+      "product_ids": ["SH-0043", "SH-AUTO-0019"],
       "evidence": {
-        "SH_0043": {
-          "canonical_name": "Acqua di Gio Profondo",
-          "concentration": "Eau de Parfum",
-          "variant_sizes_ml": [
-            75,
-            125
-          ],
-          "variant_ids": [
-            "VAR-89c2a2a86bedb3c5",
-            "VAR-09a73d0a5594cf49"
-          ],
-          "canonical_image_url_mentions_size_ml": 50
-        },
-        "SH_AUTO_0019": {
-          "canonical_name": "Acqua di Giò Profondo",
-          "concentration": "Eau de Parfum",
-          "variant_sizes_ml": [
-            50,
-            100,
-            200
-          ],
-          "variant_ids": [
-            "VAR-30ce093fd9e9ab47",
-            "VAR-46b03c1f1cff0a6e",
-            "VAR-f79ca5b3b5fd237f"
-          ]
-        }
+        "SH_0043": {"canonical_name": "Acqua di Gio Profondo", "concentration": "Eau de Parfum", "variant_sizes_ml": [75, 125], "variant_ids": ["VAR-89c2a2a86bedb3c5", "VAR-09a73d0a5594cf49"], "canonical_image_url_mentions_size_ml": 50},
+        "SH_AUTO_0019": {"canonical_name": "Acqua di Giò Profondo", "concentration": "Eau de Parfum", "variant_sizes_ml": [50, 100, 200], "variant_ids": ["VAR-30ce093fd9e9ab47", "VAR-46b03c1f1cff0a6e", "VAR-f79ca5b3b5fd237f"]}
       },
       "diagnosis": "Same normalized brand, canonical name and concentration split across two product IDs. Available records alone do not prove whether the sizes belong to one identity or whether a historical/release distinction is missing.",
       "proposed_action": "Do not merge yet. Verify 75 ml and 125 ml with authoritative sources and verify all five variants independently. If they are the same product identity, nominate one canonical product ID, move variants without changing variant IDs, consolidate aliases without losing provenance, and preserve an old-ID redirect/reference map. Correct or validate the SH-0043 canonical image separately.",
-      "blocking_questions": [
-        "Are the 75 ml and 125 ml EDP formats valid for the exact same Profondo release/market?",
-        "Which product ID is referenced by persisted offers, scraper mappings, analytics, or external clients?",
-        "Does the image currently attached to SH-0043 actually depict the canonical product and size?"
-      ],
+      "blocking_questions": ["Are the 75 ml and 125 ml EDP formats valid for the exact same Profondo release/market?", "Which product ID is referenced by persisted offers, scraper mappings, analytics, or external clients?", "Does the image currently attached to SH-0043 actually depict the canonical product and size?"],
       "migration_allowed": false,
       "external_check": {
         "status": "variants_unverified",
-        "source_urls": [
-          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
-          "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html"
-        ],
+        "source_urls": ["https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/", "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html"],
         "conclusion": "Current official sources list Profondo EDP 30/50/100/200 ml and a separate 150 ml refill; they do not list 75 ml or 125 ml on the pages checked. This is insufficient to delete or reassign those variants because older releases/markets remain possible. The SH-0043 image-size mismatch also remains unverified."
       },
       "dependency_status": "catalog_snapshot_variants_have_no_gtin_mpn_or_store_mappings; runtime_references_not_fully_verified"
@@ -143,109 +85,43 @@
     "checked_at": "2026-10-23",
     "branch": "scenthunter-next-engine",
     "catalog_file": "backend/product_catalog.json",
-    "catalog_counts": {
-      "products": 1389,
-      "variants": 511,
-      "offers": 0
-    },
+    "catalog_counts": {"products": 1389, "variants": 511, "offers": 0},
     "result": "No persisted offer rows, GTINs, MPNs, or store_mappings are present for the four affected product identities/variants in the checked catalog snapshot.",
     "records": [
-      {
-        "product_id": "SH-AUTO-0288",
-        "variant_count": 0,
-        "variant_ids": [],
-        "gtins": [],
-        "mpns": [],
-        "store_mappings": []
-      },
-      {
-        "product_id": "SH-AUTO-0018",
-        "variant_count": 3,
-        "variant_ids": [
-          "VAR-69fbeda0c7a3c691",
-          "VAR-b6adcf86ddaab498",
-          "VAR-d2e93b41952c6151"
-        ],
-        "sizes_ml": [
-          50,
-          100,
-          200
-        ],
-        "gtins": [],
-        "mpns": [],
-        "store_mappings": []
-      },
-      {
-        "product_id": "SH-0043",
-        "variant_count": 2,
-        "variant_ids": [
-          "VAR-89c2a2a86bedb3c5",
-          "VAR-09a73d0a5594cf49"
-        ],
-        "sizes_ml": [
-          75,
-          125
-        ],
-        "gtins": [],
-        "mpns": [],
-        "store_mappings": []
-      },
-      {
-        "product_id": "SH-AUTO-0019",
-        "variant_count": 3,
-        "variant_ids": [
-          "VAR-30ce093fd9e9ab47",
-          "VAR-46b03c1f1cff0a6e",
-          "VAR-f79ca5b3b5fd237f"
-        ],
-        "sizes_ml": [
-          50,
-          100,
-          200
-        ],
-        "gtins": [],
-        "mpns": [],
-        "store_mappings": []
-      }
+      {"product_id": "SH-AUTO-0288", "variant_count": 0, "variant_ids": [], "gtins": [], "mpns": [], "store_mappings": []},
+      {"product_id": "SH-AUTO-0018", "variant_count": 3, "variant_ids": ["VAR-69fbeda0c7a3c691", "VAR-b6adcf86ddaab498", "VAR-d2e93b41952c6151"], "sizes_ml": [50, 100, 200], "gtins": [], "mpns": [], "store_mappings": []},
+      {"product_id": "SH-0043", "variant_count": 2, "variant_ids": ["VAR-89c2a2a86bedb3c5", "VAR-09a73d0a5594cf49"], "sizes_ml": [75, 125], "gtins": [], "mpns": [], "store_mappings": []},
+      {"product_id": "SH-AUTO-0019", "variant_count": 3, "variant_ids": ["VAR-30ce093fd9e9ab47", "VAR-46b03c1f1cff0a6e", "VAR-f79ca5b3b5fd237f"], "sizes_ml": [50, 100, 200], "gtins": [], "mpns": [], "store_mappings": []}
     ],
     "code_reference_search": {
       "result": "No direct literal references found in the core runtime files checked (backend/catalog_engine.py, backend/product_matcher.py, backend/main.py, and Next Engine repository/matcher/service files).",
-      "caveat": "This is not proof that runtime databases, logs, caches, deployed environments, external clients, or dynamically keyed mappings have no references. Full-repository exhaustive code search was not completed."
+      "caveat": "This is not proof that runtime databases, logs, caches, external clients, or dynamically keyed mappings have no references. Full-repository exhaustive code search was not completed."
     },
     "safety_conclusion": "The checked catalog snapshot shows no in-catalog offer or retailer mapping dependencies, but that alone is not enough to authorize a merge. Runtime persistence and deployed data still need a read-only inventory before any catalog write."
   },
   "deployed_runtime_check": {
     "checked_at": "2026-10-23",
-    "provider": "Render",
-    "service_name": "ScentHunter",
-    "service_id": "srv-d9p2i7u417fc73830lkg",
-    "service_url": "https://scenthunter.onrender.com",
+    "provider": "Fly.io",
+    "app_name": "scenthunter",
+    "region": "ams",
+    "database_path": "/data/store_catalog.sqlite3",
     "deployed_branch": "main",
-    "finding": "The currently configured Render service deploys main, not scenthunter-next-engine. Read-only Render log searches for each of the four product IDs returned no matches in the available recent log window.",
-    "interpretation": "No matching log lines are visible in the queried window. Application logs are not a database/reference inventory, so this does not prove the IDs are unused in persisted SQLite data, caches, or external clients.",
-    "limitation": "No read-only SQL or filesystem access to the service's SQLite catalog database was available through the inspected Render connector actions. No deployment was triggered and no service settings or runtime data were changed."
+    "finding": "Deployment configuration identifies Fly.io app scenthunter with the persistent SQLite volume mounted at /data. The live database has NOT been inspected by this audit.",
+    "interpretation": "No claim is made about whether the four product IDs or eight variant IDs are referenced in the production SQLite database. The required live reference inventory remains outstanding.",
+    "limitation": "No approved direct Fly.io runtime/volume read interface was available through the connected GitHub actions. No deployment was triggered and no production data was changed."
   },
   "next_gate": {
     "status": "blocked_pending_runtime_database_inventory",
-    "required_action": "Run the new read-only SQLite audit against the actual persistent catalog DB, then review every matching table/column before proposing any migration.",
+    "required_action": "Obtain a read-only snapshot of /data/store_catalog.sqlite3 from the Fly.io persistent volume in an approved way, then run backend.scenthunter_next_engine.runtime_identity_reference_audit against that snapshot and review matching tables/columns before any migration.",
     "audit_command": "python -m backend.scenthunter_next_engine.runtime_identity_reference_audit --db-path /path/to/read-only/store_catalog.sqlite3 --output runtime-identity-reference-audit.json",
-    "no_mutation_guarantee": "The script opens the input database with SQLite mode=ro and PRAGMA query_only=ON. It writes only the JSON report file."
+    "no_mutation_guarantee": "The audit script opens the input database with SQLite mode=ro and PRAGMA query_only=ON. It writes only the JSON report file."
   },
   "runtime_audit_tool": {
     "status": "implemented_not_yet_run_against_deployed_database",
     "path": "backend/scenthunter_next_engine/runtime_identity_reference_audit.py",
     "test_path": "tests/test_runtime_identity_reference_audit.py",
-    "commit_shas": [
-      "af1916cecfa66def14c6d384244de813659328b3",
-      "213223da530bf77a13254be2ce51c48d722c5554",
-      "db0f18fd2c82c974b9126d741e767c52cec17553"
-    ],
-    "safety": {
-      "sqlite_open_mode": "ro",
-      "query_only": true,
-      "database_writes": false,
-      "reports_full_row_contents": false
-    },
-    "execution": "Run locally or in an approved environment against a copy/read-only mounted snapshot of the actual persistent SQLite database. The Render connector does not expose the service filesystem or SQLite file, so this tool has not been run against production."
+    "commit_shas": ["af1916cecfa66def14c6d384244de813659328b3", "213223da530bf77a13254be2ce51c48d722c5554", "db0f18fd2c82c974b9126d741e767c52cec17553"],
+    "safety": {"sqlite_open_mode": "ro", "query_only": true, "database_writes": false, "reports_full_row_contents": false},
+    "execution": "Run against a read-only copy/snapshot of the actual Fly.io persistent SQLite database. Do not deploy this branch merely to run the audit; production deployment remains on main."
   }
 }
