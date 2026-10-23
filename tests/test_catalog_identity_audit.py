@@ -12,6 +12,7 @@ class CatalogIdentityAuditTests(unittest.TestCase):
                 {"product_id": "p1", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Giò Profondo", "concentration": "Eau de Parfum", "aliases": ["Profondo"], "canonical_image": "https://example.test/1.jpg"},
                 {"product_id": "p2", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio Profondo", "concentration": "Eau de Parfum", "aliases": ["Profondo"], "canonical_image": "https://example.test/2.jpg"},
                 {"product_id": "p3", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio", "concentration": "Eau de Toilette", "aliases": [], "canonical_image": ""},
+                {"product_id": "p4", "brand_name": "Maison Exemple", "canonical_name": "Image URL Field", "aliases": [], "canonical_image_url": "https://example.test/canonical.jpg"},
             ],
             "variants": [
                 {"variant_id": "v1", "product_id": "p1", "size_ml": 75},
