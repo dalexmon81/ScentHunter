@@ -64,7 +64,7 @@ def test_verified_gtin_with_conflicting_size_fails_closed():
     assert result.ambiguous == ()
 
 
-def test_live_profondo_refill_does_not_map_to_regular_100ml_edp():
+def test_live_profondo_refillable_100ml_bottle_maps_to_regular_edp_variant():
     service = NextEngineService.from_catalog_file(CATALOG)
     result = service.process_records(
         [{
@@ -83,12 +83,32 @@ def test_live_profondo_refill_does_not_map_to_regular_100ml_edp():
 
     assert result.rejected_rows == ()
     assert result.normalized_offer_count == 1
-    assert result.matched_offer_count == 0
-    assert len(result.unresolved) + len(result.ambiguous) == 1
-    assert all(
-        group.canonical_variant_id != "VAR-46b03c1f1cff0a6e"
-        for group in result.groups
+    assert result.matched_offer_count == 1
+    assert result.unresolved == ()
+    assert result.ambiguous == ()
+    assert result.groups[0].canonical_product_id == "SH-AUTO-0019"
+    assert result.groups[0].canonical_variant_id == "VAR-46b03c1f1cff0a6e"
+
+
+def test_profondo_refill_pack_does_not_map_to_refillable_100ml_bottle():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "Giorgio Armani Acqua di Gio Profondo Eau de Parfum Refill 100 ml",
+            "brand": "Giorgio Armani",
+            "size_ml": 100,
+            "price": 83.95,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://example.invalid/profondo-refill-pack",
+            "gtin": "3614273953849",
+        }],
+        retailer="test",
     )
+
+    assert result.matched_offer_count == 0
+    assert len(result.unresolved) == 1
+    assert result.unresolved[0].reason == "verified_gtin_packaging_conflict"
 
 
 
