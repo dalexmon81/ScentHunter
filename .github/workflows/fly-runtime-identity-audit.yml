@@ -30,5 +30,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app scenthunter --select=false -C 'sqlite3 -readonly /data/store_catalog.sqlite3 ".tables"'
-          flyctl ssh console --app scenthunter --select=false -C 'sqlite3 -readonly /data/store_catalog.sqlite3 ".schema"'
+          flyctl ssh console --app scenthunter --select=false -C 'python -c '\''import sqlite3; c=sqlite3.connect("file:/data/store_catalog.sqlite3?mode=ro", uri=True); print("\\n".join(r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type IN (\\\"table\\\",\\\"view\\\") ORDER BY name"))); c.close()'\'''
