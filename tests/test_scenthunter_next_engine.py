@@ -109,6 +109,39 @@ class CanonicalCatalogTests(unittest.TestCase):
         self.assertEqual(catalog.variant_count(), 1)
         self.assertEqual(catalog.skipped_variant_count(), 1)
 
+    def test_fractional_canonical_variant_size_is_not_truncated(self):
+        path = self._catalog_file(
+            {
+                "products": [
+                    {"product_id": "P-1", "brand_name": "Brand", "canonical_name": "Fragrance"}
+                ],
+                "variants": [
+                    {"variant_id": "V-100", "product_id": "P-1", "size_ml": "100.5"}
+                ],
+            }
+        )
+        catalog = CatalogRepository.from_file(path)
+        product = catalog.get("P-1")
+        self.assertIsNotNone(product)
+        self.assertEqual(len(product.variants), 1)
+        self.assertIsNone(product.variants[0].size_ml)
+
+    def test_accepts_whole_number_canonical_variant_size(self):
+        path = self._catalog_file(
+            {
+                "products": [
+                    {"product_id": "P-1", "brand_name": "Brand", "canonical_name": "Fragrance"}
+                ],
+                "variants": [
+                    {"variant_id": "V-100", "product_id": "P-1", "size_ml": "100.0"}
+                ],
+            }
+        )
+        catalog = CatalogRepository.from_file(path)
+        product = catalog.get("P-1")
+        self.assertIsNotNone(product)
+        self.assertEqual(product.variants[0].size_ml, 100)
+
     def test_rejects_duplicate_canonical_product_ids(self):
         path = self._catalog_file(
             {
