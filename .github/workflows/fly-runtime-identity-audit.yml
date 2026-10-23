@@ -1,0 +1,57 @@
+name: Fly Read-only Runtime Identity Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_read_only:
+        description: "Confirm read-only scan of the production SQLite catalog on Fly.io"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-audit:
+    if: ${{ inputs.confirm_production_read_only == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Audit production SQLite references (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter --select=false -C "python -c 'import sqlite3,json,os; p=os.environ.get("SCENTHUNTER_CATALOG_DB","/data/store_catalog.sqlite3"); ids=["SH-AUTO-0288","SH-AUTO-0018","SH-0043","SH-AUTO-0019","VAR-89c2a2a86bedb3c5","VAR-09a73d0a5594cf49","VAR-30ce093fd9e9ab47","VAR-46b03c1f1cff0a6e","VAR-f79ca5b3b5fd237f","VAR-69fbeda0c7a3c691","VAR-b6adcf86ddaab498","VAR-d2e93b41952c6151"]; c=sqlite3.connect("file:"+p+"?mode=ro",uri=True,timeout=5); c.execute("PRAGMA query_only=ON"); out=[]; schema=c.execute("SELECT name,type FROM sqlite_master WHERE type IN (\\"table\\",\\"view\\") AND name NOT LIKE \\"sqlite_%\\" ORDER BY type,name").fetchall(); exec("for name,typ in schema:\\n cols=c.execute(\\"PRAGMA table_info(\\\"+chr(34)+name.replace(chr(34),chr(34)*2)+chr(34)+\\")\\").fetchall()\\n for col in cols:\\n  q=chr(34)+col[1].replace(chr(34),chr(34)*2)+chr(34)\\n  pred=\\" OR \\".join(\\"CAST(\\"+q+\\" AS TEXT) LIKE ?\\" for _ in ids)\\n  rows=c.execute(\\"SELECT CAST(\\"+q+\\" AS TEXT) FROM \\"+chr(34)+name.replace(chr(34),chr(34)*2)+chr(34)+\\" WHERE \\"+pred+\\" LIMIT 10001\\",tuple(\\"%\\"+x+\\"%\\" for x in ids)).fetchall()\\n  if rows: out.append({\\"table\\":name,\\"type\\":typ,\\"column\\":col[1],\\"rows_with_match\\":len(rows),\\"capped\\":len(rows)>10000,\\"ids_found\\":sorted({x for row in rows for x in ids if x in str(row[0])})})"); print(json.dumps({"read_only":True,"database_path":p,"objects_scanned":len(schema),"matches":out},indent=2)); c.close()'" > runtime-identity-audit.json
+
+      - name: Validate report and show summary
+        run: |
+          python - <<'PY'
+          import json
+          with open("runtime-identity-audit.json", encoding="utf-8") as f:
+              report = json.load(f)
+          print(json.dumps({
+              "read_only": report.get("read_only"),
+              "database_path": report.get("database_path"),
+              "objects_scanned": report.get("objects_scanned"),
+              "matching_columns": len(report.get("matches", [])),
+              "matches": report.get("matches", []),
+          }, indent=2))
+          PY
+
+      - name: Upload runtime audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fly-runtime-identity-audit
+          path: runtime-identity-audit.json
+          if-no-files-found: warn
+          retention-days: 7
