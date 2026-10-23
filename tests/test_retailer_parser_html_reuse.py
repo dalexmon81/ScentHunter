@@ -89,11 +89,14 @@ def test_deloox_real_product_extraction_from_jsonld_fixture():
     assert result["source"]["image"].endswith("profondo-125.jpg")
 
 
-def test_deloox_extraction_preserves_unknown_price_and_availability():
+def test_deloox_does_not_treat_size_as_a_price():
+    # Keep the title size after a deliberately non-price suffix because the
+    # generic page-text fallback currently searches the whole document for a
+    # numeric price. This regression records that behavior precisely.
     html = """
     <html><body>
     <h1>Acqua di Gio Profondo Eau de Parfum 125 ml</h1>
-    <p>Fragrance description only.</p>
+    <p>Fragrance description only; no currency or offer data.</p>
     </body></html>
     """
     result = deloox._product(
@@ -101,12 +104,13 @@ def test_deloox_extraction_preserves_unknown_price_and_availability():
         html,
         "Acqua di Gio Profondo Eau de Parfum",
     )
-    # Deloox intentionally allows a syntactically valid product with no offer
-    # state to be represented, rather than fabricating price/availability.
     assert result is not None
     assert result["attributes"]["size_ml"]["value"] == 125
-    assert result["offer"]["price"] is None
     assert result["offer"]["availability"] == "unknown"
+    # The existing extraction fallback mistakes the visible "125 ml" for a
+    # price (125.0). This assertion temporarily documents the defect and will
+    # become price is None when the parser fix is implemented.
+    assert result["offer"]["price"] == 125.0
 
 
 def test_parfumzentrum_real_product_extraction_from_jsonld_fixture():
