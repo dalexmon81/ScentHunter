@@ -479,15 +479,15 @@
     }
   },
   "next_gate": {
-    "status": "blocked_pending_parfumzentrum_parser_and_explicit_variant_mapping",
+    "status": "blocked_pending_targeted_parser_regression_and_explicit_variant_mapping",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Deloox hydration parser now reuses the HTML already fetched by catalog_engine, avoiding a second request. Next Engine tests and read-only runtime audit both passed after the change. No live database writes, merge, or deployment.",
+    "latest_evidence": "Both Deloox and ParfumZentrum now expose catalog hydration paths that can reuse already-fetched HTML. Next Engine tests and read-only runtime audit passed on commit 253016d529c5c34c18f35127f7cd7c0373b65c82. No production database writes, merge, or deployment.",
     "required_next_steps": [
-      "Trace the retailer parser and persistence path for Deloox and Parfumzentrum rows that report product_parser_not_found despite JSON-LD Product data, and verify how size_ml is extracted.",
+      "Add targeted regression tests for Deloox and ParfumZentrum product-page adapters using representative HTML containing JSON-LD Product data and verify size, concentration, SKU/GTIN extraction.",
+      "Check the previously failing live Deloox and ParfumZentrum URLs through the parser without writing to the production database; confirm product_parser_not_found changes and normalized size_ml values.",
       "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
-      "Keep both Armani product-ID pairs unchanged until mapping evidence is explicit and tests cover EDT vs EDP vs Parfum/refill separation.",
-      "After any code change, rerun Next Engine tests and a read-only runtime audit; do not merge or deploy as part of this audit."
+      "Keep both Armani product-ID pairs separate until the parser regression and explicit mapping evidence are complete."
     ]
   },
   "runtime_audit_tool": {
@@ -531,6 +531,20 @@
       "read_only_runtime_audit_conclusion": "success",
       "live_database_mutated": false
     },
-    "limits": "This removes the duplicate-fetch failure mode for Deloox. It does not yet prove all existing parser_not_found rows are fixed; ParfumZentrum still requires separate diagnosis, and retailer-to-canonical variant mapping remains unresolved."
+    "limits": "This removes the duplicate-fetch failure mode for Deloox. It does not yet prove all existing parser_not_found rows are fixed; ParfumZentrum still requires separate diagnosis, and retailer-to-canonical variant mapping remains unresolved.",
+    "parfumzentrum": {
+      "updated_at": "2026-10-23",
+      "commit": "253016d529c5c34c18f35127f7cd7c0373b65c82",
+      "file": "backend/scrapers/parfumzentrum/scraper.py",
+      "change": "Added extract_product_page(session, url, query=None, html=None) adapter to the catalog refresh path. It validates the ParfumZentrum product URL and reuses _extract_product with the already-fetched HTML, preserving retailer-specific size, price, availability and perfume identity checks while avoiding a second HTTP fetch.",
+      "validation": {
+        "next_engine_tests_run_id": 39944181265,
+        "next_engine_tests_conclusion": "success",
+        "read_only_runtime_audit_run_id": 39944181359,
+        "read_only_runtime_audit_conclusion": "success",
+        "live_database_mutated": false
+      },
+      "limits": "Passing CI and a read-only audit confirm the change is syntactically and operationally accepted, but do not by themselves prove that every previously failed live product URL now parses. A targeted parser fixture/live URL regression test is still required before claiming the parser_not_found issue is resolved."
+    }
   }
 }
