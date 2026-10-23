@@ -158,3 +158,24 @@ def test_profondo_75ml_gtin_with_125ml_size_fails_closed():
     assert len(result.unresolved) == 1
     assert result.unresolved[0].reason == "verified_gtin_size_conflict"
     assert result.ambiguous == ()
+
+
+def test_verified_gtin_ignores_english_refillable_bottle_adjective():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "Giorgio Armani Acqua di Gio Profondo Eau de Parfum refillable bottle 100 ml",
+            "brand": "Giorgio Armani",
+            "size_ml": 100,
+            "price": 83.95,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://example.invalid/profondo-refillable-bottle",
+            "gtin": "3614273953849",
+        }],
+        retailer="test",
+    )
+
+    assert result.matched_offer_count == 1
+    assert result.groups[0].canonical_product_id == "SH-AUTO-0019"
+    assert result.groups[0].canonical_variant_id == "VAR-46b03c1f1cff0a6e"
