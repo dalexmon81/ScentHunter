@@ -9,12 +9,13 @@ import requests
 from bs4 import BeautifulSoup
 
 from backend.scrapers.deloox import scraper as deloox
+from backend.scrapers.easycosmetic import scraper as easycosmetic
 from backend.scrapers.parfumzentrum import scraper as parfumzentrum
 
 QUERY = "Acqua di Gio Profondo"
 REPORT = Path("live-retailer-parser-probe.json")
 KNOWN_URLS = {
-    "easycosmetic_profondo": ("https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx", None),
+    "easycosmetic_profondo": ("https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx", "easycosmetic"),
     "perfumemarket_profondo_125": ("https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml", None),
     "deloox_profondo_edp_30": ("https://www.deloox.be/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html", "deloox"),
     "deloox_profondo_edp_100": ("https://www.deloox.be/produit/1323846/armani-acqua-di-gio-profondo-eau-de-parfum-100-ml.html", "deloox"),
@@ -75,10 +76,28 @@ def page_probe(url, adapter_name=None):
         result["h1"] = clean(h1.get_text(" ", strip=True)) if h1 else None
         result["products"] = _jsonld_products(soup)
         if adapter_name:
-            module = deloox if adapter_name == "deloox" else parfumzentrum
-            parsed = module.extract_product_page(None, response.url, query=result["h1"] or QUERY, html=response.text)
+            if adapter_name == "easycosmetic":
+                # Parse the fetched HTML directly to isolate extraction from a
+                # second network request, which can fail independently.
+                parsed = easycosmetic._parse_product_html(response.url, response.text)
+            else:
+                module = deloox if adapter_name == "deloox" else parfumzentrum
+                parsed = module.extract_product_page(
+                    None, response.url, query=result["h1"] or QUERY, html=response.text
+                )
             if parsed is None:
                 result["adapter_result"] = {"status": "parser_returned_none"}
+            elif adapter_name == "easycosmetic":
+                result["adapter_result"] = {
+                    "status": "parsed",
+                    "name": parsed.get("name"),
+                    "size_ml": parsed.get("size_ml"),
+                    "price": parsed.get("price_num"),
+                    "availability": parsed.get("availability"),
+                    "available": parsed.get("available"),
+                    "image": parsed.get("image"),
+                    "brand": parsed.get("brand"),
+                }
             elif adapter_name == "deloox":
                 result["adapter_result"] = {
                     "status": "parsed",
