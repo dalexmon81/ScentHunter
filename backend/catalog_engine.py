@@ -4821,7 +4821,8 @@ def _coverage_persist_urls(store, rows):
     for row in rows:
         if not isinstance(row, dict):
             continue
-        raw = row.get('url') or row.get('product_url') or row.get('link')        url = _coverage_allowed_url(store, raw)
+        raw = row.get('url') or row.get('product_url') or row.get('link')
+        url = _coverage_allowed_url(store, raw)
         if url and url not in seen:
             seen.add(url)
             urls.append(url)
