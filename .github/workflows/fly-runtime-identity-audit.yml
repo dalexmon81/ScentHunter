@@ -17,10 +17,10 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Inspect Profondo retailer rows and runtime mapping schema (SQLite read-only)
+      - name: Inspect Profondo retailer rows and runtime tables (SQLite read-only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app scenthunter --select=false -C 'python3 -c "import sqlite3,json; c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True); c.row_factory=sqlite3.Row; c.execute(\"PRAGMA query_only=ON\"); tables=c.execute(\"SELECT name,type,sql FROM sqlite_master WHERE type IN (\\\"table\\\",\\\"view\\\") AND name NOT LIKE \\\"sqlite_%\\\" ORDER BY type,name\").fetchall(); schema=[{\"name\":t[\"name\"],\"type\":t[\"type\"],\"columns\":[dict(x) for x in c.execute(\"PRAGMA table_info(\\\"\"+t[\"name\"].replace(\\\"\\\",\\\"\\\")+\"\\\")\").fetchall()]} for t in tables]; rows=c.execute(\"SELECT store,url,name,brand,sku,gtin,mpn,size_ml,concentration,gender,price,currency,availability,fetch_status FROM store_products WHERE lower(name) LIKE ? OR lower(url) LIKE ? OR sku=? ORDER BY store,name LIMIT 200\",(chr(37)+\"profondo\"+chr(37),chr(37)+\"acqua-di-gio\"+chr(37),\"3614272865235\")).fetchall(); print(json.dumps({\"database\":\"/data/store_catalog.sqlite3\",\"mode\":\"read_only\",\"schema\":schema,\"store_products_matches\":[dict(r) for r in rows]},sort_keys=True)); c.close()"'
+          flyctl ssh console --app scenthunter --select=false -C 'python3 -c "import sqlite3,json; c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True); c.row_factory=sqlite3.Row; c.execute(\"PRAGMA query_only=ON\"); tables=c.execute(\"SELECT name,type FROM sqlite_master WHERE type IN (?,?) AND name NOT LIKE ? ORDER BY type,name\",(\"table\",\"view\",\"sqlite_%\")).fetchall(); rows=c.execute(\"SELECT store,url,name,brand,sku,gtin,mpn,size_ml,concentration,gender,price,currency,availability,fetch_status FROM store_products WHERE lower(name) LIKE ? OR lower(url) LIKE ? OR sku=? ORDER BY store,name LIMIT 200\",(chr(37)+\"profondo\"+chr(37),chr(37)+\"acqua-di-gio\"+chr(37),\"3614272865235\")).fetchall(); print(json.dumps({\"database\":\"/data/store_catalog.sqlite3\",\"mode\":\"read_only\",\"tables\":[dict(t) for t in tables],\"store_products_matches\":[dict(r) for r in rows]},sort_keys=True)); c.close()"'
