@@ -494,7 +494,7 @@
     "status": "verified_gtin_variant_resolution_enabled_profondo_duplicate_not_merged_deloox_transport_pending",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "On commit 36e3c711ef19990c3e05c8a4094f350e63b1f932, the full Next Engine tests passed (run 39947671434) and the read-only runtime SQLite audit passed (run 39947671382). A reviewed, generic GTIN-to-variant registry now maps valid GTIN-13 3614272865235 to SH-0043 / VAR-09a73d0a5594cf49 only when GTIN, size, brand, concentration and product-name checks agree. The live Parfum-Zentrum page parses as 125 ml EDP with that GTIN; the matcher regression now resolves it to the 125 ml variant. The separate 100 ml refill with GTIN 3614273953849 remains unmapped and is not assigned to the regular 100 ml EDP. Deloox direct pages remain HTTP 403 from GitHub-hosted runners, so that parser is not live-verified. No merge, deploy or production DB write.",
+    "latest_evidence": "On commit 36e3c711ef19990c3e05c8a4094f350e63b1f932, the full Next Engine tests passed (run 39947671434) and the read-only runtime SQLite audit passed (run 39947671382). A reviewed, generic GTIN-to-variant registry now maps valid GTIN-13 3614272865235 to SH-0043 / VAR-09a73d0a5594cf49 only when GTIN, size, brand, concentration and product-name checks agree. The live Parfum-Zentrum page parses as 125 ml EDP with that GTIN; the matcher regression now resolves it to the 125 ml variant. The separate 100 ml refill with GTIN 3614273953849 remains unmapped and is not assigned to the regular 100 ml EDP. Deloox direct pages remain HTTP 403 from GitHub-hosted runners, so that parser is not live-verified. No merge, deploy or production DB write. The improved live probe (run 39947864353) now distinguishes discovery failures from verified not-found: Deloox reports unavailable after 9 failed search-page attempts and HTTP 403 on exact pages; Parfum-Zentrum reports partial/unverified broad search while both exact product pages parse. Next Engine tests and the read-only runtime audit both passed on commit b6350f5d3f9b1284e1d487ac6729b3f8e16ace91 (runs 39947864281 and 39947864236).",
     "required_next_steps": [
       "Keep SH-0043 and SH-AUTO-0019 as separate product identities; the GTIN registry resolves only the verified 125 ml variant and is not permission to merge or delete either product.",
       "Verify the 75 ml Profondo EDP variant and its exact GTIN independently before assigning it automatically.",
@@ -537,6 +537,26 @@
       "production_database_mutated": false,
       "catalog_file_modified": false,
       "note": "GTIN registry is read-only source-controlled evidence. Exact GTIN alone is not enough: runtime also validates target existence, exact size, brand, concentration, product-name compatibility, and refill status."
+    },
+    "latest_live_probe": {
+      "run_id": 39947864353,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864353",
+      "artifact_id": 12499605149,
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91"
+    },
+    "latest_test_workflow": {
+      "run_id": 39947864281,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864281",
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91"
+    },
+    "latest_read_only_runtime_audit": {
+      "run_id": 39947864236,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864236",
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91",
+      "production_database_mutated": false
     }
   },
   "runtime_audit_tool": {
@@ -701,11 +721,11 @@
       },
       "live_probe": {
         "checked_at": "2026-10-23",
-        "workflow_run_id": 39947110569,
-        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947110569",
+        "workflow_run_id": 39947864353,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864353",
         "conclusion": "success",
         "artifact_name": "live-retailer-parser-probe",
-        "artifact_id": 12498697469,
+        "artifact_id": 12499605149,
         "findings": {
           "parfumzentrum_profondo_edp_125": {
             "http_status": 200,
@@ -748,10 +768,21 @@
           }
         },
         "search_diagnostics": {
-          "deloox": "zero_results",
-          "parfumzentrum": "zero_results"
+          "deloox": {
+            "status": "unavailable",
+            "verified": false,
+            "search_pages_ok": 0,
+            "search_pages_failed": 9,
+            "technical_failure": true,
+            "error": "discovery_unavailable"
+          },
+          "parfumzentrum": {
+            "status": "partial",
+            "verified": false,
+            "reason": "empty_search_not_authoritatively_verified"
+          }
         },
-        "interpretation": "Parfum-Zentrum direct product pages are successfully extracted by the real adapter. Deloox pages are denied with HTTP 403 before parser execution; both search adapters return zero rows. PerfumeMarket exposes the GTIN-like number as SKU only. Canonical matcher conservatively leaves the 125 ml offer ambiguous between SH-0043 and SH-AUTO-0019 until a verified GTIN-to-variant mapping exists.",
+        "interpretation": "Deloox search is explicitly unavailable after nine failed search-page attempts, not a verified zero-result. Direct product URLs are HTTP 403 from GitHub Actions before parsing. Parfum-Zentrum broad search is partial/unverified with zero rows, but its exact product pages are parsed successfully. The 125 ml Profondo EDP GTIN resolves through the reviewed GTIN registry; the 100 ml refill remains unmapped.",
         "production_database_mutated": false,
         "catalog_modified": false
       },
