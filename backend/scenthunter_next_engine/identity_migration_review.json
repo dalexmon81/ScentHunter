@@ -453,18 +453,41 @@
         "failure_reason": "The new workflow's inline Python command has a quoting SyntaxError before executing its database query; the connection was opened read-only and no database mutation occurred.",
         "conclusion": "The targeted 125 ml retailer evidence is recorded, but mapping-table schema and exact retailer-to-canonical-variant links remain unverified. Do not merge or migrate either Armani identity collision on current evidence."
       }
+    },
+    "latest_variant_audit": {
+      "checked_at": "2026-10-23",
+      "workflow_run_id": 39943229120,
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39943229120",
+      "next_engine_tests_run_id": 39943228873,
+      "next_engine_tests_conclusion": "success",
+      "read_only": true,
+      "database_mutated": false,
+      "tables_queried": [
+        "store_products",
+        "store_product_variants",
+        "store_url_metadata",
+        "catalog_coverage"
+      ],
+      "findings": {
+        "store_product_variants": "No matching rows for exact Acqua di Gio Profondo product-name/url criteria or SKU 3614272865235.",
+        "store_url_metadata": "No matching rows for exact Acqua di Gio Profondo product-name/url criteria or SKU 3614272865235.",
+        "store_products": "Retailer rows confirm current Profondo EDP 30/50/100 ml listings and several 125 ml EDP listings; at least one retailer listing carries SKU 3614272865235 and GTIN 3614272865235 in a separate retailer record. The deployed database also has Profondo Parfum and refill listings that must not be conflated with Profondo EDP.",
+        "parser_errors": "Several Deloox and Parfumzentrum EDP product URLs have fetch_status product_parser_not_found despite HTTP 200 and JSON-LD Product presence; this is a separate scraper/parser issue and may prevent size_ml normalization.",
+        "catalog_coverage": "Search-task records exist for both Profondo canonical IDs, with multiple RETRY/timeouts and mixed FOUND/NOT_FOUND states. These are search coverage tasks, not product-to-variant mappings."
+      },
+      "conclusion": "The audit is now operational and has surfaced concrete retailer data and parser failures, but no explicit retailer-URL/SKU-to-canonical-variant mapping table is present among the queried tables. The 125 ml format has third-party support; the 75 ml format remains unverified. Do not merge product IDs until parser/size normalization and downstream mapping evidence are resolved."
     }
   },
   "next_gate": {
-    "status": "blocked_pending_variant_level_reconciliation",
+    "status": "blocked_pending_explicit_variant_mapping_and_parser_reconciliation",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Read-only production scan found 125 ml Profondo EDP retailer listings at easycosmetic and PerfumeMarket, but no 75 ml row in the targeted result. Neither GTIN/MPN nor explicit canonical variant mapping was confirmed.",
+    "latest_evidence": "Successful read-only runtime audit queried store_products, store_product_variants, store_url_metadata, and catalog_coverage. Retailer data includes Profondo EDP 125 ml listings, while store_product_variants and store_url_metadata return no matching Profondo records for the queried URL/name/SKU criteria. Several retailer pages show product_parser_not_found despite HTTP 200 and JSON-LD Product. Next Engine tests pass; migration remains blocked.",
     "required_next_steps": [
-      "Inspect the store_products schema and mapping/offer-related tables to identify how retailer URLs/SKUs are associated with canonical product and variant IDs.",
-      "Search exact URL, SKU, and normalized name references across deployed SQLite tables and views, without writes.",
-      "Keep both SH-0043 and SH-AUTO-0019 unchanged until every affected variant and downstream reference has been reconciled.",
-      "Run Next Engine tests after any repository change; no merge or production deployment as part of this audit."
+      "Trace the retailer parser and persistence path for Deloox and Parfumzentrum rows that report product_parser_not_found despite JSON-LD Product data, and verify how size_ml is extracted.",
+      "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
+      "Keep both Armani product-ID pairs unchanged until mapping evidence is explicit and tests cover EDT vs EDP vs Parfum/refill separation.",
+      "After any code change, rerun Next Engine tests and a read-only runtime audit; do not merge or deploy as part of this audit."
     ]
   },
   "runtime_audit_tool": {
