@@ -3361,34 +3361,43 @@ def _search_db():
 
 
 
-# Stale Easycosmetic records from older catalog versions may have a valid
-# product name/price but no parsed size. Repair only matched rows in the
-# background so the foreground search latency remains unchanged.
+# Refresh matched Easycosmetic offers in the background to prevent catalog prices
+# from remaining stale indefinitely. The foreground search stays read-only and
+# does not wait for retailer HTTP requests or SQLite writes.
 _EASYCOSMETIC_REPAIR_LOCK = threading.Lock()
 _EASYCOSMETIC_REPAIR_IN_FLIGHT = set()
+_EASYCOSMETIC_REPAIR_LAST_ATTEMPT = {}
+_EASYCOSMETIC_REPAIR_COOLDOWN_SECONDS = 6 * 60 * 60
 
 
 def _schedule_easycosmetic_missing_size_repairs(rows):
+    """Refresh matching Easycosmetic product pages asynchronously, with cooldown."""
+    now = time.monotonic()
     jobs = []
+    seen_urls = set()
     for row in rows or []:
         if str(row.get('store_key') or '').strip().lower() != 'easycosmetic':
-            continue
-        if row.get('_needs_refresh') or row.get('size_ml') not in (None, '', 0):
             continue
         url = str(row.get('url') or '').strip()
         if not url or 'easycosmetic.' not in url.lower():
             continue
+        # Do not repeatedly refresh the same URL when localized/duplicate
+        # catalog rows for one offer appear in the same search.
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
         jobs.append(('easycosmetic', url))
-
-    if not jobs:
-        return
 
     for store, url in jobs:
         key = (store, url)
         with _EASYCOSMETIC_REPAIR_LOCK:
             if key in _EASYCOSMETIC_REPAIR_IN_FLIGHT:
                 continue
+            last_attempt = _EASYCOSMETIC_REPAIR_LAST_ATTEMPT.get(key, 0.0)
+            if now - last_attempt < _EASYCOSMETIC_REPAIR_COOLDOWN_SECONDS:
+                continue
             _EASYCOSMETIC_REPAIR_IN_FLIGHT.add(key)
+            _EASYCOSMETIC_REPAIR_LAST_ATTEMPT[key] = now
 
         def _repair(target_store=store, target_url=url, target_key=key):
             try:
@@ -3419,7 +3428,7 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
-    """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
+    """Run local search and asynchronously refresh matched Easycosmetic offers."""
     try:
         rows = _search_local_impl(
             query,
@@ -5057,33 +5066,10 @@ def coverage_status():
 
 
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Continuously hydrate discovered product pages in the background.
-
-    Startup database maintenance must be inside a retry loop: another process
-    can briefly hold SQLite's writer lock while the API starts. Previously an
-    OperationalError here escaped before the main loop and permanently killed
-    the daemon thread, so hydration never restarted until the app itself did.
-    """
-    while True:
-        try:
-            _ensure_hydration_queue()
-            _coverage_ensure_schema()
-            recovered = recover_stale_tasks()
-            break
-        except sqlite3.OperationalError as exc:
-            if 'locked' not in str(exc).lower() and 'busy' not in str(exc).lower():
-                raise
-            print(
-                'CATALOG HYDRATION STARTUP RETRY: '
-                f'error={type(exc).__name__}: {exc}',
-                flush=True,
-            )
-            if stop_event is not None:
-                if stop_event.wait(3.0):
-                    print('CATALOG HYDRATION STOP: requested during startup retry', flush=True)
-                    return
-            else:
-                time.sleep(3.0)
+    """Continuously hydrate discovered product pages in the background."""
+    _ensure_hydration_queue()
+    _coverage_ensure_schema()
+    recovered = recover_stale_tasks()
     coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
