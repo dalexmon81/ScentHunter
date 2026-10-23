@@ -3200,7 +3200,8 @@ def refresh_url(store, url):
                             # Persist the commercial combination identity, not
                             # merely size + SKU: Sabina can repeat a parent SKU
                             # across sizes, and distinct combinations may share
-                            # both size and SKU. The scraper preserves the real                            # combination selector in the variant URL fragment.
+                            # both size and SKU. The scraper preserves the real
+                            # combination selector in the variant URL fragment.
                             raw_variant_url = str(variant.get('url') or '').strip()
                             parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
                             variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
