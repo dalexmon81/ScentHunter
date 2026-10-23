@@ -81,6 +81,7 @@ jobs:
             catalog-preflight-detail.json
             catalog-migration-plan.json
             migration-report-audit.json
+            catalog-identity-audit.json
           if-no-files-found: error
           retention-days: 7
 
