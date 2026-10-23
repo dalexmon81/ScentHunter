@@ -1596,7 +1596,8 @@ def _deloox_queue_allowed(url):
     try:        p = urllib.parse.urlparse(url.split('#', 1)[0])
     except Exception:
         return False
-    if p.scheme not in ('http', 'https'):        return False
+    if p.scheme not in ('http', 'https'):
+        return False
     allowed_hosts = {
         urllib.parse.urlparse(x).netloc.lower()
         for x in _discovery_bases('deloox')
