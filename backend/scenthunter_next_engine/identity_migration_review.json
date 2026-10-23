@@ -494,14 +494,14 @@
     "status": "blocked_pending_targeted_parser_regression_and_explicit_variant_mapping",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Unit tests and read-only runtime audit previously passed at 257806cd4be5c691e7ff8122f0460083ab70e984. A new bounded public-HTTP live parser probe has been added. Its first narrow adapter query returned zero results from both Deloox and ParfumZentrum; a broadened query and direct probes of the known easycosmetic and PerfumeMarket Profondo URLs are running in GitHub Actions. No merge, deploy, or production database write.",
+    "latest_evidence": "Next Engine tests passed on commit a0e96ae740e19c0e5bc73e8f6737ad0d2315fb22. Live parser probe workflow 39946635367 succeeded as a diagnostic run, but both Deloox and Parfumzentrum live searches returned zero rows; Easycosmetic HTTP 200 had no Product JSON-LD and PerfumeMarket HTTP 200 exposed SKU 3614272865235 (not a schema GTIN field). Direct parser tests against known live Deloox/Parfumzentrum product pages and explicit canonical variant ownership remain open. No merge, deploy or production DB write.",
     "required_next_steps": [
       "Inspect the new live retailer parser probe artifact for direct easycosmetic/PerfumeMarket page metadata and broadened Deloox/ParfumZentrum search results; if a target URL is found, run the exact existing adapter against its fetched HTML without any database access.",
       "Resolve exact retailer URL/EAN/size to canonical variant ownership through the actual ingestion/matching path; do not infer ownership from name similarity alone.",
       "Verify the 75 ml variant independently and keep SH-0043 and SH-AUTO-0019 separate until both size-level evidence and downstream references are reconciled.",
       "Keep the Armani EDT collision SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic record is classified."
     ],
-    "parser_regression_gate": "fixture_and_adapter_ci_passed_live_url_verification_pending"
+    "parser_regression_gate": "synthetic_fixtures_and_adapter_ci_passed_live_probe_diagnostic_only_direct_live_product_parse_pending"
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
@@ -621,6 +621,43 @@
           "commit": "c1f432c43e4c57d43f6d879b93ef0167da7b1089"
         },
         "production_database_mutated": false
+      },
+      "live_probe": {
+        "checked_at": "2026-10-23",
+        "workflow_run_id": 39946635367,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946635367",
+        "conclusion": "success",
+        "artifact_name": "live-retailer-parser-probe",
+        "artifact_id": 12498980506,
+        "findings": {
+          "easycosmetic_profondo": {
+            "http_status": 200,
+            "product_jsonld_found": false,
+            "h1": "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray auf Lager"
+          },
+          "perfumemarket_profondo_125": {
+            "http_status": 200,
+            "product_jsonld_found": true,
+            "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Men",
+            "price": "129.99",
+            "currency": "EUR",
+            "availability": "http://schema.org/InStock",
+            "sku": "3614272865235",
+            "gtin13": null,
+            "gtin": null
+          },
+          "deloox_adapter": {
+            "status": "zero_results",
+            "parsed_rows": 0
+          },
+          "parfumzentrum_adapter": {
+            "status": "zero_results",
+            "parsed_rows": 0
+          }
+        },
+        "interpretation": "The two known retailer pages were fetched successfully; PerfumeMarket exposes Product JSON-LD but places 3614272865235 in sku rather than gtin13/gtin. Easycosmetic returned no Product JSON-LD in the inspected HTML. Deloox and Parfumzentrum searches returned zero rows, so their live parser extraction remains unproven; distinguish discovery/search behavior from direct product-page parsing before changing extraction logic.",
+        "production_database_mutated": false,
+        "catalog_modified": false
       }
     }
   }
