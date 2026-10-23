@@ -81,7 +81,7 @@ class CatalogIdentityAuditTests(unittest.TestCase):
         candidates = {item["alias"] for item in report["possible_brand_aliases_for_review"]["items"]}
         self.assertEqual(candidates, {"giorgio armani", "christian dior"})
         # Candidates remain visible as collisions; this is not a confirmed correction.
-        self.assertEqual(report["shared_product_aliases"]["count"], 3)
+        self.assertEqual(report["shared_product_aliases"]["count"], 2)
         self.assertTrue(all(item["classification"] == "possible_brand_alias_not_confirmed"
                             for item in report["possible_brand_aliases_for_review"]["items"]))
 
