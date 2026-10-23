@@ -14,18 +14,56 @@ from backend.scrapers.parfumzentrum import scraper as parfumzentrum
 QUERY = "Acqua di Gio Profondo"
 REPORT = Path("live-retailer-parser-probe.json")
 KNOWN_URLS = {
-    "easycosmetic_profondo": "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx",
-    "perfumemarket_profondo_125": "https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml",
+    "easycosmetic_profondo": ("https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx", None),
+    "perfumemarket_profondo_125": ("https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml", None),
+    "deloox_profondo_edp_30": ("https://www.deloox.be/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html", "deloox"),
+    "deloox_profondo_edp_100": ("https://www.deloox.be/produit/1323846/armani-acqua-di-gio-profondo-eau-de-parfum-100-ml.html", "deloox"),
+    "parfumzentrum_profondo_edp_125": ("https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/", "parfumzentrum"),
+    "parfumzentrum_profondo_edp_100_refill": ("https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/", "parfumzentrum"),
 }
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ScentHunterReadOnlyParserProbe/1.0)"}
 
 
 def clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+    return re.sub(r"\\s+", " ", str(value or "")).strip()
 
 
-def page_probe(url):
-    result = {"url": url, "http_status": None, "title": None, "h1": None, "products": [], "error": None}
+def _jsonld_products(soup):
+    products = []
+    for node in soup.select('script[type="application/ld+json"]')[:30]:
+        try:
+            data = json.loads(node.string or node.get_text())
+        except (ValueError, TypeError):
+            continue
+        objects = data if isinstance(data, list) else [data]
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+            nested = obj.get("@graph", [])
+            for product in [obj] + (nested if isinstance(nested, list) else []):
+                if not isinstance(product, dict):
+                    continue
+                types = product.get("@type", [])
+                if isinstance(types, str):
+                    types = [types]
+                if "Product" not in types:
+                    continue
+                offer = product.get("offers")
+                if isinstance(offer, list):
+                    offer = offer[0] if offer else None
+                products.append({
+                    "name": product.get("name"),
+                    "brand": product.get("brand"),
+                    "gtin13": product.get("gtin13"),
+                    "gtin": product.get("gtin"),
+                    "sku": product.get("sku"),
+                    "offers": {k: offer.get(k) for k in ("price", "priceCurrency", "availability")} if isinstance(offer, dict) else None,
+                })
+    return products
+
+
+def page_probe(url, adapter_name=None):
+    result = {"url": url, "http_status": None, "title": None, "h1": None, "products": [], "adapter_result": None, "error": None}
     try:
         response = requests.get(url, headers=HEADERS, timeout=(4, 10), allow_redirects=True)
         result["http_status"] = response.status_code
@@ -35,35 +73,33 @@ def page_probe(url):
         result["title"] = clean(soup.title.get_text(" ", strip=True)) if soup.title else None
         h1 = soup.find("h1")
         result["h1"] = clean(h1.get_text(" ", strip=True)) if h1 else None
-        for node in soup.select('script[type="application/ld+json"]')[:20]:
-            try:
-                data = json.loads(node.string or node.get_text())
-            except (ValueError, TypeError):
-                continue
-            objects = data if isinstance(data, list) else [data]
-            for obj in objects:
-                if not isinstance(obj, dict):
-                    continue
-                nested = obj.get("@graph", [])
-                for product in [obj] + (nested if isinstance(nested, list) else []):
-                    if not isinstance(product, dict):
-                        continue
-                    types = product.get("@type", [])
-                    if isinstance(types, str):
-                        types = [types]
-                    if "Product" not in types:
-                        continue
-                    offer = product.get("offers")
-                    if isinstance(offer, list):
-                        offer = offer[0] if offer else None
-                    result["products"].append({
-                        "name": product.get("name"),
-                        "brand": product.get("brand"),
-                        "gtin13": product.get("gtin13"),
-                        "gtin": product.get("gtin"),
-                        "sku": product.get("sku"),
-                        "offers": {k: offer.get(k) for k in ("price", "priceCurrency", "availability")} if isinstance(offer, dict) else None,
-                    })
+        result["products"] = _jsonld_products(soup)
+        if adapter_name:
+            module = deloox if adapter_name == "deloox" else parfumzentrum
+            parsed = module.extract_product_page(None, response.url, query=result["h1"] or QUERY, html=response.text)
+            if parsed is None:
+                result["adapter_result"] = {"status": "parser_returned_none"}
+            elif adapter_name == "deloox":
+                result["adapter_result"] = {
+                    "status": "parsed",
+                    "name": parsed.get("name"),
+                    "size_ml": (parsed.get("attributes", {}).get("size_ml") or {}).get("value"),
+                    "concentration": (parsed.get("attributes", {}).get("concentration") or {}).get("value"),
+                    "price": (parsed.get("offer") or {}).get("price"),
+                    "availability": (parsed.get("offer") or {}).get("availability"),
+                    "gtin": ((parsed.get("identity") or {}).get("gtin") or {}).get("value"),
+                }
+            else:
+                result["adapter_result"] = {
+                    "status": "parsed",
+                    "name": parsed.get("name"),
+                    "size_ml": parsed.get("size_ml"),
+                    "concentration": parsed.get("concentration"),
+                    "price": parsed.get("price_num"),
+                    "availability": parsed.get("availability"),
+                    "gtin": parsed.get("gtin"),
+                    "sku": parsed.get("sku"),
+                }
     except Exception as exc:
         result["error"] = type(exc).__name__ + ": " + clean(exc)[:240]
     return result
@@ -103,33 +139,10 @@ def main():
     report = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "query": QUERY,
-        "scope": "Bounded public retailer HTTP and existing scraper adapters only. No production database, catalog writes, or deployment.",
-        "known_page_probes": {name: page_probe(url) for name, url in KNOWN_URLS.items()},
-        "deloox_adapter": adapter_probe(deloox),
-        "parfumzentrum_adapter": adapter_probe(parfumzentrum),
-    }
-    # Separate transport/retailer blocking from parser extraction results.
-    report["diagnosis"] = {
-        "page_probe_summary": {
-            name: {
-                "http_status": item.get("http_status"),
-                "has_product_jsonld": bool(item.get("products")),
-                "jsonld_product_count": len(item.get("products") or []),
-                "error_type": (item.get("error") or "").split(":", 1)[0] or None,
-            }
-            for name, item in report["known_page_probes"].items()
-        },
-        "adapter_summary": {
-            "deloox": {
-                "status": report["deloox_adapter"].get("status"),
-                "parsed_row_count": report["deloox_adapter"].get("row_count", 0),
-            },
-            "parfumzentrum": {
-                "status": report["parfumzentrum_adapter"].get("status"),
-                "parsed_row_count": report["parfumzentrum_adapter"].get("row_count", 0),
-            },
-        },
-        "interpretation": "HTTP blocking/errors are transport outcomes, not parser failures. Adapter rows show current live scraper output. This probe is diagnostic and does not claim canonical variant ownership.",
+        "scope": "Bounded public retailer HTTP and exact existing adapter calls using fetched HTML. No production database, catalog writes, or deployment.",
+        "known_page_probes": {name: page_probe(url, adapter) for name, (url, adapter) in KNOWN_URLS.items()},
+        "deloox_search": adapter_probe(deloox),
+        "parfumzentrum_search": adapter_probe(parfumzentrum),
     }
     REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
