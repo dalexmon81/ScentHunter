@@ -18,6 +18,22 @@
         "https://hinta.fi/2077662/giorgio-armani-public-acqua-di-gio-profondo-125-ml/tiedot"
       ],
       "evidence_note": "The live Parfum-Zentrum Product JSON-LD provides gtin13 3614272865235 for the exact 125 ml Eau de Parfum product; independent retailer/product-data listings corroborate the same identifier and format. The canonical target is the only declared 125 ml EDP variant among the two duplicate Profondo records. Keep the other product identity separate; this mapping assigns the variant only and does not merge product IDs."
+    },
+    {
+      "gtin": "3614272865228",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-0043",
+      "variant_id": "VAR-89c2a2a86bedb3c5",
+      "size_ml": 75,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-10-23",
+      "source_urls": [
+        "https://www.sephora.ro/on/demandware.static/-/Library-Sites-SephoraV2/ro_RO/dwba52394f/LP/lp-cgv/ro-annexe-fday.pdf",
+        "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en"
+      ],
+      "evidence_note": "The Sephora product catalogue PDF lists Acqua di Gio Profondo EDP 75 ml with GTIN 3614272865228; LadyParfum independently lists the same GTIN and 75 ml EDP. Assign only to the already-declared 75 ml variant under SH-0043. This does not merge SH-0043 with SH-AUTO-0019."
     }
   ]
 }
