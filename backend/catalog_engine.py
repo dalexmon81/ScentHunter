@@ -45,6 +45,8 @@ from bs4 import BeautifulSoup, SoupStrainer
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(BASE_DIR / 'store_catalog.sqlite3'))).expanduser()
 
+print(f'SCENTHUNTER CATALOG DB CONFIG pid={os.getpid()} db_path={DB_PATH.resolve()}', flush=True)
+
 STORES = {
     'bplatz': 'https://en.bplatz.de',
     'parfumcity': 'https://www.parfumcity.nl',
@@ -4218,27 +4220,38 @@ def _queue_mark_done(task):
 
 
 def _queue_mark_error(task, error, http_status=None):
-    """Record a retryable error using bounded exponential backoff."""
+    """Persist a retryable error without letting SQLite contention kill a worker.
+
+    If SQLite is busy, leave the task's PROCESSING lease intact. The normal
+    lease-expiry recovery in _claim_one_hydration_task will make it retryable.
+    """
     now = time.time()
-    conn = db()
+    try:
+        conn = db()
+    except sqlite3.OperationalError as exc:
+        message = str(exc).lower()
+        if 'locked' in message or 'busy' in message:
+            print(
+                'CATALOG QUEUE ERROR-PERSISTENCE DEFERRED '
+                f"store={task.get('store')} url={task.get('url')} error={exc}; "
+                'lease will be recovered after expiry', flush=True,
+            )
+            return False
+        raise
     try:
         row = conn.execute(
-            """SELECT attempts FROM hydration_queue
-               WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'""",
+            "SELECT attempts FROM hydration_queue WHERE store=? AND url=? "
+            "AND lease_token=? AND state='PROCESSING'",
             (task['store'], task['url'], task['lease_token']),
         ).fetchone()
         if not row:
-            return
+            return False
 
         attempts = int(row['attempts'] or 0)
         idx = min(max(attempts - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
         delay = float(HYDRATION_BACKOFF_SECONDS[idx])
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
-
-        # Only known terminal outcomes are dead-lettered. Network timeouts,
-        # parser failures and temporary SQLite contention remain retryable after
-        # the initial attempt budget, at the capped 24-hour backoff interval.
         terminal_http = http_status in (404, 410)
         terminal_placeholder = 'invalid_placeholder_price' in str(error)
         next_state = 'DEAD' if terminal_http or terminal_placeholder else 'ERROR'
@@ -4246,28 +4259,29 @@ def _queue_mark_error(task, error, http_status=None):
             delay = float(HYDRATION_BACKOFF_SECONDS[-1])
             next_time = now + delay + delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         conn.execute(
-            """UPDATE hydration_queue
-               SET state=?,
-                   available_at=?,
-                   leased_until=NULL,
-                   lease_token=NULL,
-                   last_finished_at=?,
-                   last_error=?,
-                   last_http_status=?
-               WHERE store=? AND url=? AND lease_token=?
-                 AND state='PROCESSING'""",
-            (
-                next_state,
-                next_time,
-                now,
-                str(error)[:1000],
-                http_status,
-                task['store'],
-                task['url'],
-                task['lease_token'],
-            ),
+            """UPDATE hydration_queue SET state=?, available_at=?,
+                   leased_until=NULL, lease_token=NULL, last_finished_at=?,
+                   last_error=?, last_http_status=?
+               WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'""",
+            (next_state, next_time, now, str(error)[:1000], http_status,
+             task['store'], task['url'], task['lease_token']),
         )
         conn.commit()
+        return True
+    except sqlite3.OperationalError as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        message = str(exc).lower()
+        if 'locked' in message or 'busy' in message:
+            print(
+                'CATALOG QUEUE ERROR-PERSISTENCE DEFERRED '
+                f"store={task.get('store')} url={task.get('url')} error={exc}; "
+                'lease will be recovered after expiry', flush=True,
+            )
+            return False
+        raise
     finally:
         conn.close()
 
@@ -4319,7 +4333,16 @@ def _hydrate_one_task(task):
             traceback.print_exc()
         return False
     except Exception as exc:
-        _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        try:
+            _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        except Exception as queue_exc:
+            print(
+                'CATALOG HYDRATION ERROR-REPORT FAILED '
+                f"store={task.get('store')} url={task.get('url')} "
+                f'original={type(exc).__name__}: {exc}; '
+                f'queue={type(queue_exc).__name__}: {queue_exc}',
+                flush=True,
+            )
         return False
 
 
