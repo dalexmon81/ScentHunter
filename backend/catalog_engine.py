@@ -3304,8 +3304,11 @@ def refresh_url(store, url):
         with _LAST_REFRESH_ERRORS_LOCK:
             _LAST_REFRESH_ERRORS[(store, url)] = error_detail
 
-        conn = db()
+        conn = None
+        has_good_offer = False
+        placeholder_offer = False
         try:
+            conn = db()
             # Do not replace a previously successful offer with a transient
             # timeout/parser/SQLite error. Search and price comparison must
             # continue using the last known-good price until a newer fetch
@@ -3334,12 +3337,21 @@ def refresh_url(store, url):
                     (store, url),
                 )
             conn.commit()
+        except sqlite3.OperationalError as db_exc:
+            # Error handling must never hide the original refresh failure.
+            # If SQLite is locked here, leave the previous successful offer
+            # untouched and let the hydration queue retry the URL.
+            print(
+                f'CATALOG REFRESH ERROR-PERSISTENCE SKIPPED: store={store} '
+                f'url={url} error={type(db_exc).__name__}: {db_exc}',
+                flush=True,
+            )
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
 
-        # Preserve an existing valid offer in both SQLite and the in-memory
-        # index after transient failures. A known invalid placeholder remains
-        # terminal and is removed from search.
+        # Only remove from the in-memory index when no last-known-good offer
+        # exists, or when a known terminal placeholder was detected.
         if placeholder_offer or not has_good_offer:
             _remove_local_search_index_url(store, url)
         return None
@@ -4138,12 +4150,6 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             'lease_token': token,
             'attempts': int(chosen['attempts'] or 0) + 1,
         }
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        raise
     except sqlite3.OperationalError as exc:
         print(
             f'CATALOG HYDRATION STAGE ERROR: stage=claim_hydration_task '
@@ -4151,6 +4157,16 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             flush=True,
         )
         traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
         conn.close()
