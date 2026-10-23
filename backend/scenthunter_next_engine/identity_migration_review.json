@@ -488,7 +488,8 @@
       "Check the previously failing live Deloox and ParfumZentrum URLs through the parser without writing to the production database; confirm product_parser_not_found changes and normalized size_ml values.",
       "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
       "Keep both Armani product-ID pairs separate until the parser regression and explicit mapping evidence are complete."
-    ]
+    ],
+    "parser_regression_gate": "pending"
   },
   "runtime_audit_tool": {
     "status": "executed_against_deployed_database_for_exact_ID_scan",
@@ -545,6 +546,22 @@
         "live_database_mutated": false
       },
       "limits": "Passing CI and a read-only audit confirm the change is syntactically and operationally accepted, but do not by themselves prove that every previously failed live product URL now parses. A targeted parser fixture/live URL regression test is still required before claiming the parser_not_found issue is resolved."
+    },
+    "real_extraction_regressions": {
+      "checked_at": "2026-10-23",
+      "status": "added_pending_workflow",
+      "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
+      "test_file": "tests/test_retailer_parser_html_reuse.py",
+      "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
+      "tests_added": [
+        "Deloox JSON-LD product extraction: brand, name, size_ml, concentration, price, availability, GTIN and retailer image",
+        "Deloox rejects page with neither public price nor known stock",
+        "Parfum-Zentrum JSON-LD product extraction: brand, name, size_ml, concentration, price, availability, GTIN, MPN, SKU, retailer product ID and retailer image",
+        "Parfum-Zentrum rejects page with neither price nor known stock"
+      ],
+      "evidence_scope": "Synthetic, realistic HTML/JSON-LD fixtures directly exercise the production extraction functions. This validates parser behavior on the stated fixture shape only, not live current pages and not canonical matcher assignments.",
+      "production_database_mutated": false,
+      "next_required_gate": "Confirm GitHub Actions result for commit 654a9390b3243769bf8d9d37acf7c228c5b29383, then run a bounded live parse of the two known public URLs with the branch parser code and no production database writes."
     }
   }
 }
