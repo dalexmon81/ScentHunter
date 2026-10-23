@@ -817,6 +817,10 @@ def _discover_from_search(session, query):
     candidates = {}
     successful_pages = 0
     failed_pages = 0
+    failure_reasons = {}
+
+    def note_failure(reason):
+        failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
 
     def fetch(endpoint):
         try:
@@ -841,8 +845,17 @@ def _discover_from_search(session, query):
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
         for future in as_completed(futures):
             endpoint, r = future.result()
-            if r is None or r.status_code >= 400 or not r.text:
+            if r is None:
                 failed_pages += 1
+                note_failure("request_error")
+                continue
+            if r.status_code >= 400:
+                failed_pages += 1
+                note_failure(f"http_{r.status_code}")
+                continue
+            if not r.text:
+                failed_pages += 1
+                note_failure("empty_body")
                 continue
 
             successful_pages += 1
@@ -919,8 +932,17 @@ def _discover_from_search(session, query):
             endpoint = page_url(page_number)
             _endpoint, r = fetch(endpoint)
 
-            if r is None or r.status_code >= 400 or not r.text:
+            if r is None:
                 failed_pages += 1
+                note_failure("request_error")
+                break
+            if r.status_code >= 400:
+                failed_pages += 1
+                note_failure(f"http_{r.status_code}")
+                break
+            if not r.text:
+                failed_pages += 1
+                note_failure("empty_body")
                 break
 
             successful_pages += 1
@@ -943,6 +965,7 @@ def _discover_from_search(session, query):
     global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
+    _LAST_DISCOVERY_STATE["search_failure_reasons"] = dict(sorted(failure_reasons.items()))
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
@@ -1198,6 +1221,7 @@ def _discover(session, q):
     _LAST_DISCOVERY_STATE = {
         "search_pages_ok": 0,
         "search_pages_failed": 0,
+        "search_failure_reasons": {},
         "search_verified": False,
         "category_verified": False,
         "sitemap_verified": False,
