@@ -3,7 +3,7 @@ from backend.scrapers.parfumzentrum import scraper as parfumzentrum
 
 
 def test_deloox_html_adapter_reuses_supplied_body(monkeypatch):
-    body = '<html><script type="application/ld+json">{}</script></html>'
+    body = '<html><h1>Acqua di Gio Profondo Eau de Parfum 125 ml</h1><script type="application/ld+json">{}</script></html>'
     seen = {}
 
     def fake_product(url, html, query):
