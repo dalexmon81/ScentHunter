@@ -5057,10 +5057,33 @@ def coverage_status():
 
 
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
-    """Continuously hydrate discovered product pages in the background."""
-    _ensure_hydration_queue()
-    _coverage_ensure_schema()
-    recovered = recover_stale_tasks()
+    """Continuously hydrate discovered product pages in the background.
+
+    Startup database maintenance must be inside a retry loop: another process
+    can briefly hold SQLite's writer lock while the API starts. Previously an
+    OperationalError here escaped before the main loop and permanently killed
+    the daemon thread, so hydration never restarted until the app itself did.
+    """
+    while True:
+        try:
+            _ensure_hydration_queue()
+            _coverage_ensure_schema()
+            recovered = recover_stale_tasks()
+            break
+        except sqlite3.OperationalError as exc:
+            if 'locked' not in str(exc).lower() and 'busy' not in str(exc).lower():
+                raise
+            print(
+                'CATALOG HYDRATION STARTUP RETRY: '
+                f'error={type(exc).__name__}: {exc}',
+                flush=True,
+            )
+            if stop_event is not None:
+                if stop_event.wait(3.0):
+                    print('CATALOG HYDRATION STOP: requested during startup retry', flush=True)
+                    return
+            else:
+                time.sleep(3.0)
     coverage_next_at = 0.0
     print(
         f'CATALOG HYDRATION START batch={batch_size} workers={workers} recovered={recovered}',
