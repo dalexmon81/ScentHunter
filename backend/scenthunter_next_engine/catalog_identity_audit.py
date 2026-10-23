@@ -128,7 +128,7 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
     ]
     missing_images = [
         {"product_id": p.get("product_id"), "canonical_name": p.get("canonical_name") or p.get("name"),
-         "canonical_image": p.get("canonical_image") or p.get("image_url"), "severity": "review"}
+         "canonical_image": p.get("canonical_image_url") or p.get("canonical_image") or p.get("image_url"), "severity": "review"}
         for p in rows if not _text(p.get("canonical_image") or p.get("image_url"))
     ]
 
