@@ -1421,34 +1421,38 @@ def extract_product_html(url, html, query=None):
     return _product(target, html, page_name)
 
 
-def extract_product_page(session, url, query=None):
-    """Parse one known Deloox product URL for the catalog refresh pipeline.
+def extract_product_page(session, url, query=None, html=None):
+    """Parse one known Deloox product URL, reusing HTML when already fetched.
 
-    This public adapter intentionally reuses the same retailer-specific parser
-    as discovery, so catalog hydration does not fall back to a generic JSON-LD
-    parser that may choose a non-authoritative offer. The URL is fetched with
-    Deloox's normal headers because the generic catalog fetcher may use a
-    different request profile.
+    Catalog hydration supplies the fetched page body to avoid a second request
+    that can receive different markup or fail independently. Direct callers
+    retain the legacy fetch behavior. Retailer-specific parsing remains
+    authoritative; generic JSON-LD fallback is not used here.
     """
     target = clean(url)
     if not target or not _is_deloox_url(target):
         return None
 
-    try:
-        response = session.get(
-            target,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        raise
+    if html is None:
+        try:
+            response = session.get(
+                target,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            raise
 
-    if response.status_code >= 400:
-        response.raise_for_status()
+        if response.status_code >= 400:
+            response.raise_for_status()
 
-    final_url = clean(getattr(response, "url", "") or target)
-    html = getattr(response, "text", "") or ""
+        final_url = clean(getattr(response, "url", "") or target)
+        html = getattr(response, "text", "") or ""
+    else:
+        final_url = target
+        html = str(html)
+
     if not html:
         return None
 
