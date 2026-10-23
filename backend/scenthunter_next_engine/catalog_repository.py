@@ -8,6 +8,7 @@ for exact matching; this module never synthesizes canonical IDs.
 from __future__ import annotations
 
 import json
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -40,13 +41,18 @@ def _aliases(value: Any) -> tuple[str, ...]:
 
 
 def _positive_int(value: Any) -> int | None:
+    """Accept only finite, strictly positive whole-number sizes."""
     if value is None or isinstance(value, bool):
         return None
     try:
-        number = int(float(str(value).strip()))
-    except (ValueError, TypeError, OverflowError):
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError, TypeError):
         return None
-    return number if number > 0 else None
+    if not number.is_finite() or number <= 0:
+        return None
+    if number != number.to_integral_value():
+        return None
+    return int(number)
 
 
 def _list_of_mappings(value: Any) -> list[Mapping[str, Any]]:
