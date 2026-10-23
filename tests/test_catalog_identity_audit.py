@@ -49,6 +49,22 @@ class CatalogIdentityAuditTests(unittest.TestCase):
         self.assertEqual(report["duplicate_normalized_brand_name_concentration"]["count"], 0)
         self.assertIn("No product", report["policy"])
 
+    def test_separates_brand_only_aliases_from_product_alias_collisions(self):
+        source = {
+            "products": [
+                {"product_id": "p1", "brand_name": "Giorgio Armani", "canonical_name": "Acqua di Gio", "aliases": ["Giorgio Armani", "Acqua di Gio EDT"]},
+                {"product_id": "p2", "brand_name": "Giorgio Armani", "canonical_name": "My Way", "aliases": ["Giorgio Armani", "My Way Intense"]},
+                {"product_id": "p3", "brand_name": "Maison Exemple", "canonical_name": "Example", "aliases": ["Shared Product Alias"]},
+                {"product_id": "p4", "brand_name": "Other Exemple", "canonical_name": "Other", "aliases": ["Shared Product Alias"]},
+            ],
+            "variants": [],
+        }
+        report = build_identity_audit(source)
+        self.assertEqual(report["shared_brand_only_aliases"]["count"], 1)
+        self.assertEqual(report["shared_brand_only_aliases"]["items"][0]["alias"], "giorgio armani")
+        self.assertEqual(report["shared_product_aliases"]["count"], 1)
+        self.assertEqual(report["shared_product_aliases"]["items"][0]["alias"], "shared product alias")
+
     def test_requires_product_and_variant_arrays(self):
         with self.assertRaises(ValueError):
             build_identity_audit({"products": []})
