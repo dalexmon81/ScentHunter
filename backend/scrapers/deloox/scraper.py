@@ -28,6 +28,7 @@ DELOOX_BASE_URLS = (
     "https://www.deloox.be",
     "https://www.deloox.nl",
     "https://www.deloox.com",
+    "https://www.deloox.lu",
 )
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
@@ -50,6 +51,8 @@ DELOOX_HOSTS = {
     "www.deloox.nl",
     "deloox.com",
     "www.deloox.com",
+    "deloox.lu",
+    "www.deloox.lu",
 }
 
 # Discovery state is diagnostic/contract state only. It never decides identity.
