@@ -52,7 +52,8 @@
           "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/"
         ],
         "conclusion": "The official catalog distinguishes Acqua di Giò EDT from other concentrations and Profondo. SH-AUTO-0018 is consistent with an EDT identity and declared 50/100/200 ml sizes; SH-AUTO-0288 remains an incomplete generic record. This does not establish that every reference to SH-AUTO-0288 is an EDT reference."
-      }
+      },
+      "dependency_status": "catalog_snapshot_no_variants_or_offer_mappings; runtime_references_not_fully_verified"
     },
     {
       "case_id": "ARMANI-ACQUA-DI-GIO-PROFONDO-EDP",
@@ -104,7 +105,8 @@
           "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html"
         ],
         "conclusion": "Current official sources list Profondo EDP 30/50/100/200 ml and a separate 150 ml refill; they do not list 75 ml or 125 ml on the pages checked. This is insufficient to delete or reassign those variants because older releases/markets remain possible. The SH-0043 image-size mismatch also remains unverified."
-      }
+      },
+      "dependency_status": "catalog_snapshot_variants_have_no_gtin_mpn_or_store_mappings; runtime_references_not_fully_verified"
     }
   ],
   "rollback_plan": [
@@ -136,5 +138,80 @@
       }
     ],
     "outcome": "Current official evidence supports treating the Profondo 75 ml and 125 ml variants as unverified, not as confirmed invalid. Keep the migration blocked until variant-level evidence and downstream references are checked."
+  },
+  "dependency_inventory": {
+    "checked_at": "2026-10-23",
+    "branch": "scenthunter-next-engine",
+    "catalog_file": "backend/product_catalog.json",
+    "catalog_counts": {
+      "products": 1389,
+      "variants": 511,
+      "offers": 0
+    },
+    "result": "No persisted offer rows, GTINs, MPNs, or store_mappings are present for the four affected product identities/variants in the checked catalog snapshot.",
+    "records": [
+      {
+        "product_id": "SH-AUTO-0288",
+        "variant_count": 0,
+        "variant_ids": [],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-AUTO-0018",
+        "variant_count": 3,
+        "variant_ids": [
+          "VAR-69fbeda0c7a3c691",
+          "VAR-b6adcf86ddaab498",
+          "VAR-d2e93b41952c6151"
+        ],
+        "sizes_ml": [
+          50,
+          100,
+          200
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-0043",
+        "variant_count": 2,
+        "variant_ids": [
+          "VAR-89c2a2a86bedb3c5",
+          "VAR-09a73d0a5594cf49"
+        ],
+        "sizes_ml": [
+          75,
+          125
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-AUTO-0019",
+        "variant_count": 3,
+        "variant_ids": [
+          "VAR-30ce093fd9e9ab47",
+          "VAR-46b03c1f1cff0a6e",
+          "VAR-f79ca5b3b5fd237f"
+        ],
+        "sizes_ml": [
+          50,
+          100,
+          200
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      }
+    ],
+    "code_reference_search": {
+      "result": "No direct literal references found in the core runtime files checked (backend/catalog_engine.py, backend/product_matcher.py, backend/main.py, and Next Engine repository/matcher/service files).",
+      "caveat": "This is not proof that runtime databases, logs, caches, deployed environments, external clients, or dynamically keyed mappings have no references. Full-repository exhaustive code search was not completed."
+    },
+    "safety_conclusion": "The checked catalog snapshot shows no in-catalog offer or retailer mapping dependencies, but that alone is not enough to authorize a merge. Runtime persistence and deployed data still need a read-only inventory before any catalog write."
   }
 }
