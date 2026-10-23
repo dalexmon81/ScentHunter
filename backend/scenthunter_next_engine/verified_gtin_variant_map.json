@@ -34,6 +34,21 @@
         "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en"
       ],
       "evidence_note": "The Sephora product catalogue PDF lists Acqua di Gio Profondo EDP 75 ml with GTIN 3614272865228; LadyParfum independently lists the same GTIN and 75 ml EDP. Assign only to the already-declared 75 ml variant under SH-0043. This does not merge SH-0043 with SH-AUTO-0019."
+    },
+    {
+      "gtin": "3614273953849",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-AUTO-0019",
+      "variant_id": "VAR-46b03c1f1cff0a6e",
+      "size_ml": 100,
+      "concentration": "Eau de Parfum",
+      "refill": false,
+      "checked_at": "2026-10-23",
+      "source_urls": [
+        "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+      ],
+      "evidence_note": "Live Parfum-Zentrum Product JSON-LD reports GTIN 3614273953849 for the exact 100 ml Acqua di Gio Profondo Eau de Parfum product. Its title says nachfüllbar (refillable bottle), not Nachfüllung/refill pack. Map to the existing 100 ml EDP bottle variant only; do not merge SH-AUTO-0019 with SH-0043."
     }
   ]
 }
