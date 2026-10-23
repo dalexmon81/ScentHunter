@@ -284,6 +284,23 @@ def test_parfumzentrum_strips_internal_product_sku_from_query():
 
 
 
+
+def test_easycosmetic_removes_unavailable_badge_from_product_name():
+    html = """
+    <html><body>
+      <h1>Giorgio Armani Acqua di Gio Profondo Eau de Parfum 30 ml nicht verfügbar</h1>
+    </body></html>
+    """
+    result = easycosmetic._parse_product_html(
+        "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-profondo/product.aspx",
+        html,
+    )
+    assert result is not None
+    assert result["name"] == "Giorgio Armani Acqua di Gio Profondo Eau de Parfum 30 ml"
+    assert "nicht verfügbar" not in result["name"]
+
+
+
 def test_easycosmetic_uses_matching_size_price_and_stock_not_sibling_options():
     html = """
     <html><head>
