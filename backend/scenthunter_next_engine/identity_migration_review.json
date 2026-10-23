@@ -44,7 +44,15 @@
         "Does every existing reference to SH-AUTO-0288 refer specifically to the EDT product?",
         "Are there any non-EDT Acqua di Gio products or historical references represented by this record?"
       ],
-      "migration_allowed": false
+      "migration_allowed": false,
+      "external_check": {
+        "status": "partially_confirmed",
+        "source_urls": [
+          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+          "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/"
+        ],
+        "conclusion": "The official catalog distinguishes Acqua di Giò EDT from other concentrations and Profondo. SH-AUTO-0018 is consistent with an EDT identity and declared 50/100/200 ml sizes; SH-AUTO-0288 remains an incomplete generic record. This does not establish that every reference to SH-AUTO-0288 is an EDT reference."
+      }
     },
     {
       "case_id": "ARMANI-ACQUA-DI-GIO-PROFONDO-EDP",
@@ -88,7 +96,15 @@
         "Which product ID is referenced by persisted offers, scraper mappings, analytics, or external clients?",
         "Does the image currently attached to SH-0043 actually depict the canonical product and size?"
       ],
-      "migration_allowed": false
+      "migration_allowed": false,
+      "external_check": {
+        "status": "variants_unverified",
+        "source_urls": [
+          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+          "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html"
+        ],
+        "conclusion": "Current official sources list Profondo EDP 30/50/100/200 ml and a separate 150 ml refill; they do not list 75 ml or 125 ml on the pages checked. This is insufficient to delete or reassign those variants because older releases/markets remain possible. The SH-0043 image-size mismatch also remains unverified."
+      }
     }
   ],
   "rollback_plan": [
@@ -96,5 +112,29 @@
     "Apply the approved mapping transactionally on a staging copy.",
     "Validate unique product/variant IDs, variant ownership, GTIN/MPN uniqueness, reference integrity, and unchanged unaffected-record counts.",
     "If any validation fails, restore the exact pre-migration snapshot and report the failure without publishing."
-  ]
+  ],
+  "external_verification": {
+    "checked_at": "2026-10-23",
+    "sources": [
+      {
+        "name": "Giorgio Armani Luxembourg official men's fragrance catalog",
+        "url": "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+        "finding": "Official listing distinguishes Acqua di Giò EDT from Acqua di Giò Profondo EDP and lists Profondo EDP 50 ml and 100 ml; the same catalog lists Profondo Parfum separately and Profondo EDT separately.",
+        "scope_limit": "Current catalog evidence only; it does not prove that older or market-specific 75 ml and 125 ml EDP variants never existed."
+      },
+      {
+        "name": "Armani Beauty official Profondo EDP product page",
+        "url": "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html",
+        "finding": "Official page lists Profondo Eau de Parfum formats 30 ml, 50 ml, 100 ml and 200 ml, plus a separate 150 ml refill.",
+        "scope_limit": "Current product page does not validate the catalog's 75 ml or 125 ml variants or the image attached to SH-0043."
+      },
+      {
+        "name": "Armani Beauty official Acqua di Giò product catalog",
+        "url": "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/",
+        "finding": "Official catalog lists Acqua di Giò EDT in 50 ml and 100 ml and distinguishes EDT, EDP, Parfum and Profondo products.",
+        "scope_limit": "US catalog is corroborating product-family evidence, not definitive Luxembourg variant evidence."
+      }
+    ],
+    "outcome": "Current official evidence supports treating the Profondo 75 ml and 125 ml variants as unverified, not as confirmed invalid. Keep the migration blocked until variant-level evidence and downstream references are checked."
+  }
 }
