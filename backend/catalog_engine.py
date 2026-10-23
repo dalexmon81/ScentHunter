@@ -1593,7 +1593,8 @@ def _deloox_queue_allowed(url):
     """Return True only for URLs on an official configured Deloox host."""
     if not url:
         return False
-    try:        p = urllib.parse.urlparse(url.split('#', 1)[0])
+    try:
+        p = urllib.parse.urlparse(url.split('#', 1)[0])
     except Exception:
         return False
     if p.scheme not in ('http', 'https'):
