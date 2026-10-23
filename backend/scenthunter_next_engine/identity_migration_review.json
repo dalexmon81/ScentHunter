@@ -479,10 +479,10 @@
     }
   },
   "next_gate": {
-    "status": "blocked_pending_explicit_variant_mapping_and_parser_reconciliation",
+    "status": "blocked_pending_parfumzentrum_parser_and_explicit_variant_mapping",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Successful read-only runtime audit queried store_products, store_product_variants, store_url_metadata, and catalog_coverage. Retailer data includes Profondo EDP 125 ml listings, while store_product_variants and store_url_metadata return no matching Profondo records for the queried URL/name/SKU criteria. Several retailer pages show product_parser_not_found despite HTTP 200 and JSON-LD Product. Next Engine tests pass; migration remains blocked.",
+    "latest_evidence": "Deloox hydration parser now reuses the HTML already fetched by catalog_engine, avoiding a second request. Next Engine tests and read-only runtime audit both passed after the change. No live database writes, merge, or deployment.",
     "required_next_steps": [
       "Trace the retailer parser and persistence path for Deloox and Parfumzentrum rows that report product_parser_not_found despite JSON-LD Product data, and verify how size_ml is extracted.",
       "Resolve exact retailer URL/SKU/GTIN to canonical variant associations through the actual ingestion/matching code; do not infer a mapping from name similarity alone.",
@@ -517,5 +517,20 @@
       "read_only": true,
       "database_writes": false
     }
+  },
+  "parser_reconciliation": {
+    "updated_at": "2026-10-23",
+    "commit": "f89e8359f613d4828a35cd2d6f6d376825bc9cdf",
+    "file": "backend/scrapers/deloox/scraper.py",
+    "change": "extract_product_page now accepts already-fetched HTML and parses that response instead of always issuing a second HTTP request; direct callers without HTML retain the legacy fetch path.",
+    "reason": "The catalog engine already downloads the product page and passes html only when the retailer parser signature supports it. Deloox previously did not accept html, causing a second independent request and potential divergence between the response audited by the catalog engine and the response parsed by the retailer adapter.",
+    "validation": {
+      "next_engine_tests_run_id": 39943374090,
+      "next_engine_tests_conclusion": "success",
+      "read_only_runtime_audit_run_id": 39943373998,
+      "read_only_runtime_audit_conclusion": "success",
+      "live_database_mutated": false
+    },
+    "limits": "This removes the duplicate-fetch failure mode for Deloox. It does not yet prove all existing parser_not_found rows are fixed; ParfumZentrum still requires separate diagnosis, and retailer-to-canonical variant mapping remains unresolved."
   }
 }
