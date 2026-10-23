@@ -4159,47 +4159,53 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
 
 def _queue_release_claim(task):
     """Return a claimed hydration task to PENDING without recording an error."""
-    now = time.time()
-    conn = db()
-    try:
-        with conn:
-            conn.execute(
-                """UPDATE hydration_queue
-                   SET state='PENDING',
-                       leased_until=NULL,
-                       lease_token=NULL,
-                       available_at=?,
-                       last_error=NULL
-                 WHERE store=? AND url=? AND lease_token=?
-                   AND state='PROCESSING'""",
-                (now, task['store'], task['url'], task['lease_token']),
-            )
-    finally:
-        conn.close()
+    def release():
+        now = time.time()
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='PENDING',
+                           leased_until=NULL,
+                           lease_token=NULL,
+                           available_at=?,
+                           last_error=NULL
+                     WHERE store=? AND url=? AND lease_token=?
+                       AND state='PROCESSING'""",
+                    (now, task['store'], task['url'], task['lease_token']),
+                )
+        finally:
+            conn.close()
+
+    return _retry_sqlite_busy(release, 'release_hydration_claim')
 
 
 def _queue_mark_done(task):
     """Commit the successful product result and close the lease atomically."""
-    now = time.time()
-    conn = db()
-    try:
-        # refresh_url() has already persisted the product. We only transition
-        # the durable work item here, guarded by its lease token.
-        with conn:
-            conn.execute(
-                """UPDATE hydration_queue
-                   SET state='DONE',
-                       leased_until=NULL,
-                       lease_token=NULL,
-                       last_finished_at=?,
-                       last_error=NULL,
-                       last_http_status=NULL
-                   WHERE store=? AND url=? AND lease_token=?
-                     AND state='PROCESSING'""",
-                (now, task['store'], task['url'], task['lease_token']),
-            )
-    finally:
-        conn.close()
+    def mark_done():
+        now = time.time()
+        conn = db()
+        try:
+            # refresh_url() has already persisted the product. We only transition
+            # the durable work item here, guarded by its lease token.
+            with conn:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='DONE',
+                           leased_until=NULL,
+                           lease_token=NULL,
+                           last_finished_at=?,
+                           last_error=NULL,
+                           last_http_status=NULL
+                       WHERE store=? AND url=? AND lease_token=?
+                         AND state='PROCESSING'""",
+                    (now, task['store'], task['url'], task['lease_token']),
+                )
+        finally:
+            conn.close()
+
+    return _retry_sqlite_busy(mark_done, 'mark_hydration_done')
 
 
 def _queue_mark_error(task, error, http_status=None):
