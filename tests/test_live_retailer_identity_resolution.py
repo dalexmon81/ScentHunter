@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "backend" / "product_catalog.json"
 
 
-def test_live_profondo_125ml_edp_surfaces_duplicate_identity_as_ambiguous():
+def test_live_profondo_125ml_edp_resolves_by_verified_gtin_variant_evidence():
     service = NextEngineService.from_catalog_file(CATALOG)
     result = service.process_records(
         [{
@@ -32,15 +32,36 @@ def test_live_profondo_125ml_edp_surfaces_duplicate_identity_as_ambiguous():
 
     assert result.rejected_rows == ()
     assert result.normalized_offer_count == 1
-    # The live title now resolves to the known duplicate identity family, but
-    # both canonical products share the same name. Do not silently choose by
-    # size alone; GTIN-to-variant evidence must be represented in the catalog
-    # before this offer can be assigned automatically.
-    assert result.matched_offer_count == 0
-    assert result.groups == ()
+    assert result.matched_offer_count == 1
     assert result.unresolved == ()
-    assert len(result.ambiguous) == 1
-    assert set(result.ambiguous[0].candidate_product_ids) == {"SH-0043", "SH-AUTO-0019"}
+    assert result.ambiguous == ()
+    group = result.groups[0]
+    assert group.canonical_product_id == "SH-0043"
+    assert group.canonical_variant_id == "VAR-09a73d0a5594cf49"
+    assert group.offers[0].raw_payload["gtin"] == "3614272865235"
+
+
+def test_verified_gtin_with_conflicting_size_fails_closed():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "Giorgio Armani Acqua di Giò Profondo Eau De Parfum 100 ml (man)",
+            "brand": "Giorgio Armani",
+            "size_ml": 100,
+            "price": 95.44,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://www.parfum-zentrum.de/example",
+            "gtin": "3614272865235",
+            "sku": "conflicting-size",
+        }],
+        retailer="ParfumZentrum",
+    )
+
+    assert result.matched_offer_count == 0
+    assert len(result.unresolved) == 1
+    assert result.unresolved[0].reason == "verified_gtin_size_conflict"
+    assert result.ambiguous == ()
 
 
 def test_live_profondo_refill_does_not_map_to_regular_100ml_edp():
