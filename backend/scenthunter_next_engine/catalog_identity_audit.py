@@ -87,6 +87,7 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
 
     shared_aliases: dict[str, dict[str, Any]] = {}
     brand_only_aliases: dict[str, dict[str, Any]] = {}
+    brand_alias_candidates: dict[str, dict[str, Any]] = {}
     alias_owners: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     for p in rows:
         pid = _text(p.get("product_id"))
@@ -110,6 +111,22 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
                 "severity": "review",
                 "classification": "brand_only_alias" if is_brand_only else "shared_product_alias",
             }
+            # Conservative diagnostic only: detect a brand-name expansion such as
+            # "Giorgio Armani" when the catalog brand field is "Armani". This
+            # does not remove the alias from collision reports or affect matching.
+            if not is_brand_only and all(
+                (brand := normalize(p.get("brand_name") or p.get("brand_id")))
+                and (alias == brand or alias.endswith(" " + brand) or alias.startswith(brand + " "))
+                and alias != normalize(p.get("canonical_name") or p.get("name"))
+                for p in owner_rows
+            ):
+                brand_alias_candidates[alias] = {
+                    "alias": alias,
+                    "products": summary(owner_rows),
+                    "severity": "review",
+                    "classification": "possible_brand_alias_not_confirmed",
+                    "note": "Candidate only; retained in shared_product_aliases until manually verified.",
+                }
 
     duplicate_variant_ids = [
         {"variant_id": vid, "records": records}
@@ -152,6 +169,7 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
         "duplicate_normalized_brand_name_concentration": {"count": len(duplicate_identity), "items": duplicate_identity},
         "shared_product_aliases": {"count": len(shared_aliases), "items": list(shared_aliases.values())},
         "shared_brand_only_aliases": {"count": len(brand_only_aliases), "items": list(brand_only_aliases.values())},
+        "possible_brand_aliases_for_review": {"count": len(brand_alias_candidates), "items": list(brand_alias_candidates.values())},
         "duplicate_variant_ids": {"count": len(duplicate_variant_ids), "items": duplicate_variant_ids},
         "duplicate_sizes_within_product": {"count": len(duplicate_product_sizes), "items": duplicate_product_sizes},
         "products_without_variants": {"count": len(no_variants), "items": no_variants},
@@ -179,6 +197,7 @@ def main() -> int:
         "duplicate_normalized_brand_name_concentration": report["duplicate_normalized_brand_name_concentration"]["count"],
         "shared_product_aliases": report["shared_product_aliases"]["count"],
         "shared_brand_only_aliases": report["shared_brand_only_aliases"]["count"],
+        "possible_brand_aliases_for_review": report["possible_brand_aliases_for_review"]["count"],
         "duplicate_variant_ids": report["duplicate_variant_ids"]["count"],
         "duplicate_sizes_within_product": report["duplicate_sizes_within_product"]["count"],
         "products_without_variants": report["products_without_variants"]["count"],
