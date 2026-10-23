@@ -253,11 +253,146 @@
     "read_only": true,
     "database_mutated": false,
     "interpretation": "The four product IDs occur in catalog_coverage only in this exact-ID scan; none of the eight target variant IDs were found as exact values in scanned columns. This is not proof of no indirect, serialized, external, or name-based references.",
-    "limitation": "The workflow scanned exact ID values, not Armani product names or partial IDs. It did not establish whether catalog_coverage rows are operational dependencies. Do not merge or delete identities on this evidence alone."
+    "limitation": "The workflow scanned exact ID values, not Armani product names or partial IDs. It did not establish whether catalog_coverage rows are operational dependencies. Do not merge or delete identities on this evidence alone.",
+    "name_based_reference_scan": {
+      "checked_at": "2026-10-23",
+      "run_id": 39940283797,
+      "job_id": 120369730269,
+      "conclusion": "success",
+      "objects_scanned": 18,
+      "read_only": true,
+      "database_mutated": false,
+      "findings": {
+        "store_products": {
+          "columns": [
+            "store",
+            "url",
+            "name",
+            "brand",
+            "image",
+            "sku",
+            "gtin",
+            "mpn",
+            "size_ml",
+            "concentration",
+            "gender",
+            "price",
+            "currency",
+            "availability",
+            "fetched_at",
+            "fetch_status"
+          ],
+          "sample_note": "30 rows sampled for name LIKE '%acqua di gio%'; retailer data contains distinct Acqua di Gio EDT 30/50/100 ml, Profondo EDP 30/50 ml, and a PerfumeMarket listing for Profondo EDP 125 ml. Sample includes other family products (Gioia, Profumo, aftershave, deodorant), so substring matches are not sufficient identity evidence.",
+          "concrete_example": {
+            "store": "perfumemarket",
+            "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Mannen",
+            "url": "https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml",
+            "size_ml": 125,
+            "price": 129.99,
+            "currency": null
+          }
+        },
+        "catalog_coverage": {
+          "columns": [
+            "store",
+            "product_id",
+            "canonical_name",
+            "query",
+            "state",
+            "attempts",
+            "found_urls",
+            "last_started_at",
+            "last_finished_at",
+            "next_run_at",
+            "last_error"
+          ],
+          "rows_for_target_products": [
+            {
+              "product_id": "SH-AUTO-0288",
+              "canonical_name": "Acqua di Gio",
+              "query": "Acqua di Gio",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            },
+            {
+              "product_id": "SH-AUTO-0018",
+              "canonical_name": "Acqua di Gio",
+              "query": "Acqua di Gio",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            },
+            {
+              "product_id": "SH-0043",
+              "canonical_name": "Acqua di Gio Profondo",
+              "query": "Acqua di Gio Profondo",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            }
+          ],
+          "note": "Rows are retailer coverage/search tasks keyed by product_id and store, not persisted offer mappings. This explains the 8 exact-ID rows per product in the prior scan; SH-AUTO-0019 did not appear in the 30-row Acqua di Gio coverage sample."
+        },
+        "other_text_matches": {
+          "catalog_discovery_queue": {
+            "url_matches": 146,
+            "source_matches": 83,
+            "last_error_matches": 13
+          },
+          "hydration_queue": {
+            "url_matches": 801,
+            "last_error_matches": 133
+          },
+          "store_urls": {
+            "url_matches": 807,
+            "slug_matches": 807
+          },
+          "catalog_search_fts": {
+            "url_matches": 759,
+            "search_text_matches": 774
+          },
+          "catalog_search_fts_content": {
+            "url_matches": 759,
+            "search_text_matches": 774
+          }
+        }
+      },
+      "interpretation": "The production DB contains retailer text and URL references for the Armani family. catalog_coverage rows are operational retailer-search coverage, not evidence of offer mappings. Retailer inventory includes a 125 ml Profondo EDP listing, but this is third-party evidence and does not settle the exact release/market identity. Exact variant IDs still were not found in the earlier scan.",
+      "limitations": [
+        "This audit searched the text 'armani' across columns and then sampled up to 30 rows by broad 'acqua di gio' substring; it is not a complete row-level mapping of every affected product/variant to every retailer offer.",
+        "The scan returns a few sample values per column, not all matching retailer records.",
+        "No write was made to the deployed database."
+      ]
+    }
   },
   "next_gate": {
-    "status": "blocked_pending_name_based_reference_inventory",
-    "required_action": "Run a second read-only scan of store_products, store_product_variants, store_url_metadata, store_urls, and other text columns for Armani product names, URLs, sizes, concentration, GTIN/MPN if present. Inspect schema and representative non-sensitive field values, then reconcile those results with catalog_coverage before proposing any migration.",
+    "status": "blocked_pending_variant_level_reconciliation",
+    "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge."
   },
   "runtime_audit_tool": {
