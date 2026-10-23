@@ -86,6 +86,7 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
     ]
 
     shared_aliases: dict[str, dict[str, Any]] = {}
+    brand_only_aliases: dict[str, dict[str, Any]] = {}
     alias_owners: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     for p in rows:
         pid = _text(p.get("product_id"))
@@ -95,10 +96,19 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
                 alias_owners[norm][pid] = p
     for alias, owners in alias_owners.items():
         if len(owners) > 1:
-            shared_aliases[alias] = {
+            owner_rows = list(owners.values())
+            # Brand-only aliases are noisy shared labels, not evidence that
+            # product identities collide. Keep them visible but separate.
+            is_brand_only = all(
+                alias == normalize(p.get("brand_name") or p.get("brand_id"))
+                for p in owner_rows
+            )
+            target = brand_only_aliases if is_brand_only else shared_aliases
+            target[alias] = {
                 "alias": alias,
-                "products": summary(list(owners.values())),
+                "products": summary(owner_rows),
                 "severity": "review",
+                "classification": "brand_only_alias" if is_brand_only else "shared_product_alias",
             }
 
     duplicate_variant_ids = [
@@ -141,6 +151,7 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
         "duplicate_normalized_brand_name": {"count": len(duplicate_names), "items": duplicate_names},
         "duplicate_normalized_brand_name_concentration": {"count": len(duplicate_identity), "items": duplicate_identity},
         "shared_product_aliases": {"count": len(shared_aliases), "items": list(shared_aliases.values())},
+        "shared_brand_only_aliases": {"count": len(brand_only_aliases), "items": list(brand_only_aliases.values())},
         "duplicate_variant_ids": {"count": len(duplicate_variant_ids), "items": duplicate_variant_ids},
         "duplicate_sizes_within_product": {"count": len(duplicate_product_sizes), "items": duplicate_product_sizes},
         "products_without_variants": {"count": len(no_variants), "items": no_variants},
@@ -167,6 +178,7 @@ def main() -> int:
         "duplicate_normalized_brand_name": report["duplicate_normalized_brand_name"]["count"],
         "duplicate_normalized_brand_name_concentration": report["duplicate_normalized_brand_name_concentration"]["count"],
         "shared_product_aliases": report["shared_product_aliases"]["count"],
+        "shared_brand_only_aliases": report["shared_brand_only_aliases"]["count"],
         "duplicate_variant_ids": report["duplicate_variant_ids"]["count"],
         "duplicate_sizes_within_product": report["duplicate_sizes_within_product"]["count"],
         "products_without_variants": report["products_without_variants"]["count"],
