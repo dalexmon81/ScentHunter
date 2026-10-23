@@ -213,5 +213,24 @@
       "caveat": "This is not proof that runtime databases, logs, caches, deployed environments, external clients, or dynamically keyed mappings have no references. Full-repository exhaustive code search was not completed."
     },
     "safety_conclusion": "The checked catalog snapshot shows no in-catalog offer or retailer mapping dependencies, but that alone is not enough to authorize a merge. Runtime persistence and deployed data still need a read-only inventory before any catalog write."
+  },
+  "deployed_runtime_check": {
+    "checked_at": "2026-10-23",
+    "provider": "Render",
+    "service_name": "ScentHunter",
+    "service_id": "srv-d9p2i7u417fc73830lkg",
+    "service_url": "https://scenthunter.onrender.com",
+    "deployed_branch": "main",
+    "finding": "The currently configured Render service deploys main, not scenthunter-next-engine. Read-only Render log searches for each of the four product IDs returned no matches in the available recent log window.",
+    "interpretation": "No matching log lines are visible in the queried window. Application logs are not a database/reference inventory, so this does not prove the IDs are unused in persisted SQLite data, caches, or external clients.",
+    "limitation": "No read-only SQL or filesystem access to the service's SQLite catalog database was available through the inspected Render connector actions. No deployment was triggered and no service settings or runtime data were changed."
+  },
+  "next_gate": {
+    "status": "blocked_pending_runtime_database_inventory",
+    "required_before_migration": [
+      "Run a read-only SQLite inventory on the actual persistent database used by the deployed service, identifying tables/columns that contain product IDs, variant IDs, retailer mappings, or serialized catalog references.",
+      "Search those tables for SH-AUTO-0288, SH-AUTO-0018, SH-0043, SH-AUTO-0019 and the eight variant IDs.",
+      "Export a backup and reference counts before any approved migration."
+    ]
   }
 }
