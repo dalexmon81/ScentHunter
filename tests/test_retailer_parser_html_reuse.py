@@ -244,6 +244,31 @@ def test_parfumzentrum_page_adapter_runs_real_extraction_without_refetch():
     assert session.calls == []
 
 
+
+def test_deloox_luxembourg_storefront_is_supported_by_discovery():
+    assert "https://www.deloox.lu" in deloox.DELOOX_BASE_URLS
+    assert "www.deloox.lu" in deloox.DELOOX_HOSTS
+
+    endpoints = deloox._search_endpoints("Acqua di Gio Profondo")
+    assert any(url.startswith("https://www.deloox.lu/") for url in endpoints)
+
+    html = """
+    <html><body>
+      <a href="/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html">
+        Armani Acqua di Gio Profondo Eau de Parfum 30 ml
+      </a>
+    </body></html>
+    """
+    candidates = deloox._candidate_product_urls(
+        html,
+        "Acqua di Gio Profondo",
+        base_url="https://www.deloox.lu",
+    )
+    assert candidates
+    assert candidates[0].startswith("https://www.deloox.lu/produit/")
+
+
+
 def test_deloox_accent_normalization_and_url_size():
     url = "https://www.deloox.be/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html"
     html = """<html><head><script type="application/ld+json">{"@type":"Product","name":"Armani Acqua Di Giò Profondo Eau de Parfum 30 ml","brand":{"@type":"Brand","name":"Armani"},"gtin13":"3614273953863","offers":{"@type":"Offer","price":"60.59","priceCurrency":"EUR","availability":"https://schema.org/InStock"}}</script></head><body><h1>Armani Acqua Di Giò Profondo Eau de Parfum 30 ml</h1></body></html>"""
