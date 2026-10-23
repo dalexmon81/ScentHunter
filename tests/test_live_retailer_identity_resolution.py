@@ -89,3 +89,52 @@ def test_live_profondo_refill_does_not_map_to_regular_100ml_edp():
         group.canonical_variant_id != "VAR-46b03c1f1cff0a6e"
         for group in result.groups
     )
+
+
+
+def test_profondo_75ml_edp_resolves_by_verified_gtin_variant_evidence():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "Giorgio Armani Acqua di Giò Profondo Eau de Parfum 75 ml",
+            "brand": "Giorgio Armani",
+            "size_ml": 75,
+            "price": 100.90,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en",
+            "gtin": "3614272865228",
+            "sku": "op107",
+        }],
+        retailer="LadyParfum",
+    )
+
+    assert result.rejected_rows == ()
+    assert result.normalized_offer_count == 1
+    assert result.matched_offer_count == 1
+    assert result.unresolved == ()
+    assert result.ambiguous == ()
+    assert result.groups[0].canonical_product_id == "SH-0043"
+    assert result.groups[0].canonical_variant_id == "VAR-89c2a2a86bedb3c5"
+
+
+def test_profondo_75ml_gtin_with_125ml_size_fails_closed():
+    service = NextEngineService.from_catalog_file(CATALOG)
+    result = service.process_records(
+        [{
+            "name": "Giorgio Armani Acqua di Giò Profondo Eau de Parfum 125 ml",
+            "brand": "Giorgio Armani",
+            "size_ml": 125,
+            "price": 100.90,
+            "currency": "EUR",
+            "availability": "in_stock",
+            "url": "https://example.invalid/profondo",
+            "gtin": "3614272865228",
+        }],
+        retailer="test",
+    )
+
+    assert result.matched_offer_count == 0
+    assert len(result.unresolved) == 1
+    assert result.unresolved[0].reason == "verified_gtin_size_conflict"
+    assert result.ambiguous == ()
