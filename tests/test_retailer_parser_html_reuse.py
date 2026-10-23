@@ -163,3 +163,81 @@ def test_parfumzentrum_html_without_price_or_stock_is_not_claimed_as_offer():
         "Acqua di Gio Profondo Eau de Parfum",
         html=html,
     ) is None
+
+
+def test_deloox_extract_product_page_reuses_real_supplied_fixture():
+    html = """
+    <html><head><script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"Product",
+      "name":"Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml",
+      "brand":{"@type":"Brand","name":"Giorgio Armani"},
+      "image":"https://cdn.example.test/profondo-125.jpg",
+      "gtin13":"3614272865235",
+      "offers":{"@type":"Offer","price":"96.99","priceCurrency":"EUR","availability":"https://schema.org/InStock"}
+    }
+    </script></head><body>
+    <h1>Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml</h1>
+    </body></html>
+    """
+    class Response:
+        status_code = 200
+        url = "https://www.deloox.nl/en/product/123/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml"
+        text = html
+        def close(self):
+            pass
+    class Session:
+        def __init__(self):
+            self.calls = []
+        def get(self, url, **kwargs):
+            self.calls.append(url)
+            return Response()
+    session = Session()
+    result = deloox.extract_product_page(
+        session,
+        Response.url,
+        query="Acqua di Gio Profondo Eau de Parfum",
+        html=html,
+    )
+    assert result is not None
+    assert result["attributes"]["size_ml"]["value"] == 125
+    assert result["offer"]["price"] == 96.99
+    assert session.calls == []
+
+
+def test_parfumzentrum_page_adapter_runs_real_extraction_without_refetch():
+    html = """
+    <html><head><script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"Product",
+      "name":"Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml",
+      "brand":{"@type":"Brand","name":"Giorgio Armani"},
+      "image":"https://cdn.example.test/profondo-125.jpg",
+      "gtin13":"3614272865235",
+      "offers":{"@type":"Offer","price":"104.90","priceCurrency":"EUR","availability":"https://schema.org/InStock"}
+    }
+    </script></head><body>
+    <h1>Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml</h1>
+    <div class="product-price">104,90 €</div>
+    <div class="availability">Sofort lieferbar</div>
+    </body></html>
+    """
+    class Session:
+        def __init__(self):
+            self.calls = []
+        def get(self, url, **kwargs):
+            self.calls.append(url)
+            raise AssertionError("HTML was supplied; a second fetch is not allowed")
+    session = Session()
+    result = parfumzentrum.extract_product_page(
+        session,
+        "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-edp-125-ml_z12345",
+        "Giorgio Armani Acqua di Gio Profondo Eau de Parfum",
+        html=html,
+    )
+    assert result is not None
+    assert result["size_ml"] == 125
+    assert result["price_num"] == 104.90
+    assert session.calls == []
