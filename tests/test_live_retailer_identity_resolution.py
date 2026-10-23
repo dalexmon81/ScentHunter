@@ -1,4 +1,4 @@
-"""Regression gate from captured live Parfum-Zentrum parser output to canonical matching.
+"""Regression gate from captured live Parfum-Zentrum parser output to conservative canonical matching.
 
 The live page is not fetched by this unit test. Its observed output is captured
 here so CI is deterministic; the separate live-probe workflow verifies the
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "backend" / "product_catalog.json"
 
 
-def test_live_profondo_125ml_edp_resolves_to_declared_variant():
+def test_live_profondo_125ml_edp_surfaces_duplicate_identity_as_ambiguous():
     service = NextEngineService.from_catalog_file(CATALOG)
     result = service.process_records(
         [{
@@ -32,12 +32,15 @@ def test_live_profondo_125ml_edp_resolves_to_declared_variant():
 
     assert result.rejected_rows == ()
     assert result.normalized_offer_count == 1
-    assert result.matched_offer_count == 1
+    # The live title now resolves to the known duplicate identity family, but
+    # both canonical products share the same name. Do not silently choose by
+    # size alone; GTIN-to-variant evidence must be represented in the catalog
+    # before this offer can be assigned automatically.
+    assert result.matched_offer_count == 0
+    assert result.groups == ()
     assert result.unresolved == ()
-    assert result.ambiguous == ()
-    group = result.groups[0]
-    assert group.canonical_product_id == "SH-0043"
-    assert group.canonical_variant_id == "VAR-09a73d0a5594cf49"
+    assert len(result.ambiguous) == 1
+    assert set(result.ambiguous[0].candidate_product_ids) == {"SH-0043", "SH-AUTO-0019"}
 
 
 def test_live_profondo_refill_does_not_map_to_regular_100ml_edp():
