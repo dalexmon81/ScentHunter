@@ -323,7 +323,7 @@ class CanonicalMatcher:
         # Remove them only for the GTIN-backed name consistency check; true
         # refill-pack terms have already been rejected above.
         identity_title = re.sub(
-            r"\\b(?:nachfullbar|refillable|rechargeable)\\b",
+            r"\b(?:nachfullbar|refillable|rechargeable)\b",
             " ",
             normalize_identity_text(offer.raw_name),
         )
