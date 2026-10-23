@@ -1,4 +1,5 @@
 from backend.scrapers.deloox import scraper as deloox
+from backend.scrapers.easycosmetic import scraper as easycosmetic
 from backend.scrapers.parfumzentrum import scraper as parfumzentrum
 
 
@@ -280,3 +281,34 @@ def test_parfumzentrum_strips_internal_product_sku_from_query():
     assert result is not None
     assert result["size_ml"] == 100
     assert result["price_num"] == 29.90
+
+
+
+def test_easycosmetic_uses_matching_size_price_and_stock_not_sibling_options():
+    html = """
+    <html><head>
+      <meta itemprop="price" content="775.92">
+    </head><body>
+      <div class="product-info">
+        <h1 class="product-title">Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum 125 ml auf Lager</h1>
+        <div class="qty-item unavailable">
+          <span>40 ml</span><div class="price-container">€ 69 , 99</div>
+          <span class="stock-status unavailable">ausverkauft</span>
+        </div>
+        <div class="qty-item available">
+          <span>125 ml</span><div class="price-container">€ 96 , 99</div>
+          <span class="stock-status available">auf Lager</span>
+        </div>
+        <div class="unit-price">€ 775,92 / 1l</div>
+      </div>
+    </body></html>
+    """
+    result = easycosmetic._parse_product_html(
+        "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx",
+        html,
+    )
+    assert result is not None
+    assert result["size_ml"] == 125
+    assert result["price_num"] == 96.99
+    assert result["available"] is True
+    assert result["availability"] == "In stock"
