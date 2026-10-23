@@ -1,7 +1,5 @@
 """Regression tests for real SQLite lock contention and retry behavior."""
 import sqlite3
-import threading
-import time
 
 from backend.catalog_engine import _retry_sqlite_busy
 
@@ -16,24 +14,22 @@ def test_sqlite_busy_retry_succeeds_after_real_writer_releases_lock(tmp_path):
     blocker = sqlite3.connect(path, timeout=0)
     blocker.execute("BEGIN IMMEDIATE")
     blocker.execute("INSERT INTO items(value) VALUES (1)")
-
-    released = threading.Event()
-
-    def release_writer():
-        time.sleep(0.30)
-        blocker.commit()
-        blocker.close()
-        released.set()
-
-    releaser = threading.Thread(target=release_writer, daemon=True)
-    releaser.start()
+    attempts = []
 
     def insert_after_lock():
+        attempts.append(True)
         conn = sqlite3.connect(path, timeout=0)
         try:
             with conn:
                 conn.execute("INSERT INTO items(value) VALUES (2)")
             return "inserted"
+        except sqlite3.OperationalError as exc:
+            # Hold a genuine SQLite write lock on the first attempt, then
+            # release it so the retry can prove recovery from real contention.
+            if len(attempts) == 1 and ("locked" in str(exc).lower() or "busy" in str(exc).lower()):
+                blocker.commit()
+                blocker.close()
+            raise
         finally:
             conn.close()
 
@@ -43,13 +39,14 @@ def test_sqlite_busy_retry_succeeds_after_real_writer_releases_lock(tmp_path):
             stage="test_real_sqlite_contention",
             attempts=4,
         )
-        assert result == "inserted"
-        assert released.wait(timeout=1)
     finally:
-        if not released.is_set():
-            blocker.rollback()
+        try:
             blocker.close()
-        releaser.join(timeout=1)
+        except Exception:
+            pass
+
+    assert result == "inserted"
+    assert len(attempts) == 2
 
     check = sqlite3.connect(path)
     try:
