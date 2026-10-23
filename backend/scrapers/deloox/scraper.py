@@ -105,7 +105,7 @@ def matches(text, q):
 
 def size_ml(*values):
     m = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)[\s_-]*(ml|cl)\b",
         " ".join(clean(x) for x in values),
         re.I,
     )
