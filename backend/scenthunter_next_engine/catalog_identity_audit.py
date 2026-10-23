@@ -116,8 +116,11 @@ def build_identity_audit(raw: dict[str, Any]) -> dict[str, Any]:
             # does not remove the alias from collision reports or affect matching.
             if not is_brand_only and all(
                 (brand := normalize(p.get("brand_name") or p.get("brand_id")))
-                and (alias == brand or alias.endswith(" " + brand) or alias.startswith(brand + " "))
-                and alias != normalize(p.get("canonical_name") or p.get("name"))
+                and (alias == brand or alias.endswith(" " + brand))
+                and not (
+                    (canonical := normalize(p.get("canonical_name") or p.get("name")))
+                    and (canonical in alias)
+                )
                 for p in owner_rows
             ):
                 brand_alias_candidates[alias] = {
