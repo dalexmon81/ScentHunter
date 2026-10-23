@@ -700,11 +700,20 @@ def _ensure_schema(conn):
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=45)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=45000')
-    _ensure_schema(conn)
-    conn.execute('PRAGMA synchronous=NORMAL')
-    return conn
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=45000')
+        _ensure_schema(conn)
+        conn.execute('PRAGMA synchronous=NORMAL')
+        return conn
+    except Exception:
+        # Do not leak a partially initialized connection if schema setup or
+        # a connection PRAGMA fails (including transient SQLite contention).
+        try:
+            conn.close()
+        except Exception:
+            pass
+        raise
 
 
 def _discovery_bases(store):
