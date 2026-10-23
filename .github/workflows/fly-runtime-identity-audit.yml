@@ -2,22 +2,12 @@ name: Fly read-only runtime SQLite inventory
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm_read_only:
-        description: "Confirm read-only inspection of the production catalog"
-        required: true
-        type: choice
-        options:
-          - no
-          - yes
-        default: no
 
 permissions:
   contents: read
 
 jobs:
   inventory:
-    if: ${{ inputs.confirm_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
