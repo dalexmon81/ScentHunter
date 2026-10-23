@@ -494,7 +494,7 @@
     "status": "live_parfumzentrum_parse_verified_duplicate_identity_blocked_deloox_transport_blocked",
     "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
     "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
-    "latest_evidence": "Live Parfum-Zentrum pages parse through the existing adapter. Deloox GitHub-runner requests return HTTP 403; search discovery returns zero results. A generic canonical matcher defect was fixed: variant aliases no longer discard explicit size tokens before matching. Latest full Next Engine unit-test workflow on 88d9872d3a1afba503a9be2267befba3010205 has completed; inspect its conclusion before declaring this gate passed. No merge, deploy, or production DB writes.",
+    "latest_evidence": "Live Parfum-Zentrum pages parse through the existing adapter. Deloox GitHub-runner requests return HTTP 403; search discovery returns zero results. A generic canonical matcher defect was fixed: variant aliases no longer discard explicit size tokens before matching. Latest full Next Engine unit-test workflow on 88d9872d3a1afba503a9be2267befba3010205 has completed; inspect its conclusion before declaring this gate passed. No merge, deploy, or production DB writes. The latest live probe artifact (run 39947110569) confirms the exact Parfum-Zentrum adapter outputs and the Deloox HTTP 403 limitation. CI is green on commit ba99db3c5263c4f6008fd0d169737a1a033a6671 (run 39947464936); the canonical matcher intentionally surfaces duplicate Profondo identities as ambiguous rather than silently choosing based on size.",
     "required_next_steps": [
       "Add a general, auditable GTIN-to-variant identity mechanism to canonical catalog data and test it with verified GTIN 3614272865235; only then should the 125 ml offer resolve from ambiguity to SH-0043 / VAR-09a73d0a5594cf49.",
       "Keep the 100 ml refill distinct from regular EDP; verify the refill GTIN against canonical data before matching it.",
@@ -703,38 +703,57 @@
       },
       "live_probe": {
         "checked_at": "2026-10-23",
-        "workflow_run_id": 39946635367,
-        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946635367",
+        "workflow_run_id": 39947110569,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947110569",
         "conclusion": "success",
         "artifact_name": "live-retailer-parser-probe",
-        "artifact_id": 12498980506,
+        "artifact_id": 12498697469,
         "findings": {
+          "parfumzentrum_profondo_edp_125": {
+            "http_status": 200,
+            "adapter_status": "parsed",
+            "size_ml": 125,
+            "concentration": "Eau de Parfum",
+            "price": 95.44,
+            "availability": "in_stock",
+            "gtin": "3614272865235",
+            "sku": "771966"
+          },
+          "parfumzentrum_profondo_edp_100_refill": {
+            "http_status": 200,
+            "adapter_status": "parsed",
+            "size_ml": 100,
+            "concentration": "Eau de Parfum",
+            "price": 83.95,
+            "availability": "in_stock",
+            "gtin": "3614273953849",
+            "sku": "947818",
+            "refill": true
+          },
+          "deloox_profondo_edp_30": {
+            "http_status": 403,
+            "adapter_status": "not_evaluated"
+          },
+          "deloox_profondo_edp_100": {
+            "http_status": 403,
+            "adapter_status": "not_evaluated"
+          },
           "easycosmetic_profondo": {
             "http_status": 200,
-            "product_jsonld_found": false,
-            "h1": "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray auf Lager"
+            "product_jsonld_found": false
           },
           "perfumemarket_profondo_125": {
             "http_status": 200,
-            "product_jsonld_found": true,
-            "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Men",
-            "price": "129.99",
-            "currency": "EUR",
-            "availability": "http://schema.org/InStock",
             "sku": "3614272865235",
             "gtin13": null,
             "gtin": null
-          },
-          "deloox_adapter": {
-            "status": "zero_results",
-            "parsed_rows": 0
-          },
-          "parfumzentrum_adapter": {
-            "status": "zero_results",
-            "parsed_rows": 0
           }
         },
-        "interpretation": "The two known retailer pages were fetched successfully; PerfumeMarket exposes Product JSON-LD but places 3614272865235 in sku rather than gtin13/gtin. Easycosmetic returned no Product JSON-LD in the inspected HTML. Deloox and Parfumzentrum searches returned zero rows, so their live parser extraction remains unproven; distinguish discovery/search behavior from direct product-page parsing before changing extraction logic.",
+        "search_diagnostics": {
+          "deloox": "zero_results",
+          "parfumzentrum": "zero_results"
+        },
+        "interpretation": "Parfum-Zentrum direct product pages are successfully extracted by the real adapter. Deloox pages are denied with HTTP 403 before parser execution; both search adapters return zero rows. PerfumeMarket exposes the GTIN-like number as SKU only. Canonical matcher conservatively leaves the 125 ml offer ambiguous between SH-0043 and SH-AUTO-0019 until a verified GTIN-to-variant mapping exists.",
         "production_database_mutated": false,
         "catalog_modified": false
       },
