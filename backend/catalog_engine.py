@@ -4902,18 +4902,18 @@ def _coverage_scraper_process(
 ):
     """Run one retailer coverage search in a killable process group.
 
-    Include bounded child-side traceback summaries for module/query failures so
-    the queue's last_error field points to the actual failing call site. Avoid
-    stderr capture loss while preserving the existing JSON protocol and timeout
-    cancellation behavior.
+    Child failures retain a compatible error string with bounded location
+    context. Child stderr is captured and included only in malformed/failed
+    process diagnostics; cancellation and timeout behavior stay unchanged.
     """
     child_code = (
-        "import contextlib\\nimport importlib\\nimport json\\nimport sys\\nimport traceback\\n"
-        "\\ndef _error(exc):\\n"
+        "import contextlib, importlib, json, sys, traceback\\n"
+        "def describe(exc):\\n"
         "    frames = traceback.extract_tb(exc.__traceback__)[-5:]\\n"
-        "    location = \\\" > \\\".join(f\\\"{f.name}({f.filename.rsplit('/', 1)[-1]}:{f.lineno})\\\" for f in frames)\\n"
-        "    return {\\\"type\\\": type(exc).__name__, \\\"message\\\": str(exc)[:240], \\\"location\\\": location[:400]}\\n"
-        "\\ndef main():\\n"
+        "    location = \\\" > \\\".join(f\\\"{frame.name}({frame.filename.rsplit('/', 1)[-1]}:{frame.lineno})\\\" for frame in frames)\\n"
+        "    message = str(exc)[:240]\\n"
+        "    return f\\\"{type(exc).__name__}:{message} [at {location[:300]}]\\\" if location else f\\\"{type(exc).__name__}:{message}\\\"\\n"
+        "def main():\\n"
         "    payload = json.load(sys.stdin)\\n"
         "    module_name = str(payload.get(\\\"module\\\") or \\\"\\\")\\n"
         "    queries = payload.get(\\\"queries\\\") or []\\n"
@@ -4924,7 +4924,7 @@ def _coverage_scraper_process(
         "        if not callable(search_stream) and not callable(search_fn):\\n"
         "            raise RuntimeError(\\\"scraper_search_unavailable\\\")\\n"
         "    except Exception as exc:\\n"
-        "        json.dump({\\\"ok\\\": False, \\\"module\\\": module_name, \\\"reports\\\": [], \\\"error\\\": _error(exc)}, sys.stdout, ensure_ascii=False)\\n"
+        "        json.dump({\\\"ok\\\": False, \\\"reports\\\": [], \\\"error\\\": describe(exc)}, sys.stdout, ensure_ascii=False)\\n"
         "        sys.stdout.flush()\\n"
         "        return\\n"
         "    reports = []\\n"
@@ -4934,16 +4934,16 @@ def _coverage_scraper_process(
         "                report = search_stream(query) if callable(search_stream) else search_fn(query)\\n"
         "            reports.append({\\\"query\\\": query, \\\"report\\\": report})\\n"
         "        except Exception as exc:\\n"
-        "            reports.append({\\\"query\\\": query, \\\"error\\\": _error(exc)})\\n"
+        "            reports.append({\\\"query\\\": query, \\\"error\\\": describe(exc)})\\n"
         "            continue\\n"
-        "        if isinstance(report, dict):\\n"
-        "            if report.get(\\\"results\\\"):\\n"
-        "                break\\n"
-        "        elif isinstance(report, list) and report:\\n"
+        "        if isinstance(report, dict) and report.get(\\\"results\\\"):\\n"
         "            break\\n"
-        "    json.dump({\\\"ok\\\": True, \\\"module\\\": module_name, \\\"reports\\\": reports}, sys.stdout, ensure_ascii=False, default=str)\\n"
+        "        if isinstance(report, list) and report:\\n"
+        "            break\\n"
+        "    json.dump({\\\"ok\\\": True, \\\"reports\\\": reports}, sys.stdout, ensure_ascii=False, default=str)\\n"
         "    sys.stdout.flush()\\n"
-        "\\nif __name__ == \\\"__main__\\\":\\n    main()\\n"
+        "if __name__ == \\\"__main__\\\":\\n"
+        "    main()\\n"
     )
     payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
     env = os.environ.copy()
@@ -4959,7 +4959,7 @@ def _coverage_scraper_process(
             start_new_session=(os.name != "nt"),
         )
     except Exception as exc:
-        return {"ok": False, "module": module_name, "reports": [], "error": {"type": type(exc).__name__, "message": str(exc)[:240]}}
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{str(exc)[:240]}"}
     try:
         process.stdin.write(payload)
         process.stdin.close()
@@ -4980,7 +4980,7 @@ def _coverage_scraper_process(
                         pass
                     try: process.wait(timeout=2.0)
                     except Exception: pass
-                return {"ok": False, "module": module_name, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
             if _foreground_search_running():
                 if cancel_event is not None:
                     cancel_event.set()
@@ -4998,7 +4998,7 @@ def _coverage_scraper_process(
                         pass
                     try: process.wait(timeout=2.0)
                     except Exception: pass
-                return {"ok": False, "module": module_name, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
+                return {"ok": False, "cancelled": True, "reports": [], "error": "coverage_cancelled_foreground_search"}
             if time.monotonic() >= deadline:
                 raise subprocess.TimeoutExpired([sys.executable, "-c", child_code], float(timeout_seconds))
             time.sleep(_COVERAGE_CANCEL_POLL_SECONDS)
@@ -5017,7 +5017,7 @@ def _coverage_scraper_process(
             except Exception: pass
             try: process.wait(timeout=2.0)
             except Exception: pass
-        return {"ok": False, "module": module_name, "reports": [], "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
+        return {"ok": False, "reports": [], "error": f"coverage_timeout_after_{float(timeout_seconds):g}s"}
     except Exception as exc:
         try:
             if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
@@ -5025,22 +5025,17 @@ def _coverage_scraper_process(
         except Exception: pass
         try: process.wait(timeout=2.0)
         except Exception: pass
-        return {"ok": False, "module": module_name, "reports": [], "error": {"type": type(exc).__name__, "message": str(exc)[:240]}}
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{str(exc)[:240]}"}
     if process.returncode != 0:
-        return {"ok": False, "module": module_name, "reports": [], "error": {
-            "type": "coverage_process_exit",
-            "message": f"exit={process.returncode}; stderr={(stderr or '').strip()[-600:]}",
-        }}
+        detail = (stderr or "").strip()[-600:]
+        return {"ok": False, "reports": [], "error": f"coverage_process_exit_{process.returncode}: {detail}"}
     try:
         result = json.loads(stdout or "")
     except Exception as exc:
-        return {"ok": False, "module": module_name, "reports": [], "error": {
-            "type": "coverage_invalid_child_output",
-            "message": f"{type(exc).__name__}:{str(exc)[:200]}; stderr={(stderr or '').strip()[-400:]}",
-        }}
+        detail = (stderr or "").strip()[-400:]
+        return {"ok": False, "reports": [], "error": f"coverage_invalid_child_output:{type(exc).__name__}:{str(exc)[:200]}: {detail}"}
     if not isinstance(result, dict):
-        return {"ok": False, "module": module_name, "reports": [], "error": "coverage_invalid_child_result"}
-    result.setdefault("module", module_name)
+        return {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
     return result
 
 
