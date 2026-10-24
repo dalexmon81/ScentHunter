@@ -108,6 +108,6 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
         parsed = deloox_scraper._product(url, html, query)
         assert parsed is not None, url
         assert parsed["name"] == name
-        assert parsed["brand"] == brand
+        assert parsed["source"]["source_brand"] == brand
         assert parsed["price"] == f"{price.replace('.', ',')} €"
 
