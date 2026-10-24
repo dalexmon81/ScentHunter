@@ -187,7 +187,7 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         "database_accessed": False,
         "catalog_modified": False,
     }
-    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
 
 
