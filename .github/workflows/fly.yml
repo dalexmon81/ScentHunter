@@ -109,3 +109,71 @@ jobs:
           else:
               raise SystemExit(f"Production smoke test failed after retries: {last_error}")
           PY
+
+      - name: Exercise a real production search
+        continue-on-error: true
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          query = "Hawas"
+
+          def get_json(path, timeout=12):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          start_deadline = time.monotonic() + 45
+          job_id = ""
+          while time.monotonic() < start_deadline:
+              started = get_json("/search-start?q=" + urllib.parse.quote(query))
+              if started.get("status") == "busy":
+                  time.sleep(max(1, min(3, float(started.get("retry_after_ms", 1000)) / 1000)))
+                  continue
+              if started.get("status") == "error":
+                  raise SystemExit("Production search rejected: " + json.dumps(started.get("errors", {})))
+              job_id = str(started.get("job_id") or "").strip()
+              if job_id:
+                  break
+              raise SystemExit("Search API did not return a job_id: " + json.dumps(started))
+          if not job_id:
+              raise SystemExit("Production search remained busy for 45 seconds")
+
+          deadline = time.monotonic() + 120
+          last = {}
+          while time.monotonic() < deadline:
+              last = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
+              if last.get("completed"):
+                  break
+              time.sleep(2)
+          else:
+              raise SystemExit("Production search timed out: " + json.dumps({
+                  "status": last.get("status"),
+                  "count": last.get("count"),
+                  "offer_count": last.get("offer_count"),
+                  "errors": last.get("errors"),
+              }))
+
+          count = int(last.get("count") or 0)
+          offer_count = int(last.get("offer_count") or 0)
+          stores = last.get("stores") if isinstance(last.get("stores"), dict) else {}
+          print("Production search completed")
+          print("Query: " + query)
+          print("Status: " + str(last.get("status")))
+          print(f"Products: {count}; offers: {offer_count}; stores reporting: {len(stores)}")
+          print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
+          if count == 0 and offer_count == 0:
+              raise SystemExit("Search API responded, but the real query returned zero products and offers")
+          PY
