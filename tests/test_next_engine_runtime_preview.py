@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -177,3 +179,87 @@ def test_preview_endpoint_against_real_catalog_is_read_only(monkeypatch):
     assert group["canonical_variant_id"] == variant.variant_id
     assert group["offers"][0]["price"] == "19.99"
     assert group["offers"][0]["retailer"] == "runtime-preview-test"
+
+
+
+def test_search_shadow_uses_read_only_local_query_and_preserves_normal_search(monkeypatch):
+    monkeypatch.setenv("SCENTHUNTER_NEXT_PREVIEW_ENABLED", "1")
+    app = FastAPI()
+    calls = []
+
+    def fake_search(query, *, per_store):
+        calls.append((query, per_store))
+        return [
+            {
+                "store": "deloox",
+                "name": "Example Fragrance 50 ml",
+                "brand": "Example Brand",
+                "size_ml": 50,
+                "price_num": 29.95,
+                "currency": "EUR",
+                "availability": "in_stock",
+                "url": "https://shop.invalid/example",
+                "sku": "SKU-1",
+                "image": "https://shop.invalid/example.jpg",
+            },
+            {"store": "", "name": "row without retailer"},
+        ]
+
+    class FakeService:
+        catalog = SimpleNamespace(get=lambda product_id: None)
+
+        def process_records(self, records, *, retailer):
+            assert retailer == "deloox"
+            assert records == [{
+                "name": "Example Fragrance 50 ml",
+                "brand": "Example Brand",
+                "size_ml": 50,
+                "price": 29.95,
+                "currency": "EUR",
+                "availability": "in_stock",
+                "url": "https://shop.invalid/example",
+                "sku": "SKU-1",
+                "image": "https://shop.invalid/example.jpg",
+            }]
+            return SimpleNamespace(
+                groups=(),
+                normalized_offer_count=1,
+                matched_offer_count=0,
+                unresolved=(),
+                ambiguous=(),
+                rejected_rows=(),
+            )
+
+    monkeypatch.setitem(
+        sys.modules,
+        "catalog_engine",
+        SimpleNamespace(_search_local_impl=fake_search),
+    )
+    monkeypatch.setattr(
+        runtime.NextEngineService,
+        "from_catalog_file",
+        staticmethod(lambda path: FakeService()),
+    )
+
+    assert runtime.mount_next_engine(app) is True
+    client = TestClient(app)
+    response = client.get("/next-engine/search-shadow", params={"q": "Example Fragrance", "limit": 10})
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["mode"] == "read-only-shadow"
+    assert data["database_accessed"] is True
+    assert data["database_mutated"] is False
+    assert data["catalog_modified"] is False
+    assert data["candidate_count"] == 1
+    assert data["retailer_count"] == 1
+    assert calls == [("Example Fragrance", 10)]
+    assert "normal /search behavior is unchanged" in data["note"]
+
+
+def test_search_shadow_rejects_empty_query(monkeypatch):
+    monkeypatch.setenv("SCENTHUNTER_NEXT_PREVIEW_ENABLED", "1")
+    app = FastAPI()
+    assert runtime.mount_next_engine(app) is True
+    response = TestClient(app).get("/next-engine/search-shadow", params={"q": "   "})
+    assert response.status_code == 422
