@@ -43,6 +43,28 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup, SoupStrainer
 
+
+def _set_catalog_pool_worker_os_name():
+    """Prevent executor threads from inheriting the discovery-active Linux name.
+
+    Linux inherits the creator thread's comm when a new thread is created.
+    The family-coverage process scans /proc, so a pool created during discovery
+    must not retain the discovery marker after the main crawl thread goes idle.
+    """
+    try:
+        encoded = b"sh-catalog-work"
+        result = ctypes.CDLL(None, use_errno=True).prctl(
+            15, ctypes.c_char_p(encoded), 0, 0, 0
+        )
+        if result != 0:
+            raise OSError(ctypes.get_errno(), "prctl(PR_SET_NAME) failed")
+    except Exception as exc:
+        print(
+            "CATALOG POOL OS THREAD NAME ERROR "
+            f"error={type(exc).__name__}:{exc}",
+            flush=True,
+        )
+
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(BASE_DIR / 'store_catalog.sqlite3'))).expanduser()
 
@@ -2143,7 +2165,7 @@ def _discover_deloox_catalog(seeds, deadline=None):
         if not batch:
             break
 
-        with ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch))) as pool:
+        with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(HTML_WORKERS, len(batch))) as pool:
             futures = {
                 pool.submit(_fetch_html_page, 'deloox', url): (
                     url, depth, source, token
@@ -2239,7 +2261,7 @@ def _discover_html_catalog(store, seeds, deadline=None):
         if not batch: continue
         # Do not let ThreadPoolExecutor's context manager wait indefinitely
         # for unfinished network tasks when the discovery deadline is reached.
-        pool = ThreadPoolExecutor(max_workers=min(HTML_WORKERS, len(batch)))
+        pool = ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(HTML_WORKERS, len(batch)))
         futures = {pool.submit(_fetch_html_page, store, u): (u, d, source)
                    for u, d, source in batch}
         try:
@@ -2618,7 +2640,7 @@ def discover_store(store):
         if not batch: continue
         # Bound the wait itself, not only the outer loop. A context-managed
         # executor waits for every worker on exit and can defeat the deadline.
-        pool = ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(batch)))
+        pool = ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(batch)))
         futures = {pool.submit(_fetch_sitemap, store, sm): (sm, depth)
                    for sm, depth in batch}
         try:
@@ -3884,7 +3906,7 @@ def refresh_candidates(rows, cancel_event=None, deadline=None):
     if not jobs:
         return []
     out = []
-    pool = ThreadPoolExecutor(max_workers=min(REFRESH_WORKERS, len(jobs)))
+    pool = ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(REFRESH_WORKERS, len(jobs)))
     futures = [pool.submit(refresh_url, store, url) for store, url in jobs]
     cancelled = False
     try:
@@ -4369,7 +4391,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
             _queue_release_claim(task)
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
-    pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
+    pool = ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(worker_count, len(tasks)))
     futures = {pool.submit(_hydrate_one_task, task): task for task in tasks}
     pending = set(futures)
     fetched = 0
@@ -5216,7 +5238,7 @@ def coverage_batch(max_tasks=_COVERAGE_BATCH_SIZE, workers=_COVERAGE_WORKERS):
         return {'selected': 0, 'found': 0, 'not_found': 0, 'errors': 0}
     found = not_found = errors = 0
     worker_count = max(1, min(int(workers), len(tasks), _COVERAGE_WORKERS))
-    with ThreadPoolExecutor(max_workers=worker_count) as pool:
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=worker_count) as pool:
         future_map = {pool.submit(_coverage_run_task, task, _COVERAGE_CANCEL_EVENT): task for task in tasks}
         for future in as_completed(future_map):
             task = future_map[future]
@@ -5425,7 +5447,7 @@ def sync_all():
                error=excluded.error""",
                (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
     conn.close()
-    with ThreadPoolExecutor(max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
         futures = {pool.submit(discover_store, store): store for store in STORES}
         for future in as_completed(futures):
             store = futures[future]
