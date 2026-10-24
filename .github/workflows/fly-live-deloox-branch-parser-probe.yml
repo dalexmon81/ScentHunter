@@ -21,7 +21,7 @@ permissions:
 jobs:
   parser-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
@@ -66,8 +66,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Keep the remote interpreter alive only for this bounded command.
-          timeout 100s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))' ${GITHUB_SHA}"
+          # The read-only probe uses four bounded requests (3s connect, 7s read each).
+          # Allow enough time for Fly SSH startup while keeping an outer hard timeout.
+          timeout 210s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))' ${GITHUB_SHA}"
 
       - name: Run production SQLite audit (read-only)
         env:
@@ -75,4 +76,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout 60s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
+          timeout 90s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
