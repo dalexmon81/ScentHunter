@@ -40,9 +40,9 @@ def is_deloox_product_url(url):
     if parsed.hostname.lower().rstrip(".") not in allowed_hosts:
         return False
     path = (parsed.path or "/").lower()
-    if re.search(r"/(?:product|produit|producto|prodotto)/\\d+(?:/|$)", path, re.I):
+    if re.search(r"/(?:product|produit|producto|prodotto)/\d+(?:/|$)", path, re.I):
         return True
-    route_path = re.sub(r"\\.(?:html?|php)$", "", path, flags=re.I)
+    route_path = re.sub(r"\.(?:html?|php)$", "", path, flags=re.I)
     if path.endswith(".html") and not re.search(
         r"/(?:category|categorie|categoria|catégorie|chercher|zoeken|buscar|"
         r"search|suche|suchen|sitemap|brand|marque|marca|login|account|"
