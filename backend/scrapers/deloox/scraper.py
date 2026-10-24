@@ -848,7 +848,7 @@ def _search_endpoints(query):
     return out
 
 
-def _discover_from_search(session, query):
+def _discover_from_search(session, query, deadline=None):
     """Primary Deloox discovery with deterministic bounded pagination.
 
     Deloox exposes several public search surfaces.  They are probed in
@@ -986,6 +986,8 @@ def _discover_from_search(session, query):
             ))
 
         for page_number in range(2, MAX_SEARCH_PAGES + 1):
+            if deadline is not None and time.time() >= float(deadline):
+                break
             endpoint = page_url(page_number)
             _endpoint, r = fetch(endpoint)
 
@@ -1264,7 +1266,7 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
 
     return urls
 
-def _discover(session, q):
+def _discover(session, q, deadline=None):
     """Generic deterministic discovery with search as the primary surface.
 
     Order is deliberate:
@@ -1292,7 +1294,7 @@ def _discover(session, q):
     candidates = []
     seen = set()
 
-    search_candidates = _discover_from_search(session, q)
+    search_candidates = _discover_from_search(session, q, deadline=deadline)
     for url in search_candidates:
         if url not in seen:
             seen.add(url)
@@ -1309,6 +1311,8 @@ def _discover(session, q):
     # surfaces. A successful search with no matches is still a verified search
     # result; fallback discovery may nevertheless recover products omitted by
     # the retailer search surface.
+    if deadline is not None and time.time() >= float(deadline):
+        return candidates[:MAX_CANDIDATES]
     category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
     if category_candidates:
         _LAST_DISCOVERY_STATE["category_verified"] = True
@@ -1319,7 +1323,7 @@ def _discover(session, q):
             if len(candidates) >= MAX_CANDIDATES:
                 break
 
-    if len(candidates) < MAX_CANDIDATES:
+    if len(candidates) < MAX_CANDIDATES and (deadline is None or time.time() < float(deadline)):
         sitemap_candidates = _sitemap_product_urls(
             session,
             q,
