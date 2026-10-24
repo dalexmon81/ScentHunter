@@ -4454,6 +4454,58 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
         pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
+def _recover_stale_discovery_states():
+    """Close persisted RUNNING states left behind by a killed/restarted process.
+
+    A discovery run is bounded by DISCOVERY_HARD_TIMEOUT. A RUNNING row older
+    than that budget plus a small grace period cannot represent a live run in
+    this process and otherwise remains misleading until that retailer's next
+    round-robin turn. This only updates sync_state metadata; catalog URLs and
+    product offers are never touched.
+    """
+    now = time.time()
+    stale_before = now - max(60.0, float(DISCOVERY_HARD_TIMEOUT) + 60.0)
+    conn = db()
+    recovered = []
+    try:
+        rows = conn.execute(
+            "SELECT store, started_at, error FROM sync_state WHERE status='DISCOVERY_RUNNING'"
+        ).fetchall()
+        with conn:
+            for row in rows:
+                store = str(row['store'] or '')
+                started_at = row['started_at']
+                try:
+                    is_stale = started_at is None or float(started_at) < stale_before
+                except (TypeError, ValueError):
+                    is_stale = True
+                if not store or not is_stale:
+                    continue
+                age = round(now - float(started_at), 1) if started_at is not None else None
+                detail = (
+                    'discovery_interrupted_by_process_restart;'
+                    f'stale_age_sec={age if age is not None else "unknown"}'
+                )
+                updated = conn.execute(
+                    """UPDATE sync_state
+                       SET status='DISCOVERY_ERROR', finished_at=?, error=?
+                       WHERE store=? AND status='DISCOVERY_RUNNING'
+                         AND (started_at IS NULL OR started_at < ?)""",
+                    (now, detail, store, stale_before),
+                ).rowcount
+                if updated:
+                    recovered.append(store)
+    finally:
+        conn.close()
+    if recovered:
+        print(
+            'CATALOG DISCOVERY STALE STATES RECOVERED '
+            f'stores={",".join(sorted(recovered))}',
+            flush=True,
+        )
+    return recovered
+
+
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     """Incrementally advance discovery for every retailer in the background.
 
@@ -4471,6 +4523,14 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     non_deloox_stores = tuple(store for store in stores if store != 'deloox')
     next_non_deloox_index = 0
     non_deloox_since_deloox = 0
+    try:
+        _recover_stale_discovery_states()
+    except Exception as exc:
+        print(
+            'CATALOG DISCOVERY STALE STATE RECOVERY ERROR '
+            f'{type(exc).__name__}: {exc}',
+            flush=True,
+        )
     print(
         f'CATALOG DISCOVERY START stores={len(stores)} interval={pause:g}s',
         flush=True,
