@@ -1639,16 +1639,18 @@ def _deloox_queue_seed():
 
 
 def _deloox_queue_enqueue(items):
-    """Durably enqueue catalog/navigation URLs.
+    """Durably enqueue catalog/navigation URLs with minimal SQLite work.
 
-    Existing DONE rows are not reset by rediscovery. This is what makes the
-    frontier cumulative instead of repeatedly starting from the same branch.
+    Existing DONE rows are not reset by ordinary rediscovery. Avoid a
+    per-URL SELECT before the UPSERT: that doubles queue statements and keeps
+    a read transaction open while competing catalog workers need the write
+    lock. The UPSERT itself only updates rows whose durable metadata changes.
     """
     if not items:
         return 0
     now = time.time()
     conn = db()
-    inserted = 0
+    affected = 0
     try:
         with conn:
             for raw_url, depth, source in items:
@@ -1663,11 +1665,7 @@ def _deloox_queue_enqueue(items):
                 if not listing:
                     continue
                 url = listing
-                before = conn.execute(
-                    'SELECT 1 FROM catalog_discovery_queue WHERE store=? AND url=?',
-                    ('deloox', url),
-                ).fetchone()
-                conn.execute(
+                cursor = conn.execute(
                     """INSERT INTO catalog_discovery_queue(
                            store,url,depth,priority,source,state,attempts,available_at,
                            first_seen_at)
@@ -1708,7 +1706,12 @@ def _deloox_queue_enqueue(items):
                                     AND catalog_discovery_queue.state IN ('DONE','DEAD')
                                THEN NULL
                                ELSE catalog_discovery_queue.last_error
-                           END""",
+                           END
+                       WHERE catalog_discovery_queue.depth > excluded.depth
+                          OR catalog_discovery_queue.priority > excluded.priority
+                          OR catalog_discovery_queue.source = ''
+                          OR (excluded.source='configured_seed'
+                              AND catalog_discovery_queue.state IN ('DONE','DEAD'))""",
                     (
                         'deloox',
                         url,
@@ -1723,30 +1726,10 @@ def _deloox_queue_enqueue(items):
                         now,
                     ),
                 )
-                if before is None:
-                    inserted += 1
-                elif str(source or '') == 'configured_seed' and str(url).startswith((
-                    'https://www.deloox.be/chercher.html',
-                    'https://www.deloox.com/chercher.html',
-                )):
-                    # Deloox search surfaces are durable entry points. Re-open
-                    # only these configured search seeds so the paginated search
-                    # branch can advance during a catalog discovery run.
-                    conn.execute(
-                        """UPDATE catalog_discovery_queue
-                              SET state='PENDING',
-                                  available_at=?,
-                                  leased_until=NULL,
-                                  lease_token=NULL,
-                                  last_error=NULL
-                            WHERE store='deloox' AND url=? AND state IN ('DONE','DEAD')""",
-                        (now, url),
-                    )
+                affected += max(0, int(cursor.rowcount or 0))
     finally:
         conn.close()
-    return inserted
-
-
+    return affected
 def _deloox_queue_recover_stale():
     """Return expired discovery leases to PENDING."""
     now = time.time()
