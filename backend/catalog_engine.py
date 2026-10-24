@@ -4524,6 +4524,10 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     non_deloox_stores = tuple(store for store in stores if store != 'deloox')
     next_non_deloox_index = 0
     non_deloox_since_deloox = 0
+    # After a process restart, repair Deloox's persisted discovery state on the
+    # first eligible background turn instead of making it wait behind two
+    # unrelated retailers. Foreground searches still take precedence.
+    prioritize_deloox_on_start = 'deloox' in stores
     try:
         _recover_stale_discovery_states()
     except Exception as exc:
@@ -4550,7 +4554,11 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         # other retailers instead of once per full seven-store round-robin.
         # Other retailers retain their own round-robin progress, and foreground
         # searches still take precedence over every background crawl.
-        if non_deloox_stores and 'deloox' in stores and non_deloox_since_deloox >= 2:
+        if prioritize_deloox_on_start:
+            store = 'deloox'
+            prioritize_deloox_on_start = False
+            non_deloox_since_deloox = 0
+        elif non_deloox_stores and 'deloox' in stores and non_deloox_since_deloox >= 2:
             store = 'deloox'
             non_deloox_since_deloox = 0
         elif non_deloox_stores:
