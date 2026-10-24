@@ -2186,7 +2186,10 @@ class ProductMatcher:
                         if url_concentration == product_concentration:
                             score += 0.03
                         else:
-                            score *= 0.65
+                            # A retailer URL explicitly identifying a different
+                            # concentration is strong evidence of a different SKU,
+                            # not a small ranking preference.
+                            score *= 0.35
 
                     specificity = len(identity_c_tokens_work)
                     if (
