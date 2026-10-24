@@ -9,6 +9,7 @@ rows, active leases, and last-known offer rows are never modified.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sqlite3
@@ -23,6 +24,30 @@ ALLOWED_HOSTS = {
     "deloox.es", "www.deloox.es",
 }
 PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
+
+EXPECTED_PARSER_GIT_BLOB_SHA = "8ae5719a56aca0046e8c5ac144b594ce987bcca9"
+
+
+def parser_runtime_status() -> dict:
+    root = Path(__file__).resolve().parents[2]
+    candidates = (
+        Path("/app/backend/scrapers/deloox/scraper.py"),
+        root / "backend" / "scrapers" / "deloox" / "scraper.py",
+    )
+    parser_path = next((path for path in candidates if path.is_file()), None)
+    if parser_path is None:
+        return {"available": False, "matches_validated_revision": False,
+                "reason": "Deloox parser file not found"}
+    data = parser_path.read_bytes()
+    blob = hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
+    return {
+        "available": True,
+        "path": str(parser_path),
+        "git_blob_sha": blob,
+        "expected_git_blob_sha": EXPECTED_PARSER_GIT_BLOB_SHA,
+        "matches_validated_revision": blob == EXPECTED_PARSER_GIT_BLOB_SHA,
+    }
+
 
 
 def is_product_url(url: str) -> bool:
