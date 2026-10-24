@@ -214,7 +214,7 @@ def main():
             eligible, excluded = [], []
             product_route = re.compile(
                 r"^https?://(?:www\.)?deloox\.(?:be|com|nl|lu|es)/"
-                r"(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
+                r"(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
             for row in recovery_rows:
                 item = {"url": row["url"], "queue_state": row["queue_state"]}
                 (eligible if product_route.search(str(row["url"] or "")) else excluded).append(item)
