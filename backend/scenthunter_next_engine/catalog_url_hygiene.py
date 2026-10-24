@@ -43,6 +43,13 @@ def audit() -> dict:
         ]
         invalid = classify_invalid_urls(rows)
         return {
+            "status": "EMPTY_LOCAL_CATALOG" if not rows else "AUDIT_COMPLETE",
+            "scope": "local_database_only",
+            "note": (
+                "No active Deloox rows exist in this environment; this is not a production inventory."
+                if not rows else
+                "This report covers only the database opened by this process."
+            ),
             "read_only": True,
             "database_mutated": False,
             "active_deloox_urls_examined": len(rows),
