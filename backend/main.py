@@ -3443,6 +3443,44 @@ def catalog_hydration_processing_endpoint():
             conn.close()
 
 
+@app.get('/catalog/family-coverage-status')
+def catalog_family_coverage_status_endpoint():
+    """Read-only progress snapshot from the isolated family-coverage process."""
+    status_path = Path(__file__).resolve().parent / 'family_coverage_status.json'
+    now = time.time()
+    try:
+        with status_path.open('r', encoding='utf-8') as handle:
+            status = json.load(handle)
+        updated = status.get('last_update')
+        try:
+            age_sec = round(max(0.0, now - float(updated)), 1) if updated is not None else None
+        except (TypeError, ValueError):
+            age_sec = None
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'age_sec': age_sec,
+            'stale': age_sec is None or age_sec > max(900.0, 2.0 * float(status.get('interval_seconds') or 21600.0)),
+            'status': status,
+        }
+    except FileNotFoundError:
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'status': None,
+            'state': 'status_file_not_created_yet',
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+
 @app.get('/catalog/hydration-status')
 def catalog_hydration_status_endpoint():
     """Detailed persistent hydration queue status, read-only."""
