@@ -852,6 +852,10 @@ class ProductMatcher:
         "deo", "deostick", "deo stick", "deodorant stick", "dst", "sg",
         # Generic multilingual after-shave / shaving / cosmetic markers.
         "apres rasage", "apres-rasage", "after shave", "aftershave",
+        "shave gel", "shaving gel", "shaving foam", "shaving cream",
+        "gel de afeitado", "espuma de afeitar", "crema de afeitar",
+        "rasiergel", "rasier-schaum", "rasiercreme", "gel de rasage",
+        "mousse a raser", "creme a raser",
         "rasage", "shaving", "barber", "balsam rasage",
         "duschgel", "dusch gel", "dusche", "body gel",
         "body wash", "body cleanser", "hand wash",
