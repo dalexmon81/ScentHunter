@@ -328,7 +328,7 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertEqual(result.status, MatchStatus.AMBIGUOUS)
         self.assertEqual(
             set(result.candidate_product_ids),
-            {"P-HABIT-EDP", "P-HABIT-EDT"},
+            {"P-HABIT-EDP", "P-HABIT-EDT", "P-HABIT-EDP-DUP"},
         )
 
     def test_duplicate_products_with_same_concentration_remain_ambiguous(self):
