@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   recover:
@@ -15,6 +16,31 @@ jobs:
     steps:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Cancel stale recovery runs and wait for this revision's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUNS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100")"
+          while IFS= read -r stale_id; do
+            [ -n "$stale_id" ] || continue
+            echo "Cancelling stale recovery run $stale_id"
+            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$stale_id/cancel" || true
+          done < <(printf '%s' "$RUNS" | jq -r --arg current "$GITHUB_RUN_ID" '.workflow_runs[] | select(.name == "Controlled Deloox queue recovery" and .status == "in_progress" and (.id|tostring) != $current) | .id')
+
+          READY=0
+          for attempt in $(seq 1 90); do
+            DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            echo "Waiting for Fly Deploy for $GITHUB_SHA: $STATUS / $CONCLUSION (attempt $attempt/90)"
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then echo 'Deploy failed; recovery blocked.' >&2; exit 1; fi
+            sleep 10
+          done
+          if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time; recovery blocked.' >&2; exit 1; fi
 
       - name: Wait for validated parser, apply guarded recovery, and verify
         env:
