@@ -4469,19 +4469,20 @@ def _recover_stale_discovery_states():
     recovered = []
     try:
         rows = conn.execute(
-            "SELECT store, started_at, error FROM sync_state WHERE status='DISCOVERY_RUNNING'"
+            "SELECT store, started_at FROM sync_state WHERE status='DISCOVERY_RUNNING'"
         ).fetchall()
         with conn:
             for row in rows:
                 store = str(row['store'] or '')
                 started_at = row['started_at']
                 try:
-                    is_stale = started_at is None or float(started_at) < stale_before
+                    started_epoch = float(started_at) if started_at is not None else None
                 except (TypeError, ValueError):
-                    is_stale = True
+                    started_epoch = None
+                is_stale = started_epoch is None or started_epoch < stale_before
                 if not store or not is_stale:
                     continue
-                age = round(now - float(started_at), 1) if started_at is not None else None
+                age = round(now - started_epoch, 1) if started_epoch is not None else None
                 detail = (
                     'discovery_interrupted_by_process_restart;'
                     f'stale_age_sec={age if age is not None else "unknown"}'
