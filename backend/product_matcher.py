@@ -841,7 +841,8 @@ class ProductMatcher:
         "deodorant", "antiperspirant", "after shave", "aftershave",
         "hand cream", "hand lotion", "face cream", "face lotion",
         "face mist", "soap", "cleanser", "cleansing", "face wash",
-        "facial wash", "shower", "bath gel", "bath oil",
+        "facial wash", "toner", "tonique", "tonico", "tónico",
+        "gesichtswasser", "shower", "bath gel", "bath oil",
         "bagnoschiuma", "gel doccia", "gel douche", "duschgel",
         # Generic non-fragrance packaging/product markers.
         "coffret", "coffrets", "gift set", "giftset", "set regalo",
