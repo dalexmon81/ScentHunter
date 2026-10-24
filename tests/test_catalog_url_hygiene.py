@@ -48,7 +48,7 @@ def test_audit_is_read_only(monkeypatch, tmp_path):
     assert report["invalid_urls"][0]["url"] == "https://www.deloox.com/search.html"
     assert db_path.read_bytes() == before
 
-    # Verify the audit's DB URI really prohibits writes.
+    # mode=ro must prevent writes, even if a caller accidentally attempts one.
     ro = sqlite3.connect(db_path.resolve().as_uri() + "?mode=ro", uri=True)
     ro.execute("PRAGMA query_only=ON")
     try:
