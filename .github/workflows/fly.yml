@@ -233,6 +233,42 @@ jobs:
                       ]
                       if bad_offers:
                           raise RuntimeError("Non-fragrance Dior Sauvage offers detected: " + json.dumps(bad_offers[:5], ensure_ascii=False))
+                      def concentration(value):
+                          value = str(value or "").lower().replace("-", " ").replace("_", " ")
+                          if any(token in value for token in ("eau de parfum intense", "edp intense", "intense edp")):
+                              return "edp_intense"
+                          if any(token in value for token in ("eau de toilette intense", "edt intense", "intense edt")):
+                              return "edt_intense"
+                          if "extrait de parfum" in value or "extrait" in value:
+                              return "extrait"
+                          if "eau de parfum" in value or " edp" in (" " + value):
+                              return "edp"
+                          if "eau de toilette" in value or " edt" in (" " + value):
+                              return "edt"
+                          if "eau de cologne" in value or " edc" in (" " + value):
+                              return "edc"
+                          if "parfum" in value:
+                              return "parfum"
+                          if "elixir" in value:
+                              return "elixir"
+                          return ""
+                      concentration_mismatches = []
+                      for group in (result.get("results") or []):
+                          if not isinstance(group, dict):
+                              continue
+                          for offer in (group.get("offers") or []):
+                              if not isinstance(offer, dict):
+                                  continue
+                              title_token = concentration(offer.get("name") or offer.get("title"))
+                              url_token = concentration(offer.get("url") or offer.get("product_url"))
+                              if title_token and url_token and title_token != url_token:
+                                  concentration_mismatches.append({
+                                      "store": offer.get("store"), "name": offer.get("name"),
+                                      "url": offer.get("url"), "title_concentration": title_token,
+                                      "url_concentration": url_token,
+                                  })
+                      if concentration_mismatches:
+                          raise RuntimeError("Dior Sauvage title/URL concentration mismatch: " + json.dumps(concentration_mismatches[:5], ensure_ascii=False))
               except Exception as exc:
                   failures.append(f"{query}: {type(exc).__name__}: {exc}")
                   print("SMOKE TEST FAILURE: " + failures[-1], flush=True)
