@@ -1471,7 +1471,7 @@ def _aggregate_identity_results(offers):
             # (samples, testers, gift sets, bundles, cosmetics, etc.) must
             # never enter public offer groups even if an upstream path marked
             # them as matched.
-            if _is_non_fragrance_offer(offer):
+            if _is_non_fragrance_offer(offer) or _is_concentration_mismatch_offer(offer):
                 continue
 
             catalog_id = str(
@@ -3769,7 +3769,7 @@ def search_perfume(q: str):
         ):
             if not isinstance(item, dict):
                 continue
-            if _is_non_fragrance_offer(item):
+            if _is_non_fragrance_offer(item) or _is_concentration_mismatch_offer(item):
                 continue
             all_offers.append(item)
 
