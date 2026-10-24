@@ -111,3 +111,17 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
         assert parsed["source"]["source_brand"] == brand
         assert parsed["price"] == f"{price.replace('.', ',')} €"
 
+        # Exercise the exact catalog-refresh adapter with already-fetched bytes.
+        # It must decode the response and preserve accent-insensitive matching
+        # without performing a second HTTP request.
+        parsed_refresh = deloox_scraper.extract_product_page(
+            session=None,
+            url=url,
+            query="ignored-by-exact-url-refresh",
+            html=html.encode("utf-8"),
+        )
+        assert parsed_refresh is not None, url
+        assert parsed_refresh["name"] == name
+        assert parsed_refresh["source"]["source_brand"] == brand
+        assert parsed_refresh["offer"]["price"] == float(price)
+
