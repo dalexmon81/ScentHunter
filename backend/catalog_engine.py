@@ -160,6 +160,15 @@ MAX_TOTAL_DISCOVERED_URLS = 250000
 # Store-wide HTML discovery entry points supplement incomplete sitemaps.
 # These are generic retailer navigation surfaces, not product-specific URLs.
 HTML_DISCOVERY_SEEDS = {
+    'easycosmetic': (
+        # Official German fragrance catalog surfaces. These let the generic
+        # HTML crawler recover product URLs when the retailer sitemap is
+        # unavailable or does not expose product pages.
+        'https://www.easycosmetic.de/',
+        'https://www.easycosmetic.de/parfum',
+        'https://www.easycosmetic.de/damenparfum',
+        'https://www.easycosmetic.de/herrenparfum',
+    ),
     'parfumzentrum': (
         'https://www.parfum-zentrum.de/',
         'https://www.parfum-zentrum.de/parfum_k319/',
