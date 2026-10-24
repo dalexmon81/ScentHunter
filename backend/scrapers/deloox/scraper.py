@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from urllib.parse import parse_qsl, quote_plus, urljoin, urlparse, urlencode, urlunparse
 
 import requests
@@ -27,6 +28,7 @@ DELOOX_BASE_URLS = (
     "https://www.deloox.be",
     "https://www.deloox.nl",
     "https://www.deloox.com",
+    "https://www.deloox.lu",
 )
 TIMEOUT = (3.5, 8.0)
 MAX_CANDIDATES = 80
@@ -49,6 +51,8 @@ DELOOX_HOSTS = {
     "www.deloox.nl",
     "deloox.com",
     "www.deloox.com",
+    "deloox.lu",
+    "www.deloox.lu",
 }
 
 # Discovery state is diagnostic/contract state only. It never decides identity.
@@ -68,7 +72,10 @@ def clean(v):
 
 
 def norm(v):
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
+    # Normalize accented product names (e.g. Giò -> Gio) before token matching.
+    text = unicodedata.normalize("NFKD", clean(v).lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", text)).strip()
 
 
 def tokens(v):
@@ -101,7 +108,7 @@ def matches(text, q):
 
 def size_ml(*values):
     m = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)[\s_-]*(ml|cl)\b",
         " ".join(clean(x) for x in values),
         re.I,
     )
@@ -114,12 +121,17 @@ def size_ml(*values):
 
 def concentration(*values):
     t = norm(" ".join(clean(x) for x in values))
+    # Prefer specific concentration labels before the generic word "parfum".
     if re.search(r"\beau de toilette\b|\bedt\b", t):
         return "Eau de Toilette"
     if re.search(r"\beau de parfum\b|\bedp\b", t):
         return "Eau de Parfum"
+    if re.search(r"\beau de cologne\b|\bedc\b", t):
+        return "Eau de Cologne"
     if re.search(r"\bextrait(?: de parfum)?\b", t):
         return "Extrait de Parfum"
+    if re.search(r"\bparfum\b", t):
+        return "Parfum"
     return None
 
 
@@ -245,7 +257,7 @@ def _product_url_tokens(url):
     raw = re.sub(r"\.(?:html?|php)$", "", m.group(1), flags=re.I)
     raw = re.sub(r"[-_]+", " ", raw)
     ignored = {
-        "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
+        "eau", "de", "di", "parfum", "perfume", "edp", "edt", "extrait",
         "100", "75", "50", "30", "ml", "cl", "spray", "for", "him",
         "her", "homme", "femme", "men", "women", "unisex",
     }
@@ -307,7 +319,15 @@ def _product(url, html, query):
 
     price = parse_price(offer.get("price"))
     if price is None:
-        price = parse_price(text)
+        # Only consider visible text outside the product title when falling
+        # back to page-price extraction. Otherwise a title such as "125 ml"
+        # can be misread as a 125.00 price when JSON-LD omits its offer.
+        price_text = text
+        if h1 is not None:
+            title_text = clean(h1.get_text(" ", strip=True))
+            if title_text:
+                price_text = price_text.replace(title_text, " ", 1)
+        price = parse_price(price_text)
     if price is None:
         return None
 
@@ -340,9 +360,9 @@ def _product(url, html, query):
         },
         "attributes": {
             "size_ml": {
-                "value": size_ml(name),
-                "source": "product_name",
-            } if size_ml(name) is not None else None,
+                "value": size_ml(name, url),
+                "source": "product_name_or_url",
+            } if size_ml(name, url) is not None else None,
             "concentration": {
                 "value": concentration(name),
                 "source": "product_name",
@@ -802,6 +822,10 @@ def _discover_from_search(session, query):
     candidates = {}
     successful_pages = 0
     failed_pages = 0
+    failure_reasons = {}
+
+    def note_failure(reason):
+        failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
 
     def fetch(endpoint):
         try:
@@ -826,8 +850,17 @@ def _discover_from_search(session, query):
         futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
         for future in as_completed(futures):
             endpoint, r = future.result()
-            if r is None or r.status_code >= 400 or not r.text:
+            if r is None:
                 failed_pages += 1
+                note_failure("request_error")
+                continue
+            if r.status_code >= 400:
+                failed_pages += 1
+                note_failure(f"http_{r.status_code}")
+                continue
+            if not r.text:
+                failed_pages += 1
+                note_failure("empty_body")
                 continue
 
             successful_pages += 1
@@ -904,8 +937,17 @@ def _discover_from_search(session, query):
             endpoint = page_url(page_number)
             _endpoint, r = fetch(endpoint)
 
-            if r is None or r.status_code >= 400 or not r.text:
+            if r is None:
                 failed_pages += 1
+                note_failure("request_error")
+                break
+            if r.status_code >= 400:
+                failed_pages += 1
+                note_failure(f"http_{r.status_code}")
+                break
+            if not r.text:
+                failed_pages += 1
+                note_failure("empty_body")
                 break
 
             successful_pages += 1
@@ -928,6 +970,7 @@ def _discover_from_search(session, query):
     global _LAST_DISCOVERY_STATE
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
+    _LAST_DISCOVERY_STATE["search_failure_reasons"] = dict(sorted(failure_reasons.items()))
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
@@ -1183,6 +1226,7 @@ def _discover(session, q):
     _LAST_DISCOVERY_STATE = {
         "search_pages_ok": 0,
         "search_pages_failed": 0,
+        "search_failure_reasons": {},
         "search_verified": False,
         "category_verified": False,
         "sitemap_verified": False,
@@ -1408,6 +1452,10 @@ def extract_product_html(url, html, query=None):
         return None
     if not html:
         return None
+    if isinstance(html, bytes):
+        html = html.decode("utf-8", errors="replace")
+    elif not isinstance(html, str):
+        html = str(html)
 
     soup = BeautifulSoup(html, "html.parser")
     data = _jsonld(soup)
@@ -1421,34 +1469,44 @@ def extract_product_html(url, html, query=None):
     return _product(target, html, page_name)
 
 
-def extract_product_page(session, url, query=None):
-    """Parse one known Deloox product URL for the catalog refresh pipeline.
+def extract_product_page(session, url, query=None, html=None):
+    """Parse one known Deloox product URL, reusing HTML when already fetched.
 
-    This public adapter intentionally reuses the same retailer-specific parser
-    as discovery, so catalog hydration does not fall back to a generic JSON-LD
-    parser that may choose a non-authoritative offer. The URL is fetched with
-    Deloox's normal headers because the generic catalog fetcher may use a
-    different request profile.
+    Catalog hydration supplies the fetched page body to avoid a second request
+    that can receive different markup or fail independently. Direct callers
+    retain the legacy fetch behavior. Retailer-specific parsing remains
+    authoritative; generic JSON-LD fallback is not used here.
     """
     target = clean(url)
     if not target or not _is_deloox_url(target):
         return None
 
-    try:
-        response = session.get(
-            target,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        raise
+    if html is None:
+        try:
+            response = session.get(
+                target,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            raise
 
-    if response.status_code >= 400:
-        response.raise_for_status()
+        if response.status_code >= 400:
+            response.raise_for_status()
 
-    final_url = clean(getattr(response, "url", "") or target)
-    html = getattr(response, "text", "") or ""
+        final_url = clean(getattr(response, "url", "") or target)
+        html = getattr(response, "text", "") or ""
+    else:
+        final_url = target
+        # Catalog hydration passes the raw response body as bytes. Converting
+        # bytes with str() produces a Python representation (b'...') rather
+        # than HTML, so decode the body before parsing it.
+        if isinstance(html, bytes):
+            html = html.decode("utf-8", errors="replace")
+        elif not isinstance(html, str):
+            html = str(html)
+
     if not html:
         return None
 
