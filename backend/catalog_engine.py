@@ -1968,7 +1968,7 @@ def _discover_deloox_search_catalog(deadline=None):
             if deadline is not None and time.time() >= float(deadline):
                 break
             try:
-                urls = discover(session, query) or []
+                urls = discover(session, query, deadline=search_deadline) or []
                 added = 0
                 for raw in urls:
                     if not raw:
