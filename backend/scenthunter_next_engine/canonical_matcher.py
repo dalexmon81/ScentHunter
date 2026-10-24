@@ -99,6 +99,44 @@ def normalize_brand_text(value: str | None) -> str:
     return _BRAND_ALIASES.get(normalized, normalized)
 
 
+_CONCENTRATION_ALIASES = {
+    "eau de parfum": "eau de parfum",
+    "edp": "eau de parfum",
+    "eau de toilette": "eau de toilette",
+    "edt": "eau de toilette",
+    "eau de cologne": "eau de cologne",
+    "edc": "eau de cologne",
+    "extrait de parfum": "extrait de parfum",
+    "parfum": "parfum",
+    "perfume": "parfum",
+}
+
+
+def _explicit_concentration(value: str | None) -> str | None:
+    """Extract only explicit, unambiguous concentration tokens from an offer title."""
+    normalized = normalize_identity_text(value)
+    if not normalized:
+        return None
+    for phrase in (
+        "extrait de parfum",
+        "eau de parfum",
+        "eau de toilette",
+        "eau de cologne",
+    ):
+        if phrase in normalized:
+            return _CONCENTRATION_ALIASES[phrase]
+    tokens = set(normalized.split())
+    if "edp" in tokens:
+        return _CONCENTRATION_ALIASES["edp"]
+    if "edt" in tokens:
+        return _CONCENTRATION_ALIASES["edt"]
+    if "edc" in tokens:
+        return _CONCENTRATION_ALIASES["edc"]
+    if "parfum" in tokens:
+        return _CONCENTRATION_ALIASES["parfum"]
+    return None
+
+
 def _strict_name_forms(value: str, brand: str | None) -> set[str]:
     """Return exact normalized forms, including a possible brand prefix."""
     normalized = normalize_identity_text(value)
@@ -476,6 +514,25 @@ class CanonicalMatcher:
                 status=MatchStatus.UNRESOLVED,
                 reason="no_exact_canonical_name_and_brand_match",
             )
+
+        # Concentration is part of fragrance identity. When the offer names
+        # it explicitly and every candidate has catalogued concentration data,
+        # use that evidence to distinguish EDT/EDP/etc. Never infer a missing
+        # concentration or choose between duplicates sharing the same one.
+        offer_concentration = _explicit_concentration(offer.raw_name)
+        if (
+            len(candidates) > 1
+            and offer_concentration
+            and all(product.concentration for product, _ in candidates)
+        ):
+            concentration_candidates = [
+                (product, variants)
+                for product, variants in candidates
+                if _explicit_concentration(product.concentration)
+                == offer_concentration
+            ]
+            if concentration_candidates and len(concentration_candidates) < len(candidates):
+                candidates = concentration_candidates
 
         if len(candidates) > 1 and offer.size_ml is not None:
             # A duplicate canonical title is a genuine catalog collision:
