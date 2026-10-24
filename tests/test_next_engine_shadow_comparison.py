@@ -145,13 +145,10 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
             "This is not evidence of parity on live retailer payloads or production traffic."
         ),
     }
-    assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
-
     assert report["sample_count"] > 0
 
-    # The synthetic shadow records contain no GTIN and intentionally exercise
-    # name/brand/size evidence only. Known canonical collisions must therefore
-    # stay ambiguous rather than being "fixed" by choosing one product ID.
+    # Synthetic offers contain no GTIN and intentionally exercise name/brand/size
+    # evidence only. Known canonical collisions must stay ambiguous, not be guessed.
     ambiguous_comparisons = [
         item for item in comparisons
         if item["next"].get("status") == "ambiguous"
@@ -178,7 +175,10 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
                 "expected_variant_id": item["expected_variant_id"],
                 "expected_size_ml": item["expected_size_ml"],
                 "candidate_product_ids": item["next"]["candidate_product_ids"],
-                "reason": "exact name/brand/size evidence cannot disambiguate duplicate canonical identities without reviewed variant evidence",
+                "reason": (
+                    "exact name/brand/size evidence cannot disambiguate duplicate "
+                    "canonical identities without reviewed variant evidence"
+                ),
             }
             for item in ambiguous_comparisons
         ],
@@ -186,6 +186,11 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         "database_accessed": False,
         "catalog_modified": False,
     }
+
+    REPORT_PATH.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
 
 
