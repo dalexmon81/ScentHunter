@@ -1975,7 +1975,12 @@ def _discover_deloox_search_catalog(deadline=None):
                     if not raw:
                         continue
                     url = str(raw).split('#', 1)[0]
-                    if not _deloox_queue_allowed(url):
+                    # The scraper discovery helper may encounter search
+                    # endpoints that redirect to the storefront homepage.
+                    # Validate every returned URL against the catalog's
+                    # generic product-URL contract before queuing hydration.
+                    url = _html_product_url('deloox', url, STORES['deloox'])
+                    if not url:
                         continue
                     if url not in product_urls:
                         product_urls[url] = ''
