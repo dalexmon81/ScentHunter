@@ -1,5 +1,8 @@
 """Regression tests for Deloox product URL admission."""
 
+from types import SimpleNamespace
+
+import backend.catalog_engine as catalog_engine
 from backend.catalog_engine import _html_product_url
 
 
@@ -34,3 +37,37 @@ def test_deloox_canonical_numeric_product_urls_remain_admitted():
 
     for url, expected in urls:
         assert _html_product_url("deloox", url, BASE) == expected
+
+
+
+def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeypatch):
+    product_url = (
+        "https://www.deloox.com/product/1380881/"
+        "chloe-le-parfum-parfum-150-ml.html"
+    )
+    fake_scraper = SimpleNamespace(
+        _discover=lambda session, query: [
+            "https://www.deloox.nl/zoeken.html",
+            "https://www.deloox.com/search.html",
+            product_url,
+        ]
+    )
+    persisted = []
+
+    monkeypatch.setattr(
+        catalog_engine.importlib,
+        "import_module",
+        lambda name: fake_scraper if name == "scrapers.deloox.scraper" else None,
+    )
+    monkeypatch.setattr(catalog_engine, "DELOOX_GENERIC_CATALOG_QUERIES", ("parfum",))
+    monkeypatch.setattr(
+        catalog_engine,
+        "_deloox_persist_products",
+        lambda urls: persisted.extend(urls) or len(urls),
+    )
+
+    result = catalog_engine._discover_deloox_search_catalog()
+
+    assert result["products"] == 1
+    assert result["product_urls"] == {product_url: ""}
+    assert persisted == [product_url]
