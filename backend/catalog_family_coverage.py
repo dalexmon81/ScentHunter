@@ -79,13 +79,13 @@ def _active_catalog_writer():
                     except (OSError, UnicodeError):
                         continue
                     # /proc truncates comm to 15 characters. The discovery
-                    # thread is named scenthunter-catalog-discovery and may
-                    # appear as scenthunter-ca.
+                    # thread uses a deliberately distinct prefix (sh-catalog-disc)
+                    # so it cannot be confused with the always-alive hydration
+                    # worker, whose legacy name also starts with scenthunter-ca.
                     if (
                         comm.startswith("scenthunter-search-")
                         or comm.startswith("scenthunter-sea")
-                        or comm.startswith("scenthunter-catalog-discovery")
-                        or comm.startswith("scenthunter-ca")
+                        or comm.startswith("sh-catalog-disc")
                     ):
                         return True
             except OSError:
