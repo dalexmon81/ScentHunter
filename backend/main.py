@@ -3122,6 +3122,7 @@ def _runtime_diag_stacks():
         if not (
             t.name.startswith("scenthunter-store-")
             or t.name.startswith("scenthunter-search-")
+            or t.name.startswith("scenthunter-catalog-")
             or t.name.startswith("AnyIO")
             or t.name.startswith("ThreadPoolExecutor")
         ):
