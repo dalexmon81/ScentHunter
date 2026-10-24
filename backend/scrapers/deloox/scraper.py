@@ -524,7 +524,11 @@ def _candidate_product_urls(
                 re.I,
             )
         )
-        if not product_path and not slug_product_path:
+        # Category/sitemap discovery must not infer product identity from a
+        # generic .html slug. Deloox product detail pages use a numeric ID path;
+        # accepting every other .html route pulls unrelated haircare/cosmetics
+        # into the fragrance hydration queue.
+        if not product_path:
             return
 
         score = relevance(url, context)
