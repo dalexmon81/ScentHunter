@@ -6,6 +6,8 @@ SELECT-only queries and must never enqueue, hydrate, update, or insert data.
 import json
 import sqlite3
 import time
+import re
+import urllib.request
 from pathlib import Path
 
 DB_PATH = Path("/data/store_catalog.sqlite3")
@@ -57,9 +59,9 @@ def main():
                     "bytes_sampled": len(body),
                     "sample_truncated": len(body) >= 300_000,
                     "has_product_jsonld": bool(
-                        re.search(r'"@type"\\s*:\\s*"(?:Product|ProductGroup)"', body.decode("utf-8", "replace"), re.I)
+                        re.search(r'"@type"\s*:\s*"(?:Product|ProductGroup)"', body.decode("utf-8", "replace"), re.I)
                     ),
-                    "has_h1": bool(re.search(r"<h1\\b", body.decode("utf-8", "replace"), re.I)),
+                    "has_h1": bool(re.search(r"<h1\b", body.decode("utf-8", "replace"), re.I)),
                 })
         except Exception as exc:
             item["http_error"] = type(exc).__name__ + ": " + str(exc)[:180]
