@@ -125,3 +125,27 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
         assert parsed_refresh["source"]["source_brand"] == brand
         assert parsed_refresh["offer"]["price"] == float(price)
 
+def test_deloox_url_admission_rejects_localized_home_redirect_targets():
+    # Search/category URLs can return HTTP 200 after redirecting to the
+    # localized homepage. URL admission must be based on path shape, not status.
+    urls = (
+        "https://www.deloox.nl/",
+        "https://www.deloox.lu/",
+        "https://www.deloox.es/",
+        "https://www.deloox.com/",
+        "https://www.deloox.be/",
+    )
+    for url in urls:
+        assert _html_product_url("deloox", url, BASE) is None, url
+
+
+def test_deloox_url_admission_keeps_numeric_product_routes_across_locales():
+    urls = (
+        "https://www.deloox.nl/product/12345/example-product-eau-de-parfum-50-ml.html",
+        "https://www.deloox.lu/produit/12345/example-product-eau-de-parfum-50-ml.html",
+        "https://www.deloox.es/producto/12345/example-product-eau-de-parfum-50-ml.html",
+        "https://www.deloox.it/prodotto/12345/example-product-eau-de-parfum-50-ml.html",
+        "https://www.deloox.com/product/12345/example-product-eau-de-parfum-50-ml.html",
+    )
+    for url in urls:
+        assert _html_product_url("deloox", url, BASE) == url, url
