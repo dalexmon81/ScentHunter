@@ -11,6 +11,8 @@ on:
       - "tests/test_deloox_url_admission.py"
       - "backend/catalog_engine.py"
       - ".github/workflows/fly-live-deloox-branch-parser-probe.yml"
+      - ".github/workflows/test-next-engine.yml"
+      - "tests/test_coverage_scraper_process.py"
   workflow_dispatch:
 
 permissions:
