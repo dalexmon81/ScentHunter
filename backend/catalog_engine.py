@@ -1931,7 +1931,7 @@ def _deloox_persist_products(product_urls):
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO NOTHING""",
-                    ('deloox', url, 'PENDING', 0, now, now, now),
+                    ('deloox', url, 'PENDING', 0, now, now),
                 )
                 count += 1
     finally:
