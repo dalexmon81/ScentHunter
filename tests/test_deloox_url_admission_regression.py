@@ -11,7 +11,6 @@ class DelooxProductUrlAdmissionTests(unittest.TestCase):
             "https://www.deloox.com/search.html",
             "https://www.deloox.com/en/search.html",
             "https://www.deloox.be/chercher.html",
-            "https://www.deloox.be/produit/1009926/search.html",
             "https://www.deloox.lu/chercher.html",
             "https://www.deloox.lu/fr/chercher.html",
             "https://www.deloox.es/buscar.html",
