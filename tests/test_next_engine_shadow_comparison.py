@@ -145,7 +145,6 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
             "This is not evidence of parity on live retailer payloads or production traffic."
         ),
     }
-    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
 
     assert report["sample_count"] > 0
@@ -187,7 +186,6 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
         "database_accessed": False,
         "catalog_modified": False,
     }
-    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
 
 
