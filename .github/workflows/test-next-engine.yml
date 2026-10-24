@@ -43,6 +43,7 @@ jobs:
           tests/test_catalog_sqlite_contention.py
           tests/test_deloox_url_admission.py
           tests/test_catalog_url_hygiene.py
+          tests/test_production_cleanup_proposal.py
           tests/test_coverage_scraper_process.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
@@ -82,6 +83,9 @@ jobs:
           --plan catalog-migration-plan.json
           --output migration-report-audit.json
 
+      - name: Build production cleanup proposal (review-only; no production access)
+        run: python -m backend.scenthunter_next_engine.production_cleanup_proposal
+
       - name: Upload read-only catalog reports
         uses: actions/upload-artifact@v4
         with:
@@ -92,6 +96,7 @@ jobs:
             migration-report-audit.json
             catalog-identity-audit.json
             catalog-url-hygiene.json
+            production-cleanup-proposal.json
           if-no-files-found: error
           retention-days: 7
 
