@@ -7,6 +7,7 @@ on:
     paths:
       - "backend/scrapers/deloox/scraper.py"
       - "tests/fly_live_deloox_branch_probe.py"
+      - "tests/fly_readonly_runtime_deloox_audit.py"
       - ".github/workflows/fly-live-deloox-branch-parser-probe.yml"
   workflow_dispatch:
 
@@ -16,15 +17,22 @@ permissions:
 jobs:
   parser-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
       - name: Set up flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Run bounded branch parser probe against live pages (read-only)
+      - name: Run bounded branch parser probe against live product pages (read-only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           set -euo pipefail
           timeout 220s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))' ${GITHUB_SHA}"
+
+      - name: Run live URL admission audit in production network (SQLite read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          timeout 90s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
