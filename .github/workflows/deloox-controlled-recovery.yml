@@ -99,8 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Read-only queue and parser audit
         shell: bash
         run: |
