@@ -17,7 +17,7 @@ from backend import catalog_engine
 def classify_invalid_urls(rows: Iterable[dict]) -> list[dict]:
     """Return active Deloox URL rows rejected by the current admission contract."""
     invalid = []
-    base_url = catalog_engine.STORES["deloox"]
+    base_url = catalog_engine.STORES["deloox"][0]
     for row in rows:
         if not row.get("active"):
             continue
