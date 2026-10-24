@@ -235,7 +235,8 @@ def _jsonld(soup):
             continue
 
         # A LIFO stack avoids O(n) front-removals for large @graph payloads.
-        stack = data if isinstance(data, list) else [data]
+        # LIFO traversal should preserve the original left-to-right JSON-LD order.
+        stack = list(reversed(data)) if isinstance(data, list) else [data]
         while stack:
             x = stack.pop()
             if isinstance(x, list):
