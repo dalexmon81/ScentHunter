@@ -55,3 +55,19 @@ jobs:
           printf '%s\n' "$POSTCHECK"
           printf '%s\n' "$POSTCHECK" | grep -Eq '"recovery_apply_allowed": true'
           printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
+
+  audit_state:
+    if: ${{ contains(github.event.head_commit.message, 'diagnose Deloox recovery state') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Read-only queue and parser audit
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT='/app/.venv/bin/python /app/backend/scenthunter_next_engine/deloox_recovery.py'
+          timeout 45s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT"
