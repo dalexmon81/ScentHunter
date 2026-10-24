@@ -166,6 +166,30 @@ def test_parfumzentrum_html_without_price_or_stock_is_not_claimed_as_offer():
     ) is None
 
 
+def test_deloox_extract_product_page_decodes_supplied_bytes_before_parsing(monkeypatch):
+    body = (
+        b"<html><body><h1>Acqua di Gio Profondo Eau de Parfum 30 ml</h1>"
+        b"</body></html>"
+    )
+    seen = {}
+
+    def fake_product(url, html, query):
+        seen.update(url=url, html=html, query=query)
+        return {"name": query}
+
+    monkeypatch.setattr(deloox, "_product", fake_product)
+    result = deloox.extract_product_page(
+        None,
+        "https://www.deloox.be/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html",
+        html=body,
+    )
+
+    assert result["name"] == "Acqua di Gio Profondo Eau de Parfum 30 ml"
+    assert isinstance(seen["html"], str)
+    assert "<h1>Acqua di Gio Profondo Eau de Parfum 30 ml</h1>" in seen["html"]
+    assert not seen["html"].startswith("b'")
+
+    
 def test_deloox_extract_product_page_reuses_real_supplied_fixture():
     html = """
     <html><head><script type="application/ld+json">
