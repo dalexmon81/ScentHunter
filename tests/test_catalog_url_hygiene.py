@@ -49,3 +49,18 @@ def test_audit_is_read_only(monkeypatch):
     assert report["invalid_urls"][0]["url"] == "https://www.deloox.com/search.html"
     assert conn.closed
     assert len(conn.queries) == 1
+
+
+def test_production_read_only_audit_url_classifier():
+    import runpy
+    from pathlib import Path
+
+    script = Path(__file__).with_name("fly_readonly_runtime_deloox_audit.py")
+    is_product = runpy.run_path(str(script))["is_deloox_product_url"]
+    assert is_product("https://www.deloox.com/product/1380881/chloe-le-parfum-150-ml.html")
+    assert is_product("https://www.deloox.be/produit/1009926/hermes-eau-de-cologne-100-ml.html")
+    assert not is_product("https://www.deloox.nl/zoeken.html")
+    assert not is_product("https://www.deloox.lu/chercher.html")
+    assert not is_product("https://www.deloox.es/buscar.html")
+    assert not is_product("https://www.deloox.com/")
+    assert not is_product("https://example.com/product/1380881/example.html")
