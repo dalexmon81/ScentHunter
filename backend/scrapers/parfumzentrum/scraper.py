@@ -1658,7 +1658,7 @@ def _extract_product(url, query, html=None):
     # Product URLs append an internal SKU such as "_z1016707". It is not part
     # of the product title and must never become a mandatory lexical match.
     query = re.sub(
-        r"\\bz\\d+\\s*$",
+        r"(?:^|[_\s-])z\d+\s*$",
         "",
         _clean(query),
         flags=re.I,
@@ -1911,6 +1911,17 @@ def _extract_product(url, query, html=None):
         "store_product_id": product_id,
     }
 
+
+
+def extract_product_page(session, url, query=None, html=None):
+    """Catalog hydration adapter using the already-fetched retailer HTML."""
+    target = _product_url(url)
+    if not target:
+        return None
+    page_query = _clean(query) or unquote(urlparse(target).path.rsplit("/", 1)[-1])
+    # _extract_product owns ParfumZentrum-specific identity, size, price and
+    # availability validation. Passing html prevents an unnecessary refetch.
+    return _extract_product(target, page_query, html=html)
 
 def search(query):
     query = _clean(query)

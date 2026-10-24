@@ -1,0 +1,27 @@
+name: Fly read-only Deloox freshness audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scenthunter-next-engine
+    paths:
+      - ".github/workflows/fly-readonly-deloox-freshness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Inspect Deloox freshness and queue state (SQLite read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3,json; c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True,timeout=5); c.row_factory=sqlite3.Row; c.execute(\"PRAGMA query_only=ON\"); p=(\"deloox\",); out={\"read_only\":True,\"database_mutated\":False,\"store\":\"deloox\",\"store_products\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=?\",p).fetchone()[0],\"products_fetch_status\":{str(r[0]):r[1] for r in c.execute(\"SELECT COALESCE(fetch_status,chr(78)+chr(85)+chr(76)+chr(76)),COUNT(*) FROM store_products WHERE store=? GROUP BY fetch_status\",p)},\"products_with_price\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=? AND price IS NOT NULL\",p).fetchone()[0],\"products_with_availability\":c.execute(\"SELECT COUNT(*) FROM store_products WHERE store=? AND availability IS NOT NULL\",p).fetchone()[0],\"fetched_at_range\":list(c.execute(\"SELECT MIN(fetched_at),MAX(fetched_at) FROM store_products WHERE store=?\",p).fetchone()),\"variants\":c.execute(\"SELECT COUNT(*) FROM store_product_variants WHERE store=?\",p).fetchone()[0],\"hydration_states\":{str(r[0]):r[1] for r in c.execute(\"SELECT state,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY state\",p)},\"queue_last_finished_at\":c.execute(\"SELECT MAX(last_finished_at) FROM hydration_queue WHERE store=?\",p).fetchone()[0],\"queue_last_started_at\":c.execute(\"SELECT MAX(last_started_at) FROM hydration_queue WHERE store=?\",p).fetchone()[0],\"queue_with_error\":c.execute(\"SELECT COUNT(*) FROM hydration_queue WHERE store=? AND COALESCE(last_error,chr(32))<>chr(32)\",p).fetchone()[0],\"http_status_counts\":{str(r[0]):r[1] for r in c.execute(\"SELECT COALESCE(CAST(last_http_status AS TEXT),chr(78)+chr(85)+chr(76)+chr(76)),COUNT(*) FROM hydration_queue WHERE store=? GROUP BY last_http_status\",p)}}; print(json.dumps(out)); c.close()'"

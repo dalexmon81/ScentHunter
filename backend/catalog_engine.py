@@ -700,11 +700,20 @@ def _ensure_schema(conn):
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=45)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=45000')
-    _ensure_schema(conn)
-    conn.execute('PRAGMA synchronous=NORMAL')
-    return conn
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=45000')
+        _ensure_schema(conn)
+        conn.execute('PRAGMA synchronous=NORMAL')
+        return conn
+    except Exception:
+        # Do not leak a partially initialized connection if schema setup or
+        # a connection PRAGMA fails (including transient SQLite contention).
+        try:
+            conn.close()
+        except Exception:
+            pass
+        raise
 
 
 def _discovery_bases(store):
@@ -795,10 +804,8 @@ def _parse_xml_entries(data, url=''):
                         loc = (child.text or '').strip()
                     elif ck == 'lastmod':
                         lastmod = (child.text or '').strip()
-                if loc:
-                    out.append(('sitemap', loc, lastmod))
+                if loc:                    out.append(('sitemap', loc, lastmod))
             return out, None if out else 'EMPTY_SITEMAP_INDEX'
-
         if kind == 'urlset':
             out = []
             for node in list(root):
@@ -1268,7 +1275,18 @@ def _html_product_url(store, raw_url, base_url):
         ))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return canonical
-        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
+        # Normalize the final file extension before classifying navigation
+        # endpoints. Several localized Deloox search pages use names such as
+        # /zoeken.html and /buscar.html; checking only for a slash/end after
+        # the route name incorrectly admitted those pages as products.
+        route_path = re.sub(r'\.(?:html?|php)$', '', low, flags=re.I)
+        if low.endswith('.html') and not re.search(
+            r'/(?:category|categorie|categoria|catégorie|chercher|zoeken|buscar|'
+            r'search|suche|suchen|sitemap|brand|marque|marca|login|account|'
+            r'cart|checkout)(?:/|$)',
+            route_path,
+            re.I,
+        ):
             return canonical
         return None
     if store == 'sabina':
@@ -1957,7 +1975,12 @@ def _discover_deloox_search_catalog(deadline=None):
                     if not raw:
                         continue
                     url = str(raw).split('#', 1)[0]
-                    if not _deloox_queue_allowed(url):
+                    # The scraper discovery helper may encounter search
+                    # endpoints that redirect to the storefront homepage.
+                    # Validate every returned URL against the catalog's
+                    # generic product-URL contract before queuing hydration.
+                    url = _html_product_url('deloox', url, STORES['deloox'])
+                    if not url:
                         continue
                     if url not in product_urls:
                         product_urls[url] = ''
@@ -3031,6 +3054,15 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
+        if store == 'deloox':
+            # Never fetch or persist a search/homepage URL as a product.
+            # The catalog can receive URLs through several discovery paths, so
+            # enforce the same admission contract again at the hydration edge.
+            requested_product_url = _html_product_url('deloox', url, STORES['deloox'])
+            if not requested_product_url:
+                raise RuntimeError(f'non_product_deloox_url;requested={url}')
+            url = requested_product_url
+
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -3055,6 +3087,13 @@ def refresh_url(store, url):
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
+        if store == 'deloox':
+            final_product_url = _html_product_url('deloox', final or url, STORES['deloox'])
+            if not final_product_url:
+                raise RuntimeError(
+                    f'non_product_deloox_redirect;requested={url};final={final}'
+                )
+            url = final_product_url
 
         if store == 'easycosmetic':
             # Never hydrate or publish a German catalog entry from a response
@@ -3150,141 +3189,149 @@ def refresh_url(store, url):
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
 
-        conn = db()
-        try:
-            # A successful targeted refresh must also make this URL part of the
-            # persistent searchable catalog. Previously only store_products
-            # was written, while search_local() and the FTS triggers require an
-            # active store_urls row. This left valid refreshed offers invisible.
-            now = time.time()
-            with conn:
-                conn.execute(
-                    '''INSERT INTO store_urls(
-                           store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           slug=excluded.slug,
-                           discovered_at=excluded.discovered_at,
-                           active=1''',
-                    (store, url, url_slug(url), None, now),
-                )
-                conn.execute(
-                    '''INSERT INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ?
-                               THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END''',
-                    (store, url, "PENDING", 0, now, now, now),
-                )
-                if store == 'sabina' and item.get('variants'):
-                    # Validate the complete extracted set before replacing the
-                    # stored set. A malformed/non-priced extraction must never
-                    # erase previously known good variant offers.
-                    valid_variants = []
-                    for variant in item['variants']:
-                        try:
-                            variant_size = float(variant.get('size_ml'))
-                            variant_price = float(variant.get('price_num'))
-                        except (TypeError, ValueError):
-                            continue
-                        if variant_size > 0 and variant_price > 0:
-                            valid_variants.append((variant, variant_size, variant_price))
-                    if valid_variants:
-                        conn.execute('DELETE FROM store_product_variants WHERE store=? AND url=?', (store, url))
-                        for variant, variant_size, variant_price in valid_variants:
-                            # Persist the commercial combination identity, not
-                            # merely size + SKU: Sabina can repeat a parent SKU
-                            # across sizes, and distinct combinations may share
-                            # both size and SKU. The scraper preserves the real
-                            # combination selector in the variant URL fragment.
-                            raw_variant_url = str(variant.get('url') or '').strip()
-                            parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
-                            variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
-                            variant_query = urllib.parse.parse_qs(parsed_variant_url.query)
-                            selector_values = []
-                            for selector_name in ('id_product_attribute', 'id_product_attribute_value', 'variant', 'variant_id', 'combination_id'):
-                                selector_values.extend(str(value).strip() for value in variant_query.get(selector_name, []) if str(value).strip())
-                            if selector_values:
-                                identity_token = 'selector:' + '|'.join(selector_values)
-                            elif variant_selector:
-                                identity_token = 'fragment:' + variant_selector
-                            elif variant.get('gtin'):
-                                identity_token = 'gtin:' + str(variant.get('gtin')).strip()
-                            elif variant.get('mpn'):
-                                identity_token = 'mpn:' + str(variant.get('mpn')).strip()
-                            elif variant.get('sku'):
-                                identity_token = 'sku:' + str(variant.get('sku')).strip()
-                            else:
-                                identity_token = 'price:' + format(variant_price, '.4f')
-                            variant_key = f"{variant_size:g}ml:{identity_token}"
-                            # Variant identity must not inherit identifiers that
-                            # describe the parent product (notably GTIN/MPN).
-                            # A parent-level GTIN is not proof that every size
-                            # has that same GTIN.
-                            variant_name = variant.get('name') or item.get('name')
-                            if variant_name and not variant.get('name'):
-                                # Make each offer name describe its own volume.
-                                variant_name = re.sub(
-                                    r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\s*$",
-                                    "",
-                                    str(variant_name),
-                                    flags=re.I,
-                                ).strip()
-                                variant_name = f"{variant_name} {variant_size:g} ML".strip()
-                            variant_gtin = variant.get('gtin')
-                            variant_mpn = variant.get('mpn')
-                            if len(valid_variants) == 1:
-                                variant_gtin = variant_gtin or item.get('gtin')
-                                variant_mpn = variant_mpn or item.get('mpn')
+        # Retry only this isolated, idempotent persistence transaction. The
+        # HTTP request and parsing above are not repeated when SQLite is busy.
+        def persist_refreshed_product():
+            conn = db()
+            try:
+                # A successful targeted refresh must also make this URL part of the
+                # persistent searchable catalog. Previously only store_products
+                # was written, while search_local() and the FTS triggers require an
+                # active store_urls row. This left valid refreshed offers invisible.
+                now = time.time()
+                with conn:
+                    conn.execute(
+                        '''INSERT INTO store_urls(
+                               store,url,slug,lastmod,discovered_at,active)
+                           VALUES(?,?,?,?,?,1)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               slug=excluded.slug,
+                               discovered_at=excluded.discovered_at,
+                               active=1''',
+                        (store, url, url_slug(url), None, now),
+                    )
+                    conn.execute(
+                        '''INSERT INTO hydration_queue(
+                               store,url,state,attempts,available_at,first_seen_at)
+                           VALUES(?,?,?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               state=CASE
+                                   WHEN hydration_queue.state='DONE' THEN 'DONE'
+                                   WHEN hydration_queue.state='PROCESSING'
+                                        AND hydration_queue.leased_until > ?
+                                   THEN 'PROCESSING'
+                                   ELSE hydration_queue.state
+                               END''',
+                        (store, url, "PENDING", 0, now, now, now),
+                    )
+                    if store == 'sabina' and item.get('variants'):
+                        # Validate the complete extracted set before replacing the
+                        # stored set. A malformed/non-priced extraction must never
+                        # erase previously known good variant offers.
+                        valid_variants = []
+                        for variant in item['variants']:
+                            try:
+                                variant_size = float(variant.get('size_ml'))
+                                variant_price = float(variant.get('price_num'))
+                            except (TypeError, ValueError):
+                                continue
+                            if variant_size > 0 and variant_price > 0:
+                                valid_variants.append((variant, variant_size, variant_price))
+                        if valid_variants:
                             conn.execute(
-                                '''INSERT INTO store_product_variants(
-                                    store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                                    concentration,gender,price,currency,availability,fetched_at,variant_url)
-                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                                   ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                                    name=excluded.name,brand=excluded.brand,image=excluded.image,
-                                    sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                                    size_ml=excluded.size_ml,concentration=excluded.concentration,
-                                    gender=excluded.gender,price=excluded.price,currency=excluded.currency,
-                                    availability=excluded.availability,fetched_at=excluded.fetched_at,
-                                    variant_url=excluded.variant_url''',
-                                (store,url,variant_key,variant_name,item.get('brand'),item.get('image'),
-                                 variant.get('sku') or item.get('sku'),variant_gtin,variant_mpn,
-                                 variant_size,item.get('concentration'),item.get('gender'),variant_price,
-                                 variant.get('currency') or item.get('currency') or 'EUR',
-                                 variant.get('availability') or item.get('availability'),now,
-                                 _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
+                                'DELETE FROM store_product_variants WHERE store=? AND url=?',
+                                (store, url),
                             )
-                conn.execute(
-                    '''INSERT INTO store_products(
-                        store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
-                        price,currency,availability,fetched_at,fetch_status)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                        name=excluded.name,brand=excluded.brand,image=excluded.image,
-                        sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                        size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                        concentration=COALESCE(excluded.concentration,store_products.concentration),
-                        gender=COALESCE(excluded.gender,store_products.gender),
-                        price=excluded.price,currency=excluded.currency,
-                        availability=excluded.availability,fetched_at=excluded.fetched_at,
-                        fetch_status=excluded.fetch_status''',
-                    (
-                        store, url, item.get('name'), item.get('brand'), item.get('image'),
-                        item.get('sku'), item.get('gtin'), item.get('mpn'),
-                        item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                        item.get('price_num'), item.get('currency'), item.get('availability'),
-                        item.get('fetched_at'), 'OK',
-                    ),
-                )
-        finally:
-            conn.close()
+                            for variant, variant_size, variant_price in valid_variants:
+                                # Persist the commercial combination identity, not
+                                # merely size + SKU: Sabina can repeat a parent SKU
+                                # across sizes, and distinct combinations may share
+                                # both size and SKU. The scraper preserves the real
+                                # combination selector in the variant URL fragment.
+                                raw_variant_url = str(variant.get('url') or '').strip()
+                                parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
+                                variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
+                                variant_query = urllib.parse.parse_qs(parsed_variant_url.query)
+                                selector_values = []
+                                for selector_name in ('id_product_attribute', 'id_product_attribute_value', 'variant', 'variant_id', 'combination_id'):
+                                    selector_values.extend(str(value).strip() for value in variant_query.get(selector_name, []) if str(value).strip())
+                                if selector_values:
+                                    identity_token = 'selector:' + '|'.join(selector_values)
+                                elif variant_selector:
+                                    identity_token = 'fragment:' + variant_selector
+                                elif variant.get('gtin'):
+                                    identity_token = 'gtin:' + str(variant.get('gtin')).strip()
+                                elif variant.get('mpn'):
+                                    identity_token = 'mpn:' + str(variant.get('mpn')).strip()
+                                elif variant.get('sku'):
+                                    identity_token = 'sku:' + str(variant.get('sku')).strip()
+                                else:
+                                    identity_token = 'price:' + format(variant_price, '.4f')
+                                variant_key = f"{variant_size:g}ml:{identity_token}"
+                                # Variant identity must not inherit identifiers that
+                                # describe the parent product (notably GTIN/MPN).
+                                # A parent-level GTIN is not proof that every size
+                                # has that same GTIN.
+                                variant_name = variant.get('name') or item.get('name')
+                                if variant_name and not variant.get('name'):
+                                    # Make each offer name describe its own volume.
+                                    variant_name = re.sub(
+                                        r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\s*$",
+                                        "",
+                                        str(variant_name),
+                                        flags=re.I,
+                                    ).strip()
+                                    variant_name = f"{variant_name} {variant_size:g} ML".strip()
+                                variant_gtin = variant.get('gtin')
+                                variant_mpn = variant.get('mpn')
+                                if len(valid_variants) == 1:
+                                    variant_gtin = variant_gtin or item.get('gtin')
+                                    variant_mpn = variant_mpn or item.get('mpn')
+                                conn.execute(
+                                    '''INSERT INTO store_product_variants(
+                                        store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                                        concentration,gender,price,currency,availability,fetched_at,variant_url)
+                                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                       ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                                        name=excluded.name,brand=excluded.brand,image=excluded.image,
+                                        sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                                        size_ml=excluded.size_ml,concentration=excluded.concentration,
+                                        gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                                        availability=excluded.availability,fetched_at=excluded.fetched_at,
+                                        variant_url=excluded.variant_url''',
+                                    (store,url,variant_key,variant_name,item.get('brand'),item.get('image'),
+                                     variant.get('sku') or item.get('sku'),variant_gtin,variant_mpn,
+                                     variant_size,item.get('concentration'),item.get('gender'),variant_price,
+                                     variant.get('currency') or item.get('currency') or 'EUR',
+                                     variant.get('availability') or item.get('availability'),now,
+                                     _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
+                                )
+                    conn.execute(
+                        '''INSERT INTO store_products(
+                            store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
+                            price,currency,availability,fetched_at,fetch_status)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                            name=excluded.name,brand=excluded.brand,image=excluded.image,
+                            sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                            size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                            concentration=COALESCE(excluded.concentration,store_products.concentration),
+                            gender=COALESCE(excluded.gender,store_products.gender),
+                            price=excluded.price,currency=excluded.currency,
+                            availability=excluded.availability,fetched_at=excluded.fetched_at,
+                            fetch_status=excluded.fetch_status''',
+                        (
+                            store, url, item.get('name'), item.get('brand'), item.get('image'),
+                            item.get('sku'), item.get('gtin'), item.get('mpn'),
+                            item.get('size_ml'), item.get('concentration'), item.get('gender'),
+                            item.get('price_num'), item.get('currency'), item.get('availability'),
+                            item.get('fetched_at'), 'OK',
+                        ),
+                    )
+            finally:
+                conn.close()
+    
+        _retry_sqlite_busy(persist_refreshed_product, 'persist_refreshed_product')
 
         # Keep an already-built search index current without invalidating and
         # rebuilding the whole store catalog. The persistent DB remains the
@@ -3304,42 +3351,58 @@ def refresh_url(store, url):
         with _LAST_REFRESH_ERRORS_LOCK:
             _LAST_REFRESH_ERRORS[(store, url)] = error_detail
 
-        conn = db()
-        try:
-            # Do not replace a previously successful offer with a transient
-            # timeout/parser/SQLite error. Search and price comparison must
-            # continue using the last known-good price until a newer fetch
-            # succeeds. Only create an ERROR row when no valid offer exists.
-            existing = conn.execute(
-                "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
-                (store, url),
-            ).fetchone()
-            has_good_offer = bool(existing and existing['fetch_status'] == 'OK')
-            if not has_good_offer:
-                conn.execute(
-                    '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
-                       VALUES(?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                       fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
-                    (store, url, time.time(), error_detail),
-                )
-            # A ParfumZentrum placeholder price is a known terminal outcome.
-            placeholder_offer = (
-                store == 'parfumzentrum'
-                and 'invalid_placeholder_price' in str(exc)
-            )
-            if placeholder_offer:
-                conn.execute(
-                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
-                    (store, url),
-                )
-            conn.commit()
-        finally:
-            conn.close()
+        has_good_offer = False
+        placeholder_offer = False
 
-        # Preserve an existing valid offer in both SQLite and the in-memory
-        # index after transient failures. A known invalid placeholder remains
-        # terminal and is removed from search.
+        def persist_refresh_error():
+            conn = db()
+            try:
+                # Preserve the last known-good offer when a refresh fails.
+                existing = conn.execute(
+                    "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
+                    (store, url),
+                ).fetchone()
+                keep_good_offer = bool(existing and existing['fetch_status'] == 'OK')
+                if not keep_good_offer:
+                    conn.execute(
+                        '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+                           VALUES(?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                           fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+                        (store, url, time.time(), error_detail),
+                    )
+                # A ParfumZentrum placeholder price is a known terminal outcome.
+                is_placeholder = (
+                    store == 'parfumzentrum'
+                    and 'invalid_placeholder_price' in str(exc)
+                )
+                if is_placeholder:
+                    conn.execute(
+                        "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                        (store, url),
+                    )
+                conn.commit()
+                return keep_good_offer, is_placeholder
+            finally:
+                conn.close()
+
+        try:
+            has_good_offer, placeholder_offer = _retry_sqlite_busy(
+                persist_refresh_error,
+                'persist_refresh_error',
+            )
+        except sqlite3.OperationalError as db_exc:
+            # Error handling must never hide the original refresh failure.
+            # If SQLite remains locked after bounded retries, preserve the
+            # previous offer and let the hydration queue retry the URL.
+            print(
+                f'CATALOG REFRESH ERROR-PERSISTENCE SKIPPED: store={store} '
+                f'url={url} error={type(db_exc).__name__}: {db_exc}',
+                flush=True,
+            )
+
+        # Only remove from the in-memory index when no last-known-good offer
+        # exists, or when a known terminal placeholder was detected.
         if placeholder_offer or not has_good_offer:
             _remove_local_search_index_url(store, url)
         return None
@@ -3361,27 +3424,32 @@ def _search_db():
 
 
 
-# Stale Easycosmetic records from older catalog versions may have a valid
-# product name/price but no parsed size. Repair only matched rows in the
-# background so the foreground search latency remains unchanged.
+# Repair legacy Easycosmetic rows with a missing parsed size in the background.
+# The foreground search stays read-only and does not wait for retailer HTTP
+# requests or SQLite writes.
 _EASYCOSMETIC_REPAIR_LOCK = threading.Lock()
 _EASYCOSMETIC_REPAIR_IN_FLIGHT = set()
 
 
 def _schedule_easycosmetic_missing_size_repairs(rows):
+    """Refresh only matched Easycosmetic rows whose size is still unknown.
+
+    Keep the repair targeted: refreshing every Easycosmetic result on every
+    search adds retailer traffic and SQLite writes to the hot search path.
+    The in-flight set prevents concurrent duplicate work within this process.
+    """
     jobs = []
+    seen_urls = set()
     for row in rows or []:
         if str(row.get('store_key') or '').strip().lower() != 'easycosmetic':
             continue
         if row.get('_needs_refresh') or row.get('size_ml') not in (None, '', 0):
             continue
         url = str(row.get('url') or '').strip()
-        if not url or 'easycosmetic.' not in url.lower():
+        if not url or 'easycosmetic.' not in url.lower() or url in seen_urls:
             continue
+        seen_urls.add(url)
         jobs.append(('easycosmetic', url))
-
-    if not jobs:
-        return
 
     for store, url in jobs:
         key = (store, url)
@@ -3417,9 +3485,8 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
 
         threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
 
-
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
-    """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
+    """Run local search and asynchronously refresh matched Easycosmetic offers."""
     try:
         rows = _search_local_impl(
             query,
@@ -4129,12 +4196,6 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             'lease_token': token,
             'attempts': int(chosen['attempts'] or 0) + 1,
         }
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        raise
     except sqlite3.OperationalError as exc:
         print(
             f'CATALOG HYDRATION STAGE ERROR: stage=claim_hydration_task '
@@ -4142,6 +4203,16 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             flush=True,
         )
         traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
         conn.close()
@@ -4149,71 +4220,88 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
 
 def _queue_release_claim(task):
     """Return a claimed hydration task to PENDING without recording an error."""
-    now = time.time()
-    conn = db()
-    try:
-        with conn:
-            conn.execute(
-                """UPDATE hydration_queue
-                   SET state='PENDING',
-                       leased_until=NULL,
-                       lease_token=NULL,
-                       available_at=?,
-                       last_error=NULL
-                 WHERE store=? AND url=? AND lease_token=?
-                   AND state='PROCESSING'""",
-                (now, task['store'], task['url'], task['lease_token']),
-            )
-    finally:
-        conn.close()
+    def release():
+        now = time.time()
+        conn = db()
+        try:
+            with conn:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='PENDING',
+                           leased_until=NULL,
+                           lease_token=NULL,
+                           available_at=?,
+                           last_error=NULL
+                     WHERE store=? AND url=? AND lease_token=?
+                       AND state='PROCESSING'""",
+                    (now, task['store'], task['url'], task['lease_token']),
+                )
+        finally:
+            conn.close()
+
+    return _retry_sqlite_busy(release, 'release_hydration_claim')
 
 
 def _queue_mark_done(task):
     """Commit the successful product result and close the lease atomically."""
-    now = time.time()
-    conn = db()
-    try:
-        # refresh_url() has already persisted the product. We only transition
-        # the durable work item here, guarded by its lease token.
-        with conn:
-            conn.execute(
-                """UPDATE hydration_queue
-                   SET state='DONE',
-                       leased_until=NULL,
-                       lease_token=NULL,
-                       last_finished_at=?,
-                       last_error=NULL,
-                       last_http_status=NULL
-                   WHERE store=? AND url=? AND lease_token=?
-                     AND state='PROCESSING'""",
-                (now, task['store'], task['url'], task['lease_token']),
-            )
-    finally:
-        conn.close()
+    def mark_done():
+        now = time.time()
+        conn = db()
+        try:
+            # refresh_url() has already persisted the product. We only transition
+            # the durable work item here, guarded by its lease token.
+            with conn:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='DONE',
+                           leased_until=NULL,
+                           lease_token=NULL,
+                           last_finished_at=?,
+                           last_error=NULL,
+                           last_http_status=NULL
+                       WHERE store=? AND url=? AND lease_token=?
+                         AND state='PROCESSING'""",
+                    (now, task['store'], task['url'], task['lease_token']),
+                )
+        finally:
+            conn.close()
+
+    return _retry_sqlite_busy(mark_done, 'mark_hydration_done')
 
 
 def _queue_mark_error(task, error, http_status=None):
-    """Record a retryable error using bounded exponential backoff."""
+    """Persist a retryable error without letting SQLite contention kill a worker.
+
+    If SQLite is busy, leave the task's PROCESSING lease intact. The normal
+    lease-expiry recovery in _claim_one_hydration_task will make it retryable.
+    """
     now = time.time()
-    conn = db()
+    try:
+        conn = db()
+    except sqlite3.OperationalError as exc:
+        message = str(exc).lower()
+        if 'locked' in message or 'busy' in message:
+            print(
+                'CATALOG QUEUE ERROR-PERSISTENCE DEFERRED '
+                f"store={task.get('store')} url={task.get('url')} error={exc}; "
+                'lease will be recovered after expiry', flush=True,
+            )
+            return False
+        raise
     try:
         row = conn.execute(
-            """SELECT attempts FROM hydration_queue
-               WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'""",
+            "SELECT attempts FROM hydration_queue WHERE store=? AND url=? "
+            "AND lease_token=? AND state='PROCESSING'",
             (task['store'], task['url'], task['lease_token']),
         ).fetchone()
         if not row:
-            return
+            return False
 
         attempts = int(row['attempts'] or 0)
         idx = min(max(attempts - 1, 0), len(HYDRATION_BACKOFF_SECONDS) - 1)
         delay = float(HYDRATION_BACKOFF_SECONDS[idx])
         jitter = delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         next_time = now + delay + jitter
-
-        # Only known terminal outcomes are dead-lettered. Network timeouts,
-        # parser failures and temporary SQLite contention remain retryable after
-        # the initial attempt budget, at the capped 24-hour backoff interval.
         terminal_http = http_status in (404, 410)
         terminal_placeholder = 'invalid_placeholder_price' in str(error)
         next_state = 'DEAD' if terminal_http or terminal_placeholder else 'ERROR'
@@ -4221,28 +4309,29 @@ def _queue_mark_error(task, error, http_status=None):
             delay = float(HYDRATION_BACKOFF_SECONDS[-1])
             next_time = now + delay + delay * HYDRATION_RETRY_JITTER * (0.5 + (time.time() % 0.5))
         conn.execute(
-            """UPDATE hydration_queue
-               SET state=?,
-                   available_at=?,
-                   leased_until=NULL,
-                   lease_token=NULL,
-                   last_finished_at=?,
-                   last_error=?,
-                   last_http_status=?
-               WHERE store=? AND url=? AND lease_token=?
-                 AND state='PROCESSING'""",
-            (
-                next_state,
-                next_time,
-                now,
-                str(error)[:1000],
-                http_status,
-                task['store'],
-                task['url'],
-                task['lease_token'],
-            ),
+            """UPDATE hydration_queue SET state=?, available_at=?,
+                   leased_until=NULL, lease_token=NULL, last_finished_at=?,
+                   last_error=?, last_http_status=?
+               WHERE store=? AND url=? AND lease_token=? AND state='PROCESSING'""",
+            (next_state, next_time, now, str(error)[:1000], http_status,
+             task['store'], task['url'], task['lease_token']),
         )
         conn.commit()
+        return True
+    except sqlite3.OperationalError as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        message = str(exc).lower()
+        if 'locked' in message or 'busy' in message:
+            print(
+                'CATALOG QUEUE ERROR-PERSISTENCE DEFERRED '
+                f"store={task.get('store')} url={task.get('url')} error={exc}; "
+                'lease will be recovered after expiry', flush=True,
+            )
+            return False
+        raise
     finally:
         conn.close()
 
@@ -4294,8 +4383,41 @@ def _hydrate_one_task(task):
             traceback.print_exc()
         return False
     except Exception as exc:
-        _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        try:
+            _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
+        except Exception as queue_exc:
+            print(
+                'CATALOG HYDRATION ERROR-REPORT FAILED '
+                f"store={task.get('store')} url={task.get('url')} "
+                f'original={type(exc).__name__}: {exc}; '
+                f'queue={type(queue_exc).__name__}: {queue_exc}',
+                flush=True,
+            )
         return False
+
+
+def _retry_sqlite_busy(operation, stage, attempts=4):
+    """Retry short queue operations after transient SQLite lock contention.
+
+    Each operation opens and closes its own connection, so retries start from
+    a clean transaction. Non-lock OperationalErrors are never swallowed.
+    """
+    delays = (0.10, 0.25, 0.50, 1.00)
+    for attempt in range(attempts):
+        try:
+            return operation()
+        except sqlite3.OperationalError as exc:
+            message = str(exc).lower()
+            if 'locked' not in message and 'busy' not in message:
+                raise
+            if attempt >= attempts - 1:
+                print(
+                    f'CATALOG HYDRATION CONTENTION: stage={stage} '
+                    f'attempts={attempts} error={type(exc).__name__}: {exc}',
+                    flush=True,
+                )
+                raise
+            time.sleep(delays[min(attempt, len(delays) - 1)])
 
 
 def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
@@ -4313,7 +4435,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
     # That function scans the whole active catalog and backfills missing queue
     # rows. Running it before every small hydration batch causes repeated
     # catalog-wide SQLite work and contends with user searches.
-    recover_stale_tasks()
+    _retry_sqlite_busy(recover_stale_tasks, 'recover_stale_tasks')
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
@@ -4326,7 +4448,7 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
             break
         if deadline is not None and time.monotonic() >= float(deadline):
             break
-        task = _claim_one_hydration_task()
+        task = _retry_sqlite_busy(_claim_one_hydration_task, 'claim_hydration_task')
         if not task:
             break
         tasks.append(task)
@@ -4738,7 +4860,13 @@ def _coverage_allowed_url(store, raw_url):
                     if configured_host.startswith('www.')
                     else 'www.' + configured_host
                 )
-        return url if host in allowed else ''
+        if host not in allowed:
+            return ''
+        # Coverage searchers can return a search endpoint or storefront root.
+        # Keep Deloox's path contract consistent across every persistence path.
+        if store == 'deloox':
+            return _html_product_url('deloox', url, STORES['deloox']) or ''
+        return url
     except Exception:
         return ''
 
@@ -4796,12 +4924,59 @@ def _coverage_scraper_process(
 ):
     """Run one retailer coverage search in a killable process group.
 
-    A foreground user search has priority over background catalog coverage.
-    The child process is therefore polled instead of using communicate(timeout),
-    so an already-running coverage task can be terminated as soon as a
-    foreground search starts.
+    Child failures retain a compatible error string with bounded location
+    context. Child stderr is captured and included only in malformed/failed
+    process diagnostics; cancellation and timeout behavior stay unchanged.
     """
-    child_code = 'import contextlib\nimport importlib\nimport json\nimport sys\n\ndef main():\n    payload = json.load(sys.stdin)\n    module_name = str(payload.get("module") or "")\n    queries = payload.get("queries") or []\n    module = importlib.import_module(module_name)\n    search_stream = getattr(module, "search_stream", None)\n    search_fn = getattr(module, "search", None)\n    if not callable(search_stream) and not callable(search_fn):\n        raise RuntimeError("scraper_search_unavailable")\n    reports = []\n    for query in queries:\n        try:\n            with contextlib.redirect_stdout(sys.stderr):\n                report = search_stream(query) if callable(search_stream) else search_fn(query)\n            reports.append({"query": query, "report": report})\n        except Exception as exc:\n            reports.append({"query": query, "error": f"{type(exc).__name__}:{exc}"})\n            continue\n        if isinstance(report, dict):\n            if report.get("results"):\n                break\n        elif isinstance(report, list) and report:\n            break\n    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)\n    sys.stdout.flush()\n\nif __name__ == "__main__":\n    main()\n'
+    child_code = """
+import contextlib
+import importlib
+import json
+import sys
+import traceback
+
+def describe(exc):
+    frames = traceback.extract_tb(exc.__traceback__)[-5:]
+    location = " > ".join(
+        f"{frame.name}({frame.filename.rsplit('/', 1)[-1]}:{frame.lineno})"
+        for frame in frames
+    )
+    message = str(exc)[:240]
+    return f"{type(exc).__name__}:{message} [at {location[:300]}]" if location else f"{type(exc).__name__}:{message}"
+
+def main():
+    payload = json.load(sys.stdin)
+    module_name = str(payload.get("module") or "")
+    queries = payload.get("queries") or []
+    try:
+        module = importlib.import_module(module_name)
+        search_stream = getattr(module, "search_stream", None)
+        search_fn = getattr(module, "search", None)
+        if not callable(search_stream) and not callable(search_fn):
+            raise RuntimeError("scraper_search_unavailable")
+    except Exception as exc:
+        json.dump({"ok": False, "reports": [], "error": describe(exc)}, sys.stdout, ensure_ascii=False)
+        sys.stdout.flush()
+        return
+    reports = []
+    for query in queries:
+        try:
+            with contextlib.redirect_stdout(sys.stderr):
+                report = search_stream(query) if callable(search_stream) else search_fn(query)
+            reports.append({"query": query, "report": report})
+        except Exception as exc:
+            reports.append({"query": query, "error": describe(exc)})
+            continue
+        if isinstance(report, dict) and report.get("results"):
+            break
+        if isinstance(report, list) and report:
+            break
+    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)
+    sys.stdout.flush()
+
+if __name__ == "__main__":
+    main()
+"""
     payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
     env = os.environ.copy()
     current_python_path = env.get("PYTHONPATH", "")
@@ -4811,12 +4986,12 @@ def _coverage_scraper_process(
         process = subprocess.Popen(
             [sys.executable, "-c", child_code],
             cwd=str(BASE_DIR), env=env,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace",
             start_new_session=(os.name != "nt"),
         )
     except Exception as exc:
-        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{str(exc)[:240]}"}
     try:
         process.stdin.write(payload)
         process.stdin.close()
@@ -4860,6 +5035,7 @@ def _coverage_scraper_process(
                 raise subprocess.TimeoutExpired([sys.executable, "-c", child_code], float(timeout_seconds))
             time.sleep(_COVERAGE_CANCEL_POLL_SECONDS)
         stdout = process.stdout.read() if process.stdout is not None else ""
+        stderr = process.stderr.read() if process.stderr is not None else ""
     except subprocess.TimeoutExpired:
         try:
             if os.name != "nt": os.killpg(process.pid, signal.SIGTERM)
@@ -4881,13 +5057,18 @@ def _coverage_scraper_process(
         except Exception: pass
         try: process.wait(timeout=2.0)
         except Exception: pass
-        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{exc}"}
+        return {"ok": False, "reports": [], "error": f"{type(exc).__name__}:{str(exc)[:240]}"}
     if process.returncode != 0:
-        return {"ok": False, "reports": [], "error": f"coverage_process_exit_{process.returncode}"}
-    try: result = json.loads(stdout or "")
+        detail = (stderr or "").strip()[-600:]
+        return {"ok": False, "reports": [], "error": f"coverage_process_exit_{process.returncode}: {detail}"}
+    try:
+        result = json.loads(stdout or "")
     except Exception as exc:
-        return {"ok": False, "reports": [], "error": f"coverage_invalid_child_output:{type(exc).__name__}:{exc}"}
-    return result if isinstance(result, dict) else {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
+        detail = (stderr or "").strip()[-400:]
+        return {"ok": False, "reports": [], "error": f"coverage_invalid_child_output:{type(exc).__name__}:{str(exc)[:200]}: {detail}"}
+    if not isinstance(result, dict):
+        return {"ok": False, "reports": [], "error": "coverage_invalid_child_result"}
+    return result
 
 
 def _coverage_run_task(task, cancel_event=None):

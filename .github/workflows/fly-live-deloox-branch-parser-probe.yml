@@ -1,0 +1,80 @@
+name: Fly read-only live Deloox branch parser probe
+
+on:
+  push:
+    branches:
+      - scenthunter-next-engine
+    paths:
+      - "backend/scrapers/deloox/scraper.py"
+      - "tests/fly_live_deloox_branch_probe.py"
+      - "tests/fly_readonly_runtime_deloox_audit.py"
+      - ".github/workflows/fly-live-deloox-branch-parser-probe.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: scenthunter-fly-readonly-audit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  parser-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify GitHub runner can reach the live Deloox product pages
+        id: direct-probe
+        continue-on-error: true
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          urls = [
+              "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+              "https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html",
+              "https://www.deloox.be/produit/1321602/armani-acqua-di-gio-profondo-eau-de-parfum-30-ml.html",
+              "https://www.deloox.be/produit/1323846/armani-acqua-di-gio-profondo-eau-de-parfum-100-ml.html",
+          ]
+          result = []
+          for url in urls:
+              item = {"url": url}
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+              try:
+                  with urllib.request.urlopen(req, timeout=8) as response:
+                      item.update({"status": response.status, "final_url": response.geturl()})
+              except urllib.error.HTTPError as exc:
+                  item.update({"status": exc.code, "network_block": exc.code in (403, 429)})
+              except Exception as exc:
+                  item["network_error"] = type(exc).__name__ + ": " + str(exc)[:160]
+              result.append(item)
+          print(json.dumps({"probe": "runner_network_only", "results": result}, ensure_ascii=False))
+          PY
+
+      - name: Run bounded branch parser probe in Fly (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The read-only probe uses four bounded requests (3s connect, 7s read each).
+          # Allow enough time for Fly SSH startup while keeping an outer hard timeout.
+          timeout 180s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))' ${GITHUB_SHA}"
+
+      - name: Run production SQLite audit (read-only)
+        if: ${{ steps.direct-probe.outcome == 'success' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"

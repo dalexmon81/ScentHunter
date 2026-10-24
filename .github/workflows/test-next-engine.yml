@@ -23,3 +23,94 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install test dependencies
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4
+
+      - name: Compile bounded Fly read-only audit scripts
+        run: python -m py_compile tests/fly_readonly_runtime_deloox_audit.py tests/fly_live_deloox_branch_probe.py
+
+      - name: Run isolated next-engine tests
+        run: >-
+          python -m pytest -q
+          tests/test_scenthunter_next_engine.py
+          tests/test_retailer_parser_html_reuse.py
+          tests/test_canonical_matcher.py
+          tests/test_offer_aggregator.py
+          tests/test_next_engine_service.py
+          tests/test_real_catalog_end_to_end.py
+          tests/test_real_variant_separation.py
+          tests/test_catalog_preflight.py
+          tests/test_catalog_identity_audit.py
+          tests/test_runtime_identity_reference_audit.py
+          tests/test_catalog_sqlite_contention.py
+          tests/test_deloox_url_admission.py
+          tests/test_deloox_recovery.py
+          tests/test_catalog_url_hygiene.py
+          tests/test_production_cleanup_proposal.py
+          tests/test_coverage_scraper_process.py
+          tests/test_migration_plan_validator.py
+          tests/test_audit_migration.py
+          tests/test_next_engine_integration_contract.py
+          tests/test_next_engine_runtime_preview.py
+          tests/test_next_engine_runtime_batch_preview.py
+          tests/test_next_engine_realistic_batch.py
+          tests/test_next_engine_main_boot_gate.py
+          tests/test_next_engine_shadow_comparison.py
+          tests/test_live_retailer_identity_resolution.py
+
+      - name: Run real-catalog smoke entry point (read-only)
+        run: python -m backend.scenthunter_next_engine.smoke_entrypoint
+
+      - name: Audit real catalog without modifying it
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+
+      - name: Audit active Deloox URL hygiene (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_url_hygiene > catalog-url-hygiene.json
+
+      - name: Audit canonical identities (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_identity_audit
+
+      - name: Detailed catalog classification (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_detail
+
+      - name: Build migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.catalog_migration_plan
+
+      - name: Validate generated migration review plan (read-only)
+        run: python -m backend.scenthunter_next_engine.validate_generated_migration_plan
+
+      - name: Audit consistency between generated reports (read-only)
+        run: >-
+          python -m backend.scenthunter_next_engine.audit_migration_reports
+          --detail catalog-preflight-detail.json
+          --plan catalog-migration-plan.json
+          --output migration-report-audit.json
+
+      - name: Build production cleanup proposal (review-only; no production access)
+        run: python -m backend.scenthunter_next_engine.production_cleanup_proposal
+
+      - name: Upload read-only catalog reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-migration-review
+          path: |
+            catalog-preflight-detail.json
+            catalog-migration-plan.json
+            migration-report-audit.json
+            catalog-identity-audit.json
+            catalog-url-hygiene.json
+            production-cleanup-proposal.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Regenerate legacy-versus-next shadow comparison report
+        run: python -m pytest -q tests/test_next_engine_shadow_comparison.py
+
+      - name: Upload legacy-versus-next shadow comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-shadow-comparison
+          path: next-engine-shadow-comparison.json
+          if-no-files-found: error
+          retention-days: 7

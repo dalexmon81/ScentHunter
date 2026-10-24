@@ -1,0 +1,27 @@
+name: Fly read-only Deloox freshness audit v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scenthunter-next-engine
+    paths:
+      - ".github/workflows/fly-readonly-deloox-freshness-v2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Inspect Deloox offer freshness (SQLite read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import sqlite3,json,time;c=sqlite3.connect(\"file:/data/store_catalog.sqlite3?mode=ro\",uri=True,timeout=5);c.execute(\"PRAGMA query_only=ON\");p=(\"deloox\",);n=time.time();q=lambda sql,args=p:c.execute(sql,args).fetchone()[0];out={\"read_only\":True,\"database_mutated\":False,\"store\":\"deloox\",\"products_total\":q(\"SELECT COUNT(*) FROM store_products WHERE store=?\"),\"fetch_ok\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status=?\",p+(\"OK\",)),\"http_404\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status LIKE ?\",p+(\"ERROR:RuntimeError: HTTP 404%\",)),\"parser_not_found\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetch_status LIKE ?\",p+(\"%product_parser_not_found%\",)),\"products_with_price\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND price IS NOT NULL\"),\"products_with_availability\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND availability IS NOT NULL\"),\"fresh_last_24h\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetched_at>=?\",p+(n-86400,)),\"fresh_last_7d\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetched_at>=?\",p+(n-604800,)),\"fresh_last_30d\":q(\"SELECT COUNT(*) FROM store_products WHERE store=? AND fetched_at>=?\",p+(n-2592000,)),\"fetched_at_min_max\":list(c.execute(\"SELECT MIN(fetched_at),MAX(fetched_at) FROM store_products WHERE store=?\",p).fetchone()),\"hydration_state_counts\":{str(r[0]):r[1] for r in c.execute(\"SELECT state,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY state\",p)},\"queue_http_status_counts\":{str(r[0]):r[1] for r in c.execute(\"SELECT last_http_status,COUNT(*) FROM hydration_queue WHERE store=? GROUP BY last_http_status\",p)},\"queue_latest_finished\":q(\"SELECT MAX(last_finished_at) FROM hydration_queue WHERE store=?\"),\"queue_latest_started\":q(\"SELECT MAX(last_started_at) FROM hydration_queue WHERE store=?\"),\"queue_with_error\":q(\"SELECT COUNT(*) FROM hydration_queue WHERE store=? AND length(last_error)>0\")};print(json.dumps(out));c.close()'"

@@ -7,6 +7,28 @@ from bs4 import BeautifulSoup
 from urllib.parse import quote, quote_plus, urljoin
 
 BASE_URL = "https://www.perfumemarket.nl"
+
+def _canonical_product_url(url):
+    """Return PerfumeMarket's canonical Shopify product URL.
+
+    Product pages use /products/<handle> on the root domain. Search endpoints
+    can return locale-prefixed paths such as /en/products/<handle>, which may
+    resolve to 404 even though the canonical product exists. Strip tracking
+    query/fragment data and remove a leading language prefix generically.
+    """
+    raw = str(url or "").strip()
+    if not raw:
+        return ""
+    normalized = urljoin(BASE_URL + "/", raw)
+    normalized = normalized.split("#", 1)[0].split("?", 1)[0].rstrip("/")
+    normalized = re.sub(
+        r"^(https?://[^/]+)/(?:[a-z]{2}(?:-[a-z]{2})?)/products/",
+        r"\g<1>/products/",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    return normalized
+
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
 
@@ -143,7 +165,7 @@ def _parse_search_html(html, query):
 
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
-        product_url = urljoin(BASE_URL, href).split("?")[0].rstrip("/")
+        product_url = _canonical_product_url(href)
 
         if "/products/" not in product_url.lower():
             continue
@@ -201,7 +223,7 @@ def _parse_search_suggest(payload, query):
         if not name or not url or not _query_matches(name, query):
             continue
 
-        product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
+        product_url = _canonical_product_url(url)
         if "/products/" not in product_url.lower():
             continue
 
@@ -306,7 +328,7 @@ def _parse_catalog_json(payload, query):
             continue
 
         if handle:
-            product_url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
+            product_url = _canonical_product_url("/products/" + handle)
         else:
             continue
 
@@ -353,7 +375,7 @@ def _find_candidates_from_catalog_json(session, query):
                 break
 
             for item in _parse_catalog_json(payload, query):
-                key = item["url"].rstrip("/").lower()
+                key = _canonical_product_url(item["url"]).lower()
                 if key in seen:
                     continue
                 seen.add(key)
@@ -391,7 +413,7 @@ def _parse_product_sitemap_locs(xml_text, query):
         # normalization (hyphens/apostrophes/spaces) cannot hide products.
         if not _query_matches(handle.replace("-", " "), query):
             continue
-        clean = url.split("?", 1)[0].rstrip("/")
+        clean = _canonical_product_url(url)
         if clean and clean not in seen:
             seen.add(clean)
             urls.append(clean)
@@ -543,7 +565,7 @@ def search(query):
         for item in items or []:
             if not isinstance(item, dict):
                 continue
-            url = str(item.get("url") or "").split("?", 1)[0].rstrip("/").lower()
+            url = _canonical_product_url(item.get("url")).lower()
             if not url or url in seen:
                 continue
             seen.add(url)
@@ -606,7 +628,8 @@ def search(query):
     if len(results) < 100:
         candidate_urls = _find_candidates_from_sitemap(session, query)
         for product_url in candidate_urls:
-            if product_url.rstrip("/").lower() in seen:
+            product_url = _canonical_product_url(product_url)
+            if product_url.lower() in seen:
                 continue
             try:
                 response = session.get(product_url, timeout=12)
@@ -867,6 +890,7 @@ def extract_product_page(session, url, query):
     price or other product-specific exception. It uses Shopify/JSON-LD data
     first and product-bound HTML fields as fallbacks.
     """
+    url = _canonical_product_url(url)
     try:
         response = session.get(
             url,
@@ -890,7 +914,7 @@ def extract_product_page(session, url, query):
         print(f"PERFUMEMARKET PRODUCT HTTP ERROR: {response.status_code} | {url}")
         return None
 
-    final_url = (response.url or url).split("?", 1)[0].rstrip("/")
+    final_url = _canonical_product_url(response.url or url)
     if "/products/" not in final_url.lower():
         return None
 

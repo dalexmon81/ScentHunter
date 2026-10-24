@@ -476,29 +476,45 @@ def _extract_price_from_text(text: str) -> Optional[float]:
     return None
 
 
-def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
-    """Read the displayed price from the product detail, not recommendations.
-
-    Easycosmetic's JSON-LD can contain a stale/cached offer that differs from
-    the price currently shown for the selected bottle size. Prefer a price
-    explicitly attached to the product detail (itemprop/data-price or a
-    product-price element); never scan the whole document for the first euro
-    amount, because variant selectors and recommendation cards contain other
-    prices.
-    """
+def _extract_selected_variant_price(
+    soup: BeautifulSoup, size_ml: Optional[int] = None
+) -> Optional[float]:
+    """Extract the price for the selected bottle size, never the unit price."""
     h1 = soup.find("h1")
     if h1 is None:
         return None
 
-    # Walk outward from the title and stop at a bounded product-detail scope.
-    # This avoids accidentally selecting a price from a recommendation grid.
+    if size_ml is None:
+        match = re.search(r"(?<!\d)(\d{1,4})\s*ml\b", _clean(h1.get_text(" ", strip=True)), re.I)
+        if match:
+            size_ml = int(match.group(1))
+
+    # The live storefront exposes each size as a .qty-item containing its own
+    # current-price and stock status. Match the exact size before considering
+    # any generic metadata, which can describe the price per litre.
+    qty_items = soup.select(".qty-item, [class*='qty-item']")
+    if qty_items and size_ml is not None:
+        for item in qty_items:
+            item_text = _clean(item.get_text(" ", strip=True))
+            sizes = [
+                int(value)
+                for value in re.findall(r"(?<!\d)(\d{1,4})\s*ml\b", item_text, re.I)
+            ]
+            if size_ml not in sizes:
+                continue
+            price_node = item.select_one(".current-price, .price-container, [class*='current-price']")
+            if price_node is not None:
+                price = _price_to_float(price_node.get_text(" ", strip=True))
+                if price is not None and price > 0:
+                    return price
+            return None
+        return None
+
+    # Fallback only for layouts without explicit size options.
     roots = []
     node = h1
     for _ in range(7):
         if node is None:
-            break
-        if getattr(node, "name", None) in {"main", "article"}:
-            roots.append(node)
             break
         classes = " ".join(node.get("class", [])).lower() if getattr(node, "attrs", None) else ""
         node_id = str(node.get("id") or "").lower() if getattr(node, "attrs", None) else ""
@@ -508,32 +524,20 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
         )):
             roots.append(node)
             break
+        if getattr(node, "name", None) in {"main", "article"}:
+            roots.append(node)
+            break
         node = node.parent
-
-    # Also check the nearest section/container around the title if the site
-    # doesn't use a recognizable product-detail class.
-    if not roots:
-        node = h1
-        for _ in range(4):
-            node = getattr(node, "parent", None)
-            if node is None:
-                break
-            if getattr(node, "name", None) in {"section", "article", "main"}:
-                roots.append(node)
-                break
     if not roots:
         return None
 
     root = roots[0]
-    # Visible price nodes must win over metadata. Easycosmetic sometimes
-    # leaves an outdated itemprop/meta price in the HTML while the selected
-    # variant's visible price is already updated. Metadata is a last resort.
     selectors = (
-        '[class*="product-price"]', '[class*="price-current"]',
-        '[class*="priceCurrent"]', '[class~="price"]',
-        '[data-price]', '[itemprop="price"]', 'meta[itemprop="price"]',
+        '[class*="product-price"]', '[class*="current-price"]',
+        '[class*="price-current"]', '[class*="priceCurrent"]',
+        '[class~="price"]', '[data-price]',
     )
-    rejected = ("old", "was", "strike", "cross", "regular", "uvp", "list-price", "discount-percent")
+    rejected = ("old", "was", "strike", "cross", "regular", "uvp", "list-price", "discount-percent", "unit-price")
     for selector in selectors:
         for element in root.select(selector):
             classes = " ".join(element.get("class", [])).lower()
@@ -592,9 +596,45 @@ def _extract_offer_data(
     return None, "EUR", ""
 
 
-def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
-    normalized = _normalise_text(text)
+def _availability_from_page(
+    text: str,
+    soup: Optional[BeautifulSoup] = None,
+    size_ml: Optional[int] = None,
+) -> Tuple[Optional[bool], str]:
+    # A product page can show sold-out states for other bottle sizes. If
+    # explicit size options exist, only the requested size is authoritative.
+    qty_items = soup.select(".qty-item, [class*='qty-item']") if soup is not None else []
+    if qty_items:
+        if size_ml is None:
+            return None, ""
+        for item in qty_items:
+            item_text = _clean(item.get_text(" ", strip=True))
+            sizes = [
+                int(value)
+                for value in re.findall(r"(?<!\d)(\d{1,4})\s*ml\b", item_text, re.I)
+            ]
+            if size_ml not in sizes:
+                continue
+            normalized_item = _normalise_text(item_text)
+            classes = " ".join(item.get("class", [])).lower()
+            if (
+                "unavailable" in classes
+                or "nicht auf lager" in normalized_item
+                or "ausverkauft" in normalized_item
+                or "nicht verfugbar" in normalized_item
+            ):
+                return False, "Out of stock" if "ausverkauft" in normalized_item or "nicht auf lager" in normalized_item else "Unavailable"
+            if (
+                "available" in classes
+                or "auf lager" in normalized_item
+                or "sofort lieferbar" in normalized_item
+                or "lieferbar" in normalized_item
+            ):
+                return True, "In stock"
+            return None, ""
+        return None, ""
 
+    normalized = _normalise_text(text)
     if "nicht auf lager" in normalized:
         return False, "Out of stock"
     if "ausverkauft" in normalized:
@@ -607,9 +647,6 @@ def _availability_from_page(text: str) -> Tuple[Optional[bool], str]:
         return True, "In stock"
     if "lieferbar" in normalized:
         return True, "Available"
-
-    # Unknown is not the same as in stock. Do not turn a missing stock signal
-    # into a positive availability claim.
     return None, ""
 
 
@@ -1106,6 +1143,9 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
     h1 = soup.find("h1")
     if h1:
         name = _clean(h1.get_text(" ", strip=True))
+        # Stock badges can be included in the rendered H1; they belong in offer
+        # availability, not in the canonical product identity.
+        name = re.sub(r"\s+(?:nicht\s+auf\s+lager|nicht\s+verfügbar|nicht\s+verfuegbar|nicht\s+verfugbar|auf\s+lager|sofort\s+lieferbar|lieferbar|ausverkauft)\s*$", "", name, flags=re.IGNORECASE).strip()
 
     if product_json:
         jsonld_name = _clean(product_json.get("name"))
@@ -1121,74 +1161,74 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
         image = _extract_page_image(soup, name)
 
     page_text = _clean(soup.get_text(" ", strip=True))
+    size_ml = _extract_size_ml(
+        soup, name, url, image, product_json=product_json
+    )
 
-    # The visible price on the German product detail is authoritative for
-    # this storefront, with or without a ?variant= parameter. JSON-LD can be
-    # cached or can describe a different regional/default offer. Only use the
-    # narrowly scoped product-detail price; never guess from arbitrary page text.
-    displayed_price = _extract_selected_variant_price(soup)
+    displayed_price = _extract_selected_variant_price(soup, size_ml)
     if displayed_price is not None:
         price = displayed_price
 
-    page_available, page_availability = _availability_from_page(page_text)
+    page_available, page_availability = _availability_from_page(
+        page_text, soup=soup, size_ml=size_ml
+    )
 
-    available = page_available
-    if availability:
-        normalized = _normalise_text(availability)
-        # Schema.org availability often arrives as a URL, e.g.
-        # https://schema.org/OutOfStock. Normalization turns that into tokens
-        # such as "https schema org outofstock", not "out of stock".
-        compact = re.sub(r"[^a-z0-9]+", "", normalized)
+    # Availability must be conservative: explicit sold-out text in the
+    # storefront page overrides stale JSON-LD that still says InStock.
+    # This prevents cached structured data from advertising unavailable
+    # products as purchasable.
+    normalized = _normalise_text(availability)
+    compact = re.sub(r"[^a-z0-9]+", "", normalized)
 
-        if any(
-            marker in normalized or marker in compact
-            for marker in (
-                "out of stock",
-                "outofstock",
-                "sold out",
-                "soldout",
-                "nicht auf lager",
-                "ausverkauft",
-                "unavailable",
-                "nicht verfugbar",
-                "discontinued",
-            )
-        ):
-            available = False
-            availability = "Out of stock"
-        elif any(
-            marker in normalized or marker in compact
-            for marker in (
-                "in stock",
-                "instock",
-                "limited availability",
-                "limitedavailability",
-                "online only",
-                "onlineonly",
-                "auf lager",
-                "lieferbar",
-                "available",
-                "verfugbar",
-            )
-        ):
-            available = True
-            availability = "In stock"
-        elif "preorder" in compact or "pre order" in normalized:
-            available = None
-            availability = "Preorder"
-        else:
-            # Preserve an unknown signal as unknown instead of trusting a
-            # potentially contradictory page-text heuristic.
-            available = None
+    structured_out_of_stock = any(
+        marker in normalized or marker in compact
+        for marker in (
+            "out of stock",
+            "outofstock",
+            "sold out",
+            "soldout",
+            "nicht auf lager",
+            "ausverkauft",
+            "unavailable",
+            "nicht verfugbar",
+            "discontinued",
+        )
+    )
+    structured_in_stock = any(
+        marker in normalized or marker in compact
+        for marker in (
+            "in stock",
+            "instock",
+            "limited availability",
+            "limitedavailability",
+            "online only",
+            "onlineonly",
+            "auf lager",
+            "lieferbar",
+            "available",
+            "verfugbar",
+        )
+    )
+
+    if page_available is False:
+        available = False
+        availability = page_availability or "Out of stock"
+    elif structured_out_of_stock:
+        available = False
+        availability = "Out of stock"
+    elif "preorder" in compact or "pre order" in normalized:
+        available = None
+        availability = "Preorder"
+    elif structured_in_stock:
+        available = True
+        availability = "In stock"
     else:
+        available = page_available
         availability = page_availability
 
     if not name:
         return None
 
-    size_ml = _extract_size_ml(
-        soup, name, url, image, product_json=product_json
-    )
     if product_json:
         # Some Easycosmetic Product objects expose multiple images. Select the
         # one matching the parsed bottle size instead of blindly taking index 0.
@@ -1214,21 +1254,21 @@ def _parse_product_html(url: str, html: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_product_page(session, url: str, slug: str = "", html: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Parse a German storefront page while preserving regional provenance.
+    """Catalog-engine adapter that enforces German storefront provenance.
 
-    The catalog engine validates the final response host before calling this
-    adapter and passes the HTML from that same response. Reusing that HTML
-    avoids a second request that could time out or return different variant
-    content. Standalone callers without HTML use the guarded request helper,
-    which rejects redirects outside easycosmetic.de.
+    The catalog engine may supply HTML fetched by its generic request path.
+    That HTML cannot safely be reused here because a regional redirect or
+    cached response can pair a German URL with a German offer. Fetch the
+    normalized German URL through this scraper's guarded request helper,
+    which rejects redirects outside easycosmetic.de, then parse that response.
+    The session/html parameters remain in the signature for adapter compatibility.
     """
     normalized_url = _normalise_url(url)
     if not _is_candidate_url(normalized_url):
         return None
 
-    if html is not None:
-        return _parse_product_html(normalized_url, html)
-
+    # _request_html checks the final URL after redirects and refuses non-German
+    # storefronts. Do not parse caller-supplied HTML of unknown regional origin.
     german_html = _request_html(normalized_url)
     return _parse_product_html(normalized_url, german_html)
 

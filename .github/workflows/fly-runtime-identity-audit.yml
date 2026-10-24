@@ -1,33 +1,44 @@
-name: Fly read-only runtime SQLite inventory
+name: Fly read-only runtime SQLite identity and Deloox audit
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm_read_only:
-        description: "Confirm read-only inspection of the production catalog"
-        required: true
-        type: choice
-        options:
-          - no
-          - yes
-        default: no
+  push:
+    branches:
+      - scenthunter-next-engine
+    paths:
+      - "tests/fly_readonly_runtime_deloox_audit.py"
+      - ".github/workflows/fly-runtime-identity-audit.yml"
+
+concurrency:
+  group: scenthunter-fly-readonly-audit
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   inventory:
-    if: ${{ inputs.confirm_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Check out the branch audit script
+        uses: actions/checkout@v4
+
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Read SQLite schema without changing the database
+      - name: Inspect catalog identity references and Deloox inventory (SQLite read-only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          flyctl ssh console --app scenthunter --select=false -C 'python -c '\''import sqlite3; c=sqlite3.connect("file:/data/store_catalog.sqlite3?mode=ro", uri=True); print("\\n".join(r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type IN (\\\"table\\\",\\\"view\\\") ORDER BY name"))); c.close()'\'''
+          timeout 180s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; url=\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\"; source=urllib.request.urlopen(url,timeout=10).read().decode(\"utf-8\"); exec(compile(source,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
+
+      - name: Fingerprint deployed parser code (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 90s flyctl ssh console --app scenthunter --select=false -C "python3 -c 'import hashlib,json;from pathlib import Path;root=Path(\"/app/backend\");files=[\"main.py\",\"catalog_engine.py\",\"scrapers/deloox/scraper.py\"];version=next((line.strip() for line in (root/\"main.py\").read_text().splitlines() if line.startswith(\"APP_VERSION\")),\"missing\");print(json.dumps({\"app_version\":version,\"git_blob_sha\":{p:hashlib.sha1(b\"blob \"+str(len((root/p).read_bytes())).encode()+b\"\\0\"+(root/p).read_bytes()).hexdigest() for p in files}},indent=2))'"
