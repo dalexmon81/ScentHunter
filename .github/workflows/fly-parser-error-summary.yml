@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - scenthunter-next-engine
+    paths:
+      - "tests/fly_readonly_runtime_deloox_audit.py"
+      - ".github/workflows/fly-parser-error-summary.yml"
 
 permissions:
   contents: read
