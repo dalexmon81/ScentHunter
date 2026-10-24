@@ -4172,19 +4172,23 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             'lease_token': token,
             'attempts': int(chosen['attempts'] or 0) + 1,
         }
-    except Exception:
+    except sqlite3.OperationalError as exc:
         try:
             conn.rollback()
         except Exception:
             pass
-        raise
-    except sqlite3.OperationalError as exc:
         print(
             f'CATALOG HYDRATION STAGE ERROR: stage=claim_hydration_task '
             f'error={type(exc).__name__}: {exc}',
             flush=True,
         )
         traceback.print_exc()
+        raise
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
         conn.close()
