@@ -3074,13 +3074,15 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Retailer timeouts must fit inside the hydration lease. Deloox has
-        # recently shown delayed response headers; keep reads bounded so one
-        # slow socket cannot tie up a worker for an entire lease interval.
+        # Keep retailer fetches bounded; Requests' (connect, read) timeout
+        # is still not a hard wall-clock deadline if a server dribbles bytes.
+        # Deloox response headers can stall, so run this fetch in the existing
+        # batch worker with a short socket timeout and let the batch deadline
+        # release the scheduler if the peer never responds.
         if store == 'easycosmetic':
             store_timeout = max(25, REFRESH_TIMEOUT)
         elif store == 'deloox':
-            store_timeout = min(6, REFRESH_TIMEOUT)
+            store_timeout = (3.0, 3.0)
         else:
             store_timeout = REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
