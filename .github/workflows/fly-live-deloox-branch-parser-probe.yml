@@ -8,6 +8,8 @@ on:
       - "backend/scrapers/deloox/scraper.py"
       - "tests/fly_live_deloox_branch_probe.py"
       - "tests/fly_readonly_runtime_deloox_audit.py"
+      - "tests/test_deloox_url_admission.py"
+      - "backend/catalog_engine.py"
       - ".github/workflows/fly-live-deloox-branch-parser-probe.yml"
   workflow_dispatch:
 
