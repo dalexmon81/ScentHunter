@@ -159,6 +159,7 @@ class CatalogRepository:
                         variants=tuple(variants_by_product.get(product_id, ())),
                         canonical_image_url=image_url,
                         aliases=product_aliases,
+                        concentration=_text(record.get("concentration")),
                     )
                 )
             except ValueError:
