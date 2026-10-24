@@ -48,8 +48,11 @@ def _db(path):
 
 def test_product_url_admission_is_strict():
     assert is_product_url("https://www.deloox.com/product/1380881/chloe.html")
+    assert is_product_url("https://www.deloox.com/en/product/1000083/lancome-tresor.html")
+    assert is_product_url("https://www.deloox.com/fr/product/1000083/lancome-tresor.html")
     assert is_product_url("https://www.deloox.be/produit/123/test.html")
     assert not is_product_url("https://www.deloox.nl/zoeken.html")
+    assert not is_product_url("https://www.deloox.com/en/search.html")
     assert not is_product_url("https://www.deloox.com/")
     assert not is_product_url("https://evil.example/product/123/test.html")
 
