@@ -2769,7 +2769,11 @@ def discover_store(store):
 
 def _jsonld(soup):
     products = []
-    for script in soup.select('script[type="application/ld+json"]'):
+    # Avoid BeautifulSoup's CSS selector engine here. Some retailer pages
+    # contain very large/deep HTML trees; soupsieve.select() can spend a long
+    # time recursively matching the selector, tying up a hydration worker.
+    # A direct tag scan has identical matching semantics for this JSON-LD type.
+    for script in soup.find_all('script', attrs={'type': 'application/ld+json'}):
         raw = script.string or script.get_text()
         try:
             data = json.loads(raw)
