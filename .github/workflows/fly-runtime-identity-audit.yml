@@ -9,6 +9,10 @@ on:
       - "tests/fly_readonly_runtime_deloox_audit.py"
       - ".github/workflows/fly-runtime-identity-audit.yml"
 
+concurrency:
+  group: scenthunter-fly-readonly-audit
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
