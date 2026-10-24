@@ -3950,75 +3950,90 @@ def hydration_pending_counts():
 
 
 def _ensure_hydration_queue():
-    """Backfill the durable queue using short, bounded SQLite transactions.
+    """Incrementally backfill and validate the durable hydration queue.
 
-    The catalog database is shared by the API process and the separate
-    family-coverage worker on Fly. A single transaction covering the entire
-    catalog (tens of thousands of URLs) can hold SQLite's writer lock long
-    enough to starve discovery, hydration, and foreground refreshes. Keep the
-    scan read-only, then persist changes in small batches so other processes
-    get frequent opportunities to write. INSERT OR IGNORE makes this safe to
-    rerun after interruption.
+    The catalog DB is shared with discovery and family coverage. Never fetch
+    every active URL and validate it in one unbounded in-memory pass: scan
+    bounded keyset pages and persist only small batches, releasing SQLite's
+    writer lock between batches. Re-running is idempotent.
     """
-    now = time.time()
-    batch_size = 250
+    batch_size = 200
+    scanned_after = None
+    inserted = 0
+    invalidated = 0
+
     conn = db()
     try:
-        # Read candidate rows without holding a write transaction. In WAL mode
-        # this allows readers to proceed while other processes persist results.
-        invalid_rows = conn.execute(
-            "SELECT store,url FROM store_urls WHERE active=1"
-        ).fetchall()
+        while True:
+            # Keyset pagination avoids a huge fetchall() and stays deterministic
+            # while new URLs are appended by concurrent discovery.
+            if scanned_after is None:
+                rows = conn.execute(
+                    """SELECT store,url
+                         FROM store_urls
+                        WHERE active=1
+                        ORDER BY store,url
+                        LIMIT ?""",
+                    (batch_size,),
+                ).fetchall()
+            else:
+                last_store, last_url = scanned_after
+                rows = conn.execute(
+                    """SELECT store,url
+                         FROM store_urls
+                        WHERE active=1
+                          AND (store > ? OR (store = ? AND url > ?))
+                        ORDER BY store,url
+                        LIMIT ?""",
+                    (last_store, last_store, last_url, batch_size),
+                ).fetchall()
+            if not rows:
+                break
 
-        invalid_batch = []
-        for row in invalid_rows:
-            if not _looks_product(row['url'], row['store']):
-                invalid_batch.append((row['store'], row['url']))
+            scanned_after = (rows[-1]['store'], rows[-1]['url'])
+            valid = []
+            invalid = []
+            for row in rows:
+                pair = (row['store'], row['url'])
+                if _looks_product(row['url'], row['store']):
+                    valid.append(pair)
+                else:
+                    invalid.append(pair)
 
-        for offset in range(0, len(invalid_batch), batch_size):
-            batch = invalid_batch[offset:offset + batch_size]
+            now = time.time()
             with conn:
-                conn.executemany(
-                    "DELETE FROM hydration_queue WHERE store=? AND url=?",
-                    batch,
-                )
-                conn.executemany(
-                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
-                    batch,
-                )
+                if invalid:
+                    conn.executemany(
+                        "DELETE FROM hydration_queue WHERE store=? AND url=?",
+                        invalid,
+                    )
+                    conn.executemany(
+                        "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                        invalid,
+                    )
+                    invalidated += len(invalid)
 
-        # Fetch missing queue candidates after invalid URLs have been retired.
-        # The result is a snapshot; concurrent discovery may insert some of
-        # these URLs too, so INSERT OR IGNORE is required for idempotency.
-        rows = conn.execute(
-            """SELECT u.store,u.url
-                 FROM store_urls u
-                WHERE u.active=1
-                  AND NOT EXISTS (
-                      SELECT 1 FROM hydration_queue q
-                       WHERE q.store=u.store AND q.url=u.url
-                  )"""
-        ).fetchall()
+                if valid:
+                    conn.executemany(
+                        """INSERT OR IGNORE INTO hydration_queue(
+                               store,url,state,attempts,available_at,first_seen_at)
+                           SELECT ?,?,CASE WHEN EXISTS(
+                               SELECT 1 FROM store_products p
+                                WHERE p.store=? AND p.url=? AND p.fetch_status='OK'
+                           ) THEN 'DONE' ELSE 'PENDING' END,0,?,?""",
+                        [
+                            (store, url, store, url, now, now)
+                            for store, url in valid
+                        ],
+                    )
+                    inserted += len(valid)
 
-        inserted = 0
-        for offset in range(0, len(rows), batch_size):
-            batch = rows[offset:offset + batch_size]
-            prepared = []
-            for row in batch:
-                existing = conn.execute(
-                    "SELECT 1 FROM store_products WHERE store=? AND url=? AND fetch_status='OK'",
-                    (row['store'], row['url']),
-                ).fetchone()
-                state = 'DONE' if existing else 'PENDING'
-                prepared.append((row['store'], row['url'], state, 0, now, now))
-            with conn:
-                conn.executemany(
-                    """INSERT OR IGNORE INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)""",
-                    prepared,
-                )
-            inserted += len(prepared)
+        print(
+            'HYDRATION QUEUE BACKFILL COMPLETE '
+            f'scanned_after={scanned_after!r} inserted_candidates={inserted} '
+            f'invalidated={invalidated} batch_size={batch_size}',
+            flush=True,
+        )
         return inserted
     finally:
         conn.close()
