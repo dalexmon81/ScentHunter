@@ -17,6 +17,7 @@
 #
 # No product-specific URLs, names, prices or matching rules are embedded here.
 
+import ctypes
 import gzip
 import html
 import heapq
@@ -4495,6 +4496,30 @@ def _recover_stale_discovery_states():
     return recovered
 
 
+def _set_catalog_discovery_os_thread_name(thread, name):
+    """Keep Python and Linux /proc thread names in sync on Python 3.12.
+
+    The separate family-coverage process reads /proc/<pid>/task/<tid>/comm;
+    changing Thread.name alone does not reliably rename a running OS thread on
+    Python versions before 3.14. PR_SET_NAME is thread-local and Linux truncates
+    the name to 15 bytes, matching the coverage worker's detection contract.
+    """
+    thread.name = name
+    try:
+        encoded = str(name).encode("utf-8")[:15]
+        result = ctypes.CDLL(None, use_errno=True).prctl(
+            15, ctypes.c_char_p(encoded), 0, 0, 0
+        )
+        if result != 0:
+            raise OSError(ctypes.get_errno(), "prctl(PR_SET_NAME) failed")
+    except Exception as exc:
+        print(
+            "CATALOG DISCOVERY OS THREAD NAME ERROR "
+            f"name={name} error={type(exc).__name__}:{exc}",
+            flush=True,
+        )
+
+
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     """Incrementally advance discovery for every retailer in the background.
 
@@ -4532,7 +4557,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     # overlapping writes. Mark the thread idle between bounded crawls; leaving
     # the discovery name set for the lifetime of this loop starves coverage.
     discovery_thread = threading.current_thread()
-    discovery_thread.name = 'sh-catalog-idle'
+    _set_catalog_discovery_os_thread_name(discovery_thread, 'sh-catalog-idle')
     while stop_event is None or not stop_event.is_set():
         # Avoid starting a new crawl while a user search is active or another
         # search is likely to arrive immediately after the previous one.
@@ -4562,7 +4587,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
             store = stores[next_index % len(stores)]
             next_index = (next_index + 1) % len(stores)
         started = time.time()
-        discovery_thread.name = 'sh-catalog-discovery'
+        _set_catalog_discovery_os_thread_name(discovery_thread, 'sh-catalog-discovery')
         try:
             result = discover_store(store)
             if not isinstance(result, dict):
@@ -4599,7 +4624,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
 
         # Only expose the active-writer name while discover_store is running.
         # The coverage worker can safely resume during the interval sleep.
-        discovery_thread.name = 'sh-catalog-idle'
+        _set_catalog_discovery_os_thread_name(discovery_thread, 'sh-catalog-idle')
 
         # Wait between stores. The event wait allows clean shutdown and keeps
         # discovery from immediately starting another potentially expensive
