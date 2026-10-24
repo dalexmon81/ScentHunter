@@ -184,6 +184,49 @@ def main():
                             {"table": table, "url": url, "query_error": type(exc).__name__ + ": " + str(exc)[:180]}
                         )
 
+        # Read-only recovery dry-run: quantify active numeric product routes
+        # with historical parser errors and DEAD/ERROR queue rows. No writes.
+        recovery_report = {"eligible_product_urls": 0, "excluded_non_product_urls": 0,
+                           "eligible_sample": [], "excluded_sample": []}
+        required_recovery_columns = {
+            "store_products": {"store", "url", "fetch_status"},
+            "store_urls": {"store", "url", "active"},
+            "hydration_queue": {"store", "url", "state"},
+        }
+        recovery_schema_ok = True
+        for table, required in required_recovery_columns.items():
+            actual = {row["name"] for row in conn.execute("PRAGMA table_info(" + table + ")")}
+            if not required <= actual:
+                recovery_schema_ok = False
+                recovery_report.setdefault("schema_errors", {})[table] = sorted(required - actual)
+        recovery_report["schema_ok"] = recovery_schema_ok
+        if recovery_schema_ok:
+            recovery_rows = conn.execute(
+                """SELECT DISTINCT p.url, q.state AS queue_state
+                     FROM store_products p
+                     JOIN store_urls u ON lower(u.store)=lower(p.store) AND u.url=p.url
+                     JOIN hydration_queue q ON lower(q.store)=lower(p.store) AND q.url=p.url
+                    WHERE lower(p.store)='deloox' AND lower(u.store)='deloox'
+                      AND u.active=1 AND lower(q.store)='deloox'
+                      AND p.fetch_status LIKE '%product_parser_not_found%'
+                      AND q.state IN ('DEAD','ERROR') ORDER BY p.url"""
+            ).fetchall()
+            eligible, excluded = [], []
+            product_route = re.compile(
+                r"^https?://(?:www\.)?deloox\.(?:be|com|nl|lu|es)/"
+                r"(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
+            for row in recovery_rows:
+                item = {"url": row["url"], "queue_state": row["queue_state"]}
+                (eligible if product_route.search(str(row["url"] or "")) else excluded).append(item)
+            recovery_report.update({
+                "candidate_rows_before_url_validation": len(recovery_rows),
+                "eligible_product_urls": len(eligible),
+                "excluded_non_product_urls": len(excluded),
+                "eligible_sample": eligible[:20], "excluded_sample": excluded[:20],
+                "read_only": True, "database_mutated": False,
+            })
+        report["deloox_recovery_dry_run"] = recovery_report
+
         coverage_columns = {row["name"] for row in conn.execute("PRAGMA table_info(catalog_coverage)")}
         if {"store", "canonical_name", "query", "state"} <= coverage_columns:
             report["catalog_coverage_profondo"] = [
