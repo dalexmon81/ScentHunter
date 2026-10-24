@@ -26,5 +26,5 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          set -uo pipefail
-          timeout 220s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sys.argv=[\\"probe\\", \\"${GITHUB_SHA}\\"]; exec(compile(urllib.request.urlopen(\\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/${GITHUB_SHA}/tests/fly_live_deloox_branch_probe.py\\",timeout=10).read().decode(\\"utf-8\\"),\\"fly_live_deloox_branch_probe.py\\",\\"exec\\"))'"
+          set -euo pipefail
+          timeout 220s flyctl ssh console --app scenthunter --select=false -C '/app/.venv/bin/python -c "import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))" ${GITHUB_SHA}'
