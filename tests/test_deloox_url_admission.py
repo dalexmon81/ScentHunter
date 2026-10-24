@@ -175,10 +175,13 @@ def test_coverage_admission_rejects_deloox_navigation_but_keeps_products():
 
 
 def test_refresh_url_rejects_deloox_search_url_before_network(monkeypatch):
+    calls = []
+
     def unexpected_http_get(*args, **kwargs):
+        calls.append((args, kwargs))
         raise AssertionError("non-product URL must be rejected before HTTP")
 
     monkeypatch.setattr(catalog_engine, "http_get", unexpected_http_get)
     result = catalog_engine.refresh_url("deloox", "https://www.deloox.nl/zoeken.html")
-    assert result.get("ok") is False
-    assert "non_product_deloox_url" in str(result.get("error", ""))
+    assert result is None
+    assert calls == []
