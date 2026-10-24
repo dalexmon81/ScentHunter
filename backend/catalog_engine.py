@@ -4528,6 +4528,11 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         f'CATALOG DISCOVERY START stores={len(stores)} interval={pause:g}s',
         flush=True,
     )
+    # The family-coverage worker checks this process-visible name to avoid
+    # overlapping writes. Mark the thread idle between bounded crawls; leaving
+    # the discovery name set for the lifetime of this loop starves coverage.
+    discovery_thread = threading.current_thread()
+    discovery_thread.name = 'sh-catalog-idle'
     while stop_event is None or not stop_event.is_set():
         # Avoid starting a new crawl while a user search is active or another
         # search is likely to arrive immediately after the previous one.
@@ -4557,6 +4562,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
             store = stores[next_index % len(stores)]
             next_index = (next_index + 1) % len(stores)
         started = time.time()
+        discovery_thread.name = 'sh-catalog-discovery'
         try:
             result = discover_store(store)
             if not isinstance(result, dict):
@@ -4590,6 +4596,10 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
                     f'{type(state_exc).__name__}: {state_exc}',
                     flush=True,
                 )
+
+        # Only expose the active-writer name while discover_store is running.
+        # The coverage worker can safely resume during the interval sleep.
+        discovery_thread.name = 'sh-catalog-idle'
 
         # Wait between stores. The event wait allows clean shutdown and keeps
         # discovery from immediately starting another potentially expensive
