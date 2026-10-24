@@ -147,7 +147,48 @@ def test_generate_read_only_legacy_vs_next_shadow_report():
     }
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
+
     assert report["sample_count"] > 0
+
+    # The synthetic shadow records contain no GTIN and intentionally exercise
+    # name/brand/size evidence only. Known canonical collisions must therefore
+    # stay ambiguous rather than being "fixed" by choosing one product ID.
+    ambiguous_comparisons = [
+        item for item in comparisons
+        if item["next"].get("status") == "ambiguous"
+    ]
+    expected_collision_ids = {
+        frozenset(("SH-0043", "SH-AUTO-0019")),
+        frozenset(("SH-AUTO-0018", "SH-AUTO-0288")),
+    }
+    for item in ambiguous_comparisons:
+        assert item["next"].get("candidate_product_ids")
+        assert item["expected_product_id"] in item["next"]["candidate_product_ids"]
+    assert any(
+        frozenset(item["next"]["candidate_product_ids"]) in expected_collision_ids
+        for item in ambiguous_comparisons
+    ), "Shadow sample should surface the known Armani canonical identity collision"
+
+    report["identity_collision_diagnostics"] = {
+        "scope": "synthetic offers without GTIN evidence",
+        "ambiguous_count": len(ambiguous_comparisons),
+        "ambiguous_candidates": [
+            {
+                "sample": item["sample"],
+                "expected_product_id": item["expected_product_id"],
+                "expected_variant_id": item["expected_variant_id"],
+                "expected_size_ml": item["expected_size_ml"],
+                "candidate_product_ids": item["next"]["candidate_product_ids"],
+                "reason": "exact name/brand/size evidence cannot disambiguate duplicate canonical identities without reviewed variant evidence",
+            }
+            for item in ambiguous_comparisons
+        ],
+        "production_traffic_replayed": False,
+        "database_accessed": False,
+        "catalog_modified": False,
+    }
+    REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    assert CATALOG_PATH.read_bytes() == catalog_before, "Read-only comparison modified the catalog"
 
 
 if __name__ == "__main__":
