@@ -95,10 +95,29 @@ jobs:
           printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
 
   audit_state:
-    if: ${{ contains(github.event.head_commit.message, 'diagnose Deloox recovery state') }}
+    # Run a lightweight read-only production audit after every main push so
+    # regressions are visible without requiring a specially named commit.
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
+      - name: Wait for this revision's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          READY=0
+          for attempt in $(seq 1 90); do
+            DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            echo "Waiting for Fly Deploy for $GITHUB_SHA: $STATUS / $CONCLUSION (attempt $attempt/90)"
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then echo 'Deploy failed; audit blocked.' >&2; exit 1; fi
+            sleep 10
+          done
+          if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time; audit blocked.' >&2; exit 1; fi
       - name: Read-only queue and parser audit
         shell: bash
         run: |
