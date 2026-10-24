@@ -155,22 +155,28 @@ def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
         eligible = [row["url"] for row in rows if is_product_url(row["url"])]
         now = time.time()
         changed = 0
-        # The candidate set was selected inside this BEGIN IMMEDIATE transaction
-        # using all product/active-URL/error-state guards. Re-check the queue state
-        # in each UPDATE, but avoid repeating two correlated EXISTS scans per URL.
-        # This keeps recovery of several thousand rows comfortably within the
-        # remote command window while preserving the same eligibility constraints.
-        cursor = conn.executemany(
+        # Candidate eligibility was fully checked inside this BEGIN IMMEDIATE
+        # transaction. Stage the validated URLs and reset the queue in one SQL
+        # statement instead of thousands of per-URL scans/updates.
+        conn.execute(
+            "CREATE TEMP TABLE recovery_candidate_urls (url TEXT PRIMARY KEY)"
+        )
+        conn.executemany(
+            "INSERT OR IGNORE INTO recovery_candidate_urls(url) VALUES (?)",
+            ((url,) for url in eligible),
+        )
+        cursor = conn.execute(
             """
             UPDATE hydration_queue
             SET state='PENDING', attempts=0, available_at=?,
                 last_error=NULL, last_http_status=NULL,
                 last_started_at=NULL, last_finished_at=NULL,
                 leased_until=NULL, lease_token=NULL
-            WHERE lower(store)='deloox' AND url=?
+            WHERE lower(store)='deloox'
               AND state IN ('DEAD','ERROR')
+              AND url IN (SELECT url FROM recovery_candidate_urls)
             """,
-            ((now, url) for url in eligible),
+            (now,),
         )
         changed = cursor.rowcount
         conn.commit()
