@@ -2240,6 +2240,19 @@ class ProductMatcher:
         if self._is_non_fragrance_offer(offer):
             return {"status": "rejected", "reject_reason": "non_fragrance"}
 
+        # Reject a retailer listing when its displayed concentration conflicts
+        # with the concentration explicitly encoded in its product URL. This
+        # catches mislabeled listings such as "Sauvage Parfum" linking to EDT.
+        offer_name_for_concentration = self._offer_name(offer)
+        name_concentration = normalize_concentration(offer_name_for_concentration)
+        url_concentrations = {
+            normalize_concentration(raw_url)
+            for raw_url in self._offer_url_identity_texts(offer)
+            if normalize_concentration(raw_url)
+        }
+        if name_concentration and url_concentrations and name_concentration not in url_concentrations:
+            return {"status": "rejected", "reject_reason": "concentration_mismatch"}
+
         # Family registry is the canonical family/variant knowledge layer.
         # Reuse the same resolver used by match() so family variants that are
         # known in family_registry.json are not incorrectly returned unresolved
