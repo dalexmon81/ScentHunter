@@ -3949,56 +3949,52 @@ def hydration_pending_counts():
     return out
 
 
-def _ensure_hydration_queue():
-    """Incrementally backfill and validate the durable hydration queue.
+def _ensure_hydration_queue(max_rows=1200, batch_size=100, max_seconds=8.0):
+    """Perform a bounded, resumable queue backfill without monopolizing SQLite.
 
-    The catalog DB is shared with discovery and family coverage. Never fetch
-    every active URL and validate it in one unbounded in-memory pass: scan
-    bounded keyset pages and persist only small batches, releasing SQLite's
-    writer lock between batches. Re-running is idempotent.
+    This bootstrap helper is intentionally budgeted per process start. It scans
+    a limited keyset page range, commits small batches and returns; the durable
+    claim/retry loop keeps processing existing queue rows normally. Re-running
+    on the next app start continues to be safe and idempotent.
     """
-    batch_size = 200
+    max_rows = max(1, int(max_rows))
+    batch_size = max(1, min(int(batch_size), 200))
+    deadline = time.monotonic() + max(0.5, float(max_seconds))
     scanned_after = None
     inserted = 0
     invalidated = 0
+    scanned = 0
+    complete = False
 
     conn = db()
     try:
-        while True:
-            # Keyset pagination avoids a huge fetchall() and stays deterministic
-            # while new URLs are appended by concurrent discovery.
+        while scanned < max_rows and time.monotonic() < deadline:
+            limit = min(batch_size, max_rows - scanned)
             if scanned_after is None:
                 rows = conn.execute(
-                    """SELECT store,url
-                         FROM store_urls
-                        WHERE active=1
-                        ORDER BY store,url
-                        LIMIT ?""",
-                    (batch_size,),
+                    """SELECT store,url FROM store_urls
+                        WHERE active=1 ORDER BY store,url LIMIT ?""",
+                    (limit,),
                 ).fetchall()
             else:
                 last_store, last_url = scanned_after
                 rows = conn.execute(
-                    """SELECT store,url
-                         FROM store_urls
+                    """SELECT store,url FROM store_urls
                         WHERE active=1
                           AND (store > ? OR (store = ? AND url > ?))
-                        ORDER BY store,url
-                        LIMIT ?""",
-                    (last_store, last_store, last_url, batch_size),
+                        ORDER BY store,url LIMIT ?""",
+                    (last_store, last_store, last_url, limit),
                 ).fetchall()
             if not rows:
+                complete = True
                 break
 
             scanned_after = (rows[-1]['store'], rows[-1]['url'])
-            valid = []
-            invalid = []
+            scanned += len(rows)
+            valid, invalid = [], []
             for row in rows:
                 pair = (row['store'], row['url'])
-                if _looks_product(row['url'], row['store']):
-                    valid.append(pair)
-                else:
-                    invalid.append(pair)
+                (valid if _looks_product(row['url'], row['store']) else invalid).append(pair)
 
             now = time.time()
             with conn:
@@ -4012,7 +4008,6 @@ def _ensure_hydration_queue():
                         invalid,
                     )
                     invalidated += len(invalid)
-
                 if valid:
                     conn.executemany(
                         """INSERT OR IGNORE INTO hydration_queue(
@@ -4021,20 +4016,18 @@ def _ensure_hydration_queue():
                                SELECT 1 FROM store_products p
                                 WHERE p.store=? AND p.url=? AND p.fetch_status='OK'
                            ) THEN 'DONE' ELSE 'PENDING' END,0,?,?""",
-                        [
-                            (store, url, store, url, now, now)
-                            for store, url in valid
-                        ],
+                        [(store, url, store, url, now, now) for store, url in valid],
                     )
                     inserted += len(valid)
 
         print(
-            'HYDRATION QUEUE BACKFILL COMPLETE '
-            f'scanned_after={scanned_after!r} inserted_candidates={inserted} '
-            f'invalidated={invalidated} batch_size={batch_size}',
+            'HYDRATION QUEUE BACKFILL '
+            f'scanned={scanned} cursor={scanned_after!r} complete={complete} '
+            f'inserted_candidates={inserted} invalidated={invalidated} '
+            f'max_rows={max_rows} batch_size={batch_size} elapsed_sec={max(0.0, max_seconds - max(0.0, deadline-time.monotonic())):.2f}',
             flush=True,
         )
-        return inserted
+        return {'scanned': scanned, 'inserted': inserted, 'invalidated': invalidated, 'complete': complete}
     finally:
         conn.close()
 
