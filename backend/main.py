@@ -2373,6 +2373,25 @@ def _snapshot(job_id):
         completed = bool(job.get("completed"))
         status = job.get("status") or ("completed" if completed else "searching")
         results = list(job.get("results", []))
+        # Last-mile response guard: cached/progressive grouped snapshots must
+        # never expose rows whose displayed title conflicts with the URL SKU.
+        # This complements aggregation-time filtering and protects all polling
+        # clients even if an upstream path published a stale/mutated row.
+        filtered_results = []
+        for group in results:
+            if not isinstance(group, dict):
+                continue
+            safe_group = dict(group)
+            safe_offers = [
+                offer for offer in (group.get("offers") or [])
+                if isinstance(offer, dict)
+                and not _is_non_fragrance_offer(offer)
+                and not _is_concentration_mismatch_offer(offer)
+            ]
+            if safe_offers:
+                safe_group["offers"] = safe_offers
+                filtered_results.append(safe_group)
+        results = filtered_results
         offers = list(job.get("offers", []))
         unresolved_offers = list(job.get("unresolved_offers", []))
         errors = dict(job.get("errors", {}))
