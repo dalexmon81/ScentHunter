@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - scenthunter-next-engine
+    paths:
+      - "tests/fly_readonly_runtime_deloox_audit.py"
+      - ".github/workflows/fly-runtime-identity-audit.yml"
 
 permissions:
   contents: read
@@ -26,8 +29,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # The script is fetched by exact commit inside the Fly runtime.
-          # No fallback success: SSH/script failures must remain visible.
           timeout 180s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; url=\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\"; source=urllib.request.urlopen(url,timeout=10).read().decode(\"utf-8\"); exec(compile(source,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
 
       - name: Fingerprint deployed parser code (read-only)
