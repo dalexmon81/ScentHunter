@@ -1,6 +1,7 @@
 """Regression tests for guarded Deloox recovery; all writes use temporary SQLite files."""
 import sqlite3
 
+import backend.scenthunter_next_engine.deloox_recovery as recovery_module
 from backend.scenthunter_next_engine.deloox_recovery import (
     apply_recovery,
     build_report,
@@ -99,3 +100,29 @@ def test_apply_requeues_only_active_dead_valid_product_parser_errors(tmp_path):
     assert states[done] == "DONE"
     assert states[inactive] == "DEAD"
     assert all(name == "Existing good name" and price == 60.99 for _, name, price in products)
+
+
+
+def test_apply_is_blocked_when_deployed_parser_revision_is_stale(tmp_path, monkeypatch):
+    path = tmp_path / "catalog.sqlite3"
+    _db(path)
+    before = path.read_bytes()
+    monkeypatch.setattr(
+        recovery_module,
+        "parser_runtime_status",
+        lambda: {
+            "available": True,
+            "matches_validated_revision": False,
+            "git_blob_sha": "old-production-parser",
+            "expected_git_blob_sha": "validated-branch-parser",
+        },
+    )
+
+    try:
+        apply_recovery(str(path))
+    except RuntimeError as exc:
+        assert "deployed Deloox parser does not match" in str(exc)
+    else:
+        raise AssertionError("recovery must refuse to run against a stale parser")
+
+    assert path.read_bytes() == before
