@@ -42,6 +42,7 @@ jobs:
           tests/test_runtime_identity_reference_audit.py
           tests/test_catalog_sqlite_contention.py
           tests/test_deloox_url_admission.py
+          tests/test_deloox_recovery.py
           tests/test_catalog_url_hygiene.py
           tests/test_production_cleanup_proposal.py
           tests/test_coverage_scraper_process.py
