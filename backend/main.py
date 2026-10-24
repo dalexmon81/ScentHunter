@@ -3115,6 +3115,29 @@ def _runtime_diag_memory():
         pass
     return out
 
+def _runtime_thread_snapshot(t):
+    """Return Python and native Linux thread identity for read-only diagnostics."""
+    native_id = getattr(t, "native_id", None)
+    item = {
+        "name": t.name,
+        "ident": t.ident,
+        "native_id": native_id,
+        "alive": t.is_alive(),
+        "daemon": t.daemon,
+    }
+    if native_id is not None:
+        try:
+            with open(
+                f"/proc/self/task/{int(native_id)}/comm",
+                "r",
+                encoding="utf-8",
+            ) as handle:
+                item["os_comm"] = handle.read().strip()
+        except (OSError, TypeError, ValueError) as exc:
+            item["os_comm_error"] = f"{type(exc).__name__}: {exc}"
+    return item
+
+
 def _runtime_diag_stacks():
     frames = sys._current_frames()
     result = []
@@ -3123,16 +3146,12 @@ def _runtime_diag_stacks():
             t.name.startswith("scenthunter-store-")
             or t.name.startswith("scenthunter-search-")
             or t.name.startswith("scenthunter-catalog-")
+            or t.name.startswith("sh-catalog-")
             or t.name.startswith("AnyIO")
             or t.name.startswith("ThreadPoolExecutor")
         ):
             continue
-        item = {
-            "name": t.name,
-            "ident": t.ident,
-            "alive": t.is_alive(),
-            "daemon": t.daemon,
-        }
+        item = _runtime_thread_snapshot(t)
         frame = frames.get(t.ident)
         if frame is not None:
             try:
@@ -3206,7 +3225,7 @@ def diagnostic_runtime_deep():
         "threads": {
             "total": threading.active_count(),
             "all": [
-                {"name": t.name, "ident": t.ident, "alive": t.is_alive(), "daemon": t.daemon}
+                _runtime_thread_snapshot(t)
                 for t in threading.enumerate()
             ],
             "stacks": _runtime_diag_stacks(),
