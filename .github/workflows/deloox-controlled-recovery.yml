@@ -109,6 +109,9 @@ jobs:
           echo '--- Persistent hydration queue states (read-only HTTP) ---'
           curl --fail --silent --show-error --max-time 20 'https://scenthunter.fly.dev/catalog/hydration-status'
           echo
+          echo '--- Read-only PROCESSING hydration leases (age and expiry) ---'
+          curl --fail --silent --show-error --max-time 10 'https://scenthunter.fly.dev/catalog/hydration-processing'
+          echo
           echo '--- Read-only runtime/thread diagnostics ---'
           curl --fail --silent --show-error --max-time 20 'https://scenthunter.fly.dev/diagnostic/runtime-deep'
           echo

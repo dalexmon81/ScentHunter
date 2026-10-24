@@ -3376,6 +3376,53 @@ def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int =
         conn.close()
 
 
+@app.get('/catalog/hydration-processing')
+def catalog_hydration_processing_endpoint():
+    """Read-only inspection of active hydration leases; exposes no credentials."""
+    import sqlite3
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    now = time.time()
+    conn = None
+    try:
+        # URI read-only mode prevents diagnostics from creating schema or mutating queue state.
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        rows = conn.execute(
+            """SELECT store, url, state, attempts, last_started_at,
+                      leased_until, last_error
+               FROM hydration_queue
+               WHERE state='PROCESSING'
+               ORDER BY store, last_started_at"""
+        ).fetchall()
+        tasks = []
+        for row in rows:
+            item = dict(row)
+            item['age_sec'] = (
+                round(now - float(item['last_started_at']), 1)
+                if item.get('last_started_at') is not None else None
+            )
+            item['lease_remaining_sec'] = (
+                round(float(item['leased_until']) - now, 1)
+                if item.get('leased_until') is not None else None
+            )
+            # Keep the product URL available for pinpointing the stuck queue row.
+            tasks.append(item)
+        return {'timestamp': now, 'count': len(tasks), 'processing': tasks}
+    except Exception as exc:
+        return {'timestamp': now, 'error': f'{type(exc).__name__}: {exc}'}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @app.get('/catalog/hydration-status')
 def catalog_hydration_status_endpoint():
     """Detailed persistent hydration queue status, read-only."""
