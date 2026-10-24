@@ -3173,144 +3173,149 @@ def refresh_url(store, url):
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
 
-        conn = db()
-        try:
-            # A successful targeted refresh must also make this URL part of the
-            # persistent searchable catalog. Previously only store_products
-            # was written, while search_local() and the FTS triggers require an
-            # active store_urls row. This left valid refreshed offers invisible.
-            now = time.time()
-            with conn:
-                conn.execute(
-                    '''INSERT INTO store_urls(
-                           store,url,slug,lastmod,discovered_at,active)
-                       VALUES(?,?,?,?,?,1)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           slug=excluded.slug,
-                           discovered_at=excluded.discovered_at,
-                           active=1''',
-                    (store, url, url_slug(url), None, now),
-                )
-                conn.execute(
-                    '''INSERT INTO hydration_queue(
-                           store,url,state,attempts,available_at,first_seen_at)
-                       VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ?
-                               THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END''',
-                    (store, url, "PENDING", 0, now, now, now),
-                )
-                if store == 'sabina' and item.get('variants'):
-                    # Validate the complete extracted set before replacing the
-                    # stored set. A malformed/non-priced extraction must never
-                    # erase previously known good variant offers.
-                    valid_variants = []
-                    for variant in item['variants']:
-                        try:
-                            variant_size = float(variant.get('size_ml'))
-                            variant_price = float(variant.get('price_num'))
-                        except (TypeError, ValueError):
-                            continue
-                        if variant_size > 0 and variant_price > 0:
-                            valid_variants.append((variant, variant_size, variant_price))
-                    if valid_variants:
-                        conn.execute(
-                            'DELETE FROM store_product_variants WHERE store=? AND url=?',
-                            (store, url),
-                        )
-                        for variant, variant_size, variant_price in valid_variants:
-                            # Persist the commercial combination identity, not
-                            # merely size + SKU: Sabina can repeat a parent SKU
-                            # across sizes, and distinct combinations may share
-                            # both size and SKU. The scraper preserves the real
-                            # combination selector in the variant URL fragment.
-                            raw_variant_url = str(variant.get('url') or '').strip()
-                            parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
-                            variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
-                            variant_query = urllib.parse.parse_qs(parsed_variant_url.query)
-                            selector_values = []
-                            for selector_name in ('id_product_attribute', 'id_product_attribute_value', 'variant', 'variant_id', 'combination_id'):
-                                selector_values.extend(str(value).strip() for value in variant_query.get(selector_name, []) if str(value).strip())
-                            if selector_values:
-                                identity_token = 'selector:' + '|'.join(selector_values)
-                            elif variant_selector:
-                                identity_token = 'fragment:' + variant_selector
-                            elif variant.get('gtin'):
-                                identity_token = 'gtin:' + str(variant.get('gtin')).strip()
-                            elif variant.get('mpn'):
-                                identity_token = 'mpn:' + str(variant.get('mpn')).strip()
-                            elif variant.get('sku'):
-                                identity_token = 'sku:' + str(variant.get('sku')).strip()
-                            else:
-                                identity_token = 'price:' + format(variant_price, '.4f')
-                            variant_key = f"{variant_size:g}ml:{identity_token}"
-                            # Variant identity must not inherit identifiers that
-                            # describe the parent product (notably GTIN/MPN).
-                            # A parent-level GTIN is not proof that every size
-                            # has that same GTIN.
-                            variant_name = variant.get('name') or item.get('name')
-                            if variant_name and not variant.get('name'):
-                                # Make each offer name describe its own volume.
-                                variant_name = re.sub(
-                                    r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\s*$",
-                                    "",
-                                    str(variant_name),
-                                    flags=re.I,
-                                ).strip()
-                                variant_name = f"{variant_name} {variant_size:g} ML".strip()
-                            variant_gtin = variant.get('gtin')
-                            variant_mpn = variant.get('mpn')
-                            if len(valid_variants) == 1:
-                                variant_gtin = variant_gtin or item.get('gtin')
-                                variant_mpn = variant_mpn or item.get('mpn')
+        # Retry only this isolated, idempotent persistence transaction. The
+        # HTTP request and parsing above are not repeated when SQLite is busy.
+        def persist_refreshed_product():
+            conn = db()
+            try:
+                # A successful targeted refresh must also make this URL part of the
+                # persistent searchable catalog. Previously only store_products
+                # was written, while search_local() and the FTS triggers require an
+                # active store_urls row. This left valid refreshed offers invisible.
+                now = time.time()
+                with conn:
+                    conn.execute(
+                        '''INSERT INTO store_urls(
+                               store,url,slug,lastmod,discovered_at,active)
+                           VALUES(?,?,?,?,?,1)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               slug=excluded.slug,
+                               discovered_at=excluded.discovered_at,
+                               active=1''',
+                        (store, url, url_slug(url), None, now),
+                    )
+                    conn.execute(
+                        '''INSERT INTO hydration_queue(
+                               store,url,state,attempts,available_at,first_seen_at)
+                           VALUES(?,?,?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                               state=CASE
+                                   WHEN hydration_queue.state='DONE' THEN 'DONE'
+                                   WHEN hydration_queue.state='PROCESSING'
+                                        AND hydration_queue.leased_until > ?
+                                   THEN 'PROCESSING'
+                                   ELSE hydration_queue.state
+                               END''',
+                        (store, url, "PENDING", 0, now, now, now),
+                    )
+                    if store == 'sabina' and item.get('variants'):
+                        # Validate the complete extracted set before replacing the
+                        # stored set. A malformed/non-priced extraction must never
+                        # erase previously known good variant offers.
+                        valid_variants = []
+                        for variant in item['variants']:
+                            try:
+                                variant_size = float(variant.get('size_ml'))
+                                variant_price = float(variant.get('price_num'))
+                            except (TypeError, ValueError):
+                                continue
+                            if variant_size > 0 and variant_price > 0:
+                                valid_variants.append((variant, variant_size, variant_price))
+                        if valid_variants:
                             conn.execute(
-                                '''INSERT INTO store_product_variants(
-                                    store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                                    concentration,gender,price,currency,availability,fetched_at,variant_url)
-                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                                   ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                                    name=excluded.name,brand=excluded.brand,image=excluded.image,
-                                    sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                                    size_ml=excluded.size_ml,concentration=excluded.concentration,
-                                    gender=excluded.gender,price=excluded.price,currency=excluded.currency,
-                                    availability=excluded.availability,fetched_at=excluded.fetched_at,
-                                    variant_url=excluded.variant_url''',
-                                (store,url,variant_key,variant_name,item.get('brand'),item.get('image'),
-                                 variant.get('sku') or item.get('sku'),variant_gtin,variant_mpn,
-                                 variant_size,item.get('concentration'),item.get('gender'),variant_price,
-                                 variant.get('currency') or item.get('currency') or 'EUR',
-                                 variant.get('availability') or item.get('availability'),now,
-                                 _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
+                                'DELETE FROM store_product_variants WHERE store=? AND url=?',
+                                (store, url),
                             )
-                conn.execute(
-                    '''INSERT INTO store_products(
-                        store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
-                        price,currency,availability,fetched_at,fetch_status)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                        name=excluded.name,brand=excluded.brand,image=excluded.image,
-                        sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                        size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                        concentration=COALESCE(excluded.concentration,store_products.concentration),
-                        gender=COALESCE(excluded.gender,store_products.gender),
-                        price=excluded.price,currency=excluded.currency,
-                        availability=excluded.availability,fetched_at=excluded.fetched_at,
-                        fetch_status=excluded.fetch_status''',
-                    (
-                        store, url, item.get('name'), item.get('brand'), item.get('image'),
-                        item.get('sku'), item.get('gtin'), item.get('mpn'),
-                        item.get('size_ml'), item.get('concentration'), item.get('gender'),
-                        item.get('price_num'), item.get('currency'), item.get('availability'),
-                        item.get('fetched_at'), 'OK',
-                    ),
-                )
-        finally:
-            conn.close()
+                            for variant, variant_size, variant_price in valid_variants:
+                                # Persist the commercial combination identity, not
+                                # merely size + SKU: Sabina can repeat a parent SKU
+                                # across sizes, and distinct combinations may share
+                                # both size and SKU. The scraper preserves the real
+                                # combination selector in the variant URL fragment.
+                                raw_variant_url = str(variant.get('url') or '').strip()
+                                parsed_variant_url = urllib.parse.urlparse(raw_variant_url)
+                                variant_selector = (parsed_variant_url.fragment or '').strip().lstrip('/')
+                                variant_query = urllib.parse.parse_qs(parsed_variant_url.query)
+                                selector_values = []
+                                for selector_name in ('id_product_attribute', 'id_product_attribute_value', 'variant', 'variant_id', 'combination_id'):
+                                    selector_values.extend(str(value).strip() for value in variant_query.get(selector_name, []) if str(value).strip())
+                                if selector_values:
+                                    identity_token = 'selector:' + '|'.join(selector_values)
+                                elif variant_selector:
+                                    identity_token = 'fragment:' + variant_selector
+                                elif variant.get('gtin'):
+                                    identity_token = 'gtin:' + str(variant.get('gtin')).strip()
+                                elif variant.get('mpn'):
+                                    identity_token = 'mpn:' + str(variant.get('mpn')).strip()
+                                elif variant.get('sku'):
+                                    identity_token = 'sku:' + str(variant.get('sku')).strip()
+                                else:
+                                    identity_token = 'price:' + format(variant_price, '.4f')
+                                variant_key = f"{variant_size:g}ml:{identity_token}"
+                                # Variant identity must not inherit identifiers that
+                                # describe the parent product (notably GTIN/MPN).
+                                # A parent-level GTIN is not proof that every size
+                                # has that same GTIN.
+                                variant_name = variant.get('name') or item.get('name')
+                                if variant_name and not variant.get('name'):
+                                    # Make each offer name describe its own volume.
+                                    variant_name = re.sub(
+                                        r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|l)\s*$",
+                                        "",
+                                        str(variant_name),
+                                        flags=re.I,
+                                    ).strip()
+                                    variant_name = f"{variant_name} {variant_size:g} ML".strip()
+                                variant_gtin = variant.get('gtin')
+                                variant_mpn = variant.get('mpn')
+                                if len(valid_variants) == 1:
+                                    variant_gtin = variant_gtin or item.get('gtin')
+                                    variant_mpn = variant_mpn or item.get('mpn')
+                                conn.execute(
+                                    '''INSERT INTO store_product_variants(
+                                        store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                                        concentration,gender,price,currency,availability,fetched_at,variant_url)
+                                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                       ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                                        name=excluded.name,brand=excluded.brand,image=excluded.image,
+                                        sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                                        size_ml=excluded.size_ml,concentration=excluded.concentration,
+                                        gender=excluded.gender,price=excluded.price,currency=excluded.currency,
+                                        availability=excluded.availability,fetched_at=excluded.fetched_at,
+                                        variant_url=excluded.variant_url''',
+                                    (store,url,variant_key,variant_name,item.get('brand'),item.get('image'),
+                                     variant.get('sku') or item.get('sku'),variant_gtin,variant_mpn,
+                                     variant_size,item.get('concentration'),item.get('gender'),variant_price,
+                                     variant.get('currency') or item.get('currency') or 'EUR',
+                                     variant.get('availability') or item.get('availability'),now,
+                                     _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
+                                )
+                    conn.execute(
+                        '''INSERT INTO store_products(
+                            store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
+                            price,currency,availability,fetched_at,fetch_status)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                            name=excluded.name,brand=excluded.brand,image=excluded.image,
+                            sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                            size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
+                            concentration=COALESCE(excluded.concentration,store_products.concentration),
+                            gender=COALESCE(excluded.gender,store_products.gender),
+                            price=excluded.price,currency=excluded.currency,
+                            availability=excluded.availability,fetched_at=excluded.fetched_at,
+                            fetch_status=excluded.fetch_status''',
+                        (
+                            store, url, item.get('name'), item.get('brand'), item.get('image'),
+                            item.get('sku'), item.get('gtin'), item.get('mpn'),
+                            item.get('size_ml'), item.get('concentration'), item.get('gender'),
+                            item.get('price_num'), item.get('currency'), item.get('availability'),
+                            item.get('fetched_at'), 'OK',
+                        ),
+                    )
+            finally:
+                conn.close()
+    
+        _retry_sqlite_busy(persist_refreshed_product, 'persist_refreshed_product')
 
         # Keep an already-built search index current without invalidating and
         # rebuilding the whole store catalog. The persistent DB remains the
