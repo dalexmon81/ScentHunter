@@ -973,6 +973,44 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
 )
 
 
+def _offer_concentration_token(value):
+    """Extract an explicit fragrance concentration from title or URL text."""
+    text = str(value or "").lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    for pattern, token in (
+        (r"\\b(?:eau de parfum intense|edp intense|intense edp)\\b", "edp_intense"),
+        (r"\\b(?:eau de toilette intense|edt intense|intense edt)\\b", "edt_intense"),
+        (r"\\b(?:extrait de parfum|extrait)\\b", "extrait"),
+        (r"\\b(?:eau de parfum|edp)\\b", "edp"),
+        (r"\\b(?:eau de toilette|edt)\\b", "edt"),
+        (r"\\b(?:eau de cologne|edc)\\b", "edc"),
+        (r"\\bparfum\\b", "parfum"),
+        (r"\\belixir\\b", "elixir"),
+    ):
+        if re.search(pattern, text):
+            return token
+    return ""
+
+
+def _is_concentration_mismatch_offer(item):
+    """Reject an offer when its explicit title concentration conflicts with URL."""
+    if not isinstance(item, dict):
+        return False
+    title = " ".join(
+        str(item.get(key) or "")
+        for key in ("name", "title", "product_name", "raw_name", "_raw_name")
+    ).strip()
+    title_token = _offer_concentration_token(title)
+    if not title_token:
+        return False
+    urls = " ".join(
+        str(item.get(key) or "")
+        for key in ("url", "product_url", "source_url", "product_page", "link", "_raw_url")
+    )
+    url_token = _offer_concentration_token(urls)
+    return bool(url_token and title_token != url_token)
+
+
 def _is_non_fragrance_offer(item):
     """Reject generic non-perfume commercial items before matching/publication.
 
