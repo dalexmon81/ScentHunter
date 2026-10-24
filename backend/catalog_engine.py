@@ -2140,8 +2140,13 @@ def _discover_deloox_catalog(seeds, deadline=None):
 
         if listings:
             _deloox_queue_enqueue(listings)
-        if product_urls:
-            _deloox_persist_products(product_urls)
+        # Persist only products discovered on this page. Persisting the
+        # cumulative catalog-wide product_urls mapping here rewrites every
+        # previously discovered URL on every page (quadratic DB work), which
+        # can hold SQLite's write lock long enough to stall discovery and
+        # hydration. The search-discovery phase persists its own results.
+        if page_products:
+            _deloox_persist_products({url: '' for url in page_products})
         return True
 
     max_run_seconds = 120.0
