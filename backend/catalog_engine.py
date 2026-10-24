@@ -5244,41 +5244,71 @@ def sync_all():
 
 
 def store_status():
-    conn = db()
+    """Return inexpensive store status without catalog-wide join scans.
+
+    The public status endpoint is hit by health checks and diagnostics while
+    the hydration and discovery workers write to the same SQLite database.
+    Keep this path read-only and bound its wait for SQLite's single writer.
+    Exact active URL counts remain available from store_urls; fetched and
+    pending figures use lightweight aggregates with a short busy timeout.
+    """
+    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
     now = time.time()
     out = {}
-    for store in STORES:
-        r = conn.execute('SELECT * FROM sync_state WHERE store=?', (store,)).fetchone()
-        count = conn.execute(
-            'SELECT COUNT(*) c FROM store_urls WHERE store=? AND active=1', (store,)
-        ).fetchone()['c']
-        fetched = conn.execute(
-            'SELECT COUNT(*) c FROM store_products WHERE store=? AND fetch_status="OK"', (store,)
-        ).fetchone()['c']
-        derived_status = (
-            r['status'] if r else
-            ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED')
-        )
-        pending = conn.execute(
-            '''SELECT COUNT(*) c
-               FROM store_urls u
-               LEFT JOIN store_products p
-                 ON p.store=u.store AND p.url=u.url
-               WHERE u.store=? AND u.active=1
-                 AND (p.url IS NULL OR p.fetch_status != "OK")''',
-            (store,),
-        ).fetchone()['c']
-        out[store] = {
-            'status': derived_status,
-            'indexed_urls': count,
-            'fetched_products': fetched,
-            'pending_hydration': int(pending),
-            'hydration_ratio': round((fetched / count), 4) if count else 0.0,
-            'finished_at': r['finished_at'] if r else None,
-            'age_sec': (now - r['finished_at']) if r and r['finished_at'] else None,
-            'error': r['error'] if r else None,
+    try:
+        sync_rows = {
+            row['store']: row
+            for row in conn.execute('SELECT store,status,finished_at,error FROM sync_state')
         }
-    conn.close()
+        url_counts = {
+            row['store']: int(row['count'] or 0)
+            for row in conn.execute(
+                'SELECT store,COUNT(*) AS count FROM store_urls WHERE active=1 GROUP BY store'
+            )
+        }
+        product_counts = {
+            row['store']: int(row['count'] or 0)
+            for row in conn.execute(
+                '''SELECT store,COUNT(*) AS count FROM store_products
+                   WHERE fetch_status='OK' GROUP BY store'''
+            )
+        }
+        # Restrict the queue aggregate to active store URLs without running one
+        # LEFT JOIN/count pair per retailer; the query is grouped once.
+        pending_counts = {
+            row['store']: int(row['count'] or 0)
+            for row in conn.execute(
+                '''SELECT u.store,COUNT(*) AS count
+                   FROM store_urls u
+                   LEFT JOIN store_products p
+                     ON p.store=u.store AND p.url=u.url
+                   WHERE u.active=1
+                     AND (p.url IS NULL OR p.fetch_status != 'OK')
+                   GROUP BY u.store'''
+            )
+        }
+        for store in STORES:
+            sync = sync_rows.get(store)
+            count = url_counts.get(store, 0)
+            fetched = product_counts.get(store, 0)
+            derived_status = (
+                sync['status'] if sync else
+                ('READY' if fetched else 'INDEXED' if count else 'NOT_SYNCED')
+            )
+            out[store] = {
+                'status': derived_status,
+                'indexed_urls': count,
+                'fetched_products': fetched,
+                'pending_hydration': pending_counts.get(store, 0),
+                'hydration_ratio': round((fetched / count), 4) if count else 0.0,
+                'finished_at': sync['finished_at'] if sync else None,
+                'age_sec': (now - sync['finished_at']) if sync and sync['finished_at'] else None,
+                'error': sync['error'] if sync else None,
+            }
+    finally:
+        conn.close()
     return out
 
 
