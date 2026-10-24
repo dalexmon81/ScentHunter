@@ -4087,7 +4087,11 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     """Atomically claim one ready URL, with at most two active tasks per store."""
     now = time.time()
     token = uuid.uuid4().hex
-    conn = db()
+    # Claiming is a hot-path operation shared with discovery and coverage.
+    # Do not let this worker sit behind SQLite's global 45s busy timeout.
+    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
     try:
         conn.execute('BEGIN IMMEDIATE')
 
@@ -5275,9 +5279,6 @@ def hydration_status():
                       SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
                       MAX(q.last_finished_at) AS last_finished_at
                FROM hydration_queue q
-               JOIN store_urls u
-                 ON u.store=q.store AND u.url=q.url
-               WHERE u.active=1
                GROUP BY q.store"""
         ).fetchall()
         for row in rows:
