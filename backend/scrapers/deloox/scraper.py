@@ -284,8 +284,10 @@ def _url_matches_product_name(url, name):
     return slug_tokens.issubset(name_tokens)
 
 
-def _product(url, html, query):
-    soup = BeautifulSoup(html, "html.parser")
+def _product(url, html, query, *, soup=None):
+    # Reuse a parsed document when the caller has already inspected JSON-LD.
+    if soup is None:
+        soup = BeautifulSoup(html, "html.parser")
     data = _jsonld(soup)
 
     h1 = soup.find("h1")
@@ -1530,7 +1532,7 @@ def extract_product_page(session, url, query=None, html=None):
     # This is an exact-URL refresh, not a search result. Validate the parsed
     # record against its own authoritative page name; _product() still applies
     # the generic URL-slug/name integrity check.
-    return _product(final_url, html, page_name)
+    return _product(final_url, html, page_name, soup=soup)
 
 
 def _is_deloox_url(url):
