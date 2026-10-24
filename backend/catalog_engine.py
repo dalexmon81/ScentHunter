@@ -4430,6 +4430,9 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         print('CATALOG DISCOVERY STOP: no configured stores', flush=True)
         return
     next_index = 0
+    non_deloox_stores = tuple(store for store in stores if store != 'deloox')
+    next_non_deloox_index = 0
+    non_deloox_since_deloox = 0
     print(
         f'CATALOG DISCOVERY START stores={len(stores)} interval={pause:g}s',
         flush=True,
@@ -4444,8 +4447,20 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
                 time.sleep(0.5)
             continue
 
-        store = stores[next_index % len(stores)]
-        next_index = (next_index + 1) % len(stores)
+        # Deloox has the largest outstanding frontier. Visit it after every two
+        # other retailers instead of once per full seven-store round-robin.
+        # Other retailers retain their own round-robin progress, and foreground
+        # searches still take precedence over every background crawl.
+        if non_deloox_stores and 'deloox' in stores and non_deloox_since_deloox >= 2:
+            store = 'deloox'
+            non_deloox_since_deloox = 0
+        elif non_deloox_stores:
+            store = non_deloox_stores[next_non_deloox_index % len(non_deloox_stores)]
+            next_non_deloox_index = (next_non_deloox_index + 1) % len(non_deloox_stores)
+            non_deloox_since_deloox += 1
+        else:
+            store = stores[next_index % len(stores)]
+            next_index = (next_index + 1) % len(stores)
         started = time.time()
         try:
             result = discover_store(store)
