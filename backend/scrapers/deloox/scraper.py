@@ -121,12 +121,17 @@ def size_ml(*values):
 
 def concentration(*values):
     t = norm(" ".join(clean(x) for x in values))
+    # Prefer specific concentration labels before the generic word "parfum".
     if re.search(r"\beau de toilette\b|\bedt\b", t):
         return "Eau de Toilette"
     if re.search(r"\beau de parfum\b|\bedp\b", t):
         return "Eau de Parfum"
+    if re.search(r"\beau de cologne\b|\bedc\b", t):
+        return "Eau de Cologne"
     if re.search(r"\bextrait(?: de parfum)?\b", t):
         return "Extrait de Parfum"
+    if re.search(r"\bparfum\b", t):
+        return "Parfum"
     return None
 
 
