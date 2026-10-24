@@ -984,8 +984,10 @@ def _offer_concentration_token(value):
         (r"\b(?:eau de parfum|edp)\b", "edp"),
         (r"\b(?:eau de toilette|edt)\b", "edt"),
         (r"\b(?:eau de cologne|edc)\b", "edc"),
-        (r"\bparfum\b", "parfum"),
+        # Elixir product URLs often include "parfum" as a descriptor; Elixir
+        # is the more specific concentration identity and must win.
         (r"\belixir\b", "elixir"),
+        (r"\bparfum\b", "parfum"),
     ):
         if re.search(pattern, text):
             return token
