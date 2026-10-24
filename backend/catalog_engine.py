@@ -1915,22 +1915,22 @@ def _deloox_persist_products(product_urls):
                        VALUES(?,?,?,?,?,1)
                        ON CONFLICT(store,url) DO UPDATE SET
                            slug=excluded.slug,
-                           lastmod=excluded.lastmod,
-                           discovered_at=excluded.discovered_at,
-                           active=1""",
+                           lastmod=CASE
+                               WHEN excluded.lastmod != '' THEN excluded.lastmod
+                               ELSE store_urls.lastmod
+                           END,
+                           active=1
+                       WHERE store_urls.slug IS NOT excluded.slug
+                          OR (excluded.lastmod != ''
+                              AND store_urls.lastmod IS NOT excluded.lastmod)
+                          OR store_urls.active != 1""",
                     ('deloox', url, url_slug(url), lastmod or '', now),
                 )
                 conn.execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                           state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ? THEN 'PROCESSING'
-                               ELSE hydration_queue.state
-                           END""",
+                       ON CONFLICT(store,url) DO NOTHING""",
                     ('deloox', url, 'PENDING', 0, now, now, now),
                 )
                 count += 1
