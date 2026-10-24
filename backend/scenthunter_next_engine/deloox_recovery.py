@@ -111,6 +111,7 @@ def build_report(db_path: str = DEFAULT_DB) -> dict:
     conn = _connect(db_path, readonly=True)
     try:
         rows = _candidates(conn)
+        runtime = parser_runtime_status()
         eligible = [dict(row) for row in rows if is_product_url(row["url"])]
         excluded = [dict(row) for row in rows if not is_product_url(row["url"])]
         return {
@@ -119,6 +120,8 @@ def build_report(db_path: str = DEFAULT_DB) -> dict:
             "database_path": str(Path(db_path)),
             "read_only": True,
             "database_mutated": False,
+            "parser_runtime": runtime,
+            "recovery_apply_allowed": runtime["matches_validated_revision"],
             "eligible_product_urls": len(eligible),
             "excluded_non_product_urls": len(excluded),
             "eligible_sample": eligible[:20],
@@ -138,6 +141,13 @@ def build_report(db_path: str = DEFAULT_DB) -> dict:
 
 
 def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
+    runtime = parser_runtime_status()
+    if not runtime["matches_validated_revision"]:
+        raise RuntimeError(
+            "Recovery blocked: deployed Deloox parser does not match the live-probed revision. "
+            "Deploy and verify the parser first; no queue rows were changed. "
+            + json.dumps(runtime, sort_keys=True)
+        )
     conn = _connect(db_path, readonly=False)
     try:
         conn.execute("BEGIN IMMEDIATE")
@@ -178,6 +188,7 @@ def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
             "database_mutated": changed > 0,
             "eligible_product_urls": len(eligible),
             "queue_rows_reset_to_pending": changed,
+            "parser_runtime": runtime,
             "store_products_modified": False,
             "store_urls_modified": False,
         }
