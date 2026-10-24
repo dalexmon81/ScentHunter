@@ -15,8 +15,8 @@ def test_coverage_subprocess_preserves_scraper_import_error(monkeypatch):
 
     assert result["ok"] is False
     assert result["reports"] == []
-    assert result["error"]["type"] == "ModuleNotFoundError"
-    assert "scenthunter_missing_test_scraper_000" in result["error"]["message"]
+    assert result["error"].startswith("ModuleNotFoundError:")
+    assert "scenthunter_missing_test_scraper_000" in result["error"]
 
 
 def test_coverage_subprocess_reports_scraper_without_search_entrypoint(monkeypatch):
@@ -31,5 +31,4 @@ def test_coverage_subprocess_reports_scraper_without_search_entrypoint(monkeypat
 
     assert result["ok"] is False
     assert result["reports"] == []
-    assert result["error"]["type"] == "RuntimeError"
-    assert result["error"]["message"] == "scraper_search_unavailable"
+    assert result["error"].startswith("RuntimeError:scraper_search_unavailable")
