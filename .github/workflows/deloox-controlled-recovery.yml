@@ -11,7 +11,7 @@ jobs:
   recover:
     if: ${{ contains(github.event.head_commit.message, 'trigger guarded Deloox recovery') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -25,9 +25,9 @@ jobs:
           SCRIPT='/app/.venv/bin/python /app/backend/scenthunter_next_engine/deloox_recovery.py'
           PRECHECK=''
           READY=0
-          for attempt in $(seq 1 60); do
-            echo "Read-only parser precheck attempt $attempt/60"
-            if PRECHECK="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT" 2>&1)"; then
+          for attempt in $(seq 1 12); do
+            echo "Read-only parser precheck attempt $attempt/12"
+            if PRECHECK="$(timeout 25s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT" 2>&1)"; then
               printf '%s\n' "$PRECHECK"
               if printf '%s\n' "$PRECHECK" | grep -Eq '"recovery_apply_allowed": true' &&
                  printf '%s\n' "$PRECHECK" | grep -Eq '"matches_validated_revision": true'; then
@@ -45,13 +45,13 @@ jobs:
           fi
 
           echo '--- APPLY GUARDED RECOVERY ---'
-          RESULT="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --confirm-recovery")"
+          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --confirm-recovery")"
           printf '%s\n' "$RESULT"
           printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
           printf '%s\n' "$RESULT" | grep -Eq '"matches_validated_revision": true'
 
           echo '--- READ-ONLY POSTCHECK ---'
-          POSTCHECK="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
+          POSTCHECK="$(timeout 25s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
           printf '%s\n' "$POSTCHECK"
           printf '%s\n' "$POSTCHECK" | grep -Eq '"recovery_apply_allowed": true'
           printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
