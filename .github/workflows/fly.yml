@@ -110,9 +110,9 @@ jobs:
               raise SystemExit(f"Production smoke test failed after retries: {last_error}")
           PY
 
-      - name: Exercise a real production search
+      - name: Exercise real production searches and offer data
         continue-on-error: true
-        timeout-minutes: 3
+        timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
@@ -123,57 +123,95 @@ jobs:
           import urllib.request
 
           base = "https://scenthunter.fly.dev"
-          query = "Hawas"
 
           def get_json(path, timeout=12):
               request = urllib.request.Request(
                   base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.0"},
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.1"},
               )
               with urllib.request.urlopen(request, timeout=timeout) as response:
                   if response.status != 200:
                       raise RuntimeError(f"{path} returned HTTP {response.status}")
                   return json.loads(response.read().decode("utf-8"))
 
-          start_deadline = time.monotonic() + 45
-          job_id = ""
-          while time.monotonic() < start_deadline:
-              started = get_json("/search-start?q=" + urllib.parse.quote(query))
-              if started.get("status") == "busy":
-                  time.sleep(max(1, min(3, float(started.get("retry_after_ms", 1000)) / 1000)))
-                  continue
-              if started.get("status") == "error":
-                  raise SystemExit("Production search rejected: " + json.dumps(started.get("errors", {})))
-              job_id = str(started.get("job_id") or "").strip()
-              if job_id:
-                  break
-              raise SystemExit("Search API did not return a job_id: " + json.dumps(started))
-          if not job_id:
-              raise SystemExit("Production search remained busy for 45 seconds")
+          def search(query):
+              start_deadline = time.monotonic() + 45
+              job_id = ""
+              while time.monotonic() < start_deadline:
+                  started = get_json("/search-start?q=" + urllib.parse.quote(query))
+                  if started.get("status") == "busy":
+                      time.sleep(max(1, min(3, float(started.get("retry_after_ms", 1000)) / 1000)))
+                      continue
+                  if started.get("status") == "error":
+                      raise RuntimeError("Production search rejected: " + json.dumps(started.get("errors", {})))
+                  job_id = str(started.get("job_id") or "").strip()
+                  if job_id:
+                      break
+                  raise RuntimeError("Search API did not return a job_id: " + json.dumps(started))
+              if not job_id:
+                  raise RuntimeError("Production search remained busy for 45 seconds")
 
-          deadline = time.monotonic() + 120
-          last = {}
-          while time.monotonic() < deadline:
-              last = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
-              if last.get("completed"):
-                  break
-              time.sleep(2)
-          else:
-              raise SystemExit("Production search timed out: " + json.dumps({
-                  "status": last.get("status"),
-                  "count": last.get("count"),
-                  "offer_count": last.get("offer_count"),
-                  "errors": last.get("errors"),
-              }))
+              deadline = time.monotonic() + 120
+              last = {}
+              while time.monotonic() < deadline:
+                  last = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
+                  if last.get("completed"):
+                      break
+                  time.sleep(2)
+              else:
+                  raise RuntimeError("Production search timed out: " + json.dumps({
+                      "status": last.get("status"),
+                      "count": last.get("count"),
+                      "offer_count": last.get("offer_count"),
+                      "errors": last.get("errors"),
+                  }))
 
-          count = int(last.get("count") or 0)
-          offer_count = int(last.get("offer_count") or 0)
-          stores = last.get("stores") if isinstance(last.get("stores"), dict) else {}
-          print("Production search completed")
-          print("Query: " + query)
-          print("Status: " + str(last.get("status")))
-          print(f"Products: {count}; offers: {offer_count}; stores reporting: {len(stores)}")
-          print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
-          if count == 0 and offer_count == 0:
-              raise SystemExit("Search API responded, but the real query returned zero products and offers")
+              count = int(last.get("count") or 0)
+              offer_count = int(last.get("offer_count") or 0)
+              if count == 0 and offer_count == 0:
+                  raise RuntimeError(f"Search '{query}' returned zero products and offers")
+
+              groups = last.get("results") if isinstance(last.get("results"), list) else []
+              offers = [
+                  offer
+                  for group in groups if isinstance(group, dict)
+                  for offer in (group.get("offers") if isinstance(group.get("offers"), list) else [])
+                  if isinstance(offer, dict)
+              ]
+              valid = []
+              for offer in offers:
+                  price = offer.get("price_num")
+                  try:
+                      numeric_price = float(price)
+                  except (TypeError, ValueError):
+                      continue
+                  url = str(offer.get("url") or "")
+                  if numeric_price > 0 and url.startswith(("http://", "https://")) and offer.get("name") and offer.get("store"):
+                      valid.append(offer)
+
+              print(f"Query '{query}': status={last.get('status')}, products={count}, offers={offer_count}, priced_linked_offers={len(valid)}")
+              print("Store statuses: " + json.dumps(last.get("stores") or {}, ensure_ascii=False))
+              print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
+              if not valid:
+                  raise RuntimeError(f"Search '{query}' returned no grouped offers with a positive price and product URL")
+              sample = min(valid, key=lambda item: float(item["price_num"]))
+              print("Cheapest valid offer sample: " + json.dumps({
+                  "name": sample.get("name"),
+                  "store": sample.get("store"),
+                  "price": sample.get("price"),
+                  "price_num": sample.get("price_num"),
+                  "url": sample.get("url"),
+              }, ensure_ascii=False))
+              return last
+
+          failures = []
+          for query in ("Hawas", "Hawas Ice"):
+              try:
+                  search(query)
+              except Exception as exc:
+                  failures.append(f"{query}: {type(exc).__name__}: {exc}")
+                  print("SMOKE TEST FAILURE: " + failures[-1], flush=True)
+          if failures:
+              raise SystemExit("; ".join(failures))
+          print("Production search and offer-data smoke tests: PASS")
           PY
