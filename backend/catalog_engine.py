@@ -4511,11 +4511,28 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
                 flush=True,
             )
         except Exception as exc:
+            error_detail = f'{type(exc).__name__}: {exc}'
             print(
-                f'CATALOG DISCOVERY ERROR store={store}: '
-                f'{type(exc).__name__}: {exc}',
+                f'CATALOG DISCOVERY ERROR store={store}: {error_detail}',
                 flush=True,
             )
+            # discover_store marks DISCOVERY_RUNNING before network work. If an
+            # unexpected exception escapes it, persist a terminal state so the
+            # public status cannot remain RUNNING forever with a stale deadline.
+            try:
+                _set_sync_state(
+                    store,
+                    'DISCOVERY_ERROR',
+                    started_at=started,
+                    finished_at=time.time(),
+                    error=error_detail[:1000],
+                )
+            except Exception as state_exc:
+                print(
+                    f'CATALOG DISCOVERY STATE ERROR store={store}: '
+                    f'{type(state_exc).__name__}: {state_exc}',
+                    flush=True,
+                )
 
         # Wait between stores. The event wait allows clean shutdown and keeps
         # discovery from immediately starting another potentially expensive
