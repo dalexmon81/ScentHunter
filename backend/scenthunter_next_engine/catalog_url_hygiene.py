@@ -1,20 +1,14 @@
-"""Read-only-by-default audit and opt-in retirement of invalid Deloox catalog URLs.
+"""Read-only audit of invalid active Deloox catalog URLs.
 
-Run an audit:
+Run with:
     python -m backend.scenthunter_next_engine.catalog_url_hygiene
 
-Apply the narrowly scoped repair only after reviewing the JSON report:
-    python -m backend.scenthunter_next_engine.catalog_url_hygiene --apply
-
-This retires rows that no longer satisfy the same Deloox product-URL admission
-contract used by discovery. It never deletes historical product data or edits
-product identities.
+This command reports URLs rejected by the catalog's current product-URL
+admission contract. It never writes to the database or changes product data.
 """
 from __future__ import annotations
 
-import argparse
 import json
-import time
 from typing import Iterable
 
 from backend import catalog_engine
@@ -37,8 +31,8 @@ def classify_invalid_urls(rows: Iterable[dict]) -> list[dict]:
     return invalid
 
 
-def audit_or_retire(apply: bool = False) -> dict:
-    """Audit invalid active Deloox URLs; optionally deactivate them transactionally."""
+def audit() -> dict:
+    """Inspect active Deloox URL rows without mutating the catalog."""
     conn = catalog_engine.db()
     try:
         rows = [
@@ -48,24 +42,11 @@ def audit_or_retire(apply: bool = False) -> dict:
             ).fetchall()
         ]
         invalid = classify_invalid_urls(rows)
-        retired = 0
-        if apply and invalid:
-            now = time.time()
-            with conn:
-                for item in invalid:
-                    result = conn.execute(
-                        """UPDATE store_urls SET active=0
-                           WHERE store='deloox' AND url=? AND active=1""",
-                        (item["url"],),
-                    )
-                    retired += max(0, result.rowcount)
         return {
-            "read_only": not apply,
-            "database_mutated": bool(apply and retired),
-            "mode": "apply" if apply else "audit",
+            "read_only": True,
+            "database_mutated": False,
             "active_deloox_urls_examined": len(rows),
             "invalid_active_urls_found": len(invalid),
-            "rows_retired": retired,
             "invalid_urls": invalid,
         }
     finally:
@@ -73,14 +54,7 @@ def audit_or_retire(apply: bool = False) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="deactivate invalid active Deloox URL rows; default is read-only",
-    )
-    args = parser.parse_args()
-    print(json.dumps(audit_or_retire(apply=args.apply), indent=2, ensure_ascii=False))
+    print(json.dumps(audit(), indent=2, ensure_ascii=False))
     return 0
 
 
