@@ -137,7 +137,9 @@ def main() -> int:
     print(json.dumps(report, indent=2, ensure_ascii=False))
     # This diagnostic is allowed to complete even when a local DB is absent:
     # CI's empty local database is explicitly not a production-clean signal.
-    return 0 if report["status"] in {"EMPTY_LOCAL_CATALOG", "AUDIT_COMPLETE"} else 0
+    # Missing local state or an absent schema is not a production-clean result,
+    # but this report is a diagnostic rather than a production migration gate.
+    return 0
 
 
 if __name__ == "__main__":
