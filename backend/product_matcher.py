@@ -1724,6 +1724,24 @@ class ProductMatcher:
             )
             return None
 
+        # Reject listings where the title and product URL explicitly disagree
+        # on concentration (e.g. a "Parfum" title pointing to an EDT product).
+        title_concentration = normalize_concentration(raw_name)
+        url_concentrations = {
+            normalize_concentration(raw_url)
+            for raw_url in self._offer_url_identity_texts(offer)
+            if normalize_concentration(raw_url)
+        }
+        if title_concentration and url_concentrations and title_concentration not in url_concentrations:
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                f"method=concentration_mismatch title={title_concentration!r} "
+                f"url={sorted(url_concentrations)!r}",
+                flush=True,
+            )
+            return None
+
         # Never treat samples/decants/testers as full-size fragrance offers.
         # This guard runs before family and generic matching, so removing bottle
         # size from identity normalization can never turn a sample into a product.
