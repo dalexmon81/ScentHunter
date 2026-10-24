@@ -1447,6 +1447,10 @@ def extract_product_html(url, html, query=None):
         return None
     if not html:
         return None
+    if isinstance(html, bytes):
+        html = html.decode("utf-8", errors="replace")
+    elif not isinstance(html, str):
+        html = str(html)
 
     soup = BeautifulSoup(html, "html.parser")
     data = _jsonld(soup)
@@ -1490,7 +1494,13 @@ def extract_product_page(session, url, query=None, html=None):
         html = getattr(response, "text", "") or ""
     else:
         final_url = target
-        html = str(html)
+        # Catalog hydration passes the raw response body as bytes. Converting
+        # bytes with str() produces a Python representation (b'...') rather
+        # than HTML, so decode the body before parsing it.
+        if isinstance(html, bytes):
+            html = html.decode("utf-8", errors="replace")
+        elif not isinstance(html, str):
+            html = str(html)
 
     if not html:
         return None
