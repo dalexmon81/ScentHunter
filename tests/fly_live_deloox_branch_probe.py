@@ -99,6 +99,53 @@ for url, query in targets:
     except Exception as exc:
         row["error"] = type(exc).__name__ + ": " + str(exc)[:240]
     report["probes"].append(row)
+
+# Inspect a small, fixed set of URLs that previously reported parser misses.
+# These are bounded GETs only and are never used to write or refresh SQLite rows.
+historical_targets = [
+    ("https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html", "Hermes Eau de Pamplemousse Rose"),
+    ("https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html", "Chloe Le Parfum"),
+    ("https://www.deloox.com/en/product/1213032/wella-professionals-koleston-perfect-me-special-blondes-60-ml-121-special-blonde-ash.html", "Wella Professionals Koleston Perfect ME Special Blondes"),
+    ("https://www.deloox.be/produit/1389697/dior-rouge-forever-liquid-rouge-a-levres-760-forever-glam-6-ml.html", "Dior Rouge Forever Liquid"),
+    ("https://www.deloox.be/produit/1256974/alvarez-gomez-flores-mediterraneas-magnolia-blanca-eau-de-toilette-150-ml.html", "Alvarez Gomez Flores Mediterraneas Magnolia Blanca"),
+]
+report["historical_product_diagnostics"] = []
+for url, query in historical_targets:
+    row = {"url": url, "query": query}
+    try:
+        response = session.get(url, timeout=(3, 7), allow_redirects=True)
+        row.update({
+            "http_status": response.status_code,
+            "final_url": response.url,
+            "bytes": len(response.content),
+            "content_type": response.headers.get("content-type"),
+            "content_sha256": hashlib.sha256(response.content).hexdigest(),
+        })
+        if response.ok and module._is_deloox_url(response.url):
+            soup = module.BeautifulSoup(response.text, "html.parser")
+            h1 = soup.find("h1")
+            data = module._jsonld(soup)
+            name = str(data.get("name") or (h1.get_text(" ", strip=True) if h1 else ""))
+            offers = data.get("offers")
+            first_offer = offers[0] if isinstance(offers, list) and offers else offers
+            price = module.parse_price(first_offer.get("price")) if isinstance(first_offer, dict) else None
+            row["jsonld_product"] = bool(data.get("@type") == "Product" or (isinstance(data.get("@type"), list) and "Product" in data.get("@type")))
+            row["jsonld_type"] = data.get("@type")
+            row["jsonld_name"] = data.get("name")
+            row["h1"] = h1.get_text(" ", strip=True)[:180] if h1 else None
+            row["query_matches"] = bool(name and module.matches(name, query))
+            row["slug_matches"] = bool(name and module._url_matches_product_name(response.url, name))
+            row["price_jsonld"] = first_offer.get("price") if isinstance(first_offer, dict) else None
+            row["price_parsed"] = price
+            row["would_parse"] = bool(module._product(response.url, response.text, query))
+            row["name_source"] = "jsonld" if data.get("name") else ("h1" if h1 else "none")
+            row["jsonld_top_level_keys"] = sorted(data.keys())
+        else:
+            row["error"] = "non_success_http_or_non_product_redirect"
+    except Exception as exc:
+        row["error"] = type(exc).__name__ + ": " + str(exc)[:240]
+    report["historical_product_diagnostics"].append(row)
+
 session.close()
 report["probe_count"] = len(report["probes"])
 report["http_success_count"] = sum(1 for p in report["probes"] if 200 <= p.get("http_status", 0) < 300)
