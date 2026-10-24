@@ -94,6 +94,13 @@ class CanonicalMatcherTests(unittest.TestCase):
                         "concentration": "Eau de Toilette",
                         "aliases": [],
                     },
+                    {
+                        "product_id": "P-HABIT-EDP-DUP",
+                        "brand_name": "Guerlain",
+                        "canonical_name": "Habit Rouge",
+                        "concentration": "Eau de Parfum",
+                        "aliases": [],
+                    },
                 ],
                 "variants": [
                     {"variant_id": "V-100", "product_id": "P-ONE", "size_ml": 100},
@@ -137,6 +144,7 @@ class CanonicalMatcherTests(unittest.TestCase):
                     {"variant_id": "V-CODE-PARFUM-100", "product_id": "P-CODE-PARFUM", "size_ml": 100},
                     {"variant_id": "V-HABIT-EDP-50", "product_id": "P-HABIT-EDP", "size_ml": 50},
                     {"variant_id": "V-HABIT-EDT-50", "product_id": "P-HABIT-EDT", "size_ml": 50},
+                    {"variant_id": "V-HABIT-EDP-DUP-50", "product_id": "P-HABIT-EDP-DUP", "size_ml": 50},
                 ],
             },
             self.tmp,
@@ -321,6 +329,16 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertEqual(
             set(result.candidate_product_ids),
             {"P-HABIT-EDP", "P-HABIT-EDT"},
+        )
+
+    def test_duplicate_products_with_same_concentration_remain_ambiguous(self):
+        result = self.matcher.match(
+            self.offer("Habit Rouge Eau de Parfum", "Guerlain", 50)
+        )
+        self.assertEqual(result.status, MatchStatus.AMBIGUOUS)
+        self.assertEqual(
+            set(result.candidate_product_ids),
+            {"P-HABIT-EDP", "P-HABIT-EDP-DUP"},
         )
 
 
