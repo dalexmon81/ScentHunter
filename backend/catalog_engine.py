@@ -3335,51 +3335,55 @@ def refresh_url(store, url):
         with _LAST_REFRESH_ERRORS_LOCK:
             _LAST_REFRESH_ERRORS[(store, url)] = error_detail
 
-        conn = None
         has_good_offer = False
         placeholder_offer = False
-        try:
+
+        def persist_refresh_error():
             conn = db()
-            # Do not replace a previously successful offer with a transient
-            # timeout/parser/SQLite error. Search and price comparison must
-            # continue using the last known-good price until a newer fetch
-            # succeeds. Only create an ERROR row when no valid offer exists.
-            existing = conn.execute(
-                "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
-                (store, url),
-            ).fetchone()
-            has_good_offer = bool(existing and existing['fetch_status'] == 'OK')
-            if not has_good_offer:
-                conn.execute(
-                    '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
-                       VALUES(?,?,?,?)
-                       ON CONFLICT(store,url) DO UPDATE SET
-                       fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
-                    (store, url, time.time(), error_detail),
-                )
-            # A ParfumZentrum placeholder price is a known terminal outcome.
-            placeholder_offer = (
-                store == 'parfumzentrum'
-                and 'invalid_placeholder_price' in str(exc)
-            )
-            if placeholder_offer:
-                conn.execute(
-                    "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+            try:
+                # Preserve the last known-good offer when a refresh fails.
+                existing = conn.execute(
+                    "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
                     (store, url),
+                ).fetchone()
+                keep_good_offer = bool(existing and existing['fetch_status'] == 'OK')
+                if not keep_good_offer:
+                    conn.execute(
+                        '''INSERT INTO store_products(store,url,fetched_at,fetch_status)
+                           VALUES(?,?,?,?)
+                           ON CONFLICT(store,url) DO UPDATE SET
+                           fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status''',
+                        (store, url, time.time(), error_detail),
+                    )
+                # A ParfumZentrum placeholder price is a known terminal outcome.
+                is_placeholder = (
+                    store == 'parfumzentrum'
+                    and 'invalid_placeholder_price' in str(exc)
                 )
-            conn.commit()
+                if is_placeholder:
+                    conn.execute(
+                        "UPDATE store_urls SET active=0 WHERE store=? AND url=?",
+                        (store, url),
+                    )
+                conn.commit()
+                return keep_good_offer, is_placeholder
+            finally:
+                conn.close()
+
+        try:
+            has_good_offer, placeholder_offer = _retry_sqlite_busy(
+                persist_refresh_error,
+                'persist_refresh_error',
+            )
         except sqlite3.OperationalError as db_exc:
             # Error handling must never hide the original refresh failure.
-            # If SQLite is locked here, leave the previous successful offer
-            # untouched and let the hydration queue retry the URL.
+            # If SQLite remains locked after bounded retries, preserve the
+            # previous offer and let the hydration queue retry the URL.
             print(
                 f'CATALOG REFRESH ERROR-PERSISTENCE SKIPPED: store={store} '
                 f'url={url} error={type(db_exc).__name__}: {db_exc}',
                 flush=True,
             )
-        finally:
-            if conn is not None:
-                conn.close()
 
         # Only remove from the in-memory index when no last-known-good offer
         # exists, or when a known terminal placeholder was detected.
