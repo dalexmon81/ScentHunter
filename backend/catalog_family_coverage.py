@@ -43,6 +43,43 @@ PERSIST_RETRIES = int(
 PERSIST_BACKOFF_SECONDS = (2.0, 5.0, 10.0, 20.0, 30.0)
 
 STOP = False
+STATUS_PATH = BASE_DIR / "family_coverage_status.json"
+_STATUS = {
+    "pid": os.getpid(),
+    "state": "starting",
+    "cycle": 0,
+    "families_total": 0,
+    "families_done": 0,
+    "last_family": None,
+    "total_returned": 0,
+    "total_persisted": 0,
+    "started_at": None,
+    "last_update": time.time(),
+    "error": None,
+}
+
+
+def _write_status(**updates):
+    """Publish a small atomic progress snapshot for the API's read-only probe."""
+    _STATUS.update(updates)
+    _STATUS["last_update"] = time.time()
+    temporary = STATUS_PATH.with_suffix(f".{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(_STATUS, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        os.replace(temporary, STATUS_PATH)
+    except OSError as exc:
+        print(
+            "FAMILY COVERAGE STATUS WRITE ERROR "
+            f"{type(exc).__name__}:{exc}",
+            flush=True,
+        )
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 # The family worker runs as a separate process from Uvicorn.  Thread-local
@@ -105,6 +142,7 @@ def _wait_for_foreground_idle():
                 "FAMILY COVERAGE WAIT foreground_or_discovery=active",
                 flush=True,
             )
+            _write_status(state="waiting_for_foreground", wait_started_at=time.time())
             announced = True
         time.sleep(max(0.1, FOREGROUND_SEARCH_POLL_SECONDS))
 
@@ -113,6 +151,7 @@ def _wait_for_foreground_idle():
             "FAMILY COVERAGE RESUME foreground_or_discovery=idle",
             flush=True,
         )
+        _write_status(state="processing", wait_started_at=None)
 
     return not STOP
 
@@ -325,6 +364,19 @@ def run_once():
     total_returned = 0
     total_persisted = 0
 
+    cycle = int(_STATUS.get("cycle") or 0) + 1
+    _write_status(
+        state="processing",
+        cycle=cycle,
+        families_total=len(families),
+        families_done=0,
+        last_family=None,
+        total_returned=0,
+        total_persisted=0,
+        started_at=time.time(),
+        wait_started_at=None,
+        error=None,
+    )
     print(
         f"FAMILY COVERAGE START families={len(families)} store=deloox",
         flush=True,
@@ -339,6 +391,20 @@ def run_once():
 
             total_returned += int(result.get("returned") or 0)
             total_persisted += int(result.get("persisted") or 0)
+            _write_status(
+                state="processing",
+                families_done=int(_STATUS.get("families_done") or 0) + 1,
+                last_family=family_id,
+                total_returned=total_returned,
+                total_persisted=total_persisted,
+                last_family_finished_at=time.time(),
+                last_family_result={
+                    "candidate_urls": result.get("candidate_urls", 0),
+                    "persisted": result.get("persisted", 0),
+                    "elapsed": result.get("elapsed", 0),
+                    "error": result.get("error"),
+                },
+            )
 
             attempted = result.get("queries") or []
             attempted_text = "; ".join(
@@ -361,6 +427,12 @@ def run_once():
     finally:
         session.close()
 
+    _write_status(
+        state="cycle_complete",
+        total_returned=total_returned,
+        total_persisted=total_persisted,
+        finished_at=time.time(),
+    )
     print(
         f"FAMILY COVERAGE END returned={total_returned} "
         f"persisted={total_persisted}",
@@ -369,6 +441,13 @@ def run_once():
 
 
 def main():
+    _write_status(
+        state="starting",
+        pid=os.getpid(),
+        worker_started_at=time.time(),
+        interval_seconds=INTERVAL_SECONDS,
+        error=None,
+    )
     print(
         f"FAMILY COVERAGE WORKER START pid={os.getpid()} "
         f"interval={INTERVAL_SECONDS}s",
@@ -386,6 +465,11 @@ def main():
         try:
             run_once()
         except Exception as exc:
+            _write_status(
+                state="cycle_error",
+                error=f"{type(exc).__name__}:{exc}",
+                error_at=time.time(),
+            )
             print(
                 "FAMILY COVERAGE CYCLE ERROR: "
                 f"{type(exc).__name__}:{exc}",
