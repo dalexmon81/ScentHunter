@@ -469,7 +469,7 @@ def _start_catalog_discovery():
         target=catalog_discovery_loop,
         kwargs={'stop_event': _CATALOG_DISCOVERY_STOP, 'interval_seconds': 300.0},
         daemon=True,
-        name='scenthunter-catalog-discovery',
+        name='sh-catalog-discovery',
     ).start()
 
 
