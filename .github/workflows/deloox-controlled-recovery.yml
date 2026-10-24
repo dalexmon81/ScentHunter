@@ -1,0 +1,42 @@
+name: Controlled Deloox queue recovery
+
+on:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_commit.message == 'ops: enable controlled Deloox queue recovery' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify deployed parser, apply guarded recovery, and report result
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT='/app/.venv/bin/python /app/backend/scenthunter_next_engine/deloox_recovery.py'
+          echo '--- READ-ONLY PRECHECK ---'
+          PRECHECK="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
+          printf '%s\n' "$PRECHECK"
+          printf '%s\n' "$PRECHECK" | grep -Eq '"recovery_apply_allowed": true'
+          printf '%s\n' "$PRECHECK" | grep -Eq '"matches_validated_revision": true'
+          echo '--- APPLY CONTROLLED QUEUE RECOVERY ---'
+          RESULT="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --confirm-recovery")"
+          printf '%s\n' "$RESULT"
+          printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
+          printf '%s\n' "$RESULT" | grep -Eq '"matches_validated_revision": true'
+          echo '--- READ-ONLY POSTCHECK ---'
+          POSTCHECK="$(flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
+          printf '%s\n' "$POSTCHECK"
+          printf '%s\n' "$POSTCHECK" | grep -Eq '"recovery_apply_allowed": true'
+          printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
