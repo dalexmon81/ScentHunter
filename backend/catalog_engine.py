@@ -3054,6 +3054,15 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
 
 def refresh_url(store, url):
     try:
+        if store == 'deloox':
+            # Never fetch or persist a search/homepage URL as a product.
+            # The catalog can receive URLs through several discovery paths, so
+            # enforce the same admission contract again at the hydration edge.
+            requested_product_url = _html_product_url('deloox', url, STORES['deloox'])
+            if not requested_product_url:
+                raise RuntimeError(f'non_product_deloox_url;requested={url}')
+            url = requested_product_url
+
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -3078,6 +3087,13 @@ def refresh_url(store, url):
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
+        if store == 'deloox':
+            final_product_url = _html_product_url('deloox', final or url, STORES['deloox'])
+            if not final_product_url:
+                raise RuntimeError(
+                    f'non_product_deloox_redirect;requested={url};final={final}'
+                )
+            url = final_product_url
 
         if store == 'easycosmetic':
             # Never hydrate or publish a German catalog entry from a response
@@ -4844,7 +4860,13 @@ def _coverage_allowed_url(store, raw_url):
                     if configured_host.startswith('www.')
                     else 'www.' + configured_host
                 )
-        return url if host in allowed else ''
+        if host not in allowed:
+            return ''
+        # Coverage searchers can return a search endpoint or storefront root.
+        # Keep Deloox's path contract consistent across every persistence path.
+        if store == 'deloox':
+            return _html_product_url('deloox', url, STORES['deloox']) or ''
+        return url
     except Exception:
         return ''
 
