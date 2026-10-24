@@ -5217,26 +5217,41 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
 
 
 def hydration_status():
-    """Detailed durable hydration queue status, restricted to active URLs."""
-    conn = db()
-    out = {}
+    """Bounded read-only hydration status, grouped in one pass over active URLs."""
+    # Do not call db(): it runs schema initialization and waits up to 45 seconds
+    # on SQLite locks. Diagnostics must never queue behind catalog writers.
+    uri = f"file:{DB_PATH.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=2.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA query_only=ON')
+    out = {
+        store: {
+            'total': 0, 'pending': 0, 'processing': 0, 'done': 0,
+            'error': 0, 'dead': 0, 'last_finished_at': None,
+        }
+        for store in STORES
+    }
     try:
-        for store in STORES:
-            row = conn.execute(
-                """SELECT
-                     COUNT(*) AS total,
-                     SUM(CASE WHEN q.state='PENDING' THEN 1 ELSE 0 END) AS pending,
-                     SUM(CASE WHEN q.state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
-                     SUM(CASE WHEN q.state='DONE' THEN 1 ELSE 0 END) AS done,
-                     SUM(CASE WHEN q.state='ERROR' THEN 1 ELSE 0 END) AS error,
-                     SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
-                     MAX(q.last_finished_at) AS last_finished_at
-                   FROM hydration_queue q
-                   JOIN store_urls u
-                     ON u.store=q.store AND u.url=q.url
-                   WHERE q.store=? AND u.active=1""",
-                (store,),
-            ).fetchone()
+        rows = conn.execute(
+            """SELECT q.store,
+                      COUNT(*) AS total,
+                      SUM(CASE WHEN q.state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                      SUM(CASE WHEN q.state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                      SUM(CASE WHEN q.state='DONE' THEN 1 ELSE 0 END) AS done,
+                      SUM(CASE WHEN q.state='ERROR' THEN 1 ELSE 0 END) AS error,
+                      SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
+                      MAX(q.last_finished_at) AS last_finished_at
+               FROM hydration_queue q
+               JOIN store_urls u
+                 ON u.store=q.store AND u.url=q.url
+               WHERE u.active=1
+               GROUP BY q.store"""
+        ).fetchall()
+        for row in rows:
+            store = row['store']
+            if store not in out:
+                continue
             out[store] = {
                 'total': int(row['total'] or 0),
                 'pending': int(row['pending'] or 0),
@@ -5301,9 +5316,13 @@ def store_status():
     Exact active URL counts remain available from store_urls; fetched and
     pending figures use lightweight aggregates with a short busy timeout.
     """
-    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    # Read-only connection avoids waiting for writer/schema initialization;
+    # diagnostics should degrade quickly rather than stall production probes.
+    uri = f"file:{DB_PATH.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=2.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA query_only=ON')
     now = time.time()
     out = {}
     try:
