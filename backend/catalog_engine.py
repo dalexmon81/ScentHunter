@@ -1279,7 +1279,15 @@ def _html_product_url(store, raw_url, base_url):
         # endpoints. Several localized Deloox search pages use names such as
         # /zoeken.html and /buscar.html; checking only for a slash/end after
         # the route name incorrectly admitted those pages as products.
-        route_path = re.sub(r'\\.(?:html?|php)
+        route_path = re.sub(r'\.(?:html?|php)$', '', low, flags=re.I)
+        if low.endswith('.html') and not re.search(
+            r'/(?:category|categorie|categoria|catégorie|chercher|zoeken|buscar|'
+            r'search|suche|suchen|sitemap|brand|marque|marca|login|account|'
+            r'cart|checkout)(?:/|$)',
+            route_path,
+            re.I,
+        ):
+            return canonical
         return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
