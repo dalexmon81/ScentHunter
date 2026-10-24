@@ -4906,45 +4906,55 @@ def _coverage_scraper_process(
     context. Child stderr is captured and included only in malformed/failed
     process diagnostics; cancellation and timeout behavior stay unchanged.
     """
-    child_code = (
-        "import contextlib, importlib, json, sys, traceback\\n"
-        "def describe(exc):\\n"
-        "    frames = traceback.extract_tb(exc.__traceback__)[-5:]\\n"
-        "    location = \\\" > \\\".join(f\\\"{frame.name}({frame.filename.rsplit('/', 1)[-1]}:{frame.lineno})\\\" for frame in frames)\\n"
-        "    message = str(exc)[:240]\\n"
-        "    return f\\\"{type(exc).__name__}:{message} [at {location[:300]}]\\\" if location else f\\\"{type(exc).__name__}:{message}\\\"\\n"
-        "def main():\\n"
-        "    payload = json.load(sys.stdin)\\n"
-        "    module_name = str(payload.get(\\\"module\\\") or \\\"\\\")\\n"
-        "    queries = payload.get(\\\"queries\\\") or []\\n"
-        "    try:\\n"
-        "        module = importlib.import_module(module_name)\\n"
-        "        search_stream = getattr(module, \\\"search_stream\\\", None)\\n"
-        "        search_fn = getattr(module, \\\"search\\\", None)\\n"
-        "        if not callable(search_stream) and not callable(search_fn):\\n"
-        "            raise RuntimeError(\\\"scraper_search_unavailable\\\")\\n"
-        "    except Exception as exc:\\n"
-        "        json.dump({\\\"ok\\\": False, \\\"reports\\\": [], \\\"error\\\": describe(exc)}, sys.stdout, ensure_ascii=False)\\n"
-        "        sys.stdout.flush()\\n"
-        "        return\\n"
-        "    reports = []\\n"
-        "    for query in queries:\\n"
-        "        try:\\n"
-        "            with contextlib.redirect_stdout(sys.stderr):\\n"
-        "                report = search_stream(query) if callable(search_stream) else search_fn(query)\\n"
-        "            reports.append({\\\"query\\\": query, \\\"report\\\": report})\\n"
-        "        except Exception as exc:\\n"
-        "            reports.append({\\\"query\\\": query, \\\"error\\\": describe(exc)})\\n"
-        "            continue\\n"
-        "        if isinstance(report, dict) and report.get(\\\"results\\\"):\\n"
-        "            break\\n"
-        "        if isinstance(report, list) and report:\\n"
-        "            break\\n"
-        "    json.dump({\\\"ok\\\": True, \\\"reports\\\": reports}, sys.stdout, ensure_ascii=False, default=str)\\n"
-        "    sys.stdout.flush()\\n"
-        "if __name__ == \\\"__main__\\\":\\n"
-        "    main()\\n"
+    child_code = """
+import contextlib
+import importlib
+import json
+import sys
+import traceback
+
+def describe(exc):
+    frames = traceback.extract_tb(exc.__traceback__)[-5:]
+    location = " > ".join(
+        f"{frame.name}({frame.filename.rsplit('/', 1)[-1]}:{frame.lineno})"
+        for frame in frames
     )
+    message = str(exc)[:240]
+    return f"{type(exc).__name__}:{message} [at {location[:300]}]" if location else f"{type(exc).__name__}:{message}"
+
+def main():
+    payload = json.load(sys.stdin)
+    module_name = str(payload.get("module") or "")
+    queries = payload.get("queries") or []
+    try:
+        module = importlib.import_module(module_name)
+        search_stream = getattr(module, "search_stream", None)
+        search_fn = getattr(module, "search", None)
+        if not callable(search_stream) and not callable(search_fn):
+            raise RuntimeError("scraper_search_unavailable")
+    except Exception as exc:
+        json.dump({"ok": False, "reports": [], "error": describe(exc)}, sys.stdout, ensure_ascii=False)
+        sys.stdout.flush()
+        return
+    reports = []
+    for query in queries:
+        try:
+            with contextlib.redirect_stdout(sys.stderr):
+                report = search_stream(query) if callable(search_stream) else search_fn(query)
+            reports.append({"query": query, "report": report})
+        except Exception as exc:
+            reports.append({"query": query, "error": describe(exc)})
+            continue
+        if isinstance(report, dict) and report.get("results"):
+            break
+        if isinstance(report, list) and report:
+            break
+    json.dump({"ok": True, "reports": reports}, sys.stdout, ensure_ascii=False, default=str)
+    sys.stdout.flush()
+
+if __name__ == "__main__":
+    main()
+"""
     payload = json.dumps({"module": module_name, "queries": list(queries)}, ensure_ascii=False)
     env = os.environ.copy()
     current_python_path = env.get("PYTHONPATH", "")
