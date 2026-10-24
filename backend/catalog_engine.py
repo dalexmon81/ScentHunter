@@ -4491,8 +4491,8 @@ def _recover_stale_discovery_states():
                     """UPDATE sync_state
                        SET status='DISCOVERY_ERROR', finished_at=?, error=?
                        WHERE store=? AND status='DISCOVERY_RUNNING'
-                         AND (started_at IS NULL OR started_at < ?)""",
-                    (now, detail, store, stale_before),
+                         AND started_at IS ?""",
+                    (now, detail, store, started_at),
                 ).rowcount
                 if updated:
                     recovered.append(store)
