@@ -41,6 +41,7 @@ jobs:
           tests/test_catalog_identity_audit.py
           tests/test_runtime_identity_reference_audit.py
           tests/test_catalog_sqlite_contention.py
+          tests/test_deloox_url_admission.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
           tests/test_next_engine_integration_contract.py
