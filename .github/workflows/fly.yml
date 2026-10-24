@@ -111,7 +111,6 @@ jobs:
           PY
 
       - name: Exercise real production searches and offer data
-        continue-on-error: true
         timeout-minutes: 4
         shell: bash
         run: |
