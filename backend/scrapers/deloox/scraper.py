@@ -284,14 +284,14 @@ def _url_matches_product_name(url, name):
     return slug_tokens.issubset(name_tokens)
 
 
-def _product(url, html, query, *, soup=None):
+def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None):
     # Reuse a parsed document when the caller has already inspected JSON-LD.
-    if soup is None:
+    if soup is None and jsonld_data is None:
         soup = BeautifulSoup(html, "lxml")
-    data = _jsonld(soup)
+    data = jsonld_data if isinstance(jsonld_data, dict) else (_jsonld(soup) if soup is not None else {})
 
-    h1 = soup.find("h1")
-    name = clean(data.get("name")) or (
+    h1 = soup.find("h1") if soup is not None else None
+    name = clean(data.get("name")) or clean(h1_override) or (
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
@@ -307,7 +307,7 @@ def _product(url, html, query, *, soup=None):
 
     product_line = ""
     # Cache the normalized full-page text once; several downstream checks use it.
-    text = soup.get_text(" ", strip=True)
+    text = soup.get_text(" ", strip=True) if soup is not None else clean(re.sub(r"<[^>]+>", " ", html))
 
     # Deloox also has haircare, skincare and makeup pages under the same
     # numeric /produit/<id>/slug URL convention. Since ScentHunter compares
@@ -324,12 +324,13 @@ def _product(url, html, query, *, soup=None):
             )
         elif isinstance(value, list):
             category_values.extend(str(x) for x in value if isinstance(x, str))
-    for node in soup.find_all(["meta", "a", "span"], limit=500):
-        marker = " ".join(str(node.get(k) or "") for k in ("itemprop", "property", "name", "class", "aria-label"))
-        if re.search(r"category|categorie|breadcrumb|product.?type|product.?category", marker, re.I):
-            value = node.get("content") if node.name == "meta" else node.get_text(" ", strip=True)
-            if value:
-                category_values.append(str(value))
+    if soup is not None:
+        for node in soup.find_all(["meta", "a", "span"], limit=500):
+            marker = " ".join(str(node.get(k) or "") for k in ("itemprop", "property", "name", "class", "aria-label"))
+            if re.search(r"category|categorie|breadcrumb|product.?type|product.?category", marker, re.I):
+                value = node.get("content") if node.name == "meta" else node.get_text(" ", strip=True)
+                if value:
+                    category_values.append(str(value))
     category_text = norm(" ".join(category_values))
     non_fragrance_category = re.search(
         r"\b(?:haircare|hair care|shampoo|shampoing|conditioner|hair mask|hair spray|"
@@ -379,7 +380,9 @@ def _product(url, html, query, *, soup=None):
     if isinstance(image, list):
         image = image[0] if image else None
 
-    avail = availability(text, offer=offer, soup=soup)
+    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
+        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable")) else "in_stock"
+    )
 
     return {
         "store": STORE,
@@ -1514,38 +1517,22 @@ def extract_product_html(url, html, query=None):
 
 
 def extract_product_page(session, url, query=None, html=None):
-    """Parse one known Deloox product URL, reusing HTML when already fetched.
-
-    Catalog hydration supplies the fetched page body to avoid a second request
-    that can receive different markup or fail independently. Direct callers
-    retain the legacy fetch behavior. Retailer-specific parsing remains
-    authoritative; generic JSON-LD fallback is not used here.
-    """
+    """Parse a known Deloox product page, avoiding a full DOM when possible."""
     target = clean(url)
     if not target or not _is_deloox_url(target):
         return None
 
     if html is None:
         try:
-            response = session.get(
-                target,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
+            response = session.get(target, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         except requests.RequestException:
             raise
-
         if response.status_code >= 400:
             response.raise_for_status()
-
         final_url = clean(getattr(response, "url", "") or target)
         html = getattr(response, "text", "") or ""
     else:
         final_url = target
-        # Catalog hydration passes the raw response body as bytes. Converting
-        # bytes with str() produces a Python representation (b'...') rather
-        # than HTML, so decode the body before parsing it.
         if isinstance(html, bytes):
             html = html.decode("utf-8", errors="replace")
         elif not isinstance(html, str):
@@ -1553,31 +1540,61 @@ def extract_product_page(session, url, query=None, html=None):
 
     if not html:
         return None
-
-    # Protect the hydration workers from pathological or unexpectedly huge
-    # retailer responses before constructing a DOM. Normal product pages are
-    # far smaller than this bound; oversized bodies are retried as queue errors.
     max_html_bytes = 4 * 1024 * 1024
-    if len(html.encode("utf-8", errors="replace")) > max_html_bytes:
-        raise ValueError(f"deloox_product_html_too_large:{len(html)}")
+    html_size = len(html.encode("utf-8", errors="replace"))
+    if html_size > max_html_bytes:
+        raise ValueError(f"deloox_product_html_too_large:{html_size}")
 
-    # A known product URL is already a sufficiently narrow query. Derive the
-    # expected name from the page itself when no explicit query is supplied;
-    # this avoids treating the numeric product ID in the URL as a name token.
-    soup = BeautifulSoup(html, "lxml")
-    data = _jsonld(soup)
-    h1 = soup.find("h1")
-    page_name = clean(data.get("name")) or (
-        clean(h1.get_text(" ", strip=True)) if h1 else ""
+    # Product JSON-LD is usually sufficient for name and public offer price.
+    # Read script bodies directly so a large application DOM cannot monopolize
+    # a hydration worker merely to find a Product object.
+    data = {}
+    script_re = re.compile(
+        r'<script\b(?=[^>]*\btype\s*=\s*["\']application/ld\+json["\'])[^>]*>(.*?)</script\s*>',
+        re.I | re.S,
     )
+    for match in script_re.finditer(html):
+        try:
+            parsed_json = json.loads(match.group(1).strip())
+        except Exception:
+            continue
+        stack = list(reversed(parsed_json)) if isinstance(parsed_json, list) else [parsed_json]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, list):
+                stack.extend(reversed(node))
+                continue
+            if not isinstance(node, dict):
+                continue
+            node_type = node.get("@type")
+            node_types = node_type if isinstance(node_type, list) else [node_type]
+            if any(str(value).lower() == "product" for value in node_types) or "offers" in node:
+                data = node
+                break
+            graph = node.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(reversed(graph))
+        if data:
+            break
+
+    title_match = re.search(r'<h1\b[^>]*>(.*?)</h1\s*>', html, re.I | re.S)
+    h1_text = clean(re.sub(r"<[^>]+>", " ", title_match.group(1))) if title_match else ""
+    page_name = clean(data.get("name")) or h1_text
     if not page_name:
         return None
 
-    # This is an exact-URL refresh, not a search result. Validate the parsed
-    # record against its own authoritative page name; _product() still applies
-    # the generic URL-slug/name integrity check.
-    return _product(final_url, html, page_name, soup=soup)
+    offers = data.get("offers")
+    offer_list = offers if isinstance(offers, list) else [offers]
+    has_price = any(
+        isinstance(offer, dict) and parse_price(offer.get("price")) is not None
+        for offer in offer_list
+    )
+    if has_price:
+        return _product(final_url, html, page_name, soup=None, jsonld_data=data, h1_override=h1_text)
 
+    # Fallback for pages whose offer data is only present in rendered text.
+    soup = BeautifulSoup(html, "lxml")
+    return _product(final_url, html, page_name, soup=soup, jsonld_data=data, h1_override=h1_text)
 
 def _is_deloox_url(url):
     try:
