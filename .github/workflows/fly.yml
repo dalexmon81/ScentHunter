@@ -246,10 +246,11 @@ jobs:
                               return "edt"
                           if "eau de cologne" in value or " edc" in (" " + value):
                               return "edc"
-                          if "parfum" in value:
-                              return "parfum"
+                          # Elixir listings commonly append "parfum" in URLs.
                           if "elixir" in value:
                               return "elixir"
+                          if "parfum" in value:
+                              return "parfum"
                           return ""
                       concentration_mismatches = []
                       for group in (result.get("results") or []):
