@@ -108,4 +108,8 @@ jobs:
         run: |
           set -euo pipefail
           SCRIPT='/app/.venv/bin/python /app/backend/scenthunter_next_engine/deloox_recovery.py'
+          echo '--- Parser identity and remaining eligible rows ---'
           timeout 45s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT"
+          echo '--- Read-only production queue/worker progress audit ---'
+          AUDIT="/app/.venv/bin/python -c \"import sqlite3,json; c=sqlite3.connect('file:/data/store_catalog.sqlite3?mode=ro',uri=True,timeout=5); c.execute('PRAGMA query_only=ON'); q=dict(c.execute(\\\"SELECT state,COUNT(*) FROM hydration_queue WHERE lower(store)='deloox' GROUP BY state\\\").fetchall()); p=dict(c.execute(\\\"SELECT fetch_status,COUNT(*) FROM store_products WHERE lower(store)='deloox' GROUP BY fetch_status\\\").fetchall()); print(json.dumps({'queue_state_counts':q,'product_fetch_status_counts':p,'parser_not_found_products':sum(v for k,v in p.items() if k and 'product_parser_not_found' in k)},sort_keys=True)); c.close()\""
+          timeout 45s flyctl ssh console --app scenthunter --select=false -C "$AUDIT"
