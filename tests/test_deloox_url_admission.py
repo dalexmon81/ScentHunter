@@ -152,3 +152,33 @@ def test_deloox_url_admission_keeps_numeric_product_routes_across_locales():
     )
     for url in urls:
         assert _html_product_url("deloox", url, BASE) == url, url
+
+
+def test_coverage_admission_rejects_deloox_navigation_but_keeps_products():
+    assert catalog_engine._coverage_allowed_url(
+        "deloox", "https://www.deloox.nl/zoeken.html"
+    ) == ""
+    assert catalog_engine._coverage_allowed_url(
+        "deloox", "https://www.deloox.com/en/search.html?page=2"
+    ) == ""
+    assert catalog_engine._coverage_allowed_url(
+        "deloox", "https://www.deloox.com/"
+    ) == ""
+    product = (
+        "https://www.deloox.com/product/1380881/"
+        "chloe-le-parfum-parfum-150-ml.html?utm_source=test"
+    )
+    assert catalog_engine._coverage_allowed_url("deloox", product) == (
+        "https://www.deloox.com/product/1380881/"
+        "chloe-le-parfum-parfum-150-ml.html"
+    )
+
+
+def test_refresh_url_rejects_deloox_search_url_before_network(monkeypatch):
+    def unexpected_http_get(*args, **kwargs):
+        raise AssertionError("non-product URL must be rejected before HTTP")
+
+    monkeypatch.setattr(catalog_engine, "http_get", unexpected_http_get)
+    result = catalog_engine.refresh_url("deloox", "https://www.deloox.nl/zoeken.html")
+    assert result.get("ok") is False
+    assert "non_product_deloox_url" in str(result.get("error", ""))
