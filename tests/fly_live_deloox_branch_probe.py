@@ -54,6 +54,8 @@ for url, query in targets:
             "http_status": response.status_code,
             "final_url": response.url,
             "bytes": len(response.content),
+            "content_type": response.headers.get("content-type"),
+            "content_sha256": hashlib.sha256(response.content).hexdigest(),
         })
         if response.ok:
             parsed = module._product(response.url, response.text, query)
@@ -68,6 +70,8 @@ for url, query in targets:
                     "currency": ((parsed.get("offer") or {}).get("currency")),
                     "availability": ((parsed.get("offer") or {}).get("availability")),
                     "image": (parsed.get("source") or {}).get("image"),
+                    "gtin": ((parsed.get("identity") or {}).get("gtin") or {}).get("value") if isinstance((parsed.get("identity") or {}).get("gtin"), dict) else None,
+                    "sku": ((parsed.get("identity") or {}).get("sku") or {}).get("value") if isinstance((parsed.get("identity") or {}).get("sku"), dict) else None,
                 })
             else:
                 soup = module.BeautifulSoup(response.text, "html.parser")
@@ -83,6 +87,10 @@ for url, query in targets:
                         "jsonld_name": data.get("name"),
                         "h1": h1.get_text(" ", strip=True)[:180] if h1 else None,
                         "title": soup.title.get_text(" ", strip=True)[:180] if soup.title else None,
+                        "price_jsonld": (data.get("offers") or {}).get("price") if isinstance(data.get("offers"), dict) else None,
+                        "gtin": data.get("gtin13") or data.get("gtin"),
+                        "sku": data.get("sku"),
+                        "jsonld_top_level_keys": sorted(data.keys()),
                     }
                 })
         else:
