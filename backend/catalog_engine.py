@@ -5279,6 +5279,9 @@ def hydration_status():
                       SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
                       MAX(q.last_finished_at) AS last_finished_at
                FROM hydration_queue q
+               JOIN store_urls u
+                 ON u.store=q.store AND u.url=q.url
+               WHERE u.active=1
                GROUP BY q.store"""
         ).fetchall()
         for row in rows:
@@ -5384,10 +5387,12 @@ def store_status():
         pending_counts = {
             row['store']: int(row['count'] or 0)
             for row in conn.execute(
-                """SELECT store,COUNT(*) AS count
-                     FROM hydration_queue
-                    WHERE state != 'DONE'
-                    GROUP BY store"""
+                """SELECT q.store,COUNT(*) AS count
+                     FROM hydration_queue q
+                     JOIN store_urls u
+                       ON u.store=q.store AND u.url=q.url
+                    WHERE u.active=1 AND q.state != 'DONE'
+                    GROUP BY q.store"""
             )
         }
         for store in STORES:
