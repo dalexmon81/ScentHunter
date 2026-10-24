@@ -1867,7 +1867,13 @@ def _catalog_search_terms(query):
                 continue
             seen.add(key)
             overlap = tokens(candidate) & query_tokens
-            if not overlap:
+            # A single-token family query (for example "Hawas") may have
+            # legitimate catalog aliases whose retailer titles contain none
+            # of the family token. Keep those aliases in the matcher's order;
+            # ProductMatcher remains responsible for rejecting unrelated
+            # products. Multi-token queries still require lexical overlap so
+            # expansion does not flood the search with unrelated candidates.
+            if not overlap and len(query_tokens) > 1:
                 continue
             candidates.append((candidate, overlap))
 
