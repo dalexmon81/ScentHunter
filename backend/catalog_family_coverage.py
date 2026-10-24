@@ -54,51 +54,55 @@ FOREGROUND_SEARCH_POLL_SECONDS = float(
 )
 
 
-def _foreground_search_running():
-    """Return True when any ScentHunter foreground search thread is active."""
+def _active_catalog_writer():
+    """Detect app threads that may be writing the shared SQLite catalog.
+
+    This worker is a separate process, so Python locks cannot serialize its
+    catalog writes with the API process. Linux thread names provide a small
+    cross-process coordination signal without touching database state.
+    """
     proc_root = Path("/proc")
     try:
         for process_dir in proc_root.iterdir():
             if not process_dir.name.isdigit():
                 continue
-
-            task_dir = process_dir / "task"
             try:
-                for thread_dir in task_dir.iterdir():
+                task_dirs = (process_dir / "task").iterdir()
+            except OSError:
+                continue
+            try:
+                for thread_dir in task_dirs:
                     try:
                         comm = (thread_dir / "comm").read_text(
-                            encoding="utf-8",
-                            errors="ignore",
+                            encoding="utf-8", errors="ignore"
                         ).strip()
                     except (OSError, UnicodeError):
                         continue
-
-                    # Linux /proc/<pid>/task/<tid>/comm exposes at most 15
-                    # characters.  main.py names foreground threads
-                    # ``scenthunter-search-...``, which is therefore exposed
-                    # here as ``scenthunter-sea``.  Match both the full
-                    # contract and the kernel-truncated form.
+                    # /proc truncates comm to 15 characters. The discovery
+                    # thread is named scenthunter-catalog-discovery and may
+                    # appear as scenthunter-ca.
                     if (
                         comm.startswith("scenthunter-search-")
                         or comm.startswith("scenthunter-sea")
+                        or comm.startswith("scenthunter-catalog-discovery")
+                        or comm.startswith("scenthunter-ca")
                     ):
                         return True
             except OSError:
                 continue
     except OSError:
         return False
-
     return False
 
 
 def _wait_for_foreground_idle():
-    """Pause background coverage while a user search is running."""
+    """Pause background coverage during search or catalog discovery writes."""
     announced = False
 
-    while not STOP and _foreground_search_running():
+    while not STOP and _active_catalog_writer():
         if not announced:
             print(
-                "FAMILY COVERAGE WAIT foreground_search=active",
+                "FAMILY COVERAGE WAIT foreground_or_discovery=active",
                 flush=True,
             )
             announced = True
@@ -106,7 +110,7 @@ def _wait_for_foreground_idle():
 
     if announced and not STOP:
         print(
-            "FAMILY COVERAGE RESUME foreground_search=idle",
+            "FAMILY COVERAGE RESUME foreground_or_discovery=idle",
             flush=True,
         )
 
