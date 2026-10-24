@@ -17,22 +17,28 @@ permissions:
 jobs:
   parser-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 5
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
+
       - name: Set up flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
+
       - name: Run bounded branch parser probe against live product pages (read-only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
+          # Fail quickly and visibly if Fly SSH is unavailable. Never print a success-shaped fallback.
           timeout 100s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_live_deloox_branch_probe.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_live_deloox_branch_probe.py\",\"exec\"))' ${GITHUB_SHA}"
 
       - name: Run production SQLite audit (read-only)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
+          # Inventory only. HTTP 403 results are captured in the JSON report, not treated as parser errors.
           timeout 60s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python -c 'import sys,urllib.request; sha=sys.argv[1]; script=urllib.request.urlopen(\"https://raw.githubusercontent.com/dalexmon81/ScentHunter/\"+sha+\"/tests/fly_readonly_runtime_deloox_audit.py\",timeout=10).read().decode(\"utf-8\"); exec(compile(script,\"fly_readonly_runtime_deloox_audit.py\",\"exec\"))' ${GITHUB_SHA}"
