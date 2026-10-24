@@ -1592,7 +1592,7 @@ def _html_discovery_priority(store, url, depth, source=''):
     return (score, depth)
 
 def _deloox_queue_allowed(url):
-    """Return True only for URLs on an official configured Deloox host."""
+    """Admit official Deloox URLs, excluding only obvious non-fragrance products."""
     if not url:
         return False
     try:
@@ -1605,8 +1605,25 @@ def _deloox_queue_allowed(url):
         urllib.parse.urlparse(x).netloc.lower()
         for x in _discovery_bases('deloox')
     }
-    return p.netloc.lower() in allowed_hosts
+    if p.netloc.lower() not in allowed_hosts:
+        return False
 
+    # Existing records are not deleted or mutated here. This admission guard
+    # only prevents newly discovered obvious haircare/skincare/makeup pages
+    # from being enqueued. Keep ambiguous slugs eligible.
+    slug = urllib.parse.unquote(p.path.rsplit('/', 1)[-1]).lower()
+    if re.search(
+        r"(?:^|[-_ ])(?:shampoo|shampoing|conditioner|apres-shampoing|"
+        r"haarmaske|hair-mask|haircare|hair-care|hair-spray|"
+        r"styling-cream|molding-cream|skincare|skin-care|face-cream|"
+        r"body-lotion|foundation|mascara|eyeliner|lipstick|nail-polish|"
+        r"makeup|cosmetics|deodorant|toothpaste|oral-care|shower-gel)"
+        r"(?:[-_ ]|\.|$)",
+        slug,
+        re.I,
+    ):
+        return False
+    return True
 
 def _deloox_queue_seed():
     """Seed the durable Deloox catalog graph without product-specific URLs."""

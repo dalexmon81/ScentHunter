@@ -332,10 +332,10 @@ def _product(url, html, query, *, soup=None):
                 category_values.append(str(value))
     category_text = norm(" ".join(category_values))
     non_fragrance_category = re.search(
-        r"\\b(?:haircare|hair care|shampoo|shampoing|conditioner|hair mask|hair spray|"
+        r"\b(?:haircare|hair care|shampoo|shampoing|conditioner|hair mask|hair spray|"
         r"styling cream|molding cream|skincare|skin care|face cream|body lotion|"
         r"foundation|mascara|eyeliner|lipstick|nail polish|makeup|cosmetics|"
-        r"deodorant|toothpaste|oral care|shower gel)\\b",
+        r"deodorant|toothpaste|oral care|shower gel)\b",
         category_text,
         re.I,
     )
