@@ -26,6 +26,34 @@ TARGET_SEARCH_URLS = (
     "https://www.deloox.be/chercher.html",
 )
 
+def is_deloox_product_url(url):
+    """Mirror the catalog URL-admission contract without importing app code."""
+    from urllib.parse import urlparse
+    parsed = urlparse(str(url or ""))
+    if parsed.scheme not in ("http", "https") or parsed.hostname is None:
+        return False
+    allowed_hosts = {
+        "deloox.be", "www.deloox.be", "deloox.com", "www.deloox.com",
+        "deloox.nl", "www.deloox.nl", "deloox.lu", "www.deloox.lu",
+        "deloox.es", "www.deloox.es",
+    }
+    if parsed.hostname.lower().rstrip(".") not in allowed_hosts:
+        return False
+    path = (parsed.path or "/").lower()
+    if re.search(r"/(?:product|produit|producto|prodotto)/\\d+(?:/|$)", path, re.I):
+        return True
+    route_path = re.sub(r"\\.(?:html?|php)$", "", path, flags=re.I)
+    if path.endswith(".html") and not re.search(
+        r"/(?:category|categorie|categoria|catégorie|chercher|zoeken|buscar|"
+        r"search|suche|suchen|sitemap|brand|marque|marca|login|account|"
+        r"cart|checkout)(?:/|$)",
+        route_path,
+        re.I,
+    ):
+        return True
+    return False
+
+
 def main():
     report = {
         "read_only": True,
@@ -36,6 +64,8 @@ def main():
 
         "tables": {},
         "invalid_search_url_rows": [],
+        "invalid_active_deloox_url_rows": [],
+        "active_deloox_url_rows_examined": 0,
         "parser_errors_by_day": [],
         "recent_parser_errors": [],
         "hydration_queue_states": [],
@@ -120,6 +150,23 @@ def main():
                 report["tables"][table] = info
             except Exception as exc:
                 report["tables"][table] = {"query_error": type(exc).__name__ + ": " + str(exc)[:180]}
+
+        # Audit the complete active Deloox URL set against the same generic
+        # path contract used by catalog discovery. Read-only SELECT only.
+        url_columns = {row["name"] for row in conn.execute("PRAGMA table_info(store_urls)")}
+        if {"store", "url", "active"} <= url_columns:
+            active_rows = conn.execute(
+                "SELECT url FROM store_urls WHERE lower(store)=? AND active=1",
+                ("deloox",),
+            ).fetchall()
+            report["active_deloox_url_rows_examined"] = len(active_rows)
+            for row in active_rows:
+                url = row["url"]
+                if not is_deloox_product_url(url):
+                    report["invalid_active_deloox_url_rows"].append({
+                        "url": url,
+                        "reason": "rejected_by_current_product_url_admission",
+                    })
 
         for table in ("store_urls", "store_products"):
             columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
