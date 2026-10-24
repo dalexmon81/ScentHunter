@@ -308,6 +308,39 @@ def _product(url, html, query, *, soup=None):
     product_line = ""
     # Cache the normalized full-page text once; several downstream checks use it.
     text = soup.get_text(" ", strip=True)
+
+    # Deloox also has haircare, skincare and makeup pages under the same
+    # numeric /produit/<id>/slug URL convention. Since ScentHunter compares
+    # fragrances, reject only explicit, unambiguous non-fragrance categories;
+    # unknown/ambiguous product pages remain eligible to avoid false negatives.
+    category_values = []
+    for key in ("category", "categoryName", "productCategory", "productType"):
+        value = data.get(key)
+        if isinstance(value, str):
+            category_values.append(value)
+        elif isinstance(value, dict):
+            category_values.extend(
+                str(value.get(k) or "") for k in ("name", "@type")
+            )
+        elif isinstance(value, list):
+            category_values.extend(str(x) for x in value if isinstance(x, str))
+    for node in soup.find_all(["meta", "a", "span"], limit=500):
+        marker = " ".join(str(node.get(k) or "") for k in ("itemprop", "property", "name", "class", "aria-label"))
+        if re.search(r"category|categorie|breadcrumb|product.?type|product.?category", marker, re.I):
+            value = node.get("content") if node.name == "meta" else node.get_text(" ", strip=True)
+            if value:
+                category_values.append(str(value))
+    category_text = norm(" ".join(category_values))
+    non_fragrance_category = re.search(
+        r"\\b(?:haircare|hair care|shampoo|shampoing|conditioner|hair mask|hair spray|"
+        r"styling cream|molding cream|skincare|skin care|face cream|body lotion|"
+        r"foundation|mascara|eyeliner|lipstick|nail polish|makeup|cosmetics|"
+        r"deodorant|toothpaste|oral care|shower gel)\\b",
+        category_text,
+        re.I,
+    )
+    if non_fragrance_category:
+        return None
     m = re.search(
         r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
         text,
