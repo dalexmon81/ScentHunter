@@ -287,7 +287,7 @@ def _url_matches_product_name(url, name):
 def _product(url, html, query, *, soup=None):
     # Reuse a parsed document when the caller has already inspected JSON-LD.
     if soup is None:
-        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(html, "lxml")
     data = _jsonld(soup)
 
     h1 = soup.find("h1")
@@ -446,7 +446,7 @@ def _candidate_product_urls(
     context), then return the highest-ranked candidates.  The product page
     remains authoritative through _product().
     """
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     base_url = clean(base_url or BASE_URL)
 
     # Keep numeric query tokens for discovery scoring (e.g. a model line or
@@ -748,7 +748,7 @@ def _candidate_category_urls(html, query, base_url=None):
         return []
 
     base_url = clean(base_url or BASE_URL)
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     found = []
     seen = set()
 
@@ -998,7 +998,7 @@ def _category_product_line_links(html, query):
     if not q_tokens:
         return []
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     found = []
     seen = set()
 
@@ -1028,7 +1028,7 @@ def _category_pagination_urls(base_url, html):
     rel="next", data-* attributes or JavaScript state. This helper only
     discovers navigation URLs; it never identifies a product.
     """
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     found = []
     seen = set()
 
@@ -1468,7 +1468,7 @@ def extract_product_html(url, html, query=None):
     elif not isinstance(html, str):
         html = str(html)
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     data = _jsonld(soup)
     h1 = soup.find("h1")
     page_name = clean(data.get("name")) or (
@@ -1524,7 +1524,7 @@ def extract_product_page(session, url, query=None, html=None):
     # A known product URL is already a sufficiently narrow query. Derive the
     # expected name from the page itself when no explicit query is supplied;
     # this avoids treating the numeric product ID in the URL as a name token.
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     data = _jsonld(soup)
     h1 = soup.find("h1")
     page_name = clean(data.get("name")) or (
