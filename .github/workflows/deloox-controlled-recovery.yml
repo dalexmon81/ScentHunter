@@ -108,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           echo '--- Read-only production queue/worker progress audit ---'
-          # Do not run the full recovery precheck here: it scans thousands of URLs
-          # and emits huge per-product diagnostics, obscuring the compact DB audit.
+          # Keep this diagnostic bounded: the full recovery precheck scans thousands of URLs
+          # and floods logs with per-product parser errors before the database counts.
           AUDIT="/app/.venv/bin/python -c \"import sqlite3,json; c=sqlite3.connect('file:/data/store_catalog.sqlite3?mode=ro',uri=True,timeout=5); c.execute('PRAGMA query_only=ON'); q=dict(c.execute(\\\"SELECT state,COUNT(*) FROM hydration_queue WHERE lower(store)='deloox' GROUP BY state\\\").fetchall()); p=dict(c.execute(\\\"SELECT fetch_status,COUNT(*) FROM store_products WHERE lower(store)='deloox' GROUP BY fetch_status\\\").fetchall()); print(json.dumps({'queue_state_counts':q,'product_fetch_status_counts':p,'parser_not_found_products':sum(v for k,v in p.items() if k and 'product_parser_not_found' in k)},sort_keys=True)); c.close()\""
           timeout 45s flyctl ssh console --app scenthunter --select=false -C "$AUDIT"
