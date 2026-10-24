@@ -82,6 +82,7 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
             "Chloé Le Parfum 150 ml",
             "Chloé",
             "76.69",
+            "Parfum",
         ),
         (
             "https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html",
@@ -89,10 +90,11 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
             "Hermès Eau De Pamplemousse Rose Eau de Cologne 100 ml",
             "Hermès",
             "62.79",
+            "Eau de Cologne",
         ),
     )
 
-    for url, query, name, brand, price in cases:
+    for url, query, name, brand, price, expected_concentration in cases:
         html = f"""<!doctype html>
         <html><head><title>{name}</title>
         <script type="application/ld+json">
@@ -110,6 +112,7 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
         assert parsed["name"] == name
         assert parsed["source"]["source_brand"] == brand
         assert parsed["price"] == f"{price.replace('.', ',')} €"
+        assert parsed["attributes"]["concentration"]["value"] == expected_concentration
 
         # Exercise the exact catalog-refresh adapter with already-fetched bytes.
         # It must decode the response and preserve accent-insensitive matching
@@ -124,6 +127,7 @@ def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
         assert parsed_refresh["name"] == name
         assert parsed_refresh["source"]["source_brand"] == brand
         assert parsed_refresh["offer"]["price"] == float(price)
+        assert parsed_refresh["attributes"]["concentration"]["value"] == expected_concentration
 
 def test_deloox_url_admission_rejects_localized_home_redirect_targets():
     # Search/category URLs can return HTTP 200 after redirecting to the
