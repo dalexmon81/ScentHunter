@@ -215,6 +215,22 @@ jobs:
                       print(f"Easycosmetic known-brand coverage (Dior Sauvage): {easy_count} matching products")
                       if easy_count <= 0:
                           raise RuntimeError("Easycosmetic returned no Dior Sauvage candidates despite its official Dior assortment")
+                      non_fragrance_terms = (
+                          "soap", "cleanser", "toner", "tonique", "gesichtswasser",
+                          "shaving", "shave gel", "gel de afeitado", "gel de rasage",
+                          "aftershave", "after shave", "deodorant", "body lotion",
+                      )
+                      bad_offers = [
+                          {"store": offer.get("store"), "name": offer.get("name"), "url": offer.get("url")}
+                          for offer in (result.get("results") or [])
+                          if isinstance(offer, dict)
+                          for offer in (offer.get("offers") or [])
+                          if isinstance(offer, dict)
+                          and any(term in (str(offer.get("name") or "") + " " + str(offer.get("url") or "")).lower()
+                                  for term in non_fragrance_terms)
+                      ]
+                      if bad_offers:
+                          raise RuntimeError("Non-fragrance Dior Sauvage offers detected: " + json.dumps(bad_offers[:5], ensure_ascii=False))
               except Exception as exc:
                   failures.append(f"{query}: {type(exc).__name__}: {exc}")
                   print("SMOKE TEST FAILURE: " + failures[-1], flush=True)
