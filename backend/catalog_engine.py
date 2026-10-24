@@ -3074,12 +3074,15 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Easycosmetic can stall on variant pages; keep this store's refresh
-        # bounded so a slow variant does not hold the whole search response.
-        # Easycosmetic pages repeatedly time out at the legacy 6-second
-        # threshold. Give this retailer a bounded 25-second read window while
-        # retaining the configured timeout for all other stores.
-        store_timeout = max(25, REFRESH_TIMEOUT) if store == 'easycosmetic' else REFRESH_TIMEOUT
+        # Retailer timeouts must fit inside the hydration lease. Deloox has
+        # recently shown delayed response headers; keep reads bounded so one
+        # slow socket cannot tie up a worker for an entire lease interval.
+        if store == 'easycosmetic':
+            store_timeout = max(25, REFRESH_TIMEOUT)
+        elif store == 'deloox':
+            store_timeout = min(6, REFRESH_TIMEOUT)
+        else:
+            store_timeout = REFRESH_TIMEOUT
         status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
