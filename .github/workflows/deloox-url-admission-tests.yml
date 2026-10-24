@@ -1,0 +1,33 @@
+name: Deloox URL admission regression tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/deloox-url-admission-tests-current-base
+    paths:
+      - "backend/catalog_engine.py"
+      - "tests/test_deloox_url_admission_regression.py"
+      - ".github/workflows/deloox-url-admission-tests.yml"
+  pull_request:
+    paths:
+      - "backend/catalog_engine.py"
+      - "tests/test_deloox_url_admission_regression.py"
+      - ".github/workflows/deloox-url-admission-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  url-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install parser dependencies
+        run: python -m pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Run Deloox URL admission regression tests
+        run: python tests/test_deloox_url_admission_regression.py
