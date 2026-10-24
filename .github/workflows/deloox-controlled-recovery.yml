@@ -17,9 +17,10 @@ jobs:
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Cancel stale recovery runs and wait for this revision's deploy
+      - name: Cancel stale recovery runs and stop orphaned recovery commands
         env:
           GH_TOKEN: ${{ github.token }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -30,6 +31,17 @@ jobs:
             gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$stale_id/cancel" || true
           done < <(printf '%s' "$RUNS" | jq -r --arg current "$GITHUB_RUN_ID" '.workflow_runs[] | select(.name == "Controlled Deloox queue recovery" and .status == "in_progress" and (.id|tostring) != $current) | .id')
 
+          echo '--- Inspect possible orphan recovery process ---'
+          timeout 20s flyctl ssh console --app scenthunter --select=false -C "ps -eo pid,args | grep '[d]eloox_recovery.py' || true" || true
+          echo '--- Stop only orphaned apply commands; SQLite will roll back any uncommitted transaction ---'
+          timeout 20s flyctl ssh console --app scenthunter --select=false -C "pkill -f '[d]eloox_recovery.py --apply --confirm-recovery' || true" || true
+
+      - name: Wait for this revision's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
           READY=0
           for attempt in $(seq 1 90); do
             DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
