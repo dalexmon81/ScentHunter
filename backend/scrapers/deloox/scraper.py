@@ -285,9 +285,12 @@ def _url_matches_product_name(url, name):
 
 
 def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None):
-    # Reuse a parsed document when the caller has already inspected JSON-LD.
-    if soup is None and jsonld_data is None:
-        soup = BeautifulSoup(html, "lxml")
+    # Always parse HTML when no document was supplied. Callers may pass
+    # pre-extracted JSON-LD, but visible-text fallbacks and availability still
+    # need a parsed document. In particular, avoid running broad tag-stripping
+    # regexes over very large or malformed retailer HTML.
+    if soup is None:
+        soup = BeautifulSoup(html or "", "lxml")
     data = jsonld_data if isinstance(jsonld_data, dict) else (_jsonld(soup) if soup is not None else {})
 
     h1 = soup.find("h1") if soup is not None else None
