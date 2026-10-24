@@ -90,6 +90,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Regenerate legacy-versus-next shadow comparison report
+        run: python -m pytest -q tests/test_next_engine_shadow_comparison.py
+
       - name: Upload legacy-versus-next shadow comparison
         uses: actions/upload-artifact@v4
         with:
