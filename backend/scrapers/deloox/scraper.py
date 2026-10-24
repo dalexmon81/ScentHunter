@@ -1554,6 +1554,13 @@ def extract_product_page(session, url, query=None, html=None):
     if not html:
         return None
 
+    # Protect the hydration workers from pathological or unexpectedly huge
+    # retailer responses before constructing a DOM. Normal product pages are
+    # far smaller than this bound; oversized bodies are retried as queue errors.
+    max_html_bytes = 4 * 1024 * 1024
+    if len(html.encode("utf-8", errors="replace")) > max_html_bytes:
+        raise ValueError(f"deloox_product_html_too_large:{len(html)}")
+
     # A known product URL is already a sufficiently narrow query. Derive the
     # expected name from the page itself when no explicit query is supplied;
     # this avoids treating the numeric product ID in the URL as a name token.
