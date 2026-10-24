@@ -1704,6 +1704,19 @@ class ProductMatcher:
             offer.get("name") or offer.get("title") or offer.get("product_name") or ""
         )
 
+        # Apply the same generic product-type exclusion used by catalog offer
+        # resolution before entering the family matcher.  Otherwise a scraped
+        # perfume-like title can override a URL that actually identifies soap,
+        # shower gel, deodorant, a gift set, or another non-fragrance product.
+        if self._is_non_fragrance_offer(offer):
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                "method=non_fragrance",
+                flush=True,
+            )
+            return None
+
         # Never treat samples/decants/testers as full-size fragrance offers.
         # This guard runs before family and generic matching, so removing bottle
         # size from identity normalization can never turn a sample into a product.
