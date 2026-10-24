@@ -227,24 +227,27 @@ def availability(text, offer=None, soup=None):
 
 
 def _jsonld(soup):
-    for script in soup.select('script[type="application/ld+json"]'):
+    """Find the first product JSON-LD node without CSS selector overhead."""
+    for script in soup.find_all('script', attrs={'type': 'application/ld+json'}):
         try:
             data = json.loads(script.get_text(strip=True))
         except Exception:
             continue
 
+        # A LIFO stack avoids O(n) front-removals for large @graph payloads.
         stack = data if isinstance(data, list) else [data]
         while stack:
-            x = stack.pop(0)
+            x = stack.pop()
             if isinstance(x, list):
-                stack.extend(x)
+                stack.extend(reversed(x))
                 continue
             if not isinstance(x, dict):
                 continue
             if x.get("@type") == "Product" or "offers" in x:
                 return x
-            if isinstance(x.get("@graph"), list):
-                stack.extend(x["@graph"])
+            graph = x.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(reversed(graph))
     return {}
 
 
@@ -300,6 +303,7 @@ def _product(url, html, query):
         return None
 
     product_line = ""
+    # Cache the normalized full-page text once; several downstream checks use it.
     text = soup.get_text(" ", strip=True)
     m = re.search(
         r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
