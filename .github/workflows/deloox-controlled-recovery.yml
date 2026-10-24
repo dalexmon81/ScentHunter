@@ -45,7 +45,7 @@ jobs:
           fi
 
           echo '--- APPLY GUARDED RECOVERY ---'
-          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --confirm-recovery")"
+          RESULT="$(timeout 120s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --confirm-recovery")"
           printf '%s\n' "$RESULT"
           printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
           printf '%s\n' "$RESULT" | grep -Eq '"matches_validated_revision": true'
