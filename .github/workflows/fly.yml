@@ -49,3 +49,63 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl deploy --remote-only
+
+      - name: Verify production health and catalog API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          endpoints = ("/health", "/catalog-status")
+          last_error = None
+
+          for attempt in range(1, 13):
+              try:
+                  payloads = {}
+                  for endpoint in endpoints:
+                      request = urllib.request.Request(
+                          base + endpoint,
+                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-deploy-smoke-test/1.0"},
+                      )
+                      with urllib.request.urlopen(request, timeout=12) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{endpoint} returned HTTP {response.status}")
+                          payloads[endpoint] = json.loads(response.read().decode("utf-8"))
+
+                  health = payloads["/health"]
+                  if health.get("status") != "healthy":
+                      raise RuntimeError(f"Unexpected health payload: {health}")
+                  if not health.get("architecture"):
+                      raise RuntimeError("Health payload is missing architecture")
+
+                  catalog = payloads["/catalog-status"]
+                  if not isinstance(catalog.get("stores"), dict):
+                      raise RuntimeError("Catalog status is missing the stores object")
+                  for field in ("bootstrap_started", "bootstrap_running", "bootstrap_done"):
+                      if field not in catalog:
+                          raise RuntimeError(f"Catalog status is missing {field}")
+
+                  print("Production health check: PASS")
+                  print(f"Architecture: {health['architecture']}")
+                  print(f"Catalog API: PASS ({len(catalog['stores'])} store status entries)")
+                  print("Bootstrap: " + json.dumps({
+                      key: catalog.get(key) for key in (
+                          "bootstrap_started", "bootstrap_running", "bootstrap_done", "bootstrap_error"
+                      )
+                  }, ensure_ascii=False))
+                  if catalog.get("bootstrap_error"):
+                      print("WARNING: catalog bootstrap reports an error; inspect /catalog-status.")
+                  break
+              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+                  last_error = exc
+                  print(f"Attempt {attempt}/12 failed: {type(exc).__name__}: {exc}", flush=True)
+                  if attempt < 12:
+                      time.sleep(5)
+          else:
+              raise SystemExit(f"Production smoke test failed after retries: {last_error}")
+          PY
