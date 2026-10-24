@@ -71,3 +71,43 @@ def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeyp
     assert result["products"] == 1
     assert result["product_urls"] == {product_url: ""}
     assert persisted == [product_url]
+
+def test_deloox_parser_accepts_accented_product_names_and_size_in_slug():
+    from backend.scrapers.deloox import scraper as deloox_scraper
+
+    cases = (
+        (
+            "https://www.deloox.com/product/1380881/chloe-le-parfum-parfum-150-ml.html",
+            "Chloe Le Parfum",
+            "Chloé Le Parfum 150 ml",
+            "Chloé",
+            "76.69",
+        ),
+        (
+            "https://www.deloox.be/produit/1009926/hermes-eau-de-pamplemousse-rose-eau-de-cologne-100-ml.html",
+            "Hermes Eau de Pamplemousse Rose",
+            "Hermès Eau De Pamplemousse Rose Eau de Cologne 100 ml",
+            "Hermès",
+            "62.79",
+        ),
+    )
+
+    for url, query, name, brand, price in cases:
+        html = f"""<!doctype html>
+        <html><head><title>{name}</title>
+        <script type="application/ld+json">
+        {{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "{name}",
+          "brand": {{"@type": "Brand", "name": "{brand}"}},
+          "offers": {{"@type": "Offer", "price": "{price}", "priceCurrency": "EUR"}}
+        }}
+        </script></head><body><h1>{name}</h1></body></html>"""
+
+        parsed = deloox_scraper._product(url, html, query)
+        assert parsed is not None, url
+        assert parsed["name"] == name
+        assert parsed["brand"] == brand
+        assert parsed["price"] == f"{price.replace('.', ',')} €"
+
