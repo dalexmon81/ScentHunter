@@ -217,8 +217,10 @@ jobs:
                           raise RuntimeError("Easycosmetic returned no Dior Sauvage candidates despite its official Dior assortment")
                       non_fragrance_terms = (
                           "soap", "cleanser", "toner", "tonique", "gesichtswasser",
-                          "shaving", "shave gel", "gel de afeitado", "gel de rasage",
-                          "aftershave", "after shave", "deodorant", "body lotion",
+                          "moisturizer", "moisturiser", "face and beard", "beard oil",
+                          "beard balm", "beard cream", "shaving", "shave gel",
+                          "gel de afeitado", "gel de rasage", "aftershave", "after shave",
+                          "deodorant", "body lotion",
                       )
                       bad_offers = [
                           {"store": offer.get("store"), "name": offer.get("name"), "url": offer.get("url")}
