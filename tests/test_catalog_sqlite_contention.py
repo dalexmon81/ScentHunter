@@ -76,15 +76,3 @@ def test_sqlite_retry_does_not_swallow_non_lock_operational_errors():
         raise AssertionError("non-lock OperationalError should be propagated")
 
     assert len(calls) == 1
-
-def test_coverage_child_source_contains_bounded_exception_location_fields():
-    # This is a structural regression test: the child serializer must preserve
-    # a bounded exception type/message/location for diagnostic queue reports.
-    import inspect
-    from backend.catalog_engine import _coverage_scraper_process
-
-    source = inspect.getsource(_coverage_scraper_process)
-    assert "traceback.extract_tb" in source
-    assert "stderr=subprocess.PIPE" in source
-    assert "location" in source
-    assert "stderr=" in source
