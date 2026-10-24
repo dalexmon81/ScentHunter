@@ -5378,16 +5378,16 @@ def store_status():
         }
         # Restrict the queue aggregate to active store URLs without running one
         # LEFT JOIN/count pair per retailer; the query is grouped once.
+        # Use the durable queue for outstanding hydration counts. A
+        # catalog-wide LEFT JOIN between URLs and products is expensive under
+        # concurrent discovery/hydration writes and is unnecessary for status.
         pending_counts = {
             row['store']: int(row['count'] or 0)
             for row in conn.execute(
-                '''SELECT u.store,COUNT(*) AS count
-                   FROM store_urls u
-                   LEFT JOIN store_products p
-                     ON p.store=u.store AND p.url=u.url
-                   WHERE u.active=1
-                     AND (p.url IS NULL OR p.fetch_status != 'OK')
-                   GROUP BY u.store'''
+                """SELECT store,COUNT(*) AS count
+                     FROM hydration_queue
+                    WHERE state != 'DONE'
+                    GROUP BY store"""
             )
         }
         for store in STORES:
