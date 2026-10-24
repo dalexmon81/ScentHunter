@@ -285,11 +285,10 @@ def _url_matches_product_name(url, name):
 
 
 def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None):
-    # Always parse HTML when no document was supplied. Callers may pass
-    # pre-extracted JSON-LD, but visible-text fallbacks and availability still
-    # need a parsed document. In particular, avoid running broad tag-stripping
-    # regexes over very large or malformed retailer HTML.
-    if soup is None:
+    # Keep the JSON-LD fast path DOM-free. The caller already extracted the
+    # product payload and a bounded H1; parse a document only when neither was
+    # supplied, or when the caller explicitly requested the rendered-text path.
+    if soup is None and jsonld_data is None:
         soup = BeautifulSoup(html or "", "lxml")
     data = jsonld_data if isinstance(jsonld_data, dict) else (_jsonld(soup) if soup is not None else {})
 
@@ -310,7 +309,10 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
 
     product_line = ""
     # Cache the normalized full-page text once; several downstream checks use it.
-    text = soup.get_text(" ", strip=True) if soup is not None else clean(re.sub(r"<[^>]+>", " ", html))
+    # Bound the fallback text extraction: product JSON-LD is authoritative
+    # for name/offer, and scanning multi-megabyte HTML adds cost without helping
+    # identity. Keep enough leading page text for generic line/category signals.
+    text = soup.get_text(" ", strip=True) if soup is not None else clean(re.sub(r"<[^>]+>", " ", (html or "")[:524288]))
 
     # Deloox also has haircare, skincare and makeup pages under the same
     # numeric /produit/<id>/slug URL convention. Since ScentHunter compares
