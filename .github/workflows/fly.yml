@@ -205,9 +205,16 @@ jobs:
               return last
 
           failures = []
-          for query in ("Hawas", "Hawas Ice"):
+          for query in ("Hawas", "Hawas Ice", "Dior Sauvage"):
               try:
-                  search(query)
+                  result = search(query)
+                  if query == "Dior Sauvage":
+                      store_statuses = result.get("stores") if isinstance(result.get("stores"), dict) else {}
+                      easycosmetic = store_statuses.get("easycosmetic") if isinstance(store_statuses.get("easycosmetic"), dict) else {}
+                      easy_count = int(easycosmetic.get("count") or 0)
+                      print(f"Easycosmetic known-brand coverage (Dior Sauvage): {easy_count} matching products")
+                      if easy_count <= 0:
+                          raise RuntimeError("Easycosmetic returned no Dior Sauvage candidates despite its official Dior assortment")
               except Exception as exc:
                   failures.append(f"{query}: {type(exc).__name__}: {exc}")
                   print("SMOKE TEST FAILURE: " + failures[-1], flush=True)
