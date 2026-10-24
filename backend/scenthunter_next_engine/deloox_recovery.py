@@ -22,7 +22,7 @@ ALLOWED_HOSTS = {
     "deloox.nl", "www.deloox.nl", "deloox.lu", "www.deloox.lu",
     "deloox.es", "www.deloox.es",
 }
-PRODUCT_PATH = re.compile(r"/(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
+PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
 
 
 def is_product_url(url: str) -> bool:
