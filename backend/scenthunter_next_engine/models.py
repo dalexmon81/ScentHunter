@@ -47,6 +47,7 @@ class CanonicalProduct:
     variants: tuple[CanonicalVariant, ...] = field(default_factory=tuple)
     canonical_image_url: str | None = None
     aliases: tuple[str, ...] = field(default_factory=tuple)
+    concentration: str | None = None
 
     def __post_init__(self) -> None:
         if not self.product_id.strip():
