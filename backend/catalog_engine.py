@@ -4310,28 +4310,20 @@ def _hydrate_one_task(task):
 
 
 def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
-    """Process a small durable queue batch.
+    """Process one bounded durable hydration batch without waiting on hung parsers.
 
-    Queue initialization/backfill is deliberately not part of this hot loop.
-    The queue is initialized once by catalog_hydration_loop() at startup, while
-    discovery writes newly discovered URLs directly into hydration_queue.
-    The queue itself owns concurrency/fairness. At most one task per store is
-    claimed, while the global worker count stays small enough for the 1 GB /
-    shared-CPU Fly machine.
+    The lease-token checks remain the authority for queue transitions. When a
+    future exceeds the batch deadline we stop waiting for it and let its lease
+    expire; a late worker cannot mark a reclaimed task DONE because its token
+    no longer matches. Running threads cannot be forcibly killed in Python, so
+    parser/network work must still use finite bounds wherever possible.
     """
-    # Do not call _ensure_hydration_queue() here.
-    #
-    # That function scans the whole active catalog and backfills missing queue
-    # rows. Running it before every small hydration batch causes repeated
-    # catalog-wide SQLite work and contends with user searches.
+    # Backfill is deliberately not part of this hot loop.
     recover_stale_tasks()
 
     limit = max(1, int(max_urls))
     worker_count = max(1, min(int(workers), HYDRATION_WORKERS, limit))
     tasks = []
-
-    # Claim serially because each claim uses a short BEGIN IMMEDIATE
-    # transaction. Once claimed, HTTP work happens completely outside SQLite.
     for _ in range(limit):
         if _foreground_search_running():
             break
@@ -4350,36 +4342,78 @@ def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, 
             _queue_release_claim(task)
         return {'selected': 0, 'fetched': 0, 'errors': 0}
 
+    pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
+    futures = {pool.submit(_hydrate_one_task, task): task for task in tasks}
+    pending = set(futures)
     fetched = 0
     errors = 0
-    pool = ThreadPoolExecutor(max_workers=min(worker_count, len(tasks)))
-    futures = [pool.submit(_hydrate_one_task, task) for task in tasks]
+    timed_out = 0
+    cancelled = False
     try:
-        for future in as_completed(futures):
-            try:
-                result = future.result()
-                if result is True:
-                    fetched += 1
-                elif result is False:
+        while pending:
+            if _foreground_search_running():
+                cancelled = True
+                for future in pending:
+                    future.cancel()
+                break
+
+            if deadline is not None and time.monotonic() >= float(deadline):
+                timed_out += len(pending)
+                cancelled = True
+                for future in pending:
+                    # Only tasks that have not started can be cancelled. For
+                    # running tasks, leave the lease to expire so a later
+                    # claim gets a fresh token and stale work cannot mark DONE.
+                    future.cancel()
+                break
+
+            done = {future for future in pending if future.done()}
+            if not done:
+                time.sleep(0.05)
+                continue
+
+            for future in done:
+                pending.discard(future)
+                try:
+                    result = future.result()
+                    if result is True:
+                        fetched += 1
+                    elif result is False:
+                        errors += 1
+                except sqlite3.OperationalError as exc:
+                    print(
+                        'CATALOG HYDRATION STAGE ERROR: stage=hydration_future '
+                        f'error={type(exc).__name__}: {exc}',
+                        flush=True,
+                    )
+                    traceback.print_exc()
                     errors += 1
-            except sqlite3.OperationalError as exc:
-                print(
-                    f'CATALOG HYDRATION STAGE ERROR: stage=hydration_future '
-                    f'error={type(exc).__name__}: {exc}',
-                    flush=True,
-                )
-                traceback.print_exc()
-                errors += 1
-            except Exception:
-                traceback.print_exc()
-                errors += 1
+                except Exception as exc:
+                    print(
+                        'CATALOG HYDRATION FUTURE ERROR: '
+                        f'{type(exc).__name__}: {exc}',
+                        flush=True,
+                    )
+                    traceback.print_exc()
+                    errors += 1
+
+        if timed_out:
+            print(
+                'CATALOG HYDRATION BATCH DEADLINE '
+                f'pending={timed_out} lease_seconds={HYDRATION_LEASE_SECONDS:g}',
+                flush=True,
+            )
         return {
             'selected': len(tasks),
             'fetched': fetched,
             'errors': errors,
+            'timed_out': timed_out,
         }
     finally:
-        pool.shutdown(wait=True)
+        # Crucial: wait=False prevents an old/hung parser from blocking the
+        # scheduler loop. Running tasks may finish later, but all queue
+        # transitions validate their original lease token.
+        pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
 def catalog_discovery_loop(stop_event, interval_seconds=300.0):
