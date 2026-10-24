@@ -215,3 +215,62 @@ jobs:
               raise SystemExit("; ".join(failures))
           print("Production search and offer-data smoke tests: PASS")
           PY
+
+      - name: Recover Easycosmetic catalog when its index is empty
+        continue-on-error: true
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+
+          def get_json(path, timeout=15):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-easycosmetic-recovery/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          before = get_json("/catalog-status")
+          stores = before.get("stores") if isinstance(before.get("stores"), dict) else {}
+          easy = stores.get("easycosmetic") if isinstance(stores.get("easycosmetic"), dict) else {}
+          indexed = int(easy.get("indexed_urls") or 0)
+          print("Easycosmetic catalog before recovery: " + json.dumps(easy, ensure_ascii=False))
+          if indexed > 0:
+              print(f"Easycosmetic already has {indexed} indexed URLs; recovery skipped.")
+              raise SystemExit(0)
+
+          started = get_json("/catalog/resync-easycosmetic")
+          print("Easycosmetic recovery request: " + json.dumps(started, ensure_ascii=False))
+          if not started.get("ok"):
+              raise SystemExit("Easycosmetic recovery could not start: " + json.dumps(started, ensure_ascii=False))
+
+          job_id = str(started.get("job_id") or "")
+          deadline = time.monotonic() + 320
+          last = {}
+          while time.monotonic() < deadline:
+              last = get_json("/catalog/resync-easycosmetic-status?job_id=" + urllib.parse.quote(job_id))
+              persistent = last.get("persistent_store_state") if isinstance(last.get("persistent_store_state"), dict) else {}
+              if last.get("status") != "running" and persistent.get("status") != "DISCOVERY_RUNNING":
+                  break
+              time.sleep(10)
+
+          final = get_json("/catalog-status")
+          final_stores = final.get("stores") if isinstance(final.get("stores"), dict) else {}
+          final_easy = final_stores.get("easycosmetic") if isinstance(final_stores.get("easycosmetic"), dict) else {}
+          print("Easycosmetic recovery result: " + json.dumps(last, ensure_ascii=False))
+          print("Easycosmetic catalog after recovery: " + json.dumps(final_easy, ensure_ascii=False))
+          if int(final_easy.get("indexed_urls") or 0) > 0:
+              print("Easycosmetic catalog recovery: PASS")
+          else:
+              print("WARNING: Easycosmetic catalog remains empty; retailer access/discovery needs further repair.")
+          PY
