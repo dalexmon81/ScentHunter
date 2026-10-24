@@ -238,19 +238,27 @@ jobs:
                               return "edp_intense"
                           if any(token in value for token in ("eau de toilette intense", "edt intense", "intense edt")):
                               return "edt_intense"
-                          if "extrait de parfum" in value or "extrait" in value:
-                              return "extrait"
-                          if "eau de parfum" in value or " edp" in (" " + value):
-                              return "edp"
                           if "eau de toilette" in value or " edt" in (" " + value):
                               return "edt"
+                          if "eau de parfum" in value or " edp" in (" " + value):
+                              return "edp"
                           if "eau de cologne" in value or " edc" in (" " + value):
                               return "edc"
-                          # Elixir listings commonly append "parfum" in URLs.
+                          # Retailer slugs are sometimes imprecise: treat elixir,
+                          # extrait and generic parfum as ambiguous descriptors.
                           if "elixir" in value:
                               return "elixir"
+                          if "extrait" in value:
+                              return "extrait"
                           if "parfum" in value:
                               return "parfum"
+                          return ""
+                      def explicit_line_identity(value):
+                          value = __import__("re").sub(r"[^a-z0-9]+", " ", str(value or "").lower())
+                          if "eau sauvage" in value:
+                              return "dior_eau_sauvage"
+                          if "sauvage" in value:
+                              return "dior_sauvage"
                           return ""
                       concentration_mismatches = []
                       for group in (result.get("results") or []):
@@ -261,11 +269,22 @@ jobs:
                                   continue
                               title_token = concentration(offer.get("name") or offer.get("title"))
                               url_token = concentration(offer.get("url") or offer.get("product_url"))
-                              if title_token and url_token and title_token != url_token:
+                              hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
+                              # Fail on clear concentration conflicts; do not infer a
+                              # mismatch from generic parfum/extrait/elixir wording alone.
+                              if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
                                   concentration_mismatches.append({
                                       "store": offer.get("store"), "name": offer.get("name"),
                                       "url": offer.get("url"), "title_concentration": title_token,
                                       "url_concentration": url_token,
+                                  })
+                              title_line = explicit_line_identity(offer.get("name") or offer.get("title"))
+                              url_line = explicit_line_identity(offer.get("url") or offer.get("product_url"))
+                              if title_line and url_line and title_line != url_line:
+                                  concentration_mismatches.append({
+                                      "store": offer.get("store"), "name": offer.get("name"),
+                                      "url": offer.get("url"), "title_line": title_line,
+                                      "url_line": url_line,
                                   })
                       if concentration_mismatches:
                           raise RuntimeError("Dior Sauvage title/URL concentration mismatch: " + json.dumps(concentration_mismatches[:5], ensure_ascii=False))
