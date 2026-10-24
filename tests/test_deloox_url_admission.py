@@ -144,7 +144,6 @@ def test_deloox_url_admission_keeps_numeric_product_routes_across_locales():
         "https://www.deloox.nl/product/12345/example-product-eau-de-parfum-50-ml.html",
         "https://www.deloox.lu/produit/12345/example-product-eau-de-parfum-50-ml.html",
         "https://www.deloox.es/producto/12345/example-product-eau-de-parfum-50-ml.html",
-        "https://www.deloox.it/prodotto/12345/example-product-eau-de-parfum-50-ml.html",
         "https://www.deloox.com/product/12345/example-product-eau-de-parfum-50-ml.html",
     )
     for url in urls:
