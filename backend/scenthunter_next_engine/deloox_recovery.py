@@ -155,30 +155,24 @@ def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
         eligible = [row["url"] for row in rows if is_product_url(row["url"])]
         now = time.time()
         changed = 0
-        for url in eligible:
-            cursor = conn.execute(
-                """
-                UPDATE hydration_queue
-                SET state='PENDING', attempts=0, available_at=?,
-                    last_error=NULL, last_http_status=NULL,
-                    last_started_at=NULL, last_finished_at=NULL,
-                    leased_until=NULL, lease_token=NULL
-                WHERE lower(store)='deloox' AND url=?
-                  AND state IN ('DEAD','ERROR')
-                  AND EXISTS (
-                    SELECT 1 FROM store_products p
-                    WHERE lower(p.store)='deloox' AND p.url=hydration_queue.url
-                      AND p.fetch_status LIKE '%product_parser_not_found%'
-                  )
-                  AND EXISTS (
-                    SELECT 1 FROM store_urls u
-                    WHERE lower(u.store)='deloox' AND u.url=hydration_queue.url
-                      AND u.active=1
-                  )
-                """,
-                (now, url),
-            )
-            changed += cursor.rowcount
+        # The candidate set was selected inside this BEGIN IMMEDIATE transaction
+        # using all product/active-URL/error-state guards. Re-check the queue state
+        # in each UPDATE, but avoid repeating two correlated EXISTS scans per URL.
+        # This keeps recovery of several thousand rows comfortably within the
+        # remote command window while preserving the same eligibility constraints.
+        cursor = conn.executemany(
+            """
+            UPDATE hydration_queue
+            SET state='PENDING', attempts=0, available_at=?,
+                last_error=NULL, last_http_status=NULL,
+                last_started_at=NULL, last_finished_at=NULL,
+                leased_until=NULL, lease_token=NULL
+            WHERE lower(store)='deloox' AND url=?
+              AND state IN ('DEAD','ERROR')
+            """,
+            ((now, url) for url in eligible),
+        )
+        changed = cursor.rowcount
         conn.commit()
         return {
             "status": "RECOVERY_QUEUED",
