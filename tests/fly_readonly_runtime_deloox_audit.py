@@ -9,6 +9,13 @@ import time
 from pathlib import Path
 
 DB_PATH = Path("/data/store_catalog.sqlite3")
+LIVE_SEARCH_URLS = (
+    "https://www.deloox.nl/zoeken.html",
+    "https://www.deloox.lu/chercher.html",
+    "https://www.deloox.es/buscar.html",
+    "https://www.deloox.com/search.html",
+    "https://www.deloox.be/chercher.html",
+)
 TARGET_SEARCH_URLS = (
     "https://www.deloox.nl/zoeken.html",
     "https://www.deloox.lu/chercher.html",
@@ -23,6 +30,8 @@ def main():
         "database_mutated": False,
         "database_path": str(DB_PATH),
         "generated_at_epoch": time.time(),
+        "live_search_url_probes": [],
+
         "tables": {},
         "invalid_search_url_rows": [],
         "parser_errors_by_day": [],
@@ -30,6 +39,32 @@ def main():
         "hydration_queue_states": [],
         "catalog_coverage_profondo": [],
     }
+
+    # Fetch each endpoint with a small bounded timeout; this is HTTP GET only.
+    # Do not follow beyond the final redirect target or process the page as a product.
+    for url in LIVE_SEARCH_URLS:
+        item = {"url": url}
+        request = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ScentHunterReadOnlyAudit/1.0)"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=7) as response:
+                body = response.read(300_000)
+                item.update({
+                    "http_status": getattr(response, "status", None),
+                    "final_url": response.geturl(),
+                    "bytes_sampled": len(body),
+                    "sample_truncated": len(body) >= 300_000,
+                    "has_product_jsonld": bool(
+                        re.search(r'"@type"\\s*:\\s*"(?:Product|ProductGroup)"', body.decode("utf-8", "replace"), re.I)
+                    ),
+                    "has_h1": bool(re.search(r"<h1\\b", body.decode("utf-8", "replace"), re.I)),
+                })
+        except Exception as exc:
+            item["http_error"] = type(exc).__name__ + ": " + str(exc)[:180]
+        report["live_search_url_probes"].append(item)
+
     uri = "file:" + str(DB_PATH) + "?mode=ro"
     conn = sqlite3.connect(uri, uri=True, timeout=5.0)
     conn.row_factory = sqlite3.Row
