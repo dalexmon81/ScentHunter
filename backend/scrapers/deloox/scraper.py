@@ -1577,8 +1577,11 @@ def extract_product_page(session, url, query=None, html=None):
         if data:
             break
 
-    title_match = re.search(r'<h1\b[^>]*>(.*?)</h1\s*>', html, re.I | re.S)
-    h1_text = clean(re.sub(r"<[^>]+>", " ", title_match.group(1))) if title_match else ""
+    # Search only a bounded prefix for the visible title. A DOTALL lazy match
+    # across a multi-megabyte HTML body can trigger expensive backtracking on
+    # malformed retailer markup.
+    title_match = re.search(r'<h1\b[^>]{0,512}>([^<]{0,512})</h1\s*>', html[:65536], re.I)
+    h1_text = clean(title_match.group(1)) if title_match else ""
     page_name = clean(data.get("name")) or h1_text
     if not page_name:
         return None

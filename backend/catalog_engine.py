@@ -5298,9 +5298,6 @@ def hydration_status():
                       SUM(CASE WHEN q.state='DEAD' THEN 1 ELSE 0 END) AS dead,
                       MAX(q.last_finished_at) AS last_finished_at
                FROM hydration_queue q
-               JOIN store_urls u
-                 ON u.store=q.store AND u.url=q.url
-               WHERE u.active=1
                GROUP BY q.store"""
         ).fetchall()
         for row in rows:
