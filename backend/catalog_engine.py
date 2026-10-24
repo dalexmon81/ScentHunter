@@ -2826,7 +2826,14 @@ def _first_offer(p):
 
 
 def parse_product(store, url, data):
-    soup = BeautifulSoup(data, 'html.parser')
+    # Product identity and price fallback need only the visible H1 and JSON-LD
+    # scripts. Retaining the full retailer DOM made CSS selection over very
+    # large pages consume CPU for tens of seconds and delayed hydration/status.
+    soup = BeautifulSoup(
+        data,
+        'html.parser',
+        parse_only=SoupStrainer(['h1', 'script']),
+    )
     h1 = soup.find('h1')
     h1text = h1.get_text(' ', strip=True) if h1 else ''
     products = _jsonld(soup)
