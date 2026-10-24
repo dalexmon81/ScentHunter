@@ -103,15 +103,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '--- Production catalog and hydration status (read-only HTTP) ---'
-          curl --fail --silent --show-error --max-time 20 'https://scenthunter.fly.dev/catalog-status'
-          echo
-          echo '--- Persistent hydration queue states (read-only HTTP) ---'
-          curl --fail --silent --show-error --max-time 20 'https://scenthunter.fly.dev/catalog/hydration-status'
-          echo
-          echo '--- Read-only PROCESSING hydration leases (age and expiry) ---'
-          curl --fail --silent --show-error --max-time 10 'https://scenthunter.fly.dev/catalog/hydration-processing'
-          echo
-          echo '--- Read-only runtime/thread diagnostics ---'
-          curl --fail --silent --show-error --max-time 20 'https://scenthunter.fly.dev/diagnostic/runtime-deep'
-          echo
+          # Keep each read independent: a contended catalog/status endpoint must
+          # not prevent lease and runtime diagnostics from being captured.
+          probe() {
+            local label="$1"
+            local url="$2"
+            local limit="$3"
+            echo "--- $label ---"
+            if ! curl --silent --show-error --max-time "$limit" "$url"; then
+              echo "DIAGNOSTIC_PROBE_FAILED label=$label url=$url"
+            fi
+            echo
+          }
+          probe 'Production catalog status (read-only HTTP)' 'https://scenthunter.fly.dev/catalog-status' 12
+          probe 'Persistent hydration queue states (read-only HTTP)' 'https://scenthunter.fly.dev/catalog/hydration-status' 8
+          probe 'Read-only PROCESSING hydration leases (age and expiry)' 'https://scenthunter.fly.dev/catalog/hydration-processing' 8
+          probe 'Read-only runtime/thread diagnostics' 'https://scenthunter.fly.dev/diagnostic/runtime-deep' 12
