@@ -189,6 +189,11 @@ jobs:
                       valid.append(offer)
 
               print(f"Query '{query}': status={last.get('status')}, products={count}, offers={offer_count}, priced_linked_offers={len(valid)}")
+              if query == "Born in Roma":
+                  # This family is expected to contain 20 registered variants;
+                  # fail loudly if the production search returns only a subset.
+                  if count < 20:
+                      raise RuntimeError(f"Born in Roma family incomplete: expected at least 20 products, got {count}")
               print("Store statuses: " + json.dumps(last.get("stores") or {}, ensure_ascii=False))
               print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
               if not valid:
@@ -204,7 +209,7 @@ jobs:
               return last
 
           failures = []
-          for query in ("Hawas", "Hawas Ice", "Dior Sauvage"):
+          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage"):
               try:
                   result = search(query)
                   if query == "Dior Sauvage":
