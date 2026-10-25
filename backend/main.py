@@ -968,7 +968,10 @@ _NON_FRAGRANCE_CATEGORY_RE = re.compile(
     r"cream|crema|lotion|serum|mascara|lipstick|candle|vela|home|"
     r"accessor|accessori|jewell|joyer|watch|reloj|bag|bolso|"
     r"toiletr|wallet|cartera|brush|pennello|sponge|esponja|"
-    r"deodorant|desodorante|aftershave|rasage|soap|jabon)(?:[^a-z0-9]|$)",
+    r"deodorant|desodorante|aftershave|rasage|soap|jabon|"
+    r"cleanser|limpiador(?:a|es)?|nettoyant(?:s)?|face\\s*wash|"
+    r"facial\\s*cleanser|toner|tonique|gesichtswasser|shaving|"
+    r"gel\\s*de\\s*afeitado|gel\\s*de\\s*rasage)(?:[^a-z0-9]|$)",
     re.I,
 )
 
@@ -1114,9 +1117,19 @@ def _is_non_fragrance_offer(item):
             title_parts.append(str(value))
     title_text = " ".join(title_parts)
 
+    # Retailer titles can be mislabeled or inherit the perfume's name even
+    # when the destination URL is a cleanser/skincare product. Include the
+    # primary product URL in the category gate before matching/publication.
+    url_parts = []
+    for key in ("url", "product_url", "link", "product_page", "source_url", "_raw_url", "retailer_url"):
+        value = item.get(key)
+        if value not in (None, ""):
+            url_parts.append(str(value))
+    identity_evidence = " ".join((title_text, *url_parts))
+
     return bool(
         _NON_FRAGRANCE_TITLE_RE.search(title_text)
-        or _NON_FRAGRANCE_CATEGORY_RE.search(title_text)
+        or _NON_FRAGRANCE_CATEGORY_RE.search(identity_evidence)
     )
 
 
