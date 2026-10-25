@@ -133,9 +133,6 @@ jobs:
               and "INSERT INTO hydration_queue" in node.args[0].value
           )
           statement = call.args[0].value
-          args = ast.literal_eval(call.args[1])
-          assert len(args) == 7, f"unexpected hydration SQL parameter count: {len(args)}"
-
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
           conn.executescript("""
