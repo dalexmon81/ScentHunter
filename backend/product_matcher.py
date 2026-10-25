@@ -8,6 +8,7 @@ exceptions.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import time
 from functools import lru_cache
@@ -15,6 +16,11 @@ from collections import Counter
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+
+def _matcher_diagnostics_enabled() -> bool:
+    """Enable per-offer matcher logs only when explicitly requested."""
+    return os.environ.get("SCENTHUNTER_MATCHER_DIAGNOSTICS", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def normalize(value: Any) -> str:
@@ -1720,12 +1726,13 @@ class ProductMatcher:
         # perfume-like title can override a URL that actually identifies soap,
         # shower gel, deodorant, a gift set, or another non-fragrance product.
         if self._is_non_fragrance_offer(offer):
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                "method=non_fragrance",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    "method=non_fragrance",
+                    flush=True,
+                )
             return None
 
         # Reject only decisive concentration conflicts. Retailer URL slugs may
@@ -1744,13 +1751,14 @@ class ProductMatcher:
             and hard_url_tokens
             and title_concentration not in hard_url_tokens
         ):
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                f"method=concentration_mismatch title={title_concentration!r} "
-                f"url={sorted(hard_url_tokens)!r}",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    f"method=concentration_mismatch title={title_concentration!r} "
+                    f"url={sorted(hard_url_tokens)!r}",
+                    flush=True,
+                )
             return None
 
         # Dior Eau Sauvage and Dior Sauvage are distinct product lines.
@@ -1765,12 +1773,13 @@ class ProductMatcher:
         title_line = dior_line_identity(title_identity)
         url_line = dior_line_identity(url_identity)
         if title_line and url_line and title_line != url_line:
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                f"method=product_line_mismatch title={title_line!r} url={url_line!r}",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    f"method=product_line_mismatch title={title_line!r} url={url_line!r}",
+                    flush=True,
+                )
             return None
 
         # Never treat samples/decants/testers as full-size fragrance offers.
@@ -1785,12 +1794,13 @@ class ProductMatcher:
             identity_text,
             flags=re.I,
         ):
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                "method=sample_or_tester",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    "method=sample_or_tester",
+                    flush=True,
+                )
             return None
 
         family = self._family_for_query(query)
@@ -1798,22 +1808,24 @@ class ProductMatcher:
             result = self._match_family(offer, query, family)
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             if result is None:
-                print(
-                    "SCENTHUNTER: MATCHER_REJECTED "
-                    f"store={store!r} name={raw_name!r} "
-                    f"method=rejected elapsed_ms={elapsed_ms:.1f}",
-                    flush=True,
-                )
+                if _matcher_diagnostics_enabled():
+                    print(
+                        "SCENTHUNTER: MATCHER_REJECTED "
+                        f"store={store!r} name={raw_name!r} "
+                        f"method=rejected elapsed_ms={elapsed_ms:.1f}",
+                        flush=True,
+                    )
                 return None
 
-            print(
-                "SCENTHUNTER: MATCHER_RESULT "
-                f"store={store!r} raw_name={raw_name!r} "
-                f"family_id={result.get('family_id')!r} "
-                f"canonical_name={result.get('canonical_name')!r} "
-                f"method={result.get('match_method')} elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_RESULT "
+                    f"store={store!r} raw_name={raw_name!r} "
+                    f"family_id={result.get('family_id')!r} "
+                    f"canonical_name={result.get('canonical_name')!r} "
+                    f"method={result.get('match_method')} elapsed_ms={elapsed_ms:.1f}",
+                    flush=True,
+                )
             return result
 
         # Generic queries still need a hard relevance gate before identity
@@ -1825,13 +1837,14 @@ class ProductMatcher:
         query_score = self._query_offer_relevance(query, offer)
         if query_score < 0.72:
             elapsed_ms = (time.perf_counter() - started) * 1000.0
-            print(
-                "SCENTHUNTER: MATCHER_REJECTED "
-                f"store={store!r} name={raw_name!r} "
-                f"method=query_scope score={query_score:.4f} "
-                f"elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    f"method=query_scope score={query_score:.4f} "
+                    f"elapsed_ms={elapsed_ms:.1f}",
+                    flush=True,
+                )
             return None
 
         return self._match_generic(offer, query, started)
@@ -2741,13 +2754,14 @@ class ProductMatcher:
         elapsed_ms = (time.perf_counter() - started) * 1000.0
 
         if product is None:
-            print(
-                "SCENTHUNTER: MATCHER_UNRESOLVED "
-                f"store={offer.get('store', '')!r} "
-                f"name={offer.get('name', '')!r} "
-                f"score={score:.4f} elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
-            )
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_UNRESOLVED "
+                    f"store={offer.get('store', '')!r} "
+                    f"name={offer.get('name', '')!r} "
+                    f"score={score:.4f} elapsed_ms={elapsed_ms:.1f}",
+                    flush=True,
+                )
             return None
 
         result = dict(offer)
@@ -2776,16 +2790,17 @@ class ProductMatcher:
         if product.canonical_image:
             result["canonical_image"] = product.canonical_image
 
-        print(
-            "SCENTHUNTER: MATCHER_RESULT "
-            f"store={offer.get('store', '')!r} "
-            f"raw_name={offer.get('name', '')!r} "
-            f"catalog_id={product.catalog_id!r} "
-            f"canonical_name={product.name!r} "
-            f"method={result['match_method']} score={score:.4f} "
-            f"elapsed_ms={elapsed_ms:.1f}",
-            flush=True,
-        )
+        if _matcher_diagnostics_enabled():
+            print(
+                "SCENTHUNTER: MATCHER_RESULT "
+                f"store={offer.get('store', '')!r} "
+                f"raw_name={offer.get('name', '')!r} "
+                f"catalog_id={product.catalog_id!r} "
+                f"canonical_name={product.name!r} "
+                f"method={result['match_method']} score={score:.4f} "
+                f"elapsed_ms={elapsed_ms:.1f}",
+                flush=True,
+            )
         return result
 
 
