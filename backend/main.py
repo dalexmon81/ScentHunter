@@ -2018,13 +2018,13 @@ def _catalog_search_terms(query):
             reverse=True,
         )
 
-        # Broad family queries must retain the full registered variant
-        # vocabulary. A 16-term cap silently truncated the Rasasi Hawas family
-        # before catalog search, so only about a dozen variants could surface
-        # even when the registry contained 29+ sellable variants. The matcher
-        # already bounds its expansion to 80 terms; keep that complete bound
-        # here instead of applying a second, lossy cap.
-        max_terms = 80
+        # Single-token family queries (for example "Hawas") need the full
+        # registry vocabulary because valid variant titles may omit the family
+        # token. Multi-token queries already constrain candidates lexically;
+        # running dozens of near-duplicate aliases adds repeated SQLite FTS
+        # work without materially improving recall. Keep the original query
+        # plus a ranked, bounded set for these queries.
+        max_terms = 80 if len(query_tokens) <= 1 else 24
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
