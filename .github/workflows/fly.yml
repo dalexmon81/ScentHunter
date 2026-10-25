@@ -122,17 +122,21 @@ jobs:
           source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
           tree = ast.parse(source)
           function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_deloox_persist_products")
-          call = next(
-              node for node in ast.walk(function)
-              if isinstance(node, ast.Call)
-              and isinstance(node.func, ast.Attribute)
-              and node.func.attr == "execute"
-              and node.args
-              and isinstance(node.args[0], ast.Constant)
-              and isinstance(node.args[0].value, str)
-              and "INSERT INTO hydration_queue" in node.args[0].value
-          )
-          statement = call.args[0].value
+          statements = []
+          for node in ast.walk(function):
+              if not (
+                  isinstance(node, ast.Call)
+                  and isinstance(node.func, ast.Attribute)
+                  and node.func.attr == "execute"
+                  and node.args
+              ):
+                  continue
+              for part in ast.walk(node.args[0]):
+                  if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                      if "INSERT INTO hydration_queue" in part.value:
+                          statements.append(part.value)
+          assert statements, "Deloox persistence must update the hydration queue"
+          statement = statements[0]
 
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
