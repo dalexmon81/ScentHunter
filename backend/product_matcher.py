@@ -1724,20 +1724,47 @@ class ProductMatcher:
             )
             return None
 
-        # Reject listings where the title and product URL explicitly disagree
-        # on concentration (e.g. a "Parfum" title pointing to an EDT product).
+        # Reject only decisive concentration conflicts. Retailer URL slugs may
+        # use "parfum", "extrait" or "elixir" loosely, so those alone are not
+        # sufficient evidence of a mismatch. EDT/EDP/EDC conflicts are decisive.
         title_concentration = normalize_concentration(raw_name)
         url_concentrations = {
             normalize_concentration(raw_url)
             for raw_url in self._offer_url_identity_texts(offer)
             if normalize_concentration(raw_url)
         }
-        if title_concentration and url_concentrations and title_concentration not in url_concentrations:
+        hard_concentrations = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
+        hard_url_tokens = url_concentrations & hard_concentrations
+        if (
+            title_concentration in hard_concentrations
+            and hard_url_tokens
+            and title_concentration not in hard_url_tokens
+        ):
             print(
                 "SCENTHUNTER: MATCHER_REJECTED "
                 f"store={store!r} name={raw_name!r} "
                 f"method=concentration_mismatch title={title_concentration!r} "
-                f"url={sorted(url_concentrations)!r}",
+                f"url={sorted(hard_url_tokens)!r}",
+                flush=True,
+            )
+            return None
+
+        # Dior Eau Sauvage and Dior Sauvage are distinct product lines.
+        title_identity = catalog_norm(" ".join(str(offer.get(key) or "") for key in ("name", "title", "product_name")))
+        url_identity = catalog_norm(" ".join(self._offer_url_identity_texts(offer)))
+        def dior_line_identity(value):
+            if re.search(r"\\beau sauvage\\b", value):
+                return "dior_eau_sauvage"
+            if re.search(r"\\bsauvage\\b", value):
+                return "dior_sauvage"
+            return ""
+        title_line = dior_line_identity(title_identity)
+        url_line = dior_line_identity(url_identity)
+        if title_line and url_line and title_line != url_line:
+            print(
+                "SCENTHUNTER: MATCHER_REJECTED "
+                f"store={store!r} name={raw_name!r} "
+                f"method=product_line_mismatch title={title_line!r} url={url_line!r}",
                 flush=True,
             )
             return None
