@@ -3647,9 +3647,17 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     rows = []
     unlimited = per_store is None or int(per_store) <= 0
     limit = None if unlimited else max(1, int(per_store))
-    total_scan_budget = 2048 if limit is None else max(256, min(2048, limit * 16))
-    term_candidate_limit = max(
-        8, min(64, max(1, total_scan_budget // max(1, len(token_sets))))
+    # per_store is the total candidate budget per retailer, not a
+    # per-query-alias budget. The old limit * 16 calculation let every
+    # expanded family term return up to limit rows per store; a four-term
+    # family query could therefore resolve hundreds of rows per store and
+    # spend many seconds in ProductMatcher after the 0.8s SQLite search window.
+    # Divide the real per-store budget across terms so the full candidate set
+    # stays bounded while each family alias still gets a chance to contribute.
+    total_scan_budget = 2048 if limit is None else limit
+    term_candidate_limit = (
+        64 if unlimited else
+        max(1, min(64, (total_scan_budget + len(token_sets) - 1) // len(token_sets)))
     )
     fts_candidate_limit = max(term_candidate_limit, min(256, term_candidate_limit * 4))
 
