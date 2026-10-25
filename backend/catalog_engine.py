@@ -3799,9 +3799,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             # The OR query returns one ranked pool for all aliases. Size the
             # pool to the number of terms, but for a single-term query fetch
             # only the same 2x window the old per-term query used.
+            # Keep the OR pool bounded to at most two candidate windows per
+            # alias group. The previous 4x expansion forced FTS5 to rank and
+            # hydrate hundreds of rows even though per-term quotas are capped
+            # at 64; this was a major cost for broad family searches.
             combined_candidate_limit = min(
-                512,
-                max(64, fts_candidate_limit * min(4, len(term_specs))),
+                256,
+                max(64, fts_candidate_limit * min(2, len(term_specs))),
             )
             _diag_sql_t0 = time.monotonic()
             try:
