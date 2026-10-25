@@ -131,9 +131,11 @@ jobs:
                   and node.args
               ):
                   continue
-              sql_arg = node.args[0]
-              if isinstance(sql_arg, ast.Constant) and isinstance(sql_arg.value, str):
-                  sql_nodes.append(sql_arg.value)
+              # The production SQL is wrapped in textwrap.dedent(...), so
+              # inspect string constants nested inside the first argument.
+              for part in ast.walk(node.args[0]):
+                  if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                      sql_nodes.append(part.value)
           statement = next((sql for sql in sql_nodes if "INSERT INTO hydration_queue" in sql), None)
           assert statement, "Deloox persistence must update the hydration queue"
 
