@@ -1995,11 +1995,13 @@ def _catalog_search_terms(query):
             reverse=True,
         )
 
-        # Broad family queries need more than four aliases: otherwise a
-        # variant may never be searched simply because it appears later in
-        # the registry. Keep the expansion bounded, while allowing enough
-        # candidates to cover the common variants of one product family.
-        max_terms = 16
+        # Broad family queries must retain the full registered variant
+        # vocabulary. A 16-term cap silently truncated the Rasasi Hawas family
+        # before catalog search, so only about a dozen variants could surface
+        # even when the registry contained 29+ sellable variants. The matcher
+        # already bounds its expansion to 80 terms; keep that complete bound
+        # here instead of applying a second, lossy cap.
+        max_terms = 80
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
