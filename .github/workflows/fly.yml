@@ -295,7 +295,8 @@ jobs:
                       if easy_count <= 0:
                           raise RuntimeError("Easycosmetic returned no Dior Sauvage candidates despite its official Dior assortment")
                       non_fragrance_terms = (
-                          "soap", "cleanser", "toner", "tonique", "gesichtswasser",
+                          "soap", "cleanser", "limpiador", "nettoyant", "face wash",
+                          "facial cleanser", "toner", "tonique", "gesichtswasser",
                           "moisturizer", "moisturiser", "face and beard", "beard oil",
                           "beard balm", "beard cream", "shaving", "shave gel",
                           "gel de afeitado", "gel de rasage", "aftershave", "after shave",
