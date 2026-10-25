@@ -2473,6 +2473,22 @@ def _snapshot(job_id):
             }
 
         query = job.get("query", "")
+        # Last-resort lifecycle watchdog: a worker must never leave the UI
+        # polling forever. Preserve the latest published snapshot, request
+        # cancellation, and release the job slot if the search exceeds its
+        # bounded execution window plus a small finalization allowance.
+        started_at = float(job.get("started_at") or time.time())
+        if not job.get("completed") and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0):
+            job["completed"] = True
+            job["status"] = "completed_with_store_issues"
+            job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
+            cancel_event = job.get("cancel_event")
+            if cancel_event is not None:
+                cancel_event.set()
+            done_event = job.get("done_event")
+            if done_event is not None:
+                done_event.set()
+            print(f"SEARCH WATCHDOG FINALIZED job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
         completed = bool(job.get("completed"))
         status = job.get("status") or ("completed" if completed else "searching")
         results = list(job.get("results", []))
