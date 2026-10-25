@@ -1075,8 +1075,11 @@ async function searchStoresProgressive(term,onPartial){
       const start=await fetchJSONWithTimeout(backend()+"/search-start?q="+encodeURIComponent(query),15000);
       if(start?.status==="busy"){
         lastData=start;
-        await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||700)));
+        await new Promise(resolve=>setTimeout(resolve,Number(start.retry_after_ms||200)));
         continue;
+      }
+      if(start?.status==="error" || start?.completed===true){
+        return start;
       }
       jobId=String(start?.job_id||"").trim();
       if(!jobId)throw new Error("Il backend non ha restituito il job_id");
