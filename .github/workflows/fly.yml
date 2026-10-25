@@ -296,6 +296,25 @@ jobs:
           print("Production search and offer-data smoke tests: PASS")
           PY
 
+      - name: Read-only persisted-vs-live price diagnostic
+        continue-on-error: true
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          url = "https://scenthunter.fly.dev/diagnose-hawas-ice-offers-read-only"
+          request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "ScentHunter-price-diagnostic/1.0"})
+          try:
+              with urllib.request.urlopen(request, timeout=90) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+                  print("PERSISTED_VS_LIVE_PRICE_DIAGNOSTIC=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
+          except Exception as exc:
+              print("PERSISTED_VS_LIVE_PRICE_DIAGNOSTIC_ERROR=" + repr(exc))
+              raise
+          PY
+
       - name: Recover Easycosmetic catalog when its index is empty
         continue-on-error: true
         timeout-minutes: 6
