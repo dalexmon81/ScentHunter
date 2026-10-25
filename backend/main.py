@@ -2156,15 +2156,26 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                             f'updated={prioritized}',
                             flush=True,
                         )
-                refreshed = catalog_refresh_candidates(
-                    requested,
-                    cancel_event=cancel_event,
-                    deadline=refresh_deadline,
-                ) or []
-                targeted_refresh_elapsed = time.monotonic() - refresh_started
+                foreground_refresh_enabled = str(
+                    os.environ.get('CATALOG_FOREGROUND_REFRESH_ENABLED', '')
+                ).strip().lower() in {'1', 'true', 'yes', 'on'}
+                if foreground_refresh_enabled:
+                    refreshed = catalog_refresh_candidates(
+                        requested,
+                        cancel_event=cancel_event,
+                        deadline=refresh_deadline,
+                    ) or []
+                    targeted_refresh_elapsed = time.monotonic() - refresh_started
+                else:
+                    # Keep query-selected URLs prioritized for the background
+                    # hydrator, but never block the atomic foreground result
+                    # on opportunistic retailer HTTP refreshes.
+                    refreshed = []
+                    targeted_refresh_elapsed = 0.0
                 print(
                     f'CATALOG PHASE TIMING phase=targeted_refresh '
                     f'elapsed={targeted_refresh_elapsed:.3f}s '
+                    f'enabled={foreground_refresh_enabled} '
                     f'budget={refresh_budget:.2f}s requested={len(requested)} '
                     f'returned={len(refreshed)}',
                     flush=True,
