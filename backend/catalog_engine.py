@@ -455,7 +455,19 @@ def _ensure_search_fts(conn):
         ).fetchone()
         version = str(row['value']) if row else ''
         if version != _SEARCH_FTS_SCHEMA_VERSION:
-            conn.execute("DELETE FROM catalog_search_fts")
+            # A schema-version change may alter FTS column indexing options;
+            # DELETE alone does not migrate an existing virtual-table schema.
+            # Recreate the table so the retailer scope is genuinely indexed.
+            conn.execute("DROP TABLE IF EXISTS catalog_search_fts")
+            conn.execute(
+                """CREATE VIRTUAL TABLE catalog_search_fts
+                   USING fts5(
+                       store,
+                       url UNINDEXED,
+                       search_text,
+                       tokenize='unicode61 remove_diacritics 2'
+                   )"""
+            )
             conn.execute(
                 """INSERT INTO catalog_search_fts(store,url,search_text)
                    SELECT u.store,u.url,
