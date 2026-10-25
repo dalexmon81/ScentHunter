@@ -2462,6 +2462,44 @@ def _snapshot(job_id):
                 safe_group["offers"] = safe_offers
                 filtered_results.append(safe_group)
         results = filtered_results
+        # For a broad registered-family query, publish every canonical family
+        # identity even when no retailer has supplied a verified offer yet.
+        # These are identity-only cards (empty offers), never fabricated prices.
+        family = None
+        requested_variant = None
+        if PRODUCT_MATCHER is not None:
+            try:
+                family = PRODUCT_MATCHER._family_for_query(query)
+                if family is not None:
+                    requested_variant = PRODUCT_MATCHER._requested_variant(query, family)
+            except Exception as exc:
+                print(f"FAMILY IDENTITY PUBLICATION ERROR: {type(exc).__name__}: {exc}", flush=True)
+        if family is not None and requested_variant is None:
+            existing_ids = {str(group.get("catalog_id") or "") for group in results}
+            for variant in family.get("variants") or []:
+                canonical = str(variant.get("canonical_name") or "").strip()
+                if not canonical:
+                    continue
+                try:
+                    identity = PRODUCT_MATCHER._build_family_result({}, family, variant)
+                except Exception:
+                    continue
+                catalog_id = str(identity.get("catalog_id") or "")
+                if not catalog_id or catalog_id in existing_ids:
+                    continue
+                results.append({
+                    "catalog_id": catalog_id,
+                    "brand": identity.get("canonical_brand") or family.get("brand") or "",
+                    "canonical_brand": identity.get("canonical_brand") or family.get("brand") or "",
+                    "name": canonical,
+                    "canonical_name": canonical,
+                    "family": identity.get("family_name") or (family.get("query_aliases") or [canonical])[0],
+                    "variant": canonical,
+                    "image": "",
+                    "offers": [],
+                    "identity_only": True,
+                })
+                existing_ids.add(catalog_id)
         offers = list(job.get("offers", []))
         unresolved_offers = list(job.get("unresolved_offers", []))
         errors = dict(job.get("errors", {}))
