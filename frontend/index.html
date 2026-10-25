@@ -780,19 +780,25 @@ function shGroupData(data){
      * canonical_image, catalog data, or matcher behavior.
      */
     const image=String(group.image||"").trim();
+    const identity_only=Boolean(group.identity_only);
     const fallback_images=[];
-    [
-      ...offers.map(o=>o?.retailer_image),
-      ...offers.map(o=>o?.image),
-      ...offers.map(o=>o?.image_url),
-      group.fallback_image,
-    ].forEach(raw=>{
-      const url=String(raw||"").trim();
-      if(url && !fallback_images.includes(url))fallback_images.push(url);
-    });
+    // Identity-only family cards have no verified retailer offer. Do not borrow
+    // a different variant's retailer image, which can misrepresent the perfume.
+    if(!identity_only){
+      [
+        ...offers.map(o=>o?.retailer_image),
+        ...offers.map(o=>o?.image),
+        ...offers.map(o=>o?.image_url),
+        group.fallback_image,
+      ].forEach(raw=>{
+        const url=String(raw||"").trim();
+        if(url && !fallback_images.includes(url))fallback_images.push(url);
+      });
+    }
     const fallback_image=fallback_images.find(url=>url!==image) || fallback_images[0] || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
+      identity_only,
       brand:String(group.canonical_brand||group.brand||"").trim(),
       canonical_brand:String(group.canonical_brand||group.brand||"").trim(),
       name:String(group.canonical_name||group.name||"").trim(),
