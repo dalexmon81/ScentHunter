@@ -2609,7 +2609,7 @@ class ProductMatcher:
             fast_url_score, _ = self._url_candidate_score(
                 offer, exact_product, fast_url_context
             )
-            if fast_url_score >= 0.86:
+            if fast_url_score >= 0.72:
                 return exact_product, "exact_name", 1.0
 
         offer_tokens = set(offer_text.split())
