@@ -2584,6 +2584,9 @@ def _snapshot(job_id):
         stores = dict(job.get("stores", {}))
         dedupe_diagnostics = list(job.get("dedupe_diagnostics", []))
         identity_scope = list(job.get("identity_scope", []))
+        collect_elapsed = job.get("collect_elapsed")
+        dedupe_elapsed = job.get("dedupe_elapsed")
+        aggregate_elapsed = job.get("aggregate_elapsed")
 
     # IMPORTANT: identity_scope is precomputed once by the job thread.
     # The HTTP status endpoint must remain fast and must NEVER invoke the
@@ -2602,6 +2605,10 @@ def _snapshot(job_id):
         "identity_scope": identity_scope,
         "errors": errors,
         "stores": stores,
+        "elapsed": job.get("elapsed"),
+        "collect_elapsed": collect_elapsed,
+        "dedupe_elapsed": dedupe_elapsed,
+        "aggregate_elapsed": aggregate_elapsed,
         "dedupe_diagnostics": dedupe_diagnostics,
     }
 
@@ -2729,6 +2736,7 @@ def _run_job(job_id, query):
         def on_result(row):
             _publish_result(job_id, row)
 
+        collect_started = time.monotonic()
         reports = collect_store_reports_isolated(
             query,
             STORES,
@@ -2737,9 +2745,15 @@ def _run_job(job_id, query):
             cancel_event=cancel_event,
             job_id=job_id,
         )
+        collect_elapsed = round(time.monotonic() - collect_started, 3)
+        with JOBS_LOCK:
+            current_job = JOBS.get(job_id)
+            if current_job is not None:
+                current_job["collect_elapsed"] = collect_elapsed
         print(
             f"SEARCH COLLECTED job={job_id} query={query!r} "
-            f"stores={len(reports or [])} elapsed={round(time.monotonic() - started, 3)}",
+            f"stores={len(reports or [])} elapsed={round(time.monotonic() - started, 3)} "
+            f"collect_elapsed={collect_elapsed}",
             flush=True,
         )
 
@@ -2774,8 +2788,12 @@ def _run_job(job_id, query):
             # Reconcile once at completion as a final consistency pass. During
             # collection, _publish_store already refreshes the cached snapshot
             # once per store batch, never once per product.
+            dedupe_started = time.monotonic()
             deduped = dedupe_results(offers, diagnostics)
+            dedupe_elapsed = round(time.monotonic() - dedupe_started, 3)
+            aggregate_started = time.monotonic()
             grouped, unresolved = _aggregate_identity_results(deduped)
+            aggregate_elapsed = round(time.monotonic() - aggregate_started, 3)
 
             elapsed = round(time.monotonic() - started, 3)
 
@@ -2816,6 +2834,8 @@ def _run_job(job_id, query):
 
                     current_job["store_issue_count"] = len(store_issues)
                     current_job["elapsed"] = elapsed
+                    current_job["dedupe_elapsed"] = dedupe_elapsed
+                    current_job["aggregate_elapsed"] = aggregate_elapsed
                     total = len(grouped)
                 else:
                     total = 0
