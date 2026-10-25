@@ -3771,6 +3771,23 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             if local_key in seen_local_offer_keys:
                 continue
             seen_local_offer_keys.add(local_key)
+
+            # A stale persisted price is not a valid current comparison offer.
+            # Keep the product discoverable, but never display its old price as
+            # current while background hydration catches up. A fresh successful
+            # refresh restores the price through the normal persistence path.
+            try:
+                fetched_at = float(item.get('fetched_at') or 0)
+            except (TypeError, ValueError):
+                fetched_at = 0.0
+            if item.get('price_num') not in (None, '') and (
+                fetched_at <= 0 or time.time() - fetched_at > 24 * 60 * 60
+            ):
+                item = dict(item)
+                item['_needs_refresh'] = True
+                item['price_num'] = None
+                item['price'] = None
+
             unique_rows.append(item)
 
         print(
