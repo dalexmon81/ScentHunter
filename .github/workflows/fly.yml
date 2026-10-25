@@ -122,9 +122,19 @@ jobs:
           source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
           tree = ast.parse(source)
           function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_deloox_persist_products")
-          sql_nodes = [node.value for node in ast.walk(function) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "execute" and node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)]
+          sql_nodes = [
+              node.args[0].value
+              for node in ast.walk(function)
+              if isinstance(node, ast.Call)
+              and isinstance(node.func, ast.Attribute)
+              and node.func.attr == "execute"
+              and node.args
+              and isinstance(node.args[0], ast.Constant)
+              and isinstance(node.args[0].value, str)
+          ]
           statement = next((sql for sql in sql_nodes if "INSERT INTO hydration_queue" in sql), None)
           assert statement, "Deloox persistence must update the hydration queue"
+
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
           conn.executescript("""
@@ -137,10 +147,13 @@ jobs:
           conn.execute("INSERT INTO hydration_queue VALUES('deloox','https://www.deloox.com/product/d','ERROR',1,9999999999,1,NULL,NULL,'parser')")
           conn.execute("INSERT INTO store_products VALUES('deloox','https://www.deloox.com/product/d','OK')")
           now = 1000.0
+
           def upsert(url):
               conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now))
+
           for suffix in ('a','b','c','d'):
               upsert('https://www.deloox.com/product/'+suffix)
+
           states={row['url'].rsplit('/',1)[-1]:row for row in conn.execute("SELECT * FROM hydration_queue")}
           assert states['a']['state']=='PENDING' and states['a']['available_at'] <= now, states['a']
           assert states['b']['state']=='DONE', states['b']
