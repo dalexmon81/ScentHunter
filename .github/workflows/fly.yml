@@ -142,13 +142,13 @@ jobs:
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
           conn.executescript("""
-          CREATE TABLE hydration_queue(store TEXT,url TEXT,state TEXT,attempts INTEGER,available_at REAL,first_seen_at REAL,leased_until REAL,lease_token TEXT,last_error TEXT,PRIMARY KEY(store,url));
+          CREATE TABLE hydration_queue(store TEXT,url TEXT,state TEXT,priority INTEGER NOT NULL DEFAULT 100,attempts INTEGER,available_at REAL,first_seen_at REAL,leased_until REAL,lease_token TEXT,last_error TEXT,last_http_status INTEGER,PRIMARY KEY(store,url));
           CREATE TABLE store_products(store TEXT,url TEXT,fetch_status TEXT,PRIMARY KEY(store,url));
           """)
-          conn.execute("INSERT INTO hydration_queue VALUES('deloox','https://www.deloox.com/product/a','ERROR',3,9999999999,1,NULL,NULL,'timeout')")
-          conn.execute("INSERT INTO hydration_queue VALUES('deloox','https://www.deloox.com/product/b','DONE',1,9999999999,1,NULL,NULL,NULL)")
-          conn.execute("INSERT INTO hydration_queue VALUES('deloox','https://www.deloox.com/product/c','PROCESSING',1,9999999999,1,9999999999,'lease-c',NULL)")
-          conn.execute("INSERT INTO hydration_queue VALUES('deloox','https://www.deloox.com/product/d','ERROR',1,9999999999,1,NULL,NULL,'parser')")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/a','ERROR',3,9999999999,1,'timeout')")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/b','DONE',1,9999999999,1)")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,leased_until,lease_token) VALUES('deloox','https://www.deloox.com/product/c','PROCESSING',1,9999999999,1,9999999999,'lease-c')")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/d','ERROR',1,9999999999,1,'parser')")
           conn.execute("INSERT INTO store_products VALUES('deloox','https://www.deloox.com/product/d','OK')")
           now = 1000.0
 
@@ -163,6 +163,49 @@ jobs:
           assert states['b']['state']=='DONE', states['b']
           assert states['c']['state']=='PROCESSING' and states['c']['lease_token']=='lease-c', states['c']
           assert states['d']['state']=='DONE', states['d']
+          # Verify the bounded search-priority hint elevates a matching queue row.
+          priority_function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "prioritize_hydration_candidates")
+          priority_sql = next(
+              (
+                  node.value.value
+                  for node in ast.walk(priority_function)
+                  if isinstance(node, ast.Assign)
+                  and any(isinstance(target, ast.Name) and target.id == "priority_sql" for target in node.targets)
+                  and isinstance(node.value, ast.Constant)
+                  and isinstance(node.value.value, str)
+                  and "UPDATE hydration_queue" in node.value.value
+              ),
+              None,
+          )
+          claim_function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_claim_one_hydration_task")
+          claim_sql = next(
+              (
+                  part.value
+                  for node in ast.walk(claim_function)
+                  if isinstance(node, ast.Call)
+                  and isinstance(node.func, ast.Attribute)
+                  and node.func.attr == "execute"
+                  and node.args
+                  for part in ast.walk(node.args[0])
+                  if isinstance(part, ast.Constant)
+                  and isinstance(part.value, str)
+                  and "SELECT q.store,q.url,q.attempts" in part.value
+              ),
+              None,
+          )
+          assert priority_sql and claim_sql, "Query-priority update and hydration claim SQL must exist"
+          assert "q.priority ASC" in claim_sql, "Hydration claims must take priority URLs first"
+          conn.executescript("""
+          CREATE TABLE store_urls(store TEXT,url TEXT,active INTEGER,PRIMARY KEY(store,url));
+          """)
+          conn.execute("INSERT INTO hydration_queue(store,url,state,priority,attempts,available_at,first_seen_at,leased_until,lease_token) VALUES('deloox','https://www.deloox.com/product/ordinary','PENDING',100,0,0,1,9999999999,'ordinary-lease')")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,priority,attempts,available_at,first_seen_at,leased_until,lease_token) VALUES('deloox','https://www.deloox.com/product/target','PENDING',100,0,0,1,9999999999,'target-lease')")
+          conn.execute("INSERT INTO store_urls VALUES('deloox','https://www.deloox.com/product/ordinary',1)")
+          conn.execute("INSERT INTO store_urls VALUES('deloox','https://www.deloox.com/product/target',1)")
+          conn.execute(priority_sql, (0,'deloox','https://www.deloox.com/product/target'))
+          chosen = conn.execute(claim_sql, ('deloox', now)).fetchone()
+          assert chosen['url'].endswith('/target'), chosen
+          print("Deloox search-priority regression test: PASS (query-selected URL claimed before general backlog)")
           print("Deloox hydration queue upsert regression test: PASS (ERROR requeued; DONE and live leases preserved; persisted OK respected)")
           PY
 
