@@ -133,6 +133,7 @@ jobs:
               and "INSERT INTO hydration_queue" in node.args[0].value
           )
           statement = call.args[0].value
+
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
           conn.executescript("""
@@ -147,11 +148,7 @@ jobs:
           now = 1000.0
 
           def upsert(url):
-              params = tuple(now if value is None else value for value in args)
-              # Bind the same seven values as the production insert, while
-              # substituting a deterministic URL and clock for this SQL fixture.
-              params = ('deloox', url, 'PENDING', 0, now, now, now)
-              conn.execute(statement, params)
+              conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now))
 
           for suffix in ('a','b','c','d'):
               upsert('https://www.deloox.com/product/'+suffix)
