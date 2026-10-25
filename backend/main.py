@@ -2545,7 +2545,7 @@ def _snapshot(job_id):
                     "canonical_name": canonical,
                     "family": identity.get("family_name") or (family.get("query_aliases") or [canonical])[0],
                     "variant": canonical,
-                    "image": "",
+                    "image": identity.get("canonical_image") or identity.get("image") or "",
                     "offers": [],
                     "identity_only": True,
                 })
