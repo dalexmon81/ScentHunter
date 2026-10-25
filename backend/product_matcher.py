@@ -1129,12 +1129,17 @@ class ProductMatcher:
         if candidate_key in excluded:
             return None
 
-        name_variant: Optional[Dict[str, Any]] = None
-
-        for variant in eligible_variants:
-            if candidate_key in variant.get("_normalized_alias_set", variant["normalized_aliases"]):
-                name_variant = variant
-                break
+        exact_family_matches = [
+            variant for variant in eligible_variants
+            if candidate_key in variant.get("_normalized_alias_set", variant["normalized_aliases"])
+        ]
+        # A unique exact registered alias is definitive family identity. Avoid
+        # the expensive fuzzy-token and URL fallback scans for this common case.
+        if len(exact_family_matches) == 1:
+            return exact_family_matches[0]
+        name_variant: Optional[Dict[str, Any]] = (
+            exact_family_matches[0] if exact_family_matches else None
+        )
 
         # A conflicting brand may be ignored only when removing that brand
         # exposed an exact registered family alias. Do not let editorial/fuzzy
@@ -2590,6 +2595,23 @@ class ProductMatcher:
         # shared token. Keep the old full-catalog behavior only as a safety
         # fallback when no indexed token is available.
         offer_text = catalog_clean_text(name)
+        exact_products = [
+            product for product in self._text_exact_index.get(offer_text, ())
+            if id(product) in eligible_by_id
+        ]
+        if len(exact_products) == 1:
+            # Exact title plus strong URL agreement is sufficient. This avoids
+            # building/scoring the full text and URL candidate sets for common
+            # persisted catalog offers, while retaining the fallback for any
+            # ambiguous or contradictory URL.
+            exact_product = exact_products[0]
+            fast_url_context = self._prepare_offer_url_context(offer)
+            fast_url_score, _ = self._url_candidate_score(
+                offer, exact_product, fast_url_context
+            )
+            if fast_url_score >= 0.86:
+                return exact_product, "exact_name", 1.0
+
         offer_tokens = set(offer_text.split())
         # Broad queries (for example a brand such as "Guerlain") produce many
         # retailer offers.  Common perfume words such as "eau", "de", "parfum"
@@ -2627,10 +2649,6 @@ class ProductMatcher:
         # Exact normalized identity is the strongest text result. Multiple
         # catalog products sharing the exact identity remain subject to the
         # existing specificity/tie-breaking rules.
-        exact_products = [
-            product for product in self._text_exact_index.get(offer_text, ())
-            if id(product) in eligible_by_id
-        ]
         if exact_products:
             best_text_product = None
             best_text_specificity = -1
