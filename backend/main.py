@@ -4078,6 +4078,22 @@ def search_start(q: str):
         name=f'scenthunter-search-{job_id[:8]}'
     ).start()
 
+    # Most catalog searches finish within this short window. Waiting here
+    # avoids a start response plus many status-poll round trips, while slower
+    # searches still return a searching snapshot and continue asynchronously.
+    try:
+        start_wait = min(
+            0.90,
+            max(0.0, float(os.environ.get('SEARCH_START_WAIT_SECONDS', '0.90'))),
+        )
+    except (TypeError, ValueError):
+        start_wait = 0.90
+    with JOBS_LOCK:
+        started_job = JOBS.get(job_id)
+        done_event = started_job.get("done_event") if started_job else None
+    if done_event is not None and start_wait > 0:
+        done_event.wait(timeout=start_wait)
+
     return _snapshot(job_id)
 
 
