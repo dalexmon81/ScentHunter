@@ -2242,8 +2242,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
 
     identity_started = time.monotonic()
     identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
-    identity_matched_count = 0
-    for store in stores:
+
+    def resolve_store_identity(store):
         store_rows = grouped_raw.get(store, [])
         matched_rows = []
         unresolved_count = 0
@@ -2263,13 +2263,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             matched_rows.append(resolved)
             if resolved.get('_match_status') != 'matched' or not resolved.get('catalog_id'):
                 unresolved_count += 1
-            # Catalog-first search publishes the complete store batch through
-            # on_report below. Do not aggregate once per product.
 
-        # A store with candidate rows is necessarily indexed. For stores with
-        # zero candidates, use the lightweight active-URL check above rather
-        # than catalog_store_status(), so a real indexed store is reported as
-        # verified/no_match instead of falsely becoming catalog_not_indexed.
         indexed = 1 if indexed_flags.get(store) else 0
         if store_rows:
             indexed = max(indexed, 1)
@@ -2281,15 +2275,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         elif indexed > 0 or raw_rows:
             status, verified, error = 'no_match', True, None
         else:
-            # This branch is reachable only when the catalog did not provide
-            # candidates for this store and the global catalog-index check did
-            # not establish that the store is indexed. Do not read an undefined
-            # `status_info`: report an explicit, non-authoritative state.
             status = 'catalog_not_indexed'
             verified = False
             error = 'catalog_not_indexed'
 
-        report = {
+        return {
             'store': store,
             'status': status,
             'verified': verified,
@@ -2308,10 +2298,23 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 'search_terms_count': len(terms),
             },
         }
-        reports_by_store[store] = report
-        identity_matched_count += len(matched_rows)
-        if callable(on_report):
-            on_report(report)
+
+    # Product identity work is CPU-bound and independent across retailers.
+    # Resolve store batches concurrently so one expensive retailer cannot make
+    # the whole search wait behind seven otherwise-ready batches. Keep the
+    # final report order stable and publish only after all batches finish.
+    from concurrent.futures import ThreadPoolExecutor
+    workers = max(1, min(8, len(stores)))
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='scenthunter-identity') as pool:
+        futures = {store: pool.submit(resolve_store_identity, store) for store in stores}
+        for store in stores:
+            report = futures[store].result()
+            reports_by_store[store] = report
+            if callable(on_report):
+                on_report(report)
+    identity_matched_count = sum(
+        int((report.get('count') or 0)) for report in reports_by_store.values()
+    )
 
     print(
         f'CATALOG PHASE TIMING phase=identity_resolution query={query!r} '
