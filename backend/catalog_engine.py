@@ -3792,6 +3792,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             for r in candidates:
                 if cancel_event is not None and cancel_event.is_set():
                     break
+                # The OR query is ranked globally, but every alias has its own
+                # quota. Stop scanning immediately once all quotas are filled;
+                # processing the remainder cannot add a candidate and was
+                # wasting CPU on broad family searches.
+                if all(count >= term_candidate_limit for count in per_term_counts):
+                    break
                 actual_store = str(r['fts_store'] or r['product_store'] or '').strip()
                 if actual_store != store:
                     continue
