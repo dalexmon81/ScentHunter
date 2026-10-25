@@ -242,7 +242,7 @@ jobs:
               while time.monotonic() < start_deadline:
                   started = get_json("/search-start?q=" + urllib.parse.quote(query))
                   if started.get("status") == "busy":
-                      time.sleep(max(1, min(3, float(started.get("retry_after_ms", 1000)) / 1000)))
+                      time.sleep(max(0.05, min(0.25, float(started.get("retry_after_ms", 200)) / 1000)))
                       continue
                   if started.get("status") == "error":
                       raise RuntimeError("Production search rejected: " + json.dumps(started.get("errors", {})))
