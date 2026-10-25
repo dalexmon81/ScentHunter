@@ -825,6 +825,12 @@ function shGroupData(data){
  */
 function shImageError(img){
   if(!img)return;
+  // Never replace a failed canonical product photo with an unrelated retailer
+  // image: that fallback can belong to a different fragrance variant.
+  if(String(img.dataset?.canonical||"")==="1"){
+    img.outerHTML='<span class="image-unverified" role="img" aria-label="Foto canonica non disponibile"><span aria-hidden="true">▧</span><small>Foto non disponibile</small></span>';
+    return;
+  }
   const current=String(img.getAttribute("src")||"").trim();
   let fallbacks=[];
   try{
@@ -906,7 +912,7 @@ function showProducts(groups){
     const best=(g.offers||[]).find(o=>!isOfferOutOfStock(o))||null;
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
-      <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
+      <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-canonical="${g.image?'1':'0'}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:`<span class="image-unverified" role="img" aria-label="Immagine del prodotto non verificata"><span aria-hidden="true">▧</span><small>Foto non verificata</small></span>`}</div>
       <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
