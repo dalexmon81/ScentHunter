@@ -899,7 +899,7 @@ function showProducts(groups){
     const title=g.brand?`${g.brand} - ${displayPerfumeName(g.name,g.brand)}`:displayPerfumeName(g.name,g.brand);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${(g.image||g.fallback_image)?`<img src="${esc(g.image||g.fallback_image)}" data-fallback="${esc(g.fallback_image||"")}" data-fallbacks="${esc(JSON.stringify(g.fallback_images||[]))}" alt="${esc(title)}" onerror="shImageError(this)">`:"🧴"}</div>
-      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}</div>
+      <div class="product-choice-main"><div class="name">${esc(title)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">${(g.offers||[]).length?"OUT OF STOCK":"Nessuna offerta verificata"}</div>`}</div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
