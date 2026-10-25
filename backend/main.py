@@ -995,22 +995,34 @@ def _offer_concentration_token(value):
 
 
 def _is_concentration_mismatch_offer(item):
-    """Reject an offer when its explicit title concentration conflicts with URL."""
+    """Reject only decisive title/URL concentration or Dior-line conflicts."""
     if not isinstance(item, dict):
         return False
     title = " ".join(
         str(item.get(key) or "")
         for key in ("name", "title", "product_name", "raw_name", "_raw_name")
     ).strip()
-    title_token = _offer_concentration_token(title)
-    if not title_token:
-        return False
     urls = " ".join(
         str(item.get(key) or "")
         for key in ("url", "product_url", "source_url", "product_page", "link", "_raw_url")
     )
+    title_token = _offer_concentration_token(title)
     url_token = _offer_concentration_token(urls)
-    return bool(url_token and title_token != url_token)
+    hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
+    if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
+        return True
+
+    def dior_line(value):
+        normalized = re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+        if re.search(r"\\beau sauvage\\b", normalized):
+            return "dior_eau_sauvage"
+        if re.search(r"\\bsauvage\\b", normalized):
+            return "dior_sauvage"
+        return ""
+
+    title_line = dior_line(title)
+    url_line = dior_line(urls)
+    return bool(title_line and url_line and title_line != url_line)
 
 
 def _is_non_fragrance_offer(item):
