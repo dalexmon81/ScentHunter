@@ -782,11 +782,22 @@ function shGroupData(data){
      */
     const image=String(group.image||"").trim();
     const identity_only=Boolean(group.identity_only);
-    // Never substitute retailer offer images for the canonical product image:
-    // retailer thumbnails can belong to another size/variant or generic product.
-    // When no canonical image exists, the UI deliberately shows its perfume icon.
+    // Prefer the canonical catalog image; if absent, retain the retailer-image
+    // fallback that was used previously for real matched products. Identity-only
+    // family cards have no verified offer and must not borrow another variant.
     const fallback_images=[];
-    const fallback_image="";
+    if(!identity_only){
+      [
+        ...offers.map(o=>o?.retailer_image),
+        ...offers.map(o=>o?.image),
+        ...offers.map(o=>o?.image_url),
+        group.fallback_image,
+      ].forEach(raw=>{
+        const url=String(raw||"").trim();
+        if(url && !fallback_images.includes(url))fallback_images.push(url);
+      });
+    }
+    const fallback_image=fallback_images.find(url=>url!==image) || fallback_images[0] || "";
     return {
       catalog_id:String(group.catalog_id||"").trim(),
       identity_only,
