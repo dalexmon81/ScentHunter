@@ -3653,7 +3653,10 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     # all terms have contributed.
     total_scan_budget = 2048 if unlimited else limit
     term_candidate_limit = 64 if unlimited else max(1, min(64, total_scan_budget))
-    fts_candidate_limit = max(term_candidate_limit, min(256, term_candidate_limit * 4))
+    # FTS MATCH already enforces the term tokens. A 2x over-fetch is
+    # enough for deduplication and Sabina size-variant filtering; the previous
+    # 4x window made the batched UNION query do unnecessary work per retailer.
+    fts_candidate_limit = max(term_candidate_limit, min(128, term_candidate_limit * 2))
 
     def interrupted():
         # A search deadline cannot be checked in the middle of a SQLite query.
