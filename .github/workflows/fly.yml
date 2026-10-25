@@ -122,6 +122,9 @@ jobs:
           source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
           tree = ast.parse(source)
           function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_deloox_persist_products")
+          function_source = ast.get_source_segment(source, function)
+          assert "transaction_batch_size = 25" in function_source, "Deloox writes must use bounded transaction chunks"
+          assert "for chunk_start in range(0, len(items), transaction_batch_size)" in function_source, "Deloox writer lock must be released between chunks"
           statements = []
           for node in ast.walk(function):
               if not (
