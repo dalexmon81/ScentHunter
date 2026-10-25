@@ -3471,6 +3471,51 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
         threading.Thread(target=_repair, name='easycosmetic-catalog-repair', daemon=True).start()
 
 
+# Refresh stale retailer prices independently of the short interactive-search budget.
+_STALE_PRICE_REPAIR_LOCK = threading.Lock()
+_STALE_PRICE_REPAIR_IN_FLIGHT = set()
+
+def _schedule_stale_price_repairs(rows, max_jobs=12):
+    jobs = []
+    for row in rows or []:
+        store = str(row.get('store_key') or '').strip().lower()
+        url = str(row.get('product_url') or row.get('url') or '').strip()
+        if store not in STORES or not url:
+            continue
+        try:
+            fetched_at = float(row.get('fetched_at') or 0)
+        except (TypeError, ValueError):
+            fetched_at = 0.0
+        if fetched_at > 0 and time.time() - fetched_at <= 24 * 60 * 60:
+            continue
+        jobs.append((store, url))
+    for store, url in jobs[:max_jobs]:
+        key = (store, url)
+        with _STALE_PRICE_REPAIR_LOCK:
+            if key in _STALE_PRICE_REPAIR_IN_FLIGHT:
+                continue
+            _STALE_PRICE_REPAIR_IN_FLIGHT.add(key)
+        def _repair(target_store=store, target_url=url, target_key=key):
+            try:
+                result = refresh_url(target_store, target_url)
+                print(
+                    f"CATALOG STALE PRICE REFRESH {'OK' if result else 'FAILED'} "
+                    f"store={target_store} url={target_url} "
+                    f"price={result.get('price_num') if result else None}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(
+                    f"CATALOG STALE PRICE REFRESH ERROR store={target_store} "
+                    f"url={target_url} error={type(exc).__name__}:{exc}",
+                    flush=True,
+                )
+            finally:
+                with _STALE_PRICE_REPAIR_LOCK:
+                    _STALE_PRICE_REPAIR_IN_FLIGHT.discard(target_key)
+        threading.Thread(target=_repair, name='catalog-stale-price-refresh', daemon=True).start()
+
+
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
     try:
@@ -3482,6 +3527,7 @@ def search_local(query, per_store=32, search_terms=None, cancel_event=None, dead
             deadline=deadline,
         )
         _schedule_easycosmetic_missing_size_repairs(rows)
+        _schedule_stale_price_repairs(rows)
         return rows
     finally:
         _mark_foreground_search_finished()
