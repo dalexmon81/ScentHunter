@@ -1194,7 +1194,11 @@ async function searchPerfume(){
         }
       }
     };
-    const data=await searchStoresProgressive(q,renderData);
+    // Keep the established all-at-once results UX. The backend may publish internal
+    // store snapshots while searching, but do not redraw the product list for
+    // each partial poll; render the final, deduplicated payload once all stores
+    // have finished so results do not flicker in progressively.
+    const data=await searchStoresProgressive(q,()=>{});
     renderData(data,true);
   } catch (e) {
   console.error(e);
