@@ -2510,7 +2510,7 @@ class ProductMatcher:
         self._brand_compatible_cache[normalized_brand] = result
         return result
 
-    def _best_match(self, offer: Dict[str, Any]) -> Tuple[Optional[CatalogProduct], str, float]:
+    def _best_match(self, offer: Dict[str, Any], query: str = "") -> Tuple[Optional[CatalogProduct], str, float]:
         """Resolve a generic offer with identifiers, name evidence and URL identity.
 
         Candidate generation is indexed and lossless for the acceptance rules:
@@ -2540,6 +2540,29 @@ class ProductMatcher:
             eligible = list(self._brand_compatible_products(normalized_brand))
         else:
             eligible = list(self.catalog)
+
+        # Generic identity resolution previously scanned a large portion of
+        # the entire catalog for every offer when retailer metadata omitted the
+        # brand. Use the selective query-token posting as a lossless prefilter
+        # for multi-token queries: an accepted product identity must share at
+        # least one identity token with the requested product line. If no
+        # selective posting exists, preserve the original candidate set.
+        query_tokens = set(catalog_clean_text(query).split()) if query else set()
+        if len(query_tokens) >= 2 and eligible:
+            query_postings = [
+                self._text_token_index.get(token, set())
+                for token in query_tokens
+                if self._text_token_index.get(token)
+            ]
+            selective_query_postings = [
+                posting for posting in query_postings
+                if len(posting) <= max(64, len(self.catalog) // 50)
+            ]
+            if selective_query_postings:
+                query_product_ids = set(min(selective_query_postings, key=len))
+                narrowed = [product for product in eligible if id(product) in query_product_ids]
+                if narrowed:
+                    eligible = narrowed
 
         eligible_by_id = {id(product): product for product in eligible}
 
@@ -2761,7 +2784,7 @@ class ProductMatcher:
         query: str,
         started: float,
     ) -> Optional[Dict[str, Any]]:
-        product, method, score = self._best_match(offer)
+        product, method, score = self._best_match(offer, query=query)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
 
         if product is None:
