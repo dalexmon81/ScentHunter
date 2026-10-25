@@ -3662,10 +3662,10 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     fts_candidate_limit = max(term_candidate_limit, min(256, term_candidate_limit * 4))
 
     def interrupted():
-        return (
-            (cancel_event is not None and cancel_event.is_set())
-            or (deadline is not None and time.monotonic() >= float(deadline))
-        )
+        # A search deadline cannot be checked in the middle of a SQLite query.
+        # Keep cancellation authoritative, while the combined per-store query
+        # avoids deadline-driven truncation of alternate terms.
+        return cancel_event is not None and cancel_event.is_set()
 
     sql = """
         SELECT u.url AS url,
@@ -3734,17 +3734,17 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         # spending the shared deadline on expanded query variants. The previous
         # store-first loop could exhaust the budget on earlier retailers before
         # reaching the requested retailer's exact query.
-        for ts in token_sets:
-            if interrupted():
+        # Execute one combined FTS query per retailer instead of one SQL
+        # query per alias and retailer. This preserves alternate-term recall
+        # without letting a short foreground deadline stop after the first
+        # alias and silently omit the rest of the catalog.
+        for store in STORES:
+            if cancel_event is not None and cancel_event.is_set():
                 break
-            for store in STORES:
-                if interrupted():
-                    break
-                per_store_counts = {}
-                seen_product_keys = set()
-                # Sabina bottle sizes live in store_product_variants, not in the
-                # URL-level FTS document. Keep size tokens for the variant-level
-                # filter below, but don't require them to exist in the page title.
+
+            term_specs = []
+            fts_token_sets = []
+            for ts in token_sets:
                 sabina_size_tokens = set()
                 fts_tokens = ts
                 if store == 'sabina' and any(token in ts for token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}):
@@ -3753,67 +3753,97 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         if token.isdigit() or token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}
                     }
                     fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
+                if not fts_tokens:
+                    continue
                 fts_query = _fts_query_for_tokens(fts_tokens)
                 if not fts_query:
-                    # A size alone is not enough to identify a product page;
-                    # do not turn this into a broad catalog scan.
                     continue
-                _diag_sql_t0 = time.monotonic()
-                try:
-                    candidates = conn.execute(
-                        sql, (fts_query, store, fts_candidate_limit)
-                    ).fetchall()
-                except sqlite3.OperationalError:
-                    if interrupted():
-                        break
-                    raise
-                _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
-                _diag_process_t0 = time.monotonic()
-                for r in candidates:
-                    if interrupted():
-                        break
-                    actual_store = str(r['fts_store'] or r['product_store'] or '').strip()
-                    if actual_store != store:
+                term_specs.append((ts, sabina_size_tokens))
+                fts_token_sets.append(fts_tokens)
+
+            combined_query = _fts_query_for_token_sets(fts_token_sets)
+            if not combined_query or not term_specs:
+                continue
+
+            combined_candidate_limit = min(
+                2048,
+                max(256, fts_candidate_limit * len(term_specs)),
+            )
+            _diag_sql_t0 = time.monotonic()
+            try:
+                candidates = conn.execute(
+                    sql, (combined_query, store, combined_candidate_limit)
+                ).fetchall()
+            except sqlite3.OperationalError:
+                if cancel_event is not None and cancel_event.is_set():
+                    break
+                raise
+            _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
+            _diag_process_t0 = time.monotonic()
+            per_term_counts = [0 for _ in term_specs]
+            seen_product_keys_by_term = [set() for _ in term_specs]
+            variant_rows_by_url = {}
+
+            for r in candidates:
+                if cancel_event is not None and cancel_event.is_set():
+                    break
+                actual_store = str(r['fts_store'] or r['product_store'] or '').strip()
+                if actual_store != store:
+                    continue
+                url = str(r['url'] or '').strip()
+                if not url:
+                    continue
+
+                search_text = ' '.join(
+                    str(r[key] or '')
+                    for key in ('slug', 'product_name', 'product_brand')
+                )
+                normalized_tokens = set(norm(search_text).split())
+                product_key = (
+                    str(r['product_sku'] or '').strip().lower()
+                    or str(r['product_gtin'] or '').strip().lower()
+                    or str(r['product_mpn'] or '').strip().lower()
+                    or url.lower()
+                )
+
+                for term_index, (ts, sabina_size_tokens) in enumerate(term_specs):
+                    if per_term_counts[term_index] >= term_candidate_limit:
                         continue
-                    if per_store_counts.get(store, 0) >= term_candidate_limit:
-                        continue
-                    url = str(r['url'] or '').strip()
-                    if not url:
-                        continue
-                    search_text = ' '.join(
-                        str(r[key] or '')
-                        for key in ('slug', 'product_name', 'product_brand')
-                    )
-                    normalized_tokens = set(norm(search_text).split())
-                    required_base_tokens = tuple(token for token in ts if token not in sabina_size_tokens) if store == 'sabina' else ts
+                    required_base_tokens = tuple(
+                        token for token in ts if token not in sabina_size_tokens
+                    ) if store == 'sabina' else ts
                     if not all(token in normalized_tokens for token in required_base_tokens):
                         continue
-                    product_key = (
-                        str(r['product_sku'] or '').strip().lower()
-                        or str(r['product_gtin'] or '').strip().lower()
-                        or str(r['product_mpn'] or '').strip().lower()
-                        or url.lower()
-                    )
-                    if product_key in seen_product_keys:
+                    if product_key in seen_product_keys_by_term[term_index]:
                         continue
-                    seen_product_keys.add(product_key)
-                    per_store_counts[store] = per_store_counts.get(store, 0) + 1
+
+                    seen_product_keys_by_term[term_index].add(product_key)
+                    per_term_counts[term_index] += 1
+
                     if r['product_name']:
                         variant_rows = []
                         if store == 'sabina':
-                            try:
-                                variant_rows = conn.execute(
-                                    "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
-                                    (store, url),
-                                ).fetchall()
-                            except sqlite3.OperationalError:
-                                variant_rows = []
+                            if url not in variant_rows_by_url:
+                                try:
+                                    variant_rows_by_url[url] = conn.execute(
+                                        "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
+                                        (store, url),
+                                    ).fetchall()
+                                except sqlite3.OperationalError:
+                                    variant_rows_by_url[url] = []
+                            variant_rows = variant_rows_by_url[url]
                         if variant_rows:
                             for vr in variant_rows:
-                                if not all(token in set(norm(' '.join((str(r['slug'] or ''), str(r['product_name'] or ''), str(r['product_brand'] or ''), f"{vr['size_ml'] or ''} ml"))).split()) for token in ts):
+                                variant_tokens = set(norm(' '.join((
+                                    str(r['slug'] or ''),
+                                    str(r['product_name'] or ''),
+                                    str(r['product_brand'] or ''),
+                                    f"{vr['size_ml'] or ''} ml",
+                                ))).split())
+                                if not all(token in variant_tokens for token in ts):
                                     continue
                                 rows.append({
-                                    'url': (_sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']) if store == 'sabina' else (vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url)),
+                                    'url': _sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']),
                                     'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
                                     'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
                                     'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
@@ -3852,12 +3882,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                             'url': url, 'name': r['slug'] or url_slug(url),
                             '_needs_refresh': True,
                         })
-                print(
-                    f"CATALOG SEARCH DIAG store={store} term={str(ts)!r} "
-                    f"sql={_diag_sql_elapsed:.3f}s process={time.monotonic()-_diag_process_t0:.3f}s "
-                    f"fetched={len(candidates)} rows={len(rows)}",
-                    flush=True,
-                )
+
+            print(
+                f"CATALOG SEARCH DIAG store={store} terms={len(term_specs)} "
+                f"sql={_diag_sql_elapsed:.3f}s process={time.monotonic()-_diag_process_t0:.3f}s "
+                f"fetched={len(candidates)} rows={len(rows)}",
+                flush=True,
+            )
 
         # Expanded query terms can match the same catalog URL repeatedly.
         # Deduplicate only after collecting all terms, so a later size-specific
