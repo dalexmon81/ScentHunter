@@ -1585,8 +1585,12 @@ class ProductMatcher:
         else:
             result["variant_id"] = catalog_id
 
-        if catalog_product is not None and catalog_product.canonical_image:
-            result["canonical_image"] = catalog_product.canonical_image
+        canonical_image = (
+            (catalog_product.canonical_image if catalog_product is not None else None)
+            or str(variant.get("canonical_image") or "").strip()
+        )
+        if canonical_image:
+            result["canonical_image"] = canonical_image
 
         return result
 
