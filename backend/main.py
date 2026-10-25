@@ -2508,6 +2508,7 @@ def _snapshot(job_id):
             print(f"SEARCH WATCHDOG FINALIZED job={job_id} age={round(time.time() - started_at, 1)}", flush=True)
         completed = bool(job.get("completed"))
         status = job.get("status") or ("completed" if completed else "searching")
+        elapsed = float(job.get("elapsed") or max(0.0, time.time() - started_at))
         results = list(job.get("results", []))
         # Last-mile response guard: cached/progressive grouped snapshots must
         # never expose rows whose displayed title conflicts with the URL SKU.
@@ -2590,6 +2591,7 @@ def _snapshot(job_id):
         "query": query,
         "completed": completed,
         "status": status,
+        "elapsed": round(elapsed, 3),
         "count": len(results),
         "offer_count": len(offers),
         "results": results,
