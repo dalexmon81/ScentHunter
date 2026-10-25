@@ -1014,9 +1014,9 @@ def _is_concentration_mismatch_offer(item):
 
     def dior_line(value):
         normalized = re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
-        if re.search(r"\beau sauvage\\b", normalized):
+        if re.search(r"\beau sauvage\b", normalized):
             return "dior_eau_sauvage"
-        if re.search(r"\bsauvage\\b", normalized):
+        if re.search(r"\bsauvage\b", normalized):
             return "dior_sauvage"
         return ""
 
