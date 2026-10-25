@@ -2062,6 +2062,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     """
     started = time.monotonic()
     reports_by_store = {}
+    catalog_search_elapsed = 0.0
+    targeted_refresh_elapsed = 0.0
     if cancel_event is not None and cancel_event.is_set():
         return []
 
@@ -2101,9 +2103,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             )
             if callable(catalog_search_local) else []
         )
+        catalog_search_elapsed = time.monotonic() - _catalog_search_started
         print(
             f'CATALOG PHASE TIMING phase=search_local query={query!r} '
-            f'elapsed={time.monotonic()-_catalog_search_started:.3f}s '
+            f'elapsed={catalog_search_elapsed:.3f}s '
             f'candidates={len(raw_rows)}', flush=True
         )
     except TypeError:
@@ -2158,9 +2161,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                     cancel_event=cancel_event,
                     deadline=refresh_deadline,
                 ) or []
+                targeted_refresh_elapsed = time.monotonic() - refresh_started
                 print(
                     f'CATALOG PHASE TIMING phase=targeted_refresh '
-                    f'elapsed={time.monotonic()-refresh_started:.3f}s '
+                    f'elapsed={targeted_refresh_elapsed:.3f}s '
                     f'budget={refresh_budget:.2f}s requested={len(requested)} '
                     f'returned={len(refreshed)}',
                     flush=True,
@@ -2296,6 +2300,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 'fetched_products': fetched,
                 'candidate_limit': candidate_limit,
                 'search_terms_count': len(terms),
+                'search_local_elapsed': round(catalog_search_elapsed, 3),
+                'targeted_refresh_elapsed': round(targeted_refresh_elapsed, 3),
+                'identity_resolution_elapsed': round(time.monotonic() - identity_started, 3),
             },
         }
 
