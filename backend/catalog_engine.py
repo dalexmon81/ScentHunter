@@ -639,6 +639,7 @@ def _ensure_schema(conn):
             store TEXT NOT NULL,
             url TEXT NOT NULL,
             state TEXT NOT NULL DEFAULT 'PENDING',
+            priority INTEGER NOT NULL DEFAULT 100,
             attempts INTEGER NOT NULL DEFAULT 0,
             available_at REAL NOT NULL DEFAULT 0,
             leased_until REAL,
@@ -650,7 +651,15 @@ def _ensure_schema(conn):
             last_http_status INTEGER,
             PRIMARY KEY(store,url)
         )""")
+        hydration_columns = {
+            row['name'] for row in conn.execute('PRAGMA table_info(hydration_queue)').fetchall()
+        }
+        if 'priority' not in hydration_columns:
+            conn.execute(
+                'ALTER TABLE hydration_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 100'
+            )
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready ON hydration_queue(state,available_at,store)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_ready_priority ON hydration_queue(store,state,priority,attempts,available_at,first_seen_at)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_lease ON hydration_queue(state,leased_until)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_hydration_store_state ON hydration_queue(store,state)')
         # Persistent HTML catalog frontier. This is deliberately separate from
@@ -4090,6 +4099,61 @@ def refresh_candidates(rows, cancel_event=None, deadline=None):
         pool.shutdown(wait=not cancelled, cancel_futures=cancelled)
 
 
+def prioritize_hydration_candidates(rows, priority=0):
+    """Give query-selected, unhydrated products first claim after foreground search.
+
+    This is deliberately best-effort and bounded: never wait behind a long
+    SQLite writer on a user-search path. Failed priority hints do not affect
+    search correctness; durable hydration continues with the normal FIFO queue.
+    """
+    updates = []
+    try:
+        value = max(0, int(priority))
+    except (TypeError, ValueError):
+        value = 0
+    for row in rows or ():
+        if not isinstance(row, dict) or not row.get('_needs_refresh'):
+            continue
+        store = str(row.get('store_key') or row.get('store') or '').strip().lower()
+        url = str(row.get('url') or row.get('product_url') or '').strip()
+        if store in STORES and url:
+            updates.append((value, store, url))
+    if not updates:
+        return 0
+
+    conn = sqlite3.connect(str(DB_PATH), timeout=0.15)
+    conn.execute('PRAGMA busy_timeout=150')
+    priority_sql = """UPDATE hydration_queue
+                         SET priority=MIN(priority,?)
+                       WHERE store=? AND url=?
+                         AND state IN ('PENDING','ERROR')
+                         AND EXISTS (
+                             SELECT 1 FROM store_urls u
+                              WHERE u.store=hydration_queue.store
+                                AND u.url=hydration_queue.url
+                                AND u.active=1
+                         )"""
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+        before = conn.total_changes
+        conn.executemany(priority_sql, updates)
+        conn.commit()
+        return conn.total_changes - before
+    except sqlite3.OperationalError as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(
+            'CATALOG HYDRATION PRIORITY HINT SKIPPED '
+            f'error={type(exc).__name__}:{exc}',
+            flush=True,
+        )
+        return 0
+    finally:
+        conn.close()
+
+
 def hydration_pending_counts():
     """Return active discovered URLs that are not successfully hydrated."""
     conn = db()
@@ -4281,6 +4345,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                            AND p.state='PROCESSING'
                      ) < 2
                    ORDER BY
+                     q.priority ASC,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
                      q.first_seen_at ASC
