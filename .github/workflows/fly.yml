@@ -300,7 +300,7 @@ jobs:
                       valid.append(offer)
 
               elapsed_sec = time.monotonic() - search_started_at
-              print(f"Query '{query}': status={last.get('status')}, products={count}, offers={offer_count}, priced_linked_offers={len(valid)}, elapsed_sec={elapsed_sec:.3f}")
+              print(f"Query '{query}': status={last.get('status')}, products={count}, elapsed={last.get('elapsed')}s, offers={offer_count}, priced_linked_offers={len(valid)}, elapsed_sec={elapsed_sec:.3f}")
               if query == "Born in Roma":
                   # This family is expected to contain 20 registered variants;
                   # fail loudly if the production search returns only a subset.
