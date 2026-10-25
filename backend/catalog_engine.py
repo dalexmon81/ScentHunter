@@ -429,7 +429,7 @@ def _remove_local_search_index_url(store, url):
 
 
 _SEARCH_FTS_TABLE = 'catalog_search_fts'
-_SEARCH_FTS_SCHEMA_VERSION = '1'
+_SEARCH_FTS_SCHEMA_VERSION = '2'
 
 
 def _ensure_search_fts(conn):
@@ -438,7 +438,7 @@ def _ensure_search_fts(conn):
         conn.execute(
             """CREATE VIRTUAL TABLE IF NOT EXISTS catalog_search_fts
                USING fts5(
-                   store UNINDEXED,
+                   store,
                    url UNINDEXED,
                    search_text,
                    tokenize='unicode61 remove_diacritics 2'
@@ -3767,6 +3767,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             combined_query = _fts_query_for_token_sets(fts_token_sets)
             if not combined_query:
                 continue
+            # Make the retailer filter part of the FTS expression itself.
+            # With store UNINDEXED, SQLite searched the matching text pool across
+            # every retailer eight times and filtered each pool afterwards. The
+            # indexed store column narrows the postings before ranking, without
+            # changing the alias OR expression or per-term recall quotas.
+            combined_query = f'store : "{store}" AND ({combined_query})'
             # The OR query returns one ranked pool for all aliases. Size the
             # pool to the number of terms, but for a single-term query fetch
             # only the same 2x window the old per-term query used.
