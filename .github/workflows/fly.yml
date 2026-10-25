@@ -194,6 +194,23 @@ jobs:
                   # fail loudly if the production search returns only a subset.
                   if count < 20:
                       raise RuntimeError(f"Born in Roma family incomplete: expected at least 20 products, got {count}")
+                  # Count alone can hide missing canonical variants. Assert both
+                  # requested Rendez-Vous Ruby variants appear in the actual API payload.
+                  family_payload = json.dumps(groups, ensure_ascii=False).lower().replace("-", " ").replace("_", " ")
+                  required_variants = (
+                      ("rendez vous ruby uomo", "Born in Roma Rendez-Vous Ruby Uomo"),
+                      ("rendez vous ruby donna", "Born in Roma Rendez-Vous Ruby Donna"),
+                  )
+                  missing_variants = [
+                      label for token, label in required_variants
+                      if token not in family_payload
+                  ]
+                  if missing_variants:
+                      raise RuntimeError(
+                          "Born in Roma search is missing required canonical variants: "
+                          + ", ".join(missing_variants)
+                      )
+                  print("Born in Roma required variants: PASS (Rendez-Vous Ruby Uomo, Rendez-Vous Ruby Donna)")
               print("Store statuses: " + json.dumps(last.get("stores") or {}, ensure_ascii=False))
               print("Errors: " + json.dumps(last.get("errors") or {}, ensure_ascii=False))
               if not valid:
