@@ -3708,6 +3708,106 @@ def diagnose_catalog_live_parse_endpoint(
 
 
 
+@app.get('/diagnose-hawas-ice-offers-read-only')
+def diagnose_hawas_ice_offers_read_only():
+    """Read-only differential diagnostic for the three known Hawas Ice retailer URLs.
+
+    It compares persisted catalog rows and queue state with the retailer parser
+    output. It never calls refresh_url and never writes to SQLite.
+    """
+    import sqlite3
+    import time
+
+    started = time.monotonic()
+    targets = [
+        {
+            'store': 'deloox',
+            'url': 'https://www.deloox.com/product/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html',
+        },
+        {
+            'store': 'bplatz',
+            'url': 'https://en.bplatz.de/products/rasasi-hawas-ice-eau-de-parfum-100ml',
+        },
+        {
+            'store': 'parfumzentrum',
+            'url': 'https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/',
+        },
+    ]
+    out = {
+        'ok': False,
+        'diagnostic': 'hawas-ice-offers-read-only-v1',
+        'read_only': True,
+        'writes_database': False,
+        'refresh_url_called': False,
+        'targets': [],
+        'errors': [],
+    }
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        out['errors'].append({'stage': 'database', 'error': 'catalog_engine_unavailable'})
+        return out
+
+    try:
+        import catalog_engine as ce
+        conn = catalog_db()
+        conn.row_factory = sqlite3.Row
+        try:
+            for target in targets:
+                store = target['store']
+                url = target['url']
+                item = {'store': store, 'url': url, 'persisted': {}, 'live': {}}
+                key = url.rstrip('/')
+                for label, sql, params in [
+                    ('base_product_rows',
+                     "SELECT store,url,name,brand,sku,gtin,mpn,size_ml,price,currency,availability,fetched_at,fetch_status FROM store_products WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                    ('variant_rows',
+                     "SELECT store,url,variant_key,name,brand,sku,size_ml,price,currency,availability,fetched_at,variant_url FROM store_product_variants WHERE store=? AND ((url=? OR RTRIM(url,'/')=?) OR variant_url=?) ORDER BY size_ml,variant_key LIMIT 30",
+                     (store, url, key, url)),
+                    ('hydration_queue_rows',
+                     "SELECT store,url,state,attempts,available_at,leased_until,last_started_at,last_finished_at,last_error,last_http_status FROM hydration_queue WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                ]:
+                    try:
+                        item['persisted'][label] = [dict(row) for row in conn.execute(sql, params).fetchall()]
+                    except Exception as exc:
+                        item['persisted'][label] = []
+                        item.setdefault('errors', []).append({
+                            'stage': 'db_' + label,
+                            'error': f'{type(exc).__name__}: {str(exc)[:250]}',
+                        })
+                try:
+                    status, final_url, data = ce.http_get(url, timeout=getattr(ce, 'REFRESH_TIMEOUT', 12))
+                    item['live']['http_status'] = status
+                    item['live']['final_url'] = final_url
+                    item['live']['bytes'] = len(data or b'')
+                    if status < 400 and data:
+                        parsed = ce._secondary_store_parser(store, final_url, url, html_data=data)
+                        if not isinstance(parsed, dict):
+                            parsed = ce.parse_product(store, final_url, data.decode('utf-8', errors='replace'))
+                        if isinstance(parsed, dict):
+                            item['live']['parsed_product'] = {
+                                field: parsed.get(field) for field in (
+                                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin',
+                                    'mpn', 'size_ml', 'price_num', 'price', 'currency',
+                                    'availability', 'variants'
+                                )
+                            }
+                        else:
+                            item['live']['parsed_product'] = None
+                            item['live']['parser_result_type'] = type(parsed).__name__
+                except Exception as exc:
+                    item['live']['error'] = f'{type(exc).__name__}: {str(exc)[:400]}'
+                out['targets'].append(item)
+        finally:
+            conn.close()
+    except Exception as exc:
+        out['errors'].append({'stage': 'diagnostic', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'})
+
+    out['elapsed_sec'] = round(time.monotonic() - started, 3)
+    out['ok'] = not out['errors'] and all(not item.get('errors') for item in out['targets'])
+    return out
+
+
 @app.get('/search-start')
 def search_start(q: str):
     query = str(q or '').strip()
