@@ -1095,18 +1095,11 @@ async function searchStoresProgressive(term,onPartial){
       }
       lastData=status||lastData;
       if(typeof onPartial==="function")onPartial(status||lastData,Boolean(status?.completed));
-      if (
-  status?.completed &&
-  (status?.status === 'completed' ||
-   status?.status === 'completed_with_store_issues' ||
-   status?.status === 'cancelled_with_results' ||
-   status?.status === 'cancelled' ||
-   status?.status === 'error')
-) {
-  // Job terminato (ok, cancellato o errore)
-  // Restituisce l'ultimo stato al chiamante, così renderData()
-  // non riceve undefined e non cancella risultati/stato finale.
-  return status || lastData;
+      // The backend's completed flag is authoritative. Do not keep polling
+      // for three minutes just because a deployment introduces a new final
+      // status string unknown to this frontend version.
+      if (status?.completed === true) {
+        return status || lastData;
       }
     }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
@@ -1196,9 +1189,17 @@ async function searchPerfume(){
         }else if(status === "error"){
           statusBox.textContent =
             "Errore nella ricerca";
+        }else if(data?.completed === true){
+          // Unknown final status: the job is finished even if this frontend
+          // does not recognize the status label. Never leave the UI "searching".
+          const count=Number(data?.count ?? groups.length ?? 0);
+          statusBox.textContent = hasUnverified || hasErrors
+            ? (count > 0
+                ? `${count} prodotti trovati — alcuni negozi non verificati`
+                : "Ricerca terminata — alcuni negozi non verificati")
+            : `${count} prodotti trovati`;
         }else{
-          statusBox.textContent =
-            "Ricerca in corso...";
+          statusBox.textContent = "Ricerca non completata — riprova.";
         }
       }
     };
