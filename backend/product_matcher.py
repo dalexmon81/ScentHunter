@@ -2723,6 +2723,18 @@ class ProductMatcher:
                 url_ids.update(postings)
 
         url_products = [eligible_by_id[pid] for pid in url_ids if pid in eligible_by_id]
+        if best_text_product is not None and best_text_score >= 0.94:
+            # With near-exact text confidence, URL evidence can only override
+            # the text match when a candidate is more specific. Skip scoring
+            # all candidates that cannot possibly win that tie-break.
+            url_products = [
+                product for product in url_products
+                if self._text_specificity(product) > best_text_specificity
+            ]
+            if not url_products:
+                return best_text_product, (
+                    "exact_name" if best_text_score >= 0.94 else "token_score"
+                ), best_text_score
         best_url_product = None
         best_url_score = 0.0
         best_url_specificity = -1
