@@ -98,8 +98,15 @@ def catalog_clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def catalog_variant_key(value: Any) -> str:
+@lru_cache(maxsize=32768)
+def _catalog_variant_key_cached(value: str) -> str:
     return catalog_clean_text(value)
+
+
+def catalog_variant_key(value: Any) -> str:
+    # Registry aliases and offer identity strings are normalized repeatedly
+    # during one broad search. Cache the pure normalization by its string form.
+    return _catalog_variant_key_cached(str(value or ""))
 
 
 def stable_auto_id(brand: Any, name: Any) -> str:
@@ -948,6 +955,7 @@ class ProductMatcher:
             )
         return re.sub(r"\s+", " ", cleaned).strip()
 
+    @lru_cache(maxsize=2048)
     def _family_for_query(self, query: str) -> Optional[Dict[str, Any]]:
         query_key = catalog_variant_key(query)
         if not query_key:
