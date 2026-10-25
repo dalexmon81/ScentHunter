@@ -1945,8 +1945,31 @@ def _deloox_persist_products(product_urls):
                     """INSERT INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)
-                       ON CONFLICT(store,url) DO NOTHING""",
-                    ('deloox', url, 'PENDING', 0, now, now),
+                       ON CONFLICT(store,url) DO UPDATE SET
+                           state=CASE
+                               WHEN hydration_queue.state='DONE' THEN 'DONE'
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ?
+                               THEN 'PROCESSING'
+                               WHEN EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                               ) THEN 'DONE'
+                               ELSE 'PENDING'
+                           END,
+                           available_at=CASE
+                               WHEN hydration_queue.state IN ('ERROR','DEAD')
+                                AND NOT EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                                ) THEN hydration_queue.available_at
+                               ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                           END""",
+                    ('deloox', url, 'PENDING', 0, now, now, now),
                 )
                 count += 1
     finally:
