@@ -301,6 +301,25 @@ jobs:
 
               elapsed_sec = time.monotonic() - search_started_at
               print(f"Query '{query}': status={last.get('status')}, products={count}, elapsed={last.get('elapsed')}s, collect={last.get('collect_elapsed')}s, dedupe={last.get('dedupe_elapsed')}s, aggregate={last.get('aggregate_elapsed')}s, offers={offer_count}, priced_linked_offers={len(valid)}, elapsed_sec={elapsed_sec:.3f}")
+              print("Search phase/store diagnostics: " + json.dumps({
+                  "query": query,
+                  "backend_elapsed": last.get("elapsed"),
+                  "collect_elapsed": last.get("collect_elapsed"),
+                  "dedupe_elapsed": last.get("dedupe_elapsed"),
+                  "aggregate_elapsed": last.get("aggregate_elapsed"),
+                  "store_timings": {
+                      store: {
+                          "elapsed": (info or {}).get("elapsed"),
+                          "count": (info or {}).get("count"),
+                          "candidate_count": ((info or {}).get("details") or {}).get("candidate_count"),
+                          "search_local_elapsed": ((info or {}).get("details") or {}).get("search_local_elapsed"),
+                          "targeted_refresh_elapsed": ((info or {}).get("details") or {}).get("targeted_refresh_elapsed"),
+                          "identity_resolution_elapsed": ((info or {}).get("details") or {}).get("identity_resolution_elapsed"),
+                          "unresolved_count": ((info or {}).get("details") or {}).get("unresolved_count"),
+                      }
+                      for store, info in (last.get("stores") or {}).items()
+                  },
+              }, ensure_ascii=False, sort_keys=True))
               if query == "Born in Roma":
                   # This family is expected to contain 20 registered variants;
                   # fail loudly if the production search returns only a subset.
