@@ -995,17 +995,26 @@ def _offer_concentration_token(value):
 
 
 def _is_dior_line_url_mismatch(item):
-    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts."""
+    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts.
+
+    Use the displayed product title and primary offer URL first. Secondary/raw
+    metadata can contain stale canonical labels and must not override a clear
+    conflict between what the user sees and the destination they open.
+    """
     if not isinstance(item, dict):
         return False
 
-    title = " ".join(
-        str(item.get(key) or "")
-        for key in ("name", "title", "canonical_name", "product_name", "raw_name", "_raw_name")
+    title = next(
+        (str(item.get(key) or "").strip() for key in
+         ("name", "title", "product_name", "canonical_name", "raw_name", "_raw_name")
+         if str(item.get(key) or "").strip()),
+        "",
     )
-    url = " ".join(
-        str(item.get(key) or "")
-        for key in ("url", "product_url", "source_url", "product_page", "link", "_raw_url")
+    url = next(
+        (str(item.get(key) or "").strip() for key in
+         ("url", "product_url", "link", "product_page", "source_url", "_raw_url")
+         if str(item.get(key) or "").strip()),
+        "",
     )
     normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
     title_norm = normalize(title)
