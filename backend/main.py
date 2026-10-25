@@ -2528,7 +2528,14 @@ def _snapshot(job_id):
                     requested_variant = PRODUCT_MATCHER._requested_variant(query, family)
             except Exception as exc:
                 print(f"FAMILY IDENTITY PUBLICATION ERROR: {type(exc).__name__}: {exc}", flush=True)
-        if family is not None and requested_variant is None:
+        # Atomic searches must not synthesize family cards on every status
+        # poll. They are added once, when the complete result set is published.
+        # This keeps the hot polling path cheap for broad family queries.
+        if (
+            family is not None
+            and requested_variant is None
+            and (completed or not job.get("atomic_results"))
+        ):
             existing_ids = {str(group.get("catalog_id") or "") for group in results}
             for variant in family.get("variants") or []:
                 canonical = str(variant.get("canonical_name") or "").strip()
