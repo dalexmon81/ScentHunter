@@ -457,7 +457,18 @@ def _ensure_search_fts(conn):
         if version != _SEARCH_FTS_SCHEMA_VERSION:
             # A schema-version change may alter FTS column indexing options;
             # DELETE alone does not migrate an existing virtual-table schema.
-            # Recreate the table so the retailer scope is genuinely indexed.
+            # Drop catalog triggers first: SQLite otherwise retains triggers on
+            # store_urls/store_products that reference the removed FTS table.
+            # Leaving those behind would make the next catalog write fail.
+            for trigger_name in (
+                "catalog_search_fts_store_urls_ai",
+                "catalog_search_fts_store_urls_au",
+                "catalog_search_fts_store_urls_ad",
+                "catalog_search_fts_store_products_ai",
+                "catalog_search_fts_store_products_au",
+                "catalog_search_fts_store_products_ad",
+            ):
+                conn.execute(f"DROP TRIGGER IF EXISTS {trigger_name}")
             conn.execute("DROP TABLE IF EXISTS catalog_search_fts")
             conn.execute(
                 """CREATE VIRTUAL TABLE catalog_search_fts
