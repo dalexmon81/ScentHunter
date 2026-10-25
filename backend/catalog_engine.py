@@ -3687,7 +3687,19 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         # avoids deadline-driven truncation of alternate terms.
         return cancel_event is not None and cancel_event.is_set()
 
+    # Rank and cap FTS hits BEFORE joining catalog metadata. The previous
+    # plan joined every matching FTS row to product metadata and only then
+    # applied LIMIT, making broad OR/alias queries pay the join cost for a much
+    # larger candidate set than the rows actually consumed.
     sql = """
+        WITH candidate_urls AS (
+            SELECT f.store AS fts_store, f.url AS fts_url
+              FROM catalog_search_fts f
+             WHERE catalog_search_fts MATCH ?
+               AND f.store=?
+             ORDER BY rank
+             LIMIT ?
+        )
         SELECT u.url AS url,
                u.slug AS slug,
                u.lastmod AS lastmod,
@@ -3707,19 +3719,17 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                p.availability AS product_availability,
                p.fetched_at AS product_fetched_at,
                p.fetch_status AS fetch_status,
-               f.store AS fts_store
-          FROM catalog_search_fts f
+               c.fts_store AS fts_store
+          FROM candidate_urls c
           JOIN store_urls u
-            ON u.store=f.store AND u.url=f.url
+            ON u.store=c.fts_store AND u.url=c.fts_url
           LEFT JOIN store_products p
             ON p.store=u.store AND p.url=u.url
            AND p.fetch_status='OK'
            AND (p.store != 'parfumzentrum' OR p.price > 1.0)
-         WHERE catalog_search_fts MATCH ?
-           AND f.store=?
-           AND u.active=1
+         WHERE u.active=1
            AND (
-               f.store != 'easycosmetic'
+               c.fts_store != 'easycosmetic'
                OR lower(u.url) LIKE 'https://www.easycosmetic.de/%'
                OR lower(u.url) LIKE 'http://www.easycosmetic.de/%'
                OR lower(u.url) LIKE 'https://easycosmetic.de/%'
@@ -3729,8 +3739,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                OR lower(u.url) = 'https://easycosmetic.de'
                OR lower(u.url) = 'http://easycosmetic.de'
            )
-         ORDER BY rank
-         LIMIT ?
     """
 
     try:
