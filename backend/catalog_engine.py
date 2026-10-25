@@ -1911,21 +1911,21 @@ def _deloox_queue_finish(url, token, ok, error=''):
 
 
 def _deloox_persist_products(product_urls):
-    """Persist discovered Deloox product URLs incrementally.
+    """Persist discovered Deloox URLs in short, independently committed chunks.
 
-    This reuses the existing catalog -> hydration handoff. It does not alter
-    hydration claiming, workers, retries, or performance-sensitive code.
+    Deloox discovery shares SQLite with search and hydration workers. Holding one
+    write transaction for an entire category page can block offer persistence
+    and queue claims. Small chunks release the writer lock between groups while
+    preserving the same idempotent URL/queue upserts.
     """
     if not product_urls:
         return 0
     now = time.time()
     conn = db()
     count = 0
-    try:
-        with conn:
-            for url, lastmod in product_urls.items():
-                conn.execute(
-                    """INSERT INTO store_urls(
+    items = list(product_urls.items())
+    transaction_batch_size = 25
+    store_url_sql = """INSERT INTO store_urls(
                            store,url,slug,lastmod,discovered_at,active)
                        VALUES(?,?,?,?,?,1)
                        ON CONFLICT(store,url) DO UPDATE SET
@@ -1938,11 +1938,8 @@ def _deloox_persist_products(product_urls):
                        WHERE store_urls.slug IS NOT excluded.slug
                           OR (excluded.lastmod != ''
                               AND store_urls.lastmod IS NOT excluded.lastmod)
-                          OR store_urls.active != 1""",
-                    ('deloox', url, url_slug(url), lastmod or '', now),
-                )
-                conn.execute(
-                    """INSERT INTO hydration_queue(
+                          OR store_urls.active != 1"""
+    hydration_sql = """INSERT INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
@@ -1968,14 +1965,24 @@ def _deloox_persist_products(product_urls):
                                       AND p.fetch_status='OK'
                                 ) THEN excluded.available_at
                                ELSE MIN(hydration_queue.available_at, excluded.available_at)
-                           END""",
-                    ('deloox', url, 'PENDING', 0, now, now, now),
-                )
-                count += 1
+                           END"""
+    try:
+        for chunk_start in range(0, len(items), transaction_batch_size):
+            chunk = items[chunk_start:chunk_start + transaction_batch_size]
+            with conn:
+                for url, lastmod in chunk:
+                    conn.execute(
+                        store_url_sql,
+                        ('deloox', url, url_slug(url), lastmod or '', now),
+                    )
+                    conn.execute(
+                        hydration_sql,
+                        ('deloox', url, 'PENDING', 0, now, now, now),
+                    )
+                    count += 1
     finally:
         conn.close()
     return count
-
 
 def _discover_deloox_search_catalog(deadline=None):
     """Import the Deloox scraper's proven generic search discovery into catalog.
