@@ -3476,14 +3476,39 @@ _STALE_PRICE_REPAIR_LOCK = threading.Lock()
 _STALE_PRICE_REPAIR_IN_FLIGHT = set()
 
 def _schedule_stale_price_repairs(rows, max_jobs=12):
-    # Search-result-only scheduling misses stale offers that the search candidate
-    # limiter excludes (for example a DONE Deloox row hidden behind catalog_pending).
-    # Select stale persisted offers independently, then merge in any stale rows
-    # already returned by the current search. This makes repair reach the database
-    # rows that actually need refreshing instead of depending on search visibility.
+    # Prioritize stale offers surfaced by the current search. Otherwise a large
+    # backlog of unrelated, older catalog rows can consume every repair slot,
+    # leaving the exact Hawas candidates searched by the user pending indefinitely.
+    # Fill remaining slots from a database-wide stale scan so background repair
+    # still progresses beyond the current query.
     cutoff = time.time() - 24 * 60 * 60
     jobs = []
     seen = set()
+
+    def add_stale(store_value, url_value, fetched_at=None):
+        store = str(store_value or '').strip().lower()
+        url = str(url_value or '').strip()
+        if store not in STORES or not url or (store, url) in seen:
+            return
+        try:
+            fetched = float(fetched_at or 0)
+        except (TypeError, ValueError):
+            fetched = 0.0
+        if fetched > 0 and fetched > cutoff:
+            return
+        seen.add((store, url))
+        jobs.append((store, url))
+
+    # Search-relevant candidates go first, but only if their persisted prices
+    # are actually stale. This makes repeated searches repair the products they
+    # are trying to show rather than unrelated rows at the head of the backlog.
+    for row in rows or []:
+        if isinstance(row, dict):
+            add_stale(
+                row.get('store_key') or row.get('store'),
+                row.get('product_url') or row.get('url'),
+                row.get('fetched_at'),
+            )
 
     try:
         conn = db()
@@ -3494,38 +3519,23 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
                    WHERE fetched_at IS NULL OR fetched_at <= ?
                    ORDER BY COALESCE(fetched_at, 0) ASC
                    LIMIT ?""",
-                (cutoff, max_jobs * 4),
+                (cutoff, max_jobs * 8),
             ).fetchall()
         finally:
             conn.close()
         for row in stale_rows:
-            store = str(row['store'] or '').strip().lower()
-            url = str(row['url'] or '').strip()
-            if store in STORES and url and (store, url) not in seen:
-                seen.add((store, url))
-                jobs.append((store, url))
+            add_stale(row['store'], row['url'], row['fetched_at'])
     except Exception as exc:
         print(f"CATALOG STALE PRICE SCAN ERROR {type(exc).__name__}:{exc}", flush=True)
 
-    for row in rows or []:
-        store = str(row.get('store_key') or '').strip().lower()
-        url = str(row.get('product_url') or row.get('url') or '').strip()
-        if store not in STORES or not url or (store, url) in seen:
-            continue
-        try:
-            fetched_at = float(row.get('fetched_at') or 0)
-        except (TypeError, ValueError):
-            fetched_at = 0.0
-        if fetched_at > 0 and time.time() - fetched_at <= 24 * 60 * 60:
-            continue
-        seen.add((store, url))
-        jobs.append((store, url))
-    for store, url in jobs[:max_jobs]:
+    selected = jobs[:max_jobs]
+    for store, url in selected:
         key = (store, url)
         with _STALE_PRICE_REPAIR_LOCK:
             if key in _STALE_PRICE_REPAIR_IN_FLIGHT:
                 continue
             _STALE_PRICE_REPAIR_IN_FLIGHT.add(key)
+
         def _repair(target_store=store, target_url=url, target_key=key):
             try:
                 result = refresh_url(target_store, target_url)
@@ -3544,6 +3554,7 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
             finally:
                 with _STALE_PRICE_REPAIR_LOCK:
                     _STALE_PRICE_REPAIR_IN_FLIGHT.discard(target_key)
+
         threading.Thread(target=_repair, name='catalog-stale-price-refresh', daemon=True).start()
 
 
