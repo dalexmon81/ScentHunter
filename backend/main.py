@@ -2066,7 +2066,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return []
 
     terms = _catalog_search_terms(query)
-    candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
+    # Bound the TOTAL candidates sent through ProductMatcher. The former
+    # 64-per-store budget multiplied by expanded terms (before the catalog
+    # engine enforced its per-store aggregate cap), making broad family
+    # searches resolve hundreds to thousands of rows serially.
+    candidate_limit = 32
 
     try:
         # Keep the foreground catalog pass bounded so results are published quickly.
@@ -2236,6 +2240,9 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 on_report(report)
         return [reports_by_store[s] for s in stores]
 
+    identity_started = time.monotonic()
+    identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
+    identity_matched_count = 0
     for store in stores:
         store_rows = grouped_raw.get(store, [])
         matched_rows = []
@@ -2302,9 +2309,15 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             },
         }
         reports_by_store[store] = report
+        identity_matched_count += len(matched_rows)
         if callable(on_report):
             on_report(report)
 
+    print(
+        f'CATALOG PHASE TIMING phase=identity_resolution query={query!r} '
+        f'elapsed={time.monotonic()-identity_started:.3f}s '
+        f'candidates={identity_candidate_count} matched={identity_matched_count}', flush=True
+    )
     print(
         f'CATALOG SEARCH END query={query!r} candidates={len(raw_rows)} '
         f'elapsed={round(time.monotonic() - started, 3)}', flush=True
