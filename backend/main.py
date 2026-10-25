@@ -994,6 +994,35 @@ def _offer_concentration_token(value):
     return ""
 
 
+def _is_dior_line_url_mismatch(item):
+    """Reject cross-line Dior Eau Sauvage / Dior Sauvage title-to-URL conflicts."""
+    if not isinstance(item, dict):
+        return False
+
+    title = " ".join(
+        str(item.get(key) or "")
+        for key in ("name", "title", "canonical_name", "product_name", "raw_name", "_raw_name")
+    )
+    url = " ".join(
+        str(item.get(key) or "")
+        for key in ("url", "product_url", "source_url", "product_page", "link", "_raw_url")
+    )
+    normalize = lambda value: re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+    title_norm = normalize(title)
+    url_norm = normalize(url)
+
+    title_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", title_norm))
+    url_is_eau_sauvage = bool(re.search(r"\\beau sauvage\\b", url_norm))
+    title_is_sauvage = bool(re.search(r"\\bsauvage\\b", title_norm))
+    url_is_sauvage = bool(re.search(r"\\bsauvage\\b", url_norm))
+
+    if url_is_eau_sauvage and title_is_sauvage and not title_is_eau_sauvage:
+        return True
+    if title_is_eau_sauvage and url_is_sauvage and not url_is_eau_sauvage:
+        return True
+    return False
+
+
 def _is_concentration_mismatch_offer(item):
     """Reject only decisive title/URL concentration or Dior-line conflicts."""
     if not isinstance(item, dict):
@@ -1022,7 +1051,7 @@ def _is_concentration_mismatch_offer(item):
 
     title_line = dior_line(title)
     url_line = dior_line(urls)
-    return bool(title_line and url_line and title_line != url_line)
+    return _is_dior_line_url_mismatch(item) or bool(title_line and url_line and title_line != url_line)
 
 
 def _is_non_fragrance_offer(item):
@@ -2401,6 +2430,7 @@ def _snapshot(job_id):
                 if isinstance(offer, dict)
                 and not _is_non_fragrance_offer(offer)
                 and not _is_concentration_mismatch_offer(offer)
+                and not _is_dior_line_url_mismatch(offer)
             ]
             if safe_offers:
                 safe_group["offers"] = safe_offers
