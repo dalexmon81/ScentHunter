@@ -3761,18 +3761,28 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                 term_specs.append((ts, sabina_size_tokens))
                 fts_token_sets.append(fts_tokens)
 
-            combined_query = _fts_query_for_token_sets(fts_token_sets)
-            if not combined_query or not term_specs:
+            if not fts_token_sets or not term_specs:
                 continue
 
-            combined_candidate_limit = min(
-                2048,
-                max(256, fts_candidate_limit * len(term_specs)),
+            # Keep a separate LIMIT for every alias inside one SQLite statement.
+            # A single OR query can let the most common alias crowd out rarer
+            # variants; UNION ALL preserves the previous per-term candidate
+            # distribution while avoiding Python round-trips between aliases.
+            wrapped_sql = f"SELECT * FROM ({sql})"
+            combined_sql = " UNION ALL ".join(
+                wrapped_sql for _ in fts_token_sets
             )
+            combined_params = []
+            for fts_tokens in fts_token_sets:
+                combined_params.extend((
+                    _fts_query_for_tokens(fts_tokens),
+                    store,
+                    fts_candidate_limit,
+                ))
             _diag_sql_t0 = time.monotonic()
             try:
                 candidates = conn.execute(
-                    sql, (combined_query, store, combined_candidate_limit)
+                    combined_sql, combined_params
                 ).fetchall()
             except sqlite3.OperationalError:
                 if cancel_event is not None and cancel_event.is_set():
