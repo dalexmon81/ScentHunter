@@ -109,6 +109,30 @@ def catalog_variant_key(value: Any) -> str:
     return _catalog_variant_key_cached(str(value or ""))
 
 
+@lru_cache(maxsize=8192)
+def _audience_for_normalized_key(value: str) -> Optional[str]:
+    patterns = {
+        "donna": r"\b(?:donna|women|woman|her|femme|dames|damen)\b",
+        "uomo": r"\b(?:uomo|men|man|him|homme|herren|heren)\b",
+    }
+    found = [
+        audience for audience, pattern in patterns.items()
+        if re.search(pattern, value, flags=re.I)
+    ]
+    return found[0] if len(found) == 1 else None
+
+
+@lru_cache(maxsize=512)
+def _normalized_family_excluded_keys(
+    excluded_products: Tuple[str, ...],
+    excluded_aliases: Tuple[str, ...],
+) -> frozenset[str]:
+    return frozenset(
+        catalog_variant_key(value)
+        for value in (*excluded_products, *excluded_aliases)
+    )
+
+
 def stable_auto_id(brand: Any, name: Any) -> str:
     key = f"{normalize(brand)}::{normalize(name)}"
     return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
@@ -618,6 +642,10 @@ class ProductMatcher:
         self._text_product_cache: Dict[int, Tuple[Tuple[Any, ...], ...]] = {}
         self._text_specificity_cache: Dict[int, int] = {}
         self._brand_compatible_cache: Dict[str, Tuple[CatalogProduct, ...]] = {}
+        self._catalog_by_id: Dict[int, CatalogProduct] = {
+            id(product): product for product in self.catalog
+        }
+        self._brand_compatible_by_id_cache: Dict[str, Dict[int, CatalogProduct]] = {}
 
         # Family-variant lookup postings.  `_catalog_product_for_family_variant`
         # is called for every matched retailer offer.  The legacy fallback used
@@ -1018,12 +1046,8 @@ class ProductMatcher:
         offer: Dict[str, Any],
         family: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
-        # Family searches are fragrance searches. Reject explicit non-fragrance
-        # categories centrally, before variant resolution, so no retailer
-        # scraper needs store-specific product filters.
-        if self._is_non_fragrance_offer(offer):
-            return None
-
+        # match() already applies the authoritative non-fragrance guard
+        # before calling this helper; do not run the same text/regex checks twice.
         offer_brand = self._offer_brand(offer)
         brand_conflict = bool(offer_brand) and not self._brand_matches(
             offer_brand, family.get("brand", "")
@@ -1049,18 +1073,8 @@ class ProductMatcher:
         # Resolve explicit audience labels before alias/subphrase matching.
         # Without this guard, a generic alias registered under Uomo (for example
         # "Born In Roma Extradose") can match inside an explicit Donna title.
-        audience_patterns = {
-            "donna": r"\b(?:donna|women|woman|her|femme|dames|damen)\b",
-            "uomo": r"\b(?:uomo|men|man|him|homme|herren|heren)\b",
-        }
-
         def audience_of(value: Any) -> Optional[str]:
-            text = catalog_variant_key(value)
-            found = [
-                audience for audience, pattern in audience_patterns.items()
-                if re.search(pattern, text, flags=re.I)
-            ]
-            return found[0] if len(found) == 1 else None
+            return _audience_for_normalized_key(catalog_variant_key(value))
 
         offer_audience = audience_of(candidate_key)
         eligible_variants = family["variants"]
@@ -1087,10 +1101,9 @@ class ProductMatcher:
             else:
                 return None
 
-        excluded = tuple(
-            catalog_variant_key(value)
-            for value in (*family.get("excluded_products", ()), *family.get("excluded_aliases", ()))
-        )
+        excluded_products = tuple(str(value or "") for value in (family.get("excluded_products") or ()))
+        excluded_aliases = tuple(str(value or "") for value in (family.get("excluded_aliases") or ()))
+        excluded = _normalized_family_excluded_keys(excluded_products, excluded_aliases)
         if candidate_key in excluded:
             return None
 
@@ -2195,6 +2208,11 @@ class ProductMatcher:
                 raw_variant = variant_data[0]
                 url_tokens_list = list(variant_data[1:])
                 url_concentration = normalize_concentration(raw_variant)
+                base_candidate_url_tokens = [
+                    token for token in url_tokens_list
+                    if token not in generic_url_tokens and not token.isdigit()
+                ]
+                base_counts = Counter(base_candidate_url_tokens)
 
                 for (
                     alias,
@@ -2203,21 +2221,17 @@ class ProductMatcher:
                     identity_c_tokens,
                     product_concentration,
                 ) in product_cache:
-                    # Remove URL/domain boilerplate and brand tokens using the
-                    # exact same generic rules as the previous implementation.
-                    candidate_url_tokens = [
-                        token
-                        for token in url_tokens_list
-                        if token not in generic_url_tokens and not token.isdigit()
-                    ]
-                    counts = Counter(candidate_url_tokens)
+                    # URL boilerplate is identical for every catalog alias.
+                    # Precompute it once per URL variant, then only adjust the
+                    # brand-token counts for each candidate alias.
+                    counts = base_counts.copy()
                     for token in brand_tokens:
                         if token not in c_tokens:
                             counts.pop(token, None)
                         elif counts[token] > 1:
                             counts[token] -= 1
                     candidate_url_tokens = [
-                        token for token in candidate_url_tokens
+                        token for token in base_candidate_url_tokens
                         if counts[token] > 0
                     ]
                     if not candidate_url_tokens:
@@ -2510,6 +2524,16 @@ class ProductMatcher:
         self._brand_compatible_cache[normalized_brand] = result
         return result
 
+    def _brand_compatible_by_id(self, normalized_brand: str) -> Dict[int, CatalogProduct]:
+        cached = self._brand_compatible_by_id_cache.get(normalized_brand)
+        if cached is None:
+            cached = {
+                id(product): product
+                for product in self._brand_compatible_products(normalized_brand)
+            }
+            self._brand_compatible_by_id_cache[normalized_brand] = cached
+        return cached
+
     def _best_match(self, offer: Dict[str, Any], query: str = "") -> Tuple[Optional[CatalogProduct], str, float]:
         """Resolve a generic offer with identifiers, name evidence and URL identity.
 
@@ -2564,7 +2588,10 @@ class ProductMatcher:
                 if narrowed:
                     eligible = narrowed
 
-        eligible_by_id = {id(product): product for product in eligible}
+        if normalized_brand:
+            eligible_by_id = self._brand_compatible_by_id(normalized_brand)
+        else:
+            eligible_by_id = {id(product): product for product in eligible}
 
         # Text candidate generation: every accepted text score has at least one
         # shared token. Keep the old full-catalog behavior only as a safety
