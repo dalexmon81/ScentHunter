@@ -236,7 +236,8 @@ jobs:
                   return json.loads(response.read().decode("utf-8"))
 
           def search(query):
-              start_deadline = time.monotonic() + 45
+              search_started_at = time.monotonic()
+              start_deadline = search_started_at + 45
               job_id = ""
               while time.monotonic() < start_deadline:
                   started = get_json("/search-start?q=" + urllib.parse.quote(query))
@@ -266,7 +267,7 @@ jobs:
                           f"Atomic search regression: '{query}' exposed "
                           f"{len(partial_results)} products before completion"
                       )
-                  time.sleep(0.25)
+                  time.sleep(0.05)
               else:
                   raise RuntimeError("Production search timed out: " + json.dumps({
                       "status": last.get("status"),
@@ -298,7 +299,8 @@ jobs:
                   if numeric_price > 0 and url.startswith(("http://", "https://")) and offer.get("name") and offer.get("store"):
                       valid.append(offer)
 
-              print(f"Query '{query}': status={last.get('status')}, products={count}, offers={offer_count}, priced_linked_offers={len(valid)}")
+              elapsed_sec = time.monotonic() - search_started_at
+              print(f"Query '{query}': status={last.get('status')}, products={count}, offers={offer_count}, priced_linked_offers={len(valid)}, elapsed_sec={elapsed_sec:.3f}")
               if query == "Born in Roma":
                   # This family is expected to contain 20 registered variants;
                   # fail loudly if the production search returns only a subset.
