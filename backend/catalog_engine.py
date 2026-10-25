@@ -3682,12 +3682,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
     fts_candidate_limit = max(term_candidate_limit, min(128, term_candidate_limit * 2))
 
     def interrupted():
-        # Bound foreground SQLite work as well as honoring explicit cancellation.
-        # The previous handler checked cancellation only, so the caller's
-        # 0.5-0.8s deadline was silently ignored by the active FTS5 path.
-        if cancel_event is not None and cancel_event.is_set():
-            return 1
-        return deadline is not None and time.monotonic() >= float(deadline)
+        # Only explicit cancellation may interrupt the multi-retailer FTS scan.
+        # A wall-clock deadline here used to break the store loop at the first
+        # slow retailer, silently omitting later retailers and family variants.
+        # Keep the foreground budget as telemetry; enforce deadlines at the
+        # request/job layer without turning a valid catalog search into partial data.
+        return cancel_event is not None and cancel_event.is_set()
 
     # Rank and cap FTS hits BEFORE joining catalog metadata. The previous
     # plan joined every matching FTS row to product metadata and only then
@@ -3824,17 +3824,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                 ).fetchall()
             except sqlite3.OperationalError as exc:
                 if cancel_event is not None and cancel_event.is_set():
-                    break
-                # SQLite reports a progress-handler deadline as "interrupted".
-                # Keep results already collected from faster retailers instead
-                # of failing the entire search because one retailer's query ran
-                # past the foreground budget.
-                if deadline is not None and time.monotonic() >= float(deadline) and "interrupt" in str(exc).lower():
-                    print(
-                        f"CATALOG SEARCH DIAG deadline_reached store={store} "
-                        f"elapsed={time.monotonic()-_diag_t0:.3f}s rows={len(rows)}",
-                        flush=True,
-                    )
                     break
                 raise
             _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
