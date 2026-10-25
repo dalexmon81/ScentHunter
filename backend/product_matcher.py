@@ -2223,7 +2223,10 @@ class ProductMatcher:
                     if not candidate_url_tokens:
                         continue
 
-                    identity_candidate_token_set = set(identity_candidate.split())
+                    # identity_c_tokens is precomputed as a frozenset when
+                    # the catalog index is built; rebuilding it for every
+                    # offer × candidate × alias dominated generic matching.
+                    identity_candidate_token_set = identity_c_tokens
                     identity_url = " ".join(
                         token
                         for token in candidate_url_tokens
