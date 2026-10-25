@@ -3767,9 +3767,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             combined_query = _fts_query_for_token_sets(fts_token_sets)
             if not combined_query:
                 continue
+            # The OR query returns one ranked candidate pool for all terms;
+            # multiplying its LIMIT by the number of terms over-fetched up to
+            # 512 rows per store for eight aliases and pushed search_local past
+            # one second. A 256-row pool covers the bounded per-term budget.
             combined_candidate_limit = min(
-                2048,
-                max(256, fts_candidate_limit * len(term_specs)),
+                512,
+                max(256, fts_candidate_limit * 4),
             )
             _diag_sql_t0 = time.monotonic()
             try:
