@@ -2024,7 +2024,7 @@ def _catalog_search_terms(query):
         # running dozens of near-duplicate aliases adds repeated SQLite FTS
         # work without materially improving recall. Keep the original query
         # plus a ranked, bounded set for these queries.
-        max_terms = 80 if len(query_tokens) <= 1 else 24
+        max_terms = 8 if len(query_tokens) <= 1 else 4
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
@@ -2069,10 +2069,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     candidate_limit = min(128, max(64, len(terms) * 2)) if len(terms) > 1 else 64
 
     try:
+        # Keep the foreground catalog pass bounded so results are published quickly.
+        # The exact query is searched across retailers first; background hydration
+        # continues to enrich missing offer details after this foreground pass.
         search_budget = min(
-            12.0,
+            0.80,
             max(
-                2.0,
+                0.50,
                 float(os.environ.get(
                     'CATALOG_SEARCH_BUDGET_SECONDS',
                     str(CATALOG_SEARCH_BUDGET_SECONDS),
