@@ -3476,11 +3476,41 @@ _STALE_PRICE_REPAIR_LOCK = threading.Lock()
 _STALE_PRICE_REPAIR_IN_FLIGHT = set()
 
 def _schedule_stale_price_repairs(rows, max_jobs=12):
+    # Search-result-only scheduling misses stale offers that the search candidate
+    # limiter excludes (for example a DONE Deloox row hidden behind catalog_pending).
+    # Select stale persisted offers independently, then merge in any stale rows
+    # already returned by the current search. This makes repair reach the database
+    # rows that actually need refreshing instead of depending on search visibility.
+    cutoff = time.time() - 24 * 60 * 60
     jobs = []
+    seen = set()
+
+    try:
+        conn = db()
+        try:
+            stale_rows = conn.execute(
+                """SELECT store, url, fetched_at
+                   FROM store_products
+                   WHERE fetched_at IS NULL OR fetched_at <= ?
+                   ORDER BY COALESCE(fetched_at, 0) ASC
+                   LIMIT ?""",
+                (cutoff, max_jobs * 4),
+            ).fetchall()
+        finally:
+            conn.close()
+        for row in stale_rows:
+            store = str(row['store'] or '').strip().lower()
+            url = str(row['url'] or '').strip()
+            if store in STORES and url and (store, url) not in seen:
+                seen.add((store, url))
+                jobs.append((store, url))
+    except Exception as exc:
+        print(f"CATALOG STALE PRICE SCAN ERROR {type(exc).__name__}:{exc}", flush=True)
+
     for row in rows or []:
         store = str(row.get('store_key') or '').strip().lower()
         url = str(row.get('product_url') or row.get('url') or '').strip()
-        if store not in STORES or not url:
+        if store not in STORES or not url or (store, url) in seen:
             continue
         try:
             fetched_at = float(row.get('fetched_at') or 0)
@@ -3488,6 +3518,7 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
             fetched_at = 0.0
         if fetched_at > 0 and time.time() - fetched_at <= 24 * 60 * 60:
             continue
+        seen.add((store, url))
         jobs.append((store, url))
     for store, url in jobs[:max_jobs]:
         key = (store, url)
