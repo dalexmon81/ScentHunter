@@ -3785,8 +3785,10 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
             ):
                 item = dict(item)
                 item['_needs_refresh'] = True
-                item['price_num'] = None
-                item['price'] = None
+                # Keep the last known price available while hydration is queued.
+                # The public API can expose freshness separately; hiding price
+                # here makes the entire search fail whenever the short refresh
+                # budget cannot finish a retailer HTTP request.
 
             unique_rows.append(item)
 
