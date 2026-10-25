@@ -2647,6 +2647,8 @@ def _publish_result(job_id, row):
             return
         if job.get("done_event") and job["done_event"].is_set():
             return
+        if job.get("atomic_results"):
+            return
         job.setdefault("offers", []).append(row)
 
 
@@ -2684,16 +2686,19 @@ def _publish_store(job_id, report):
         else:
             job.setdefault("errors", {}).pop(store, None)
 
+        # Atomic mode keeps all result rows inside the collector's returned
+        # reports. Do not append per-store offers under JOBS_LOCK: that both
+        # leaks a progressive offer_count and makes status polling contend with
+        # hundreds of row appends before the final publication.
+        if job.get("atomic_results"):
+            return
+
         for item in report.get("results", []):
             if isinstance(item, dict):
                 job.setdefault("offers", []).append(item)
 
         job["aggregate_revision"] = int(job.get("aggregate_revision", 0)) + 1
         revision = job["aggregate_revision"]
-        # Atomic mode retains store batches internally but never exposes a
-        # partial product list. _run_job publishes the single final snapshot.
-        if job.get("atomic_results"):
-            return
         offers_snapshot = list(job.get("offers", []))
 
     # Never hold the global lock while dedupe or ProductMatcher aggregation runs.
@@ -2792,9 +2797,14 @@ def _run_job(job_id, query):
                 elapsed = round(time.monotonic() - started, 3)
                 total = 0
             else:
-                offers = list(job.get("offers", []))
                 diagnostics = job.setdefault("dedupe_diagnostics", [])
                 cancelled = bool(job.get("cancel_event") and job["cancel_event"].is_set())
+                offers = [
+                    item
+                    for report in (reports or [])
+                    for item in (report.get("results") or [])
+                    if isinstance(item, dict)
+                ]
 
         if job is not None:
             if cancel_event is not None and cancel_event.is_set():
