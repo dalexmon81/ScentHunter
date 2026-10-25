@@ -25,7 +25,7 @@ ALLOWED_HOSTS = {
 }
 PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
 
-EXPECTED_PARSER_GIT_BLOB_SHA = "8ae5719a56aca0046e8c5ac144b594ce987bcca9"
+EXPECTED_PARSER_GIT_BLOB_SHA = "a2ad6db13ccf84430c4000a4e3dad041e3860a55"
 
 
 def parser_runtime_status() -> dict:
