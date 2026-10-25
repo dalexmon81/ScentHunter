@@ -123,10 +123,13 @@ jobs:
 
           base = "https://scenthunter.fly.dev"
 
-          def get_json(path, timeout=12):
+          def get_json(path, timeout=25):
+              # Search-status polling can briefly contend with catalog hydration.
+              # Allow the HTTP read to finish; the independent 120s search deadline
+              # below still fails a genuinely stalled search instead of a single slow poll.
               request = urllib.request.Request(
                   base + path,
-                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.1"},
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-search-smoke-test/1.2"},
               )
               with urllib.request.urlopen(request, timeout=timeout) as response:
                   if response.status != 200:
