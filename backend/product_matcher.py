@@ -1010,6 +1010,7 @@ class ProductMatcher:
         return re.sub(r"\s+", " ", cleaned).strip()
 
     @lru_cache(maxsize=2048)
+    @lru_cache(maxsize=4096)
     def _family_for_query(self, query: str) -> Optional[Dict[str, Any]]:
         query_key = catalog_variant_key(query)
         if not query_key:
