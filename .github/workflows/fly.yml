@@ -122,21 +122,22 @@ jobs:
           source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
           tree = ast.parse(source)
           function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_deloox_persist_products")
-          statements = []
-          for node in ast.walk(function):
-              if not (
-                  isinstance(node, ast.Call)
-                  and isinstance(node.func, ast.Attribute)
-                  and node.func.attr == "execute"
-                  and node.args
-              ):
-                  continue
-              for part in ast.walk(node.args[0]):
-                  if isinstance(part, ast.Constant) and isinstance(part.value, str):
-                      if "INSERT INTO hydration_queue" in part.value:
-                          statements.append(part.value)
-          assert statements, "Deloox persistence must update the hydration queue"
-          statement = statements[0]
+          function_source = ast.get_source_segment(source, function)
+          assert "transaction_batch_size = 25" in function_source, "Deloox writes must use bounded transaction chunks"
+          assert "for chunk_start in range(0, len(items), transaction_batch_size)" in function_source, "Deloox writer lock must be released between chunks"
+          statement = next(
+              (
+                  node.value.value
+                  for node in ast.walk(function)
+                  if isinstance(node, ast.Assign)
+                  and any(isinstance(target, ast.Name) and target.id == "hydration_sql" for target in node.targets)
+                  and isinstance(node.value, ast.Constant)
+                  and isinstance(node.value.value, str)
+                  and "INSERT INTO hydration_queue" in node.value.value
+              ),
+              None,
+          )
+          assert statement, "Deloox persistence must update the hydration queue"
 
           conn = sqlite3.connect(":memory:")
           conn.row_factory = sqlite3.Row
