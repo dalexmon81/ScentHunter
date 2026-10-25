@@ -16,6 +16,7 @@ try:
     from catalog_engine import (
         search_local as catalog_search_local,
         refresh_candidates as catalog_refresh_candidates,
+        prioritize_hydration_candidates as catalog_prioritize_hydration_candidates,
         discover_store as catalog_discover_store,
         store_status as catalog_store_status,
         hydration_status as catalog_hydration_status,
@@ -29,6 +30,7 @@ except Exception as exc:
     CATALOG_ENGINE_AVAILABLE = False
     catalog_search_local = None
     catalog_refresh_candidates = None
+    catalog_prioritize_hydration_candidates = None
     catalog_discover_store = None
     catalog_store_status = None
     catalog_sync_all = None
@@ -2133,6 +2135,17 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 if isinstance(row, dict) and row.get('_needs_refresh')
             ]
             if requested:
+                # Mark these exact catalog-selected URLs ahead of the general
+                # hydration backlog. The helper waits at most 150ms for SQLite;
+                # an unavailable hint never delays or fails the foreground search.
+                if callable(catalog_prioritize_hydration_candidates):
+                    prioritized = catalog_prioritize_hydration_candidates(requested)
+                    if prioritized:
+                        print(
+                            f'CATALOG HYDRATION PRIORITY HINT query={query!r} '
+                            f'updated={prioritized}',
+                            flush=True,
+                        )
                 refreshed = catalog_refresh_candidates(
                     requested,
                     cancel_event=cancel_event,
