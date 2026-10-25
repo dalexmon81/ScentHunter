@@ -2548,7 +2548,7 @@ class ProductMatcher:
         # least one identity token with the requested product line. If no
         # selective posting exists, preserve the original candidate set.
         query_tokens = set(catalog_clean_text(query).split()) if query else set()
-        if len(query_tokens) >= 2 and eligible:
+        if not normalized_brand and len(query_tokens) >= 2 and eligible:
             query_postings = [
                 self._text_token_index.get(token, set())
                 for token in query_tokens
