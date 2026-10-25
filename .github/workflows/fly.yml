@@ -258,7 +258,15 @@ jobs:
                   last = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
                   if last.get("completed"):
                       break
-                  time.sleep(2)
+                  # Atomic publication contract: the API must expose no
+                  # products until the whole search job is finalized.
+                  partial_results = last.get("results")
+                  if isinstance(partial_results, list) and partial_results:
+                      raise RuntimeError(
+                          f"Atomic search regression: '{query}' exposed "
+                          f"{len(partial_results)} products before completion"
+                      )
+                  time.sleep(0.25)
               else:
                   raise RuntimeError("Production search timed out: " + json.dumps({
                       "status": last.get("status"),
