@@ -1033,35 +1033,50 @@ def _is_dior_line_url_mismatch(item):
 
 
 def _is_concentration_mismatch_offer(item):
-    """Reject only decisive title/URL concentration or Dior-line conflicts."""
+    """Reject decisive product-title / destination identity conflicts.
+
+    The offer's displayed title must describe the product at its destination.
+    Retailer URL slugs often contain the actual brand and product line, so
+    reject explicit conflicts rather than publishing a misleading price link.
+    """
     if not isinstance(item, dict):
         return False
-    title = " ".join(
-        str(item.get(key) or "")
-        for key in ("name", "title", "product_name", "raw_name", "_raw_name")
-    ).strip()
-    urls = " ".join(
-        str(item.get(key) or "")
-        for key in ("url", "product_url", "source_url", "product_page", "link", "_raw_url")
-    )
+
+    title = " ".join(str(item.get(key) or "") for key in
+                     ("name", "title", "product_name", "raw_name", "_raw_name")).strip()
+    url = " ".join(str(item.get(key) or "") for key in
+                   ("url", "product_url", "source_url", "product_page", "link", "_raw_url")).strip()
+    title_norm = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+    url_norm = re.sub(r"[^a-z0-9]+", " ", url.lower()).strip()
+
+    # Preserve the existing hard concentration and Dior-line checks.
     title_token = _offer_concentration_token(title)
-    url_token = _offer_concentration_token(urls)
+    url_token = _offer_concentration_token(url)
     hard_tokens = {"edt", "edp", "edc", "edt_intense", "edp_intense"}
     if title_token in hard_tokens and url_token in hard_tokens and title_token != url_token:
         return True
+    if _is_dior_line_url_mismatch(item):
+        return True
 
-    def dior_line(value):
-        normalized = re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
-        if re.search(r"\beau sauvage\b", normalized):
-            return "dior_eau_sauvage"
-        if re.search(r"\bsauvage\b", normalized):
-            return "dior_sauvage"
-        return ""
+    # Detect a different explicit brand in the destination. This is especially
+    # important for offers like "French Avenue Chaos" linking to "Vertus Chaos".
+    brand = str(item.get("canonical_brand") or item.get("brand") or item.get("manufacturer") or "").strip()
+    brand_norm = re.sub(r"[^a-z0-9]+", " ", brand.lower()).strip()
+    if brand_norm and len(brand_norm) >= 3 and brand_norm not in {"unknown", "perfume"}:
+        url_path = urllib.parse.urlparse(url.split()[0] if url else "").path
+        url_identity = re.sub(r"[^a-z0-9]+", " ", url_path.lower()).strip()
+        known_brands = {
+            "vertus", "french avenue", "rasasi", "dior", "afnan", "lattafa",
+            "armaf", "maison alhambra", "parfums de marly", "xerjoff",
+            "initio", "creed", "chanel", "versace", "gucci", "prada",
+            "yves saint laurent", "givenchy", "valentino", "burberry",
+            "hugo boss", "dolce gabbana", "montale", "mancera", "nishane",
+        }
+        for candidate in known_brands:
+            if candidate != brand_norm and candidate in url_identity and brand_norm in known_brands:
+                return True
 
-    title_line = dior_line(title)
-    url_line = dior_line(urls)
-    return _is_dior_line_url_mismatch(item) or bool(title_line and url_line and title_line != url_line)
-
+    return False
 
 def _is_non_fragrance_offer(item):
     """Reject generic non-perfume commercial items before matching/publication.
