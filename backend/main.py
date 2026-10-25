@@ -4063,7 +4063,7 @@ def search_start(q: str):
     # Cancellation handshake must never block the HTTP request for a full
     # store/job timeout.  If the previous job is still shutting down, the
     # frontend can retry /search-start after a short delay.
-    if not _cancel_active_jobs(wait_timeout=2.5):
+    if not _cancel_active_jobs(wait_timeout=0.15):
         return {
             'job_id': '',
             'query': query,
@@ -4093,11 +4093,11 @@ def search_start(q: str):
     # searches still return a searching snapshot and continue asynchronously.
     try:
         start_wait = min(
-            0.90,
-            max(0.0, float(os.environ.get('SEARCH_START_WAIT_SECONDS', '0.90'))),
+            0.75,
+            max(0.0, float(os.environ.get('SEARCH_START_WAIT_SECONDS', '0.75'))),
         )
     except (TypeError, ValueError):
-        start_wait = 0.90
+        start_wait = 0.75
     with JOBS_LOCK:
         started_job = JOBS.get(job_id)
         done_event = started_job.get("done_event") if started_job else None
