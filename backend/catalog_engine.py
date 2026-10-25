@@ -1966,7 +1966,7 @@ def _deloox_persist_products(product_urls):
                                     WHERE p.store='deloox'
                                       AND p.url=hydration_queue.url
                                       AND p.fetch_status='OK'
-                                ) THEN hydration_queue.available_at
+                                ) THEN excluded.available_at
                                ELSE MIN(hydration_queue.available_at, excluded.available_at)
                            END""",
                     ('deloox', url, 'PENDING', 0, now, now, now),
