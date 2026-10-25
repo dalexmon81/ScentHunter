@@ -754,17 +754,46 @@ class ProductMatcher:
                     value = str(value or "").strip()
                     if value and value not in valid_aliases:
                         valid_aliases.append(value)
+                normalized_aliases = tuple(
+                    ProductMatcher._url_catalog_identity_text(value)
+                    for value in valid_aliases
+                    if ProductMatcher._url_catalog_identity_text(value)
+                )
+                alias_token_sequences = tuple(
+                    tuple(catalog_variant_key(value).split())
+                    for value in valid_aliases
+                    if catalog_variant_key(value)
+                )
+                alias_token_sets = tuple(frozenset(tokens) for tokens in alias_token_sequences)
+                url_alias_data = []
+                for value in valid_aliases:
+                    specificity_key = ProductMatcher._variant_specificity_key(value, brand)
+                    if specificity_key:
+                        url_alias_data.append((specificity_key, frozenset(specificity_key.split())))
+                identity_text = " ".join((canonical, *valid_aliases))
                 variants.append(
                     {
                         "canonical_name": canonical,
                         "aliases": valid_aliases,
-                        "normalized_aliases": tuple(
-                            ProductMatcher._url_catalog_identity_text(value) for value in valid_aliases
-                            if ProductMatcher._url_catalog_identity_text(value)
-                        ),
+                        "normalized_aliases": normalized_aliases,
+                        "_normalized_alias_set": frozenset(normalized_aliases),
+                        "_alias_token_sequences": alias_token_sequences,
+                        "_alias_token_sets": alias_token_sets,
+                        "_url_alias_data": tuple(url_alias_data),
+                        "_audience": _audience_for_normalized_key(catalog_variant_key(identity_text)),
+                        "_canonical_specificity_key": ProductMatcher._variant_specificity_key(canonical, brand),
+                        "_specificity_count": len(set(ProductMatcher._variant_specificity_key(canonical, brand).split())),
                     }
                 )
 
+            normalized_query_aliases = tuple(
+                catalog_variant_key(value)
+                for value in query_aliases
+                if catalog_variant_key(value)
+            )
+            family_query_tokens = frozenset(
+                token for value in normalized_query_aliases for token in value.split()
+            )
             output.append(
                 {
                     "family_id": family_id,
@@ -774,11 +803,8 @@ class ProductMatcher:
                         for value in query_aliases
                         if str(value or "").strip()
                     ],
-                    "normalized_query_aliases": tuple(
-                        catalog_variant_key(value)
-                        for value in query_aliases
-                        if catalog_variant_key(value)
-                    ),
+                    "normalized_query_aliases": normalized_query_aliases,
+                    "_family_query_tokens": family_query_tokens,
                     "variants": variants,
                     "excluded_products": tuple(
                         str(value).strip()
@@ -1081,11 +1107,7 @@ class ProductMatcher:
         if offer_audience:
             audience_variants = []
             for registered_variant in family["variants"]:
-                identity_text = " ".join((
-                    str(registered_variant.get("canonical_name") or ""),
-                    *(str(alias) for alias in registered_variant.get("aliases", ())),
-                ))
-                registered_audience = audience_of(identity_text)
+                registered_audience = registered_variant.get("_audience")
                 # A retailer's explicit audience label must exclude variants
                 # registered for the opposite audience, but it must not exclude
                 # otherwise valid variants whose registry names are audience-
@@ -1110,7 +1132,7 @@ class ProductMatcher:
         name_variant: Optional[Dict[str, Any]] = None
 
         for variant in eligible_variants:
-            if candidate_key in variant["normalized_aliases"]:
+            if candidate_key in variant.get("_normalized_alias_set", variant["normalized_aliases"]):
                 name_variant = variant
                 break
 
@@ -1135,7 +1157,7 @@ class ProductMatcher:
             stripped_key = " ".join(stripped_tokens).strip()
             if stripped_key != candidate_key:
                 for variant in eligible_variants:
-                    if stripped_key in variant["normalized_aliases"]:
+                    if stripped_key in variant.get("_normalized_alias_set", variant["normalized_aliases"]):
                         name_variant = variant
                         break
 
@@ -1151,7 +1173,7 @@ class ProductMatcher:
             stripped_for_tokens = re.sub(r"\s+", " ", stripped_for_tokens).strip()
             if stripped_for_tokens != candidate_key:
                 for variant in eligible_variants:
-                    if stripped_for_tokens in variant["normalized_aliases"]:
+                    if stripped_for_tokens in variant.get("_normalized_alias_set", variant["normalized_aliases"]):
                         name_variant = variant
                         break
 
@@ -1165,18 +1187,14 @@ class ProductMatcher:
         if name_variant is None:
             candidate_tokens = candidate_key.split()
             for variant in eligible_variants:
-                for alias in (variant.get("canonical_name"), *variant.get("aliases", ())):
-                    alias_key = catalog_variant_key(alias)
-                    if not alias_key:
-                        continue
-                    alias_tokens = alias_key.split()
+                for alias_tokens in variant.get("_alias_token_sequences", ()):
                     if not alias_tokens:
                         continue
                     if len(alias_tokens) == 1 and len(alias_tokens[0]) < 3:
                         continue
                     width = len(alias_tokens)
                     for start in range(len(candidate_tokens) - width + 1):
-                        if candidate_tokens[start:start + width] == alias_tokens:
+                        if candidate_tokens[start:start + width] == list(alias_tokens):
                             name_variant = variant
                             break
                     if name_variant is not None:
@@ -1190,9 +1208,13 @@ class ProductMatcher:
         # exactly one variant in the family. This is generic family-scoped
         # evidence, not a retailer/product exception.
         if name_variant is None:
-            family_query_tokens = set()
-            for query_alias in family.get("query_aliases", ()):
-                family_query_tokens.update(catalog_variant_key(query_alias).split())
+            family_query_tokens = family.get("_family_query_tokens")
+            if family_query_tokens is None:
+                family_query_tokens = {
+                    token
+                    for query_alias in family.get("query_aliases", ())
+                    for token in catalog_variant_key(query_alias).split()
+                }
 
             candidate_tokens = [
                 token for token in candidate_key.split()
@@ -1207,14 +1229,7 @@ class ProductMatcher:
             if candidate_tokens:
                 subset_matches = []
                 for variant in eligible_variants:
-                    alias_token_sets = []
-                    for alias in (
-                        variant.get("canonical_name"),
-                        *variant.get("aliases", ()),
-                    ):
-                        alias_key = catalog_variant_key(alias)
-                        if alias_key:
-                            alias_token_sets.append(set(alias_key.split()))
+                    alias_token_sets = variant.get("_alias_token_sets", ())
                     if alias_token_sets and any(
                         all(token in alias_tokens for token in candidate_tokens)
                         for alias_tokens in alias_token_sets
@@ -1288,26 +1303,8 @@ class ProductMatcher:
                 for variant in eligible_variants:
                     best_variant_score = 0.0
 
-                    for alias in variant.get("aliases", ()):
-                        alias_key = self._url_catalog_identity_text(alias)
-                        if not alias_key:
-                            continue
-
-                        # For URL identity, merchandising/audience labels such
-                        # as "for him", "for her", "men" and "women" are not
-                        # variant-bearing tokens.  Use the same generic
-                        # specificity vocabulary used elsewhere in the family
-                        # matcher.  This prevents a URL such as
-                        # a more specific variant URL from scoring above the
-                        # generic family alias.
-                        alias_key = self._variant_specificity_key(
-                            alias,
-                            family.get("brand", ""),
-                        )
-                        if not alias_key:
-                            continue
-                        alias_tokens = set(alias_key.split())
-                        if not alias_tokens:
+                    for alias_key, alias_tokens in variant.get("_url_alias_data", ()):
+                        if not alias_key or not alias_tokens:
                             continue
 
                         # Score both the raw URL and the noise-reduced URL.
@@ -1340,11 +1337,7 @@ class ProductMatcher:
                     if best_variant_score < 0.72:
                         continue
 
-                    specificity_key = self._variant_specificity_key(
-                        variant.get("canonical_name", ""),
-                        family.get("brand", ""),
-                    )
-                    specificity = len(set(specificity_key.split()))
+                    specificity = int(variant.get("_specificity_count") or 0)
 
                     if (
                         best_variant_score > url_best_score
