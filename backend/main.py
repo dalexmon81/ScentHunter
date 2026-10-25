@@ -2439,6 +2439,7 @@ def _new_job(query):
             "started_at": time.time(),
             "completed": False,
             "status": "searching",
+            "atomic_results": True,
             "cancel_event": threading.Event(),
             "done_event": threading.Event(),
             "aggregate_lock": threading.Lock(),
@@ -2639,6 +2640,10 @@ def _publish_store(job_id, report):
 
         job["aggregate_revision"] = int(job.get("aggregate_revision", 0)) + 1
         revision = job["aggregate_revision"]
+        # Atomic mode retains store batches internally but never exposes a
+        # partial product list. _run_job publishes the single final snapshot.
+        if job.get("atomic_results"):
+            return
         offers_snapshot = list(job.get("offers", []))
 
     # Never hold the global lock while dedupe or ProductMatcher aggregation runs.
