@@ -774,6 +774,11 @@ class ProductMatcher:
                 variants.append(
                     {
                         "canonical_name": canonical,
+                        # Preserve curated image metadata from family_registry.
+                        # Dropping these fields here made synthetic family cards
+                        # lose their verified canonical image downstream.
+                        "canonical_image": str(variant.get("canonical_image") or "").strip(),
+                        "image": str(variant.get("image") or "").strip(),
                         "aliases": valid_aliases,
                         "normalized_aliases": normalized_aliases,
                         "_normalized_alias_set": frozenset(normalized_aliases),
