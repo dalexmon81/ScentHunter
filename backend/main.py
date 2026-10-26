@@ -2408,6 +2408,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
 
     def resolve_store_identity(store):
+        store_identity_started = time.monotonic()
         store_rows = grouped_raw.get(store, [])
         matched_rows = []
         unresolved_count = 0
@@ -2462,7 +2463,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                 'search_terms_count': len(terms),
                 'search_local_elapsed': round(catalog_search_elapsed, 3),
                 'targeted_refresh_elapsed': round(targeted_refresh_elapsed, 3),
-                'identity_resolution_elapsed': round(time.monotonic() - identity_started, 3),
+                'identity_resolution_elapsed': round(time.monotonic() - store_identity_started, 3),
             },
         }
 
