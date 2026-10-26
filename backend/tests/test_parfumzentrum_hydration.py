@@ -8,7 +8,7 @@ from scrapers import parfumzentrum
 class ParfumZentrumHydrationTests(unittest.TestCase):
     def test_internal_sku_suffix_regex_strips_url_identifier(self):
         query = "Berdoues Monoi Tiare Eau de Toilette 100 ml_z904294"
-        normalized = re.sub(r"\bz\d+\s*$", "", query, flags=re.I).strip()
+        normalized = re.sub(r"_?z\d+\s*$", "", query, flags=re.I).strip()
         self.assertEqual(normalized, "Berdoues Monoi Tiare Eau de Toilette 100 ml")
 
     def test_product_url_is_accepted_by_catalog_adapter(self):
