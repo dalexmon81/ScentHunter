@@ -34,16 +34,25 @@ def _marketplace(market: str) -> tuple[str, str]:
     raise ValueError("unsupported_amazon_marketplace")
 
 
-def is_configured(market: str) -> bool:
+def _configuration_error(market: str) -> str:
     try:
         _, tag_name = _marketplace(market)
     except ValueError:
-        return False
-    return bool(
+        return "amazon_creators_api_unsupported_market"
+    if _env("AMAZON_CREATORS_API_COMPARISON_APPROVED").lower() not in {"1", "true", "yes"}:
+        return "amazon_creators_api_comparison_not_approved"
+    if not (
         _env("AMAZON_CREATORS_API_CLIENT_ID")
         and _env("AMAZON_CREATORS_API_CLIENT_SECRET")
         and _env(tag_name)
-    )
+    ):
+        return "amazon_creators_api_not_configured"
+    return ""
+
+
+def is_configured(market: str) -> bool:
+    """Require credentials and explicit prior approval for price comparison."""
+    return not _configuration_error(market)
 
 
 def _failure(status: str, error: str, market: str, http_status: int | None = None):
@@ -160,18 +169,29 @@ def _price_and_currency(item: dict):
 
 
 def _safe_product_url(raw: str, marketplace: str, asin: str) -> str | None:
-    base = "https://" + marketplace
-    if raw:
-        parsed = urlparse(raw)
-        # A supplied URL on another host is untrusted: do not rewrite it into
-        # a marketplace URL based solely on its ASIN.
-        if parsed.scheme != "https" or parsed.hostname != marketplace:
-            return None
-    if asin and len(asin) == 10 and asin.isalnum():
-        # Keep the canonical product URL only; never persist tracking query
-        # parameters or a non-canonical detail-page path from API responses.
-        return f"{base}/dp/{asin.upper()}"
-    return None
+    # Amazon supplies the product URL, including any affiliate attribution.
+    # Validate the destination but do not rewrite or strip query parameters:
+    # the API-provided link must remain intact for attribution and compliance.
+    if not raw or not asin or len(asin) != 10 or not asin.isalnum():
+        return None
+    parsed = urlparse(raw)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != marketplace
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        return None
+    path_parts = [part for part in parsed.path.split("/") if part]
+    asin_upper = asin.upper()
+    valid_path = (
+        len(path_parts) == 2 and path_parts[0] == "dp" and path_parts[1].upper() == asin_upper
+    ) or (
+        len(path_parts) == 3 and path_parts[0] == "gp"
+        and path_parts[1] == "product" and path_parts[2].upper() == asin_upper
+    )
+    return raw if valid_path else None
 
 
 def search_marketplace(
@@ -190,8 +210,9 @@ def search_marketplace(
     except ValueError:
         return _failure("unavailable", "amazon_creators_api_unsupported_market", market)
 
-    if not is_configured(market):
-        return _failure("unavailable", "amazon_creators_api_not_configured", market)
+    configuration_error = _configuration_error(market)
+    if configuration_error:
+        return _failure("unavailable", configuration_error, market)
 
     response = None
     try:
@@ -296,8 +317,9 @@ def discover_product_urls(market: str, max_queries: int = 4) -> dict:
         marketplace, tag_name = _marketplace(market)
     except ValueError:
         return {"status": "unavailable", "error": "amazon_creators_api_unsupported_market", "urls": []}
-    if not is_configured(market):
-        return {"status": "unavailable", "error": "amazon_creators_api_not_configured", "urls": []}
+    configuration_error = _configuration_error(market)
+    if configuration_error:
+        return {"status": "unavailable", "error": configuration_error, "urls": []}
 
     queries = ("parfum", "eau de parfum", "eau de toilette", "extrait de parfum")[:max(1, min(4, int(max_queries)))]
     urls = set()
@@ -364,7 +386,7 @@ def get_product(market: str, asin: str, size_parser, concentration_parser) -> di
     except ValueError:
         return None
     asin = _text(asin).upper()
-    if not is_configured(market) or not (len(asin) == 10 and asin.isalnum()):
+    if _configuration_error(market) or not (len(asin) == 10 and asin.isalnum()):
         return None
 
     response = None
