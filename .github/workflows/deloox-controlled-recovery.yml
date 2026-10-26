@@ -141,4 +141,5 @@ jobs:
             probe "Recent hydration errors: $store" "https://scenthunter.fly.dev/catalog/hydration-errors?store=$store&limit=10" 8
           done
           probe 'Parfum-Zentrum Hawas Ice URL/SKU/GTIN + FTS diagnostic (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-index?q=Hawas%20Ice' 12
+          probe 'Parfum-Zentrum Hawas Ice discovery trace (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-discovery-trace' 18
           probe 'Read-only runtime/thread diagnostics' 'https://scenthunter.fly.dev/diagnostic/runtime-deep' 12
