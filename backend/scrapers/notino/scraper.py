@@ -15,9 +15,10 @@ import requests
 from bs4 import BeautifulSoup
 
 STORE = "Notino"
+# ScentHunter is intentionally France-only for Notino. Never query or
+# return Notino.de results in live search.
 MARKETS = (
     ("https://www.notino.fr", "fr-FR,fr;q=0.9,en;q=0.7"),
-    ("https://www.notino.de", "de-DE,de;q=0.9,en;q=0.7"),
 )
 TIMEOUT = (3.0, 6.0)
 MAX_CANDIDATES_PER_MARKET = 10
