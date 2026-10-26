@@ -82,3 +82,27 @@ def test_amazon_catalog_seeds_are_locale_specific():
     de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
     assert fr and all("amazon.fr" in url for url in fr)
     assert de and all("amazon.de" in url for url in de)
+
+
+def test_amazon_discovery_urls_are_market_specific():
+    assert catalog._discovery_bases("amazon_fr") == ("https://www.amazon.fr",)
+    assert catalog._discovery_bases("amazon_de") == ("https://www.amazon.de",)
+    assert catalog._html_product_url(
+        "amazon_fr", "https://www.amazon.fr/dp/B012345678?tag=tracking", "https://www.amazon.fr/"
+    ) == "https://www.amazon.fr/dp/B012345678"
+    assert catalog._html_product_url(
+        "amazon_de", "https://www.amazon.de/gp/product/B012345678?ref=search", "https://www.amazon.de/"
+    ) == "https://www.amazon.de/dp/B012345678"
+    assert catalog._html_product_url(
+        "amazon_fr", "https://www.amazon.de/dp/B012345678", "https://www.amazon.fr/"
+    ) is None
+    assert catalog._html_product_url(
+        "amazon_de", "https://www.amazon.de/s?k=parfum", "https://www.amazon.de/"
+    ) is None
+
+
+def test_amazon_discovery_seeds_stay_in_each_marketplace():
+    fr = catalog.HTML_DISCOVERY_SEEDS["amazon_fr"]
+    de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
+    assert fr and all(url.startswith("https://www.amazon.fr/") for url in fr)
+    assert de and all(url.startswith("https://www.amazon.de/") for url in de)
