@@ -487,6 +487,9 @@ def _candidate_product_urls(
     context), then return the highest-ranked candidates.  The product page
     remains authoritative through _product().
     """
+    # Parse only once, then scan product URL-bearing nodes rather than every
+    # attribute on every HTML element. Broad find_all(True) scans were costly
+    # on large search pages and did not add reliable product URL sources.
     soup = BeautifulSoup(html, "lxml")
     base_url = clean(base_url or BASE_URL)
 
@@ -606,23 +609,18 @@ def _candidate_product_urls(
         )
         add(href, context)
 
-    # Second pass: generic data-* URL attributes.  Do not assume a particular
-    # product/card implementation; only inspect common URL-bearing fields.
+    # Second pass: inspect only URL-bearing data attributes. Do not traverse
+    # every attribute of every node; large storefront documents can contain
+    # many thousands of non-link elements.
     attr_names = (
-        "data-url",
-        "data-href",
-        "data-link",
-        "data-product-url",
-        "data-product-link",
-        "data-target",
-        "data-href-url",
+        "data-url", "data-href", "data-link", "data-product-url",
+        "data-product-link", "data-target", "data-href-url",
     )
-    for node in soup.find_all(True):
-        context = clean(node.get_text(" ", strip=True))[:2500]
-        for attr in attr_names:
+    for attr in attr_names:
+        for node in soup.select(f"[{attr}]"):
             raw = node.get(attr)
-            if raw:
-                add(raw, f"{raw} {context}")
+            context = clean(node.get_text(" ", strip=True))[:500]
+            add(raw, f"{raw} {context}")
 
     # Third pass: product URLs embedded in JSON/state/hydration payloads.
     patterns = (
