@@ -168,14 +168,19 @@ def learn_variants(
         name = str(item.get("name") or item.get("raw_name") or "").strip()
         brand = str(item.get("brand") or "").strip()
         size = _explicit_size(item.get("size_ml"))
-        domain = _retailer_domain(item.get("product_url") or item.get("url"))
+        url = str(item.get("product_url") or item.get("url") or "")
+        domain = _retailer_domain(url)
         concentration = _concentration(name)
+        url_concentration = _concentration(url)
         canonical_name = _canonical_product_name(name, brand)
+        if url_concentration and concentration and url_concentration != concentration:
+            rejected["url_concentration_conflict"] += 1
+            continue
         if (
             not name or not brand or not size or not domain or not concentration
             or not canonical_name
             or _UNSAFE_PACKAGING.search(name)
-            or _UNSAFE_PACKAGING.search(str(item.get("product_url") or item.get("url") or ""))
+            or _UNSAFE_PACKAGING.search(url)
         ):
             continue
         key = (_norm(brand), _norm(canonical_name), concentration)
