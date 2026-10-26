@@ -77,6 +77,7 @@ STORES = {
     'orioudh': 'https://orioudh.com',
     'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
+    'notino': 'https://www.notino.fr',
 }
 
 STORE_LABELS = {
@@ -90,6 +91,7 @@ STORE_LABELS.update({
     'easycosmetic': 'Easycosmetic',
     'bplatz': 'Bplatz',
     'deloox': 'Deloox',
+    'notino': 'Notino',
     'sabina': 'Sabina',
     'orioudh': 'Orioudh',
 })
@@ -110,6 +112,12 @@ DISCOVERY_BASES = {
         'https://www.deloox.nl',
         'https://www.deloox.lu',
         'https://www.deloox.es',
+    ),
+    'notino': (
+        # Keep France and Germany as separate official storefront hosts. Offer
+        # prices and destination URLs are never rewritten across marketplaces.
+        'https://www.notino.fr',
+        'https://www.notino.de',
     ),
 }
 
@@ -188,6 +196,12 @@ HTML_DISCOVERY_SEEDS = {
     'deloox': (
         'https://www.deloox.be/',
         'https://www.deloox.com/en/search?q=perfume',
+    ),
+    'notino': (
+        'https://www.notino.fr/',
+        'https://www.notino.fr/parfums/',
+        'https://www.notino.de/',
+        'https://www.notino.de/parfums/',
     ),
 }
 
@@ -1335,6 +1349,12 @@ def _html_product_url(store, raw_url, base_url):
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
         return None
+    if store == 'notino':
+        # Notino product pages expose a stable /p-<numeric-id> path segment.
+        # Strip tracking/query parameters, but preserve the exact market host.
+        if re.search(r'(?:^|/)p-\\d+(?:/|$)', low, re.I):
+            return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
+        return None
     if store == 'sabina':
         # Canonical Sabina product pages use a numeric product id followed by
         # a slug and end in .html. Sabina's legacy storefront also exposes
@@ -1450,6 +1470,17 @@ def _html_listing_url(store, raw_url, base_url, label=''):
             return absolute
         parts=[x for x in path.split('/') if x]
         if 1 <= len(parts) <= 2:
+            return absolute
+        return None
+    if store == 'notino':
+        # Public perfume category pages and pagination are generic catalog
+        # navigation surfaces. Product pages are admitted only by
+        # _html_product_url's stable product-id path rule.
+        if re.search(r'(?:^|&)page=\\d+', p.query, re.I):
+            return absolute
+        if path.rstrip('/') in ('/parfums', '/parfums-damen', '/parfums-herren', '/parfums-homme'):
+            return absolute
+        if re.search(r'/(?:parfums|parfums-damen|parfums-herren|parfums-homme|marques|marken)(?:/|$)', path, re.I):
             return absolute
         return None
     if store == 'deloox':
