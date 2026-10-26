@@ -97,6 +97,16 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         family = matcher._family_for_query("Hawas")
         self.assertIsNotNone(family)
         self.assertEqual(len(family["variants"]), 30)
+        self.assertIsNone(
+            matcher._requested_variant("Hawas", family),
+            "A family alias must not be mistaken for a specific registered variant",
+        )
+        ice_family = matcher._family_for_query("Hawas Ice")
+        self.assertIsNotNone(ice_family)
+        self.assertEqual(
+            matcher._requested_variant("Hawas Ice", ice_family)["canonical_name"],
+            "Hawas Ice",
+        )
 
         job_id = "test-hawas-family-snapshot"
         priced_names = {"Hawas Ice", "Hawas Black", "Hawas Kobra"}
