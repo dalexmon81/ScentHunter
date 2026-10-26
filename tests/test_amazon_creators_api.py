@@ -131,3 +131,75 @@ def test_foreign_product_url_is_not_returned(monkeypatch):
     ))
     report = api.search_marketplace("parfum", "fr", "amazon_fr", lambda _: 100, lambda _: None)
     assert report["results"][0]["url"] == "https://www.amazon.fr/dp/B012345678"
+
+
+
+def test_catalog_discovery_keeps_canonical_urls_even_without_price(monkeypatch):
+    token_response = Response(payload={"access_token": "test-token", "expires_in": 3600})
+    api_response = Response(payload={"searchResult": {"items": [
+        {
+            "asin": "B012345678",
+            "detailPageURL": "https://www.amazon.fr/dp/B012345678?tag=partner-21",
+            "itemInfo": {"title": {"displayValue": "Parfum de test"}},
+        },
+        {
+            "asin": "B012345679",
+            "detailPageURL": "https://www.amazon.de/dp/B012345679",
+            "itemInfo": {"title": {"displayValue": "Parfum étranger"}},
+        },
+        {
+            "asin": "B012345680",
+            "detailPageURL": "https://www.example.invalid/dp/B012345680",
+            "itemInfo": {"title": {"displayValue": "Foreign host"}},
+        },
+    ]}})
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return token_response if url.endswith("/auth/o2/token") else api_response
+
+    monkeypatch.setattr(api.requests, "post", fake_post)
+    report = api.discover_product_urls("fr", max_queries=1)
+    assert report["status"] == "success"
+    assert report["urls"] == ["https://www.amazon.fr/dp/B012345678"]
+    assert calls[1][0] == api.API_BASE + "/catalog/v1/searchItems"
+    assert calls[1][1]["json"]["resources"] == ["itemInfo.title"]
+
+
+def test_get_product_hydrates_current_priced_offer_via_api(monkeypatch):
+    token_response = Response(payload={"access_token": "test-token", "expires_in": 3600})
+    api_response = Response(payload={"itemsResult": {"items": [{
+        "asin": "B012345678",
+        "detailPageURL": "https://www.amazon.de/dp/B012345678?tag=partner-21",
+        "images": {"primary": {"medium": {"url": "https://images.example.invalid/item.jpg"}}},
+        "itemInfo": {
+            "title": {"displayValue": "Dior Sauvage Eau de Parfum 100 ml"},
+            "byLineInfo": {"brand": {"displayValue": "Dior"}},
+        },
+        "offersV2": {"listings": [{
+            "price": {"money": {"amount": 89.95, "currency": "EUR"}},
+            "availability": {"type": "IN_STOCK"},
+        }]},
+    }]}})
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return token_response if url.endswith("/auth/o2/token") else api_response
+
+    monkeypatch.setattr(api.requests, "post", fake_post)
+    item = api.get_product(
+        "de", "B012345678",
+        lambda title: 100 if "100 ml" in title else None,
+        lambda title: "Eau de Parfum" if "Eau de Parfum" in title else None,
+    )
+    assert item["store_key"] == "amazon_de"
+    assert item["name"] == "Dior Sauvage Eau de Parfum 100 ml"
+    assert item["price_num"] == 89.95
+    assert item["currency"] == "EUR"
+    assert item["availability"] == "in_stock"
+    assert item["source"] == "amazon_creators_api"
+    assert item["url"].startswith("https://www.amazon.de/dp/B012345678")
+    assert calls[1][0] == api.API_BASE + "/catalog/v1/getItems"
+    assert calls[1][1]["json"]["itemIds"] == ["B012345678"]
