@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 
 _UNSAFE_PACKAGING = re.compile(
-    r"\b(?:refill|nachfullung|nachfullpackung|recharge|tester|testeur|"
+    r"\b(?:refill\w*|nachfullung|nachfullpackung|recharge|tester|testeur|"
     r"sample|probe|decant|gift\s*set|coffret|bundle|discovery\s*set)\b",
     re.I,
 )
@@ -283,6 +283,7 @@ def learn_variants(
         product_name = str(product.get("canonical_name") or product.get("name") or "").strip()
         offer_concentration = _concentration(name)
         canonical_concentration = _concentration(product.get("concentration"))
+        url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
 
         if not size or not retailer or not domain or not name or not product_brand or not product_name:
             rejected["missing_required_evidence"] += 1
@@ -293,7 +294,12 @@ def learn_variants(
         if _identity_name(name, brand or product_brand) != _identity_name(product_name, product_brand):
             rejected["product_name_conflict"] += 1
             continue
-        if not offer_concentration or not canonical_concentration or offer_concentration != canonical_concentration:
+        if (
+            not offer_concentration
+            or not canonical_concentration
+            or offer_concentration != canonical_concentration
+            or (url_concentration is not None and url_concentration != offer_concentration)
+        ):
             rejected["concentration_unverified_or_conflict"] += 1
             continue
         url_concentration = _concentration(url)
