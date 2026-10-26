@@ -1903,12 +1903,11 @@ def _extract_product(url, query, html=None):
 
 
 def extract_product_page(session, url, query="", html=None):
-    """Hydrate a known ParfumZentrum URL without re-running search relevance.
+    """Hydrate a known ParfumZentrum URL using its source HTML.
 
-    The catalog engine has already selected this product URL. Delegate to the
-    product parser with an empty query so URL slug tokens cannot reject a valid
-    JSON-LD product title. The parser still validates perfume identity, offer,
-    price, availability, and source evidence.
+    Catalog hydration has already identified the URL, so do not require the URL
+    slug to match every word in the commercial title. The core parser still
+    validates fragrance identity and derives offers only from page evidence.
     """
     parsed_url = _product_url(url)
     if not parsed_url:
