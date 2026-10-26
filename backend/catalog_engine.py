@@ -78,6 +78,8 @@ STORES = {
     'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
     'notino': 'https://www.notino.fr',
+    'amazon_fr': 'https://www.amazon.fr',
+    'amazon_de': 'https://www.amazon.de',
 }
 
 STORE_LABELS = {
@@ -94,6 +96,8 @@ STORE_LABELS.update({
     'notino': 'Notino',
     'sabina': 'Sabina',
     'orioudh': 'Orioudh',
+    'amazon_fr': 'Amazon.fr',
+    'amazon_de': 'Amazon.de',
 })
 
 # Store-level discovery configuration only: official storefront hosts.
@@ -116,6 +120,14 @@ DISCOVERY_BASES = {
     'notino': (
         # France only: never index or return Notino Germany for this store.
         'https://www.notino.fr',
+    ),
+    'amazon_fr': (
+        # France marketplace only; do not mix Amazon.de catalog URLs.
+        'https://www.amazon.fr',
+    ),
+    'amazon_de': (
+        # Germany marketplace only; do not mix Amazon.fr catalog URLs.
+        'https://www.amazon.de',
     ),
 }
 
@@ -199,6 +211,17 @@ HTML_DISCOVERY_SEEDS = {
         # Keep discovery strictly on the French storefront.
         'https://www.notino.fr/',
         'https://www.notino.fr/parfums/',
+    ),
+    'amazon_fr': (
+        # Generic French fragrance search surfaces; product pages are validated
+        # separately and only canonical ASIN URLs are admitted below.
+        'https://www.amazon.fr/s?k=parfum',
+        'https://www.amazon.fr/s?k=eau+de+parfum',
+    ),
+    'amazon_de': (
+        # Generic German fragrance search surfaces; keep URLs on Amazon.de.
+        'https://www.amazon.de/s?k=parfum',
+        'https://www.amazon.de/s?k=eau+de+parfum',
     ),
 }
 
@@ -1346,6 +1369,23 @@ def _html_product_url(store, raw_url, base_url):
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
         return None
+    if store in {'amazon_fr', 'amazon_de'}:
+        # Amazon product detail pages use a 10-character ASIN. Admit only
+        # canonical detail routes; exclude search results, reviews, seller,
+        # category, and navigation URLs. Each store's host boundary is enforced
+        # above, so French and German marketplace links cannot cross-contaminate.
+        match = re.fullmatch(
+            r'/(?:dp|gp/product)/([A-Z0-9]{10})/?',
+            p.path,
+            flags=re.I,
+        )
+        if not match:
+            return None
+        asin = match.group(1).upper()
+        market_host = 'www.amazon.fr' if store == 'amazon_fr' else 'www.amazon.de'
+        return urllib.parse.urlunparse((
+            'https', market_host, f'/dp/{asin}', '', '', ''
+        ))
     if store == 'notino':
         # Notino's canonical product URLs commonly use brand/product slugs
         # without a numeric ID. Exclude known navigation/utility routes and
