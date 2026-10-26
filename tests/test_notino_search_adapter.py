@@ -69,6 +69,12 @@ def test_product_parser_rejects_wrong_query_and_missing_price():
     ) is None
 
 
+def test_price_parser_handles_european_decimal_and_thousands_separators():
+    assert scraper._price("99,90 €") == 99.90
+    assert scraper._price("1.299,90 €") == 1299.90
+    assert scraper._price("1,299.90 EUR") == 1299.90
+
+
 def test_search_returns_verified_report_for_empty_query():
     report = scraper.search("  ")
     assert report["status"] == "success"
