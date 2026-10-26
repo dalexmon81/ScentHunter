@@ -48,7 +48,7 @@ jobs:
       - name: Deploy ScentHunter
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --remote-only
+        run: flyctl deploy --remote-only --depot=false
 
       - name: Verify production health and catalog API
         shell: bash
