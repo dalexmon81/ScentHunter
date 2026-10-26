@@ -25,7 +25,7 @@ class CatalogHydrationTests(unittest.TestCase):
           "offers":{"@type":"Offer","price":"29.40","priceCurrency":"EUR",
                     "availability":"https://schema.org/InStock"}
         }</script></head><body><h1>Berdoues Monoï &amp; Tiaré Eau De Toilette 100 ml (unisex)</h1></body></html>"""
-        product = parfumzentrum.extract_product_page(None, url, query="", html=html)
+        product = parfumzentrum.extract_product_page(None, url, query="Berdoues Monoi Tiare Eau de Toilette 100 ml_z904294", html=html)
         self.assertIsNotNone(product)
         self.assertEqual(product["name"], "Berdoues Monoi & Tiare Eau de Toilette 100 ml")
         self.assertEqual(product["price_num"], 29.4)
