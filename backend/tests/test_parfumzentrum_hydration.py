@@ -1,5 +1,4 @@
 """Regression tests for bounded Deloox discovery and catalog hydration."""
-import re
 import unittest
 
 from scrapers import deloox, parfumzentrum
