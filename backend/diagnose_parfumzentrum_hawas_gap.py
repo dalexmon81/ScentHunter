@@ -2,6 +2,7 @@
 
 Route: GET /diagnose-parfumzentrum-hawas-index?q=La%20Mer
         GET /diagnose-parfumzentrum-hawas-index?q=Verde
+        GET /diagnose-parfumzentrum-hawas-index?q=Hawas%20Ice
 
 This module deliberately does not call catalog_engine.db(), search_local(), ProductMatcher,
 scrapers, discovery, hydration, or any function that may mutate production state.
@@ -106,7 +107,19 @@ def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_leng
     started = time.monotonic()
     query = (q or "La Mer").strip()
     lowered = query.lower()
-    if "verde" in lowered:
+    if "ice" in lowered:
+        label = "hawas_ice"
+        patterns = [
+            "rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265",
+            "rasasi hawas ice",
+            "hawas ice",
+            "913265",
+            "614514331040",
+        ]
+        exact_url = "https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
+        sku = "913265"
+        gtin = "614514331040"
+    elif "verde" in lowered:
         label = "verde"
         patterns = ["hawas-verde", "hawas verde", "rasasi-hawas-verde", "rasasi hawas verde", "verde"]
         exact_url = ""
@@ -185,9 +198,9 @@ def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_leng
                 "rows": rows,
             }
 
-        # Explicit joined row for La Mer: reveals active URL, product status and FTS text together.
+        # Explicit joined row reveals URL discovery, hydration, and FTS publication in one place.
         if "store_urls" in tables and "store_products" in tables:
-            if label == "la_mer":
+            if label in {"la_mer", "hawas_ice"}:
                 result["joined_target"] = _dict_rows(
                     conn,
                     """SELECT u.store,u.url,u.slug,u.active,
@@ -225,7 +238,11 @@ def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_leng
 
         # Exact FTS candidate lookup, read-only. Does not initialize or rebuild the index.
         if "catalog_search_fts" in tables:
-            fts_terms = ["hawas", "rasasi", "verde"] if label == "verde" else ["hawas", "rasasi", "la", "mer"]
+            fts_terms = (
+                ["hawas", "rasasi", "verde"] if label == "verde"
+                else ["hawas", "rasasi", "ice"] if label == "hawas_ice"
+                else ["hawas", "rasasi", "la", "mer"]
+            )
             fts_query = " AND ".join('"' + term + '"' for term in fts_terms)
             result["fts_match"] = _dict_rows(
                 conn,
