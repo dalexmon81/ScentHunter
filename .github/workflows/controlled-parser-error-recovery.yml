@@ -1,0 +1,92 @@
+name: Controlled stale parser error recovery
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    if: ${{ contains(github.event.head_commit.message, 'trigger guarded parser error recovery') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Wait for this revision's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          READY=0
+          for attempt in $(seq 1 90); do
+            DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            echo "Waiting for Fly Deploy for $GITHUB_SHA: $STATUS / $CONCLUSION (attempt $attempt/90)"
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then echo 'Deploy failed; recovery blocked.' >&2; exit 1; fi
+            sleep 10
+          done
+          if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time; recovery blocked.' >&2; exit 1; fi
+
+      - name: Dry-run bounded recovery
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT='/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py'
+          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
+          printf '%s\n' "$RESULT"
+          printf '%s\n' "$RESULT" | grep -Eq '"status": "DRY_RUN"'
+          printf '%s\n' "$RESULT" | grep -Eq '"read_only": true'
+
+      - name: Apply capped recovery and verify
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT='/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py'
+          RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --limit-per-store 10")"
+          printf '%s\n' "$RESULT"
+          printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
+          printf '%s\n' "$RESULT" | grep -Eq '"database_mutated": (true|false)'
+          POSTCHECK="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
+          printf '%s\n' "$POSTCHECK"
+          printf '%s\n' "$POSTCHECK" | grep -Eq '"status": "DRY_RUN"'
+
+  audit_state:
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for this revision's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          READY=0
+          for attempt in $(seq 1 90); do
+            DEPLOYS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100")"
+            STATUS="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .status // "missing"')"
+            CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then exit 1; fi
+            sleep 10
+          done
+          if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time.' >&2; exit 1; fi
+      - name: Read-only production recovery preview
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 30s flyctl ssh console --app scenthunter --select=false -C "/app/.venv/bin/python /app/backend/recover_stale_parser_errors.py"
