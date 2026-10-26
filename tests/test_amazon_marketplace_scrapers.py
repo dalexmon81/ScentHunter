@@ -73,7 +73,7 @@ def test_search_extracts_only_query_matching_priced_asin_products(monkeypatch, m
 
 
 @pytest.mark.parametrize(("module", "http_status"), [(fr, 403), (fr, 429), (fr, 503), (de, 403), (de, 429), (de, 503)])
-def test_search_reports_http_access_block_as_blocked_not_empty_success(monkeypatch, module, http_status):
+def test_search_reports_http_failures_without_empty_success(monkeypatch, module, http_status):
     class Response:
         status_code = http_status
         url = module.BASE + "/s?k=parfum"
@@ -85,10 +85,12 @@ def test_search_reports_http_access_block_as_blocked_not_empty_success(monkeypat
             return None
     monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
     report = module.search("parfum")
-    assert report["status"] == "blocked"
+    is_blocked = http_status in (403, 429)
+    assert report["status"] == ("blocked" if is_blocked else "unavailable")
     assert report["verified"] is False
     assert report["results"] == []
-    assert report["error"] == f"blocked_http_{http_status}"
+    expected_error = f"blocked_http_{http_status}" if is_blocked else f"amazon_http_{http_status}"
+    assert report["error"] == expected_error
     assert report["details"]["market"] == module.MARKET
     assert report["details"]["http_status"] == http_status
 
