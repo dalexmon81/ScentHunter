@@ -106,3 +106,18 @@ def test_amazon_discovery_seeds_stay_in_each_marketplace():
     de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
     assert fr and all(url.startswith("https://www.amazon.fr/") for url in fr)
     assert de and all(url.startswith("https://www.amazon.de/") for url in de)
+
+
+
+def test_notino_always_supplements_sitemap_with_bounded_html_discovery():
+    # Even if sitemap parsing claims enough entries, Notino's slug-based
+    # product URLs must be recovered from its official French listing pages.
+    assert catalog._should_run_html_fallback("notino", 10000, [], 1)
+    assert catalog._should_run_html_fallback("notino", 0, ["sitemap unavailable"], 0)
+
+
+def test_other_store_fallback_policy_remains_bounded_and_unchanged():
+    assert catalog._should_run_html_fallback("deloox", 0, ["sitemap unavailable"], 0) is False
+    assert catalog._should_run_html_fallback("amazon_fr", 10000, [], 1) is False
+    assert catalog._should_run_html_fallback("sabina", 10000, [], 1) is True
+    assert catalog._should_run_html_fallback("deloox", 0, [], 0) is False
