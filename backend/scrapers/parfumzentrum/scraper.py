@@ -1705,10 +1705,9 @@ def _extract_product(url, query, html=None):
     if not name:
         return None
 
-    if not _matches_query(
-        name,
-        query,
-    ):
+    # Known-URL hydration calls this parser with an empty query. Live search
+    # continues to require lexical relevance.
+    if query and not _matches_query(name, query):
         return None
 
     identity_texts = _identity_texts(
@@ -1911,6 +1910,18 @@ def _extract_product(url, query, html=None):
         "store_product_id": product_id,
     }
 
+
+def extract_product_page(session, url, query="", html=None):
+    """Hydrate an already-identified ParfumZentrum product URL.
+
+    Search relevance stays strict in _extract_product. During catalog hydration,
+    the URL is already known, so title matching must not reject a valid product
+    because the retailer appends an internal SKU to the URL slug.
+    """
+    parsed_url = _product_url(url)
+    if not parsed_url:
+        return None
+    return _extract_product(parsed_url, "", html=html)
 
 def search(query):
     query = _clean(query)
