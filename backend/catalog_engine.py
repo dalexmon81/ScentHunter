@@ -3245,6 +3245,11 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         finally:
             session.close()
 
+    # Some retailer adapters return one row per variant. The catalog's
+    # product-page hydration stores one base product row; retain a real priced
+    # variant rather than failing on the list shape.
+    if isinstance(parsed, list):
+        parsed = next((row for row in parsed if isinstance(row, dict) and ((row.get('offer') or {}).get('price') is not None or row.get('price_num') is not None or row.get('price') not in (None, ''))), None)
     if not isinstance(parsed, dict):
         return None
 
