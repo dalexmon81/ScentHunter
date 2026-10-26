@@ -186,5 +186,29 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
                 app_main.PRODUCT_MATCHER = previous_matcher
 
 
+    def test_hawas_family_url_identity_overrides_conflicting_title(self):
+        """A destination slug naming a distinct variant must beat a conflicting retailer title."""
+        import json
+        from pathlib import Path
+        from product_matcher import ProductMatcher
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        with (backend_dir / "family_registry.json").open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        matcher = ProductMatcher(catalog=[], family_registry=registry)
+        family = matcher._family_for_query("Hawas")
+        self.assertIsNotNone(family)
+
+        offer = {
+            "brand": "Rasasi",
+            "name": "Hawas for Him",
+            "price_num": 18.59,
+            "url": "https://www.deloox.com/product/1323660/rasasi-hawas-malibu-eau-de-parfum-100-ml.html",
+        }
+        variant = matcher._family_variant_for_offer(offer, family)
+        self.assertIsNotNone(variant)
+        self.assertEqual(variant["canonical_name"], "Hawas Malibu")
+
+
 if __name__ == "__main__":
     unittest.main()
