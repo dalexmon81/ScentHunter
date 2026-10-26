@@ -159,3 +159,28 @@ def test_rejects_title_url_concentration_conflict_before_learning():
     result = learn_variants(catalog, observations)
     assert result["report"]["variants_added"] == 0
     assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
+
+
+def test_does_not_propose_unseen_product_when_url_concentration_conflicts():
+    observations = [
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store A",
+            "product_url": "https://a.example/new-moon-parfum",
+            "candidate_product_ids": [],
+        },
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store B",
+            "product_url": "https://b.example/new-moon-eau-de-parfum",
+            "candidate_product_ids": [],
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["products_added"] == 0
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
