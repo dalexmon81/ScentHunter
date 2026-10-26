@@ -281,6 +281,24 @@ jobs:
               if count == 0 and offer_count == 0:
                   raise RuntimeError(f"Search '{query}' returned zero products and offers")
 
+              if query == "Hawas":
+                  # Protect the user-confirmed broad-family baseline: all 29
+                  # expected variants must remain visible and backend search
+                  # completion must stay under one second. This measures the
+                  # backend elapsed field, not workflow/network polling overhead.
+                  backend_elapsed = float(last.get("elapsed") or 0)
+                  if count < 29:
+                      raise RuntimeError(
+                          f"Hawas family regression: expected at least 29 variants, got {count}"
+                      )
+                  if backend_elapsed <= 0 or backend_elapsed >= 1.0:
+                      raise RuntimeError(
+                          f"Hawas backend latency regression: expected under 1.0s, got {backend_elapsed:.3f}s"
+                      )
+                  print(
+                      f"Hawas baseline: PASS ({count} products, backend {backend_elapsed:.3f}s)"
+                  )
+
               groups = last.get("results") if isinstance(last.get("results"), list) else []
               offers = [
                   offer
