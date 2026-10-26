@@ -1110,6 +1110,10 @@ async function searchStoresProgressive(term,onPartial){
       if (status?.completed === true) {
         return status || lastData;
       }
+      // Avoid a tight polling loop: every status request rebuilds and filters
+      // a snapshot on the backend while the search worker is competing for CPU.
+      // A short fixed interval keeps the UI responsive without hammering the API.
+      await new Promise(resolve=>setTimeout(resolve,300));
     }
     throw new Error("Timeout ricerca: il backend non ha completato il job");
   } catch (error) {
