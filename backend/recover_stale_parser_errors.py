@@ -9,13 +9,15 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import sqlite3
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 try:
-    from catalog_engine import catalog_db
+    import catalog_engine as engine
 except ImportError:  # imported by tests from repository root
-    from backend.catalog_engine import catalog_db
+    from backend import catalog_engine as engine
 
 
 MAX_LIMIT_PER_STORE = 10
@@ -93,9 +95,14 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
 
 
 def recover(*, apply: bool = False, limit_per_store: int = MAX_LIMIT_PER_STORE):
-    conn = catalog_db()
+    db_path = Path(engine.DB_PATH).resolve()
+    if apply:
+        conn = sqlite3.connect(str(db_path), timeout=10)
+    else:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2)
     try:
-        conn.row_factory = __import__("sqlite3").Row
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only=ON" if not apply else "PRAGMA busy_timeout=10000")
         now = time.time()
         plan = build_recovery_plan(conn, now=now, limit_per_store=limit_per_store)
         if apply and plan:
