@@ -2,7 +2,6 @@
 import re
 import unittest
 
-from bs4 import BeautifulSoup
 from scrapers import deloox, parfumzentrum
 
 
