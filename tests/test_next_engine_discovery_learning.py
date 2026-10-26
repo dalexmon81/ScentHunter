@@ -207,3 +207,31 @@ def test_rejects_url_concentration_conflict_and_refillable_packaging():
     ])
     assert refillable["report"]["variants_added"] == 0
     assert refillable["report"]["rejected_observation_counts"]["special_packaging_requires_review"] == 1
+
+
+def test_proposes_distinct_perfume_when_single_candidate_is_only_a_broad_name_mismatch():
+    observations = [
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store A",
+            "product_url": "https://a.example/new-moon",
+            "candidate_product_ids": ["SH-TEST-1"],
+        },
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store B",
+            "product_url": "https://b.example/new-moon",
+            "candidate_product_ids": ["SH-TEST-1"],
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["products_added"] == 1
+    product = result["report"]["added_products"][0]
+    assert product["canonical_name"] == "New Moon"
+    assert product["product_id"] != "SH-TEST-1"
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["product_id"] == product["product_id"]
