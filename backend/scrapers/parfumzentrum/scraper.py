@@ -1918,11 +1918,11 @@ def extract_product_page(session, url, query="", html=None):
     if not parsed_url:
         return None
 
-    effective_query = _clean(query)
-    if not effective_query:
-        effective_query = urlparse(parsed_url).path.rstrip("/").rsplit("/", 1)[-1]
-    effective_query = re.sub(r"_z\d+\s*$", "", effective_query, flags=re.I)
-    return _extract_product(parsed_url, effective_query, html=html)
+    # Known URL hydration does not need a full lexical query match. Use a
+    # neutral query so URL slugs (brand/category/stock tokens) cannot reject
+    # an otherwise valid JSON-LD Product. The parser still validates product
+    # structure, fragrance type, offers and source evidence.
+    return _extract_product(parsed_url, "", html=html)
 
 
 def search(query):
