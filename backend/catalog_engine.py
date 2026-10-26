@@ -3768,181 +3768,199 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         # query per alias and retailer. This preserves alternate-term recall
         # without letting a short foreground deadline stop after the first
         # alias and silently omit the rest of the catalog.
-        for store in STORES:
+        def _search_one_store(store):
             if cancel_event is not None and cancel_event.is_set():
-                break
-
-            term_specs = []
-            fts_token_sets = []
-            for ts in token_sets:
-                sabina_size_tokens = set()
-                fts_tokens = ts
-                if store == 'sabina' and any(token in ts for token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}):
-                    sabina_size_tokens = {
-                        token for token in ts
-                        if token.isdigit() or token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}
-                    }
-                    fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
-                if not fts_tokens:
-                    continue
-                fts_query = _fts_query_for_tokens(fts_tokens)
-                if not fts_query:
-                    continue
-                term_specs.append((ts, sabina_size_tokens))
-                fts_token_sets.append(fts_tokens)
-
-            if not fts_token_sets or not term_specs:
-                continue
-
-            # One OR query per retailer searches all aliases in a single FTS
-            # pass. The per-term checks below preserve each alias's candidate
-            # quota, so common aliases cannot consume the entire result budget.
-            combined_query = _fts_query_for_token_sets(fts_token_sets)
-            if not combined_query:
-                continue
-            # Make the retailer filter part of the FTS expression itself.
-            # With store UNINDEXED, SQLite searched the matching text pool across
-            # every retailer eight times and filtered each pool afterwards. The
-            # indexed store column narrows the postings before ranking, without
-            # changing the alias OR expression or per-term recall quotas.
-            combined_query = f'store : "{store}" AND ({combined_query})'
-            # The OR query returns one ranked pool for all aliases. Size the
-            # pool to the number of terms, but for a single-term query fetch
-            # only the same 2x window the old per-term query used.
-            # Keep the OR pool bounded to at most two candidate windows per
-            # alias group. The previous 4x expansion forced FTS5 to rank and
-            # hydrate hundreds of rows even though per-term quotas are capped
-            # at 64; this was a major cost for broad family searches.
-            combined_candidate_limit = min(
-                256,
-                max(64, fts_candidate_limit * min(2, len(term_specs))),
-            )
-            _diag_sql_t0 = time.monotonic()
+                return []
+            store_conn = _search_db()
+            store_conn.set_progress_handler(lambda: 1 if interrupted() else 0, 1000)
+            store_rows = []
             try:
-                candidates = conn.execute(
-                    sql, (combined_query, store, combined_candidate_limit)
-                ).fetchall()
-            except sqlite3.OperationalError as exc:
-                if cancel_event is not None and cancel_event.is_set():
-                    break
-                raise
-            _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
-            _diag_process_t0 = time.monotonic()
-            per_term_counts = [0 for _ in term_specs]
-            seen_product_keys_by_term = [set() for _ in term_specs]
-            variant_rows_by_url = {}
+                term_specs = []
+                fts_token_sets = []
+                for ts in token_sets:
+                    sabina_size_tokens = set()
+                    fts_tokens = ts
+                    if store == 'sabina' and any(token in ts for token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}):
+                        sabina_size_tokens = {
+                            token for token in ts
+                            if token.isdigit() or token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}
+                        }
+                        fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
+                    if not fts_tokens:
+                        continue
+                    fts_query = _fts_query_for_tokens(fts_tokens)
+                    if not fts_query:
+                        continue
+                    term_specs.append((ts, sabina_size_tokens))
+                    fts_token_sets.append(fts_tokens)
 
-            for r in candidates:
-                if cancel_event is not None and cancel_event.is_set():
-                    break
-                # The OR query is ranked globally, but every alias has its own
-                # quota. Stop scanning immediately once all quotas are filled;
-                # processing the remainder cannot add a candidate and was
-                # wasting CPU on broad family searches.
-                if all(count >= term_candidate_limit for count in per_term_counts):
-                    break
-                actual_store = str(r['fts_store'] or r['product_store'] or '').strip()
-                if actual_store != store:
-                    continue
-                url = str(r['url'] or '').strip()
-                if not url:
-                    continue
+                if not fts_token_sets or not term_specs:
+                    return []
 
-                search_text = ' '.join(
-                    str(r[key] or '')
-                    for key in ('slug', 'product_name', 'product_brand')
+                # One OR query per retailer searches all aliases in a single FTS
+                # pass. The per-term checks below preserve each alias's candidate
+                # quota, so common aliases cannot consume the entire result budget.
+                combined_query = _fts_query_for_token_sets(fts_token_sets)
+                if not combined_query:
+                    return []
+                # Make the retailer filter part of the FTS expression itself.
+                # With store UNINDEXED, SQLite searched the matching text pool across
+                # every retailer eight times and filtered each pool afterwards. The
+                # indexed store column narrows the postings before ranking, without
+                # changing the alias OR expression or per-term recall quotas.
+                combined_query = f'store : "{store}" AND ({combined_query})'
+                # The OR query returns one ranked pool for all aliases. Size the
+                # pool to the number of terms, but for a single-term query fetch
+                # only the same 2x window the old per-term query used.
+                # Keep the OR pool bounded to at most two candidate windows per
+                # alias group. The previous 4x expansion forced FTS5 to rank and
+                # hydrate hundreds of rows even though per-term quotas are capped
+                # at 64; this was a major cost for broad family searches.
+                combined_candidate_limit = min(
+                    256,
+                    max(64, fts_candidate_limit * min(2, len(term_specs))),
                 )
-                normalized_tokens = set(norm(search_text).split())
-                product_key = (
-                    str(r['product_sku'] or '').strip().lower()
-                    or str(r['product_gtin'] or '').strip().lower()
-                    or str(r['product_mpn'] or '').strip().lower()
-                    or url.lower()
-                )
+                _diag_sql_t0 = time.monotonic()
+                try:
+                    candidates = store_conn.execute(
+                        sql, (combined_query, store, combined_candidate_limit)
+                    ).fetchall()
+                except sqlite3.OperationalError as exc:
+                    if cancel_event is not None and cancel_event.is_set():
+                        break
+                    raise
+                _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
+                _diag_process_t0 = time.monotonic()
+                per_term_counts = [0 for _ in term_specs]
+                seen_product_keys_by_term = [set() for _ in term_specs]
+                variant_rows_by_url = {}
 
-                for term_index, (ts, sabina_size_tokens) in enumerate(term_specs):
-                    if per_term_counts[term_index] >= term_candidate_limit:
+                for r in candidates:
+                    if cancel_event is not None and cancel_event.is_set():
+                        break
+                    # The OR query is ranked globally, but every alias has its own
+                    # quota. Stop scanning immediately once all quotas are filled;
+                    # processing the remainder cannot add a candidate and was
+                    # wasting CPU on broad family searches.
+                    if all(count >= term_candidate_limit for count in per_term_counts):
+                        break
+                    actual_store = str(r['fts_store'] or r['product_store'] or '').strip()
+                    if actual_store != store:
                         continue
-                    required_base_tokens = tuple(
-                        token for token in ts if token not in sabina_size_tokens
-                    ) if store == 'sabina' else ts
-                    if not all(token in normalized_tokens for token in required_base_tokens):
-                        continue
-                    if product_key in seen_product_keys_by_term[term_index]:
+                    url = str(r['url'] or '').strip()
+                    if not url:
                         continue
 
-                    seen_product_keys_by_term[term_index].add(product_key)
-                    per_term_counts[term_index] += 1
+                    search_text = ' '.join(
+                        str(r[key] or '')
+                        for key in ('slug', 'product_name', 'product_brand')
+                    )
+                    normalized_tokens = set(norm(search_text).split())
+                    product_key = (
+                        str(r['product_sku'] or '').strip().lower()
+                        or str(r['product_gtin'] or '').strip().lower()
+                        or str(r['product_mpn'] or '').strip().lower()
+                        or url.lower()
+                    )
 
-                    if r['product_name']:
-                        variant_rows = []
-                        if store == 'sabina':
-                            if url not in variant_rows_by_url:
-                                try:
-                                    variant_rows_by_url[url] = conn.execute(
-                                        "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
-                                        (store, url),
-                                    ).fetchall()
-                                except sqlite3.OperationalError:
-                                    variant_rows_by_url[url] = []
-                            variant_rows = variant_rows_by_url[url]
-                        if variant_rows:
-                            for vr in variant_rows:
-                                variant_tokens = set(norm(' '.join((
-                                    str(r['slug'] or ''),
-                                    str(r['product_name'] or ''),
-                                    str(r['product_brand'] or ''),
-                                    f"{vr['size_ml'] or ''} ml",
-                                ))).split())
-                                if not all(token in variant_tokens for token in ts):
-                                    continue
-                                rows.append({
-                                    'url': _sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']),
-                                    'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
-                                    'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
-                                    'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
-                                    'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
-                                    'size_ml': vr['size_ml'], 'concentration': vr['concentration'] or r['product_concentration'] or '',
-                                    'gender': vr['gender'] or r['product_gender'] or '', 'price': vr['price'],
-                                    'currency': vr['currency'] or 'EUR', 'availability': vr['availability'] or r['product_availability'] or '',
-                                    'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': vr['price'],
-                                    'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
-                                })
+                    for term_index, (ts, sabina_size_tokens) in enumerate(term_specs):
+                        if per_term_counts[term_index] >= term_candidate_limit:
                             continue
-                        rows.append({
-                            'url': url, 'slug': r['slug'] or '',
-                            'lastmod': r['lastmod'] or '',
-                            'name': r['product_name'] or '',
-                            'brand': r['product_brand'] or '',
-                            'image': r['product_image'] or '',
-                            'sku': r['product_sku'] or '',
-                            'gtin': r['product_gtin'] or '',
-                            'mpn': r['product_mpn'] or '',
-                            'size_ml': r['product_size_ml'],
-                            'concentration': r['product_concentration'] or '',
-                            'gender': r['product_gender'] or '',
-                            'price': r['product_price'],
-                            'currency': r['product_currency'] or '',
-                            'availability': r['product_availability'] or '',
-                            'fetched_at': r['product_fetched_at'],
-                            'fetch_status': r['fetch_status'] or 'OK',
-                            'price_num': r['product_price'],
-                            'store': STORE_LABELS[store],
-                            'store_key': store,
-                        })
-                    else:
-                        rows.append({
-                            'store': STORE_LABELS[store], 'store_key': store,
-                            'url': url, 'name': r['slug'] or url_slug(url),
-                            '_needs_refresh': True,
-                        })
+                        required_base_tokens = tuple(
+                            token for token in ts if token not in sabina_size_tokens
+                        ) if store == 'sabina' else ts
+                        if not all(token in normalized_tokens for token in required_base_tokens):
+                            continue
+                        if product_key in seen_product_keys_by_term[term_index]:
+                            continue
 
-            print(
-                f"CATALOG SEARCH DIAG store={store} terms={len(term_specs)} "
-                f"sql={_diag_sql_elapsed:.3f}s process={time.monotonic()-_diag_process_t0:.3f}s "
-                f"fetched={len(candidates)} rows={len(rows)}",
-                flush=True,
-            )
+                        seen_product_keys_by_term[term_index].add(product_key)
+                        per_term_counts[term_index] += 1
+
+                        if r['product_name']:
+                            variant_rows = []
+                            if store == 'sabina':
+                                if url not in variant_rows_by_url:
+                                    try:
+                                        variant_rows_by_url[url] = store_conn.execute(
+                                            "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
+                                            (store, url),
+                                        ).fetchall()
+                                    except sqlite3.OperationalError:
+                                        variant_rows_by_url[url] = []
+                                variant_rows = variant_rows_by_url[url]
+                            if variant_rows:
+                                for vr in variant_rows:
+                                    variant_tokens = set(norm(' '.join((
+                                        str(r['slug'] or ''),
+                                        str(r['product_name'] or ''),
+                                        str(r['product_brand'] or ''),
+                                        f"{vr['size_ml'] or ''} ml",
+                                    ))).split())
+                                    if not all(token in variant_tokens for token in ts):
+                                        continue
+                                    store_rows.append({
+                                        'url': _sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']),
+                                        'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
+                                        'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
+                                        'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
+                                        'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
+                                        'size_ml': vr['size_ml'], 'concentration': vr['concentration'] or r['product_concentration'] or '',
+                                        'gender': vr['gender'] or r['product_gender'] or '', 'price': vr['price'],
+                                        'currency': vr['currency'] or 'EUR', 'availability': vr['availability'] or r['product_availability'] or '',
+                                        'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': vr['price'],
+                                        'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
+                                    })
+                                continue
+                            store_rows.append({
+                                'url': url, 'slug': r['slug'] or '',
+                                'lastmod': r['lastmod'] or '',
+                                'name': r['product_name'] or '',
+                                'brand': r['product_brand'] or '',
+                                'image': r['product_image'] or '',
+                                'sku': r['product_sku'] or '',
+                                'gtin': r['product_gtin'] or '',
+                                'mpn': r['product_mpn'] or '',
+                                'size_ml': r['product_size_ml'],
+                                'concentration': r['product_concentration'] or '',
+                                'gender': r['product_gender'] or '',
+                                'price': r['product_price'],
+                                'currency': r['product_currency'] or '',
+                                'availability': r['product_availability'] or '',
+                                'fetched_at': r['product_fetched_at'],
+                                'fetch_status': r['fetch_status'] or 'OK',
+                                'price_num': r['product_price'],
+                                'store': STORE_LABELS[store],
+                                'store_key': store,
+                            })
+                        else:
+                            store_rows.append({
+                                'store': STORE_LABELS[store], 'store_key': store,
+                                'url': url, 'name': r['slug'] or url_slug(url),
+                                '_needs_refresh': True,
+                            })
+
+                print(
+                    f"CATALOG SEARCH DIAG store={store} terms={len(term_specs)} "
+                    f"sql={_diag_sql_elapsed:.3f}s process={time.monotonic()-_diag_process_t0:.3f}s "
+                    f"fetched={len(candidates)} rows={len(store_rows)}",
+                    flush=True,
+                )
+
+
+                return store_rows
+            finally:
+                store_conn.set_progress_handler(None, 0)
+                store_conn.close()
+
+        # Independent read-only retailer queries can run concurrently. Merge
+        # in configured order to preserve deterministic output and full coverage.
+        with ThreadPoolExecutor(max_workers=min(8, len(STORES)), thread_name_prefix="catalog-search") as pool:
+            futures = {store: pool.submit(_search_one_store, store) for store in STORES}
+            for store in STORES:
+                if cancel_event is not None and cancel_event.is_set():
+                    break
+                rows.extend(futures[store].result())
 
         # Expanded query terms can match the same catalog URL repeatedly.
         # Deduplicate only after collecting all terms, so a later size-specific
