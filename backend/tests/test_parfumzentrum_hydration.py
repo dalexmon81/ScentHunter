@@ -76,5 +76,128 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
 
 
+class FamilyRegistryBaselineTests(unittest.TestCase):
+    def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
+        """Protect the curated Hawas family registry baseline, not fabricated offers."""
+        import json
+        from pathlib import Path
+
+        registry_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with registry_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+
+        families = registry.get("families", [])
+        hawas = next(
+            (family for family in families if family.get("family_id") == "rasasi_hawas"),
+            None,
+        )
+        self.assertIsNotNone(hawas, "Rasasi Hawas family must remain registered")
+
+        canonical_names = [
+            str(product.get("canonical_name") or "").strip()
+            for product in hawas.get("products", [])
+            if isinstance(product, dict)
+        ]
+        canonical_names = [name for name in canonical_names if name]
+        self.assertEqual(len(canonical_names), 30)
+        self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
+
+    def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
+        """The broad-family snapshot should not lose variants while adding offers."""
+        import json
+        import sys
+        from pathlib import Path
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
+
+        import main as app_main
+
+        with (backend_dir / "family_registry.json").open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        family = next(
+            family for family in registry.get("families", [])
+            if family.get("family_id") == "rasasi_hawas"
+        )
+        matcher = app_main.PRODUCT_MATCHER
+        self.assertIsNotNone(matcher)
+        self.assertEqual(len(matcher._family_for_query("Hawas")["variants"]), 30)
+
+        # Model the completed search with three already-matched offers, whose
+        # catalog IDs are unrelated to the deterministic synthetic family IDs.
+        from product_matcher import stable_family_id
+
+        job_id = "test-hawas-family-snapshot"
+        family_variants = matcher._family_for_query("Hawas")["variants"]
+        offers = []
+        for name in ("Hawas Ice", "Hawas Black", "Hawas Kobra"):
+            variant = next(item for item in family_variants if item["canonical_name"] == name)
+            identity = matcher._build_family_result(
+                {"name": name, "price_num": 25.0, "url": "https://example.invalid/product"},
+                matcher._family_for_query("Hawas"),
+                variant,
+            )
+            offers.append({
+                "catalog_id": "real-catalog-" + name.lower().replace(" ", "-"),
+                "brand": "Rasasi",
+                "canonical_brand": "Rasasi",
+                "name": name,
+                "canonical_name": name,
+                "family": "Hawas",
+                "variant": name,
+                "offers": [{
+                    "name": name, "price_num": 25.0,
+                    "url": "https://example.invalid/product",
+                    "store": "Fixture store",
+                }],
+            })
+
+        with app_main.JOBS_LOCK:
+            previous = app_main.JOBS.get(job_id)
+            app_main.JOBS[job_id] = {
+                "query": "Hawas",
+                "started_at": 1.0,
+                "completed": True,
+                "status": "completed",
+                "elapsed": 0.1,
+                "results": offers,
+                "offers": [offer for group in offers for offer in group["offers"]],
+                "unresolved_offers": [],
+                "errors": {},
+                "stores": {},
+                "identity_scope": [],
+                "dedupe_diagnostics": [],
+                "collect_elapsed": 0.05,
+                "dedupe_elapsed": 0.01,
+                "aggregate_elapsed": 0.01,
+                "atomic_results": True,
+            }
+        try:
+            snapshot = app_main._snapshot(job_id)
+            names = {group["canonical_name"] for group in snapshot["results"]}
+            expected = {variant["canonical_name"] for variant in family_variants}
+            self.assertEqual(expected, names)
+            self.assertEqual(snapshot["count"], 30)
+            # Offers must remain attached only to the three fixture products;
+            # the other cards are identity-only and have no invented prices.
+            priced_names = {
+                group["canonical_name"] for group in snapshot["results"]
+                if group.get("offers")
+            }
+            self.assertEqual(priced_names, {"Hawas Ice", "Hawas Black", "Hawas Kobra"})
+            self.assertTrue(all(
+                group.get("identity_only")
+                for group in snapshot["results"]
+                if group["canonical_name"] not in priced_names
+            ))
+        finally:
+            with app_main.JOBS_LOCK:
+                if previous is None:
+                    app_main.JOBS.pop(job_id, None)
+                else:
+                    app_main.JOBS[job_id] = previous
+
+
 if __name__ == "__main__":
     unittest.main()
