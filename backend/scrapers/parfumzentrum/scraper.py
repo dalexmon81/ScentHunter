@@ -1698,6 +1698,7 @@ def _extract_product(url, query, html=None):
 
     # Live search requires lexical relevance. URL hydration uses the dedicated
     # adapter with an empty query after the URL has already been identified.
+    query = re.sub(r"_?z\d+\s*$", "", _clean(query), flags=re.I).strip()
     if query and not _matches_query(name, query):
         return None
 
