@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote, quote_plus, urljoin
 
+STORE = "PerfumeMarket"
 BASE_URL = "https://www.perfumemarket.nl"
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
