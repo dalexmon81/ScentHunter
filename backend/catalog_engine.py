@@ -3929,6 +3929,23 @@ def _missing_price_retry_due(price, fetched_at, now=None, retry_seconds=_MISSING
     return fetched <= 0 or current_time - fetched >= float(retry_seconds)
 
 
+def _catalog_row_needs_refresh(price, fetched_at, now=None):
+    """Return whether a query-selected catalog row is due for a bounded refresh."""
+    current_time = time.time() if now is None else float(now)
+    try:
+        explicit_price = float(price) if price not in (None, '') else None
+    except (TypeError, ValueError):
+        explicit_price = None
+    if explicit_price is None or explicit_price <= 0:
+        return _missing_price_retry_due(None, fetched_at, now=current_time)
+
+    try:
+        fetched = float(fetched_at or 0)
+    except (TypeError, ValueError):
+        fetched = 0.0
+    return fetched <= 0 or current_time - fetched > 24 * 60 * 60
+
+
 def _schedule_stale_price_repairs(rows, max_jobs=12):
     # Interactive searches must not spawn a fresh wave of retailer HTTP requests.
     # These detached refresh threads contend with FTS/identity resolution and SQLite
@@ -4428,9 +4445,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                 fetched_at = float(item.get('fetched_at') or 0)
             except (TypeError, ValueError):
                 fetched_at = 0.0
-            if item.get('price_num') not in (None, '') and (
-                fetched_at <= 0 or time.time() - fetched_at > 24 * 60 * 60
-            ):
+            if _catalog_row_needs_refresh(item.get('price_num'), fetched_at):
                 item = dict(item)
                 item['_needs_refresh'] = True
                 # Keep the last known price available while hydration is queued.
@@ -4632,18 +4647,62 @@ def prioritize_hydration_candidates(rows, priority=0):
         value = max(0, int(priority))
     except (TypeError, ValueError):
         value = 0
+    seen_updates = set()
     for row in rows or ():
         if not isinstance(row, dict) or not row.get('_needs_refresh'):
             continue
         store = str(row.get('store_key') or row.get('store') or '').strip().lower()
-        url = str(row.get('url') or row.get('product_url') or '').strip()
-        if store in STORES and url:
+        # A retailer variant URL can differ from its canonical hydration URL.
+        # Queue the parent product page so the parser refreshes all persisted data.
+        url = str(row.get('product_url') or row.get('url') or '').strip()
+        key = (store, url)
+        if store in STORES and url and key not in seen_updates:
             updates.append((value, store, url))
+            seen_updates.add(key)
     if not updates:
         return 0
 
+    now = time.time()
     conn = sqlite3.connect(str(DB_PATH), timeout=0.15)
     conn.execute('PRAGMA busy_timeout=150')
+    requeue_stale_done_sql = """UPDATE hydration_queue
+                                   SET state='PENDING',
+                                       available_at=MIN(available_at,?),
+                                       priority=MIN(priority,?)
+                                 WHERE store=? AND url=? AND state='DONE'
+                                   AND EXISTS (
+                                       SELECT 1 FROM store_urls u
+                                        WHERE u.store=hydration_queue.store
+                                          AND u.url=hydration_queue.url
+                                          AND u.active=1
+                                   )
+                                   AND (
+                                       EXISTS (
+                                           SELECT 1 FROM store_products p
+                                            WHERE p.store=hydration_queue.store
+                                              AND p.url=hydration_queue.url
+                                              AND p.fetch_status='OK'
+                                              AND (
+                                                  (p.price IS NOT NULL AND p.price > 0
+                                                   AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                                                  OR
+                                                  ((p.price IS NULL OR p.price <= 0)
+                                                   AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                                              )
+                                       )
+                                       OR EXISTS (
+                                           SELECT 1 FROM store_product_variants v
+                                            WHERE v.store=hydration_queue.store
+                                              AND v.url=hydration_queue.url
+                                              AND (
+                                                  (v.price IS NOT NULL AND v.price > 0
+                                                   AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                                                  OR
+                                                  ((v.price IS NULL OR v.price <= 0)
+                                                   AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                                              )
+                                       )
+                                   )"""
     priority_sql = """UPDATE hydration_queue
                          SET priority=MIN(priority,?)
                        WHERE store=? AND url=?
@@ -4656,10 +4715,24 @@ def prioritize_hydration_candidates(rows, priority=0):
                          )"""
     try:
         conn.execute('BEGIN IMMEDIATE')
-        before = conn.total_changes
+        requeue_params = [
+            (
+                now, value, store, url,
+                now - 24 * 60 * 60, now - 6 * 60 * 60,
+                now - 24 * 60 * 60, now - 6 * 60 * 60,
+            )
+            for value, store, url in updates
+        ]
+        before_requeue = conn.total_changes
+        conn.executemany(requeue_stale_done_sql, requeue_params)
+        requeued = conn.total_changes - before_requeue
+        before_priority = conn.total_changes
         conn.executemany(priority_sql, updates)
+        prioritized = conn.total_changes - before_priority
         conn.commit()
-        return conn.total_changes - before
+        # Requeued DONE rows are also seen by the priority update; count each
+        # selected URL once rather than double-counting those two SQL writes.
+        return max(requeued, prioritized)
     except sqlite3.OperationalError as exc:
         try:
             conn.rollback()
