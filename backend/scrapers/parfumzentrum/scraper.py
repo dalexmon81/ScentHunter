@@ -1903,20 +1903,16 @@ def _extract_product(url, query, html=None):
 
 
 def extract_product_page(session, url, query="", html=None):
-    """Parse a known ParfumZentrum product URL during catalog hydration.
+    """Parse an identified ParfumZentrum URL for catalog hydration.
 
-    The catalog engine has already identified this URL, so URL slug words are
-    not used as a mandatory product-title query. _extract_product still checks
-    that the page describes a fragrance and only emits source-backed offers.
+    Search discovery has a separate strict query path. Hydration must not
+    reject a valid Product merely because the database passes a retailer URL
+    slug as the query; product type, offer parsing and price validation remain
+    enforced by _extract_product().
     """
     parsed_url = _product_url(url)
     if not parsed_url:
         return None
-    # Remove the retailer's internal _zNNNN identifier from the query when
-    # supplied; an empty normalized query is accepted only in this URL adapter.
-    effective_query = re.sub(
-        r"_?z\d+\s*$", "", _clean(query), flags=re.I
-    ).strip()
     return _extract_product(parsed_url, "", html=html)
 
 
