@@ -3076,14 +3076,54 @@ def _num(v):
         return None
 
 
+def _price_specification(offer):
+    """Return a product-price Schema.org PriceSpecification from an Offer."""
+    if not isinstance(offer, dict):
+        return {}
+
+    def is_product_price(specification):
+        if not isinstance(specification, dict) or _num(specification.get('price')) is None:
+            return False
+        raw_type = specification.get('@type') or ''
+        types = raw_type if isinstance(raw_type, list) else [raw_type]
+        # A shipping/delivery charge is not the perfume's product price.
+        excluded = ('deliverycharge', 'shippingrate', 'paymentcharge')
+        return not any(
+            any(token in str(type_name).lower() for token in excluded)
+            for type_name in types
+        )
+
+    specifications = offer.get('priceSpecification')
+    if isinstance(specifications, dict):
+        return specifications if is_product_price(specifications) else {}
+    if isinstance(specifications, list):
+        for specification in specifications:
+            if is_product_price(specification):
+                return specification
+    return {}
+
+
+def _offer_price(offer):
+    """Read an explicit offer price, including Schema.org priceSpecification.price.
+
+    Do not substitute AggregateOffer.lowPrice: it is a range boundary, not
+    necessarily the active price for the product/variant being displayed.
+    """
+    if not isinstance(offer, dict):
+        return None
+    direct_price = _num(offer.get('price'))
+    if direct_price is not None:
+        return direct_price
+    return _num(_price_specification(offer).get('price'))
+
+
 def _first_offer(p):
     """Prefer an offer with an actual price over availability-only JSON-LD.
 
     Retailers may publish several offers for one product, including an
-    availability-only entry before a priced offer. Returning the first entry
-    with either field silently discarded a valid price and made the product
-    appear as 'Prezzo non disponibile'. Keep the old availability fallback
-    only when none of the offers contains a parseable price.
+    availability-only entry before a priced offer. Price may be encoded either
+    as Offer.price or PriceSpecification.price. Keep the availability fallback
+    only when no offer contains an explicit parseable price.
     """
     offers = p.get('offers') if isinstance(p, dict) else None
     if isinstance(offers, dict):
@@ -3093,7 +3133,7 @@ def _first_offer(p):
         for o in offers:
             if not isinstance(o, dict):
                 continue
-            if _num(o.get('price')) is not None:
+            if _offer_price(o) is not None:
                 return o
             if not availability_fallback and o.get('availability'):
                 availability_fallback = o
@@ -3146,8 +3186,9 @@ def parse_product(store, url, data):
     if isinstance(brand, dict):
         brand = brand.get('name')
     offer = _first_offer(p)
-    price = _num(offer.get('price'))
-    currency = str(offer.get('priceCurrency') or 'EUR')
+    price_specification = _price_specification(offer)
+    price = _offer_price(offer)
+    currency = str(offer.get('priceCurrency') or price_specification.get('priceCurrency') or 'EUR')
     availability = str(offer.get('availability') or '').lower()
     if 'instock' in availability or 'limitedavailability' in availability or 'onlineonly' in availability:
         availability = 'in_stock'
