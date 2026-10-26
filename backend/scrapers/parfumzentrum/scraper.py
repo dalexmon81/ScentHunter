@@ -1655,14 +1655,9 @@ def _sitemap_discovery(query):
 
 def _extract_product(url, query, html=None):
     """Extract one product, reusing supplied HTML when the catalog has it."""
-    # Product URLs append an internal SKU such as "_z1016707". It is not part
-    # of the product title and must never become a mandatory lexical match.
-    query = re.sub(
-        r"\\bz\\d+\\s*$",
-        "",
-        _clean(query),
-        flags=re.I,
-    ).strip()
+    # Product URLs append an internal SKU (for example, _z904294).
+    # Strip it before live-search relevance matching.
+    query = re.sub(r"_?z\d+\s*$", "", _clean(query), flags=re.I).strip()
 
     if html is not None:
         html_text = (
@@ -1705,10 +1700,9 @@ def _extract_product(url, query, html=None):
     if not name:
         return None
 
-    if not _matches_query(
-        name,
-        query,
-    ):
+    # Known-URL hydration calls this parser with an empty query. Live search
+    # continues to require lexical relevance.
+    if query and not _matches_query(name, query):
         return None
 
     identity_texts = _identity_texts(
@@ -1911,6 +1905,18 @@ def _extract_product(url, query, html=None):
         "store_product_id": product_id,
     }
 
+
+def extract_product_page(session, url, query="", html=None):
+    """Hydrate an already-identified ParfumZentrum product URL.
+
+    Search relevance stays strict in _extract_product. During catalog hydration,
+    the URL is already known, so title matching must not reject a valid product
+    because the retailer appends an internal SKU to the URL slug.
+    """
+    parsed_url = _product_url(url)
+    if not parsed_url:
+        return None
+    return _extract_product(parsed_url, "", html=html)
 
 def search(query):
     query = _clean(query)
