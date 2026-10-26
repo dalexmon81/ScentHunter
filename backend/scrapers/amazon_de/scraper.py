@@ -107,11 +107,17 @@ def search(query):
         if final.scheme != "https" or final.hostname not in {urlparse(BASE).hostname, urlparse(BASE).hostname.replace("www.", "")}:
             return {"status": "unavailable", "verified": False, "results": [], "error": "redirected_outside_market", "details": {}}
         if response.status_code in (403, 429, 503):
+            # 503 is an availability failure, not proof of an access block.
+            blocked = response.status_code in (403, 429)
             return {
-                "status": "blocked",
+                "status": "blocked" if blocked else "unavailable",
                 "verified": False,
                 "results": [],
-                "error": f"blocked_http_{response.status_code}",
+                "error": (
+                    f"blocked_http_{response.status_code}"
+                    if blocked
+                    else f"amazon_http_{response.status_code}"
+                ),
                 "details": {
                     "market": MARKET,
                     "http_status": response.status_code,
