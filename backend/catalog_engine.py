@@ -114,10 +114,8 @@ DISCOVERY_BASES = {
         'https://www.deloox.es',
     ),
     'notino': (
-        # Keep France and Germany as separate official storefront hosts. Offer
-        # prices and destination URLs are never rewritten across marketplaces.
+        # France only: never index or return Notino Germany for this store.
         'https://www.notino.fr',
-        'https://www.notino.de',
     ),
 }
 
@@ -198,10 +196,9 @@ HTML_DISCOVERY_SEEDS = {
         'https://www.deloox.com/en/search?q=perfume',
     ),
     'notino': (
+        # Keep discovery strictly on the French storefront.
         'https://www.notino.fr/',
         'https://www.notino.fr/parfums/',
-        'https://www.notino.de/',
-        'https://www.notino.de/parfums/',
     ),
 }
 
