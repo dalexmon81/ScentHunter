@@ -72,6 +72,27 @@ def test_search_extracts_only_query_matching_priced_asin_products(monkeypatch, m
     assert captured["kwargs"]["headers"]["Accept-Language"] == module.LANGUAGE
 
 
+@pytest.mark.parametrize(("module", "http_status"), [(fr, 403), (fr, 429), (fr, 503), (de, 403), (de, 429), (de, 503)])
+def test_search_reports_http_access_block_as_blocked_not_empty_success(monkeypatch, module, http_status):
+    class Response:
+        status_code = http_status
+        url = module.BASE + "/s?k=parfum"
+        text = "Service Unavailable"
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise module.requests.HTTPError(f"HTTP {self.status_code}")
+        def close(self):
+            return None
+    monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
+    report = module.search("parfum")
+    assert report["status"] == "blocked"
+    assert report["verified"] is False
+    assert report["results"] == []
+    assert report["error"] == f"blocked_http_{http_status}"
+    assert report["details"]["market"] == module.MARKET
+    assert report["details"]["http_status"] == http_status
+
+
 @pytest.mark.parametrize("module", [fr, de])
 def test_search_reports_amazon_challenge_as_blocked_not_empty_success(monkeypatch, module):
     class Response:
