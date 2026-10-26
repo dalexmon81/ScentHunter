@@ -63,4 +63,17 @@ def test_price_specification_list_uses_explicit_price():
             {"@type": "UnitPriceSpecification", "price": "27.50", "priceCurrency": "EUR"},
         ]
     }
-    assert _offer_price(offer) == 4.99
+    assert _offer_price(offer) == 27.50
+
+
+
+def test_price_specification_does_not_use_delivery_charge_as_product_price():
+    from backend.catalog_engine import _offer_price
+
+    offer = {
+        "priceSpecification": {
+            "@type": "DeliveryChargeSpecification",
+            "price": "5.00",
+        }
+    }
+    assert _offer_price(offer) is None
