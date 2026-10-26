@@ -137,4 +137,7 @@ jobs:
           probe 'Production catalog status (read-only HTTP)' 'https://scenthunter.fly.dev/catalog-status' 12
           probe 'Persistent hydration queue states (read-only HTTP)' 'https://scenthunter.fly.dev/catalog/hydration-status' 8
           probe 'Read-only PROCESSING hydration leases (age and expiry)' 'https://scenthunter.fly.dev/catalog/hydration-processing' 8
+          for store in parfumzentrum sabina deloox perfumemarket easycosmetic orioudh; do
+            probe "Recent hydration errors: $store" "https://scenthunter.fly.dev/catalog/hydration-errors?store=$store&limit=10" 8
+          done
           probe 'Read-only runtime/thread diagnostics' 'https://scenthunter.fly.dev/diagnostic/runtime-deep' 12
