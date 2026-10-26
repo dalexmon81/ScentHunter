@@ -282,10 +282,9 @@ jobs:
                   raise RuntimeError(f"Search '{query}' returned zero products and offers")
 
               if query == "Hawas":
-                  # Protect the user-confirmed broad-family baseline: all 29
-                  # expected variants must remain visible and backend search
-                  # completion must stay under one second. This measures the
-                  # backend elapsed field, not workflow/network polling overhead.
+                  # Keep the validated family coverage and latency thresholds.
+                  # A deployment must not be marked healthy when this baseline
+                  # regresses; inspect missing catalog variants instead.
                   backend_elapsed = float(last.get("elapsed") or 0)
                   if count < 29:
                       raise RuntimeError(
