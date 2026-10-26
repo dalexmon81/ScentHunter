@@ -82,8 +82,9 @@ _CATALOG_DISCOVERY_STARTED = False
 _CATALOG_DISCOVERY_STOP = threading.Event()
 
 # Controlled operational resync for stores whose persistent catalog needs to
-# be rebuilt without touching the normal search path. This is deliberately
-# limited to the two stores currently being repaired.
+# be rebuilt without touching the normal search path. Keep this list limited to
+# stores with a confirmed catalog-coverage gap; discovery runs in the background
+# and never runs in the user search path.
 _CATALOG_RESYNC_LOCK = threading.Lock()
 _CATALOG_RESYNC_RUNNING = False
 _CATALOG_RESYNC_JOB_ID = None
@@ -91,7 +92,7 @@ _CATALOG_RESYNC_STARTED_AT = None
 _CATALOG_RESYNC_FINISHED_AT = None
 _CATALOG_RESYNC_RESULT = {}
 _CATALOG_RESYNC_ERROR = None
-_CATALOG_RESYNC_STORES = ('sabina', 'deloox')
+_CATALOG_RESYNC_STORES = ('sabina', 'deloox', 'parfumzentrum')
 
 # Isolated Easycosmetic operational resync. This repairs only the Easycosmetic
 # catalog and runs separately from /search and the other store resync jobs.
