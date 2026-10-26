@@ -6078,8 +6078,7 @@ def store_status():
 
 if __name__ == '__main__':
     print(json.dumps(sync_all(), indent=2, ensure_ascii=False))
-, '', url_slug(parser_url), flags=re.I).strip()
-        parameters = inspect.signature(parser).parameters
+
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
         try:
