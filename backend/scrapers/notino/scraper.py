@@ -277,15 +277,21 @@ def search(query):
     errors = []
     candidate_count = 0
     completed_markets = 0
-    for base, language in MARKETS:
-        try:
-            rows, market_errors, count = _search_market(query, base, language)
-            results.extend(rows)
-            errors.extend(market_errors)
-            candidate_count += count
-            completed_markets += 1
-        except Exception as exc:
-            errors.append(f"{urlparse(base).hostname}:{type(exc).__name__}:{exc}")
+    with ThreadPoolExecutor(max_workers=len(MARKETS)) as pool:
+        future_to_market = {
+            pool.submit(_search_market, query, base, language): (base, language)
+            for base, language in MARKETS
+        }
+        for future in as_completed(future_to_market):
+            base, _language = future_to_market[future]
+            try:
+                rows, market_errors, count = future.result()
+                results.extend(rows)
+                errors.extend(market_errors)
+                candidate_count += count
+                completed_markets += 1
+            except Exception as exc:
+                errors.append(f"{urlparse(base).hostname}:{type(exc).__name__}:{exc}")
 
     # Deduplicate only identical source URLs; keep FR and DE offers separate.
     unique = {}
