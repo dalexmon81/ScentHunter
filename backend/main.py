@@ -247,6 +247,142 @@ def catalog_resync_easycosmetic_status_endpoint(job_id: str = ''):
         'persistent_error': persistent_error,
     }
 
+# Isolated Amazon marketplace catalog discovery. Amazon is intentionally
+# separate from the general round-robin so its catalog can be populated and
+# measured without waiting for every other retailer. The worker is sequential
+# to avoid doubling crawler concurrency against the marketplace.
+_AMAZON_RESYNC_LOCK = threading.Lock()
+_AMAZON_RESYNC_RUNNING = False
+_AMAZON_RESYNC_JOB_ID = None
+_AMAZON_RESYNC_STARTED_AT = None
+_AMAZON_RESYNC_FINISHED_AT = None
+_AMAZON_RESYNC_RESULTS = {}
+_AMAZON_RESYNC_ERROR = None
+_AMAZON_RESYNC_STORES = ('amazon_fr', 'amazon_de')
+
+
+def _amazon_resync_worker(job_id):
+    global _AMAZON_RESYNC_RUNNING, _AMAZON_RESYNC_FINISHED_AT
+    global _AMAZON_RESYNC_RESULTS, _AMAZON_RESYNC_ERROR
+    results = {}
+    errors = []
+    print(f'CATALOG AMAZON RESYNC START job={job_id} stores={_AMAZON_RESYNC_STORES}', flush=True)
+    try:
+        if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+            raise RuntimeError('catalog_discovery_unavailable')
+        for store in _AMAZON_RESYNC_STORES:
+            try:
+                result = catalog_discover_store(store)
+                if not isinstance(result, dict):
+                    result = {'status': 'finished', 'result': result}
+                results[store] = result
+                print(
+                    f'CATALOG AMAZON RESYNC STORE job={job_id} store={store} '
+                    f'status={result.get("status", "unknown")} count={result.get("count", "?")}',
+                    flush=True,
+                )
+            except Exception as exc:
+                error = f'{type(exc).__name__}:{exc}'
+                errors.append(f'{store}:{error}')
+                results[store] = {'status': 'DISCOVERY_ERROR', 'count': 0, 'error': error}
+                print(f'CATALOG AMAZON RESYNC ERROR job={job_id} store={store}: {error}', flush=True)
+        if errors:
+            _AMAZON_RESYNC_ERROR = '; '.join(errors)
+    except Exception as exc:
+        _AMAZON_RESYNC_ERROR = f'{type(exc).__name__}:{exc}'
+        print(f'CATALOG AMAZON RESYNC ERROR job={job_id}: {_AMAZON_RESYNC_ERROR}', flush=True)
+    finally:
+        with _AMAZON_RESYNC_LOCK:
+            _AMAZON_RESYNC_RESULTS = results
+            _AMAZON_RESYNC_FINISHED_AT = time.time()
+            _AMAZON_RESYNC_RUNNING = False
+        print(f'CATALOG AMAZON RESYNC END job={job_id} stores={len(results)} errors={len(errors)}', flush=True)
+
+
+@app.get('/catalog/resync-amazon')
+def catalog_resync_amazon_endpoint():
+    """Start a bounded sequential discovery pass for Amazon.fr and Amazon.de."""
+    global _AMAZON_RESYNC_RUNNING, _AMAZON_RESYNC_JOB_ID
+    global _AMAZON_RESYNC_STARTED_AT, _AMAZON_RESYNC_FINISHED_AT
+    global _AMAZON_RESYNC_RESULTS, _AMAZON_RESYNC_ERROR
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_discover_store):
+        return {'ok': False, 'error': 'catalog_discovery_unavailable'}
+    with _AMAZON_RESYNC_LOCK:
+        if _AMAZON_RESYNC_RUNNING:
+            return {'ok': False, 'status': 'already_running', 'job_id': _AMAZON_RESYNC_JOB_ID}
+        job_id = uuid.uuid4().hex[:12]
+        _AMAZON_RESYNC_RUNNING = True
+        _AMAZON_RESYNC_JOB_ID = job_id
+        _AMAZON_RESYNC_STARTED_AT = time.time()
+        _AMAZON_RESYNC_FINISHED_AT = None
+        _AMAZON_RESYNC_RESULTS = {}
+        _AMAZON_RESYNC_ERROR = None
+    threading.Thread(
+        target=_amazon_resync_worker,
+        args=(job_id,),
+        daemon=True,
+        name='scenthunter-catalog-amazon-resync',
+    ).start()
+    return {
+        'ok': True,
+        'status': 'started',
+        'job_id': job_id,
+        'stores': list(_AMAZON_RESYNC_STORES),
+        'status_endpoint': f'/catalog/resync-amazon-status?job_id={job_id}',
+        'note': 'Sequential background discovery; normal searches continue using the persistent catalog.',
+    }
+
+
+@app.get('/catalog/resync-amazon-status')
+def catalog_resync_amazon_status_endpoint(job_id: str = ''):
+    """Read-only progress and persistent state for the Amazon discovery pass."""
+    with _AMAZON_RESYNC_LOCK:
+        running = _AMAZON_RESYNC_RUNNING
+        current_job = _AMAZON_RESYNC_JOB_ID
+        started = _AMAZON_RESYNC_STARTED_AT
+        finished = _AMAZON_RESYNC_FINISHED_AT
+        results = dict(_AMAZON_RESYNC_RESULTS)
+        error = _AMAZON_RESYNC_ERROR
+    persistent = {}
+    try:
+        if CATALOG_ENGINE_AVAILABLE and callable(catalog_db):
+            conn = catalog_db()
+            try:
+                for store in _AMAZON_RESYNC_STORES:
+                    row = conn.execute(
+                        'SELECT status,started_at,finished_at,discovered_count,fetched_count,error '
+                        'FROM sync_state WHERE store=?', (store,)
+                    ).fetchone()
+                    if row:
+                        persistent[store] = {
+                            'status': row['status'],
+                            'started_at': row['started_at'],
+                            'finished_at': row['finished_at'],
+                            'discovered_count': int(row['discovered_count'] or 0),
+                            'fetched_count': int(row['fetched_count'] or 0),
+                            'last_progress': row['error'],
+                        }
+            finally:
+                conn.close()
+    except Exception as exc:
+        persistent = {'error': f'{type(exc).__name__}:{exc}'}
+    if job_id and current_job and job_id != current_job and not persistent:
+        return {'ok': False, 'status': 'job_not_current', 'requested_job_id': job_id, 'current_job_id': current_job}
+    return {
+        'ok': True,
+        'status': 'running' if running else ('finished' if current_job else 'idle'),
+        'job_id': current_job,
+        'requested_job_id': job_id or None,
+        'stores': list(_AMAZON_RESYNC_STORES),
+        'started_at': started,
+        'finished_at': finished,
+        'elapsed_sec': round(max(0.0, time.time() - started), 1) if started else None,
+        'error': error,
+        'results': results,
+        'persistent_store_state': persistent,
+    }
+
+
 # Isolated Deloox operational resync. This endpoint intentionally bypasses
 # Sabina so Deloox can be rebuilt and measured independently.
 _DELOOX_RESYNC_LOCK = threading.Lock()
