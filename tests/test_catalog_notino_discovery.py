@@ -217,11 +217,11 @@ def test_discovery_requeues_done_url_when_persisted_product_is_missing(monkeypat
         diagnostics={"visited": 1, "successes": 1, "entries": 1, "errors": 0},
     )
 
+    assert status == "DISCOVERY_OK", (status, count, _detail)
     row = conn.execute(
         "SELECT state FROM hydration_queue WHERE store=? AND url=?",
         ("parfumzentrum", url),
     ).fetchone()
-    assert status == "DISCOVERY_OK", (status, count, row["state"], _detail)
     assert count == 1
     assert row["state"] == "PENDING"
     conn.close()
