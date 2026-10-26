@@ -2756,6 +2756,25 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
     conn.commit(); conn.close()
 
 
+def _should_run_html_fallback(store, product_url_count, sitemap_errors, sitemap_successes):
+    """Decide whether sitemap discovery needs the bounded HTML catalog fallback.
+
+    Notino.fr is deliberately included in the always-supplemented stores: its
+    sitemap may be incomplete or fail to expose the French storefront's
+    canonical slug-based product URLs, while the official fragrance listing
+    provides a generic navigation surface for the same marketplace.
+    """
+    return (
+        store in HTML_DISCOVERY_SEEDS
+        and store != 'deloox'
+        and (
+            store in ('sabina', 'parfumzentrum', 'easycosmetic', 'notino')
+            or product_url_count < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
+        )
+    )
+
+
 def discover_store(store):
     """Build/update one persistent URL catalog with durable progress state."""
     started_at=time.time()
@@ -2857,14 +2876,8 @@ def discover_store(store):
     # no product, brand, name or query is embedded here.
     #
     # Other non-Deloox retailers retain the bounded fallback behaviour.
-    if (
-        store in HTML_DISCOVERY_SEEDS
-        and store != 'deloox'
-        and (
-            store in ('sabina', 'parfumzentrum', 'easycosmetic', 'notino')
-            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-            or (bool(sitemap_errors) and sitemap_successes == 0)
-        )
+    if _should_run_html_fallback(
+        store, len(product_urls), sitemap_errors, sitemap_successes
     ):
         html_seeds=list(dict.fromkeys(
             list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
