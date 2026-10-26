@@ -103,6 +103,7 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
 
 
+
     def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
         """A completed broad-family search must retain all registry cards alongside real offers."""
         import json
@@ -121,11 +122,8 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             if family.get("family_id") == "rasasi_hawas"
         )
 
-        # Isolate family publication from the full production catalog/matcher.
-        # A family registry match should be sufficient to publish all canonical
-        # identities; existing price-bearing groups must not suppress unrelated
-        # synthetic identity cards merely because they have a different ID.
         real_matcher = app_main.PRODUCT_MATCHER
+        self.assertIsNotNone(real_matcher)
 
         class FamilyOnlyMatcher:
             def _family_for_query(self, query):
@@ -145,12 +143,16 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
                     "canonical_image": variant.get("canonical_image") or "",
                 }
 
+        family_matcher = FamilyOnlyMatcher()
+        family = family_matcher._family_for_query("Hawas")
         job_id = "test-hawas-family-snapshot"
-        existing_groups = []
         priced_names = {"Hawas Ice", "Hawas Black", "Hawas Kobra"}
+        existing_groups = []
         for name in sorted(priced_names):
+            variant = next(item for item in family["variants"] if item["canonical_name"] == name)
+            identity = family_matcher._build_family_result({}, family, variant)
             existing_groups.append({
-                "catalog_id": "existing-catalog:" + name.casefold().replace(" ", "-"),
+                "catalog_id": identity["catalog_id"],
                 "brand": "Rasasi",
                 "canonical_brand": "Rasasi",
                 "name": name,
@@ -168,7 +170,7 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         with app_main.JOBS_LOCK:
             previous = app_main.JOBS.get(job_id)
             previous_matcher = app_main.PRODUCT_MATCHER
-            app_main.PRODUCT_MATCHER = FamilyOnlyMatcher()
+            app_main.PRODUCT_MATCHER = family_matcher
             app_main.JOBS[job_id] = {
                 "query": "Hawas",
                 "started_at": 1.0,
