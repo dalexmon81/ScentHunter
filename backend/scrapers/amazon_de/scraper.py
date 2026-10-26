@@ -12,6 +12,9 @@ from urllib.parse import quote_plus, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from ..amazon_creators_api import is_configured as _creators_api_is_configured
+from ..amazon_creators_api import search_marketplace as _creators_api_search
+
 STORE = "Amazon"
 MARKET = "de"
 BASE = "https://www.amazon.de"
@@ -99,6 +102,10 @@ def search(query):
     query = _clean(query)
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None, "details": {"empty_query": True}}
+    # Prefer Amazon's approved API when credentials and the local Partner Tag
+    # are configured. Never silently fall back to public HTML after API errors.
+    if _creators_api_is_configured(MARKET):
+        return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
     url = f"{BASE}/s?k={quote_plus(query)}"
     response = None
     try:
