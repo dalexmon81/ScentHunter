@@ -163,8 +163,11 @@ def _safe_product_url(raw: str, marketplace: str, asin: str) -> str | None:
     base = "https://" + marketplace
     if raw:
         parsed = urlparse(raw)
+        # A supplied URL on another host is untrusted: do not rewrite it into
+        # a marketplace URL based solely on its ASIN.
         if parsed.scheme == "https" and parsed.hostname == marketplace:
             return raw
+        return None
     if asin and len(asin) == 10 and asin.isalnum():
         return f"{base}/dp/{asin.upper()}"
     return None
