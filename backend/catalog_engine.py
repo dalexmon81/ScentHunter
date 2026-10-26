@@ -3077,15 +3077,28 @@ def _num(v):
 
 
 def _price_specification(offer):
-    """Return a usable Schema.org PriceSpecification from an Offer, if present."""
+    """Return a product-price Schema.org PriceSpecification from an Offer."""
     if not isinstance(offer, dict):
         return {}
+
+    def is_product_price(specification):
+        if not isinstance(specification, dict) or _num(specification.get('price')) is None:
+            return False
+        raw_type = specification.get('@type') or ''
+        types = raw_type if isinstance(raw_type, list) else [raw_type]
+        # A shipping/delivery charge is not the perfume's product price.
+        excluded = ('deliverycharge', 'shippingrate', 'paymentcharge')
+        return not any(
+            any(token in str(type_name).lower() for token in excluded)
+            for type_name in types
+        )
+
     specifications = offer.get('priceSpecification')
     if isinstance(specifications, dict):
-        return specifications
+        return specifications if is_product_price(specifications) else {}
     if isinstance(specifications, list):
         for specification in specifications:
-            if isinstance(specification, dict) and _num(specification.get('price')) is not None:
+            if is_product_price(specification):
                 return specification
     return {}
 
