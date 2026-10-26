@@ -210,7 +210,7 @@ def test_discovery_requeues_done_url_when_persisted_product_is_missing(monkeypat
     monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
     monkeypatch.setattr(catalog, "_set_sync_state", lambda *args, **kwargs: None)
 
-    status, count, _ = catalog._save_discovery(
+    status, count, _detail = catalog._save_discovery(
         "parfumzentrum",
         {url: ""},
         started_at=20.0,
@@ -221,7 +221,7 @@ def test_discovery_requeues_done_url_when_persisted_product_is_missing(monkeypat
         "SELECT state FROM hydration_queue WHERE store=? AND url=?",
         ("parfumzentrum", url),
     ).fetchone()
-    assert status == "DISCOVERY_OK"
+    assert status == "DISCOVERY_OK", (status, count, row["state"], _detail)
     assert count == 1
     assert row["state"] == "PENDING"
     conn.close()
