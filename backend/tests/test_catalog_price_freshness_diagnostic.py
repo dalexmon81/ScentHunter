@@ -125,6 +125,7 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
                 ("stale-priced", 25.0, now - 30 * 60 * 60, 1),
                 ("stale-missing", None, now - 8 * 60 * 60, 1),
                 ("fresh-priced", 25.0, now - 2 * 60 * 60, 1),
+                ("fresh-base-stale-variant", 25.0, now - 2 * 60 * 60, 1),
                 ("fresh-missing", None, now - 2 * 60 * 60, 1),
                 ("inactive-stale", 25.0, now - 30 * 60 * 60, 0),
             ]
@@ -142,6 +143,16 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
                     "INSERT INTO store_products(store,url,price,fetched_at,fetch_status) VALUES(?,?,?,?,?)",
                     ("bplatz", url, price, fetched_at, "OK"),
                 )
+            conn.execute(
+                "INSERT INTO store_product_variants(store,url,variant_key,price,fetched_at) VALUES(?,?,?,?,?)",
+                (
+                    "bplatz",
+                    "https://en.bplatz.de/products/fresh-base-stale-variant",
+                    "100ml:sku:variant",
+                    12.0,
+                    now - 30 * 60 * 60,
+                ),
+            )
             conn.commit()
             conn.close()
 
@@ -160,6 +171,13 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
                     "_needs_refresh": True,
                 }
                 for slug, _price, _fetched_at, _active in cases[1:]
+            ] + [
+                {
+                    "store_key": "bplatz",
+                    "url": "https://en.bplatz.de/products/fresh-base-stale-variant?variant=100ml",
+                    "product_url": "https://en.bplatz.de/products/fresh-base-stale-variant",
+                    "_needs_refresh": True,
+                }
             ]
 
             with patch.object(catalog_engine, "DB_PATH", database_path):
@@ -179,6 +197,7 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
             self.assertEqual(states["stale-priced"]["priority"], 0)
             self.assertLessEqual(states["stale-priced"]["available_at"], time.time() + 1)
             self.assertEqual(states["fresh-priced"]["state"], "DONE")
+            self.assertEqual(states["fresh-base-stale-variant"]["state"], "PENDING")
             self.assertEqual(states["fresh-missing"]["state"], "DONE")
             self.assertEqual(states["inactive-stale"]["state"], "DONE")
 
