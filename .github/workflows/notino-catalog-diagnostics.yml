@@ -1,0 +1,52 @@
+name: Notino.fr Catalog Discovery Diagnostics
+
+on:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  trace-notino-discovery:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trace deployed Notino.fr discovery (read-only)
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          url = (
+              "https://scenthunter.fly.dev/diagnose-html-discovery-trace"
+              "?store=notino&q=parfum&max_pages=10&max_depth=2&max_events=100"
+          )
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/json",
+                  "User-Agent": "ScentHunter-Notino-Diagnostic/1.0",
+              },
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=35) as response:
+                  payload = response.read().decode("utf-8", "replace")
+                  print("HTTP_STATUS:", response.status)
+                  try:
+                      parsed = json.loads(payload)
+                      print(json.dumps(parsed, ensure_ascii=False, indent=2)[:45000])
+                  except json.JSONDecodeError:
+                      print(payload[:12000])
+                      raise SystemExit("Diagnostic endpoint did not return JSON")
+          except urllib.error.HTTPError as exc:
+              print("HTTP_STATUS:", exc.code)
+              print(exc.read().decode("utf-8", "replace")[:12000])
+              raise SystemExit(f"Diagnostic endpoint returned HTTP {exc.code}")
+          except Exception as exc:
+              raise SystemExit(f"Diagnostic request failed: {type(exc).__name__}: {exc}")
+          PY
