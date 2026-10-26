@@ -3627,7 +3627,11 @@ def refresh_url(store, url):
                         size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                         concentration=COALESCE(excluded.concentration,store_products.concentration),
                         gender=COALESCE(excluded.gender,store_products.gender),
-                        price=excluded.price,currency=excluded.currency,
+                        -- A transient/incomplete parse must not erase a previously
+                        -- verified product price. Replace it only when the new parse
+                        -- supplies an explicit price; never infer one from other fields.
+                        price=COALESCE(excluded.price,store_products.price),
+                        currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
                         availability=excluded.availability,fetched_at=excluded.fetched_at,
                         fetch_status=excluded.fetch_status''',
                     (
