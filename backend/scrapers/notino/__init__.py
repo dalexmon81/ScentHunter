@@ -1,0 +1,1 @@
+"""Notino retailer adapter package."""
