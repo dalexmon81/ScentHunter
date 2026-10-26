@@ -4647,6 +4647,7 @@ def prioritize_hydration_candidates(rows, priority=0):
         value = max(0, int(priority))
     except (TypeError, ValueError):
         value = 0
+    seen_updates = set()
     for row in rows or ():
         if not isinstance(row, dict) or not row.get('_needs_refresh'):
             continue
@@ -4654,8 +4655,10 @@ def prioritize_hydration_candidates(rows, priority=0):
         # A retailer variant URL can differ from its canonical hydration URL.
         # Queue the parent product page so the parser refreshes all persisted data.
         url = str(row.get('product_url') or row.get('url') or '').strip()
-        if store in STORES and url:
+        key = (store, url)
+        if store in STORES and url and key not in seen_updates:
             updates.append((value, store, url))
+            seen_updates.add(key)
     if not updates:
         return 0
 
