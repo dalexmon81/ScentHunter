@@ -4066,7 +4066,7 @@ def diagnose_hawas_ice_offers_read_only():
         },
         {
             'store': 'parfumzentrum',
-            'url': 'https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/',
+            'url': 'https://www.parfum-zentrum.de/rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265/',
         },
     ]
     out = {
