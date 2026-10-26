@@ -261,3 +261,51 @@ def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_leng
         result["error"] = f"{type(exc).__name__}: {exc}"
         result["elapsed_sec"] = round(time.monotonic() - started, 3)
         return result
+
+@router.get("/diagnose-parfumzentrum-hawas-discovery-trace")
+def diagnose_parfumzentrum_hawas_discovery_trace():
+    """Trace public ParfumZentrum catalog navigation without writing to the DB."""
+    started = time.monotonic()
+    result: dict[str, Any] = {
+        "diagnostic": "parfumzentrum-hawas-discovery-trace-read-only-v1",
+        "ok": False,
+        "read_only": True,
+        "database_written": False,
+        "store": "parfumzentrum",
+        "query": "Hawas Ice",
+        "calls": {
+            "production_search": False,
+            "database_write": False,
+            "catalog_discovery_persistence": False,
+            "hydration": False,
+        },
+    }
+    try:
+        # This helper performs a bounded read-only HTTP trace of the public
+        # catalog navigation graph; it does not call discover_store() or save
+        # discovered URLs. Keep limits fixed so the diagnostic cannot become
+        # an unbounded crawler endpoint.
+        from catalog_engine import diagnose_html_discovery_trace
+
+        trace = diagnose_html_discovery_trace(
+            "parfumzentrum",
+            "Hawas Ice",
+            max_pages=80,
+            max_depth=6,
+            max_events=250,
+        )
+        result.update(trace)
+        result["diagnostic"] = "parfumzentrum-hawas-discovery-trace-read-only-v1"
+        result["read_only"] = True
+        result["database_written"] = False
+        result["calls"] = {
+            "production_search": False,
+            "database_write": False,
+            "catalog_discovery_persistence": False,
+            "hydration": False,
+        }
+        result["ok"] = bool(trace.get("ok"))
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    result["elapsed_sec"] = round(time.monotonic() - started, 3)
+    return result
