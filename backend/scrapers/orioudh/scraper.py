@@ -452,6 +452,23 @@ def _extract_product(
     return results
 
 
+def extract_product_page(
+    session: requests.Session,
+    url: str,
+    query: str = "",
+    html: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Catalog-engine adapter for the existing Shopify product JSON parser.
+
+    The catalog engine supplies the URL slug as its query and may pass already
+    fetched HTML. Orioudh's authoritative data is the Shopify .js product JSON,
+    so the HTML is intentionally not fetched or parsed a second time.
+    """
+    effective_query = _clean(query) or _clean(url.rsplit("/", 1)[-1].split("?", 1)[0].replace("-", " "))
+    return _extract_product(session, url, effective_query)
+
+
+
 def search(query: str) -> List[Dict[str, Any]]:
     query = _clean(query)
     if not query:
