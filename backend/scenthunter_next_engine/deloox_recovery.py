@@ -25,7 +25,7 @@ ALLOWED_HOSTS = {
 }
 PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
 
-EXPECTED_PARSER_GIT_BLOB_SHA = "a2ad6db13ccf84430c4000a4e3dad041e3860a55"
+EXPECTED_PARSER_GIT_BLOB_SHA = "8ae5719a56aca0046e8c5ac144b594ce987bcca9"
 
 
 def parser_runtime_status() -> dict:
@@ -155,30 +155,30 @@ def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
         eligible = [row["url"] for row in rows if is_product_url(row["url"])]
         now = time.time()
         changed = 0
-        # Candidate eligibility was fully checked inside this BEGIN IMMEDIATE
-        # transaction. Stage the validated URLs and reset the queue in one SQL
-        # statement instead of thousands of per-URL scans/updates.
-        conn.execute(
-            "CREATE TEMP TABLE recovery_candidate_urls (url TEXT PRIMARY KEY)"
-        )
-        conn.executemany(
-            "INSERT OR IGNORE INTO recovery_candidate_urls(url) VALUES (?)",
-            ((url,) for url in eligible),
-        )
-        cursor = conn.execute(
-            """
-            UPDATE hydration_queue
-            SET state='PENDING', attempts=0, available_at=?,
-                last_error=NULL, last_http_status=NULL,
-                last_started_at=NULL, last_finished_at=NULL,
-                leased_until=NULL, lease_token=NULL
-            WHERE lower(store)='deloox'
-              AND state IN ('DEAD','ERROR')
-              AND url IN (SELECT url FROM recovery_candidate_urls)
-            """,
-            (now,),
-        )
-        changed = cursor.rowcount
+        for url in eligible:
+            cursor = conn.execute(
+                """
+                UPDATE hydration_queue
+                SET state='PENDING', attempts=0, available_at=?,
+                    last_error=NULL, last_http_status=NULL,
+                    last_started_at=NULL, last_finished_at=NULL,
+                    leased_until=NULL, lease_token=NULL
+                WHERE lower(store)='deloox' AND url=?
+                  AND state IN ('DEAD','ERROR')
+                  AND EXISTS (
+                    SELECT 1 FROM store_products p
+                    WHERE lower(p.store)='deloox' AND p.url=hydration_queue.url
+                      AND p.fetch_status LIKE '%product_parser_not_found%'
+                  )
+                  AND EXISTS (
+                    SELECT 1 FROM store_urls u
+                    WHERE lower(u.store)='deloox' AND u.url=hydration_queue.url
+                      AND u.active=1
+                  )
+                """,
+                (now, url),
+            )
+            changed += cursor.rowcount
         conn.commit()
         return {
             "status": "RECOVERY_QUEUED",
