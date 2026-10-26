@@ -130,7 +130,8 @@ def test_foreign_product_url_is_not_returned(monkeypatch):
         token_response if url.endswith("/auth/o2/token") else api_response
     ))
     report = api.search_marketplace("parfum", "fr", "amazon_fr", lambda _: 100, lambda _: None)
-    assert report["results"][0]["url"] == "https://www.amazon.fr/dp/B012345678"
+    assert report["status"] == "success"
+    assert report["results"] == []
 
 
 
