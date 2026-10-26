@@ -1907,23 +1907,19 @@ def _extract_product(url, query, html=None):
 def extract_product_page(session, url, query="", html=None):
     """Parse a known ParfumZentrum product URL during catalog hydration.
 
-    Search discovery keeps strict query matching in _extract_product(). For an
-    already-identified catalog URL, use the actual commercial title from the
-    page and retain the same JSON-LD price/availability validation.
+    The catalog engine has already identified this URL, so URL slug words are
+    not used as a mandatory product-title query. _extract_product still checks
+    that the page describes a fragrance and only emits source-backed offers.
     """
     parsed_url = _product_url(url)
     if not parsed_url:
         return None
+    # Remove the retailer's internal _zNNNN identifier from the query when
+    # supplied; an empty normalized query is accepted only in this URL adapter.
     effective_query = re.sub(
         r"_?z\d+\s*$", "", _clean(query), flags=re.I
     ).strip()
-    # URL hydration is authoritative for identity; the page parser still
-    # rejects non-perfume items and does not synthesize offers or prices.
-    if html is not None:
-        return _extract_product(parsed_url, "", html=html)
-    # Standalone adapter callers without the existing response retain guarded
-    # request behavior, but only parse a URL from the official host.
-    return _extract_product(parsed_url, "", html=None)
+    return _extract_product(parsed_url, "", html=html)
 
 
 
