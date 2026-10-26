@@ -2024,7 +2024,11 @@ def _catalog_search_terms(query):
         # running dozens of near-duplicate aliases adds repeated SQLite FTS
         # work without materially improving recall. Keep the original query
         # plus a ranked, bounded set for these queries.
-        max_terms = 8 if len(query_tokens) <= 1 else 4
+        # Broad one-token family searches must cover the registered variant vocabulary.
+        # Eight terms truncated families with more aliases (e.g. Hawas), hiding valid
+        # variants even when the catalog already contains them. catalog_engine bounds
+        # the per-store candidate pool, so allow the full bounded registry expansion.
+        max_terms = 32 if len(query_tokens) <= 1 else 4
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
