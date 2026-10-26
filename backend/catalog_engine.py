@@ -1352,7 +1352,7 @@ def _html_product_url(store, raw_url, base_url):
     if store == 'notino':
         # Notino product pages expose a stable /p-<numeric-id> path segment.
         # Strip tracking/query parameters, but preserve the exact market host.
-        if re.search(r'(?:^|/)p-\\d+(?:/|$)', low, re.I):
+        if re.search(r'(?:^|/)p-\d+(?:/|$)', low, re.I):
             return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
         return None
     if store == 'sabina':
@@ -1476,7 +1476,7 @@ def _html_listing_url(store, raw_url, base_url, label=''):
         # Public perfume category pages and pagination are generic catalog
         # navigation surfaces. Product pages are admitted only by
         # _html_product_url's stable product-id path rule.
-        if re.search(r'(?:^|&)page=\\d+', p.query, re.I):
+        if re.search(r'(?:^|&)page=\d+', p.query, re.I):
             return absolute
         if path.rstrip('/') in ('/parfums', '/parfums-damen', '/parfums-herren', '/parfums-homme'):
             return absolute
