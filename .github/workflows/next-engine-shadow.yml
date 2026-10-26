@@ -43,6 +43,7 @@ jobs:
           tests/test_next_engine_shadow_comparison.py
           tests/test_catalog_preflight.py
           tests/test_catalog_notino_discovery.py
+          tests/test_notino_search_adapter.py
           tests/test_catalog_identity_audit.py
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py

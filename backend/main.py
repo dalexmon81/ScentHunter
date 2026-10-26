@@ -712,21 +712,21 @@ except Exception as exc:
     print(f"SCRAPER_DIAGNOSTIC_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
-STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic']
-STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic'}
+STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','easycosmetic','notino']
+STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','easycosmetic':'Easycosmetic','notino':'Notino'}
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 PRODUCT_CATALOG_PATH = BASE_DIR / 'product_catalog.json'
 FAMILY_REGISTRY_PATH = BASE_DIR / 'family_registry.json'
 
-LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic']
+LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh','easycosmetic','notino']
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina']
 LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0}
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0,'notino':45.0}
 JOB_TIMEOUT_SECONDS = 30.0
 CATALOG_SEARCH_BUDGET_SECONDS = 12.0
 CATALOG_REFRESH_BUDGET_SECONDS = 0.25
