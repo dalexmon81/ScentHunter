@@ -13,6 +13,17 @@ class CatalogHydrationTests(unittest.TestCase):
         normalized = re.sub(r"_?z\d+\s*$", "", query, flags=re.I).strip()
         self.assertEqual(normalized, "Berdoues Monoi Tiare Eau de Toilette 100 ml")
 
+    def test_catalog_hydration_strips_internal_sku_in_url_slug(self):
+        from catalog_engine import url_slug
+
+        url = "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/"
+        slug = url_slug(url)
+        query = re.sub(r"_?z\d+\s*$", "", slug, flags=re.I).strip()
+
+        self.assertTrue(slug.endswith("_z904294"))
+        self.assertFalse(query.endswith("_z904294"))
+        self.assertIn("berdoues", query.lower())
+
     def test_parfumzentrum_known_url_adapter_parses_jsonld_price(self):
         url = "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/"
         html = """<!doctype html><html><head>
