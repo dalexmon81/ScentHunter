@@ -54,12 +54,25 @@ def _query_matches(query, brand, name, url):
 def _price(value):
     if value is None:
         return None
-    raw = _clean(value).replace("\u00a0", " ")
-    match = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)(?!\d)", raw)
-    if not match:
+    raw = _clean(value).replace("\u00a0", " ").replace("€", "").replace("EUR", "").strip()
+    raw = re.sub(r"[^0-9,.]", "", raw)
+    if not raw:
         return None
+    # Handle both EU decimal commas (99,90) and thousands separators
+    # (1.299,90 / 1,299.90) without silently truncating high prices.
+    if "," in raw and "." in raw:
+        decimal = "," if raw.rfind(",") > raw.rfind(".") else "."
+        thousands = "." if decimal == "," else ","
+        raw = raw.replace(thousands, "").replace(decimal, ".")
+    elif "," in raw:
+        tail = raw.rsplit(",", 1)[1]
+        raw = raw.replace(",", ".") if len(tail) in (1, 2) else raw.replace(",", "")
+    elif "." in raw:
+        tail = raw.rsplit(".", 1)[1]
+        if len(tail) not in (1, 2):
+            raw = raw.replace(".", "")
     try:
-        return round(float(match.group(1).replace(",", ".")), 2)
+        return round(float(raw), 2)
     except ValueError:
         return None
 
@@ -123,10 +136,19 @@ def _request_html(url, accept_language):
         if response.status_code in (403, 429):
             raise RuntimeError(f"blocked_http_{response.status_code}")
         response.raise_for_status()
-        final_host = urlparse(response.url).hostname
-        if final_host not in {"www.notino.fr", "notino.fr", "www.notino.de", "notino.de"}:
+        requested_host = urlparse(url).hostname or ""
+        final_host = urlparse(response.url).hostname or ""
+        market_hosts = {requested_host, requested_host.removeprefix("www."), "www." + requested_host.removeprefix("www.")}
+        if final_host not in market_hosts:
             raise RuntimeError("redirected_outside_notino_market")
-        return response.text
+        html = response.text
+        lower = html[:200000].lower()
+        if any(marker in lower for marker in (
+            "verify you are human", "access denied", "unusual traffic",
+            "captcha", "robot check", "request blocked",
+        )):
+            raise RuntimeError("notino_challenge_page")
+        return html
     finally:
         response.close()
 
