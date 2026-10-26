@@ -88,3 +88,13 @@ def test_catalog_refresh_preserves_existing_price_when_new_parse_has_no_price():
     source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
     assert "price=COALESCE(excluded.price,store_products.price)" in source
     assert "currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END" in source
+
+
+
+def test_missing_price_retry_is_due_after_cooldown():
+    from backend.catalog_engine import _missing_price_retry_due
+
+    now = 1_800_000_000.0
+    assert _missing_price_retry_due(None, now - 6 * 60 * 60, now=now)
+    assert not _missing_price_retry_due(None, now - 60, now=now)
+    assert not _missing_price_retry_due(23.50, now - 24 * 60 * 60, now=now)

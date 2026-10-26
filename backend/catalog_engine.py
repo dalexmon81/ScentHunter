@@ -3780,6 +3780,20 @@ def _schedule_easycosmetic_missing_size_repairs(rows):
 # Refresh stale retailer prices independently of the short interactive-search budget.
 _STALE_PRICE_REPAIR_LOCK = threading.Lock()
 _STALE_PRICE_REPAIR_IN_FLIGHT = set()
+_MISSING_PRICE_RETRY_SECONDS = 6 * 60 * 60
+
+
+def _missing_price_retry_due(price, fetched_at, now=None, retry_seconds=_MISSING_PRICE_RETRY_SECONDS):
+    """Retry a missing explicit price at most once per cooldown per product URL."""
+    if price not in (None, ''):
+        return False
+    current_time = time.time() if now is None else float(now)
+    try:
+        fetched = float(fetched_at or 0)
+    except (TypeError, ValueError):
+        fetched = 0.0
+    return fetched <= 0 or current_time - fetched >= float(retry_seconds)
+
 
 def _schedule_stale_price_repairs(rows, max_jobs=12):
     # Interactive searches must not spawn a fresh wave of retailer HTTP requests.
@@ -3798,7 +3812,7 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
     jobs = []
     seen = set()
 
-    def add_stale(store_value, url_value, fetched_at=None):
+    def add_stale(store_value, url_value, fetched_at=None, missing_price=False):
         store = str(store_value or '').strip().lower()
         url = str(url_value or '').strip()
         if store not in STORES or not url or (store, url) in seen:
@@ -3807,7 +3821,13 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
             fetched = float(fetched_at or 0)
         except (TypeError, ValueError):
             fetched = 0.0
-        if fetched > 0 and fetched > cutoff:
+        if missing_price:
+            # Search-visible rows with no explicit price need a recovery attempt
+            # even if identity hydration succeeded recently. Cool down retries so
+            # repeated queries cannot trigger repeated retailer requests.
+            if not _missing_price_retry_due(None, fetched, retry_seconds=_MISSING_PRICE_RETRY_SECONDS):
+                return
+        elif fetched > 0 and fetched > cutoff:
             return
         seen.add((store, url))
         jobs.append((store, url))
@@ -3817,10 +3837,15 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
     # are trying to show rather than unrelated rows at the head of the backlog.
     for row in rows or []:
         if isinstance(row, dict):
+            missing_price = (
+                row.get('price_num') in (None, '')
+                and row.get('price') in (None, '')
+            )
             add_stale(
                 row.get('store_key') or row.get('store'),
                 row.get('product_url') or row.get('url'),
                 row.get('fetched_at'),
+                missing_price=missing_price,
             )
 
     try:
