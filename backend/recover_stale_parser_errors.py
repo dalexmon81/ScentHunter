@@ -105,10 +105,12 @@ def recover(*, apply: bool = False, limit_per_store: int = MAX_LIMIT_PER_STORE):
         conn.execute("PRAGMA query_only=ON" if not apply else "PRAGMA busy_timeout=10000")
         now = time.time()
         plan = build_recovery_plan(conn, now=now, limit_per_store=limit_per_store)
+        updated_rows = 0
+        remaining = None
         if apply and plan:
             with conn:
                 for item in plan:
-                    conn.execute(
+                    cursor = conn.execute(
                         """UPDATE hydration_queue
                            SET state='PENDING', attempts=0, available_at=?,
                                last_error=NULL, last_http_status=NULL,
@@ -118,15 +120,21 @@ def recover(*, apply: bool = False, limit_per_store: int = MAX_LIMIT_PER_STORE):
                              AND instr(last_error, ?) > 0""",
                         (
                             now, item["store"], item["url"],
-                            ELIGIBLE_ERRORS[item['store']],
+                            ELIGIBLE_ERRORS[item["store"]],
                         ),
                     )
+                    updated_rows += max(0, cursor.rowcount)
+            # Verify on the same database connection immediately after commit.
+            # If workers instantly re-fail a row, report it instead of hiding it.
+            remaining = build_recovery_plan(conn, now=time.time(), limit_per_store=limit_per_store)
         return {
             "status": "RECOVERY_QUEUED" if apply else "DRY_RUN",
             "read_only": not apply,
-            "database_mutated": bool(apply and plan),
-            "limit_per_store": max(1, min(int(limit_per_store), MAX_LIMIT_PER_STORE)),
+            "database_mutated": bool(apply and updated_rows),
+            "updated_rows": updated_rows,
             "eligible_product_urls": len(plan),
+            "remaining_eligible_after_apply": len(remaining) if remaining is not None else None,
+            "limit_per_store": max(1, min(int(limit_per_store), MAX_LIMIT_PER_STORE)),
             "by_store": {
                 store: sum(1 for item in plan if item["store"] == store)
                 for store in ELIGIBLE_ERRORS
