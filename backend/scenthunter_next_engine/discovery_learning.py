@@ -163,10 +163,33 @@ def learn_variants(
     for item in observation_rows:
         product_id = str(item.get("product_id") or "").strip()
         candidates = item.get("candidate_product_ids")
-        if product_id or (isinstance(candidates, list) and candidates):
+        if product_id:
             continue
         name = str(item.get("name") or item.get("raw_name") or "").strip()
         brand = str(item.get("brand") or "").strip()
+
+        # A single matcher candidate is not proof that the retailer offer is
+        # that product: broad family records can attract distinct flankers.
+        # Only consider an unmatched offer for new-product proposal when every
+        # supplied candidate exists in the catalog and none matches its exact
+        # brand/name identity. Matching candidates continue through variant
+        # learning; missing/invalid candidate records remain conservative.
+        if isinstance(candidates, list) and candidates:
+            candidate_rows = [
+                product_by_id.get(str(candidate))
+                for candidate in candidates
+            ]
+            if not brand or not name or any(not isinstance(row, Mapping) for row in candidate_rows):
+                continue
+            exact_candidate = any(
+                _norm(row.get("brand_name")) == _norm(brand)
+                and _identity_name(row.get("canonical_name") or row.get("name"), brand)
+                    == _identity_name(name, brand)
+                for row in candidate_rows
+            )
+            if exact_candidate:
+                continue
+
         size = _explicit_size(item.get("size_ml"))
         url = str(item.get("product_url") or item.get("url") or "")
         domain = _retailer_domain(url)
@@ -245,7 +268,6 @@ def learn_variants(
             for observation in rewritten_observations:
                 if (
                     not observation.get("product_id")
-                    and not observation.get("candidate_product_ids")
                     and str(observation.get("product_url") or observation.get("url") or "")
                         == str(row.get("product_url") or row.get("url") or "")
                     and str(observation.get("name") or observation.get("raw_name") or "")
