@@ -59,11 +59,23 @@ jobs:
           printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
           printf '%s\n' "$RESULT" | grep -Eq '"database_mutated": true'
           printf '%s\n' "$RESULT" | grep -Eq '"updated_rows": [1-9][0-9]*'
-          printf '%s\n' "$RESULT" | grep -Eq '"remaining_eligible_after_apply": 0'
+
+          # Recovery is deliberately capped at ten URLs per store. Other
+          # eligible rows may remain for a later, separately guarded batch;
+          # verify that none of the URLs in this batch is still eligible.
+          RESULT_JSON="$(printf '%s\n' "$RESULT" | sed -n '/^{/,$p')"
+          APPLIED_URLS="$(printf '%s\n' "$RESULT_JSON" | python -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(x["url"] for x in d.get("items", [])))')"
           POSTCHECK="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
           printf '%s\n' "$POSTCHECK"
           printf '%s\n' "$POSTCHECK" | grep -Eq '"status": "DRY_RUN"'
-          printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
+          POSTCHECK_JSON="$(printf '%s\n' "$POSTCHECK" | sed -n '/^{/,$p')"
+          while IFS= read -r url; do
+            [ -n "$url" ] || continue
+            if printf '%s\n' "$POSTCHECK_JSON" | grep -Fq "$url"; then
+              echo "Recovery postcheck: URL remains eligible after apply: $url" >&2
+              exit 1
+            fi
+          done <<< "$APPLIED_URLS"
 
   audit_state:
     if: always()
