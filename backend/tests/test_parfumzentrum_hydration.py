@@ -104,8 +104,9 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
 
 
 
+
     def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
-        """A completed broad-family search must retain all registry cards alongside real offers."""
+        """The broad-family snapshot should add every unrepresented canonical variant."""
         import json
         import sys
         from pathlib import Path
@@ -114,6 +115,7 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         if str(backend_dir) not in sys.path:
             sys.path.insert(0, str(backend_dir))
         import main as app_main
+        from product_matcher import ProductMatcher
 
         with (backend_dir / "family_registry.json").open(encoding="utf-8") as handle:
             registry = json.load(handle)
@@ -121,36 +123,21 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             family for family in registry.get("families", [])
             if family.get("family_id") == "rasasi_hawas"
         )
-
-        real_matcher = app_main.PRODUCT_MATCHER
-        self.assertIsNotNone(real_matcher)
-
-        class FamilyOnlyMatcher:
-            def _family_for_query(self, query):
-                if query.strip().casefold() not in {"hawas", "rasasi hawas"}:
-                    return None
-                return real_matcher._normalize_family_registry({"families": [registry_family]})[0]
-
-            def _requested_variant(self, query, family):
-                return None
-
-            def _build_family_result(self, offer, family, variant):
-                return {
-                    "catalog_id": "family-registry:" + variant["canonical_name"].casefold(),
-                    "canonical_brand": family["brand"],
-                    "family_name": "Hawas",
-                    "canonical_name": variant["canonical_name"],
-                    "canonical_image": variant.get("canonical_image") or "",
-                }
-
-        family_matcher = FamilyOnlyMatcher()
+        family_matcher = ProductMatcher(catalog=[], family_registry={"families": [registry_family]})
         family = family_matcher._family_for_query("Hawas")
+        self.assertIsNotNone(family)
+        self.assertEqual(len(family["variants"]), 30)
+
         job_id = "test-hawas-family-snapshot"
         priced_names = {"Hawas Ice", "Hawas Black", "Hawas Kobra"}
         existing_groups = []
         for name in sorted(priced_names):
             variant = next(item for item in family["variants"] if item["canonical_name"] == name)
-            identity = family_matcher._build_family_result({}, family, variant)
+            identity = family_matcher._build_family_result(
+                {"name": name, "price_num": 25.0, "url": "https://example.invalid/product"},
+                family,
+                variant,
+            )
             existing_groups.append({
                 "catalog_id": identity["catalog_id"],
                 "brand": "Rasasi",
@@ -191,12 +178,12 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             }
         try:
             snapshot = app_main._snapshot(job_id)
-            names = {group["canonical_name"] for group in snapshot["results"]}
             expected = {
                 str(product.get("canonical_name") or "").strip()
                 for product in registry_family.get("products", [])
                 if str(product.get("canonical_name") or "").strip()
             }
+            names = {group["canonical_name"] for group in snapshot["results"]}
             self.assertEqual(expected, names)
             self.assertEqual(snapshot["count"], 30)
 
