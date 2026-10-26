@@ -163,8 +163,11 @@ def _safe_product_url(raw: str, marketplace: str, asin: str) -> str | None:
     base = "https://" + marketplace
     if raw:
         parsed = urlparse(raw)
+        # A supplied URL on another host is untrusted: do not rewrite it into
+        # a marketplace URL based solely on its ASIN.
         if parsed.scheme == "https" and parsed.hostname == marketplace:
             return raw
+        return None
     if asin and len(asin) == 10 and asin.isalnum():
         return f"{base}/dp/{asin.upper()}"
     return None
@@ -280,6 +283,163 @@ def search_marketplace(
         return _failure("unavailable", f"amazon_creators_api_request_error:{type(exc).__name__}", market)
     except (ValueError, TypeError, RuntimeError) as exc:
         return _failure("unavailable", str(exc) if str(exc).startswith("amazon_creators_api_") else "amazon_creators_api_invalid_response", market)
+    finally:
+        if response is not None:
+            response.close()
+
+
+
+def discover_product_urls(market: str, max_queries: int = 4) -> dict:
+    """Discover canonical ASIN URLs through the approved catalog API only."""
+    try:
+        marketplace, tag_name = _marketplace(market)
+    except ValueError:
+        return {"status": "unavailable", "error": "amazon_creators_api_unsupported_market", "urls": []}
+    if not is_configured(market):
+        return {"status": "unavailable", "error": "amazon_creators_api_not_configured", "urls": []}
+
+    queries = ("parfum", "eau de parfum", "eau de toilette", "extrait de parfum")[:max(1, min(4, int(max_queries)))]
+    urls = set()
+    errors = []
+    for query in queries:
+        response = None
+        try:
+            response = requests.post(
+                API_BASE + "/catalog/v1/searchItems",
+                headers={
+                    "Authorization": "Bearer " + _access_token(),
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "x-marketplace": marketplace,
+                },
+                json={
+                    "keywords": query,
+                    "marketplace": marketplace,
+                    "partnerTag": _env(tag_name),
+                    "searchIndex": "All",
+                    "itemCount": 10,
+                    "resources": ["itemInfo.title"],
+                },
+                timeout=TIMEOUT,
+            )
+            if response.status_code >= 400:
+                errors.append(f"{query}:http_{response.status_code}")
+                continue
+            payload = response.json()
+            result = payload.get("searchResult") if isinstance(payload, dict) else None
+            items = result.get("items") if isinstance(result, dict) else []
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                asin = _text(item.get("asin")).upper()
+                raw_url = _text(item.get("detailPageURL"))
+                url = _safe_product_url(raw_url, marketplace, asin)
+                if url:
+                    # Persist canonical product identity only, not API payloads
+                    # or prices. Current prices are fetched during background
+                    # hydration through GetItems.
+                    urls.add(f"https://{marketplace}/dp/{asin}")
+        except requests.Timeout:
+            errors.append(f"{query}:timeout")
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            errors.append(f"{query}:{type(exc).__name__}")
+        finally:
+            if response is not None:
+                response.close()
+    return {
+        "status": "success" if urls else "unavailable",
+        "urls": sorted(urls),
+        "queries": len(queries),
+        "error": ";".join(errors[:4]) or None,
+        "market": market,
+        "source": "amazon_creators_api",
+    }
+
+
+def get_product(market: str, asin: str, size_parser, concentration_parser) -> dict | None:
+    """Hydrate one ASIN using GetItems; never scrape the Amazon product page."""
+    try:
+        marketplace, tag_name = _marketplace(market)
+    except ValueError:
+        return None
+    asin = _text(asin).upper()
+    if not is_configured(market) or not (len(asin) == 10 and asin.isalnum()):
+        return None
+
+    response = None
+    try:
+        response = requests.post(
+            API_BASE + "/catalog/v1/getItems",
+            headers={
+                "Authorization": "Bearer " + _access_token(),
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "x-marketplace": marketplace,
+            },
+            json={
+                "itemIds": [asin],
+                "marketplace": marketplace,
+                "partnerTag": _env(tag_name),
+                "resources": [
+                    "images.primary.medium",
+                    "itemInfo.title",
+                    "itemInfo.byLineInfo",
+                    "offersV2.listings.price",
+                    "offersV2.listings.availability",
+                ],
+            },
+            timeout=TIMEOUT,
+        )
+        if response.status_code >= 400:
+            raise _ApiHttpError(response.status_code)
+        payload = response.json()
+        result = payload.get("itemsResult") if isinstance(payload, dict) else None
+        items = result.get("items") if isinstance(result, dict) else []
+        if not isinstance(items, list) or not items:
+            return None
+        item = items[0]
+        if not isinstance(item, dict):
+            return None
+        title = _display(item, "itemInfo", "title")
+        price, currency, availability = _price_and_currency(item)
+        if not title or price is None or currency != "EUR":
+            # Never publish an API product without a current, priced offer.
+            return None
+        url = _safe_product_url(_text(item.get("detailPageURL")), marketplace, asin)
+        if not url:
+            return None
+        image_data = item.get("images")
+        primary = image_data.get("primary") if isinstance(image_data, dict) else {}
+        image_node = primary.get("medium") if isinstance(primary, dict) else {}
+        image = _text(image_node.get("url")) if isinstance(image_node, dict) else ""
+        brand = _display(item, "itemInfo", "byLineInfo", "brand")
+        return {
+            "store": "Amazon.fr" if market == "fr" else "Amazon.de",
+            "store_key": f"amazon_{market}",
+            "url": url,
+            "name": title,
+            "brand": brand,
+            "image": image or None,
+            "sku": asin,
+            "gtin": "",
+            "mpn": "",
+            "size_ml": size_parser(title),
+            "concentration": concentration_parser(title),
+            "gender": None,
+            "price_num": price,
+            "price": price,
+            "currency": currency,
+            "availability": "in_stock" if availability == "IN_STOCK" else "out_of_stock" if availability == "OUT_OF_STOCK" else "unknown",
+            "available": True if availability == "IN_STOCK" else False if availability == "OUT_OF_STOCK" else None,
+            "fetched_at": time.time(),
+            "source": "amazon_creators_api",
+        }
+    except _ApiHttpError as exc:
+        raise RuntimeError(f"amazon_creators_api_http_{exc.status_code}") from exc
+    except requests.Timeout as exc:
+        raise RuntimeError("amazon_creators_api_timeout") from exc
+    except requests.RequestException as exc:
+        raise RuntimeError(f"amazon_creators_api_request_error:{type(exc).__name__}") from exc
     finally:
         if response is not None:
             response.close()

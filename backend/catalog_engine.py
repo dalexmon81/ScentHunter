@@ -2876,6 +2876,27 @@ def discover_store(store):
         )
         product_urls.update(fallback['product_urls'])
 
+    # Amazon catalog discovery uses the approved Creators API when configured.
+    # Only canonical ASIN URLs are persisted; current offer data is fetched
+    # separately by the background hydrator through GetItems.
+    amazon_api_discovery = None
+    if store in ('amazon_fr', 'amazon_de'):
+        try:
+            amazon_api = importlib.import_module('scrapers.amazon_creators_api')
+            market = 'fr' if store == 'amazon_fr' else 'de'
+            if amazon_api.is_configured(market):
+                amazon_api_discovery = amazon_api.discover_product_urls(market)
+                for product_url in amazon_api_discovery.get('urls', []):
+                    canonical = _html_product_url(store, product_url, STORES[store])
+                    if canonical:
+                        product_urls[canonical] = ''
+        except Exception as exc:
+            amazon_api_discovery = {
+                'status': 'unavailable',
+                'urls': [],
+                'error': f'{type(exc).__name__}:{exc}',
+            }
+
     diagnostics={
         'visited':len(visited),
         'successes':sitemap_successes,
@@ -2931,6 +2952,15 @@ def discover_store(store):
             f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
         )
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
+    if amazon_api_discovery is not None:
+        details.append(
+            'amazon_creators_api='
+            f"status:{amazon_api_discovery.get('status')};"
+            f"urls:{len(amazon_api_discovery.get('urls') or [])};"
+            f"queries:{amazon_api_discovery.get('queries', 0)}"
+        )
+        if amazon_api_discovery.get('error'):
+            details.append('amazon_creators_api_error=' + str(amazon_api_discovery['error'])[:500])
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
@@ -3234,18 +3264,41 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Keep retailer fetches bounded; Requests' (connect, read) timeout
-        # is still not a hard wall-clock deadline if a server dribbles bytes.
-        # Deloox response headers can stall, so run this fetch in the existing
-        # batch worker with a short socket timeout and let the batch deadline
-        # release the scheduler if the peer never responds.
-        if store == 'easycosmetic':
-            store_timeout = max(25, REFRESH_TIMEOUT)
-        elif store == 'deloox':
-            store_timeout = (3.0, 3.0)
+        # For Amazon, approved Creators API access owns both discovery and
+        # hydration. Never scrape Amazon product pages when API credentials are
+        # configured; a missing/failed API offer is recorded as a failed refresh.
+        amazon_api_item = None
+        if store in ('amazon_fr', 'amazon_de'):
+            amazon_api = importlib.import_module('scrapers.amazon_creators_api')
+            market = 'fr' if store == 'amazon_fr' else 'de'
+            if amazon_api.is_configured(market):
+                match = re.fullmatch(r'/dp/([A-Z0-9]{10})/?', urllib.parse.urlparse(str(url)).path, re.I)
+                if not match:
+                    raise RuntimeError('amazon_creators_api_invalid_asin_url')
+                scraper_module = importlib.import_module(f'scrapers.{store}.scraper')
+                amazon_api_item = amazon_api.get_product(
+                    market, match.group(1), scraper_module._size_ml,
+                    scraper_module._concentration,
+                )
+                if not amazon_api_item:
+                    raise RuntimeError('amazon_creators_api_no_current_priced_offer')
+                status, final, data = 200, url, b''
+            else:
+                store_timeout = 20 if store in ('amazon_fr', 'amazon_de') else REFRESH_TIMEOUT
+                status, final, data = http_get(url, timeout=store_timeout)
         else:
-            store_timeout = REFRESH_TIMEOUT
-        status, final, data = http_get(url, timeout=store_timeout)
+            # Keep retailer fetches bounded; Requests' (connect, read) timeout
+            # is still not a hard wall-clock deadline if a server dribbles bytes.
+            # Deloox response headers can stall, so run this fetch in the existing
+            # batch worker with a short socket timeout and let the batch deadline
+            # release the scheduler if the peer never responds.
+            if store == 'easycosmetic':
+                store_timeout = max(25, REFRESH_TIMEOUT)
+            elif store == 'deloox':
+                store_timeout = (3.0, 3.0)
+            else:
+                store_timeout = REFRESH_TIMEOUT
+            status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
@@ -3258,39 +3311,37 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_redirect;final={final}'
                 )
 
-        # The retailer scraper owns retailer-specific product-page semantics
-        # such as public-vs-code pricing and product-vs-set identity. When a
-        # store exposes that parser, it must run before the generic JSON-LD
-        # fallback; otherwise the generic parser can persist a syntactically
-        # valid but semantically wrong offer.
-        item = None
-        secondary_ok = False
+        item = amazon_api_item
+        secondary_ok = bool(amazon_api_item)
         parser_available = False
-        try:
-            module = importlib.import_module(f'scrapers.{store}.scraper')
-            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
-        except Exception:
-            parser_available = False
-
-        parser_error = None
-        if parser_available:
+        if item is None:
+            # The retailer scraper owns retailer-specific product-page semantics
+            # such as public-vs-code pricing and product-vs-set identity.
+            # When a store exposes that parser, it is authoritative for price
+            # and identity; generic JSON-LD is only a fallback.
             try:
-                item = _secondary_store_parser(store, final, url, html_data=data)
-                secondary_ok = bool(item and item.get('name'))
-            except Exception as exc:
-                # A retailer adapter bug must not discard an otherwise valid
-                # product page. Keep the exception in diagnostics and attempt
-                # the structured-data fallback before recording a queue error.
-                parser_error = f'{type(exc).__name__}:{exc}'
-                item = None
-            if not item or not item.get('name'):
-                fallback_item = parse_product(store, final, data)
-                if fallback_item and fallback_item.get('name'):
-                    item = fallback_item
-        else:
-            item = parse_product(store, final, data)
+                module = importlib.import_module(f'scrapers.{store}.scraper')
+                parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+            except Exception:
+                parser_available = False
 
-        primary_ok = bool(item and item.get('name'))
+            parser_error = None
+            if parser_available:
+                try:
+                    item = _secondary_store_parser(store, final, url, html_data=data)
+                    secondary_ok = bool(item and item.get('name'))
+                except Exception as exc:
+                    parser_error = f'{type(exc).__name__}:{exc}'
+                    item = None
+                if not item or not item.get('name'):
+                    fallback_item = parse_product(store, final, data)
+                    if fallback_item and fallback_item.get('name'):
+                        item = fallback_item
+            else:
+                item = parse_product(store, final, data)
+        else:
+            parser_error = None
+
         if item and store in ('easycosmetic', 'parfumzentrum'):
             print(
                 'CATALOG OFFER DIAG ' +
