@@ -3538,6 +3538,13 @@ _STALE_PRICE_REPAIR_LOCK = threading.Lock()
 _STALE_PRICE_REPAIR_IN_FLIGHT = set()
 
 def _schedule_stale_price_repairs(rows, max_jobs=12):
+    # Interactive searches must not spawn a fresh wave of retailer HTTP requests.
+    # These detached refresh threads contend with FTS/identity resolution and SQLite
+    # writers, stretching a ~2s catalog lookup into a 20s foreground search. The
+    # catalog hydration worker owns stale-row refresh; keep this legacy opportunistic
+    # repair path dormant while a foreground search (or its idle grace) is active.
+    if _foreground_search_running() or _foreground_search_idle_grace_active():
+        return
     # Prioritize stale offers surfaced by the current search. Otherwise a large
     # backlog of unrelated, older catalog rows can consume every repair slot,
     # leaving the exact Hawas candidates searched by the user pending indefinitely.
