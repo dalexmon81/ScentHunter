@@ -1,0 +1,76 @@
+name: Amazon Catalog Discovery Verification
+
+on:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  discover-and-verify:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Discover Amazon.fr and Amazon.de catalogs
+        env:
+          SCENTHUNTER_API: https://scenthunter.fly.dev
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+
+          def get_json(path, timeout=20):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={
+                      "Accept": "application/json",
+                      "User-Agent": "ScentHunter-Amazon-Catalog-Verification/1.0",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          started = get_json("/catalog/resync-amazon")
+          print("Amazon discovery start:", json.dumps(started, ensure_ascii=False))
+          if not started.get("ok") and started.get("status") != "already_running":
+              raise SystemExit("Could not start Amazon discovery: " + json.dumps(started, ensure_ascii=False))
+
+          job_id = str(started.get("job_id") or "")
+          deadline = time.monotonic() + 780
+          last = {}
+          while time.monotonic() < deadline:
+              suffix = "?job_id=" + job_id if job_id else ""
+              last = get_json("/catalog/resync-amazon-status" + suffix)
+              print("Amazon discovery status:", json.dumps(last, ensure_ascii=False))
+              if last.get("status") != "running":
+                  break
+              time.sleep(15)
+          else:
+              raise SystemExit("Amazon catalog discovery timed out; last state: " + json.dumps(last, ensure_ascii=False))
+
+          catalog = get_json("/catalog-status")
+          stores = catalog.get("stores") if isinstance(catalog.get("stores"), dict) else {}
+          results = {}
+          failures = []
+          for key in ("amazon_fr", "amazon_de"):
+              state = stores.get(key) if isinstance(stores.get(key), dict) else {}
+              indexed = int(state.get("indexed_urls") or 0)
+              results[key] = {
+                  "indexed_urls": indexed,
+                  "fetched_products": int(state.get("fetched_products") or 0),
+                  "status": state.get("status"),
+                  "error": state.get("error"),
+              }
+              if indexed <= 0:
+                  failures.append(key + " has no indexed product URLs")
+          print("Amazon catalog verification:", json.dumps(results, ensure_ascii=False))
+          if failures:
+              raise SystemExit("Amazon discovery did not produce usable catalog URLs: " + "; ".join(failures))
+          PY
