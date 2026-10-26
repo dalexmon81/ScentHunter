@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - fix/catalog-hydration-mainline
+      - fix/catalog-hydration-slug-normalization
 
 jobs:
   parser-regression:
