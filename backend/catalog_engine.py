@@ -2890,6 +2890,16 @@ def discover_store(store):
                     canonical = _html_product_url(store, product_url, STORES[store])
                     if canonical:
                         product_urls[canonical] = ''
+            else:
+                # Make missing production credentials explicit in catalog status.
+                # Previously this stayed None, hiding why the approved API path
+                # had not run and leaving operators to infer the cause from 503s.
+                amazon_api_discovery = {
+                    'status': 'unavailable',
+                    'urls': [],
+                    'queries': 0,
+                    'error': 'amazon_creators_api_not_configured',
+                }
         except Exception as exc:
             amazon_api_discovery = {
                 'status': 'unavailable',
