@@ -1903,18 +1903,17 @@ def _extract_product(url, query, html=None):
 
 
 def extract_product_page(session, url, query="", html=None):
-    """Parse an identified ParfumZentrum URL for catalog hydration.
+    """Hydrate a known ParfumZentrum URL without re-running search relevance.
 
-    Search discovery has a separate strict query path. Hydration must not
-    reject a valid Product merely because the database passes a retailer URL
-    slug as the query; product type, offer parsing and price validation remain
-    enforced by _extract_product().
+    The catalog engine has already selected this product URL. Delegate to the
+    product parser with an empty query so URL slug tokens cannot reject a valid
+    JSON-LD product title. The parser still validates perfume identity, offer,
+    price, availability, and source evidence.
     """
     parsed_url = _product_url(url)
     if not parsed_url:
         return None
     return _extract_product(parsed_url, "", html=html)
-
 
 
 def search(query):
