@@ -110,13 +110,13 @@ def diagnose_parfumzentrum_hawas_index(q: str = Query(default="La Mer", max_leng
     if "ice" in lowered:
         label = "hawas_ice"
         patterns = [
-            "rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265",
+            "rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265",
             "rasasi hawas ice",
             "hawas ice",
             "913265",
             "614514331040",
         ]
-        exact_url = "https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
+        exact_url = "https://www.parfum-zentrum.de/rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
         sku = "913265"
         gtin = "614514331040"
     elif "verde" in lowered:
