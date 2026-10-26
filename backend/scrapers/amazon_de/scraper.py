@@ -30,11 +30,11 @@ HEADERS = {
 
 
 def _clean(value):
-    return re.sub(r"\\s+", " ", str(value or "")).strip()
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _price(value):
-    raw = _clean(value).replace("\\u00a0", " ").replace("€", "").replace("EUR", "").strip()
+    raw = _clean(value).replace("\u00a0", " ").replace("€", "").replace("EUR", "").strip()
     raw = re.sub(r"[^0-9,.]", "", raw)
     if not raw:
         return None
@@ -65,7 +65,7 @@ def _allowed_product_url(raw_url):
 
 
 def _size_ml(text):
-    match = re.search(r"(?<!\\d)(\\d+(?:[.,]\\d+)?)[\\s_-]*(ml|cl)\\b", text, re.I)
+    match = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)[\s_-]*(ml|cl)\b", text, re.I)
     if not match:
         return None
     value = float(match.group(1).replace(",", "."))
@@ -77,11 +77,11 @@ def _size_ml(text):
 def _concentration(text):
     low = _clean(text).lower()
     for pattern, label in (
-        (r"eau de toilette|\\bedt\\b", "Eau de Toilette"),
-        (r"eau de parfum|\\bedp\\b", "Eau de Parfum"),
-        (r"eau de cologne|\\bedc\\b", "Eau de Cologne"),
+        (r"eau de toilette|\bedt\b", "Eau de Toilette"),
+        (r"eau de parfum|\bedp\b", "Eau de Parfum"),
+        (r"eau de cologne|\bedc\b", "Eau de Cologne"),
         (r"extrait(?: de parfum)?", "Extrait de Parfum"),
-        (r"\\bparfum\\b", "Parfum"),
+        (r"\bparfum\b", "Parfum"),
     ):
         if re.search(pattern, low):
             return label
