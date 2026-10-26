@@ -1181,11 +1181,34 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                            VALUES(?,?,?,?,?,?)
                            ON CONFLICT(store,url) DO UPDATE SET
                                state=CASE
-                                   WHEN hydration_queue.state='DONE' THEN 'DONE'
                                    WHEN hydration_queue.state='PROCESSING'
                                         AND hydration_queue.leased_until > ?
                                    THEN 'PROCESSING'
-                                   ELSE hydration_queue.state
+                                   WHEN EXISTS (
+                                       SELECT 1 FROM store_products p
+                                        WHERE p.store=excluded.store
+                                          AND p.url=excluded.url
+                                          AND p.fetch_status='OK'
+                                   ) THEN 'DONE'
+                                   ELSE 'PENDING'
+                               END,
+                               available_at=CASE
+                                   WHEN EXISTS (
+                                       SELECT 1 FROM store_products p
+                                        WHERE p.store=excluded.store
+                                          AND p.url=excluded.url
+                                          AND p.fetch_status='OK'
+                                   ) THEN hydration_queue.available_at
+                                   ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                               END,
+                               last_error=CASE
+                                   WHEN EXISTS (
+                                       SELECT 1 FROM store_products p
+                                        WHERE p.store=excluded.store
+                                          AND p.url=excluded.url
+                                          AND p.fetch_status='OK'
+                                   ) THEN hydration_queue.last_error
+                                   ELSE NULL
                                END""",
                         (store, url, "PENDING", 0, batch_now, batch_now, batch_now, batch_now),
                     )

@@ -178,3 +178,4 @@ def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
         {"availability": "https://schema.org/InStock"},
     ]}
     assert _first_offer(product)["availability"] == "https://schema.org/OutOfStock"
+
