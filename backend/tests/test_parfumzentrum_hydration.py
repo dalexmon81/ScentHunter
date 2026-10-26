@@ -1,14 +1,13 @@
 """Regression tests for bounded Deloox discovery and catalog hydration."""
+import re
 import unittest
 
 from scrapers import deloox, parfumzentrum
-import re
 
 
 class CatalogHydrationTests(unittest.TestCase):
     def test_parfumzentrum_internal_sku_suffix_is_stripped(self):
         # Match the implementation's _?z<digits> rule, including the underscore.
-        import re
         query = "Berdoues Monoi Tiare Eau de Toilette 100 ml_z904294"
         normalized = re.sub(r"_?z\d+\s*$", "", query, flags=re.I).strip()
         self.assertEqual(normalized, "Berdoues Monoi Tiare Eau de Toilette 100 ml")
