@@ -184,3 +184,26 @@ def test_does_not_propose_unseen_product_when_url_concentration_conflicts():
     assert result["report"]["products_added"] == 0
     assert result["report"]["variants_added"] == 0
     assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
+
+
+
+def test_rejects_url_concentration_conflict_and_refillable_packaging():
+    concentration_conflict = learn_variants(_catalog(), [
+        {
+            **_offer("Store A", "a.example"),
+            "product_url": "https://a.example/blue-night-eau-de-toilette-100ml",
+        },
+        _offer("Store B", "b.example"),
+    ])
+    assert concentration_conflict["report"]["variants_added"] == 0
+    assert concentration_conflict["report"]["rejected_observation_counts"]["concentration_unverified_or_conflict"] == 1
+
+    refillable = learn_variants(_catalog(), [
+        {
+            **_offer("Store A", "a.example"),
+            "product_url": "https://a.example/blue-night-refillable-100ml",
+        },
+        _offer("Store B", "b.example"),
+    ])
+    assert refillable["report"]["variants_added"] == 0
+    assert refillable["report"]["rejected_observation_counts"]["special_packaging_requires_review"] == 1
