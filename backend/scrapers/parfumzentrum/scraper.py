@@ -1707,7 +1707,7 @@ def _extract_product(url, query, html=None):
 
     # Catalog hydration calls this parser with a URL slug, not a user query.
     # Strip the retailer internal _zNNNN identifier before lexical matching.
-    query = re.sub(r"\\bz\\d+\\s*$", "", _clean(query), flags=re.I).strip()
+    query = re.sub(r"\bz\d+\s*$", "", _clean(query), flags=re.I).strip()
     if not _matches_query(name, query):
         return None
 
