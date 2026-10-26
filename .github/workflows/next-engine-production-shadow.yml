@@ -1,0 +1,196 @@
+name: One-time Production Next Engine Shadow Comparison
+
+on:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  production-shadow:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+      contains(github.event.workflow_run.head_commit.message, 'RUN-NEXT-ENGINE-PROD-SHADOW') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out the exact deployed revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compare production offers against Next Engine without changing production
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          import time
+          import urllib.parse
+          import urllib.request
+          from collections import defaultdict
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path("backend").resolve()))
+          from scenthunter_next_engine.next_engine_service import NextEngineService
+
+          BASE = "https://scenthunter.fly.dev"
+          QUERIES = ("Hawas", "Born in Roma", "Hawas Ice", "Dior Sauvage")
+          USER_AGENT = "ScentHunter-next-engine-production-shadow/1.0"
+
+          def get_json(path, timeout=25):
+              request = urllib.request.Request(
+                  BASE + path,
+                  headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          def production_search(query):
+              start_deadline = time.monotonic() + 45
+              job_id = None
+              while time.monotonic() < start_deadline:
+                  started = get_json("/search-start?q=" + urllib.parse.quote(query))
+                  if started.get("status") == "busy":
+                      time.sleep(max(0.05, min(0.25, float(started.get("retry_after_ms", 200)) / 1000)))
+                      continue
+                  if started.get("status") == "error":
+                      raise RuntimeError(f"Production search rejected {query}: {started}")
+                  job_id = str(started.get("job_id") or "").strip()
+                  if not job_id:
+                      raise RuntimeError(f"No production search job ID for {query}: {started}")
+                  break
+              if not job_id:
+                  raise RuntimeError(f"Production search stayed busy for {query}")
+
+              deadline = time.monotonic() + 120
+              while time.monotonic() < deadline:
+                  payload = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
+                  if payload.get("completed"):
+                      return payload
+                  time.sleep(0.15)
+              raise RuntimeError(f"Production search timed out for {query}")
+
+          service = NextEngineService.from_catalog_file(Path("backend/product_catalog.json"))
+          report = {
+              "mode": "read-only-live-production-offer-shadow",
+              "production_base": BASE,
+              "catalog_modified": False,
+              "database_mutated": False,
+              "queries": [],
+          }
+
+          for query in QUERIES:
+              production = production_search(query)
+              groups = production.get("results") if isinstance(production.get("results"), list) else []
+              offers = [
+                  (group, offer)
+                  for group in groups if isinstance(group, dict)
+                  for offer in (group.get("offers") if isinstance(group.get("offers"), list) else [])
+                  if isinstance(offer, dict)
+              ]
+              if not offers:
+                  raise RuntimeError(f"Production query {query!r} returned no offers for shadow comparison")
+
+              by_retailer = defaultdict(list)
+              for group, offer in offers:
+                  retailer = str(offer.get("store") or "").strip()
+                  raw_name = str(offer.get("name") or offer.get("title") or "").strip()
+                  if not retailer or not raw_name:
+                      continue
+                  record = {
+                      "raw_name": raw_name,
+                      "brand_raw": offer.get("brand") or group.get("brand"),
+                      "size_ml": offer.get("size_ml"),
+                      "price": offer.get("price_num") if offer.get("price_num") is not None else offer.get("price"),
+                      "currency": offer.get("currency") or "EUR",
+                      "availability": offer.get("availability"),
+                      "product_url": offer.get("url") or offer.get("product_url"),
+                      "retailer_product_id": offer.get("sku") or offer.get("product_id"),
+                      "retailer_image_url": offer.get("image"),
+                  }
+                  by_retailer[retailer].append(record)
+
+              query_report = {
+                  "query": query,
+                  "production_product_count": int(production.get("count") or len(groups)),
+                  "production_offer_count": len(offers),
+                  "backend_elapsed_sec": production.get("elapsed"),
+                  "retailers": [],
+              }
+              normalized_total = matched_total = unresolved_total = ambiguous_total = rejected_total = 0
+
+              for retailer, records in sorted(by_retailer.items()):
+                  result = service.process_records(records, retailer=retailer)
+                  matched = result.matched_offer_count
+                  unresolved = len(result.unresolved)
+                  ambiguous = len(result.ambiguous)
+                  normalized = result.normalized_offer_count
+                  if normalized != matched + unresolved + ambiguous:
+                      raise RuntimeError(
+                          f"Outcome conservation failed for {query}/{retailer}: "
+                          f"normalized={normalized}, matched={matched}, unresolved={unresolved}, ambiguous={ambiguous}"
+                      )
+                  normalized_total += normalized
+                  matched_total += matched
+                  unresolved_total += unresolved
+                  ambiguous_total += ambiguous
+                  rejected_total += len(result.rejected_rows)
+
+                  query_report["retailers"].append({
+                      "retailer": retailer,
+                      "input_records": len(records),
+                      "normalized": normalized,
+                      "matched": matched,
+                      "unresolved": unresolved,
+                      "ambiguous": ambiguous,
+                      "rejected": len(result.rejected_rows),
+                      "canonical_groups": [
+                          {
+                              "product_id": group.canonical_product_id,
+                              "variant_id": group.canonical_variant_id,
+                              "product": service.catalog.get(group.canonical_product_id).name
+                                  if service.catalog.get(group.canonical_product_id) else None,
+                              "offer_count": len(group.offers),
+                          }
+                          for group in result.groups
+                      ],
+                  })
+
+              query_report["totals"] = {
+                  "normalized": normalized_total,
+                  "matched": matched_total,
+                  "unresolved": unresolved_total,
+                  "ambiguous": ambiguous_total,
+                  "rejected": rejected_total,
+                  "matched_rate_pct": round(100 * matched_total / normalized_total, 2) if normalized_total else 0.0,
+              }
+              print("NEXT_ENGINE_SHADOW " + json.dumps(query_report, ensure_ascii=False, sort_keys=True))
+              report["queries"].append(query_report)
+
+          Path("next-engine-production-shadow-report.json").write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print("Production Next Engine shadow comparison: PASS (read-only; production search unchanged)")
+          PY
+
+      - name: Upload shadow comparison report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-production-shadow-report
+          path: next-engine-production-shadow-report.json
+          if-no-files-found: warn
+          retention-days: 7
