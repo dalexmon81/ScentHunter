@@ -410,9 +410,13 @@ def learn_from_shadow_report(catalog: Mapping[str, Any], report: Mapping[str, An
             if not isinstance(retailer_report, Mapping):
                 continue
             retailer = str(retailer_report.get("retailer") or "").strip()
-            examples = retailer_report.get("unresolved_examples", [])
-            if not isinstance(examples, list):
-                continue
+            unresolved_examples = retailer_report.get("unresolved_examples", [])
+            ambiguous_examples = retailer_report.get("ambiguous_examples", [])
+            examples = []
+            if isinstance(unresolved_examples, list):
+                examples.extend(unresolved_examples)
+            if isinstance(ambiguous_examples, list):
+                examples.extend(ambiguous_examples)
             for example in examples:
                 if not isinstance(example, Mapping):
                     continue
