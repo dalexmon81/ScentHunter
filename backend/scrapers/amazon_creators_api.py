@@ -165,10 +165,11 @@ def _safe_product_url(raw: str, marketplace: str, asin: str) -> str | None:
         parsed = urlparse(raw)
         # A supplied URL on another host is untrusted: do not rewrite it into
         # a marketplace URL based solely on its ASIN.
-        if parsed.scheme == "https" and parsed.hostname == marketplace:
-            return raw
-        return None
+        if parsed.scheme != "https" or parsed.hostname != marketplace:
+            return None
     if asin and len(asin) == 10 and asin.isalnum():
+        # Keep the canonical product URL only; never persist tracking query
+        # parameters or a non-canonical detail-page path from API responses.
         return f"{base}/dp/{asin.upper()}"
     return None
 
@@ -378,6 +379,7 @@ def get_product(market: str, asin: str, size_parser, concentration_parser) -> di
             },
             json={
                 "itemIds": [asin],
+                "itemIdType": "ASIN",
                 "marketplace": marketplace,
                 "partnerTag": _env(tag_name),
                 "resources": [
