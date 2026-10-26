@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -56,7 +57,7 @@ def _is_safe_product_url(store: str, url: str) -> bool:
     if store == "parfumzentrum":
         return (
             url in PARFUMZENTRUM_RECOVERY_ALLOWLIST
-            and bool(__import__("re").search(r"_z\d+$", path, __import__("re").I))
+            and bool(re.search(r"_z\d+$", path, re.I))
         )
     return False
 
