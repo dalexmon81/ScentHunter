@@ -606,30 +606,17 @@ def _candidate_product_urls(
         )
         add(href, context)
 
-    # Second pass: generic data-* URL attributes.  Do not assume a particular
-    # product/card implementation; only inspect common URL-bearing fields.
+    # Inspect only URL-bearing attributes rather than every DOM node. Large
+    # result pages contain many unrelated elements; scanning all of them and
+    # extracting each node text adds cost without finding additional links.
     attr_names = (
-        "data-url",
-        "data-href",
-        "data-link",
-        "data-product-url",
-        "data-product-link",
-        "data-target",
-        "data-href-url",
+        "data-url", "data-href", "data-link", "data-product-url",
+        "data-product-link", "data-target", "data-href-url",
     )
-    for node in soup.find_all(True):
-        # Most HTML nodes have no URL-bearing data attribute. Avoid calling
-        # get_text() on every node: that repeatedly walks descendant trees and
-        # can turn parsing of large retailer pages into quadratic work.
-        raw_values = [
-            node.get(attr)
-            for attr in attr_names
-            if node.get(attr)
-        ]
-        if not raw_values:
-            continue
-        context = clean(node.get_text(" ", strip=True))[:2500]
-        for raw in raw_values:
+    for attr in attr_names:
+        for node in soup.select(f"[{attr}]"):
+            raw = node.get(attr)
+            context = clean(node.get_text(" ", strip=True))[:500]
             add(raw, f"{raw} {context}")
 
     # Third pass: product URLs embedded in JSON/state/hydration payloads.
