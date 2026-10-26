@@ -91,3 +91,46 @@ def test_shadow_report_ingestion_uses_unique_candidate_product_id():
     }
     result = learn_from_shadow_report(catalog, report)
     assert result["report"]["variants_added"] == 1
+
+
+def test_proposes_unseen_perfume_only_after_two_retailers_agree():
+    observations = [
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store A",
+            "product_url": "https://a.example/new-moon",
+            "candidate_product_ids": [],
+        },
+        {
+            "name": "New Moon Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 50,
+            "retailer": "Store B",
+            "product_url": "https://b.example/new-moon",
+            "candidate_product_ids": [],
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["products_added"] == 1
+    assert result["report"]["variants_added"] == 1
+    product = result["report"]["added_products"][0]
+    variant = result["report"]["added_variants"][0]
+    assert product["canonical_name"] == "New Moon"
+    assert product["concentration"] == "eau de parfum"
+    assert variant["product_id"] == product["product_id"]
+    assert variant["size_ml"] == 50
+
+
+def test_does_not_propose_new_perfume_from_one_retailer():
+    result = learn_variants(_catalog(), [{
+        "name": "New Moon Eau de Parfum",
+        "brand": "Example",
+        "size_ml": 50,
+        "retailer": "Store A",
+        "product_url": "https://a.example/new-moon",
+        "candidate_product_ids": [],
+    }])
+    assert result["report"]["products_added"] == 0
+    assert result["report"]["variants_added"] == 0
