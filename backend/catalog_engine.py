@@ -3223,7 +3223,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
         if not callable(parser):
             return None
         parser_url = original_url or final_url
-        parser_query = re.sub(r'_?z\d+\s*
+        parser_query = re.sub(r'_?z\d+\s*$', '', url_slug(parser_url), flags=re.I).strip()
         parameters = inspect.signature(parser).parameters
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
