@@ -106,8 +106,18 @@ def search(query):
         final = urlparse(response.url)
         if final.scheme != "https" or final.hostname not in {urlparse(BASE).hostname, urlparse(BASE).hostname.replace("www.", "")}:
             return {"status": "unavailable", "verified": False, "results": [], "error": "redirected_outside_market", "details": {}}
-        if response.status_code in (403, 429):
-            return {"status": "blocked", "verified": False, "results": [], "error": f"blocked_http_{response.status_code}", "details": {}}
+        if response.status_code in (403, 429, 503):
+            return {
+                "status": "blocked",
+                "verified": False,
+                "results": [],
+                "error": f"blocked_http_{response.status_code}",
+                "details": {
+                    "market": MARKET,
+                    "http_status": response.status_code,
+                    "source": "public_search_html",
+                },
+            }
         response.raise_for_status()
         html = response.text
         lower = html[:200000].lower()
