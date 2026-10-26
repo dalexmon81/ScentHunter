@@ -1036,6 +1036,13 @@ class ProductMatcher:
         query: str,
         family: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
+        # An exact family alias is a broad family search, even when a
+        # normalized variant alias (for example an audience-neutralized name)
+        # collapses to the same key. Keep broad-family publication enabled.
+        family_query_key = catalog_variant_key(query)
+        if family_query_key in family.get("normalized_query_aliases", ()):
+            return None
+
         query_key = self._remove_brand(query, family.get("brand", ""))
         # Preserve EDP/EDT/Parfum tokens here; otherwise distinct registry
         # variants such as Eros EDP and Eros EDT collapse to the same key.
