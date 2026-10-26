@@ -134,3 +134,28 @@ def test_does_not_propose_new_perfume_from_one_retailer():
     }])
     assert result["report"]["products_added"] == 0
     assert result["report"]["variants_added"] == 0
+
+
+def test_rejects_title_url_concentration_conflict_before_learning():
+    catalog = _catalog()
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/blue-night-parfum-100ml",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1

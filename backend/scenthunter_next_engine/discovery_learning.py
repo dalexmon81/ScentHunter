@@ -291,6 +291,10 @@ def learn_variants(
         if not offer_concentration or not canonical_concentration or offer_concentration != canonical_concentration:
             rejected["concentration_unverified_or_conflict"] += 1
             continue
+        url_concentration = _concentration(url)
+        if url_concentration and url_concentration != offer_concentration:
+            rejected["url_concentration_conflict"] += 1
+            continue
         if _UNSAFE_PACKAGING.search(name) or _UNSAFE_PACKAGING.search(url):
             rejected["special_packaging_requires_review"] += 1
             continue
