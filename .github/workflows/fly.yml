@@ -299,6 +299,31 @@ jobs:
                   )
 
               groups = last.get("results") if isinstance(last.get("results"), list) else []
+              if query == "Hawas":
+                  # Guard the exact production regression fixed by PR #71:
+                  # a family-level title must not point at a different explicit variant.
+                  import re
+                  family_url_conflicts = []
+                  for group in groups:
+                      if not isinstance(group, dict):
+                          continue
+                      for offer in (group.get("offers") if isinstance(group.get("offers"), list) else []):
+                          if not isinstance(offer, dict):
+                              continue
+                          title = re.sub(r"[^a-z0-9]+", " ", str(offer.get("name") or offer.get("title") or "").lower()).strip()
+                          url_identity = re.sub(r"[^a-z0-9]+", " ", str(offer.get("url") or offer.get("product_url") or "").lower()).strip()
+                          if "hawas for him" in title and "hawas malibu" in url_identity:
+                              family_url_conflicts.append({
+                                  "store": offer.get("store"),
+                                  "name": offer.get("name") or offer.get("title"),
+                                  "url": offer.get("url") or offer.get("product_url"),
+                              })
+                  if family_url_conflicts:
+                      raise RuntimeError(
+                          "Hawas family/variant URL identity mismatch: "
+                          + json.dumps(family_url_conflicts[:5], ensure_ascii=False)
+                      )
+                  print("Hawas family/variant URL identity guard: PASS")
               offers = [
                   offer
                   for group in groups if isinstance(group, dict)
