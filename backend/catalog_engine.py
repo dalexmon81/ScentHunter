@@ -1124,22 +1124,32 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
         return "DISCOVERY_PARTIAL", new_count, detail
 
     if not new_count:
+        # A crawl with no successful page fetches and one or more transport
+        # errors is not evidence that the retailer has an empty catalog.
+        # Preserve that distinction so access denials (for example Notino.fr
+        # returning HTTP 403) are not reported as a verified no-match state.
+        unavailable = (
+            int(diagnostics.get("successes") or 0) == 0
+            and bool(diagnostics.get("errors"))
+        )
+        state = "DISCOVERY_UNAVAILABLE" if unavailable else "DISCOVERY_EMPTY"
+        reason = "discovery_unavailable" if unavailable else "no_product_urls"
         detail = (
-            f"no_product_urls;visited={diagnostics['visited']};"
+            f"{reason};visited={diagnostics['visited']};"
             f"successes={diagnostics['successes']};"
             f"entries={diagnostics['entries']};"
             f"errors={diagnostics['errors']}"
         )
         _set_sync_state(
             store,
-            "DISCOVERY_EMPTY",
+            state,
             started_at=started_at,
             finished_at=now,
             discovered_count=0,
             fetched_count=0,
             error=detail,
         )
-        return "DISCOVERY_EMPTY", 0, detail
+        return state, 0, detail
 
     items = list(product_urls.items())
     batch_size = 250

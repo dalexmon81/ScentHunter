@@ -106,3 +106,55 @@ def test_amazon_discovery_seeds_stay_in_each_marketplace():
     de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
     assert fr and all(url.startswith("https://www.amazon.fr/") for url in fr)
     assert de and all(url.startswith("https://www.amazon.de/") for url in de)
+
+
+def test_failed_catalog_fetches_are_not_reported_as_verified_empty(monkeypatch):
+    states = []
+    monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
+    monkeypatch.setattr(
+        catalog,
+        "_set_sync_state",
+        lambda store, state, **kwargs: states.append((store, state, kwargs)),
+    )
+
+    diagnostics = {
+        "visited": 2,
+        "successes": 0,
+        "entries": 0,
+        "errors": [
+            "HTTP_403;final=https://www.notino.fr/;type=text/html;bytes=5520"
+        ],
+    }
+    status, count, detail = catalog._save_discovery(
+        "notino", {}, started_at=1.0, diagnostics=diagnostics
+    )
+
+    assert status == "DISCOVERY_UNAVAILABLE"
+    assert count == 0
+    assert "discovery_unavailable" in detail
+    assert states[0][1] == "DISCOVERY_UNAVAILABLE"
+
+
+def test_successful_empty_catalog_scan_remains_empty(monkeypatch):
+    states = []
+    monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
+    monkeypatch.setattr(
+        catalog,
+        "_set_sync_state",
+        lambda store, state, **kwargs: states.append((store, state, kwargs)),
+    )
+
+    diagnostics = {
+        "visited": 2,
+        "successes": 2,
+        "entries": 0,
+        "errors": [],
+    }
+    status, count, detail = catalog._save_discovery(
+        "notino", {}, started_at=1.0, diagnostics=diagnostics
+    )
+
+    assert status == "DISCOVERY_EMPTY"
+    assert count == 0
+    assert "no_product_urls" in detail
+    assert states[0][1] == "DISCOVERY_EMPTY"
