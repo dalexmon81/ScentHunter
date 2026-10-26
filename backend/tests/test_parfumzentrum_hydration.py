@@ -2,6 +2,7 @@
 import unittest
 
 from scrapers import deloox, parfumzentrum
+import re
 
 
 class CatalogHydrationTests(unittest.TestCase):
