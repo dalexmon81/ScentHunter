@@ -1317,8 +1317,27 @@ class ProductMatcher:
                 if not url_identity_tokens:
                     url_identity_tokens = url_tokens
 
+                # A full registered variant phrase in the destination slug is
+                # stronger identity evidence than a low token-F1 score diluted by
+                # concentration and commerce words (for example, "Hawas Malibu"
+                # in a URL ending "...eau-de-parfum-100-ml.html"). Keep this
+                # phrase check multi-token so a generic family word alone cannot
+                # redirect an offer to an arbitrary variant.
+                ordered_url_tokens = url_key.split()
                 for variant in eligible_variants:
                     best_variant_score = 0.0
+
+                    for alias in variant.get("aliases", ()):
+                        alias_ordered_tokens = self._url_catalog_identity_text(alias).split()
+                        if len(alias_ordered_tokens) < 2:
+                            continue
+                        width = len(alias_ordered_tokens)
+                        if any(
+                            ordered_url_tokens[start:start + width] == alias_ordered_tokens
+                            for start in range(len(ordered_url_tokens) - width + 1)
+                        ):
+                            best_variant_score = 1.0
+                            break
 
                     for alias_key, alias_tokens in variant.get("_url_alias_data", ()):
                         if not alias_key or not alias_tokens:
