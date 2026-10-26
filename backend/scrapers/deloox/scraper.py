@@ -617,19 +617,14 @@ def _candidate_product_urls(
         "data-target",
         "data-href-url",
     )
-    for node in soup.find_all(True):
-        # Most HTML nodes have no URL-bearing data attribute. Avoid calling
-        # get_text() on every node: that repeatedly walks descendant trees and
-        # can turn parsing of large retailer pages into quadratic work.
-        raw_values = [
-            node.get(attr)
-            for attr in attr_names
-            if node.get(attr)
-        ]
-        if not raw_values:
-            continue
-        context = clean(node.get_text(" ", strip=True))[:2500]
-        for raw in raw_values:
+    # Select only elements that actually expose one of the URL-bearing
+    # attributes; avoid walking every node in large HTML documents.
+    for attr in attr_names:
+        for node in soup.select(f"[{attr}]"):
+            raw = node.get(attr)
+            if not raw:
+                continue
+            context = clean(node.get_text(" ", strip=True))[:500]
             add(raw, f"{raw} {context}")
 
     # Third pass: product URLs embedded in JSON/state/hydration payloads.
