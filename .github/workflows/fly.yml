@@ -493,6 +493,52 @@ jobs:
           print("Production search and offer-data smoke tests: PASS")
           PY
 
+      - name: Verify aggregate catalog price freshness diagnostic
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          url = "https://scenthunter.fly.dev/diagnose-catalog-price-freshness-read-only"
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/json",
+                  "User-Agent": "ScentHunter-price-freshness-audit/1.0",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status != 200:
+                  raise RuntimeError(f"price freshness diagnostic returned HTTP {response.status}")
+              payload = json.loads(response.read().decode("utf-8"))
+
+          if payload.get("ok") is not True:
+              raise RuntimeError("price freshness diagnostic did not return ok=true: " + json.dumps(payload))
+          if payload.get("read_only") is not True or payload.get("writes_database") is not False:
+              raise RuntimeError("price freshness diagnostic did not confirm read-only behavior")
+          if payload.get("network_requests") is not False:
+              raise RuntimeError("price freshness diagnostic unexpectedly reports network requests")
+          stores = payload.get("stores")
+          if not isinstance(stores, dict) or not stores:
+              raise RuntimeError("price freshness diagnostic returned no per-store aggregates")
+          required = (
+              "product_rows", "priced_rows", "missing_price_rows",
+              "priced_fresh_24h", "priced_stale_24h",
+              "missing_price_retry_due_6h", "fetch_age_buckets",
+              "hydration_queue", "variants",
+          )
+          for store, stats in stores.items():
+              if not isinstance(stats, dict):
+                  raise RuntimeError(f"invalid aggregate for store {store}")
+              missing = [field for field in required if field not in stats]
+              if missing:
+                  raise RuntimeError(f"store {store} aggregate missing fields: {missing}")
+          print("CATALOG_PRICE_FRESHNESS_DIAGNOSTIC=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
+          PY
+
       - name: Read-only persisted-vs-live price diagnostic
         continue-on-error: true
         timeout-minutes: 3
