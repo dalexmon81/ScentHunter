@@ -49,32 +49,6 @@ class CatalogHydrationTests(unittest.TestCase):
         self.assertFalse(any(url.endswith(".jpg") for url in urls))
 
 
-class FamilyRegistryBaselineTests(unittest.TestCase):
-    def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
-        """Protect the curated Hawas family registry baseline, not fabricated offers."""
-        import json
-        from pathlib import Path
-
-        registry_path = Path(__file__).resolve().parents[1] / "family_registry.json"
-        with registry_path.open(encoding="utf-8") as handle:
-            registry = json.load(handle)
-
-        families = registry.get("families", [])
-        hawas = next(
-            (family for family in families if family.get("family_id") == "rasasi_hawas"),
-            None,
-        )
-        self.assertIsNotNone(hawas, "Rasasi Hawas family must remain registered")
-
-        canonical_names = [
-            str(product.get("canonical_name") or "").strip()
-            for product in hawas.get("products", [])
-            if isinstance(product, dict)
-        ]
-        canonical_names = [name for name in canonical_names if name]
-        self.assertEqual(len(canonical_names), 30)
-        self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
-
 
 class FamilyRegistryBaselineTests(unittest.TestCase):
     def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
@@ -86,27 +60,23 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         with registry_path.open(encoding="utf-8") as handle:
             registry = json.load(handle)
 
-        families = registry.get("families", [])
         hawas = next(
-            (family for family in families if family.get("family_id") == "rasasi_hawas"),
+            (family for family in registry.get("families", [])
+             if family.get("family_id") == "rasasi_hawas"),
             None,
         )
         self.assertIsNotNone(hawas, "Rasasi Hawas family must remain registered")
-
-        canonical_names = [
+        names = [
             str(product.get("canonical_name") or "").strip()
             for product in hawas.get("products", [])
             if isinstance(product, dict)
         ]
-        canonical_names = [name for name in canonical_names if name]
-        self.assertEqual(len(canonical_names), 30)
-        self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
-
-
-
+        names = [name for name in names if name]
+        self.assertEqual(len(names), 30)
+        self.assertEqual(len({name.casefold() for name in names}), 30)
 
     def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
-        """The broad-family snapshot should add every unrepresented canonical variant."""
+        """The broad-family snapshot adds every missing canonical identity without prices."""
         import json
         import sys
         from pathlib import Path
@@ -123,8 +93,8 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             family for family in registry.get("families", [])
             if family.get("family_id") == "rasasi_hawas"
         )
-        family_matcher = ProductMatcher(catalog=[], family_registry={"families": [registry_family]})
-        family = family_matcher._family_for_query("Hawas")
+        matcher = ProductMatcher(catalog=[], family_registry={"families": [registry_family]})
+        family = matcher._family_for_query("Hawas")
         self.assertIsNotNone(family)
         self.assertEqual(len(family["variants"]), 30)
 
@@ -133,7 +103,7 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         existing_groups = []
         for name in sorted(priced_names):
             variant = next(item for item in family["variants"] if item["canonical_name"] == name)
-            identity = family_matcher._build_family_result(
+            identity = matcher._build_family_result(
                 {"name": name, "price_num": 25.0, "url": "https://example.invalid/product"},
                 family,
                 variant,
@@ -155,9 +125,9 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             })
 
         with app_main.JOBS_LOCK:
-            previous = app_main.JOBS.get(job_id)
+            previous_job = app_main.JOBS.get(job_id)
             previous_matcher = app_main.PRODUCT_MATCHER
-            app_main.PRODUCT_MATCHER = family_matcher
+            app_main.PRODUCT_MATCHER = matcher
             app_main.JOBS[job_id] = {
                 "query": "Hawas",
                 "started_at": 1.0,
@@ -199,10 +169,10 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
             ))
         finally:
             with app_main.JOBS_LOCK:
-                if previous is None:
+                if previous_job is None:
                     app_main.JOBS.pop(job_id, None)
                 else:
-                    app_main.JOBS[job_id] = previous
+                    app_main.JOBS[job_id] = previous_job
                 app_main.PRODUCT_MATCHER = previous_matcher
 
 
