@@ -1,0 +1,53 @@
+name: Next Engine Shadow Integration
+
+on:
+  push:
+    branches:
+      - integration/next-engine-shadow
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  next-engine-shadow-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml
+      - name: Compile engine
+        run: python -m compileall -q backend/scenthunter_next_engine
+      - name: Run engine and integration contract tests
+        run: >-
+          python -m pytest -q
+          tests/test_canonical_matcher.py
+          tests/test_offer_aggregator.py
+          tests/test_next_engine_service.py
+          tests/test_real_catalog_end_to_end.py
+          tests/test_real_variant_separation.py
+          tests/test_next_engine_integration_contract.py
+          tests/test_next_engine_main_boot_gate.py
+          tests/test_next_engine_runtime_preview.py
+          tests/test_next_engine_runtime_batch_preview.py
+          tests/test_next_engine_realistic_batch.py
+          tests/test_next_engine_shadow_comparison.py
+          tests/test_catalog_preflight.py
+          tests/test_catalog_identity_audit.py
+          tests/test_migration_plan_validator.py
+          tests/test_audit_migration.py
+          tests/test_runtime_identity_reference_audit.py
+          tests/test_live_retailer_identity_resolution.py
+      - name: Read-only real-catalog smoke test
+        run: python -m backend.scenthunter_next_engine.smoke_entrypoint
+      - name: Read-only catalog preflight
+        run: python -m backend.scenthunter_next_engine.catalog_preflight_cli

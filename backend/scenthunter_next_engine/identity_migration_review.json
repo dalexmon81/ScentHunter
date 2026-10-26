@@ -1,0 +1,903 @@
+{
+  "schema_version": 1,
+  "status": "review_required",
+  "purpose": "Explicit, reversible review plan for known Armani canonical-identity collisions. This is a proposal only; it is not an executable migration.",
+  "read_only": true,
+  "catalog_mutated": false,
+  "database_mutated": false,
+  "automatic_merge_allowed": false,
+  "approval_requirements": [
+    "Verify product identity and concentration against authoritative manufacturer references.",
+    "Verify each affected size/variant against an authoritative source or GTIN/MPN.",
+    "Inventory all offer mappings and downstream references before moving or retiring any product_id.",
+    "Prepare a backup and rollback mapping before any catalog write.",
+    "Run the migration validator and end-to-end tests against a copy before review."
+  ],
+  "cases": [
+    {
+      "case_id": "ARMANI-ACQUA-DI-GIO-EDT",
+      "product_ids": [
+        "SH-AUTO-0288",
+        "SH-AUTO-0018"
+      ],
+      "evidence": {
+        "SH_AUTO_0288": {
+          "canonical_name": "Acqua di Gio",
+          "concentration": "",
+          "variant_sizes_ml": [],
+          "alias_count": 3
+        },
+        "SH_AUTO_0018": {
+          "canonical_name": "Acqua di Giò",
+          "concentration": "Eau de Toilette",
+          "variant_sizes_ml": [
+            50,
+            100,
+            200
+          ],
+          "alias_count": 4
+        }
+      },
+      "diagnosis": "Probable incomplete duplicate/legacy parent record, but SH-AUTO-0288 has no declared concentration or variants and must not be silently merged.",
+      "proposed_action": "Review SH-AUTO-0288 as a possible legacy alias/redirect to SH-AUTO-0018 only after confirming the official identity and finding every reference to SH-AUTO-0288. Preserve the old ID as a redirect/compatibility mapping if the repository supports it.",
+      "blocking_questions": [
+        "Does every existing reference to SH-AUTO-0288 refer specifically to the EDT product?",
+        "Are there any non-EDT Acqua di Gio products or historical references represented by this record?"
+      ],
+      "migration_allowed": false,
+      "external_check": {
+        "status": "partially_confirmed",
+        "source_urls": [
+          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+          "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/"
+        ],
+        "conclusion": "The official catalog distinguishes Acqua di Giò EDT from other concentrations and Profondo. SH-AUTO-0018 is consistent with an EDT identity and declared 50/100/200 ml sizes; SH-AUTO-0288 remains an incomplete generic record. This does not establish that every reference to SH-AUTO-0288 is an EDT reference."
+      },
+      "dependency_status": "catalog_snapshot_no_variants_or_offer_mappings; runtime_references_not_fully_verified"
+    },
+    {
+      "case_id": "ARMANI-ACQUA-DI-GIO-PROFONDO-EDP",
+      "product_ids": [
+        "SH-0043",
+        "SH-AUTO-0019"
+      ],
+      "evidence": {
+        "SH_0043": {
+          "canonical_name": "Acqua di Gio Profondo",
+          "concentration": "Eau de Parfum",
+          "variant_sizes_ml": [
+            75,
+            125
+          ],
+          "variant_ids": [
+            "VAR-89c2a2a86bedb3c5",
+            "VAR-09a73d0a5594cf49"
+          ],
+          "canonical_image_url_mentions_size_ml": 50
+        },
+        "SH_AUTO_0019": {
+          "canonical_name": "Acqua di Giò Profondo",
+          "concentration": "Eau de Parfum",
+          "variant_sizes_ml": [
+            50,
+            100,
+            200
+          ],
+          "variant_ids": [
+            "VAR-30ce093fd9e9ab47",
+            "VAR-46b03c1f1cff0a6e",
+            "VAR-f79ca5b3b5fd237f"
+          ]
+        }
+      },
+      "diagnosis": "Same normalized brand, canonical name and concentration split across two product IDs. Available records alone do not prove whether the sizes belong to one identity or whether a historical/release distinction is missing.",
+      "proposed_action": "Do not merge yet. Verify 75 ml and 125 ml with authoritative sources and verify all five variants independently. If they are the same product identity, nominate one canonical product ID, move variants without changing variant IDs, consolidate aliases without losing provenance, and preserve an old-ID redirect/reference map. Correct or validate the SH-0043 canonical image separately.",
+      "blocking_questions": [
+        "Are the 75 ml and 125 ml EDP formats valid for the exact same Profondo release/market?",
+        "Which product ID is referenced by persisted offers, scraper mappings, analytics, or external clients?",
+        "Does the image currently attached to SH-0043 actually depict the canonical product and size?"
+      ],
+      "migration_allowed": false,
+      "external_check": {
+        "status": "variants_unverified",
+        "source_urls": [
+          "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+          "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html"
+        ],
+        "conclusion": "Current official sources list Profondo EDP 30/50/100/200 ml and a separate 150 ml refill; they do not list 75 ml or 125 ml on the pages checked. This is insufficient to delete or reassign those variants because older releases/markets remain possible. The SH-0043 image-size mismatch also remains unverified."
+      },
+      "dependency_status": "catalog_snapshot_variants_have_no_gtin_mpn_or_store_mappings; runtime_references_not_fully_verified"
+    }
+  ],
+  "rollback_plan": [
+    "Export and checksum the pre-migration product and variant records plus all references to affected product IDs.",
+    "Apply the approved mapping transactionally on a staging copy.",
+    "Validate unique product/variant IDs, variant ownership, GTIN/MPN uniqueness, reference integrity, and unchanged unaffected-record counts.",
+    "If any validation fails, restore the exact pre-migration snapshot and report the failure without publishing."
+  ],
+  "external_verification": {
+    "checked_at": "2026-10-23",
+    "sources": [
+      {
+        "name": "Giorgio Armani Luxembourg official men's fragrance catalog",
+        "url": "https://www.armani.com/en-lu/giorgio-armani/fragrances/giorgio-armani/man/",
+        "finding": "Official listing distinguishes Acqua di Giò EDT from Acqua di Giò Profondo EDP and lists Profondo EDP 50 ml and 100 ml; the same catalog lists Profondo Parfum separately and Profondo EDT separately.",
+        "scope_limit": "Current catalog evidence only; it does not prove that older or market-specific 75 ml and 125 ml EDP variants never existed."
+      },
+      {
+        "name": "Armani Beauty official Profondo EDP product page",
+        "url": "https://www.armanibeauty.fr/parfums/fragrance-festival/acqua-di-gio-profondo/ww-00848-arm.html",
+        "finding": "Official page lists Profondo Eau de Parfum formats 30 ml, 50 ml, 100 ml and 200 ml, plus a separate 150 ml refill.",
+        "scope_limit": "Current product page does not validate the catalog's 75 ml or 125 ml variants or the image attached to SH-0043."
+      },
+      {
+        "name": "Armani Beauty official Acqua di Giò product catalog",
+        "url": "https://www.armani.com/en-us/giorgio-armani/fragrances/giorgio-armani/acqua-di-gio/",
+        "finding": "Official catalog lists Acqua di Giò EDT in 50 ml and 100 ml and distinguishes EDT, EDP, Parfum and Profondo products.",
+        "scope_limit": "US catalog is corroborating product-family evidence, not definitive Luxembourg variant evidence."
+      },
+      {
+        "name": "Profumeria Rossi retailer listing for Acqua di Gio Profondo EDP 125 ml",
+        "url": "https://www.profumeriarossi.it/armani-acqua-di-gio-profondo-eau-de-parfum-125ml",
+        "finding": "Lists Acqua di Gio Profondo Eau de Parfum 125 ml with EAN 3614272865235.",
+        "scope_limit": "Independent retailer corroboration of the GTIN and 125 ml product, not an official manufacturer source and not proof of mapping to SH-0043 or SH-AUTO-0019."
+      },
+      {
+        "name": "Hinta.fi product data for Acqua di Gio Profondo 125 ml",
+        "url": "https://hinta.fi/2077662/giorgio-armani-public-acqua-di-gio-profondo-125-ml/tiedot",
+        "finding": "Lists 125 ml and GTIN 3614272865235.",
+        "scope_limit": "Third-party product-data source; corroborates the identifier but does not establish the canonical catalog ID."
+      }
+    ],
+    "outcome": "The 125 ml EDP product and EAN 3614272865235 are corroborated by multiple independent retailer/product-data sources. This does not establish which canonical catalog record owns that variant, and the 75 ml variant remains unverified. Keep migration blocked."
+  },
+  "dependency_inventory": {
+    "checked_at": "2026-10-23",
+    "branch": "scenthunter-next-engine",
+    "catalog_file": "backend/product_catalog.json",
+    "catalog_counts": {
+      "products": 1389,
+      "variants": 511,
+      "offers": 0
+    },
+    "result": "No persisted offer rows, GTINs, MPNs, or store_mappings are present for the four affected product identities/variants in the checked catalog snapshot.",
+    "records": [
+      {
+        "product_id": "SH-AUTO-0288",
+        "variant_count": 0,
+        "variant_ids": [],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-AUTO-0018",
+        "variant_count": 3,
+        "variant_ids": [
+          "VAR-69fbeda0c7a3c691",
+          "VAR-b6adcf86ddaab498",
+          "VAR-d2e93b41952c6151"
+        ],
+        "sizes_ml": [
+          50,
+          100,
+          200
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-0043",
+        "variant_count": 2,
+        "variant_ids": [
+          "VAR-89c2a2a86bedb3c5",
+          "VAR-09a73d0a5594cf49"
+        ],
+        "sizes_ml": [
+          75,
+          125
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      },
+      {
+        "product_id": "SH-AUTO-0019",
+        "variant_count": 3,
+        "variant_ids": [
+          "VAR-30ce093fd9e9ab47",
+          "VAR-46b03c1f1cff0a6e",
+          "VAR-f79ca5b3b5fd237f"
+        ],
+        "sizes_ml": [
+          50,
+          100,
+          200
+        ],
+        "gtins": [],
+        "mpns": [],
+        "store_mappings": []
+      }
+    ],
+    "code_reference_search": {
+      "result": "No direct literal references found in the core runtime files checked (backend/catalog_engine.py, backend/product_matcher.py, backend/main.py, and Next Engine repository/matcher/service files).",
+      "caveat": "This is not proof that runtime databases, logs, caches, external clients, or dynamically keyed mappings have no references. Full-repository exhaustive code search was not completed."
+    },
+    "safety_conclusion": "The checked catalog snapshot shows no in-catalog offer or retailer mapping dependencies, but that alone is not enough to authorize a merge. Runtime persistence and deployed data still need a read-only inventory before any catalog write."
+  },
+  "deployed_runtime_check": {
+    "checked_at": "2026-10-23",
+    "provider": "Fly.io",
+    "app_name": "scenthunter",
+    "region": "ams",
+    "database_path": "/data/store_catalog.sqlite3",
+    "deployed_branch": "main",
+    "finding": "A manual GitHub Actions workflow connected to the deployed Fly.io app and opened the SQLite database with mode=ro and PRAGMA query_only=ON. It scanned 18 tables/views and exact-matched the 12 target IDs.",
+    "observed_matches": [
+      {
+        "product_id": "SH-AUTO-0288",
+        "table": "catalog_coverage",
+        "column": "product_id",
+        "rows": 8
+      },
+      {
+        "product_id": "SH-AUTO-0018",
+        "table": "catalog_coverage",
+        "column": "product_id",
+        "rows": 8
+      },
+      {
+        "product_id": "SH-0043",
+        "table": "catalog_coverage",
+        "column": "product_id",
+        "rows": 8
+      },
+      {
+        "product_id": "SH-AUTO-0019",
+        "table": "catalog_coverage",
+        "column": "product_id",
+        "rows": 8
+      }
+    ],
+    "variant_ids_found": [],
+    "objects_scanned": 18,
+    "read_only": true,
+    "database_mutated": false,
+    "interpretation": "The four product IDs occur in catalog_coverage only in this exact-ID scan; none of the eight target variant IDs were found as exact values in scanned columns. This is not proof of no indirect, serialized, external, or name-based references.",
+    "limitation": "The workflow scanned exact ID values, not Armani product names or partial IDs. It did not establish whether catalog_coverage rows are operational dependencies. Do not merge or delete identities on this evidence alone.",
+    "name_based_reference_scan": {
+      "checked_at": "2026-10-23",
+      "run_id": 39940283797,
+      "job_id": 120369730269,
+      "conclusion": "success",
+      "objects_scanned": 18,
+      "read_only": true,
+      "database_mutated": false,
+      "findings": {
+        "store_products": {
+          "columns": [
+            "store",
+            "url",
+            "name",
+            "brand",
+            "image",
+            "sku",
+            "gtin",
+            "mpn",
+            "size_ml",
+            "concentration",
+            "gender",
+            "price",
+            "currency",
+            "availability",
+            "fetched_at",
+            "fetch_status"
+          ],
+          "sample_note": "30 rows sampled for name LIKE '%acqua di gio%'; retailer data contains distinct Acqua di Gio EDT 30/50/100 ml, Profondo EDP 30/50 ml, and a PerfumeMarket listing for Profondo EDP 125 ml. Sample includes other family products (Gioia, Profumo, aftershave, deodorant), so substring matches are not sufficient identity evidence.",
+          "concrete_example": {
+            "store": "perfumemarket",
+            "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Mannen",
+            "url": "https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml",
+            "size_ml": 125,
+            "price": 129.99,
+            "currency": null
+          }
+        },
+        "catalog_coverage": {
+          "columns": [
+            "store",
+            "product_id",
+            "canonical_name",
+            "query",
+            "state",
+            "attempts",
+            "found_urls",
+            "last_started_at",
+            "last_finished_at",
+            "next_run_at",
+            "last_error"
+          ],
+          "rows_for_target_products": [
+            {
+              "product_id": "SH-AUTO-0288",
+              "canonical_name": "Acqua di Gio",
+              "query": "Acqua di Gio",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            },
+            {
+              "product_id": "SH-AUTO-0018",
+              "canonical_name": "Acqua di Gio",
+              "query": "Acqua di Gio",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            },
+            {
+              "product_id": "SH-0043",
+              "canonical_name": "Acqua di Gio Profondo",
+              "query": "Acqua di Gio Profondo",
+              "stores": [
+                "bplatz",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "easycosmetic",
+                "deloox"
+              ],
+              "count": 8
+            }
+          ],
+          "note": "Rows are retailer coverage/search tasks keyed by product_id and store, not persisted offer mappings. This explains the 8 exact-ID rows per product in the prior scan; SH-AUTO-0019 did not appear in the 30-row Acqua di Gio coverage sample."
+        },
+        "other_text_matches": {
+          "catalog_discovery_queue": {
+            "url_matches": 146,
+            "source_matches": 83,
+            "last_error_matches": 13
+          },
+          "hydration_queue": {
+            "url_matches": 801,
+            "last_error_matches": 133
+          },
+          "store_urls": {
+            "url_matches": 807,
+            "slug_matches": 807
+          },
+          "catalog_search_fts": {
+            "url_matches": 759,
+            "search_text_matches": 774
+          },
+          "catalog_search_fts_content": {
+            "url_matches": 759,
+            "search_text_matches": 774
+          }
+        }
+      },
+      "interpretation": "The production DB contains retailer text and URL references for the Armani family. catalog_coverage rows are operational retailer-search coverage, not evidence of offer mappings. Retailer inventory includes a 125 ml Profondo EDP listing, but this is third-party evidence and does not settle the exact release/market identity. Exact variant IDs still were not found in the earlier scan.",
+      "limitations": [
+        "This audit searched the text 'armani' across columns and then sampled up to 30 rows by broad 'acqua di gio' substring; it is not a complete row-level mapping of every affected product/variant to every retailer offer.",
+        "The scan returns a few sample values per column, not all matching retailer records.",
+        "No write was made to the deployed database."
+      ]
+    },
+    "profondo_size_reconciliation": {
+      "checked_at": "2026-10-23",
+      "workflow_run_id": 39940481860,
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39940481860",
+      "query_scope": "Read-only SQLite query on deployed /data/store_catalog.sqlite3: retailer rows whose names contain Profondo and whose size_ml is 75/125 or name contains 75ml/125ml; limited to 100 rows.",
+      "rows_returned": 3,
+      "rows": [
+        {
+          "store": "easycosmetic",
+          "name": "Giorgio Armani Acqua di Gio Homme Profondo Eau de Parfum Spray",
+          "size_ml": 125,
+          "price": 96.99,
+          "currency": "EUR",
+          "availability": "In stock",
+          "fetch_status": "OK",
+          "sku": "",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://www.easycosmetic.de/giorgio-armani/acqua-di-gio-homme-profondo/giorgio-armani-acqua-di-gio-homme-profondo-edp-vapo.aspx"
+        },
+        {
+          "store": "perfumemarket",
+          "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Mannen",
+          "size_ml": 125,
+          "price": 129.99,
+          "currency": "EUR",
+          "availability": "in_stock",
+          "fetch_status": "OK",
+          "sku": "3614272865235",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://perfumemarket.nl/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml"
+        },
+        {
+          "store": "perfumemarket",
+          "name": "Giorgio Armani Acqua Di Gio Profondo 125ml EDP - Men",
+          "size_ml": null,
+          "price": 129.99,
+          "currency": "EUR",
+          "availability": "in_stock",
+          "fetch_status": "OK",
+          "sku": "3614272865235",
+          "gtin": "",
+          "mpn": "",
+          "url": "https://perfumemarket.nl/en/products/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-spray-125ml"
+        }
+      ],
+      "interpretation": "Production retailer data contains two distinct retailer listings for Profondo EDP 125 ml, with the PerfumeMarket listing carrying SKU 3614272865235. The English PerfumeMarket duplicate has no size_ml value. This is retailer evidence for a 125 ml listing, not manufacturer-authoritative proof and not proof that either catalog variant is correctly mapped to these rows.",
+      "limitations": [
+        "The query returned no 75 ml row.",
+        "GTIN and MPN fields were empty for all three returned rows.",
+        "The SKU resembles a GTIN-13 format but is stored in sku, not gtin; do not promote it to a verified GTIN without independent validation.",
+        "The query is name/size-filtered and capped at 100 rows; it does not establish all possible references or offer-to-variant links."
+      ],
+      "safety": "Read-only connection with SQLite URI mode=ro and PRAGMA query_only=ON; no production data was changed.",
+      "follow_up": {
+        "checked_at": "2026-10-23",
+        "next_engine_tests_run_id": 39942336408,
+        "next_engine_tests_conclusion": "success",
+        "expanded_schema_audit_run_id": 39942336412,
+        "expanded_schema_audit_conclusion": "failure",
+        "failure_reason": "The new workflow's inline Python command has a quoting SyntaxError before executing its database query; the connection was opened read-only and no database mutation occurred.",
+        "conclusion": "The targeted 125 ml retailer evidence is recorded, but mapping-table schema and exact retailer-to-canonical-variant links remain unverified. Do not merge or migrate either Armani identity collision on current evidence."
+      }
+    },
+    "latest_variant_audit": {
+      "checked_at": "2026-10-23",
+      "workflow_run_id": 39943229120,
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39943229120",
+      "next_engine_tests_run_id": 39943228873,
+      "next_engine_tests_conclusion": "success",
+      "read_only": true,
+      "database_mutated": false,
+      "tables_queried": [
+        "store_products",
+        "store_product_variants",
+        "store_url_metadata",
+        "catalog_coverage"
+      ],
+      "findings": {
+        "store_product_variants": "No matching rows for exact Acqua di Gio Profondo product-name/url criteria or SKU 3614272865235.",
+        "store_url_metadata": "No matching rows for exact Acqua di Gio Profondo product-name/url criteria or SKU 3614272865235.",
+        "store_products": "Retailer rows confirm current Profondo EDP 30/50/100 ml listings and several 125 ml EDP listings; at least one retailer listing carries SKU 3614272865235 and GTIN 3614272865235 in a separate retailer record. The deployed database also has Profondo Parfum and refill listings that must not be conflated with Profondo EDP.",
+        "parser_errors": "Several Deloox and Parfumzentrum EDP product URLs have fetch_status product_parser_not_found despite HTTP 200 and JSON-LD Product presence; this is a separate scraper/parser issue and may prevent size_ml normalization.",
+        "catalog_coverage": "Search-task records exist for both Profondo canonical IDs, with multiple RETRY/timeouts and mixed FOUND/NOT_FOUND states. These are search coverage tasks, not product-to-variant mappings."
+      },
+      "conclusion": "The audit is now operational and has surfaced concrete retailer data and parser failures, but no explicit retailer-URL/SKU-to-canonical-variant mapping table is present among the queried tables. The 125 ml format has third-party support; the 75 ml format remains unverified. Do not merge product IDs until parser/size normalization and downstream mapping evidence are resolved."
+    }
+  },
+  "next_gate": {
+    "status": "gtin_variant_resolution_verified_packaging_semantics_and_ci_passed_deloox_transport_pending",
+    "required_action": "Reconcile the affected product IDs with exact retailer records by product name, concentration, size_ml, URL, GTIN/MPN and any store mapping columns. Treat catalog_coverage as search-task metadata, not offers. Specifically verify SH-AUTO-0288 versus SH-AUTO-0018 EDT and SH-0043 75/125 ml versus SH-AUTO-0019 50/100/200 ml Profondo EDP. Do not merge until variant-level mappings and any parser failures are resolved.",
+    "no_mutation_guarantee": "Keep production database in mode=ro with PRAGMA query_only=ON. No deploy, no writes to production, no automatic merge.",
+    "latest_evidence": "On commit 5e1094c12f52812c16ebd540d8f993285ed7f966, the Next Engine test workflow passed (100 tests) and the read-only runtime SQLite audit passed. The matcher now treats German nachfüllbar and English refillable bottle as packaging adjectives, while true 'Refill' pack listings fail closed. GTIN 3614273953849 resolves to the exact existing 100 ml EDP bottle variant SH-AUTO-0019 / VAR-46b03c1f1cff0a6e. Verified 75 ml and 125 ml mappings remain on SH-0043. Product IDs are not merged; no production database writes, merge, or deploy.",
+    "required_next_steps": [
+      "Resolve Deloox HTTP 403 through an allowed live-fetch path and separately restore retailer discovery/search.",
+      "Keep SH-0043 and SH-AUTO-0019 separate until every reference is reconciled; verified GTIN mappings are variant evidence, not permission to merge IDs.",
+      "Keep SH-AUTO-0288 versus SH-AUTO-0018 blocked until every reference to the generic Acqua di Gio record is classified."
+    ],
+    "parser_regression_gate": "live_parfumzentrum_parse_gtin_variant_matcher_and_ci_passed_deloox_http_403",
+    "variant_resolution_regression": {
+      "checked_at": "2026-10-23",
+      "test_file": "tests/test_live_retailer_identity_resolution.py",
+      "test_workflow": {
+        "run_id": 39947671434,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947671434",
+        "commit": "36e3c711ef19990c3e05c8a4094f350e63b1f932"
+      },
+      "read_only_runtime_audit": {
+        "run_id": 39947671382,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947671382",
+        "commit": "36e3c711ef19990c3e05c8a4094f350e63b1f932",
+        "production_database_mutated": false
+      },
+      "gtin_registry_file": "backend/scenthunter_next_engine/verified_gtin_variant_map.json",
+      "gtin_registry_status": "reviewed_verified_mapping",
+      "findings": {
+        "live_profondo_125ml_edp": {
+          "gtin": "3614272865235",
+          "result": "matched",
+          "product_id": "SH-0043",
+          "variant_id": "VAR-09a73d0a5594cf49",
+          "match_reason": "verified_gtin_exact_variant"
+        },
+        "live_profondo_100ml_refill": {
+          "gtin": "3614273953849",
+          "result": "unresolved_not_mapped_to_regular_100ml_edp"
+        }
+      },
+      "production_database_mutated": false,
+      "catalog_file_modified": false,
+      "note": "GTIN registry is read-only source-controlled evidence. Exact GTIN alone is not enough: runtime also validates target existence, exact size, brand, concentration, product-name compatibility, and refill status."
+    },
+    "latest_live_probe": {
+      "run_id": 39947864353,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864353",
+      "artifact_id": 12499605149,
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91"
+    },
+    "latest_test_workflow": {
+      "run_id": 39947864281,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864281",
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91"
+    },
+    "latest_read_only_runtime_audit": {
+      "run_id": 39947864236,
+      "conclusion": "success",
+      "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864236",
+      "commit": "b6350f5d3f9b1284e1d487ac6729b3f8e16ace91",
+      "production_database_mutated": false
+    }
+  },
+  "runtime_audit_tool": {
+    "status": "executed_against_deployed_database_for_exact_ID_scan",
+    "path": "backend/scenthunter_next_engine/runtime_identity_reference_audit.py",
+    "test_path": "tests/test_runtime_identity_reference_audit.py",
+    "commit_shas": [
+      "af1916cecfa66def14c6d384244de813659328b3",
+      "213223da530bf77a13254be2ce51c48d722c5554",
+      "db0f18fd2c82c974b9126d741e767c52cec17553"
+    ],
+    "safety": {
+      "sqlite_open_mode": "ro",
+      "query_only": true,
+      "database_writes": false,
+      "reports_full_row_contents": false
+    },
+    "execution": "Run against a read-only copy/snapshot of the actual Fly.io persistent SQLite database. Do not deploy this branch merely to run the audit; production deployment remains on main.",
+    "execution_result": {
+      "run_id": 39935907372,
+      "job_id": 120355279702,
+      "conclusion": "success",
+      "objects_scanned": 18,
+      "exact_product_id_matches": 4,
+      "rows_per_product_id_in_catalog_coverage": 8,
+      "exact_variant_id_matches": 0,
+      "read_only": true,
+      "database_writes": false
+    }
+  },
+  "parser_reconciliation": {
+    "updated_at": "2026-10-23",
+    "commit": "f89e8359f613d4828a35cd2d6f6d376825bc9cdf",
+    "file": "backend/scrapers/deloox/scraper.py",
+    "change": "extract_product_page now accepts already-fetched HTML and parses that response instead of always issuing a second HTTP request; direct callers without HTML retain the legacy fetch path.",
+    "reason": "The catalog engine already downloads the product page and passes html only when the retailer parser signature supports it. Deloox previously did not accept html, causing a second independent request and potential divergence between the response audited by the catalog engine and the response parsed by the retailer adapter.",
+    "validation": {
+      "next_engine_tests_run_id": 39943374090,
+      "next_engine_tests_conclusion": "success",
+      "read_only_runtime_audit_run_id": 39943373998,
+      "read_only_runtime_audit_conclusion": "success",
+      "live_database_mutated": false
+    },
+    "limits": "This removes the duplicate-fetch failure mode for Deloox. It does not yet prove all existing parser_not_found rows are fixed; ParfumZentrum still requires separate diagnosis, and retailer-to-canonical variant mapping remains unresolved.",
+    "parfumzentrum": {
+      "updated_at": "2026-10-23",
+      "commit": "253016d529c5c34c18f35127f7cd7c0373b65c82",
+      "file": "backend/scrapers/parfumzentrum/scraper.py",
+      "change": "Added extract_product_page(session, url, query=None, html=None) adapter to the catalog refresh path. It validates the ParfumZentrum product URL and reuses _extract_product with the already-fetched HTML, preserving retailer-specific size, price, availability and perfume identity checks while avoiding a second HTTP fetch.",
+      "validation": {
+        "next_engine_tests_run_id": 39944181265,
+        "next_engine_tests_conclusion": "success",
+        "read_only_runtime_audit_run_id": 39944181359,
+        "read_only_runtime_audit_conclusion": "success",
+        "live_database_mutated": false
+      },
+      "limits": "Passing CI and a read-only audit confirm the change is syntactically and operationally accepted, but do not by themselves prove that every previously failed live product URL now parses. A targeted parser fixture/live URL regression test is still required before claiming the parser_not_found issue is resolved."
+    },
+    "real_extraction_regressions": {
+      "checked_at": "2026-10-23",
+      "status": "live_parfumzentrum_parser_and_profondo_75_125_gtin_variant_resolution_verified_deloox_http_403",
+      "commit": "654a9390b3243769bf8d9d37acf7c228c5b29383",
+      "test_file": "tests/test_retailer_parser_html_reuse.py",
+      "test_file_url": "https://github.com/dalexmon81/ScentHunter/blob/scenthunter-next-engine/tests/test_retailer_parser_html_reuse.py",
+      "tests_added": [
+        "Deloox JSON-LD product extraction: brand, name, size_ml, concentration, price, availability, GTIN and retailer image",
+        "Deloox rejects page with neither public price nor known stock",
+        "Parfum-Zentrum JSON-LD product extraction: brand, name, size_ml, concentration, price, availability, GTIN, MPN, SKU, retailer product ID and retailer image",
+        "Parfum-Zentrum rejects page with neither price nor known stock",
+        "Deloox extract_product_page invokes the actual extraction function on supplied HTML and performs no network refetch",
+        "Parfum-Zentrum extract_product_page invokes real extraction on supplied HTML and performs no network refetch"
+      ],
+      "evidence_scope": "Synthetic HTML/JSON-LD fixtures exercise parser extraction and supplied-HTML reuse. Still not proof of parsing current live retailer pages.",
+      "production_database_mutated": false,
+      "next_required_gate": "Verify CI after the two adapter-level tests, then execute live URL-only parsing for the known easycosmetic and PerfumeMarket pages; do not access production DB.",
+      "follow_up_commit": "4b6c422bf13979e7f5203d8c02ccd3bd5346ca97",
+      "note": "The first run exposed an incorrect test assumption: Deloox deliberately permits a recognized product page with unknown price/availability. The test was corrected to assert that unknowns remain explicit rather than demand the parser return null.",
+      "finding": "The previous CI run passed on commit 6ab8ddc5e14f00ec18c4c9cd4f30c339810c28f1, verifying the Deloox title-size false-price fix and realistic extraction fixtures. Additional adapter-level tests now cover the real catalog hydration adapter path, instead of mocks only.",
+      "workflow_run_id": 39946081695,
+      "workflow_conclusion": "success",
+      "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
+      "validated_commit": "6ab8ddc5e14f00ec18c4c9cd4f30c339810c28f1",
+      "test_result": "Full isolated next-engine workflow completed successfully, including parser fixtures, catalog smoke, identity audits and generated-report consistency checks.",
+      "workflow_run_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946081695",
+      "latest_verified_commit": "36e3c711ef19990c3e05c8a4094f350e63b1f932",
+      "latest_test_workflow": {
+        "run_id": 39947671434,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947671434",
+        "commit": "36e3c711ef19990c3e05c8a4094f350e63b1f932"
+      },
+      "latest_read_only_runtime_audit": {
+        "run_id": 39947671382,
+        "conclusion": "success",
+        "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947671382",
+        "commit": "36e3c711ef19990c3e05c8a4094f350e63b1f932",
+        "production_database_mutated": false
+      },
+      "live_url_status": "parfumzentrum_exact_urls_parsed; deloox_http_403; identity_resolution_remains_ambiguous",
+      "live_url_blocker": "The available GitHub connector exposes workflow inspection and rerun actions but not workflow_dispatch for the existing manual live-shadow workflow. Do not change the workflow trigger or substitute unrelated searches.",
+      "live_probe_workflow": {
+        "path": ".github/workflows/live-retailer-parser-probe.yml",
+        "script": "tests/run_live_retailer_parser_probe.py",
+        "scope": "Public retailer searches plus direct read-only HTTP checks of known easycosmetic and PerfumeMarket pages; no production database or catalog writes.",
+        "initial_adapter_probe": {
+          "run_id": 39946468635,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946468635",
+          "query": "Giorgio Armani Acqua di Gio Profondo Eau de Parfum 125 ml",
+          "deloox": "zero_results",
+          "parfumzentrum": "zero_results",
+          "interpretation": "Search surfaces returned no candidates for the narrow query. This is not proof the product pages cannot be parsed; broadened query and direct known-page probes were added."
+        },
+        "latest_run": {
+          "run_id": 39946680592,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39946680592",
+          "commit": "baf5cdd8524d927e4f33d9ea103372966de2d5c2",
+          "findings": {
+            "parfumzentrum_profondo_edp_125": {
+              "http_status": 200,
+              "adapter_status": "parsed",
+              "size_ml": 125,
+              "concentration": "Eau de Parfum",
+              "gtin13": "3614272865235",
+              "gtin_source": "Parfum-Zentrum live JSON-LD Product.gtin13",
+              "scope": "Exact product page fetched and existing ParfumZentrum adapter parsed the same HTML successfully."
+            },
+            "parfumzentrum_profondo_edp_100_refill": {
+              "http_status": 200,
+              "adapter_status": "parsed",
+              "size_ml": 100,
+              "concentration": "Eau de Parfum",
+              "gtin13": "3614273953849",
+              "scope": "Refill is explicitly labelled; keep it distinct from the 100 ml regular EDP."
+            },
+            "deloox_profondo_edp_30_and_100": {
+              "http_status": 403,
+              "adapter_status": "not_evaluated",
+              "scope": "GitHub-hosted runner was denied before parsing; this is a transport/access limitation, not proof the parser fails."
+            },
+            "easycosmetic_profondo": {
+              "http_status": 200,
+              "jsonld_product_count": 0,
+              "scope": "Current HTML has H1/title but no Product JSON-LD found by probe."
+            },
+            "perfumemarket_profondo_125": {
+              "http_status": 200,
+              "sku": "3614272865235",
+              "gtin13": null,
+              "scope": "Retailer JSON-LD exposes this code as SKU, not GTIN; do not use this page alone as GTIN evidence."
+            },
+            "adapter_search": {
+              "deloox": "zero_results",
+              "parfumzentrum": "zero_results",
+              "scope": "Broad live search returned no candidates; exact Parfum-Zentrum product URLs nevertheless parse. Discovery/search remains a separate open issue."
+            }
+          },
+          "production_database_mutated": false
+        },
+        "production_database_mutated": false
+      },
+      "live_probe": {
+        "checked_at": "2026-10-23",
+        "workflow_run_id": 39947864353,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39947864353",
+        "conclusion": "success",
+        "artifact_name": "live-retailer-parser-probe",
+        "artifact_id": 12499605149,
+        "findings": {
+          "parfumzentrum_profondo_edp_125": {
+            "http_status": 200,
+            "adapter_status": "parsed",
+            "size_ml": 125,
+            "concentration": "Eau de Parfum",
+            "price": 95.44,
+            "availability": "in_stock",
+            "gtin": "3614272865235",
+            "sku": "771966"
+          },
+          "parfumzentrum_profondo_edp_100_refill": {
+            "http_status": 200,
+            "adapter_status": "parsed",
+            "size_ml": 100,
+            "concentration": "Eau de Parfum",
+            "price": 83.95,
+            "availability": "in_stock",
+            "gtin": "3614273953849",
+            "sku": "947818",
+            "refill": true
+          },
+          "deloox_profondo_edp_30": {
+            "http_status": 403,
+            "adapter_status": "not_evaluated"
+          },
+          "deloox_profondo_edp_100": {
+            "http_status": 403,
+            "adapter_status": "not_evaluated"
+          },
+          "easycosmetic_profondo": {
+            "http_status": 200,
+            "product_jsonld_found": false
+          },
+          "perfumemarket_profondo_125": {
+            "http_status": 200,
+            "sku": "3614272865235",
+            "gtin13": null,
+            "gtin": null
+          }
+        },
+        "search_diagnostics": {
+          "deloox": {
+            "status": "unavailable",
+            "verified": false,
+            "search_pages_ok": 0,
+            "search_pages_failed": 9,
+            "technical_failure": true,
+            "error": "discovery_unavailable"
+          },
+          "parfumzentrum": {
+            "status": "partial",
+            "verified": false,
+            "reason": "empty_search_not_authoritatively_verified"
+          }
+        },
+        "interpretation": "Deloox search is explicitly unavailable after nine failed search-page attempts, not a verified zero-result. Direct product URLs are HTTP 403 from GitHub Actions before parsing. Parfum-Zentrum broad search is partial/unverified with zero rows, but its exact product pages are parsed successfully. The 125 ml Profondo EDP GTIN resolves through the reviewed GTIN registry; the 100 ml refill remains unmapped.",
+        "production_database_mutated": false,
+        "catalog_modified": false
+      },
+      "latest_matcher_fix": {
+        "commit": "88d9872d3a1afba503a9be2267befba3010205ff",
+        "change": "Variant aliases are now matched using exact normalized names, preserving size tokens; prevents 75 ml aliases from collapsing onto 30 ml aliases."
+      },
+      "gtin_resolution": {
+        "status": "verified_gtin_variant_resolution_passed",
+        "registry_file": "backend/scenthunter_next_engine/verified_gtin_variant_map.json",
+        "gtin": "3614272865235",
+        "product_id": "SH-0043",
+        "variant_id": "VAR-09a73d0a5594cf49",
+        "test_file": "tests/test_live_retailer_identity_resolution.py",
+        "workflow_run_id": 39947671434
+      },
+      "gtin_variant_resolution": {
+        "status": "verified_with_packaging_semantics_regression",
+        "registry": "backend/scenthunter_next_engine/verified_gtin_variant_map.json",
+        "findings": [
+          {
+            "gtin": "3614272865228",
+            "size_ml": 75,
+            "concentration": "Eau de Parfum",
+            "product_id": "SH-0043",
+            "variant_id": "VAR-89c2a2a86bedb3c5",
+            "sources": [
+              "https://www.sephora.ro/on/demandware.static/-/Library-Sites-SephoraV2/ro_RO/dwba52394f/LP/lp-cgv/ro-annexe-fday.pdf",
+              "https://www.ladyparfum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-75-ml-herren-3975-en"
+            ],
+            "result": "verified_GTIN_and_size_match"
+          },
+          {
+            "gtin": "3614272865235",
+            "size_ml": 125,
+            "concentration": "Eau de Parfum",
+            "product_id": "SH-0043",
+            "variant_id": "VAR-09a73d0a5594cf49",
+            "sources": [
+              "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-125-ml-man_z771966/",
+              "https://www.profumeriarossi.it/armani-acqua-di-gio-profondo-eau-de-parfum-125ml",
+              "https://hinta.fi/2077662/giorgio-armani-public-acqua-di-gio-profondo-125-ml/tiedot"
+            ],
+            "result": "verified_GTIN_and_size_match"
+          },
+          {
+            "gtin": "3614273953849",
+            "size_ml": 100,
+            "concentration": "Eau de Parfum",
+            "product_id": "SH-AUTO-0019",
+            "variant_id": "VAR-46b03c1f1cff0a6e",
+            "source_urls": [
+              "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
+            ],
+            "result": "verified_100ml_refillable_bottle_not_refill_pack",
+            "note": "Live Parfum-Zentrum Product JSON-LD reports this GTIN for the exact 100 ml EDP product. German nachfüllbar means refillable bottle; the matcher distinguishes it from a true refill pack."
+          }
+        ],
+        "tests": {
+          "run_id": 39951400016,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39951400016",
+          "commit": "5e1094c12f52812c16ebd540d8f993285ed7f966",
+          "result": "100 tests passed; includes German and English refillable-bottle matching plus true refill-pack fail-closed check"
+        },
+        "read_only_runtime_audit": {
+          "run_id": 39951400024,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39951400024",
+          "commit": "5e1094c12f52812c16ebd540d8f993285ed7f966",
+          "production_database_mutated": false
+        },
+        "note": "Both 75 ml and 125 ml EDP GTINs now resolve only to their exact declared variants; size conflicts fail closed. SH-0043 and SH-AUTO-0019 remain separate product IDs. No production DB write, catalog file modification, merge, or deploy."
+      },
+      "latest_deloox_discovery_diagnostic": {
+        "checked_at": "2026-10-23",
+        "commit": "6c9d0796b0273b29b4eaeb19c7c6f8638dd16e7f",
+        "workflow_run_id": 39978154303,
+        "workflow_url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154303",
+        "conclusion": "success",
+        "search_status": "unavailable",
+        "search_pages_ok": 0,
+        "search_pages_failed": 12,
+        "search_failure_reasons": {
+          "http_403": 12
+        },
+        "search_verified": false,
+        "category_verified": false,
+        "sitemap_verified": false,
+        "technical_failure": true,
+        "interpretation": "All 12 bounded Deloox search requests returned HTTP 403 from the GitHub-hosted runner, including discovery after deloox.lu was added. This is an access/transport denial before product-page parsing, not a verified zero-result and not evidence that the HTML parser is broken. Do not bypass anti-bot controls; keep Deloox explicitly unavailable until an authorized access path or retailer-supported feed/API exists.",
+        "production_database_mutated": false,
+        "catalog_modified": false
+      },
+      "latest_validation": {
+        "checked_at": "2026-10-23",
+        "commit": "6c9d0796b0273b29b4eaeb19c7c6f8638dd16e7f",
+        "next_engine_tests": {
+          "run_id": 39978154377,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154377"
+        },
+        "read_only_runtime_audit": {
+          "run_id": 39978154321,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154321",
+          "production_database_mutated": false
+        },
+        "live_retailer_probe": {
+          "run_id": 39978154303,
+          "conclusion": "success",
+          "url": "https://github.com/dalexmon81/ScentHunter/actions/runs/39978154303"
+        },
+        "scope": "All three workflows passed. Workflow success means the probe reported its findings correctly; it does not mean Deloox search itself is available.",
+        "production_database_mutated": false,
+        "catalog_modified": false
+      }
+    }
+  }
+}
