@@ -178,3 +178,101 @@ def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
         {"availability": "https://schema.org/InStock"},
     ]}
     assert _first_offer(product)["availability"] == "https://schema.org/OutOfStock"
+
+
+def test_discovery_requeues_done_url_when_persisted_product_is_missing(monkeypatch):
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE store_urls (
+            store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+            discovered_at REAL, active INTEGER,
+            PRIMARY KEY(store, url)
+        );
+        CREATE TABLE hydration_queue (
+            store TEXT, url TEXT, state TEXT, attempts INTEGER,
+            available_at REAL, first_seen_at REAL, leased_until REAL,
+            last_error TEXT, PRIMARY KEY(store, url)
+        );
+        CREATE TABLE store_products (
+            store TEXT, url TEXT, fetch_status TEXT,
+            PRIMARY KEY(store, url)
+        );
+    """)
+    url = "https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
+    conn.execute(
+        "INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+        ("parfumzentrum", url, "DONE", 0, 10.0, 10.0),
+    )
+    monkeypatch.setattr(catalog, "db", lambda: conn)
+    monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
+    monkeypatch.setattr(catalog, "_set_sync_state", lambda *args, **kwargs: None)
+
+    status, count, _ = catalog._save_discovery(
+        "parfumzentrum",
+        {url: ""},
+        started_at=20.0,
+        diagnostics={"visited": 1, "successes": 1, "entries": 1, "errors": 0},
+    )
+
+    row = conn.execute(
+        "SELECT state FROM hydration_queue WHERE store=? AND url=?",
+        ("parfumzentrum", url),
+    ).fetchone()
+    assert status == "DISCOVERY_OK"
+    assert count == 1
+    assert row["state"] == "PENDING"
+    conn.close()
+
+
+def test_discovery_keeps_done_state_when_product_offer_is_persisted(monkeypatch):
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE store_urls (
+            store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+            discovered_at REAL, active INTEGER,
+            PRIMARY KEY(store, url)
+        );
+        CREATE TABLE hydration_queue (
+            store TEXT, url TEXT, state TEXT, attempts INTEGER,
+            available_at REAL, first_seen_at REAL, leased_until REAL,
+            last_error TEXT, PRIMARY KEY(store, url)
+        );
+        CREATE TABLE store_products (
+            store TEXT, url TEXT, fetch_status TEXT,
+            PRIMARY KEY(store, url)
+        );
+    """)
+    url = "https://www.parfum-zentrum.de/rasasi-hawas-hawas-ice-eau-de-parfum-100-ml-man_z913265/"
+    conn.execute(
+        "INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+        ("parfumzentrum", url, "DONE", 0, 10.0, 10.0),
+    )
+    conn.execute(
+        "INSERT INTO store_products(store,url,fetch_status) VALUES(?,?,?)",
+        ("parfumzentrum", url, "OK"),
+    )
+    monkeypatch.setattr(catalog, "db", lambda: conn)
+    monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
+    monkeypatch.setattr(catalog, "_set_sync_state", lambda *args, **kwargs: None)
+
+    status, count, _ = catalog._save_discovery(
+        "parfumzentrum",
+        {url: ""},
+        started_at=20.0,
+        diagnostics={"visited": 1, "successes": 1, "entries": 1, "errors": 0},
+    )
+
+    row = conn.execute(
+        "SELECT state FROM hydration_queue WHERE store=? AND url=?",
+        ("parfumzentrum", url),
+    ).fetchone()
+    assert status == "DISCOVERY_OK"
+    assert count == 1
+    assert row["state"] == "DONE"
+    conn.close()
