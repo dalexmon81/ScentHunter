@@ -3205,24 +3205,7 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             # Passing only final_url loses that ID, which can attach the
             # default bottle size/offer to every variant in the catalog.
             parser_url = original_url or final_url
-        parser_query = re.sub(r'_?z\\d+\\s*            parser_slug = url_slug(parser_url)
-            if 'html' in parameters and html_data is not None:
-                html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
-                parsed = parser(session, parser_url, parser_slug, html=html_text)
-            else:
-                parsed = parser(session, parser_url, parser_slug)
-        finally:
-            session.close()
-    else:
-        # Some adapters expose _extract_product with different historical
-        # signatures: (url, query), (session, url, query), or keyword-only
-        # query/session arguments. Bind by parameter name so a valid adapter
-        # is not permanently dead-lettered because its calling convention
-        # differs from ParfumZentrum's.
-        parser = getattr(module, '_extract_product', None)
-        if not callable(parser):
-            return None
-        parser_url = original_url or final_url
+        parser_query = re.sub(r'_?z\d+\s*$', '', url_slug(parser_url), flags=re.I).strip()
         parameters = inspect.signature(parser).parameters
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
