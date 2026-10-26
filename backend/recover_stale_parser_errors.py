@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -24,10 +25,18 @@ MAX_LIMIT_PER_STORE = 10
 ELIGIBLE_ERRORS = {
     "orioudh": "_extract_product() missing 1 required positional argument: 'query'",
     "perfumemarket": "name 'STORE' is not defined",
+    # This exact fragrance URL was confirmed in production as an active DEAD
+    # row caused by product_parser_not_found, then validated by the new parser
+    # regression test. Do not requeue other ParfumZentrum errors automatically.
+    "parfumzentrum": "product_parser_not_found",
+}
+PARFUMZENTRUM_RECOVERY_ALLOWLIST = {
+    "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/",
 }
 ALLOWED_HOSTS = {
     "orioudh": {"orioudh.com", "www.orioudh.com"},
     "perfumemarket": {"perfumemarket.nl", "www.perfumemarket.nl"},
+    "parfumzentrum": {"parfum-zentrum.de", "www.parfum-zentrum.de"},
 }
 
 
@@ -45,6 +54,11 @@ def _is_safe_product_url(store: str, url: str) -> bool:
         return path.startswith("/products/") and len(path.split("/")) >= 3
     if store == "perfumemarket":
         return path.startswith("/products/") and len(path.split("/")) >= 3
+    if store == "parfumzentrum":
+        return (
+            url in PARFUMZENTRUM_RECOVERY_ALLOWLIST
+            and bool(re.search(r"_z\d+$", path, re.I))
+        )
     return False
 
 
@@ -64,23 +78,56 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
     for store, signature in ELIGIBLE_ERRORS.items():
         if not _current_parser_available(store):
             continue
-        rows = conn.execute(
-            """SELECT q.store, q.url, q.state, q.attempts, q.last_error
-               FROM hydration_queue AS q
-               JOIN store_urls AS u
-                 ON u.store=q.store AND u.url=q.url AND u.active=1
-               WHERE q.store=?
-                 AND q.state IN ('ERROR','DEAD')
-                 AND instr(q.last_error, ?) > 0
-               ORDER BY q.last_finished_at DESC, q.attempts DESC, q.url
-               LIMIT ?""",
-            (store, signature, limit),
-        ).fetchall()
+        if store == "parfumzentrum":
+            # Exact allowlist: do not scan or reactivate the other ~2,000 DEAD
+            # ParfumZentrum rows. This URL is known to be a perfume, not a
+            # deodorant/shampoo page, and its JSON-LD-backed regression passes.
+            allowed_urls = tuple(PARFUMZENTRUM_RECOVERY_ALLOWLIST)
+            placeholders = ",".join("?" for _ in allowed_urls)
+            rows = conn.execute(
+                f"""SELECT q.store, q.url, q.state, q.attempts, q.last_error
+                    FROM hydration_queue AS q
+                    JOIN store_urls AS u
+                      ON u.store=q.store AND u.url=q.url AND u.active=1
+                    WHERE q.store=?
+                      AND q.url IN ({placeholders})
+                      AND q.state IN ('ERROR','DEAD')
+                      AND instr(q.last_error, ?) > 0
+                      AND instr(q.last_error, 'http_status=200') > 0
+                      AND instr(q.last_error, 'jsonld_products=1') > 0
+                    ORDER BY q.last_finished_at DESC, q.attempts DESC, q.url
+                    LIMIT ?""",
+                (store, *allowed_urls, signature, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT q.store, q.url, q.state, q.attempts, q.last_error
+                   FROM hydration_queue AS q
+                   JOIN store_urls AS u
+                     ON u.store=q.store AND u.url=q.url AND u.active=1
+                   WHERE q.store=?
+                     AND q.state IN ('ERROR','DEAD')
+                     AND instr(q.last_error, ?) > 0
+                   ORDER BY q.last_finished_at DESC, q.attempts DESC, q.url
+                   LIMIT ?""",
+                (store, signature, limit),
+            ).fetchall()
         for row in rows:
             item = dict(row) if hasattr(row, "keys") else {
                 "store": row[0], "url": row[1], "state": row[2],
                 "attempts": row[3], "last_error": row[4],
             }
+            if store == "parfumzentrum":
+                # The query itself is allowlisted; keep this defensive check so
+                # malformed/stale diagnostic text can never widen the recovery.
+                if item.get("url") not in PARFUMZENTRUM_RECOVERY_ALLOWLIST:
+                    continue
+                if "product_parser_not_found" not in str(item.get("last_error") or ""):
+                    continue
+                if "http_status=200" not in str(item.get("last_error") or ""):
+                    continue
+                if "jsonld_products=1" not in str(item.get("last_error") or ""):
+                    continue
             if _is_safe_product_url(store, item.get("url")):
                 plan.append({
                     "store": store,
