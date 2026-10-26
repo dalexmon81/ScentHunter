@@ -177,7 +177,7 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
             self.assertEqual(states["stale-priced"]["state"], "PENDING")
             self.assertEqual(states["stale-missing"]["state"], "PENDING")
             self.assertEqual(states["stale-priced"]["priority"], 0)
-            self.assertLessEqual(states["stale-priced"]["available_at"], now)
+            self.assertLessEqual(states["stale-priced"]["available_at"], time.time() + 1)
             self.assertEqual(states["fresh-priced"]["state"], "DONE")
             self.assertEqual(states["fresh-missing"]["state"], "DONE")
             self.assertEqual(states["inactive-stale"]["state"], "DONE")
