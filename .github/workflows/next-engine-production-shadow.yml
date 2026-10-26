@@ -161,20 +161,24 @@ jobs:
                               "name": item.offer.raw_name,
                               "brand": item.offer.brand_raw,
                               "size_ml": item.offer.size_ml,
+                              "product_url": item.offer.product_url,
+                              "retailer_product_id": item.offer.retailer_product_id,
                               "reason": item.reason,
                               "candidate_product_ids": list(item.candidate_product_ids),
                           }
-                          for item in result.unresolved[:5]
+                          for item in result.unresolved
                       ],
                       "ambiguous_examples": [
                           {
                               "name": item.offer.raw_name,
                               "brand": item.offer.brand_raw,
                               "size_ml": item.offer.size_ml,
+                              "product_url": item.offer.product_url,
+                              "retailer_product_id": item.offer.retailer_product_id,
                               "reason": item.reason,
                               "candidate_product_ids": list(item.candidate_product_ids),
                           }
-                          for item in result.ambiguous[:5]
+                          for item in result.ambiguous
                       ],
                       "canonical_groups": [
                           {
