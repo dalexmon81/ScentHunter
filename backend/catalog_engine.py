@@ -2861,7 +2861,7 @@ def discover_store(store):
         store in HTML_DISCOVERY_SEEDS
         and store != 'deloox'
         and (
-            store in ('sabina', 'parfumzentrum', 'easycosmetic')
+            store in ('sabina', 'parfumzentrum', 'easycosmetic', 'notino')
             or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
             or (bool(sitemap_errors) and sitemap_successes == 0)
         )
