@@ -118,6 +118,9 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
                     store TEXT, url TEXT, price REAL, fetched_at REAL,
                     fetch_status TEXT, PRIMARY KEY(store,url)
                 );
+                CREATE TABLE store_product_variants (
+                    store TEXT, url TEXT, variant_key TEXT, price REAL, fetched_at REAL
+                );
                 """
             )
             now = time.time()
