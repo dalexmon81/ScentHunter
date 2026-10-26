@@ -95,6 +95,36 @@ def _stable_variant_id(product_id: str, size_ml: int, concentration: str) -> str
     return "VAR-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
+
+
+def _canonical_product_name(value: Any, brand: Any) -> str:
+    text = str(value or "").strip()
+    brand_text = str(brand or "").strip()
+    if brand_text and _norm(text).startswith(_norm(brand_text) + " "):
+        text = text[len(brand_text):].strip()
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl oz)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    for pattern, _ in _CONCENTRATION_PATTERNS:
+        text = pattern.sub(" ", text)
+    text = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|edp|edt|edc|"
+        r"for men|for women|men|man|women|woman|herren|damen|unisex)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    return re.sub(r"\s+", " ", text).strip(" -|")
+
+
+def _stable_product_id(brand: str, name: str, concentration: str) -> str:
+    key = f"{_norm(brand)}|{_norm(name)}|{concentration}"
+    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+
+
 def learn_variants(
     catalog: Mapping[str, Any],
     observations: Iterable[Mapping[str, Any]],
@@ -116,11 +146,108 @@ def learn_variants(
     if not isinstance(products, list) or not isinstance(variants, list):
         raise ValueError("catalog must contain products and variants arrays")
 
+    observation_rows = [row for row in observations if isinstance(row, Mapping)]
+    learned_products: list[dict[str, Any]] = []
+    rejected: dict[str, int] = defaultdict(int)
     product_by_id = {
         str(row.get("product_id")): row
         for row in products
         if isinstance(row, Mapping) and row.get("product_id")
     }
+
+    # A previously unseen product may be proposed only when at least two
+    # independent retailer domains agree on the same brand/name/concentration
+    # and on at least one explicit size. Ambiguous or incomplete catalog matches
+    # block creation instead of silently making a duplicate canonical product.
+    new_product_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for item in observation_rows:
+        product_id = str(item.get("product_id") or "").strip()
+        candidates = item.get("candidate_product_ids")
+        if product_id or (isinstance(candidates, list) and candidates):
+            continue
+        name = str(item.get("name") or item.get("raw_name") or "").strip()
+        brand = str(item.get("brand") or "").strip()
+        size = _explicit_size(item.get("size_ml"))
+        domain = _retailer_domain(item.get("product_url") or item.get("url"))
+        concentration = _concentration(name)
+        canonical_name = _canonical_product_name(name, brand)
+        if (
+            not name or not brand or not size or not domain or not concentration
+            or not canonical_name
+            or _UNSAFE_PACKAGING.search(name)
+            or _UNSAFE_PACKAGING.search(str(item.get("product_url") or item.get("url") or ""))
+        ):
+            continue
+        key = (_norm(brand), _norm(canonical_name), concentration)
+        new_product_groups[key].append({
+            **dict(item),
+            "brand": brand,
+            "name": name,
+            "size_ml": size,
+            "domain": domain,
+            "concentration": concentration,
+            "canonical_name": canonical_name,
+        })
+
+    rewritten_observations = [dict(item) for item in observation_rows]
+    for (brand_key, name_key, concentration), rows in new_product_groups.items():
+        by_size: dict[int, set[str]] = defaultdict(set)
+        all_domains: set[str] = set()
+        for row in rows:
+            by_size[int(row["size_ml"])].add(str(row["domain"]))
+            all_domains.add(str(row["domain"]))
+        if len(all_domains) < min_retailers or not any(
+            len(domains) >= min_retailers for domains in by_size.values()
+        ):
+            rejected["new_product_insufficient_independent_evidence"] += 1
+            continue
+
+        exemplar = rows[0]
+        brand = str(exemplar["brand"])
+        canonical_name = str(exemplar["canonical_name"])
+        same_name = [
+            row for row in product_by_id.values()
+            if _norm(row.get("brand_name")) == brand_key
+            and _identity_name(row.get("canonical_name") or row.get("name"), brand)
+                == _identity_name(canonical_name, brand)
+        ]
+        exact_concentration = [
+            row for row in same_name
+            if _concentration(row.get("concentration")) == concentration
+        ]
+        if len(exact_concentration) == 1:
+            target_id = str(exact_concentration[0].get("product_id"))
+        elif exact_concentration or same_name:
+            rejected["new_product_identity_ambiguous"] += 1
+            continue
+        else:
+            target_id = _stable_product_id(brand, canonical_name, concentration)
+            if target_id in product_by_id:
+                rejected["new_product_id_collision"] += 1
+                continue
+            new_product = {
+                "product_id": target_id,
+                "brand_name": brand,
+                "canonical_name": canonical_name,
+                "concentration": concentration,
+                "aliases": list(dict.fromkeys(str(row["name"]) for row in rows)),
+            }
+            product_by_id[target_id] = new_product
+            learned_products.append(new_product)
+
+        # Rewrite only unambiguous observations in this exact evidence group.
+        for row in rows:
+            for observation in rewritten_observations:
+                if (
+                    not observation.get("product_id")
+                    and not observation.get("candidate_product_ids")
+                    and str(observation.get("product_url") or observation.get("url") or "")
+                        == str(row.get("product_url") or row.get("url") or "")
+                    and str(observation.get("name") or observation.get("raw_name") or "")
+                        == str(row.get("name") or "")
+                ):
+                    observation["product_id"] = target_id
+
     existing = {
         (str(row.get("product_id")), _explicit_size(row.get("size_ml")))
         for row in variants
@@ -128,8 +255,7 @@ def learn_variants(
     }
 
     evidence: dict[tuple[str, int, str], dict[str, Any]] = {}
-    rejected: dict[str, int] = defaultdict(int)
-    for item in observations:
+    for item in rewritten_observations:
         if not isinstance(item, Mapping):
             rejected["invalid_observation"] += 1
             continue
@@ -186,6 +312,7 @@ def learn_variants(
         })
 
     updated = json.loads(json.dumps(catalog))
+    updated["products"].extend(learned_products)
     added = []
     for key, bucket in sorted(evidence.items()):
         retailer_evidence = list(bucket["retailers"].values())
@@ -221,7 +348,10 @@ def learn_variants(
             "schema_version": 1,
             "mode": "evidence-backed-variant-learning",
             "catalog_mutated": False,
-            "automatic_product_creation": False,
+            "input_catalog_mutated": False,
+            "automatic_product_creation": "proposal_only",
+            "products_added": len(learned_products),
+            "added_products": learned_products,
             "product_merges": 0,
             "minimum_independent_retailers": min_retailers,
             "variants_added": len(added),
