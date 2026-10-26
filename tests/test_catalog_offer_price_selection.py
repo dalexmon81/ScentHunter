@@ -77,3 +77,14 @@ def test_price_specification_does_not_use_delivery_charge_as_product_price():
         }
     }
     assert _offer_price(offer) is None
+
+
+
+def test_catalog_refresh_preserves_existing_price_when_new_parse_has_no_price():
+    # Guard the persistence contract: a successful page refresh with missing
+    # price metadata must not erase the last known explicit price.
+    from pathlib import Path
+
+    source = Path("backend/catalog_engine.py").read_text(encoding="utf-8")
+    assert "price=COALESCE(excluded.price,store_products.price)" in source
+    assert "currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END" in source
