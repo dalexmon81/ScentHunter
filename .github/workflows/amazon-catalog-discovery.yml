@@ -37,6 +37,26 @@ jobs:
               with urllib.request.urlopen(request, timeout=timeout) as response:
                   return json.loads(response.read().decode("utf-8"))
 
+          # Do not repeatedly crawl public Amazon pages when the approved API
+          # integration is intentionally unavailable. Wait for explicit approval
+          # and configuration instead of turning expected policy gating into a
+          # failed post-deploy workflow.
+          catalog_before = get_json("/catalog-status")
+          stores_before = catalog_before.get("stores") if isinstance(catalog_before.get("stores"), dict) else {}
+          gated_errors = ("amazon_creators_api_not_configured", "amazon_creators_api_comparison_not_approved")
+          gated = {}
+          for key in ("amazon_fr", "amazon_de"):
+              state = stores_before.get(key) if isinstance(stores_before.get(key), dict) else {}
+              error = str(state.get("error") or "")
+              gated[key] = any(marker in error for marker in gated_errors)
+          if all(gated.values()):
+              print(
+                  "Amazon verification skipped: both marketplaces are intentionally gated "
+                  "until API credentials and written comparison approval are configured. "
+                  "No discovery job was started."
+              )
+              raise SystemExit(0)
+
           started = get_json("/catalog/resync-amazon")
           print("Amazon discovery start:", json.dumps(started, ensure_ascii=False))
           if not started.get("ok") and started.get("status") != "already_running":
