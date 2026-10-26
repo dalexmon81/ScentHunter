@@ -57,10 +57,13 @@ jobs:
           RESULT="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT --apply --limit-per-store 10")"
           printf '%s\n' "$RESULT"
           printf '%s\n' "$RESULT" | grep -Eq '"status": "RECOVERY_QUEUED"'
-          printf '%s\n' "$RESULT" | grep -Eq '"database_mutated": (true|false)'
+          printf '%s\n' "$RESULT" | grep -Eq '"database_mutated": true'
+          printf '%s\n' "$RESULT" | grep -Eq '"updated_rows": [1-9][0-9]*'
+          printf '%s\n' "$RESULT" | grep -Eq '"remaining_eligible_after_apply": 0'
           POSTCHECK="$(timeout 30s flyctl ssh console --app scenthunter --select=false -C "$SCRIPT")"
           printf '%s\n' "$POSTCHECK"
           printf '%s\n' "$POSTCHECK" | grep -Eq '"status": "DRY_RUN"'
+          printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
 
   audit_state:
     if: always()
