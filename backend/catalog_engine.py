@@ -1350,9 +1350,19 @@ def _html_product_url(store, raw_url, base_url):
             return canonical
         return None
     if store == 'notino':
-        # Notino product pages expose a stable /p-<numeric-id> path segment.
-        # Strip tracking/query parameters, but preserve the exact market host.
-        if re.search(r'(?:^|/)p-\d+(?:/|$)', low, re.I):
+        # Notino's canonical product URLs commonly use brand/product slugs
+        # without a numeric ID. Exclude known navigation/utility routes and
+        # accept paths with at least two meaningful segments; the page hydrator
+        # remains responsible for verifying that the page is actually a product.
+        blocked = (
+            '/search', '/parfums', '/parfums-damen', '/parfums-herren',
+            '/parfums-homme', '/marques', '/marken', '/login', '/account',
+            '/cart', '/checkout', '/wishlist', '/customer-service',
+        )
+        if any(low == part or low.startswith(part + '/') for part in blocked):
+            return None
+        segments = [part for part in p.path.split('/') if part]
+        if len(segments) >= 2:
             return urllib.parse.urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
         return None
     if store == 'sabina':
