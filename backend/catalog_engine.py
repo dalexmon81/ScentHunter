@@ -805,6 +805,140 @@ def db():
     return conn
 
 
+def catalog_price_freshness_snapshot(conn, now=None):
+    """Aggregate persisted catalog price/fetch freshness without exposing product rows."""
+    current_time = time.time() if now is None else float(now)
+    cutoff_6h = current_time - 6 * 60 * 60
+    cutoff_24h = current_time - 24 * 60 * 60
+    cutoff_72h = current_time - 72 * 60 * 60
+
+    products = conn.execute(
+        """SELECT store,
+                  COUNT(*) AS product_rows,
+                  SUM(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 ELSE 0 END) AS priced_rows,
+                  SUM(CASE WHEN price IS NULL OR price <= 0 THEN 1 ELSE 0 END) AS missing_price_rows,
+                  SUM(CASE WHEN price IS NOT NULL AND price > 0
+                                AND fetched_at > ? THEN 1 ELSE 0 END) AS priced_fresh_24h,
+                  SUM(CASE WHEN price IS NOT NULL AND price > 0
+                                AND (fetched_at IS NULL OR fetched_at <= ?) THEN 1 ELSE 0 END) AS priced_stale_24h,
+                  SUM(CASE WHEN (price IS NULL OR price <= 0)
+                                AND (fetched_at IS NULL OR fetched_at <= ?) THEN 1 ELSE 0 END) AS missing_price_retry_due_6h,
+                  SUM(CASE WHEN fetched_at > ? THEN 1 ELSE 0 END) AS fetched_under_6h,
+                  SUM(CASE WHEN fetched_at <= ? AND fetched_at > ? THEN 1 ELSE 0 END) AS fetched_6_to_24h,
+                  SUM(CASE WHEN fetched_at <= ? AND fetched_at > ? THEN 1 ELSE 0 END) AS fetched_24_to_72h,
+                  SUM(CASE WHEN fetched_at IS NULL OR fetched_at <= ? THEN 1 ELSE 0 END) AS fetched_over_72h_or_null,
+                  SUM(CASE WHEN fetch_status IS NOT NULL AND fetch_status != 'OK'
+                           THEN 1 ELSE 0 END) AS non_ok_fetch_rows
+             FROM store_products
+            GROUP BY store
+            ORDER BY store""",
+        (
+            cutoff_24h, cutoff_24h, cutoff_6h, cutoff_6h,
+            cutoff_6h, cutoff_24h, cutoff_24h, cutoff_72h, cutoff_72h,
+        ),
+    ).fetchall()
+
+    active_urls = {
+        row["store"]: int(row["active_urls"] or 0)
+        for row in conn.execute(
+            """SELECT store, COUNT(*) AS active_urls
+                 FROM store_urls WHERE active=1 GROUP BY store"""
+        ).fetchall()
+    }
+    variants = {
+        row["store"]: {
+            "variant_rows": int(row["variant_rows"] or 0),
+            "priced_variant_rows": int(row["priced_variant_rows"] or 0),
+            "priced_variants_stale_24h": int(row["priced_variants_stale_24h"] or 0),
+        }
+        for row in conn.execute(
+            """SELECT store,
+                      COUNT(*) AS variant_rows,
+                      SUM(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 ELSE 0 END)
+                          AS priced_variant_rows,
+                      SUM(CASE WHEN price IS NOT NULL AND price > 0
+                                    AND (fetched_at IS NULL OR fetched_at <= ?)
+                               THEN 1 ELSE 0 END) AS priced_variants_stale_24h
+                 FROM store_product_variants GROUP BY store""",
+            (cutoff_24h,),
+        ).fetchall()
+    }
+    queue_states = {}
+    for row in conn.execute(
+        """SELECT store, state, COUNT(*) AS row_count
+             FROM hydration_queue GROUP BY store, state"""
+    ).fetchall():
+        queue_states.setdefault(row["store"], {})[row["state"]] = int(row["row_count"] or 0)
+
+    store_names = set(active_urls) | set(variants) | set(queue_states)
+    store_names.update(row["store"] for row in products)
+    by_store = {}
+    for row in products:
+        store = row["store"]
+        product_rows = int(row["product_rows"] or 0)
+        priced_rows = int(row["priced_rows"] or 0)
+        url_count = active_urls.get(store, 0)
+        item = {
+            "active_urls": url_count,
+            "product_rows": product_rows,
+            "product_rows_vs_active_urls_pct": round(100.0 * product_rows / url_count, 2)
+                if url_count else None,
+            "priced_rows": priced_rows,
+            "priced_share_pct": round(100.0 * priced_rows / product_rows, 2)
+                if product_rows else None,
+            "missing_price_rows": int(row["missing_price_rows"] or 0),
+            "missing_price_retry_due_6h": int(row["missing_price_retry_due_6h"] or 0),
+            "priced_fresh_24h": int(row["priced_fresh_24h"] or 0),
+            "priced_stale_24h": int(row["priced_stale_24h"] or 0),
+            "fetch_age_buckets": {
+                "under_6h": int(row["fetched_under_6h"] or 0),
+                "6_to_24h": int(row["fetched_6_to_24h"] or 0),
+                "24_to_72h": int(row["fetched_24_to_72h"] or 0),
+                "over_72h_or_null": int(row["fetched_over_72h_or_null"] or 0),
+            },
+            "non_ok_fetch_rows": int(row["non_ok_fetch_rows"] or 0),
+            "variants": variants.get(store, {
+                "variant_rows": 0,
+                "priced_variant_rows": 0,
+                "priced_variants_stale_24h": 0,
+            }),
+            "hydration_queue": queue_states.get(store, {}),
+        }
+        by_store[store] = item
+
+    for store in store_names - set(by_store):
+        by_store[store] = {
+            "active_urls": active_urls.get(store, 0),
+            "product_rows": 0,
+            "product_rows_vs_active_urls_pct": 0.0 if active_urls.get(store, 0) else None,
+            "priced_rows": 0,
+            "priced_share_pct": None,
+            "missing_price_rows": 0,
+            "missing_price_retry_due_6h": 0,
+            "priced_fresh_24h": 0,
+            "priced_stale_24h": 0,
+            "fetch_age_buckets": {
+                "under_6h": 0, "6_to_24h": 0, "24_to_72h": 0, "over_72h_or_null": 0,
+            },
+            "non_ok_fetch_rows": 0,
+            "variants": variants.get(store, {
+                "variant_rows": 0,
+                "priced_variant_rows": 0,
+                "priced_variants_stale_24h": 0,
+            }),
+            "hydration_queue": queue_states.get(store, {}),
+        }
+
+    return {
+        "timestamp": current_time,
+        "read_only": True,
+        "writes_database": False,
+        "network_requests": False,
+        "thresholds_seconds": {"missing_price_retry": 6 * 60 * 60, "stale_price": 24 * 60 * 60},
+        "stores": dict(sorted(by_store.items())),
+    }
+
+
 def _discovery_bases(store):
     return tuple(dict.fromkeys(DISCOVERY_BASES.get(store, (STORES[store],))))
 

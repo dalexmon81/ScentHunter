@@ -3952,6 +3952,46 @@ def catalog_hydration_status_endpoint():
         }
 
 
+@app.get('/diagnose-catalog-price-freshness-read-only')
+def diagnose_catalog_price_freshness_read_only():
+    """Aggregate per-store price/fetch freshness using a read-only SQLite connection."""
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': 'catalog_engine_unavailable',
+        }
+
+    conn = None
+    try:
+        import sqlite3
+
+        catalog_module = importlib.import_module('catalog_engine')
+        database_uri = catalog_module.DB_PATH.resolve().as_uri() + '?mode=ro'
+        conn = sqlite3.connect(database_uri, uri=True, timeout=5)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        snapshot = catalog_module.catalog_price_freshness_snapshot(conn)
+        snapshot['ok'] = True
+        snapshot['diagnostic'] = 'catalog-price-freshness-read-only-v1'
+        return snapshot
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': f'{type(exc).__name__}: {str(exc)[:400]}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @app.get('/diagnose-catalog-live-parse')
 def diagnose_catalog_live_parse_endpoint(
     store: str = 'deloox',
