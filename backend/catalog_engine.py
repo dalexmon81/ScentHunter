@@ -3205,7 +3205,118 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
             # Passing only final_url loses that ID, which can attach the
             # default bottle size/offer to every variant in the catalog.
             parser_url = original_url or final_url
-            parser_query = re.sub(r'_?z\d+\s*$', '', url_slug(parser_url), flags=re.I).strip()
+            parser_slug = url_slug(parser_url)
+            if 'html' in parameters and html_data is not None:
+                html_text = html_data.decode('utf-8', errors='replace') if isinstance(html_data, bytes) else str(html_data)
+                parsed = parser(session, parser_url, parser_slug, html=html_text)
+            else:
+                parsed = parser(session, parser_url, parser_slug)
+        finally:
+            session.close()
+    else:
+        # Some adapters expose _extract_product with different historical
+        # signatures: (url, query), (session, url, query), or keyword-only
+        # query/session arguments. Bind by parameter name so a valid adapter
+        # is not permanently dead-lettered because its calling convention
+        # differs from ParfumZentrum's.
+        parser = getattr(module, '_extract_product', None)
+        if not callable(parser):
+            return None
+        parser_url = original_url or final_url
+        parser_query = re.sub(r'_?z\d+\s*
+        parameters = inspect.signature(parser).parameters
+        session = requests.Session()
+        session.headers.update({'User-Agent': USER_AGENT})
+        try:
+            args = []
+            kwargs = {}
+            for parameter in parameters.values():
+                if parameter.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                    continue
+                name = parameter.name.lower()
+                if name in {'session', 'sess', 'client', 'http', 'http_session'}:
+                    value = session
+                elif name in {'url', 'product_url', 'page_url', 'final_url'}:
+                    value = parser_url
+                elif name in {'query', 'search_query', 'product_query', 'q'}:
+                    value = parser_query
+                elif parameter.default is not inspect.Parameter.empty:
+                    continue
+                else:
+                    # Unknown required parameter: do not guess its meaning.
+                    raise TypeError(f'unsupported _extract_product parameter: {parameter.name}')
+                if parameter.kind == inspect.Parameter.KEYWORD_ONLY:
+                    kwargs[parameter.name] = value
+                else:
+                    args.append(value)
+            parsed = parser(*args, **kwargs)
+        finally:
+            session.close()
+
+    # Some retailer adapters return one row per variant. The catalog's
+    # product-page hydration stores one base product row; retain a real priced
+    # variant rather than failing on the list shape.
+    if isinstance(parsed, list):
+        parsed = next((row for row in parsed if isinstance(row, dict) and ((row.get('offer') or {}).get('price') is not None or row.get('price_num') is not None or row.get('price') not in (None, ''))), None)
+    if not isinstance(parsed, dict):
+        return None
+
+    identity = parsed.get('identity') or {}
+    def identity_value(key):
+        value = identity.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
+    source = parsed.get('source') or {}
+    attributes = parsed.get('attributes') or {}
+    offer = parsed.get('offer') or {}
+
+    def attribute_value(key):
+        value = attributes.get(key)
+        if isinstance(value, dict):
+            return value.get('value')
+        return value
+
+    price = parsed.get('price_num')
+    if price is None:
+        price = offer.get('price')
+
+    availability = (
+        parsed.get('availability')
+        or offer.get('availability')
+        or 'unknown'
+    )
+    available = parsed.get('available')
+    if available is None:
+        if availability == 'in_stock':
+            available = True
+        elif availability == 'out_of_stock':
+            available = False
+
+    return {
+        'store': STORE_LABELS[store],
+        'store_key': store,
+        'url': parsed.get('url') or source.get('url') or original_url or final_url,
+        'name': parsed.get('name') or parsed.get('title') or source.get('name') or '',
+        'brand': parsed.get('brand') or source.get('brand') or '',
+        'image': parsed.get('image') or source.get('image'),
+        'sku': parsed.get('sku') or identity_value('sku') or '',
+        'gtin': parsed.get('gtin') or identity_value('gtin') or '',
+        'mpn': parsed.get('mpn') or identity_value('mpn') or '',
+        'size_ml': parsed.get('size_ml') if parsed.get('size_ml') is not None else attribute_value('size_ml'),
+        'concentration': parsed.get('concentration') or attribute_value('concentration'),
+        'gender': parsed.get('gender') or attribute_value('gender'),
+        'price_num': price,
+        'price': price,
+        'currency': parsed.get('currency') or offer.get('currency') or 'EUR',
+        'availability': availability,
+        'available': available,
+        'variants': parsed.get('variants') if store == 'sabina' and isinstance(parsed.get('variants'), list) else [],
+        'fetched_at': time.time(),
+    }
+
+, '', url_slug(parser_url), flags=re.I).strip()
         parameters = inspect.signature(parser).parameters
         session = requests.Session()
         session.headers.update({'User-Agent': USER_AGENT})
