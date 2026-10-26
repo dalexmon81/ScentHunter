@@ -158,3 +158,23 @@ def test_successful_empty_catalog_scan_remains_empty(monkeypatch):
     assert count == 0
     assert "no_product_urls" in detail
     assert states[0][1] == "DISCOVERY_EMPTY"
+
+
+def test_first_jsonld_offer_prefers_actual_price_over_availability_only():
+    from backend.catalog_engine import _first_offer
+
+    product = {"offers": [
+        {"availability": "https://schema.org/InStock"},
+        {"price": "28.90", "priceCurrency": "EUR"},
+    ]}
+    assert _first_offer(product)["price"] == "28.90"
+
+
+def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
+    from backend.catalog_engine import _first_offer
+
+    product = {"offers": [
+        {"availability": "https://schema.org/OutOfStock"},
+        {"availability": "https://schema.org/InStock"},
+    ]}
+    assert _first_offer(product)["availability"] == "https://schema.org/OutOfStock"
