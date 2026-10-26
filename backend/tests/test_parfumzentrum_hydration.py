@@ -49,5 +49,142 @@ class CatalogHydrationTests(unittest.TestCase):
         self.assertFalse(any(url.endswith(".jpg") for url in urls))
 
 
+
+class FamilyRegistryBaselineTests(unittest.TestCase):
+    def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
+        """Protect the curated Hawas family registry baseline, not fabricated offers."""
+        import json
+        from pathlib import Path
+
+        registry_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with registry_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+
+        hawas = next(
+            (family for family in registry.get("families", [])
+             if family.get("family_id") == "rasasi_hawas"),
+            None,
+        )
+        self.assertIsNotNone(hawas, "Rasasi Hawas family must remain registered")
+        names = [
+            str(product.get("canonical_name") or "").strip()
+            for product in hawas.get("products", [])
+            if isinstance(product, dict)
+        ]
+        names = [name for name in names if name]
+        self.assertEqual(len(names), 30)
+        self.assertEqual(len({name.casefold() for name in names}), 30)
+
+    def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
+        """The broad-family snapshot adds every missing canonical identity without prices."""
+        import json
+        import sys
+        from pathlib import Path
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
+        import main as app_main
+        from product_matcher import ProductMatcher
+
+        with (backend_dir / "family_registry.json").open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+        registry_family = next(
+            family for family in registry.get("families", [])
+            if family.get("family_id") == "rasasi_hawas"
+        )
+        matcher = ProductMatcher(catalog=[], family_registry={"families": [registry_family]})
+        family = matcher._family_for_query("Hawas")
+        self.assertIsNotNone(family)
+        self.assertEqual(len(family["variants"]), 30)
+        self.assertIsNone(
+            matcher._requested_variant("Hawas", family),
+            "A family alias must not be mistaken for a specific registered variant",
+        )
+        ice_family = matcher._family_for_query("Hawas Ice")
+        self.assertIsNotNone(ice_family)
+        self.assertEqual(
+            matcher._requested_variant("Hawas Ice", ice_family)["canonical_name"],
+            "Hawas Ice",
+        )
+
+        job_id = "test-hawas-family-snapshot"
+        priced_names = {"Hawas Ice", "Hawas Black", "Hawas Kobra"}
+        existing_groups = []
+        for name in sorted(priced_names):
+            variant = next(item for item in family["variants"] if item["canonical_name"] == name)
+            identity = matcher._build_family_result(
+                {"name": name, "price_num": 25.0, "url": "https://example.invalid/product"},
+                family,
+                variant,
+            )
+            existing_groups.append({
+                "catalog_id": identity["catalog_id"],
+                "brand": "Rasasi",
+                "canonical_brand": "Rasasi",
+                "name": name,
+                "canonical_name": name,
+                "family": "Hawas",
+                "variant": name,
+                "offers": [{
+                    "name": name,
+                    "price_num": 25.0,
+                    "url": "https://example.invalid/product",
+                    "store": "Fixture store",
+                }],
+            })
+
+        with app_main.JOBS_LOCK:
+            previous_job = app_main.JOBS.get(job_id)
+            previous_matcher = app_main.PRODUCT_MATCHER
+            app_main.PRODUCT_MATCHER = matcher
+            app_main.JOBS[job_id] = {
+                "query": "Hawas",
+                "started_at": 1.0,
+                "completed": True,
+                "status": "completed",
+                "elapsed": 0.1,
+                "results": existing_groups,
+                "offers": [offer for group in existing_groups for offer in group["offers"]],
+                "unresolved_offers": [],
+                "errors": {},
+                "stores": {},
+                "identity_scope": [],
+                "dedupe_diagnostics": [],
+                "collect_elapsed": 0.05,
+                "dedupe_elapsed": 0.01,
+                "aggregate_elapsed": 0.01,
+                "atomic_results": True,
+            }
+        try:
+            snapshot = app_main._snapshot(job_id)
+            expected = {
+                str(product.get("canonical_name") or "").strip()
+                for product in registry_family.get("products", [])
+                if str(product.get("canonical_name") or "").strip()
+            }
+            names = {group["canonical_name"] for group in snapshot["results"]}
+            self.assertEqual(expected, names)
+            self.assertEqual(snapshot["count"], 30)
+
+            actual_priced = {
+                group["canonical_name"] for group in snapshot["results"]
+                if group.get("offers")
+            }
+            self.assertEqual(actual_priced, priced_names)
+            self.assertTrue(all(
+                group.get("identity_only")
+                for group in snapshot["results"]
+                if group["canonical_name"] not in actual_priced
+            ))
+        finally:
+            with app_main.JOBS_LOCK:
+                if previous_job is None:
+                    app_main.JOBS.pop(job_id, None)
+                else:
+                    app_main.JOBS[job_id] = previous_job
+                app_main.PRODUCT_MATCHER = previous_matcher
+
+
 if __name__ == "__main__":
     unittest.main()
