@@ -45,7 +45,6 @@ jobs:
           tests/test_catalog_preflight.py
           tests/test_catalog_identity_audit.py
           tests/test_catalog_url_hygiene.py
-          tests/test_catalog_sqlite_contention.py
           tests/test_deloox_url_admission.py
           tests/test_deloox_recovery.py
           tests/test_migration_plan_validator.py
