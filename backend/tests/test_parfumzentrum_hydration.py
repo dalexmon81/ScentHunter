@@ -49,5 +49,32 @@ class CatalogHydrationTests(unittest.TestCase):
         self.assertFalse(any(url.endswith(".jpg") for url in urls))
 
 
+class FamilyRegistryBaselineTests(unittest.TestCase):
+    def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
+        """Protect the curated Hawas family registry baseline, not fabricated offers."""
+        import json
+        from pathlib import Path
+
+        registry_path = Path(__file__).resolve().parents[1] / "family_registry.json"
+        with registry_path.open(encoding="utf-8") as handle:
+            registry = json.load(handle)
+
+        families = registry.get("families", [])
+        hawas = next(
+            (family for family in families if family.get("family_id") == "rasasi_hawas"),
+            None,
+        )
+        self.assertIsNotNone(hawas, "Rasasi Hawas family must remain registered")
+
+        canonical_names = [
+            str(product.get("canonical_name") or "").strip()
+            for product in hawas.get("products", [])
+            if isinstance(product, dict)
+        ]
+        canonical_names = [name for name in canonical_names if name]
+        self.assertEqual(len(canonical_names), 30)
+        self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
+
+
 if __name__ == "__main__":
     unittest.main()
