@@ -102,8 +102,9 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         self.assertEqual(len(canonical_names), 30)
         self.assertEqual(len({name.casefold() for name in canonical_names}), 30)
 
+
     def test_hawas_broad_query_identity_cards_preserve_all_registered_variants(self):
-        """The broad-family snapshot should not lose variants while adding offers."""
+        """A completed broad-family search must retain all registry cards alongside real offers."""
         import json
         import sys
         from pathlib import Path
@@ -111,35 +112,45 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         backend_dir = Path(__file__).resolve().parents[1]
         if str(backend_dir) not in sys.path:
             sys.path.insert(0, str(backend_dir))
-
         import main as app_main
 
         with (backend_dir / "family_registry.json").open(encoding="utf-8") as handle:
             registry = json.load(handle)
-        family = next(
+        registry_family = next(
             family for family in registry.get("families", [])
             if family.get("family_id") == "rasasi_hawas"
         )
-        matcher = app_main.PRODUCT_MATCHER
-        self.assertIsNotNone(matcher)
-        self.assertEqual(len(matcher._family_for_query("Hawas")["variants"]), 30)
 
-        # Model the completed search with three already-matched offers, whose
-        # catalog IDs are unrelated to the deterministic synthetic family IDs.
-        from product_matcher import stable_family_id
+        # Isolate family publication from the full production catalog/matcher.
+        # A family registry match should be sufficient to publish all canonical
+        # identities; existing price-bearing groups must not suppress unrelated
+        # synthetic identity cards merely because they have a different ID.
+        real_matcher = app_main.PRODUCT_MATCHER
+
+        class FamilyOnlyMatcher:
+            def _family_for_query(self, query):
+                if query.strip().casefold() not in {"hawas", "rasasi hawas"}:
+                    return None
+                return real_matcher._normalize_family_registry({"families": [registry_family]})[0]
+
+            def _requested_variant(self, query, family):
+                return None
+
+            def _build_family_result(self, offer, family, variant):
+                return {
+                    "catalog_id": "family-registry:" + variant["canonical_name"].casefold(),
+                    "canonical_brand": family["brand"],
+                    "family_name": "Hawas",
+                    "canonical_name": variant["canonical_name"],
+                    "canonical_image": variant.get("canonical_image") or "",
+                }
 
         job_id = "test-hawas-family-snapshot"
-        family_variants = matcher._family_for_query("Hawas")["variants"]
-        offers = []
-        for name in ("Hawas Ice", "Hawas Black", "Hawas Kobra"):
-            variant = next(item for item in family_variants if item["canonical_name"] == name)
-            identity = matcher._build_family_result(
-                {"name": name, "price_num": 25.0, "url": "https://example.invalid/product"},
-                matcher._family_for_query("Hawas"),
-                variant,
-            )
-            offers.append({
-                "catalog_id": "real-catalog-" + name.lower().replace(" ", "-"),
+        existing_groups = []
+        priced_names = {"Hawas Ice", "Hawas Black", "Hawas Kobra"}
+        for name in sorted(priced_names):
+            existing_groups.append({
+                "catalog_id": "existing-catalog:" + name.casefold().replace(" ", "-"),
                 "brand": "Rasasi",
                 "canonical_brand": "Rasasi",
                 "name": name,
@@ -147,7 +158,8 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
                 "family": "Hawas",
                 "variant": name,
                 "offers": [{
-                    "name": name, "price_num": 25.0,
+                    "name": name,
+                    "price_num": 25.0,
                     "url": "https://example.invalid/product",
                     "store": "Fixture store",
                 }],
@@ -155,14 +167,16 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
 
         with app_main.JOBS_LOCK:
             previous = app_main.JOBS.get(job_id)
+            previous_matcher = app_main.PRODUCT_MATCHER
+            app_main.PRODUCT_MATCHER = FamilyOnlyMatcher()
             app_main.JOBS[job_id] = {
                 "query": "Hawas",
                 "started_at": 1.0,
                 "completed": True,
                 "status": "completed",
                 "elapsed": 0.1,
-                "results": offers,
-                "offers": [offer for group in offers for offer in group["offers"]],
+                "results": existing_groups,
+                "offers": [offer for group in existing_groups for offer in group["offers"]],
                 "unresolved_offers": [],
                 "errors": {},
                 "stores": {},
@@ -176,20 +190,23 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
         try:
             snapshot = app_main._snapshot(job_id)
             names = {group["canonical_name"] for group in snapshot["results"]}
-            expected = {variant["canonical_name"] for variant in family_variants}
+            expected = {
+                str(product.get("canonical_name") or "").strip()
+                for product in registry_family.get("products", [])
+                if str(product.get("canonical_name") or "").strip()
+            }
             self.assertEqual(expected, names)
             self.assertEqual(snapshot["count"], 30)
-            # Offers must remain attached only to the three fixture products;
-            # the other cards are identity-only and have no invented prices.
-            priced_names = {
+
+            actual_priced = {
                 group["canonical_name"] for group in snapshot["results"]
                 if group.get("offers")
             }
-            self.assertEqual(priced_names, {"Hawas Ice", "Hawas Black", "Hawas Kobra"})
+            self.assertEqual(actual_priced, priced_names)
             self.assertTrue(all(
                 group.get("identity_only")
                 for group in snapshot["results"]
-                if group["canonical_name"] not in priced_names
+                if group["canonical_name"] not in actual_priced
             ))
         finally:
             with app_main.JOBS_LOCK:
@@ -197,6 +214,7 @@ class FamilyRegistryBaselineTests(unittest.TestCase):
                     app_main.JOBS.pop(job_id, None)
                 else:
                     app_main.JOBS[job_id] = previous
+                app_main.PRODUCT_MATCHER = previous_matcher
 
 
 if __name__ == "__main__":
