@@ -2255,16 +2255,24 @@ def _discover_deloox_catalog(seeds, deadline=None):
             admit(a.get('href'), a.get_text(' ', strip=True))
 
         for node in soup.find_all(True):
+            # Most nodes have no URL-bearing data attribute. Avoid walking
+            # every descendant tree for text when there is nothing to admit;
+            # repeated get_text() calls on large retailer pages are expensive.
+            raw_values = [
+                node.get(attr)
+                for attr in (
+                    'value', 'data-value', 'data-filter-url', 'data-option-url',
+                    'data-redirect-url', 'data-url', 'data-href', 'data-link',
+                    'data-next-url', 'data-next', 'data-load-more-url',
+                    'data-pagination-url',
+                )
+                if node.get(attr)
+            ]
+            if not raw_values:
+                continue
             label = node.get_text(' ', strip=True)[:300]
-            for attr in (
-                'value', 'data-value', 'data-filter-url', 'data-option-url',
-                'data-redirect-url', 'data-url', 'data-href', 'data-link',
-                'data-next-url', 'data-next', 'data-load-more-url',
-                'data-pagination-url',
-            ):
-                raw = node.get(attr)
-                if raw:
-                    admit(raw, label)
+            for raw in raw_values:
+                admit(raw, label)
 
         for node in soup.find_all(['link'], href=True):
             rel = ' '.join(node.get('rel') or []).lower()
