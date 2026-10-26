@@ -3046,13 +3046,27 @@ def _num(v):
 
 
 def _first_offer(p):
+    """Prefer an offer with an actual price over availability-only JSON-LD.
+
+    Retailers may publish several offers for one product, including an
+    availability-only entry before a priced offer. Returning the first entry
+    with either field silently discarded a valid price and made the product
+    appear as 'Prezzo non disponibile'. Keep the old availability fallback
+    only when none of the offers contains a parseable price.
+    """
     offers = p.get('offers') if isinstance(p, dict) else None
     if isinstance(offers, dict):
         return offers
     if isinstance(offers, list):
+        availability_fallback = {}
         for o in offers:
-            if isinstance(o, dict) and (_num(o.get('price')) is not None or o.get('availability')):
+            if not isinstance(o, dict):
+                continue
+            if _num(o.get('price')) is not None:
                 return o
+            if not availability_fallback and o.get('availability'):
+                availability_fallback = o
+        return availability_fallback
     return {}
 
 
