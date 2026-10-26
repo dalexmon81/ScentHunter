@@ -235,3 +235,25 @@ def test_proposes_distinct_perfume_when_single_candidate_is_only_a_broad_name_mi
     assert product["product_id"] != "SH-TEST-1"
     assert result["report"]["variants_added"] == 1
     assert result["report"]["added_variants"][0]["product_id"] == product["product_id"]
+
+
+def test_shadow_report_ingestion_includes_ambiguous_distinct_perfumes():
+    catalog = _catalog()
+    report = {
+        "queries": [{
+            "retailers": [
+                {"retailer": "Store A", "ambiguous_examples": [{
+                    "name": "New Moon Eau de Parfum", "brand": "Example", "size_ml": 50,
+                    "product_url": "https://a.example/new-moon", "candidate_product_ids": ["SH-TEST-1"],
+                }]},
+                {"retailer": "Store B", "ambiguous_examples": [{
+                    "name": "New Moon Eau de Parfum", "brand": "Example", "size_ml": 50,
+                    "product_url": "https://b.example/new-moon", "candidate_product_ids": ["SH-TEST-1"],
+                }]},
+            ],
+        }],
+    }
+    result = learn_from_shadow_report(catalog, report)
+    assert result["report"]["products_added"] == 1
+    assert result["report"]["added_products"][0]["canonical_name"] == "New Moon"
+    assert result["report"]["variants_added"] == 1
