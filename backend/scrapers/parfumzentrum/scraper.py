@@ -1657,12 +1657,7 @@ def _extract_product(url, query, html=None):
     """Extract one product, reusing supplied HTML when the catalog has it."""
     # Product URLs append an internal SKU such as "_z1016707". It is not part
     # of the product title and must never become a mandatory lexical match.
-    query = re.sub(
-        r"\bz\d+\s*$",
-        "",
-        _clean(query),
-        flags=re.I,
-    ).strip()
+    query = re.sub(r"\bz\d+\s*$", "", _clean(query), flags=re.I).strip()
 
     if html is not None:
         html_text = (
