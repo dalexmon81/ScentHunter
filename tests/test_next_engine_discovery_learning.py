@@ -257,3 +257,31 @@ def test_shadow_report_ingestion_includes_ambiguous_distinct_perfumes():
     assert result["report"]["products_added"] == 1
     assert result["report"]["added_products"][0]["canonical_name"] == "New Moon"
     assert result["report"]["variants_added"] == 1
+
+
+def test_proposes_new_product_when_only_candidate_is_missing_family_placeholder():
+    observations = [
+        {
+            "name": "Hawas Malibu Eau de Parfum",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/rasasi-hawas-malibu-eau-de-parfum-100ml",
+            "candidate_product_ids": ["SH-FAMILY-not-in-catalog"],
+        },
+        {
+            "name": "Hawas Malibu Eau de Parfum",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/rasasi-hawas-malibu-eau-de-parfum-100ml",
+            "candidate_product_ids": ["SH-FAMILY-not-in-catalog"],
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["products_added"] == 1
+    product = result["report"]["added_products"][0]
+    assert product["canonical_name"] == "Hawas Malibu"
+    assert product["brand_name"] == "Rasasi"
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["product_id"] == product["product_id"]

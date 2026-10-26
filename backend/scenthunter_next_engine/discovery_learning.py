@@ -175,11 +175,25 @@ def learn_variants(
         # brand/name identity. Matching candidates continue through variant
         # learning; missing/invalid candidate records remain conservative.
         if isinstance(candidates, list) and candidates:
-            candidate_rows = [
-                product_by_id.get(str(candidate))
-                for candidate in candidates
-            ]
-            if not brand or not name or any(not isinstance(row, Mapping) for row in candidate_rows):
+            if not brand or not name:
+                continue
+            candidate_rows = []
+            invalid_candidate = False
+            for candidate in candidates:
+                candidate_id = str(candidate or "").strip()
+                candidate_row = product_by_id.get(candidate_id)
+                if isinstance(candidate_row, Mapping):
+                    candidate_rows.append(candidate_row)
+                elif candidate_id.startswith("SH-FAMILY-"):
+                    # Family IDs emitted by the matcher are grouping hints,
+                    # not canonical catalog products. They must not block a
+                    # separately evidenced product proposal just because no
+                    # canonical row exists for the family placeholder.
+                    continue
+                else:
+                    invalid_candidate = True
+                    break
+            if invalid_candidate:
                 continue
             exact_candidate = any(
                 _norm(row.get("brand_name")) == _norm(brand)
