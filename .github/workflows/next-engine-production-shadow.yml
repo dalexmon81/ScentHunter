@@ -210,7 +210,15 @@ jobs:
           print("Production Next Engine shadow comparison: PASS (read-only; production search unchanged)")
           PY
 
-      - name: Upload shadow comparison report
+      - name: Generate evidence-backed canonical variant proposal
+        if: success()
+        run: >-
+          python -m backend.scenthunter_next_engine.catalog_variant_learning_cli
+          --report next-engine-production-shadow-report.json
+          --output-catalog next-engine-catalog-proposal.json
+          --output-report next-engine-catalog-learning-report.json
+
+      - name: Upload shadow comparison report and catalog proposal
         if: always()
         uses: actions/upload-artifact@v4
         with:
