@@ -69,10 +69,10 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
                  ON u.store=q.store AND u.url=q.url AND u.active=1
                WHERE q.store=?
                  AND q.state IN ('ERROR','DEAD')
-                 AND q.last_error LIKE ?
+                 AND instr(q.last_error, ?) > 0
                ORDER BY q.last_finished_at DESC, q.attempts DESC, q.url
                LIMIT ?""",
-            (store, f"%{signature}%", limit),
+            (store, signature, limit),
         ).fetchall()
         for row in rows:
             item = dict(row) if hasattr(row, "keys") else {
@@ -108,10 +108,10 @@ def recover(*, apply: bool = False, limit_per_store: int = MAX_LIMIT_PER_STORE):
                                last_started_at=NULL, last_finished_at=NULL,
                                leased_until=NULL
                            WHERE store=? AND url=? AND state IN ('ERROR','DEAD')
-                             AND last_error LIKE ?""",
+                             AND instr(last_error, ?) > 0""",
                         (
                             now, item["store"], item["url"],
-                            f"%{ELIGIBLE_ERRORS[item['store']]}%",
+                            ELIGIBLE_ERRORS[item['store']],
                         ),
                     )
         return {
