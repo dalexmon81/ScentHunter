@@ -1907,6 +1907,24 @@ def _extract_product(url, query, html=None):
     }
 
 
+def extract_product_page(session, url, query="", html=None):
+    """Catalog hydration adapter for a known ParfumZentrum product URL.
+
+    Hydration already identifies the URL, so do not require the URL slug to
+    lexically match the title. Keep price and stock evidence strictly tied to
+    the supplied page and existing product parser.
+    """
+    parsed_url = _product_url(url)
+    if not parsed_url:
+        return None
+
+    effective_query = _clean(query)
+    if not effective_query:
+        effective_query = urlparse(parsed_url).path.rstrip("/").rsplit("/", 1)[-1]
+    effective_query = re.sub(r"_z\d+\s*$", "", effective_query, flags=re.I)
+    return _extract_product(parsed_url, effective_query, html=html)
+
+
 def search(query):
     query = _clean(query)
 
