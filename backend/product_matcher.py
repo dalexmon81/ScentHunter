@@ -1165,9 +1165,9 @@ class ProductMatcher:
                     url_key = self._url_identity_text(raw_url_part)
                     if brand_key:
                         url_key = re.sub(
-                            rf"\\b{re.escape(brand_key)}\\b", " ", url_key, flags=re.I
+                            rf"\b{re.escape(brand_key)}\b", " ", url_key, flags=re.I
                         )
-                        url_key = re.sub(r"\\s+", " ", url_key).strip()
+                        url_key = re.sub(r"\s+", " ", url_key).strip()
                     ordered_url_tokens = url_key.split()
                     for candidate_variant in eligible_variants:
                         if candidate_variant.get("canonical_name") == name_variant.get("canonical_name"):
