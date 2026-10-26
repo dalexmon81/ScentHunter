@@ -223,6 +223,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: next-engine-production-shadow-report
-          path: next-engine-production-shadow-report.json
+          path: |
+            next-engine-production-shadow-report.json
+            next-engine-catalog-proposal.json
+            next-engine-catalog-learning-report.json
           if-no-files-found: warn
           retention-days: 7
