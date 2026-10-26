@@ -1696,10 +1696,8 @@ def _extract_product(url, query, html=None):
     if not name:
         return None
 
-    # A known catalog URL is already the identity under hydration. Keep strict
-    # lexical matching for live searches, but do not reject hydration because a
-    # URL slug contains words absent from the commercial title.
-    query = re.sub(r"_?z\d+\s*$", "", _clean(query), flags=re.I).strip()
+    # Live search requires lexical relevance. URL hydration uses the dedicated
+    # adapter with an empty query after the URL has already been identified.
     if query and not _matches_query(name, query):
         return None
 
