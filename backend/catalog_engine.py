@@ -4676,18 +4676,32 @@ def prioritize_hydration_candidates(rows, priority=0):
                                           AND u.url=hydration_queue.url
                                           AND u.active=1
                                    )
-                                   AND EXISTS (
-                                       SELECT 1 FROM store_products p
-                                        WHERE p.store=hydration_queue.store
-                                          AND p.url=hydration_queue.url
-                                          AND p.fetch_status='OK'
-                                          AND (
-                                              (p.price IS NOT NULL AND p.price > 0
-                                               AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
-                                              OR
-                                              ((p.price IS NULL OR p.price <= 0)
-                                               AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
-                                          )
+                                   AND (
+                                       EXISTS (
+                                           SELECT 1 FROM store_products p
+                                            WHERE p.store=hydration_queue.store
+                                              AND p.url=hydration_queue.url
+                                              AND p.fetch_status='OK'
+                                              AND (
+                                                  (p.price IS NOT NULL AND p.price > 0
+                                                   AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                                                  OR
+                                                  ((p.price IS NULL OR p.price <= 0)
+                                                   AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                                              )
+                                       )
+                                       OR EXISTS (
+                                           SELECT 1 FROM store_product_variants v
+                                            WHERE v.store=hydration_queue.store
+                                              AND v.url=hydration_queue.url
+                                              AND (
+                                                  (v.price IS NOT NULL AND v.price > 0
+                                                   AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                                                  OR
+                                                  ((v.price IS NULL OR v.price <= 0)
+                                                   AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                                              )
+                                       )
                                    )"""
     priority_sql = """UPDATE hydration_queue
                          SET priority=MIN(priority,?)
@@ -4702,7 +4716,11 @@ def prioritize_hydration_candidates(rows, priority=0):
     try:
         conn.execute('BEGIN IMMEDIATE')
         requeue_params = [
-            (now, value, store, url, now - 24 * 60 * 60, now - 6 * 60 * 60)
+            (
+                now, value, store, url,
+                now - 24 * 60 * 60, now - 6 * 60 * 60,
+                now - 24 * 60 * 60, now - 6 * 60 * 60,
+            )
             for value, store, url in updates
         ]
         before_requeue = conn.total_changes
