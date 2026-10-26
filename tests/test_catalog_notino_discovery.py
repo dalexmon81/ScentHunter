@@ -12,19 +12,19 @@ def test_notino_fr_and_de_are_configured_as_separate_official_markets():
     assert catalog.STORE_LABELS["notino"] == "Notino"
 
 
-def test_notino_product_urls_keep_market_host_and_drop_tracking_query():
+def test_notino_slug_product_urls_keep_market_host_and_drop_tracking_query():
     fr = catalog._html_product_url(
         "notino",
-        "https://www.notino.fr/brand/fragrance-name/p-123456/?utm_source=test",
+        "https://www.notino.fr/brand/fragrance-name/?utm_source=test",
         "https://www.notino.fr/",
     )
     de = catalog._html_product_url(
         "notino",
-        "https://www.notino.de/marke/duft-name/p-654321/?utm_campaign=test",
+        "https://www.notino.de/marke/duft-name/?utm_campaign=test",
         "https://www.notino.de/",
     )
-    assert fr == "https://www.notino.fr/brand/fragrance-name/p-123456/"
-    assert de == "https://www.notino.de/marke/duft-name/p-654321/"
+    assert fr == "https://www.notino.fr/brand/fragrance-name/"
+    assert de == "https://www.notino.de/marke/duft-name/"
 
 
 def test_notino_rejects_non_product_and_foreign_host_urls():
@@ -32,7 +32,7 @@ def test_notino_rejects_non_product_and_foreign_host_urls():
         "notino", "https://www.notino.fr/parfums/", "https://www.notino.fr/"
     ) is None
     assert catalog._html_product_url(
-        "notino", "https://example.com/brand/name/p-123456/", "https://www.notino.fr/"
+        "notino", "https://example.com/brand/name/", "https://www.notino.fr/"
     ) is None
 
 
