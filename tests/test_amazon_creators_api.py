@@ -23,8 +23,17 @@ def reset_token_cache(monkeypatch):
     monkeypatch.setenv("AMAZON_CREATORS_API_CLIENT_SECRET", "test-secret")
     monkeypatch.setenv("AMAZON_ASSOCIATE_TAG_FR", "scenthunterfr-21")
     monkeypatch.setenv("AMAZON_ASSOCIATE_TAG_DE", "scenthunterde-21")
+    # Tests simulate the written approval required before comparison use.
+    monkeypatch.setenv("AMAZON_CREATORS_API_COMPARISON_APPROVED", "true")
     yield
     api._TOKEN_CACHE.update({"client_id": None, "access_token": None, "expires_at": 0.0})
+
+
+def test_api_requires_explicit_comparison_approval(monkeypatch):
+    monkeypatch.delenv("AMAZON_CREATORS_API_COMPARISON_APPROVED")
+    assert api.is_configured("fr") is False
+    report = api.search_marketplace("parfum", "fr", "amazon_fr", lambda _: None, lambda _: None)
+    assert report["error"] == "amazon_creators_api_comparison_not_approved"
 
 
 def test_api_requires_credentials_and_marketplace_tag(monkeypatch):
@@ -87,7 +96,7 @@ def test_search_uses_official_marketplace_and_returns_only_priced_offers(monkeyp
     assert offer["name"] == "Dior Sauvage Eau de Parfum 100 ml"
     assert offer["price_num"] == 89.95
     assert offer["currency"] == "EUR"
-    assert offer["url"].startswith(f"https://{host}/dp/B012345678")
+    assert offer["url"] == f"https://{host}/dp/B012345678?tag=partner-21"
     assert offer["brand"] == "Dior"
     assert calls[0][0] == api.DEFAULT_TOKEN_URL
     assert calls[1][0] == api.API_BASE + "/catalog/v1/searchItems"
@@ -201,6 +210,20 @@ def test_get_product_hydrates_current_priced_offer_via_api(monkeypatch):
     assert item["currency"] == "EUR"
     assert item["availability"] == "in_stock"
     assert item["source"] == "amazon_creators_api"
-    assert item["url"].startswith("https://www.amazon.de/dp/B012345678")
+    assert item["url"] == "https://www.amazon.de/dp/B012345678?tag=partner-21"
     assert calls[1][0] == api.API_BASE + "/catalog/v1/getItems"
     assert calls[1][1]["json"]["itemIds"] == ["B012345678"]
+
+
+def test_product_url_preserves_api_link_but_rejects_wrong_path_or_host():
+    approved = "https://www.amazon.fr/dp/B012345678?tag=affiliate-21&ref=api"
+    assert api._safe_product_url(approved, "www.amazon.fr", "B012345678") == approved
+    assert api._safe_product_url(
+        "https://www.amazon.fr/dp/B012345679?tag=affiliate-21", "www.amazon.fr", "B012345678"
+    ) is None
+    assert api._safe_product_url(
+        "https://www.amazon.de/dp/B012345678?tag=affiliate-21", "www.amazon.fr", "B012345678"
+    ) is None
+    assert api._safe_product_url(
+        "https://www.amazon.fr/search?q=B012345678", "www.amazon.fr", "B012345678"
+    ) is None
