@@ -1148,10 +1148,14 @@ class ProductMatcher:
         # A unique exact registered alias is definitive family identity. Avoid
         # the expensive fuzzy-token and URL fallback scans for this common case.
         if len(exact_family_matches) == 1:
-            return exact_family_matches[0]
-        name_variant: Optional[Dict[str, Any]] = (
-            exact_family_matches[0] if exact_family_matches else None
-        )
+            name_variant: Optional[Dict[str, Any]] = exact_family_matches[0]
+            # An exact title is not sufficient when a product URL is available:
+            # retailers can expose stale or generic names. Continue into URL
+            # identity resolution so an explicit, conflicting variant slug wins.
+            if not self._offer_url_identity_texts(offer):
+                return name_variant
+        else:
+            name_variant = exact_family_matches[0] if exact_family_matches else None
 
         # A conflicting brand may be ignored only when removing that brand
         # exposed an exact registered family alias. Do not let editorial/fuzzy
