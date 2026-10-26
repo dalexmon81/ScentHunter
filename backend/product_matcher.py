@@ -1148,10 +1148,52 @@ class ProductMatcher:
         # A unique exact registered alias is definitive family identity. Avoid
         # the expensive fuzzy-token and URL fallback scans for this common case.
         if len(exact_family_matches) == 1:
-            return exact_family_matches[0]
-        name_variant: Optional[Dict[str, Any]] = (
-            exact_family_matches[0] if exact_family_matches else None
-        )
+            name_variant: Optional[Dict[str, Any]] = exact_family_matches[0]
+            # Preserve the exact-title fast path unless the URL explicitly
+            # contains a different registered multi-token variant alias.
+            # This keeps common family searches fast while still detecting
+            # stale retailer titles that conflict with their destination slug.
+            url_texts = self._offer_url_identity_texts(offer)
+            if not url_texts:
+                return name_variant
+
+            conflicting_url_variant = False
+            brand_key = catalog_norm(family.get("brand", ""))
+            for raw_url in url_texts:
+                url_parts = [part for part in raw_url.split("/") if part]
+                for raw_url_part in ([url_parts[-1]] if url_parts else []) + [raw_url]:
+                    url_key = self._url_identity_text(raw_url_part)
+                    if brand_key:
+                        url_key = re.sub(
+                            rf"\b{re.escape(brand_key)}\b", " ", url_key, flags=re.I
+                        )
+                        url_key = re.sub(r"\s+", " ", url_key).strip()
+                    ordered_url_tokens = url_key.split()
+                    for candidate_variant in eligible_variants:
+                        if candidate_variant.get("canonical_name") == name_variant.get("canonical_name"):
+                            continue
+                        for alias in candidate_variant.get("aliases", ()):
+                            alias_tokens = self._url_catalog_identity_text(alias).split()
+                            if len(alias_tokens) < 2:
+                                continue
+                            width = len(alias_tokens)
+                            if any(
+                                ordered_url_tokens[start:start + width] == alias_tokens
+                                for start in range(len(ordered_url_tokens) - width + 1)
+                            ):
+                                conflicting_url_variant = True
+                                break
+                        if conflicting_url_variant:
+                            break
+                    if conflicting_url_variant:
+                        break
+                if conflicting_url_variant:
+                    break
+
+            if not conflicting_url_variant:
+                return name_variant
+        else:
+            name_variant = exact_family_matches[0] if exact_family_matches else None
 
         # A conflicting brand may be ignored only when removing that brand
         # exposed an exact registered family alias. Do not let editorial/fuzzy
@@ -1317,8 +1359,27 @@ class ProductMatcher:
                 if not url_identity_tokens:
                     url_identity_tokens = url_tokens
 
+                # A full registered variant phrase in the destination slug is
+                # stronger identity evidence than a low token-F1 score diluted by
+                # concentration and commerce words (for example, "Hawas Malibu"
+                # in a URL ending "...eau-de-parfum-100-ml.html"). Keep this
+                # phrase check multi-token so a generic family word alone cannot
+                # redirect an offer to an arbitrary variant.
+                ordered_url_tokens = url_key.split()
                 for variant in eligible_variants:
                     best_variant_score = 0.0
+
+                    for alias in variant.get("aliases", ()):
+                        alias_ordered_tokens = self._url_catalog_identity_text(alias).split()
+                        if len(alias_ordered_tokens) < 2:
+                            continue
+                        width = len(alias_ordered_tokens)
+                        if any(
+                            ordered_url_tokens[start:start + width] == alias_ordered_tokens
+                            for start in range(len(ordered_url_tokens) - width + 1)
+                        ):
+                            best_variant_score = 1.0
+                            break
 
                     for alias_key, alias_tokens in variant.get("_url_alias_data", ()):
                         if not alias_key or not alias_tokens:
