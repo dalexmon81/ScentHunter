@@ -77,11 +77,11 @@ jobs:
           summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
           if summary_path:
               with open(summary_path, "a", encoding="utf-8") as summary:
-                  summary.write("## Notino.fr integration status\\n\\n")
-                  summary.write(f"**{status}**\\n\\n{detail}\\n\\n")
+                  summary.write("## Notino.fr integration status\n\n")
+                  summary.write(f"**{status}**\n\n{detail}\n\n")
                   summary.write(
-                      f"- Successful pages: {successes}\\n"
-                      f"- Product URLs found: {product_urls}\\n"
-                      f"- Reported errors: {len(errors)}\\n"
+                      f"- Successful pages: {successes}\n"
+                      f"- Product URLs found: {product_urls}\n"
+                      f"- Reported errors: {len(errors)}\n"
                   )
           PY
