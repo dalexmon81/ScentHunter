@@ -3827,7 +3827,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     ).fetchall()
                 except sqlite3.OperationalError as exc:
                     if cancel_event is not None and cancel_event.is_set():
-                        break
+                        return []
                     raise
                 _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
                 _diag_process_t0 = time.monotonic()
