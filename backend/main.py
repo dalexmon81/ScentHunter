@@ -2212,8 +2212,16 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         if store_key not in grouped_raw:
             continue
         if replacement is None and item.get('_needs_refresh'):
+            # Do not discard a query-matched product merely because its price or
+            # product-page details still need hydration. That silently removes
+            # valid family variants from search results. Keep its identity fields,
+            # but suppress stale/unverified price data until refresh succeeds.
             pending_by_store[store_key] = pending_by_store.get(store_key, 0) + 1
-            continue
+            item = dict(item)
+            item['price'] = None
+            item['price_num'] = None
+            item['price_display'] = ''
+            item['availability'] = item.get('availability') or 'unknown'
         item['store_key'] = store_key
         item['store'] = STORE_LABELS.get(store_key, item.get('store') or store_key)
         item['shop'] = item['store']
