@@ -1905,21 +1905,26 @@ def _extract_product(url, query, html=None):
 
 
 def extract_product_page(session, url, query="", html=None):
-    """Catalog hydration adapter for a known ParfumZentrum product URL.
+    """Parse a known ParfumZentrum product URL during catalog hydration.
 
-    Hydration already identifies the URL, so do not require the URL slug to
-    lexically match the title. Keep price and stock evidence strictly tied to
-    the supplied page and existing product parser.
+    Search discovery keeps strict query matching in _extract_product(). For an
+    already-identified catalog URL, use the actual commercial title from the
+    page and retain the same JSON-LD price/availability validation.
     """
     parsed_url = _product_url(url)
     if not parsed_url:
         return None
+    effective_query = re.sub(
+        r"_?z\d+\s*$", "", _clean(query), flags=re.I
+    ).strip()
+    # URL hydration is authoritative for identity; the page parser still
+    # rejects non-perfume items and does not synthesize offers or prices.
+    if html is not None:
+        return _extract_product(parsed_url, "", html=html)
+    # Standalone adapter callers without the existing response retain guarded
+    # request behavior, but only parse a URL from the official host.
+    return _extract_product(parsed_url, "", html=None)
 
-    # Known URL hydration does not need a full lexical query match. Use a
-    # neutral query so URL slugs (brand/category/stock tokens) cannot reject
-    # an otherwise valid JSON-LD Product. The parser still validates product
-    # structure, fragrance type, offers and source evidence.
-    return _extract_product(parsed_url, "", html=html)
 
 
 def search(query):
