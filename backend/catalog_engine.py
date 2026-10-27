@@ -1325,17 +1325,55 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN 'DONE'
+                                   WHEN hydration_queue.state='DEAD'
+                                   THEN 'DEAD'
                                    ELSE 'PENDING'
                                END,
                                available_at=CASE
+                                   WHEN hydration_queue.state='PROCESSING'
+                                        AND hydration_queue.leased_until > ?
+                                   THEN hydration_queue.available_at
                                    WHEN EXISTS (
                                        SELECT 1 FROM store_products p
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN hydration_queue.available_at
                                    ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                               END,
+                               priority=CASE
+                                   WHEN EXISTS (
+                                       SELECT 1 FROM store_products p
+                                        WHERE p.store=excluded.store
+                                          AND p.url=excluded.url
+                                          AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
+                                   ) THEN hydration_queue.priority
+                                   ELSE MIN(hydration_queue.priority, 100)
                                END,
                                last_error=CASE
                                    WHEN EXISTS (
@@ -1343,10 +1381,23 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN hydration_queue.last_error
                                    ELSE NULL
                                END""",
-                        (store, url, "PENDING", 0, batch_now, batch_now, batch_now, batch_now),
+                        (store, url, "PENDING", 0, batch_now, batch_now,
+                         batch_now, batch_now - 24 * 60 * 60,
+                         batch_now - 6 * 60 * 60, batch_now,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60),
                     )
 
             persisted += len(batch)
