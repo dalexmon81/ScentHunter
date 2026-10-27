@@ -34,6 +34,27 @@ class CatalogHydrationTests(unittest.TestCase):
         self.assertEqual(product["price_num"], 29.4)
         self.assertEqual(product["availability"], "in_stock")
 
+    def test_parfumzentrum_ignores_placeholder_price_and_uses_valid_jsonld_price(self):
+        url = "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/"
+        html = """<!doctype html><html><head>
+        <script type="application/ld+json">{
+          "@context":"https://schema.org",
+          "@type":"Product",
+          "name":"Berdoues Monoi & Tiare Eau de Toilette 100 ml",
+          "brand":{"@type":"Brand","name":"Berdoues"},
+          "sku":"pz-904294",
+          "offers":{"@type":"Offer","price":"29.40","priceCurrency":"EUR",
+                    "availability":"https://schema.org/InStock"}
+        }</script></head><body>
+        <h1>Berdoues Monoi &amp; Tiaré Eau De Toilette 100 ml</h1>
+        <div class="product-price"><span itemprop="price" content="1.00">1,00 €</span></div>
+        </body></html>"""
+        product = parfumzentrum.extract_product_page(
+            None, url, query="Berdoues Monoi Tiare Eau de Toilette 100 ml", html=html
+        )
+        self.assertIsNotNone(product)
+        self.assertEqual(product["price_num"], 29.4)
+
     def test_deloox_search_deadline_skips_initial_fanout_when_expired(self):
         """The deadline must cover initial endpoint probes, not only pagination."""
         import time

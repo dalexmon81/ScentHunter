@@ -821,7 +821,10 @@ def _extract_price(soup, data):
             return
 
         price = _node_price(node)
-        if price is None:
+        # The catalog rejects <= €1 as placeholder values. Ignore these at
+        # candidate collection time so they cannot outrank a valid public
+        # price elsewhere on the same product page.
+        if price is None or price <= 1.0:
             return
 
         text = _clean(node.get_text(" ", strip=True))
@@ -948,7 +951,11 @@ def _extract_price(soup, data):
     )
 
     if not has_code_price:
-        return _jsonld_price(data)
+        jsonld_price = _jsonld_price(data)
+        try:
+            return jsonld_price if jsonld_price is not None and float(jsonld_price) > 1.0 else None
+        except (TypeError, ValueError):
+            return None
 
     return None
 
