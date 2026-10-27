@@ -2406,10 +2406,12 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     # generic catalog coverage. This runs before the durable graph crawl so
     # every URL returned by that discovery path is handed directly to the
     # persistent catalog/hydration layer.
-    search_deadline = min(
-        time.time() + 45.0,
-        float(deadline) if deadline is not None else time.time() + 45.0,
-    )
+    # Reserve the majority of each run for the durable HTML frontier.
+    # Generic search rotates one query per invocation and is capped at 25s,
+    # leaving enough wall-clock budget for at least one bounded HTML batch.
+    graph_deadline = float(deadline) if deadline is not None else time.time() + 120.0
+    search_deadline = min(time.time() + 25.0, graph_deadline - 20.0)
+    search_deadline = max(time.time() + 0.1, search_deadline)
     if progress_callback:
         progress_callback({
             'phase': 'search',
@@ -2421,7 +2423,7 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
             'elapsed_sec': round(time.time() - started, 2),
         })
     search_catalog = _discover_deloox_search_catalog(
-        search_deadline, progress_callback=progress_callback
+        search_deadline, progress_callback=progress_callback, max_queries=1
     )
     for url in search_catalog.get('product_urls', {}):
         product_urls[url] = ''
@@ -2586,7 +2588,8 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     max_run_seconds = 120.0
     if deadline is not None:
         max_run_seconds = max(1.0, float(deadline) - time.time())
-    run_deadline = time.time() + min(max_run_seconds, 120.0)
+    # Discovery caller and crawler share one wall-clock deadline.
+    run_deadline = min(graph_deadline, time.time() + min(max_run_seconds, 120.0))
 
     while time.time() < run_deadline:
         batch = _deloox_queue_claim(limit=HTML_WORKERS, lease_seconds=180)
