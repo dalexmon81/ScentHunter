@@ -4048,8 +4048,9 @@ def refresh_url(store, url):
                         -- supplies an explicit price; never infer one from other fields.
                         price=COALESCE(excluded.price,store_products.price),
                         currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
-                        availability=excluded.availability,fetched_at=excluded.fetched_at,
-                        fetch_status=excluded.fetch_status''',
+                        availability=excluded.availability,
+                        fetched_at=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetched_at ELSE store_products.fetched_at END,
+                        fetch_status=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetch_status ELSE store_products.fetch_status END''',
                     (
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
