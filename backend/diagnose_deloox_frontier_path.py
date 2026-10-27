@@ -278,7 +278,7 @@ def diagnose_deloox_generic_search_coverage(
             "max_results_per_query": max_results_per_query,
             "bounded": True,
         }
-        out["catalog_engine_module" = getattr(catalog_engine, "__file__", None)
+        out["catalog_engine_module"] = getattr(catalog_engine, "__file__", None)
         out["scraper_module"] = getattr(scraper, "__file__", None)
         out["scraper_discover_function"] = getattr(discover, "__name__", None)
 
