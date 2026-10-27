@@ -179,7 +179,10 @@ class CanonicalMatcherTests(unittest.TestCase):
         (registry_dir / "verified_gtin_variant_map.json").write_text(
             json.dumps(registry), encoding="utf-8"
         )
-        self.matcher = CanonicalMatcher(CatalogRepository.from_file(self.catalog_path))
+        self.catalog = CatalogRepository.from_file(self.catalog_path)
+        self.matcher = CanonicalMatcher(self.catalog)
+        self.gtins = self.matcher._gtin_registry
+        assert "6298042001831" in self.gtins, f"test fixture GTIN registry did not load: {self.catalog_path.parent / 'scenthunter_next_engine' / 'verified_gtin_variant_map.json'}"
 
     def offer(self, name, brand=None, size=None):
         return RetailerOffer(
