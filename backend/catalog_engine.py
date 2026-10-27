@@ -3939,6 +3939,14 @@ def refresh_url(store, url):
                                 break
                         except (TypeError, ValueError):
                             continue
+                # An explicitly reported sold-out page is a successful stock
+                # observation even when Deloox removes the price.
+                deloox_confirmed_out_of_stock = (
+                    store == 'deloox'
+                    and str(item.get('availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
+                    in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
+                    and not has_explicit_price
+                )
 
                 conn.execute(
                     '''INSERT INTO hydration_queue(
@@ -4034,17 +4042,6 @@ def refresh_url(store, url):
                                  variant.get('availability') or item.get('availability'),now,
                                  _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
                             )
-                # An explicit Deloox out-of-stock signal is authoritative even
-                # when the retailer removes its price. In that case clear any old
-                # price and persist the identity/status as a successful catalogue
-                # observation; preserving the old price would misrepresent it as
-                # currently purchasable.
-                deloox_confirmed_out_of_stock = (
-                    store == 'deloox'
-                    and str(item.get('availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
-                    in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
-                    and not has_explicit_price
-                )
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
