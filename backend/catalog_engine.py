@@ -6426,8 +6426,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             updated = conn.execute(
                 """UPDATE hydration_queue
                       SET state='PENDING', available_at=?,
-                          priority=MIN(priority, 50),
-                          last_error=NULL
+                          priority=MIN(priority, 50)
                     WHERE store=? AND url=? AND state='DONE'
                       AND EXISTS (
                         SELECT 1 FROM store_urls u
