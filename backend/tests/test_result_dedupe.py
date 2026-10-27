@@ -100,5 +100,32 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(len(dedupe_results([first, second])), 2)
 
 
+    def test_same_easycosmetic_name_size_price_different_urls_is_deduplicated(self):
+        first = {
+            "store": "easycosmetic", "url": "https://www.easycosmetic.de/p/example-a",
+            "product_url": "https://www.easycosmetic.de/p/example-a", "catalog_id": "canonical-a",
+            "name": "Example Eau de Parfum 100 ml", "size_ml": 100, "price_num": 25.99,
+        }
+        duplicate = {**first, "url": "https://www.easycosmetic.de/p/example-b",
+                     "product_url": "https://www.easycosmetic.de/p/example-b", "catalog_id": "canonical-b"}
+        self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
+    def test_same_sabina_name_size_price_different_urls_is_deduplicated(self):
+        first = {
+            "store": "sabina", "url": "https://www.sabina.com/es/product/example-a",
+            "product_url": "https://www.sabina.com/es/product/example-a", "catalog_id": "canonical-a",
+            "name": "Example Eau de Parfum 100 ml", "size_ml": 100, "price_num": 38.90,
+        }
+        duplicate = {**first, "url": "https://www.sabina.com/es/product/example-b",
+                     "product_url": "https://www.sabina.com/es/product/example-b", "catalog_id": "canonical-b"}
+        self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
+    def test_same_store_name_size_different_price_is_preserved(self):
+        first = {"store": "sabina", "url": "https://www.sabina.com/es/product/example-a",
+                 "name": "Example Eau de Parfum", "size_ml": 100, "price_num": 38.90}
+        second = {**first, "url": "https://www.sabina.com/es/product/example-b", "price_num": 39.90}
+        self.assertEqual(len(dedupe_results([first, second])), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
