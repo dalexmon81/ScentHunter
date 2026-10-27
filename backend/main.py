@@ -585,8 +585,9 @@ def _start_catalog_hydration():
         target=catalog_hydration_loop,
         kwargs={
             'stop_event': _CATALOG_HYDRATION_STOP,
-            'batch_size': 4,
-            'workers': 2,
+            # Queue enough stale rows to keep the bounded worker pool busy.
+            'batch_size': 8,
+            'workers': 4,
             'pause_seconds': 0.25,
         },
         daemon=True,
