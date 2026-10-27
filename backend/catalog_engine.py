@@ -3923,7 +3923,8 @@ def refresh_url(store, url):
                 # Keep the existing queue state here. _hydrate_one_task marks the
                 # lease DONE only after this function returns a confirmed offer.
                 # A parsed name without a new explicit price must leave the queue
-                # retryable and must not reset a live worker's lease.
+                # retryable, except a verified Deloox out-of-stock page (handled
+                # below as a terminal stock observation), and must not reset a live lease.
                 has_explicit_price = False
                 try:
                     parsed_price = float(item.get('price_num'))
