@@ -76,7 +76,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
           {
             "@context": "https://schema.org",
             "@type": "Product",
-            "name": "French Avenue Liquid Brun",
+            "name": "French Avenue Liquid Brun Eau de Parfum",
             "brand": {"@type": "Brand", "name": "French Avenue"},
             "size": {"@type": "QuantitativeValue", "value": 100, "unitText": "ml"},
             "offers": {"@type": "Offer", "price": "32.99", "priceCurrency": "EUR"}
