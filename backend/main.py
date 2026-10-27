@@ -1462,7 +1462,11 @@ def result_key(item):
     sku = str(item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
     size = _safe_float(item.get('size_ml'))
-    identity_key = catalog_id or product_url.lower() or product_id or sku or name
+    # A retailer product URL is the strongest cross-catalog identity for the same offer.
+    # Catalog IDs can differ when the same retailer listing is linked to duplicate
+    # canonical records. Explicit size and variant selectors below still keep
+    # genuinely distinct sellable variants separate.
+    identity_key = product_url.lower() or catalog_id or product_id or sku or name
 
     # Preserve commercial variant identity even when size is known. Size alone
     # is not sufficient: retailers can expose multiple sellable combinations
