@@ -298,16 +298,69 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
-    if not name or not matches(name, query):
+    # Size is validated separately against the page/offer metadata below.
+    # Remove it from lexical name matching so structured size evidence can
+    # establish a valid variant even when the retailer's product name omits ml.
+    identity_query = re.sub(
+        r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        clean(query),
+        flags=re.I,
+    ).strip()
+    if not name or not matches(name, identity_query or query):
         return None
 
-    # A requested bottle size is part of product identity, not a ranking hint.
-    # Reject a different explicit size before reading/publishing its price;
-    # otherwise a 150 ml Deloox page can be attached to a 100 ml comparison.
+    # Bottle size is part of the sellable offer identity. The title and URL
+    # are not sufficient: either can omit the variant while Schema.org exposes
+    # it through size/sizeSpecification or an offer-level price specification.
     requested_size = size_ml(query)
-    page_size = size_ml(name, url)
-    if requested_size is not None and page_size is not None and abs(requested_size - page_size) > 0.01:
-        return None
+    offers_for_identity = data.get("offers")
+    offers_for_identity = offers_for_identity if isinstance(offers_for_identity, list) else [offers_for_identity]
+    structured_size_values = []
+
+    def _volume_from_structured(value):
+        if isinstance(value, dict):
+            magnitude = value.get("value")
+            unit = str(value.get("unitText") or value.get("unitCode") or "").lower()
+            try:
+                amount = float(str(magnitude).replace(",", "."))
+            except (TypeError, ValueError):
+                amount = None
+            if amount is not None:
+                if unit in {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "milliliter(s)", "mlt"}:
+                    return amount
+                if unit in {"cl", "centiliter", "centiliters", "centilitre", "centilitres"}:
+                    return amount * 10
+            return size_ml(" ".join(str(value.get(k) or "") for k in ("value", "unitText", "unitCode", "name", "description")))
+        if isinstance(value, (int, float)):
+            return None
+        return size_ml(value)
+
+    for candidate in [data, *[x for x in offers_for_identity if isinstance(x, dict)]]:
+        for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
+            found_size = _volume_from_structured(candidate.get(key))
+            if found_size is not None:
+                structured_size_values.append(found_size)
+        specification = candidate.get("sizeSpecification")
+        specifications = specification if isinstance(specification, list) else [specification]
+        for item in specifications:
+            if isinstance(item, dict):
+                found_size = _volume_from_structured(item)
+                if found_size is not None:
+                    structured_size_values.append(found_size)
+
+    textual_size = size_ml(name, url)
+    observed_sizes = [*structured_size_values]
+    if textual_size is not None:
+        observed_sizes.append(textual_size)
+    # If any authoritative size signal contradicts the request, reject the
+    # entire candidate. If none exists, fail closed for explicit-size searches:
+    # a family/title match cannot establish which bottle size is being sold.
+    if requested_size is not None:
+        if any(abs(value - requested_size) > 0.01 for value in observed_sizes):
+            return None
+        if not observed_sizes:
+            return None
 
     # The product page is authoritative. If the retailer serves a different
     # product under a stale/reused URL slug, reject that candidate instead of
