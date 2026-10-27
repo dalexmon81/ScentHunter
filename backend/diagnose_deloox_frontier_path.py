@@ -51,26 +51,23 @@ def _find_url_variants(conn, table, url):
 
 
 def _queue_token_matches(conn, token_sets, limit=50):
+    """Use SQLite predicates and a hard row limit instead of loading/sorting the whole queue."""
+    predicates = " AND ".join("lower(url) LIKE ?" for _ in token_sets)
+    params = [f"%{token.lower()}%" for token in token_sets]
+    params.append(int(limit))
     rows = conn.execute(
-        """
+        f"""
         SELECT store,url,depth,priority,source,state,attempts,
                available_at,first_seen_at,last_started_at,last_finished_at,
                leased_until,last_error
         FROM catalog_discovery_queue
-        WHERE store='deloox'
+        WHERE store='deloox' AND {predicates}
         ORDER BY priority ASC, depth ASC, url ASC
-        """
+        LIMIT ?
+        """,
+        params,
     ).fetchall()
-
-    result = []
-    for row in rows:
-        text = str(row["url"] or "").lower()
-        matched = [token for token in token_sets if token in text]
-        if len(matched) == len(token_sets):
-            result.append(_row_dict(row))
-            if len(result) >= limit:
-                break
-    return result
+    return [_row_dict(row) for row in rows]
 
 
 @router.get("/diagnose-deloox-frontier-path")
@@ -227,14 +224,18 @@ def diagnose_deloox_frontier_path(
 
 @router.get("/diagnose-deloox-generic-search-coverage")
 def diagnose_deloox_generic_search_coverage(
-    max_results_per_query: int = Query(500, ge=1, le=2000),
+    max_results_per_query: int = Query(100, ge=1, le=500),
+    max_queries: int = Query(2, ge=1, le=6),
+    per_query_deadline_seconds: float = Query(4.0, ge=1.0, le=6.0),
 ):
     """
     READ-ONLY bridge diagnostic for the Deloox catalog-search handoff.
 
-    This executes the SAME deployed Deloox scraper _discover() that the
-    catalog_engine generic-search bridge imports, but it only inspects the
-    returned URLs. It does not call catalog_engine._discover_deloox_catalog(),
+    This executes the deployed Deloox scraper's bounded primary search surface
+    (_discover_from_search), which is the first stage of _discover(), and only
+    inspects returned URLs. It deliberately excludes slower category/sitemap
+    fallbacks so the HTTP diagnostic has a reliable deadline. It does not call
+    catalog_engine._discover_deloox_catalog(),
     _deloox_persist_products(), hydration, ProductMatcher, production search,
     or any repair/resync endpoint.
 
@@ -269,27 +270,39 @@ def diagnose_deloox_generic_search_coverage(
         from scrapers.deloox import scraper
         
         configured = tuple(getattr(catalog_engine, "DELOOX_GENERIC_CATALOG_QUERIES", ()) or ())
-        discover = getattr(scraper, "_discover", None)
+        discover = getattr(scraper, "_discover_from_search", None)
         headers = getattr(scraper, "HEADERS", {})
 
         out["configured_generic_queries"] = list(configured)
+        out["diagnostic_limits"] = {
+            "max_queries": max_queries,
+            "per_query_deadline_seconds": per_query_deadline_seconds,
+            "max_results_per_query": max_results_per_query,
+            "bounded": True,
+        }
         out["catalog_engine_module"] = getattr(catalog_engine, "__file__", None)
         out["scraper_module"] = getattr(scraper, "__file__", None)
         out["scraper_discover_function"] = getattr(discover, "__name__", None)
 
         if not callable(discover):
-            out["error"] = "deloox_scraper_discover_unavailable"
+            out["error"] = "deloox_scraper_primary_search_unavailable"
             return out
 
         session = __import__("requests").Session()
         session.headers.update(headers)
 
-        for query in configured:
-            query = str(query or "").strip()
-            if not query:
-                continue
+        queries_to_run = [str(value or "").strip() for value in configured if str(value or "").strip()][:max_queries]
+        out["queries_truncated"] = len(configured) > len(queries_to_run)
+        for query in queries_to_run:
+            query_started = time.monotonic()
             try:
-                urls = list(discover(session, query) or [])
+                # The primary search helper supports a deadline and cancels
+                # outstanding probes; skip slower category/sitemap fallbacks.
+                urls = list(discover(
+                    session,
+                    query,
+                    deadline=time.time() + per_query_deadline_seconds,
+                ) or [])
                 urls = urls[:max_results_per_query]
                 found_targets = []
                 for name, target in BORN_TARGETS.items():
@@ -303,6 +316,7 @@ def diagnose_deloox_generic_search_coverage(
                     "target_matches": found_targets,
                     "target_match_count": len(found_targets),
                     "target_urls": [u for u in urls if any(u == t for t in BORN_TARGETS.values())],
+                    "elapsed_sec": round(time.monotonic() - query_started, 3),
                 })
             except Exception as exc:
                 out["queries"].append({
@@ -311,6 +325,7 @@ def diagnose_deloox_generic_search_coverage(
                     "target_matches": [],
                     "target_match_count": 0,
                     "error": f"{type(exc).__name__}: {exc}",
+                    "elapsed_sec": round(time.monotonic() - query_started, 3),
                 })
 
         found_count = sum(
