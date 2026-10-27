@@ -49,6 +49,22 @@
         "https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/"
       ],
       "evidence_note": "Live Parfum-Zentrum Product JSON-LD reports GTIN 3614273953849 for the exact 100 ml Acqua di Gio Profondo Eau de Parfum product. Its title says nachfüllbar (refillable bottle), not Nachfüllung/refill pack. Map to the existing 100 ml EDP bottle variant only; do not merge SH-AUTO-0019 with SH-0043."
+    },
+    {
+      "gtin": "6298042001831",
+      "gtin_type": "GTIN-13",
+      "status": "verified",
+      "product_id": "SH-0031",
+      "variant_id": "VAR-f5aff76b4bb5de8a",
+      "size_ml": 150,
+      "concentration": "Extrait de Parfum",
+      "refill": false,
+      "checked_at": "2026-10-27",
+      "source_urls": [
+        "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+        "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
+      ],
+      "evidence_note": "Deloox Product JSON-LD explicitly reports GTIN 6298042001831 for French Avenue Liquid Brun Extrait de Parfum Limited Edition, size 150 ml, SKU 1385920. The target product SH-0031 and real variant VAR-f5aff76b4bb5de8a exist in backend/product_catalog.json at current main. The canonical product documents Extrait de Parfum; the standard Liquid Brun 100 ml is separate as SH-0030 / VAR-f87146c82d167f4c. This GTIN maps only to the existing 150 ml variant; OUT OF STOCK status and missing price are preserved by the retailer adapter."
     }
   ]
 }
