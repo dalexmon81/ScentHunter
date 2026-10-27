@@ -3955,23 +3955,6 @@ def refresh_url(store, url):
                            END''',
                     (store, url, "PENDING", 0, now, now, now),
                 )
-                if deloox_confirmed_out_of_stock:
-                    # A verified unavailable product is terminal for this fetch;
-                    # keep it searchable without retrying the same page forever.
-                    conn.execute(
-                        """UPDATE hydration_queue
-                              SET state='DONE', lease_owner=NULL, leased_until=NULL,
-                                  last_error=NULL
-                            WHERE store=? AND url=?
-                              AND NOT (state='PROCESSING' AND leased_until > ?)""",
-                        (store, url, now),
-                    )
-                if deloox_confirmed_out_of_stock:
-                    # Avoid infinite retries for a verified OOS page with no price.
-                    conn.execute(
-                        "UPDATE hydration_queue SET state='DONE', lease_owner=NULL, leased_until=NULL, last_error=NULL WHERE store=? AND url=? AND NOT (state='PROCESSING' AND leased_until > ?)",
-                        (store, url, now),
-                    )
                 if store == 'sabina' and item.get('variants'):
                     # Validate the complete extracted set before replacing the
                     # stored set. A malformed/non-priced extraction must never
