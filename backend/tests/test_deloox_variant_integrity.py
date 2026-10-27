@@ -85,7 +85,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         </head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
         """
         result = scraper._product(
-            "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml",
+            "https://www.deloox.be/produit/123/liquid-brun-100-ml",
             html,
             "Liquid Brun Eau de Parfum 100 ml",
         )
