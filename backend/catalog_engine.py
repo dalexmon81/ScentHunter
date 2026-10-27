@@ -3931,6 +3931,14 @@ def refresh_url(store, url):
                     has_explicit_price = parsed_price > 0
                 except (TypeError, ValueError):
                     has_explicit_price = False
+                # A verified sold-out Deloox page is a valid stock observation
+                # even if the retailer no longer supplies a price.
+                deloox_confirmed_out_of_stock = (
+                    store == 'deloox'
+                    and str(item.get('availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
+                    in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
+                    and not has_explicit_price
+                )
                 has_valid_variants = False
                 if store == 'sabina' and item.get('variants'):
                     for variant in item['variants']:
@@ -3951,9 +3959,11 @@ def refresh_url(store, url):
                                THEN 'PROCESSING'
                                WHEN hydration_queue.state='DEAD'
                                THEN 'DEAD'
+                               WHEN excluded.state='DONE'
+                               THEN 'DONE'
                                ELSE hydration_queue.state
                            END''',
-                    (store, url, "PENDING", 0, now, now, now),
+                    (store, url, "DONE" if deloox_confirmed_out_of_stock else "PENDING", 0, now, now, now),
                 )
                 if store == 'sabina' and item.get('variants'):
                     # Validate the complete extracted set before replacing the
