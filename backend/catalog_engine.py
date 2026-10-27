@@ -3931,15 +3931,6 @@ def refresh_url(store, url):
                     has_explicit_price = parsed_price > 0
                 except (TypeError, ValueError):
                     has_explicit_price = False
-                has_valid_variants = False
-                if store == 'sabina' and item.get('variants'):
-                    for variant in item['variants']:
-                        try:
-                            if float(variant.get('size_ml')) > 0 and float(variant.get('price_num')) > 0:
-                                has_valid_variants = True
-                                break
-                        except (TypeError, ValueError):
-                            continue
                 # An explicitly reported sold-out page is a successful stock
                 # observation even when Deloox removes the price.
                 deloox_confirmed_out_of_stock = (
@@ -3949,6 +3940,15 @@ def refresh_url(store, url):
                     and not has_explicit_price
                 )
 
+                has_valid_variants = False
+                if store == 'sabina' and item.get('variants'):
+                    for variant in item['variants']:
+                        try:
+                            if float(variant.get('size_ml')) > 0 and float(variant.get('price_num')) > 0:
+                                has_valid_variants = True
+                                break
+                        except (TypeError, ValueError):
+                            continue
                 conn.execute(
                     '''INSERT INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
