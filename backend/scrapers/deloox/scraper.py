@@ -432,8 +432,18 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     offers = offers if isinstance(offers, list) else [offers]
     offer = next((x for x in offers if isinstance(x, dict)), {})
 
+    # Availability must be established before interpreting any page price.
+    # Schema.org can retain a list price even after the retailer marks the item
+    # OutOfStock; that amount must never become a valid comparison offer.
+    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
+        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
+            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
+        )
+    )
     price = parse_price(offer.get("price"))
-    if price is None:
+    if avail == "out_of_stock":
+        price = None
+    elif price is None:
         # Only consider visible text outside the product title when falling
         # back to page-price extraction. Otherwise a title such as "125 ml"
         # can be misread as a 125.00 price when JSON-LD omits its offer.
@@ -448,11 +458,6 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # retailer removes its price. Preserve its exact product/variant identity,
     # but never infer or fabricate a price. In-stock/unknown-price products
     # still fail closed as before.
-    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
-        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
-            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
-        )
-    )
     if price is None and avail != "out_of_stock":
         return None
 
