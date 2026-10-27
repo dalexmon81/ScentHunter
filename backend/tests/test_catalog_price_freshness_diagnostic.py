@@ -268,15 +268,31 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
                 "INSERT INTO store_product_variants(store,url,variant_key,price,fetched_at) VALUES(?,?,?,?,?)",
                 ("bplatz", "https://en.bplatz.de/products/variant-stale", "100ml", 20.0, now - 30 * 3600),
             )
+            # A second retailer proves the per-store limit still permits a
+            # bounded batch larger than one without letting Bplatz monopolize it.
+            conn.execute(
+                "INSERT INTO hydration_queue(store,url,state,priority,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", "DONE", 100, now, now),
+            )
+            conn.execute(
+                "INSERT INTO store_urls(store,url,active) VALUES(?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", 1),
+            )
+            conn.execute(
+                "INSERT INTO store_products(store,url,price,fetched_at,fetch_status) VALUES(?,?,?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", 30.0, now - 30 * 3600, "OK"),
+            )
             conn.commit()
             conn.close()
 
             with patch.object(catalog_engine, "DB_PATH", database_path):
-                # Only two URLs are admitted per pass, regardless of backlog size.
+                # Two stores can contribute at most one URL each per pass.
                 count = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
                 self.assertEqual(count, 2)
                 count_second = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
                 self.assertEqual(count_second, 1)
+                count_third = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
+                self.assertEqual(count_third, 1)
 
             conn = sqlite3.connect(database_path)
             states = {
