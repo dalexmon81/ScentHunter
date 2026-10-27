@@ -2276,8 +2276,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             # Foreground refresh must never turn a catalog search into an
             # 8-second network wait. Background hydration owns durable fetching;
             # only take a tiny opportunistic refresh window here.
-            refresh_budget = min(0.25, max(0.05, float(os.environ.get(
-                'CATALOG_REFRESH_BUDGET_SECONDS', '0.25'
+            refresh_budget = min(3.0, max(0.25, float(os.environ.get(
+                'CATALOG_REFRESH_BUDGET_SECONDS', '2.5'
             ))))
             refresh_started = time.monotonic()
             refresh_deadline = refresh_started + refresh_budget
