@@ -3959,9 +3959,11 @@ def refresh_url(store, url):
                                THEN 'PROCESSING'
                                WHEN hydration_queue.state='DEAD'
                                THEN 'DEAD'
+                               WHEN excluded.state='DONE'
+                               THEN 'DONE'
                                ELSE hydration_queue.state
                            END''',
-                    (store, url, "PENDING", 0, now, now, now),
+                    (store, url, "DONE" if deloox_confirmed_out_of_stock else "PENDING", 0, now, now, now),
                 )
                 if store == 'sabina' and item.get('variants'):
                     # Validate the complete extracted set before replacing the
