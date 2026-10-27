@@ -411,7 +411,7 @@ jobs:
               return last
 
           failures = []
-          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage", "Liquid Brun 100 ml"):
+          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage", "Liquid Brun 100 ml", "Liquid Brun Limited Edition 150 ml"):
               try:
                   result = search(query)
                   if query == "Liquid Brun 100 ml":
@@ -444,6 +444,48 @@ jobs:
                       }, ensure_ascii=False))
                       if mismatches:
                           raise RuntimeError("Deloox 150 ml offer published in Liquid Brun 100 ml group: " + json.dumps(mismatches[:5], ensure_ascii=False))
+                  if query == "Liquid Brun Limited Edition 150 ml":
+                      import re
+                      matches_150 = []
+                      for group in (result.get("results") or []):
+                          if not isinstance(group, dict):
+                              continue
+                          group_identity = " ".join(str(group.get(key) or "") for key in ("name", "title"))
+                          for offer in (group.get("offers") or []):
+                              if not isinstance(offer, dict):
+                                  continue
+                              store = str(offer.get("store") or "").lower()
+                              identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
+                              combined = group_identity + " " + identity
+                              if "deloox" not in store or not re.search(r"(?<!\\d)150\\s?ml\\b", combined, flags=re.I):
+                                  continue
+                              matches_150.append({
+                                  "group": group_identity,
+                                  "name": offer.get("name") or offer.get("title"),
+                                  "url": offer.get("url") or offer.get("product_url"),
+                                  "availability": offer.get("availability"),
+                                  "available": offer.get("available"),
+                                  "price": offer.get("price"),
+                                  "price_num": offer.get("price_num"),
+                              })
+                      sold_out = [
+                          item for item in matches_150
+                          if str(item.get("availability") or "").lower().replace("-", "_").replace(" ", "_") in ("out_of_stock", "outofstock", "sold_out", "soldout")
+                          or item.get("available") is False
+                      ]
+                      stale_price = [
+                          item for item in sold_out
+                          if item.get("price") not in (None, "") or item.get("price_num") not in (None, "")
+                      ]
+                      print("Liquid Brun Limited Edition 150 ml Deloox production check: " + json.dumps({
+                          "matches": matches_150,
+                          "sold_out_matches": sold_out,
+                          "stale_price_matches": stale_price,
+                      }, ensure_ascii=False))
+                      if not sold_out:
+                          raise RuntimeError("Deloox Limited Edition 150 ml is missing or not marked OUT OF STOCK in production")
+                      if stale_price:
+                          raise RuntimeError("Deloox out-of-stock 150 ml offer still has a stale price: " + json.dumps(stale_price[:5], ensure_ascii=False))
                   if query == "Dior Sauvage":
                       store_statuses = result.get("stores") if isinstance(result.get("stores"), dict) else {}
                       easycosmetic = store_statuses.get("easycosmetic") if isinstance(store_statuses.get("easycosmetic"), dict) else {}
