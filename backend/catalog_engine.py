@@ -2263,16 +2263,12 @@ def _deloox_persist_products(product_urls):
         conn.close()
     return count
 
-def _discover_deloox_search_catalog(deadline=None, progress_callback=None):
-    """Import the Deloox scraper's proven generic search discovery into catalog.
+def _discover_deloox_search_catalog(deadline=None, progress_callback=None, max_queries=None):
+    """Run a bounded slice of generic Deloox search discovery.
 
-    The production Deloox scraper already knows how to traverse the public
-    search surface and its numeric pagination. Catalog discovery must reuse
-    that capability for retailer-wide terms instead of maintaining a second,
-    divergent pagination implementation.
-
-    This is background catalog coverage only: no user query, product name,
-    brand, SKU, variant, or individual product URL is supplied.
+    Search and the durable HTML frontier share a finite run budget. Limit the
+    number of generic queries per invocation so a slow storefront cannot
+    starve the persistent HTML queue. The query sequence rotates between runs.
     """
     try:
         module = importlib.import_module('scrapers.deloox.scraper')
@@ -2287,8 +2283,39 @@ def _discover_deloox_search_catalog(deadline=None, progress_callback=None):
     errors = []
     reports = []
     session = requests.Session()
+    query_order = list(DELOOX_GENERIC_CATALOG_QUERIES)
+    if query_order:
+        conn = db()
+        try:
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS catalog_discovery_meta (
+                       key TEXT PRIMARY KEY,
+                       value TEXT NOT NULL,
+                       updated_at REAL NOT NULL
+                   )"""
+            )
+            row = conn.execute(
+                "SELECT value FROM catalog_discovery_meta WHERE key=?",
+                ('deloox_search_query_offset',),
+            ).fetchone()
+            offset = int((row['value'] if row else '0') or 0) % len(query_order)
+            query_order = query_order[offset:] + query_order[:offset]
+            next_offset = (offset + (max_queries or 1)) % len(query_order)
+            conn.execute(
+                """INSERT INTO catalog_discovery_meta(key,value,updated_at)
+                   VALUES(?,?,?)
+                   ON CONFLICT(key) DO UPDATE SET
+                     value=excluded.value, updated_at=excluded.updated_at""",
+                ('deloox_search_query_offset', str(next_offset), time.time()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    query_limit = len(query_order) if max_queries is None else max(1, min(int(max_queries), len(query_order)))
+    query_order = query_order[:query_limit]
     try:
-        for query in DELOOX_GENERIC_CATALOG_QUERIES:
+        for query in query_order:
             if deadline is not None and time.time() >= float(deadline):
                 break
             if progress_callback:
@@ -2379,10 +2406,12 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     # generic catalog coverage. This runs before the durable graph crawl so
     # every URL returned by that discovery path is handed directly to the
     # persistent catalog/hydration layer.
-    search_deadline = min(
-        time.time() + 45.0,
-        float(deadline) if deadline is not None else time.time() + 45.0,
-    )
+    # Reserve the majority of each run for the durable HTML frontier.
+    # Generic search rotates one query per invocation and is capped at 25s,
+    # leaving enough wall-clock budget for at least one bounded HTML batch.
+    graph_deadline = float(deadline) if deadline is not None else time.time() + 120.0
+    search_deadline = min(time.time() + 25.0, graph_deadline - 20.0)
+    search_deadline = max(time.time() + 0.1, search_deadline)
     if progress_callback:
         progress_callback({
             'phase': 'search',
@@ -2394,7 +2423,7 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
             'elapsed_sec': round(time.time() - started, 2),
         })
     search_catalog = _discover_deloox_search_catalog(
-        search_deadline, progress_callback=progress_callback
+        search_deadline, progress_callback=progress_callback, max_queries=1
     )
     for url in search_catalog.get('product_urls', {}):
         product_urls[url] = ''
@@ -2559,7 +2588,8 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     max_run_seconds = 120.0
     if deadline is not None:
         max_run_seconds = max(1.0, float(deadline) - time.time())
-    run_deadline = time.time() + min(max_run_seconds, 120.0)
+    # Discovery caller and crawler share one wall-clock deadline.
+    run_deadline = min(graph_deadline, time.time() + min(max_run_seconds, 120.0))
 
     while time.time() < run_deadline:
         batch = _deloox_queue_claim(limit=HTML_WORKERS, lease_seconds=180)
