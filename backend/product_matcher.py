@@ -1184,12 +1184,19 @@ class ProductMatcher:
                             # the generic 100 ml variant. Only a URL alias that
                             # adds identity tokens beyond the exact name variant
                             # can override an exact title match.
-                            name_variant_tokens = set(
-                                self._url_catalog_identity_text(
-                                    name_variant.get("canonical_name", "")
-                                ).split()
-                            )
-                            if set(alias_tokens).issubset(name_variant_tokens):
+                            name_variant_forms = [
+                                name_variant.get("canonical_name", ""),
+                                *name_variant.get("aliases", ()),
+                            ]
+                            name_variant_token_sets = [
+                                set(self._url_catalog_identity_text(value).split())
+                                for value in name_variant_forms
+                                if self._url_catalog_identity_text(value)
+                            ]
+                            if any(
+                                set(alias_tokens).issubset(form_tokens)
+                                for form_tokens in name_variant_token_sets
+                            ):
                                 continue
                             width = len(alias_tokens)
                             if any(
