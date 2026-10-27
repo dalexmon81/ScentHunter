@@ -3705,6 +3705,84 @@ def diagnostic_runtime_deep():
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
+@app.get('/diagnose-deloox-generic-search-coverage')
+def diagnose_deloox_generic_search_coverage():
+    """Read-only coverage check for representative generic Deloox searches.
+
+    This endpoint only queries the persistent SQLite catalog. It does not call
+    retailer websites, run discovery, hydrate products, or write database rows.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': 'catalog_db_unavailable',
+        }
+
+    checks = (
+        ('hawas_atlantis', 'hawas atlantis'),
+        ('hawas_la_mer', 'hawas la mer'),
+        ('born_in_roma_gold', 'born in roma the gold'),
+    )
+    conn = catalog_db()
+    try:
+        results = []
+        for key, phrase in checks:
+            pattern = '%' + phrase.lower() + '%'
+            products = conn.execute(
+                """SELECT url,name,brand,price,currency,fetch_status
+                   FROM store_products
+                   WHERE store='deloox'
+                     AND lower(COALESCE(name,'') || ' ' || COALESCE(url,'')) LIKE ?
+                   ORDER BY
+                     CASE WHEN fetch_status='OK' THEN 0 ELSE 1 END,
+                     fetched_at DESC
+                   LIMIT 5""",
+                (pattern,),
+            ).fetchall()
+            urls = conn.execute(
+                """SELECT COUNT(*) AS n
+                   FROM store_urls
+                   WHERE store='deloox' AND active=1 AND lower(url) LIKE ?""",
+                (pattern,),
+            ).fetchone()
+            frontier = conn.execute(
+                """SELECT state,COUNT(*) AS n
+                   FROM catalog_discovery_queue
+                   WHERE store='deloox' AND lower(url) LIKE ?
+                   GROUP BY state""",
+                (pattern,),
+            ).fetchall()
+            hydration = conn.execute(
+                """SELECT state,COUNT(*) AS n
+                   FROM hydration_queue
+                   WHERE store='deloox' AND lower(url) LIKE ?
+                   GROUP BY state""",
+                (pattern,),
+            ).fetchall()
+            results.append({
+                'key': key,
+                'query': phrase,
+                'active_url_count': int(urls['n'] or 0) if urls else 0,
+                'product_rows': [dict(row) for row in products],
+                'discovery_queue_states': {str(row['state']): int(row['n']) for row in frontier},
+                'hydration_queue_states': {str(row['state']): int(row['n']) for row in hydration},
+            })
+        return {
+            'ok': True,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'checks': results,
+        }
+    finally:
+        conn.close()
+
+
 @app.get('/catalog-status')
 def catalog_status_endpoint():
     """Read-only catalog/discovery/hydration status for diagnostics."""
