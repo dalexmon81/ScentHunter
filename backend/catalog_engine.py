@@ -6297,14 +6297,13 @@ def coverage_status():
 
 
 def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
-    """Requeue a tiny, fair slice of stale DONE URLs for the background hydrator.
+    """Requeue a fair, bounded slice of stale DONE products.
 
-    Existing prices remain visible until a successful page refresh replaces them.
-    This helper performs no network work and is called only by the idle background
-    loop. It never revives ERROR/DEAD tasks, never touches inactive URLs, and
-    applies the same 24h priced / 6h missing-price retry thresholds as search.
-    At most one URL per store is selected in each pass to avoid a single retailer
-    monopolizing the bounded refresh budget.
+    A successful identity fetch is not proof that its price is current. Product
+    offers are due after 24h; rows without a usable price are retried after the
+    existing 6h cooldown. Current leases and inactive URLs are never disturbed.
+    Queue rows stay unique by (store, url), and one candidate per store per pass
+    prevents one retailer from monopolizing the shared worker budget.
     """
     try:
         limit = max(0, min(int(max_urls), 16))
@@ -6325,9 +6324,11 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
         ordered, _start_index = _hydration_store_order(conn)
         store_indexes = {store_name: index for index, store_name in enumerate(STORES)}
         last_requeued_index = None
+
         for store in ordered:
             if requeued >= limit:
                 break
+
             row = conn.execute(
                 """SELECT q.url
                      FROM hydration_queue q
@@ -6370,11 +6371,15 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             ).fetchone()
             if not row:
                 continue
+
+            # Keep the transition idempotent: preserve attempt counts and queue
+            # identity, and never disturb a live PROCESSING lease.
             updated = conn.execute(
                 """UPDATE hydration_queue
                       SET state='PENDING', available_at=?,
                           priority=MIN(priority, 50),
-                          leased_until=NULL, lease_token=NULL
+                          leased_until=NULL, lease_token=NULL,
+                          last_error=NULL
                     WHERE store=? AND url=? AND state='DONE'
                       AND EXISTS (
                         SELECT 1 FROM store_urls u
@@ -6386,6 +6391,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             if updated:
                 requeued += int(updated)
                 last_requeued_index = store_indexes.get(store)
+
         if last_requeued_index is not None:
             conn.execute(
                 "UPDATE hydration_scheduler SET last_store_index=? WHERE id=1",
