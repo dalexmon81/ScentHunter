@@ -533,7 +533,20 @@
           "gtins": [
             "6290360375694"
           ]
-        },
+        }
+      ]
+    },
+    {
+      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "products": [
         {
           "canonical_name": "Liquid Brun Limited Edition",
           "aliases": [
