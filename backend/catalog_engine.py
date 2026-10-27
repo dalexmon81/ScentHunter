@@ -6117,6 +6117,8 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
     try:
         conn.execute('BEGIN IMMEDIATE')
         ordered, _start_index = _hydration_store_order(conn)
+        store_indexes = {store_name: index for index, store_name in enumerate(STORES)}
+        last_requeued_index = None
         for store in ordered:
             if requeued >= limit:
                 break
@@ -6175,7 +6177,14 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
                       )""",
                 (current_time, store, row['url']),
             ).rowcount
-            requeued += max(0, int(updated or 0))
+            if updated:
+                requeued += int(updated)
+                last_requeued_index = store_indexes.get(store)
+        if last_requeued_index is not None:
+            conn.execute(
+                "UPDATE hydration_scheduler SET last_store_index=? WHERE id=1",
+                (last_requeued_index,),
+            )
         conn.commit()
         return requeued
     except sqlite3.OperationalError as exc:
