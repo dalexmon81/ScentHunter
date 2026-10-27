@@ -2274,27 +2274,82 @@ def _deloox_persist_products(product_urls):
                        VALUES(?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
                            state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
                                WHEN hydration_queue.state='PROCESSING'
                                     AND hydration_queue.leased_until > ?
                                THEN 'PROCESSING'
+                               WHEN hydration_queue.state='DEAD'
+                               THEN 'DEAD'
                                WHEN EXISTS (
                                    SELECT 1 FROM store_products p
                                     WHERE p.store='deloox'
                                       AND p.url=hydration_queue.url
                                       AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
                                ) THEN 'DONE'
                                ELSE 'PENDING'
                            END,
                            available_at=CASE
-                               WHEN hydration_queue.state IN ('ERROR','DEAD')
-                                AND NOT EXISTS (
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ?
+                               THEN hydration_queue.available_at
+                               WHEN EXISTS (
                                    SELECT 1 FROM store_products p
                                     WHERE p.store='deloox'
                                       AND p.url=hydration_queue.url
                                       AND p.fetch_status='OK'
-                                ) THEN excluded.available_at
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.available_at
+                               WHEN hydration_queue.state IN ('ERROR','DEAD')
+                               THEN excluded.available_at
                                ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                           END,
+                           priority=CASE
+                               WHEN EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.priority
+                               ELSE MIN(hydration_queue.priority, 100)
+                           END,
+                           last_error=CASE
+                               WHEN EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.last_error
+                               ELSE NULL
                            END"""
     try:
         for chunk_start in range(0, len(items), transaction_batch_size):
