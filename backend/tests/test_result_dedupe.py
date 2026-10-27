@@ -127,5 +127,13 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertEqual(len(dedupe_results([first, second])), 2)
 
 
+    def test_easycosmetic_same_price_deduplicates_when_size_metadata_missing(self):
+        first = {"store": "easycosmetic", "url": "https://www.easycosmetic.de/p/a",
+                 "name": "Example Eau de Parfum", "price_num": 25.99}
+        duplicate = {"store": "easycosmetic", "url": "https://www.easycosmetic.de/p/b",
+                     "name": "Example Eau de Parfum 100 ml", "price_num": 25.99}
+        self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
