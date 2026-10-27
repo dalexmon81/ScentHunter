@@ -273,28 +273,23 @@ def _parse_price(value):
 def _availability_from_text(value):
     text = _norm(value)
 
-    # Parfum-Zentrum contains availability-watch/help text on product pages
-    # that can include generic phrases such as 'nicht verfügbar'.
-    # Purchase-state markers must therefore win over generic page text.
+    # Negative phrases must be checked first: "nicht lieferbar" contains
+    # "lieferbar", so checking positive substrings first mislabels sold-out
+    # offers as available.
+    if any(marker in text for marker in OUT_MARKERS):
+        return "out_of_stock"
+
+    # Use specific purchase-state markers after negatives. Generic help text
+    # elsewhere on the page must not override an explicit out-of-stock state.
     if any(marker in text for marker in (
         "auf lager",
         "versandbereit",
         "sofort lieferbar",
-        "lieferbar",
-        "auf lager >",
+        "in den warenkorb",
     )):
         return "in_stock"
 
-    if any(
-        marker in text
-        for marker in OUT_MARKERS
-    ):
-        return "out_of_stock"
-
-    if any(
-        marker in text
-        for marker in IN_MARKERS
-    ):
+    if any(marker in text for marker in IN_MARKERS):
         return "in_stock"
 
     return "unknown"
