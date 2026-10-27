@@ -67,6 +67,35 @@ class CatalogHydrationTests(unittest.TestCase):
             b"<html><body><a href='/en/category/12345/fragrances.html'>Fragrances</a></body></html>",
             None,
         )
+
+        class FakeConnection:
+            def __init__(self):
+                self.queue_rows = []
+            def execute(self, query, params=()):
+                class Cursor:
+                    def __init__(self, rows=None, one=None):
+                        self._rows=rows or []
+                        self._one=one
+                    def fetchone(self):
+                        return self._one
+                    def fetchall(self):
+                        return self._rows
+                if "SELECT url,depth,priority,source" in query:
+                    return Cursor(rows=[])
+                if "SUM(CASE WHEN state='PENDING'" in query:
+                    return Cursor(one={
+                        "pending": 1, "processing": 0, "done": 0,
+                        "error": 0, "dead": 0, "total": 1
+                    })
+                return Cursor()
+            def close(self):
+                pass
+            def commit(self):
+                pass
+            def rollback(self):
+                pass
+
+        conn=FakeConnection()
         with patch.object(catalog_engine, "_deloox_queue_enqueue"), \
              patch.object(catalog_engine, "_deloox_queue_seed", return_value=[]), \
              patch.object(catalog_engine, "_deloox_queue_recover_stale", return_value=0), \
@@ -77,13 +106,8 @@ class CatalogHydrationTests(unittest.TestCase):
              patch.object(catalog_engine, "_deloox_queue_claim", side_effect=[[queue_row], []]), \
              patch.object(catalog_engine, "_fetch_html_page", return_value=fetch_result), \
              patch.object(catalog_engine, "_deloox_queue_finish"), \
-             patch.object(catalog_engine, "_deloox_queue_counts", return_value={}), \
-             patch.object(catalog_engine, "db") as db_mock:
-            conn = db_mock.return_value
-            conn.execute.return_value.fetchone.return_value = {
-                "pending": 1, "processing": 0, "done": 0, "error": 0,
-                "dead": 0, "total": 1
-            }
+             patch.object(catalog_engine, "_deloox_persist_products"), \
+             patch.object(catalog_engine, "db", return_value=conn):
             catalog_engine._discover_deloox_catalog(
                 [], deadline=time.time() + 2, progress_callback=seen.append
             )
