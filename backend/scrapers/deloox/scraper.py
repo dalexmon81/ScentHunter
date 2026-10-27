@@ -436,7 +436,17 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
             if title_text:
                 price_text = price_text.replace(title_text, " ", 1)
         price = parse_price(price_text)
-    if price is None:
+
+    # An out-of-stock product remains a useful catalog result even when the
+    # retailer removes its price. Preserve its exact product/variant identity,
+    # but never infer or fabricate a price. In-stock/unknown-price products
+    # still fail closed as before.
+    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
+        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
+            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
+        )
+    )
+    if price is None and avail != "out_of_stock":
         return None
 
     gtin = clean(data.get("gtin13") or data.get("gtin") or "") or None
@@ -446,10 +456,6 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     image = data.get("image")
     if isinstance(image, list):
         image = image[0] if image else None
-
-    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
-        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable")) else "in_stock"
-    )
 
     return {
         "store": STORE,
@@ -495,7 +501,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         },
         "raw_data": {"jsonld": data},
         "name": name,
-        "price": f"{price:.2f}".replace(".", ",") + " €",
+        "price": (f"{price:.2f}".replace(".", ",") + " €") if price is not None else None,
         "url": url,
         "available": avail == "in_stock",
     }
