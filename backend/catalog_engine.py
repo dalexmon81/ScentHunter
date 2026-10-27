@@ -2362,7 +2362,7 @@ def _deloox_persist_products(product_urls):
                     )
                     conn.execute(
                         hydration_sql,
-                        ('deloox', url, 'PENDING', 0, now, now, now),
+                        ('deloox', url, 'PENDING', 0, now, now, now, now - 24 * 60 * 60, now - 6 * 60 * 60, now, now - 24 * 60 * 60, now - 6 * 60 * 60, now - 24 * 60 * 60, now - 6 * 60 * 60, now - 24 * 60 * 60, now - 6 * 60 * 60),
                     )
                     count += 1
     finally:
