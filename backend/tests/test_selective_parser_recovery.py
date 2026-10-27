@@ -74,7 +74,7 @@ class SelectiveParserRecoveryTests(unittest.TestCase):
         )
         self.add_row(
             "easycosmetic",
-            "https://www.easycosmetic.de/guerlain/lhomme-ideal/guerlain-lhomme-ideal-parfum.aspx",
+            "https://www.easycosmetic.de/guerlain/lhomme-ideal/guerlain-lhomme-ideal-parfum-403.aspx",
             "product_parser_not_found;http_status=403;jsonld_products=1;h1='Guerlain'",
         )
         plan = recovery.build_recovery_plan(self.conn, now=1234, limit_per_store=10)
