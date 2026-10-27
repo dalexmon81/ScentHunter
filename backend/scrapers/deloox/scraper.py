@@ -308,22 +308,37 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     offers_for_identity = data.get("offers")
     offers_for_identity = offers_for_identity if isinstance(offers_for_identity, list) else [offers_for_identity]
     structured_size_values = []
+
+    def _volume_from_structured(value):
+        if isinstance(value, dict):
+            magnitude = value.get("value")
+            unit = str(value.get("unitText") or value.get("unitCode") or "").lower()
+            try:
+                amount = float(str(magnitude).replace(",", "."))
+            except (TypeError, ValueError):
+                amount = None
+            if amount is not None:
+                if unit in {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "milliliter(s)", "mlt"}:
+                    return amount
+                if unit in {"cl", "centiliter", "centiliters", "centilitre", "centilitres"}:
+                    return amount * 10
+            return size_ml(" ".join(str(value.get(k) or "") for k in ("value", "unitText", "unitCode", "name", "description")))
+        if isinstance(value, (int, float)):
+            return None
+        return size_ml(value)
+
     for candidate in [data, *[x for x in offers_for_identity if isinstance(x, dict)]]:
         for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
-            value = candidate.get(key) if isinstance(candidate, dict) else None
-            if isinstance(value, dict):
-                value = " ".join(str(value.get(k) or "") for k in ("value", "unitText", "unitCode"))
-            found_size = size_ml(value)
+            found_size = _volume_from_structured(candidate.get(key))
             if found_size is not None:
                 structured_size_values.append(found_size)
-        specification = candidate.get("sizeSpecification") if isinstance(candidate, dict) else None
+        specification = candidate.get("sizeSpecification")
         specifications = specification if isinstance(specification, list) else [specification]
         for item in specifications:
             if isinstance(item, dict):
-                for key in ("value", "name", "description", "unitText", "unitCode"):
-                    found_size = size_ml(item.get(key))
-                    if found_size is not None:
-                        structured_size_values.append(found_size)
+                found_size = _volume_from_structured(item)
+                if found_size is not None:
+                    structured_size_values.append(found_size)
 
     textual_size = size_ml(name, url)
     observed_sizes = [*structured_size_values]
