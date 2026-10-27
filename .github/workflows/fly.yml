@@ -411,9 +411,39 @@ jobs:
               return last
 
           failures = []
-          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage"):
+          for query in ("Born in Roma", "Hawas", "Hawas Ice", "Dior Sauvage", "Liquid Brun 100 ml"):
               try:
                   result = search(query)
+                  if query == "Liquid Brun 100 ml":
+                      import re
+                      mismatches = []
+                      groups = result.get("results") if isinstance(result.get("results"), list) else []
+                      for group in groups:
+                          if not isinstance(group, dict):
+                              continue
+                          group_name = str(group.get("name") or group.get("title") or "")
+                          if not re.search(r"(?<!\d)100\s?ml\b", group_name, flags=re.I):
+                              continue
+                          for offer in (group.get("offers") or []):
+                              if not isinstance(offer, dict):
+                                  continue
+                              store = str(offer.get("store") or "").lower()
+                              if "deloox" not in store:
+                                  continue
+                              offer_identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
+                              if re.search(r"(?<!\d)150\s?ml\b", offer_identity, flags=re.I):
+                                  mismatches.append({
+                                      "group": group_name,
+                                      "store": offer.get("store"),
+                                      "name": offer.get("name") or offer.get("title"),
+                                      "url": offer.get("url") or offer.get("product_url"),
+                                  })
+                      print("Liquid Brun 100 ml Deloox size-integrity check: " + json.dumps({
+                          "groups_checked": len(groups),
+                          "mismatches": mismatches[:10],
+                      }, ensure_ascii=False))
+                      if mismatches:
+                          raise RuntimeError("Deloox 150 ml offer published in Liquid Brun 100 ml group: " + json.dumps(mismatches[:5], ensure_ascii=False))
                   if query == "Dior Sauvage":
                       store_statuses = result.get("stores") if isinstance(result.get("stores"), dict) else {}
                       easycosmetic = store_statuses.get("easycosmetic") if isinstance(store_statuses.get("easycosmetic"), dict) else {}
