@@ -2951,9 +2951,13 @@ def discover_store(store):
     html_sitemap_seeds=set()
     sitemap_successes=0; sitemap_url_entries=0
 
+    # Deloox's sitemap roots repeatedly return errors while its HTML catalog graph is usable.
+    # Give sitemap discovery only a short probe window there so it cannot consume
+    # most of the bounded run before the persistent HTML frontier gets time.
+    sitemap_budget = 5 if store == 'deloox' else SITEMAP_DISCOVERY_BUDGET
     sitemap_deadline = min(
         started_at + DISCOVERY_HARD_TIMEOUT,
-        started_at + SITEMAP_DISCOVERY_BUDGET,
+        started_at + sitemap_budget,
     )
     while queue and len(visited)<MAX_SITEMAPS_PER_STORE and len(product_urls)<MAX_TOTAL_DISCOVERED_URLS and time.time()<sitemap_deadline:
         batch=[]
@@ -3089,7 +3093,7 @@ def discover_store(store):
         'errors':len(sitemap_errors),
         'timed_out': (time.time()-started_at) >= DISCOVERY_HARD_TIMEOUT,
         'sitemap_budget_exhausted': bool(queue) and time.time() >= sitemap_deadline,
-        'sitemap_budget_seconds': SITEMAP_DISCOVERY_BUDGET,
+        'sitemap_budget_seconds': sitemap_budget,
     }
     # Zero successful catalog-page fetches means access/discovery failure,
     # not an empty retailer catalog. Never report EMPTY in that situation.
