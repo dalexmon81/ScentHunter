@@ -4047,11 +4047,11 @@ def refresh_url(store, url):
                         gender=COALESCE(excluded.gender,store_products.gender),
                         -- Only a confirmed sold-out Deloox row may clear a previously
                         -- valid price. Other transient/incomplete parses keep it.
-                        price=CASE WHEN excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL THEN NULL ELSE COALESCE(excluded.price,store_products.price) END,
+                        price=CASE WHEN excluded.store='deloox' AND lower(replace(replace(excluded.availability,'-','_'),' ','_')) IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL THEN NULL ELSE COALESCE(excluded.price,store_products.price) END,
                         currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
                         availability=excluded.availability,
-                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetched_at ELSE store_products.fetched_at END,
-                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetch_status ELSE store_products.fetch_status END''',
+                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND lower(replace(replace(excluded.availability,'-','_'),' ','_')) IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetched_at ELSE store_products.fetched_at END,
+                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND lower(replace(replace(excluded.availability,'-','_'),' ','_')) IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetch_status ELSE store_products.fetch_status END''',
                     (
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
