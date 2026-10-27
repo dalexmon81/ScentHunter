@@ -3918,16 +3918,37 @@ def refresh_url(store, url):
                            active=1''',
                     (store, url, url_slug(url), None, now),
                 )
+                # Keep the existing queue state here. _hydrate_one_task marks the
+                # lease DONE only after this function returns a confirmed offer.
+                # A parsed name without a new explicit price must leave the queue
+                # retryable and must not reset a live worker's lease.
+                has_explicit_price = False
+                try:
+                    parsed_price = float(item.get('price_num'))
+                    has_explicit_price = parsed_price > 0
+                except (TypeError, ValueError):
+                    has_explicit_price = False
+                has_valid_variants = False
+                if store == 'sabina' and item.get('variants'):
+                    for variant in item['variants']:
+                        try:
+                            if float(variant.get('size_ml')) > 0 and float(variant.get('price_num')) > 0:
+                                has_valid_variants = True
+                                break
+                        except (TypeError, ValueError):
+                            continue
+
                 conn.execute(
                     '''INSERT INTO hydration_queue(
                            store,url,state,attempts,available_at,first_seen_at)
                        VALUES(?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
                            state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
                                WHEN hydration_queue.state='PROCESSING'
                                     AND hydration_queue.leased_until > ?
                                THEN 'PROCESSING'
+                               WHEN hydration_queue.state='DEAD'
+                               THEN 'DEAD'
                                ELSE hydration_queue.state
                            END''',
                     (store, url, "PENDING", 0, now, now, now),
@@ -5376,8 +5397,11 @@ def _queue_mark_error(task, error, http_status=None):
 def _hydrate_one_task(task):
     """Execute one claimed page fetch and transition its queue state.
 
-    Foreground search has strict priority. A task that was claimed just before
-    a search started is released instead of performing another HTTP fetch.
+    A parsed product name alone is not a successful price refresh. A fresh
+    explicit positive price (or Sabina's complete validated variant set) must
+    be persisted before the queue can transition to DONE. This prevents a
+    retained last-known-good price from receiving a fresh fetched_at timestamp
+    when the retailer page no longer exposes a usable offer.
     """
     if _foreground_search_running():
         _queue_release_claim(task)
@@ -5386,8 +5410,32 @@ def _hydrate_one_task(task):
     try:
         item = refresh_url(task['store'], task['url'])
         if item and item.get('name'):
-            _queue_mark_done(task)
-            return True
+            has_valid_offer = False
+            try:
+                price = float(item.get('price_num'))
+                has_valid_offer = price > 0
+            except (TypeError, ValueError):
+                has_valid_offer = False
+
+            if not has_valid_offer and task['store'] == 'sabina':
+                for variant in item.get('variants') or []:
+                    try:
+                        if float(variant.get('size_ml')) > 0 and float(variant.get('price_num')) > 0:
+                            has_valid_offer = True
+                            break
+                    except (TypeError, ValueError):
+                        continue
+
+            if has_valid_offer:
+                _queue_mark_done(task)
+                return True
+
+            detail = 'refresh_missing_explicit_price'
+            with _LAST_REFRESH_ERRORS_LOCK:
+                _LAST_REFRESH_ERRORS[(task['store'], task['url'])] = detail
+            _queue_mark_error(task, detail)
+            return False
+
         # refresh_url records the concrete fetch failure in store_products.
         with _LAST_REFRESH_ERRORS_LOCK:
             detail = _LAST_REFRESH_ERRORS.get((task['store'], task['url']))

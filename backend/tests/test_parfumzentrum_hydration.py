@@ -236,6 +236,75 @@ class CatalogHydrationTests(unittest.TestCase):
 
 
 
+
+class HydrationRequiresFreshPriceTests(unittest.TestCase):
+    def test_name_without_price_does_not_mark_task_done(self):
+        from unittest.mock import patch
+        import catalog_engine
+
+        task = {
+            "store": "deloox",
+            "url": "https://www.deloox.com/product/1323660/test.html",
+            "lease_token": "lease-token",
+        }
+        parsed_without_price = {
+            "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+            "price_num": None,
+        }
+        with patch.object(catalog_engine, "_foreground_search_running", return_value=False), \
+             patch.object(catalog_engine, "refresh_url", return_value=parsed_without_price), \
+             patch.object(catalog_engine, "_queue_mark_done") as mark_done, \
+             patch.object(catalog_engine, "_queue_mark_error") as mark_error:
+            result = catalog_engine._hydrate_one_task(task)
+
+        self.assertFalse(result)
+        mark_done.assert_not_called()
+        mark_error.assert_called_once_with(task, "refresh_missing_explicit_price")
+
+    def test_positive_explicit_price_marks_task_done(self):
+        from unittest.mock import patch
+        import catalog_engine
+
+        task = {
+            "store": "deloox",
+            "url": "https://www.deloox.com/product/1323660/test.html",
+            "lease_token": "lease-token",
+        }
+        parsed_with_price = {
+            "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+            "price_num": 29.99,
+        }
+        with patch.object(catalog_engine, "_foreground_search_running", return_value=False), \
+             patch.object(catalog_engine, "refresh_url", return_value=parsed_with_price), \
+             patch.object(catalog_engine, "_queue_mark_done") as mark_done:
+            result = catalog_engine._hydrate_one_task(task)
+
+        self.assertTrue(result)
+        mark_done.assert_called_once_with(task)
+
+    def test_valid_sabina_variant_can_complete_without_parent_price(self):
+        from unittest.mock import patch
+        import catalog_engine
+
+        task = {
+            "store": "sabina",
+            "url": "https://www.sabina.com/product/test",
+            "lease_token": "lease-token",
+        }
+        parsed_variant_only = {
+            "name": "Example Fragrance",
+            "price_num": None,
+            "variants": [{"size_ml": 100, "price_num": 49.9}],
+        }
+        with patch.object(catalog_engine, "_foreground_search_running", return_value=False), \
+             patch.object(catalog_engine, "refresh_url", return_value=parsed_variant_only), \
+             patch.object(catalog_engine, "_queue_mark_done") as mark_done:
+            result = catalog_engine._hydrate_one_task(task)
+
+        self.assertTrue(result)
+        mark_done.assert_called_once_with(task)
+
+
 class FamilyRegistryBaselineTests(unittest.TestCase):
     def test_hawas_family_registry_contains_thirty_distinct_canonical_variants(self):
         """Protect the curated Hawas family registry baseline, not fabricated offers."""
