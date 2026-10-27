@@ -661,3 +661,25 @@ class StaleHydrationQueueTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ParfumZentrumAvailabilityPrecedenceTests(unittest.TestCase):
+    def test_nicht_lieferbar_is_out_of_stock_not_in_stock(self):
+        self.assertEqual(
+            parfumzentrum._availability_from_text("Nicht lieferbar"),
+            "out_of_stock",
+        )
+
+    def test_explicit_out_of_stock_wins_over_positive_page_text(self):
+        self.assertEqual(
+            parfumzentrum._availability_from_text(
+                "Auf Lager. Dieses Produkt ist derzeit nicht lieferbar."
+            ),
+            "out_of_stock",
+        )
+
+    def test_positive_purchase_state_is_still_in_stock(self):
+        self.assertEqual(
+            parfumzentrum._availability_from_text("Sofort lieferbar"),
+            "in_stock",
+        )
+
