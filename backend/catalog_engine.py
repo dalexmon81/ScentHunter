@@ -4228,7 +4228,10 @@ def _catalog_row_needs_refresh(price, fetched_at, now=None):
         fetched = float(fetched_at or 0)
     except (TypeError, ValueError):
         fetched = 0.0
-    return fetched <= 0 or current_time - fetched > 24 * 60 * 60
+    # Prices can change materially within a day. Query-selected offers older
+    # than six hours are prioritized for hydration instead of being treated as
+    # fresh until the 24-hour background sweep reaches them.
+    return fetched <= 0 or current_time - fetched > 6 * 60 * 60
 
 
 def _schedule_stale_price_repairs(rows, max_jobs=12):
