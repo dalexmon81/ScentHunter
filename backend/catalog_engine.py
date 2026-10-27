@@ -2600,24 +2600,24 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
         for a in soup.find_all('a', href=True):
             admit(a.get('href'), a.get_text(' ', strip=True))
 
-        for node in soup.find_all(True):
-            # Most nodes have no URL-bearing data attribute. Avoid walking
-            # every descendant tree for text when there is nothing to admit;
-            # repeated get_text() calls on large retailer pages are expensive.
-            raw_values = [
-                node.get(attr)
-                for attr in (
-                    'value', 'data-value', 'data-filter-url', 'data-option-url',
-                    'data-redirect-url', 'data-url', 'data-href', 'data-link',
-                    'data-next-url', 'data-next', 'data-load-more-url',
-                    'data-pagination-url',
-                )
-                if node.get(attr)
-            ]
-            if not raw_values:
-                continue
-            label = node.get_text(' ', strip=True)[:300]
-            for raw in raw_values:
+        # Scan only elements that actually carry a URL-bearing attribute.
+        # The old full-DOM pass called node.get(attr) for every element on
+        # Deloox pages (often >1 MB), which kept the discovery thread busy and
+        # delayed the hydration worker sharing the persistent SQLite catalog.
+        # CSS attribute selectors move the filtering into BeautifulSoup's
+        # selector engine and avoid visiting unrelated DOM nodes.
+        navigation_attrs = (
+            'value', 'data-value', 'data-filter-url', 'data-option-url',
+            'data-redirect-url', 'data-url', 'data-href', 'data-link',
+            'data-next-url', 'data-next', 'data-load-more-url',
+            'data-pagination-url',
+        )
+        for attr in navigation_attrs:
+            for node in soup.select(f'[{attr}]'):
+                raw = node.get(attr)
+                if not raw:
+                    continue
+                label = node.get_text(' ', strip=True)[:300]
                 admit(raw, label)
 
         for node in soup.find_all(['link'], href=True):
