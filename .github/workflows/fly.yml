@@ -149,8 +149,8 @@ jobs:
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/b','DONE',1,9999999999,1)")
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,leased_until,lease_token) VALUES('deloox','https://www.deloox.com/product/c','PROCESSING',1,9999999999,1,9999999999,'lease-c')")
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/d','ERROR',1,9999999999,1,'parser')")
-          conn.execute("INSERT INTO store_products VALUES('deloox','https://www.deloox.com/product/d',25.0,now-30*3600,'OK')")
           now = 1000.0
+          conn.execute("INSERT INTO store_products VALUES('deloox','https://www.deloox.com/product/d',25.0,now-30*3600,'OK')")
 
           def upsert(url):
               conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now,now-24*3600,now-6*3600,now,now-24*3600,now-6*3600,now-24*3600,now-6*3600,now-24*3600,now-6*3600))
