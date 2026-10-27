@@ -439,7 +439,9 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # Preserve verified product identity when the retailer explicitly marks
     # the product out of stock. Never invent a price to make the row publishable.
     avail = availability(text, offer=offer, soup=soup) if soup is not None else (
-        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable")) else "in_stock"
+        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
+            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
+        )
     )
     if price is None and avail != "out_of_stock":
         return None
