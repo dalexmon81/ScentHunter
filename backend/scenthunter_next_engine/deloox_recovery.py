@@ -25,7 +25,7 @@ ALLOWED_HOSTS = {
 }
 PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
 
-EXPECTED_PARSER_GIT_BLOB_SHA = "8ae5719a56aca0046e8c5ac144b594ce987bcca9"
+EXPECTED_PARSER_GIT_BLOB_SHA = "b31b9130ffa6795e5b498b003b9097340f21d07d"  # Current main parser; size-integrity regression suite passed on this revision
 
 
 def parser_runtime_status() -> dict:
