@@ -1108,6 +1108,27 @@ class ProductMatcher:
         if not candidate_key:
             return None
 
+        # A registered family with explicit bottle sizes is a closed size
+        # scope. Do not let a retailer offer for a different registered
+        # size leak into the current family merely because its title is generic.
+        offer_size = size_ml(offer)
+        registered_family_sizes = set()
+        for registered_variant in family.get("variants", ()):
+            raw_sizes = registered_variant.get("formats_ml") or registered_variant.get("sizes_ml") or ()
+            if isinstance(raw_sizes, (str, int, float)):
+                raw_sizes = (raw_sizes,)
+            for raw_size in raw_sizes:
+                try:
+                    registered_family_sizes.add(float(raw_size))
+                except (TypeError, ValueError):
+                    continue
+        if (
+            offer_size is not None
+            and registered_family_sizes
+            and float(offer_size) not in registered_family_sizes
+        ):
+            return None
+
         # Resolve explicit audience labels before alias/subphrase matching.
         # Without this guard, a generic alias registered under Uomo (for example
         # "Born In Roma Extradose") can match inside an explicit Donna title.
