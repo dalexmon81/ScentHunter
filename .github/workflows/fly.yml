@@ -153,7 +153,7 @@ jobs:
           now = 1000.0
 
           def upsert(url):
-              conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now))
+              conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now,now-24*3600,now-6*3600,now,now-24*3600,now-6*3600,now-24*3600,now-6*3600,now-24*3600,now-6*3600))
 
           for suffix in ('a','b','c','d'):
               upsert('https://www.deloox.com/product/'+suffix)
