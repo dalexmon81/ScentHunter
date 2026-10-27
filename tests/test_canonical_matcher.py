@@ -171,7 +171,6 @@ class CanonicalMatcherTests(unittest.TestCase):
                 "product_id": "P-LIQUID",
                 "variant_id": "V-LIQUID-150",
                 "size_ml": 150,
-                "concentration": "Extrait de Parfum",
                 "refill": False,
                 "checked_at": "2026-10-27",
                 "source_urls": ["https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"],
