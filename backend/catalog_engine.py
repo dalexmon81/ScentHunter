@@ -2575,7 +2575,17 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
             pass
 
         if listings:
-            _deloox_queue_enqueue(listings)
+            # Bound per-page fan-out so filter/sort variants cannot flood the durable frontier.
+            # Deduplicate first and keep the list deterministic for reproducible discovery.
+            listings = list({str(url).split('#', 1)[0]: (str(url).split('#', 1)[0], depth, source)
+                             for url, depth, source in listings}.values())
+            listings.sort(key=lambda item: (
+                0 if re.search(r'/(?:chercher|search)(?:\.html)?(?:$|\?)', item[0], re.I) else
+                1 if re.search(r'(?:[?&](?:page|pagina|p|offset|start)=)', item[0], re.I) else
+                2 if re.search(r'/(?:category|categorie|categoria|brand|marque|parfum|perfume|fragrance|geur)(?:/|$)', item[0], re.I) else 3,
+                item[0],
+            ))
+            _deloox_queue_enqueue(listings[:60])
         # Persist only products discovered on this page. Persisting the
         # cumulative catalog-wide product_urls mapping here rewrites every
         # previously discovered URL on every page (quadratic DB work), which
