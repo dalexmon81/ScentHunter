@@ -4638,7 +4638,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                         'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
                                     })
                                 continue
-                        store_rows.append({
+                            store_rows.append({
                                 'url': url, 'slug': r['slug'] or '',
                                 'lastmod': r['lastmod'] or '',
                                 'name': r['product_name'] or '',
