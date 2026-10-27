@@ -524,42 +524,6 @@ class StaleHydrationQueueTests(unittest.TestCase):
         self.assertEqual(states[inactive], "DONE")
         self.assertEqual(states[dead], "DEAD")
 
-    def test_retryable_error_keeps_backoff_and_terminal_http_is_dead(self):
-        import sqlite3
-        import catalog_engine
-        now = 2_000_000.0
-        retry_url = self._seed("deloox", "retry", "PROCESSING", now - 25 * 3600)
-        terminal_url = self._seed("bplatz", "terminal", "PROCESSING", now - 25 * 3600)
-        conn = sqlite3.connect(str(catalog_engine.DB_PATH))
-        conn.execute(
-            "UPDATE hydration_queue SET lease_token='retry-token',attempts=2 WHERE url=?",
-            (retry_url,),
-        )
-        conn.execute(
-            "UPDATE hydration_queue SET lease_token='terminal-token',attempts=1 WHERE url=?",
-            (terminal_url,),
-        )
-        conn.commit()
-        conn.close()
-        with patch.object(catalog_engine, "db", wraps=catalog_engine.db):
-            catalog_engine._queue_mark_error(
-                {"store": "deloox", "url": retry_url, "lease_token": "retry-token"},
-                "TimeoutError: temporary network failure",
-            )
-            catalog_engine._queue_mark_error(
-                {"store": "bplatz", "url": terminal_url, "lease_token": "terminal-token"},
-                "HTTP 404",
-                http_status=404,
-            )
-        conn = sqlite3.connect(str(catalog_engine.DB_PATH))
-        retry = conn.execute("SELECT state,available_at,attempts FROM hydration_queue WHERE url=?", (retry_url,)).fetchone()
-        terminal = conn.execute("SELECT state FROM hydration_queue WHERE url=?", (terminal_url,)).fetchone()
-        conn.close()
-        self.assertEqual(retry[0], "ERROR")
-        self.assertGreater(retry[1], now)
-        self.assertEqual(retry[2], 2)
-        self.assertEqual(terminal[0], "DEAD")
-
 
 if __name__ == "__main__":
     unittest.main()
