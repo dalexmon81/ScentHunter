@@ -17,6 +17,12 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.tmp = tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", suffix=".json", delete=False
         )
+        self.tmp_path = Path(self.tmp.name)
+        self.tmp.close()
+        self.tmp_path.write_text("", encoding="utf-8")
+        self.catalog_dir = self.tmp_path.parent / (self.tmp_path.stem + "_fixture")
+        self.catalog_dir.mkdir()
+        self.catalog_path = self.catalog_dir / "product_catalog.json"
         json.dump(
             {
                 "products": [
@@ -147,13 +153,32 @@ class CanonicalMatcherTests(unittest.TestCase):
                     {"variant_id": "V-HABIT-EDP-DUP-50", "product_id": "P-HABIT-EDP-DUP", "size_ml": 50},
                 ],
             },
-            self.tmp,
+            self.catalog_path.open("w", encoding="utf-8"),
         )
-        self.tmp.close()
-        self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
-        self.matcher = CanonicalMatcher(
-            CatalogRepository.from_file(self.tmp.name)
+        self.addCleanup(lambda: self.tmp_path.unlink(missing_ok=True))
+        self.addCleanup(lambda: shutil.rmtree(self.catalog_dir, ignore_errors=True))
+        registry_dir = self.catalog_dir / "scenthunter_next_engine"
+        registry_dir.mkdir()
+        registry = {
+            "schema_version": 1,
+            "description": "test-only verified variant evidence",
+            "records": [{
+                "gtin": "6298042001831",
+                "gtin_type": "GTIN-13",
+                "status": "verified",
+                "product_id": "P-LIQUID",
+                "variant_id": "V-LIQUID-150",
+                "size_ml": 150,
+                "refill": False,
+                "checked_at": "2026-10-27",
+                "source_urls": ["https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"],
+                "evidence_note": "Test fixture only.",
+            }],
+        }
+        (registry_dir / "verified_gtin_variant_map.json").write_text(
+            json.dumps(registry), encoding="utf-8"
         )
+        self.matcher = CanonicalMatcher(CatalogRepository.from_file(self.catalog_path))
 
     def offer(self, name, brand=None, size=None):
         return RetailerOffer(
