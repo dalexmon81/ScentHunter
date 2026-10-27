@@ -92,10 +92,11 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
         self.assertEqual(shop["hydration_queue"], {"DONE": 1, "PENDING": 2})
         conn.close()
 
-    def test_refresh_due_respects_six_and_twenty_four_hour_thresholds(self):
+    def test_query_refresh_due_uses_six_hour_threshold_for_priced_and_missing_rows(self):
         now = 1_800_000_000.0
-        self.assertFalse(_catalog_row_needs_refresh(25.0, now - 23 * 60 * 60, now=now))
-        self.assertTrue(_catalog_row_needs_refresh(25.0, now - 25 * 60 * 60, now=now))
+        self.assertFalse(_catalog_row_needs_refresh(25.0, now - 5 * 60 * 60, now=now))
+        self.assertTrue(_catalog_row_needs_refresh(25.0, now - 7 * 60 * 60, now=now))
+        self.assertTrue(_catalog_row_needs_refresh(25.0, now - 23 * 60 * 60, now=now))
         self.assertFalse(_catalog_row_needs_refresh(None, now - 5 * 60 * 60, now=now))
         self.assertTrue(_catalog_row_needs_refresh(None, now - 7 * 60 * 60, now=now))
         self.assertTrue(_catalog_row_needs_refresh(0, now - 7 * 60 * 60, now=now))
