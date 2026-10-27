@@ -4606,9 +4606,8 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                             # comparison shop: it inflates the shop count and leaves
                             # a dead "OUT OF STOCK" card with no price.
                             if store == 'deloox':
-                                _deloox_availability = str(r['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
                                 _deloox_price = r['product_price']
-                                if _deloox_availability in {'out_of_stock', 'outofstock', 'sold_out', 'soldout', 'unavailable', 'discontinued'} or _deloox_price in (None, ''):
+                                if _should_hide_deloox_offer(store, r['product_availability'], _deloox_price):
                                     continue
                             variant_rows = []
                             if store == 'parfumzentrum':
