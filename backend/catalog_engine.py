@@ -6299,11 +6299,10 @@ def coverage_status():
 def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
     """Requeue a fair, bounded slice of stale DONE products.
 
-    A successful identity fetch is not proof that its price is current. Product
-    offers are due after 24h; rows without a usable price are retried after the
-    existing 6h cooldown. Current leases and inactive URLs are never disturbed.
-    Queue rows stay unique by (store, url), and one candidate per store per pass
-    prevents one retailer from monopolizing the shared worker budget.
+    Successful product parsing does not imply that a stored price is current.
+    Prices older than 24h are refreshable; products without a usable explicit
+    price use the existing 6h cooldown. The operation is idempotent, restricted
+    to active URLs, and does not reset attempt counts or revive DEAD rows.
     """
     try:
         limit = max(0, min(int(max_urls), 16))
@@ -6372,13 +6371,10 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             if not row:
                 continue
 
-            # Keep the transition idempotent: preserve attempt counts and queue
-            # identity, and never disturb a live PROCESSING lease.
             updated = conn.execute(
                 """UPDATE hydration_queue
                       SET state='PENDING', available_at=?,
                           priority=MIN(priority, 50),
-                          leased_until=NULL, lease_token=NULL,
                           last_error=NULL
                     WHERE store=? AND url=? AND state='DONE'
                       AND EXISTS (
