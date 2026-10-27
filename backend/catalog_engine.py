@@ -6299,10 +6299,9 @@ def coverage_status():
 def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
     """Requeue a fair, bounded slice of stale DONE products.
 
-    Successful product parsing does not imply that a stored price is current.
-    Prices older than 24h are refreshable; products without a usable explicit
-    price use the existing 6h cooldown. The operation is idempotent, restricted
-    to active URLs, and does not reset attempt counts or revive DEAD rows.
+    Product rows with valid prices become due after 24h; rows without a usable
+    price use the existing 6h retry cooldown. Inactive URLs and terminal DEAD
+    rows are not revived. Queue identity and attempt counts are preserved.
     """
     try:
         limit = max(0, min(int(max_urls), 16))
@@ -6327,7 +6326,6 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
         for store in ordered:
             if requeued >= limit:
                 break
-
             row = conn.execute(
                 """SELECT q.url
                      FROM hydration_queue q
@@ -6370,7 +6368,6 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             ).fetchone()
             if not row:
                 continue
-
             updated = conn.execute(
                 """UPDATE hydration_queue
                       SET state='PENDING', available_at=?,
