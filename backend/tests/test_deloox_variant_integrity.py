@@ -76,7 +76,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
           {
             "@context": "https://schema.org",
             "@type": "Product",
-            "name": "French Avenue Liquid Brun Eau de Parfum",
+            "name": "French Avenue Liquid Brun Eau de Parfum 100 ml",
             "brand": {"@type": "Brand", "name": "French Avenue"},
             "size": {"@type": "QuantitativeValue", "value": 100, "unitText": "ml"},
             "offers": {"@type": "Offer", "price": "32.99", "priceCurrency": "EUR"}
@@ -85,7 +85,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         </head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
         """
         result = scraper._product(
-            "https://www.deloox.be/produit/123/liquid-brun-100-ml",
+            "https://www.deloox.be/produit/123/liquid-brun-eau-de-parfum-100-ml",
             html,
             "Liquid Brun Eau de Parfum 100 ml",
         )
