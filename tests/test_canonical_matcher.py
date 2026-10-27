@@ -20,8 +20,8 @@ class CanonicalMatcherTests(unittest.TestCase):
         )
         self.tmp_path = Path(self.tmp.name)
         self.tmp.close()
-        self.tmp_path.write_text("", encoding="utf-8")
         self.catalog_dir = self.tmp_path.parent / (self.tmp_path.stem + "_fixture")
+        self.tmp_path.unlink(missing_ok=True)
         self.catalog_dir.mkdir()
         self.catalog_path = self.catalog_dir / "product_catalog.json"
         json.dump(
