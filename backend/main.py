@@ -3728,9 +3728,15 @@ def diagnose_deloox_generic_search_coverage():
         ('hawas_la_mer', 'hawas la mer'),
         ('born_in_roma_gold', 'born in roma the gold'),
     )
-    patterns = {key: '%' + phrase.lower() + '%' for key, phrase in checks}
-    keys = tuple(patterns)
-    pattern_values = tuple(patterns.values())
+    name_patterns = {key: '%' + phrase.lower() + '%' for key, phrase in checks}
+    # URL slugs use separators (usually hyphens), not spaces. Wildcards between
+    # tokens match both canonical slugs and localized URL variants.
+    url_patterns = {
+        key: '%' + '%'.join(phrase.lower().split()) + '%'
+        for key, phrase in checks
+    }
+    keys = tuple(name_patterns)
+    url_pattern_values = tuple(url_patterns.values())
     where_any = ' OR '.join('lower(url) LIKE ?' for _ in keys)
     conditional_counts = ', '.join(
         f'SUM(CASE WHEN lower(url) LIKE ? THEN 1 ELSE 0 END) AS {key}'
@@ -3743,17 +3749,17 @@ def diagnose_deloox_generic_search_coverage():
         # phrase. Product names and URLs are checked in the same query.
         product_rows = {}
         for key, phrase in checks:
-            pattern = patterns[key]
             rows = conn.execute(
                 """SELECT url,name,brand,price,currency,fetch_status
                    FROM store_products
                    WHERE store='deloox'
-                     AND lower(COALESCE(name,'') || ' ' || COALESCE(url,'')) LIKE ?
+                     AND (lower(COALESCE(name,'')) LIKE ?
+                          OR lower(COALESCE(url,'')) LIKE ?)
                    ORDER BY
                      CASE WHEN fetch_status='OK' THEN 0 ELSE 1 END,
                      fetched_at DESC
                    LIMIT 5""",
-                (pattern,),
+                (name_patterns[key], url_patterns[key]),
             ).fetchall()
             product_rows[key] = [dict(row) for row in rows]
 
@@ -3762,7 +3768,7 @@ def diagnose_deloox_generic_search_coverage():
             f"""SELECT {conditional_counts}
                 FROM store_urls
                 WHERE store='deloox' AND active=1 AND ({where_any})""",
-            pattern_values + pattern_values,
+            url_pattern_values + url_pattern_values,
         ).fetchone()
         url_counts = {
             key: int(url_counts_row[key] or 0) if url_counts_row else 0
@@ -3775,7 +3781,7 @@ def diagnose_deloox_generic_search_coverage():
                     FROM {table}
                     WHERE store='deloox' AND ({where_any})
                     GROUP BY state""",
-                pattern_values + pattern_values,
+                url_pattern_values + url_pattern_values,
             ).fetchall()
             grouped = {key: {} for key in keys}
             for row in rows:
