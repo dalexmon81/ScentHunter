@@ -53,6 +53,89 @@ class CatalogHydrationTests(unittest.TestCase):
             deloox._LAST_DISCOVERY_STATE["search_pages_failed"], 0
         )
 
+    def test_deloox_search_budget_rotates_query_and_limits_each_run(self):
+        """One generic query per run rotates without making prices or identity part of discovery."""
+        from unittest.mock import patch
+        import catalog_engine
+
+        result = {
+            "queries": [{"query": "parfum", "returned": 1, "added": 1}],
+            "products": 1,
+            "product_urls": {"https://www.deloox.com/product/1000001/test-eau-de-parfum-100-ml.html": ""},
+            "errors": [],
+        }
+        class FakeConnection:
+            def __init__(self):
+                self.values = {"deloox_search_query_offset": "0"}
+                self.closed = False
+            def execute(self, query, params=()):
+                class Cursor:
+                    def __init__(self, row=None):
+                        self.row = row
+                    def fetchone(self):
+                        return self.row
+                if "SELECT value FROM catalog_discovery_meta" in query:
+                    value = self.values.get(params[0])
+                    return Cursor({"value": value} if value is not None else None)
+                if "INSERT INTO catalog_discovery_meta" in query:
+                    self.values[params[0]] = params[1]
+                return Cursor()
+            def commit(self):
+                pass
+            def close(self):
+                self.closed = True
+
+        conn = FakeConnection()
+        with patch.object(catalog_engine, "db", return_value=conn), \
+             patch.object(catalog_engine, "_deloox_queue_allowed", return_value=True), \
+             patch.object(catalog_engine, "_deloox_persist_products") as persist, \
+             patch("scrapers.deloox.scraper._discover", return_value=list(result["product_urls"])) as discover:
+            first = catalog_engine._discover_deloox_search_catalog(
+                deadline=__import__("time").time() + 2, max_queries=1
+            )
+            self.assertEqual(len(first["queries"]), 1)
+            self.assertEqual(first["products"], 1)
+            self.assertEqual(conn.values["deloox_search_query_offset"], "1")
+
+            second = catalog_engine._discover_deloox_search_catalog(
+                deadline=__import__("time").time() + 2, max_queries=1
+            )
+            self.assertEqual(len(second["queries"]), 1)
+            self.assertEqual(conn.values["deloox_search_query_offset"], "2")
+
+        called_queries = [call.args[1] for call in discover.call_args_list]
+        self.assertEqual(called_queries, ["parfum", "perfume"])
+        self.assertEqual(persist.call_count, 2)
+
+    def test_deloox_search_budget_reserves_time_for_frontier(self):
+        """Search uses a shorter budget than the durable frontier budget."""
+        import time
+        from unittest.mock import patch
+        import catalog_engine
+
+        observed = []
+        search_result = {"queries": [], "products": 0, "product_urls": {}, "errors": []}
+        with patch.object(catalog_engine, "_deloox_queue_enqueue"), \
+             patch.object(catalog_engine, "_deloox_queue_seed", return_value=[]), \
+             patch.object(catalog_engine, "_deloox_queue_recover_stale", return_value=0), \
+             patch.object(catalog_engine, "_deloox_queue_requeue_stale_done", return_value=0), \
+             patch.object(catalog_engine, "_discover_deloox_search_catalog", side_effect=lambda deadline, progress_callback=None, max_queries=None: observed.append((deadline, max_queries)) or search_result), \
+             patch.object(catalog_engine, "_deloox_queue_claim", return_value=[]), \
+             patch.object(catalog_engine, "db") as db_mock:
+            conn = db_mock.return_value
+            conn.execute.return_value.fetchone.return_value = {
+                "pending": 0, "processing": 0, "done": 0, "error": 0,
+                "dead": 0, "total": 0
+            }
+            start = time.time()
+            catalog_engine._discover_deloox_catalog(
+                [], deadline=start + 100, progress_callback=lambda value: None
+            )
+
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0][1], 1)
+        self.assertLessEqual(observed[0][0], start + 25.2)
+
     def test_deloox_discovery_graph_reports_search_then_frontier_progress(self):
         """The graph emits search progress before crawling and HTML progress after a batch."""
         import time
