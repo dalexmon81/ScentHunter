@@ -123,7 +123,13 @@ jobs:
             CONCLUSION="$(printf '%s' "$DEPLOYS" | jq -r --arg sha "$GITHUB_SHA" '[.workflow_runs[] | select(.name == "Fly Deploy" and .head_sha == $sha)] | first | .conclusion // ""')"
             echo "Waiting for Fly Deploy for $GITHUB_SHA: $STATUS / $CONCLUSION (attempt $attempt/90)"
             if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" = "success" ]; then READY=1; break; fi
-            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then echo 'Deploy failed; audit blocked.' >&2; exit 1; fi
+            if [ "$STATUS" = "completed" ] && [ "$CONCLUSION" != "success" ]; then
+              HEALTH="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' https://scenthunter.fly.dev/health || true)"
+              CATALOG="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' https://scenthunter.fly.dev/catalog-status || true)"
+              echo "Deploy workflow failed post-deploy checks; live health=$HEALTH catalog=$CATALOG"
+              if [ "$HEALTH" = "200" ] && [ "$CATALOG" = "200" ]; then READY=1; break; fi
+              echo 'Live app health could not be verified; audit blocked.' >&2; exit 1
+            fi
             sleep 10
           done
           if [ "$READY" -ne 1 ]; then echo 'Deploy did not complete in time; audit blocked.' >&2; exit 1; fi
