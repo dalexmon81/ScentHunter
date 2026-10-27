@@ -231,9 +231,11 @@ def diagnose_deloox_generic_search_coverage(
     """
     READ-ONLY bridge diagnostic for the Deloox catalog-search handoff.
 
-    This executes the SAME deployed Deloox scraper _discover() that the
-    catalog_engine generic-search bridge imports, but it only inspects the
-    returned URLs. It does not call catalog_engine._discover_deloox_catalog(),
+    This executes the deployed Deloox scraper's bounded primary search surface
+    (_discover_from_search), which is the first stage of _discover(), and only
+    inspects returned URLs. It deliberately excludes slower category/sitemap
+    fallbacks so the HTTP diagnostic has a reliable deadline. It does not call
+    catalog_engine._discover_deloox_catalog(),
     _deloox_persist_products(), hydration, ProductMatcher, production search,
     or any repair/resync endpoint.
 
@@ -268,7 +270,7 @@ def diagnose_deloox_generic_search_coverage(
         from scrapers.deloox import scraper
         
         configured = tuple(getattr(catalog_engine, "DELOOX_GENERIC_CATALOG_QUERIES", ()) or ())
-        discover = getattr(scraper, "_discover", None)
+        discover = getattr(scraper, "_discover_from_search", None)
         headers = getattr(scraper, "HEADERS", {})
 
         out["configured_generic_queries"] = list(configured)
@@ -283,7 +285,7 @@ def diagnose_deloox_generic_search_coverage(
         out["scraper_discover_function"] = getattr(discover, "__name__", None)
 
         if not callable(discover):
-            out["error"] = "deloox_scraper_discover_unavailable"
+            out["error"] = "deloox_scraper_primary_search_unavailable"
             return out
 
         session = __import__("requests").Session()
@@ -294,8 +296,8 @@ def diagnose_deloox_generic_search_coverage(
         for query in queries_to_run:
             query_started = time.monotonic()
             try:
-                # _discover supports a deadline and cancels outstanding probes;
-                # keep this HTTP diagnostic bounded even when Deloox is slow.
+                # The primary search helper supports a deadline and cancels
+                # outstanding probes; skip slower category/sitemap fallbacks.
                 urls = list(discover(
                     session,
                     query,
