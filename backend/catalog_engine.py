@@ -4627,7 +4627,18 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                         'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
                                     })
                                 continue
-                            store_rows.append({
+                            if store == 'parfumzentrum':
+                            try:
+                                _pz_price = float(r['product_price']) if r['product_price'] is not None else None
+                                _pz_size = float(r['product_size_ml']) if r['product_size_ml'] is not None else None
+                            except (TypeError, ValueError):
+                                _pz_price, _pz_size = None, None
+                            _pz_name = str(r['product_name'] or r['slug'] or '').lower()
+                            _pz_full_size = (_pz_size is not None and _pz_size >= 50) or bool(re.search(r'(?<!\\d)(?:50|75|80|90|100|125|150|200|250)\\s*ml\\b', _pz_name))
+                            if _pz_price is not None and _pz_price < 5.0 and _pz_full_size:
+                                print(f"CATALOG FILTER INVALID PARFUMZENTRUM PRICE url={url} price={_pz_price} size_ml={_pz_size}", flush=True)
+                                continue
+                        store_rows.append({
                                 'url': url, 'slug': r['slug'] or '',
                                 'lastmod': r['lastmod'] or '',
                                 'name': r['product_name'] or '',
