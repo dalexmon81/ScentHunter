@@ -1108,27 +1108,6 @@ class ProductMatcher:
         if not candidate_key:
             return None
 
-        # A registered family with explicit bottle sizes is a closed size
-        # scope. Do not let a retailer offer for a different registered
-        # size leak into the current family merely because its title is generic.
-        offer_size = size_ml(offer)
-        registered_family_sizes = set()
-        for registered_variant in family.get("variants", ()):
-            raw_sizes = registered_variant.get("formats_ml") or registered_variant.get("sizes_ml") or ()
-            if isinstance(raw_sizes, (str, int, float)):
-                raw_sizes = (raw_sizes,)
-            for raw_size in raw_sizes:
-                try:
-                    registered_family_sizes.add(float(raw_size))
-                except (TypeError, ValueError):
-                    continue
-        if (
-            offer_size is not None
-            and registered_family_sizes
-            and float(offer_size) not in registered_family_sizes
-        ):
-            return None
-
         # Resolve explicit audience labels before alias/subphrase matching.
         # Without this guard, a generic alias registered under Uomo (for example
         # "Born In Roma Extradose") can match inside an explicit Donna title.
@@ -1161,51 +1140,6 @@ class ProductMatcher:
         excluded = _normalized_family_excluded_keys(excluded_products, excluded_aliases)
         if candidate_key in excluded:
             return None
-
-        # A generic retailer title must not override a destination URL that
-        # explicitly identifies a different registered product family. This
-        # prevents e.g. a "Liquid Brun" title linked to a Limited Edition URL
-        # from being assigned to the standard 100 ml family.
-        url_identity_texts = self._offer_url_identity_texts(offer)
-        if url_identity_texts:
-            current_variant_aliases = [
-                alias
-                for variant in eligible_variants
-                for alias in (variant.get("canonical_name", ""), *variant.get("aliases", ()))
-                if alias
-            ]
-            current_alias_token_sets = [
-                set(self._url_catalog_identity_text(alias).split())
-                for alias in current_variant_aliases
-                if self._url_catalog_identity_text(alias)
-            ]
-            for other_family in self.family_registry:
-                if other_family is family:
-                    continue
-                if catalog_norm(other_family.get("brand", "")) != catalog_norm(family.get("brand", "")):
-                    continue
-                for other_variant in other_family.get("variants", ()):
-                    for alias in (other_variant.get("canonical_name", ""), *other_variant.get("aliases", ())):
-                        alias_tokens = self._url_catalog_identity_text(alias).split()
-                        if len(alias_tokens) < 2:
-                            continue
-                        # Ignore aliases fully covered by the current family's
-                        # own identity; only extra registered identity tokens
-                        # indicate a real cross-family conflict.
-                        alias_set = set(alias_tokens)
-                        if any(alias_set.issubset(tokens) for tokens in current_alias_token_sets):
-                            continue
-                        for raw_url in url_identity_texts:
-                            url_parts = [part for part in raw_url.split("/") if part]
-                            candidates = ([url_parts[-1]] if url_parts else []) + [raw_url]
-                            if any(
-                                any(
-                                    self._url_catalog_identity_text(candidate).split()[i:i + len(alias_tokens)] == alias_tokens
-                                    for i in range(len(self._url_catalog_identity_text(candidate).split()) - len(alias_tokens) + 1)
-                                )
-                                for candidate in candidates
-                            ):
-                                return None
 
         exact_family_matches = [
             variant for variant in eligible_variants
