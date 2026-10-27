@@ -209,6 +209,10 @@ jobs:
           print("Deloox hydration queue upsert regression test: PASS (ERROR requeued; DONE and live leases preserved; persisted OK respected)")
           PY
 
+      - name: Run bounded Deloox discovery regression tests
+        working-directory: backend
+        run: python -m unittest tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_search_deadline_skips_initial_fanout_when_expired tests.test_parfumzentrum_hydration.CatalogHydrationTests.test_deloox_discovery_graph_reports_search_then_frontier_progress -v
+
       - name: Exercise real production searches and offer data
         timeout-minutes: 4
         shell: bash
