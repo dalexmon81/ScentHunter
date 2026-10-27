@@ -683,3 +683,25 @@ class ParfumZentrumAvailabilityPrecedenceTests(unittest.TestCase):
             "in_stock",
         )
 
+class ParfumZentrumUnitPriceTests(unittest.TestCase):
+    def test_unit_price_per_100ml_is_not_a_sellable_offer_price(self):
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<div class="unit-price">Grundpreis: '
+            '<span>2,50 €</span> / 100 ml</div>',
+            "html.parser",
+        )
+        node = soup.select_one("span")
+        self.assertTrue(parfumzentrum._bad_price_context(node))
+
+    def test_normal_public_price_is_not_rejected_as_unit_price(self):
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<div class="product-price"><span>44,79 €</span></div>',
+            "html.parser",
+        )
+        node = soup.select_one("span")
+        self.assertFalse(parfumzentrum._bad_price_context(node))
+
