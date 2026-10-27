@@ -180,8 +180,12 @@ class CanonicalMatcherTests(unittest.TestCase):
         (registry_dir / "verified_gtin_variant_map.json").write_text(
             json.dumps(registry), encoding="utf-8"
         )
-        self.matcher = CanonicalMatcher(
-            CatalogRepository.from_file(self.catalog_path)
+        self.catalog = CatalogRepository.from_file(self.catalog_path)
+        self.matcher = CanonicalMatcher(self.catalog)
+        self.assertIn("6298042001831", self.matcher._gtin_registry)
+        self.assertIsNotNone(self.catalog.get("P-LIQUID"))
+        self.assertTrue(
+            any(v.variant_id == "V-LIQUID-150" for v in self.catalog.get("P-LIQUID").variants)
         )
 
     def offer(self, name, brand=None, size=None):
