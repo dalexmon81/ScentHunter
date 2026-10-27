@@ -366,7 +366,14 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # product under a stale/reused URL slug, reject that candidate instead of
     # silently returning the wrong product. Discovery can then recover the
     # product from another locale/surface.
-    if not _url_matches_product_name(url, name):
+    # When the page omits the volume from its title, verified structured
+    # size metadata may still match a size-bearing URL slug. Include that
+    # already-validated size in the URL/name integrity check, without allowing
+    # URL text alone to establish the variant.
+    url_check_name = name
+    if requested_size is not None and any(abs(value - requested_size) <= 0.01 for value in observed_sizes):
+        url_check_name = f"{name} {requested_size:g} ml"
+    if not _url_matches_product_name(url, url_check_name):
         return None
 
     product_line = ""

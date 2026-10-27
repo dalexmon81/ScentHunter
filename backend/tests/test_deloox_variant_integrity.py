@@ -94,13 +94,43 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertEqual(result["offer"]["price"], 32.99)
 
 
-    def test_out_of_stock_deloox_offer_is_not_a_comparison_offer(self):
-        # Catalog search must suppress Deloox records that are no longer
-        # purchasable or have no price, rather than counting them as a shop.
-        self.assertTrue(catalog._should_hide_deloox_offer("deloox", "out_of_stock", 44.79))
+    def test_out_of_stock_deloox_offer_remains_visible_without_price(self):
+        # Confirmed stock status should be visible, but it must not invent a price.
+        self.assertFalse(catalog._should_hide_deloox_offer("deloox", "out_of_stock", None))
+        self.assertFalse(catalog._should_hide_deloox_offer("deloox", "out_of_stock", 44.79))
         self.assertTrue(catalog._should_hide_deloox_offer("deloox", "in_stock", None))
         self.assertFalse(catalog._should_hide_deloox_offer("deloox", "in_stock", 32.99))
+        self.assertTrue(catalog._should_hide_deloox_offer("deloox", "discontinued", None))
         self.assertFalse(catalog._should_hide_deloox_offer("sabina", "out_of_stock", 38.90))
+
+    def test_limited_edition_150ml_out_of_stock_is_parsed_without_price(self):
+        html = """
+        <html><head>
+          <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": "French Avenue Liquid Brun Limited Edition 150 ml",
+            "brand": {"@type": "Brand", "name": "French Avenue"},
+            "size": {"@type": "QuantitativeValue", "value": 150, "unitText": "ml"},
+            "offers": {"@type": "Offer", "availability": "https://schema.org/OutOfStock", "priceCurrency": "EUR"}
+          }
+          </script>
+        </head><body>
+          <h1>French Avenue Liquid Brun Limited Edition 150 ml</h1>
+          <div class="availability">Out of stock</div>
+        </body></html>
+        """
+        url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        result = scraper.extract_product_page(None, url, html=html)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["attributes"]["size_ml"]["value"], 150)
+        self.assertEqual(result["offer"]["availability"], "out_of_stock")
+        self.assertIsNone(result["offer"]["price"])
+        self.assertIsNone(result["price"])
+
+        # An explicit 150 ml variant must never satisfy the 100 ml search.
+        self.assertIsNone(scraper._product(url, html, "Liquid Brun Limited Edition 100 ml"))
 
 
 if __name__ == "__main__":
