@@ -143,7 +143,7 @@ jobs:
           conn.row_factory = sqlite3.Row
           conn.executescript("""
           CREATE TABLE hydration_queue(store TEXT,url TEXT,state TEXT,priority INTEGER NOT NULL DEFAULT 100,attempts INTEGER,available_at REAL,first_seen_at REAL,leased_until REAL,lease_token TEXT,last_error TEXT,last_http_status INTEGER,PRIMARY KEY(store,url));
-          CREATE TABLE store_products(store TEXT,url TEXT,fetch_status TEXT,PRIMARY KEY(store,url));
+          CREATE TABLE store_products(store TEXT,url TEXT,price REAL,fetched_at REAL,fetch_status TEXT,PRIMARY KEY(store,url));
           """)
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/a','ERROR',3,9999999999,1,'timeout')")
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/b','DONE',1,9999999999,1)")
