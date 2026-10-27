@@ -4340,7 +4340,11 @@ def _should_hide_deloox_offer(store, availability, price):
     if str(store or '').strip().lower() != 'deloox':
         return False
     status = str(availability or '').strip().lower().replace('-', '_').replace(' ', '_')
-    return status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout', 'unavailable', 'discontinued'} or price in (None, '')
+    # A confirmed sold-out product is still valid catalogue information even
+    # without a current price. Other unpriced Deloox rows remain hidden.
+    if status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
+        return False
+    return status in {'unavailable', 'discontinued'} or price in (None, '')
 
 
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
