@@ -16,12 +16,12 @@ from backend.scenthunter_next_engine.canonical_matcher import (
 class CanonicalMatcherTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", suffix=".json", delete=False
+            mode="w", encoding="utf-8", suffix=".json", dir=tempfile.gettempdir(), delete=False
         )
         self.tmp_path = Path(self.tmp.name)
         self.tmp.close()
-        self.catalog_dir = Path(tempfile.mkdtemp(prefix="scenthunter-next-engine-fixture-"))
-        self.catalog_path = self.catalog_dir / "product_catalog.json"
+        self.catalog_path = self.tmp_path
+        self.catalog_dir = self.tmp_path.parent
         json.dump(
             {
                 "products": [
@@ -155,9 +155,8 @@ class CanonicalMatcherTests(unittest.TestCase):
             self.catalog_path.open("w", encoding="utf-8"),
         )
         self.addCleanup(lambda: self.tmp_path.unlink(missing_ok=True))
-        self.addCleanup(lambda: shutil.rmtree(self.catalog_dir, ignore_errors=True))
         registry_dir = self.catalog_dir / "scenthunter_next_engine"
-        registry_dir.mkdir()
+        registry_dir.mkdir(exist_ok=True)
         registry = {
             "schema_version": 1,
             "description": "test-only verified variant evidence",
