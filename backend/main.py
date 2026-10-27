@@ -1524,20 +1524,46 @@ def result_key(item):
     return (store, identity_key, round(size, 3) if size is not None else '')
 
 def dedupe_results(results, diagnostics=None):
-    """Deduplicate offers; optionally record every actual DROP decision."""
+    """Deduplicate repeated retailer offers across canonical catalog records.
+
+    URL identity is the primary key. For Easycosmetic and Sabina, also suppress
+    rows with the same normalized name, explicit size and price even if a
+    duplicate canonical record has produced a different URL. Different prices,
+    sizes and explicit variant IDs remain distinct.
+    """
     seen = {}
     output = []
+
+    def fingerprint(item):
+        store = _normalise_store(item.get('store') or item.get('shop'), '')
+        if store not in {'easycosmetic', 'sabina'}:
+            return None
+        name = ' '.join(str(item.get('name') or item.get('canonical_name') or item.get('title') or '').lower().split())
+        name = re.sub(r'[^a-z0-9]+', ' ', name).strip()
+        size = _safe_float(item.get('size_ml'))
+        price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
+        variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
+        if not name or size is None or price is None:
+            return None
+        return ('offer-fingerprint', store, name, round(size, 3), round(price, 2), variant)
+
     for index, item in enumerate(results):
         key = result_key(item)
-        if key not in seen:
-            seen[key] = {"index": index, "item": item}
+        fp = fingerprint(item)
+        keeper_entry = seen.get(key) or (seen.get(fp) if fp is not None else None)
+        if keeper_entry is None:
+            entry = {"index": index, "item": item}
+            seen[key] = entry
+            if fp is not None:
+                seen.setdefault(fp, entry)
             output.append(item)
             continue
+
         if diagnostics is not None:
-            keeper = seen[key]["item"]
+            keeper = keeper_entry["item"]
             diagnostics.append({
                 "action": "DROP",
-                "reason": "duplicate_dedupe_key",
+                "reason": "same_store_name_size_price" if fp is not None and fp in seen and key not in seen else "duplicate_dedupe_key",
                 "dedupe_key": [key[0], key[1], key[2]],
                 "dropped": {
                     "store": item.get("store") or item.get("shop"),
