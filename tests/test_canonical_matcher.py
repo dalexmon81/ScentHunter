@@ -1,5 +1,6 @@
 """Regression tests for conservative canonical matching and catalog aliases."""
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
