@@ -6090,6 +6090,109 @@ def coverage_status():
         conn.close()
 
 
+def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
+    """Requeue a tiny, fair slice of stale DONE URLs for the background hydrator.
+
+    Existing prices remain visible until a successful page refresh replaces them.
+    This helper performs no network work and is called only by the idle background
+    loop. It never revives ERROR/DEAD tasks, never touches inactive URLs, and
+    applies the same 24h priced / 6h missing-price retry thresholds as search.
+    At most one URL per store is selected in each pass to avoid a single retailer
+    monopolizing the bounded refresh budget.
+    """
+    try:
+        limit = max(0, min(int(max_urls), 16))
+    except (TypeError, ValueError):
+        limit = 2
+    if limit <= 0:
+        return 0
+
+    current_time = time.time() if now is None else float(now)
+    priced_cutoff = current_time - 24 * 60 * 60
+    missing_cutoff = current_time - _MISSING_PRICE_RETRY_SECONDS
+    conn = sqlite3.connect(str(DB_PATH), timeout=0.2)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=200')
+    requeued = 0
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+        ordered, _start_index = _hydration_store_order(conn)
+        for store in ordered:
+            if requeued >= limit:
+                break
+            row = conn.execute(
+                """SELECT q.url
+                     FROM hydration_queue q
+                     JOIN store_urls u ON u.store=q.store AND u.url=q.url
+                    WHERE q.store=? AND q.state='DONE' AND u.active=1
+                      AND (
+                        EXISTS (
+                          SELECT 1 FROM store_products p
+                           WHERE p.store=q.store AND p.url=q.url
+                             AND p.fetch_status='OK'
+                             AND (
+                               (p.price IS NOT NULL AND p.price > 0
+                                AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                               OR
+                               ((p.price IS NULL OR p.price <= 0)
+                                AND (p.fetched_at IS NULL OR p.fetched_at <= ?))
+                             )
+                        )
+                        OR EXISTS (
+                          SELECT 1 FROM store_product_variants v
+                           WHERE v.store=q.store AND v.url=q.url
+                             AND (
+                               (v.price IS NOT NULL AND v.price > 0
+                                AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                               OR
+                               ((v.price IS NULL OR v.price <= 0)
+                                AND (v.fetched_at IS NULL OR v.fetched_at <= ?))
+                             )
+                        )
+                      )
+                    ORDER BY COALESCE(
+                      (SELECT MIN(p.fetched_at) FROM store_products p
+                        WHERE p.store=q.store AND p.url=q.url),
+                      (SELECT MIN(v.fetched_at) FROM store_product_variants v
+                        WHERE v.store=q.store AND v.url=q.url),
+                      0
+                    ) ASC
+                    LIMIT 1""",
+                (store, priced_cutoff, missing_cutoff, priced_cutoff, missing_cutoff),
+            ).fetchone()
+            if not row:
+                continue
+            updated = conn.execute(
+                """UPDATE hydration_queue
+                      SET state='PENDING', available_at=?,
+                          priority=MIN(priority, 50),
+                          leased_until=NULL, lease_token=NULL
+                    WHERE store=? AND url=? AND state='DONE'
+                      AND EXISTS (
+                        SELECT 1 FROM store_urls u
+                         WHERE u.store=hydration_queue.store
+                           AND u.url=hydration_queue.url AND u.active=1
+                      )""",
+                (current_time, store, row['url']),
+            ).rowcount
+            requeued += max(0, int(updated or 0))
+        conn.commit()
+        return requeued
+    except sqlite3.OperationalError as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(
+            'CATALOG STALE REQUEUE SKIPPED '
+            f'error={type(exc).__name__}:{exc}',
+            flush=True,
+        )
+        return 0
+    finally:
+        conn.close()
+
+
 def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, pause_seconds=1.0):
     """Continuously hydrate discovered product pages in the background."""
     _ensure_hydration_queue()
@@ -6116,6 +6219,14 @@ def catalog_hydration_loop(stop_event, batch_size=2, workers=HYDRATION_WORKERS, 
                 else:
                     time.sleep(0.25)
                 continue
+
+            # Requeue only a small batch while idle; hydration below consumes the
+            # same bounded budget. Searches and the last-known prices are untouched.
+            stale_requeued = requeue_stale_done_hydration_tasks(
+                max_urls=max(1, int(batch_size))
+            )
+            if stale_requeued:
+                print(f'CATALOG STALE REQUEUE count={stale_requeued}', flush=True)
 
             now_mono = time.monotonic()
             # Canonical coverage is a background catalog-maintenance path,

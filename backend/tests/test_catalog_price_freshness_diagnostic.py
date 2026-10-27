@@ -204,6 +204,115 @@ class CatalogPriceFreshnessDiagnosticTests(unittest.TestCase):
             self.assertEqual(states["fresh-missing"]["state"], "DONE")
             self.assertEqual(states["inactive-stale"]["state"], "DONE")
 
+    def test_background_requeue_is_bounded_and_only_requeues_due_active_done_rows(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database_path = Path(temp_dir) / "catalog.sqlite3"
+            conn = sqlite3.connect(database_path)
+            conn.executescript(
+                """
+                CREATE TABLE hydration_scheduler (id INTEGER PRIMARY KEY, last_store_index INTEGER);
+                INSERT INTO hydration_scheduler(id,last_store_index) VALUES(1,0);
+                CREATE TABLE hydration_queue (
+                    store TEXT, url TEXT, state TEXT, priority INTEGER DEFAULT 100,
+                    attempts INTEGER DEFAULT 0, available_at REAL DEFAULT 0,
+                    first_seen_at REAL DEFAULT 0, leased_until REAL, lease_token TEXT,
+                    PRIMARY KEY(store,url)
+                );
+                CREATE TABLE store_urls (
+                    store TEXT, url TEXT, active INTEGER, PRIMARY KEY(store,url)
+                );
+                CREATE TABLE store_products (
+                    store TEXT, url TEXT, price REAL, fetched_at REAL,
+                    fetch_status TEXT, PRIMARY KEY(store,url)
+                );
+                CREATE TABLE store_product_variants (
+                    store TEXT, url TEXT, variant_key TEXT, price REAL, fetched_at REAL
+                );
+                """
+            )
+            now = time.time()
+            cases = [
+                ("stale-priced", 25.0, now - 30 * 3600, 1),
+                ("fresh-priced", 25.0, now - 2 * 3600, 1),
+                ("stale-missing", None, now - 8 * 3600, 1),
+                ("fresh-missing", None, now - 2 * 3600, 1),
+                ("inactive-stale", 25.0, now - 30 * 3600, 0),
+            ]
+            for slug, price, fetched_at, active in cases:
+                url = f"https://en.bplatz.de/products/{slug}"
+                conn.execute(
+                    "INSERT INTO hydration_queue(store,url,state,priority,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+                    ("bplatz", url, "DONE", 100, now + 3600, now),
+                )
+                conn.execute(
+                    "INSERT INTO store_urls(store,url,active) VALUES(?,?,?)",
+                    ("bplatz", url, active),
+                )
+                conn.execute(
+                    "INSERT INTO store_products(store,url,price,fetched_at,fetch_status) VALUES(?,?,?,?,?)",
+                    ("bplatz", url, price, fetched_at, "OK"),
+                )
+            conn.execute(
+                "INSERT INTO hydration_queue(store,url,state,priority,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+                ("bplatz", "https://en.bplatz.de/products/variant-stale", "DONE", 100, now, now),
+            )
+            conn.execute(
+                "INSERT INTO store_urls(store,url,active) VALUES(?,?,?)",
+                ("bplatz", "https://en.bplatz.de/products/variant-stale", 1),
+            )
+            conn.execute(
+                "INSERT INTO store_products(store,url,price,fetched_at,fetch_status) VALUES(?,?,?,?,?)",
+                ("bplatz", "https://en.bplatz.de/products/variant-stale", 25.0, now - 2 * 3600, "OK"),
+            )
+            conn.execute(
+                "INSERT INTO store_product_variants(store,url,variant_key,price,fetched_at) VALUES(?,?,?,?,?)",
+                ("bplatz", "https://en.bplatz.de/products/variant-stale", "100ml", 20.0, now - 30 * 3600),
+            )
+            # A second retailer proves the per-store limit still permits a
+            # bounded batch larger than one without letting Bplatz monopolize it.
+            conn.execute(
+                "INSERT INTO hydration_queue(store,url,state,priority,available_at,first_seen_at) VALUES(?,?,?,?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", "DONE", 100, now, now),
+            )
+            conn.execute(
+                "INSERT INTO store_urls(store,url,active) VALUES(?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", 1),
+            )
+            conn.execute(
+                "INSERT INTO store_products(store,url,price,fetched_at,fetch_status) VALUES(?,?,?,?,?)",
+                ("deloox", "https://www.deloox.com/products/stale-priced", 30.0, now - 30 * 3600, "OK"),
+            )
+            conn.commit()
+            conn.close()
+
+            with patch.object(catalog_engine, "DB_PATH", database_path):
+                # Two stores can contribute at most one URL each per pass.
+                count = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
+                self.assertEqual(count, 2)
+                count_second = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
+                self.assertEqual(count_second, 1)
+                count_third = catalog_engine.requeue_stale_done_hydration_tasks(max_urls=2, now=now)
+                self.assertEqual(count_third, 1)
+
+            conn = sqlite3.connect(database_path)
+            states = {
+                row[0].rsplit("/", 1)[-1]: row[1]
+                for row in conn.execute("SELECT url,state FROM hydration_queue")
+            }
+            priorities = {
+                row[0].rsplit("/", 1)[-1]: row[2]
+                for row in conn.execute("SELECT url,state,priority FROM hydration_queue")
+            }
+            conn.close()
+            self.assertEqual(states["stale-priced"], "PENDING")
+            self.assertEqual(states["stale-missing"], "PENDING")
+            self.assertEqual(states["variant-stale"], "PENDING")
+            self.assertEqual(states["fresh-priced"], "DONE")
+            self.assertEqual(states["fresh-missing"], "DONE")
+            self.assertEqual(states["inactive-stale"], "DONE")
+            self.assertEqual(priorities["stale-priced"], 50)
+
+
     def test_endpoint_uses_read_only_database_connection(self):
         source = Path("main.py").read_text(encoding="utf-8")
         route = source.split(
