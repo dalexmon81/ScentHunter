@@ -3918,10 +3918,10 @@ def refresh_url(store, url):
                            active=1''',
                     (store, url, url_slug(url), None, now),
                 )
-                # Only a confirmed explicit price (or a fully validated variant
-                # set) may complete a previously pending refresh. A page that
-                # parses to a name but no price must remain retryable, otherwise
-                # fetched_at would make the previous price appear fresh forever.
+                # Keep the existing queue state here. _hydrate_one_task marks the
+                # lease DONE only after this function returns a confirmed offer.
+                # A parsed name without a new explicit price must leave the queue
+                # retryable and must not reset a live worker's lease.
                 has_explicit_price = False
                 try:
                     parsed_price = float(item.get('price_num'))
@@ -3949,25 +3949,9 @@ def refresh_url(store, url):
                                THEN 'PROCESSING'
                                WHEN hydration_queue.state='DEAD'
                                THEN 'DEAD'
-                               WHEN ? THEN 'DONE'
-                               ELSE 'PENDING'
-                           END,
-                           available_at=CASE
-                               WHEN hydration_queue.state='PROCESSING'
-                                    AND hydration_queue.leased_until > ?
-                               THEN hydration_queue.available_at
-                               WHEN ? THEN hydration_queue.available_at
-                               ELSE MIN(hydration_queue.available_at, excluded.available_at)
-                           END,
-                           priority=CASE WHEN ? THEN hydration_queue.priority
-                                         ELSE MIN(hydration_queue.priority, 100) END,
-                           last_error=CASE WHEN ? THEN hydration_queue.last_error
-                                           ELSE NULL END''',
-                    (store, url, "PENDING", 0, now, now,
-                     now, int(has_explicit_price or has_valid_variants),
-                     now, int(has_explicit_price or has_valid_variants),
-                     int(has_explicit_price or has_valid_variants),
-                     int(has_explicit_price or has_valid_variants)),
+                               ELSE hydration_queue.state
+                           END''',
+                    (store, url, "PENDING", 0, now, now, now),
                 )
                 if store == 'sabina' and item.get('variants'):
                     # Validate the complete extracted set before replacing the
