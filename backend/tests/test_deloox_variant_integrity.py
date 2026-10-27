@@ -1,6 +1,7 @@
 import unittest
 
 from scrapers.deloox import scraper
+import catalog_engine as catalog
 
 
 class DelooxVariantIntegrityTests(unittest.TestCase):
