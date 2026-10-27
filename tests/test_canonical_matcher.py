@@ -17,6 +17,13 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.tmp = tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", suffix=".json", delete=False
         )
+        # The GTIN sidecar is deliberately resolved relative to the canonical
+        # catalog file, under sibling scenthunter_next_engine/. This fixture
+        # uses the same layout as the production catalog for a true GTIN test.
+        self.catalog_dir = Path(self.tmp.name).parent / (Path(self.tmp.name).stem + "_fixture")
+        self.catalog_dir.mkdir()
+        self.catalog_path = self.catalog_dir / "product_catalog.json"
+        self.tmp.close()
         json.dump(
             {
                 "products": [
@@ -147,12 +154,37 @@ class CanonicalMatcherTests(unittest.TestCase):
                     {"variant_id": "V-HABIT-EDP-DUP-50", "product_id": "P-HABIT-EDP-DUP", "size_ml": 50},
                 ],
             },
-            self.tmp,
+            self.catalog_path.open("w", encoding="utf-8"),
         )
-        self.tmp.close()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
+        self.addCleanup(lambda: self.catalog_path.unlink(missing_ok=True))
+        self.addCleanup(lambda: (self.catalog_dir / "scenthunter_next_engine" / "verified_gtin_variant_map.json").unlink(missing_ok=True))
+        self.addCleanup(lambda: (self.catalog_dir / "scenthunter_next_engine").rmdir() if (self.catalog_dir / "scenthunter_next_engine").exists() else None)
+        self.addCleanup(lambda: self.catalog_dir.rmdir() if self.catalog_dir.exists() else None)
+        registry_dir = self.catalog_dir / "scenthunter_next_engine"
+        registry_dir.mkdir()
+        registry = {
+            "schema_version": 1,
+            "description": "test-only verified variant evidence",
+            "records": [{
+                "gtin": "6298042001831",
+                "gtin_type": "GTIN-13",
+                "status": "verified",
+                "product_id": "P-LIQUID",
+                "variant_id": "V-LIQUID-150",
+                "size_ml": 150,
+                "concentration": "Extrait de Parfum",
+                "refill": False,
+                "checked_at": "2026-10-27",
+                "source_urls": ["https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"],
+                "evidence_note": "Test fixture only.",
+            }],
+        }
+        (registry_dir / "verified_gtin_variant_map.json").write_text(
+            json.dumps(registry), encoding="utf-8"
+        )
         self.matcher = CanonicalMatcher(
-            CatalogRepository.from_file(self.tmp.name)
+            CatalogRepository.from_file(self.catalog_path)
         )
 
     def offer(self, name, brand=None, size=None):
