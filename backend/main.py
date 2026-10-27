@@ -3774,6 +3774,84 @@ def diagnostic_runtime_deep():
         "events": events[-500:],
     }
 
+
+@app.get('/diagnostic/deloox-pipeline')
+def diagnostic_deloox_pipeline(
+    url: str = 'https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html',
+    q: str = 'Liquid Brun Limited Edition 150 ml',
+):
+    """Read-only trace of one Deloox URL through scrape, normalization and next-engine matching."""
+    from urllib.parse import urlparse
+    from decimal import Decimal
+    allowed_hosts = {'www.deloox.be', 'deloox.be', 'www.deloox.nl', 'deloox.nl', 'www.deloox.com', 'deloox.com', 'www.deloox.lu', 'deloox.lu'}
+    parsed = urlparse(str(url or '').strip())
+    base = {'ok': False, 'diagnostic': 'deloox-pipeline-trace-v1', 'read_only': True, 'url': url, 'query': q}
+    if parsed.scheme != 'https' or parsed.hostname not in allowed_hosts or not parsed.path:
+        return {**base, 'stage': 'input_validation', 'error': 'url_not_allowed'}
+    try:
+        import requests
+        from scrapers.deloox import scraper as deloox_scraper
+        response = requests.get(url, headers=getattr(deloox_scraper, 'HEADERS', {}),
+                                timeout=getattr(deloox_scraper, 'TIMEOUT', (3.5, 8.0)))
+        fetch = {'http_status': response.status_code, 'final_url': response.url,
+                 'content_type': response.headers.get('content-type', ''),
+                 'html_bytes': len(response.content)}
+        if response.status_code >= 400:
+            return {**base, 'stage': 'fetch', 'fetch': fetch, 'error': 'http_error'}
+        html = response.text
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, 'lxml')
+        jsonld = deloox_scraper._jsonld(soup)
+        parsed_product = deloox_scraper._product(
+            response.url, html, q, soup=soup, jsonld_data=jsonld,
+            h1_override=(soup.find('h1').get_text(' ', strip=True) if soup.find('h1') else None))
+        parse_stage = {
+            'jsonld_found': bool(jsonld),
+            'jsonld_name': jsonld.get('name') if isinstance(jsonld, dict) else None,
+            'jsonld_brand': jsonld.get('brand') if isinstance(jsonld, dict) else None,
+            'jsonld_size': (jsonld.get('size') or jsonld.get('sizeValue') or jsonld.get('volume')) if isinstance(jsonld, dict) else None,
+            'jsonld_offers': jsonld.get('offers') if isinstance(jsonld, dict) else None,
+            'parser_returned_product': isinstance(parsed_product, dict),
+            'parsed_product': parsed_product,
+        }
+        if not isinstance(parsed_product, dict):
+            return {**base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage}}
+        normalized_input = {
+            'name': parsed_product.get('name'),
+            'brand': parsed_product.get('brand') or parsed_product.get('_raw_brand') or 'French Avenue',
+            'size_ml': ((parsed_product.get('attributes') or {}).get('size_ml') or {}).get('value') if isinstance((parsed_product.get('attributes') or {}).get('size_ml'), dict) else parsed_product.get('size_ml'),
+            'url': parsed_product.get('url') or response.url,
+            'price': (parsed_product.get('offer') or {}).get('price'),
+            'availability': (parsed_product.get('offer') or {}).get('availability') or parsed_product.get('available'),
+        }
+        from scenthunter_next_engine.offer_normalizer import normalize_offer
+        from scenthunter_next_engine.catalog_repository import CatalogRepository
+        from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+        from pathlib import Path
+        offer = normalize_offer(normalized_input, retailer='deloox')
+        match = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json')).match(offer)
+        matching_stage = {
+            'normalized_offer': {
+                'retailer': offer.retailer, 'raw_name': offer.raw_name, 'brand_raw': offer.brand_raw,
+                'size_ml': offer.size_ml, 'price': str(offer.price) if offer.price is not None else None,
+                'availability': offer.availability, 'product_url': offer.product_url,
+            },
+            'match': {
+                'status': match.status.value, 'reason': match.reason,
+                'canonical_product_id': match.canonical_product_id,
+                'canonical_variant_id': match.canonical_variant_id,
+                'candidate_product_ids': list(match.candidate_product_ids),
+            },
+        }
+        return {**base, 'ok': True, 'failed_at': None if match.status.value == 'matched' else 'canonical_match',
+                'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage, 'normalize': matching_stage['normalized_offer'],
+                'canonical_match': matching_stage['match']},
+                'final': {'availability': offer.availability, 'price': str(offer.price) if offer.price is not None else None,
+                          'matched': match.status.value == 'matched'}}
+    except Exception as exc:
+        return {**base, 'stage': 'diagnostic_exception', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'}
+
+
 @app.get('/health')
 def health():
     return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
