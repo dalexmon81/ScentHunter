@@ -389,7 +389,7 @@ class CanonicalMatcherTests(unittest.TestCase):
                 raw_payload={"gtin13": "6298042001831", "sku": "1385920"},
             )
         )
-        self.assertEqual(result.status, MatchStatus.MATCHED, f"reason={result.reason}; gtins={self.gtins}")
+        self.assertEqual(result.status, MatchStatus.MATCHED)
         self.assertEqual(result.canonical_product_id, "P-LIQUID")
         self.assertEqual(result.canonical_variant_id, "V-LIQUID-150")
         self.assertEqual(result.offer.availability, "out_of_stock")
