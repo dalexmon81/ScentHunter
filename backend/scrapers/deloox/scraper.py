@@ -302,7 +302,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # Remove it from lexical name matching so structured size evidence can
     # establish a valid variant even when the retailer's product name omits ml.
     identity_query = re.sub(
-        r"(?<!\\d)\\d+(?:[.,]\\d+)?\\s*(?:ml|cl)\\b",
+        r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
         " ",
         clean(query),
         flags=re.I,
