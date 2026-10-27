@@ -3761,7 +3761,7 @@ def diagnose_deloox_generic_search_coverage():
         url_counts_row = conn.execute(
             f"""SELECT {conditional_counts}
                 FROM store_urls
-                WHERE store='deloox' AND ({where_any})""",
+                WHERE store='deloox' AND active=1 AND ({where_any})""",
             pattern_values + pattern_values,
         ).fetchone()
         url_counts = {
