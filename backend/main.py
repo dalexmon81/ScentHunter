@@ -1543,7 +1543,16 @@ def dedupe_results(results, diagnostics=None):
         size = _safe_float(item.get('size_ml'))
         price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
         variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
-        if not name or size is None or price is None:
+        if price is None:
+            return None
+        # Easycosmetic often emits the same product offer from separate catalog
+        # rows with inconsistent title/size metadata. Within a canonical result
+        # group, same retailer + same price is sufficient to collapse that
+        # repeated offer; different prices remain visible. For Sabina, retain
+        # the stricter name/size fingerprint to avoid merging variants.
+        if store == 'easycosmetic':
+            return ('offer-fingerprint', store, round(price, 2))
+        if not name or size is None:
             return None
         return ('offer-fingerprint', store, name, round(size, 3), round(price, 2), variant)
 
