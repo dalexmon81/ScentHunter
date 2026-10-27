@@ -1320,22 +1320,60 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                    WHEN hydration_queue.state='PROCESSING'
                                         AND hydration_queue.leased_until > ?
                                    THEN 'PROCESSING'
+                                   WHEN hydration_queue.state='DEAD'
+                                   THEN 'DEAD'
                                    WHEN EXISTS (
                                        SELECT 1 FROM store_products p
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN 'DONE'
                                    ELSE 'PENDING'
                                END,
                                available_at=CASE
+                                   WHEN hydration_queue.state='PROCESSING'
+                                        AND hydration_queue.leased_until > ?
+                                   THEN hydration_queue.available_at
                                    WHEN EXISTS (
                                        SELECT 1 FROM store_products p
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN hydration_queue.available_at
                                    ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                               END,
+                               priority=CASE
+                                   WHEN EXISTS (
+                                       SELECT 1 FROM store_products p
+                                        WHERE p.store=excluded.store
+                                          AND p.url=excluded.url
+                                          AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
+                                   ) THEN hydration_queue.priority
+                                   ELSE MIN(hydration_queue.priority, 100)
                                END,
                                last_error=CASE
                                    WHEN EXISTS (
@@ -1343,10 +1381,23 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                         WHERE p.store=excluded.store
                                           AND p.url=excluded.url
                                           AND p.fetch_status='OK'
+                                          AND p.fetched_at IS NOT NULL
+                                          AND (
+                                              (p.price IS NOT NULL AND p.price > 0
+                                               AND p.fetched_at > ?)
+                                              OR
+                                              ((p.price IS NULL OR p.price <= 0)
+                                               AND p.fetched_at > ?)
+                                          )
                                    ) THEN hydration_queue.last_error
                                    ELSE NULL
                                END""",
-                        (store, url, "PENDING", 0, batch_now, batch_now, batch_now, batch_now),
+                        (store, url, "PENDING", 0, batch_now, batch_now,
+                         batch_now, batch_now - 24 * 60 * 60,
+                         batch_now - 6 * 60 * 60, batch_now,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60,
+                         batch_now - 24 * 60 * 60, batch_now - 6 * 60 * 60),
                     )
 
             persisted += len(batch)
@@ -2223,27 +2274,82 @@ def _deloox_persist_products(product_urls):
                        VALUES(?,?,?,?,?,?)
                        ON CONFLICT(store,url) DO UPDATE SET
                            state=CASE
-                               WHEN hydration_queue.state='DONE' THEN 'DONE'
                                WHEN hydration_queue.state='PROCESSING'
                                     AND hydration_queue.leased_until > ?
                                THEN 'PROCESSING'
+                               WHEN hydration_queue.state='DEAD'
+                               THEN 'DEAD'
                                WHEN EXISTS (
                                    SELECT 1 FROM store_products p
                                     WHERE p.store='deloox'
                                       AND p.url=hydration_queue.url
                                       AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
                                ) THEN 'DONE'
                                ELSE 'PENDING'
                            END,
                            available_at=CASE
-                               WHEN hydration_queue.state IN ('ERROR','DEAD')
-                                AND NOT EXISTS (
+                               WHEN hydration_queue.state='PROCESSING'
+                                    AND hydration_queue.leased_until > ?
+                               THEN hydration_queue.available_at
+                               WHEN EXISTS (
                                    SELECT 1 FROM store_products p
                                     WHERE p.store='deloox'
                                       AND p.url=hydration_queue.url
                                       AND p.fetch_status='OK'
-                                ) THEN excluded.available_at
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.available_at
+                               WHEN hydration_queue.state IN ('ERROR','DEAD')
+                               THEN excluded.available_at
                                ELSE MIN(hydration_queue.available_at, excluded.available_at)
+                           END,
+                           priority=CASE
+                               WHEN EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.priority
+                               ELSE MIN(hydration_queue.priority, 100)
+                           END,
+                           last_error=CASE
+                               WHEN EXISTS (
+                                   SELECT 1 FROM store_products p
+                                    WHERE p.store='deloox'
+                                      AND p.url=hydration_queue.url
+                                      AND p.fetch_status='OK'
+                                      AND p.fetched_at IS NOT NULL
+                                      AND (
+                                          (p.price IS NOT NULL AND p.price > 0
+                                           AND p.fetched_at > ?)
+                                          OR
+                                          ((p.price IS NULL OR p.price <= 0)
+                                           AND p.fetched_at > ?)
+                                      )
+                               ) THEN hydration_queue.last_error
+                               ELSE NULL
                            END"""
     try:
         for chunk_start in range(0, len(items), transaction_batch_size):
@@ -2256,7 +2362,7 @@ def _deloox_persist_products(product_urls):
                     )
                     conn.execute(
                         hydration_sql,
-                        ('deloox', url, 'PENDING', 0, now, now, now),
+                        ('deloox', url, 'PENDING', 0, now, now, now, now - 24 * 60 * 60, now - 6 * 60 * 60, now, now - 24 * 60 * 60, now - 6 * 60 * 60, now - 24 * 60 * 60, now - 6 * 60 * 60, now - 24 * 60 * 60, now - 6 * 60 * 60),
                     )
                     count += 1
     finally:
@@ -6246,14 +6352,11 @@ def coverage_status():
 
 
 def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
-    """Requeue a tiny, fair slice of stale DONE URLs for the background hydrator.
+    """Requeue a fair, bounded slice of stale DONE products.
 
-    Existing prices remain visible until a successful page refresh replaces them.
-    This helper performs no network work and is called only by the idle background
-    loop. It never revives ERROR/DEAD tasks, never touches inactive URLs, and
-    applies the same 24h priced / 6h missing-price retry thresholds as search.
-    At most one URL per store is selected in each pass to avoid a single retailer
-    monopolizing the bounded refresh budget.
+    Product rows with valid prices become due after 24h; rows without a usable
+    price use the existing 6h retry cooldown. Inactive URLs and terminal DEAD
+    rows are not revived. Queue identity and attempt counts are preserved.
     """
     try:
         limit = max(0, min(int(max_urls), 16))
@@ -6274,6 +6377,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
         ordered, _start_index = _hydration_store_order(conn)
         store_indexes = {store_name: index for index, store_name in enumerate(STORES)}
         last_requeued_index = None
+
         for store in ordered:
             if requeued >= limit:
                 break
@@ -6322,8 +6426,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             updated = conn.execute(
                 """UPDATE hydration_queue
                       SET state='PENDING', available_at=?,
-                          priority=MIN(priority, 50),
-                          leased_until=NULL, lease_token=NULL
+                          priority=MIN(priority, 50)
                     WHERE store=? AND url=? AND state='DONE'
                       AND EXISTS (
                         SELECT 1 FROM store_urls u
@@ -6335,6 +6438,7 @@ def requeue_stale_done_hydration_tasks(max_urls=2, now=None):
             if updated:
                 requeued += int(updated)
                 last_requeued_index = store_indexes.get(store)
+
         if last_requeued_index is not None:
             conn.execute(
                 "UPDATE hydration_scheduler SET last_store_index=? WHERE id=1",
