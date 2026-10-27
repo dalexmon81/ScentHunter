@@ -59,6 +59,30 @@ class SelectiveParserRecoveryTests(unittest.TestCase):
         self.assertEqual(pz_items[0]["new_state"], "PENDING")
         self.assertEqual(pz_items[0]["reason"], "known_parser_call_error_fixed_in_current_code")
 
+    def test_only_verified_easycosmetic_product_parser_errors_are_eligible(self):
+        url = "https://www.easycosmetic.de/guerlain/lhomme-ideal/guerlain-lhomme-ideal-parfum.aspx"
+        valid_error = (
+            "ERROR:RuntimeError: product_parser_not_found;http_status=200;"
+            "bytes=79018;primary_parser=none;secondary_parser=none;"
+            "jsonld_products=1;parser_error=None;h1='Guerlain L'Homme Ideal Parfum (100 ml)'"
+        )
+        self.add_row("easycosmetic", url, valid_error)
+        self.add_row(
+            "easycosmetic",
+            "https://www.easycosmetic.be/guerlain/lhomme-ideal/guerlain-lhomme-ideal-parfum.aspx",
+            valid_error,
+        )
+        self.add_row(
+            "easycosmetic",
+            "https://www.easycosmetic.de/guerlain/lhomme-ideal/guerlain-lhomme-ideal-parfum.aspx",
+            "product_parser_not_found;http_status=403;jsonld_products=1;h1='Guerlain'",
+        )
+        plan = recovery.build_recovery_plan(self.conn, now=1234, limit_per_store=10)
+        items = [item for item in plan if item["store"] == "easycosmetic"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["url"], url)
+        self.assertEqual(items[0]["reason"], "known_easycosmetic_parser_adapter_now_available")
+
     def test_parfumzentrum_allowlist_requires_http_200_and_jsonld(self):
         allowed = next(iter(recovery.PARFUMZENTRUM_RECOVERY_ALLOWLIST))
         self.add_row(
