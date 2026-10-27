@@ -97,10 +97,19 @@ def concentration(*values):
 
 def availability_from_text(text):
     n = norm(text)
-    if any(x in n for x in ("add to cart", "in den warenkorb", "auf lager", "in stock", "available")):
-        return "in_stock"
-    if any(x in n for x in ("sold out", "ausverkauft", "out of stock", "unavailable", "nicht verfugbar", "nicht vorratig")):
+    # Negative stock signals must be checked first: "unavailable" contains
+    # the substring "available", so checking positive signals first can turn
+    # an explicit sold-out page into a false in-stock offer.
+    if any(x in n for x in (
+        "sold out", "ausverkauft", "out of stock", "unavailable",
+        "nicht verfugbar", "nicht vorratig",
+    )):
         return "out_of_stock"
+    if any(x in n for x in (
+        "add to cart", "in den warenkorb", "auf lager", "in stock",
+        "available",
+    )):
+        return "in_stock"
     return "unknown"
 
 
