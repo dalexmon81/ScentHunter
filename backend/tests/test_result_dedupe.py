@@ -62,6 +62,43 @@ class ResultDeduplicationTests(unittest.TestCase):
         self.assertNotEqual(result_key(first), result_key(second))
         self.assertEqual(len(dedupe_results([first, second])), 2)
 
+    def test_tracking_parameters_do_not_create_duplicate_easycosmetic_offers(self):
+        first = {
+            "store": "easycosmetic",
+            "url": "https://www.easycosmetic.de/p/example?utm_source=google",
+            "product_url": "https://www.easycosmetic.de/p/example?utm_source=google",
+            "catalog_id": "canonical-a",
+            "name": "Example Eau de Parfum 100 ml",
+            "size_ml": 100,
+            "price_num": 25.99,
+        }
+        duplicate = {
+            **first,
+            "url": "https://easycosmetic.de/p/example?gclid=tracking",
+            "product_url": "https://easycosmetic.de/p/example?gclid=tracking",
+            "catalog_id": "canonical-b",
+        }
+
+        self.assertEqual(result_key(first), result_key(duplicate))
+        self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
+    def test_distinct_variant_query_parameters_are_not_collapsed(self):
+        first = {
+            "store": "easycosmetic",
+            "url": "https://www.easycosmetic.de/p/example?variant=100",
+            "product_url": "https://www.easycosmetic.de/p/example?variant=100",
+            "name": "Example Eau de Parfum",
+            "size_ml": 100,
+        }
+        second = {
+            **first,
+            "url": "https://www.easycosmetic.de/p/example?variant=200",
+            "product_url": "https://www.easycosmetic.de/p/example?variant=200",
+        }
+
+        self.assertNotEqual(result_key(first), result_key(second))
+        self.assertEqual(len(dedupe_results([first, second])), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

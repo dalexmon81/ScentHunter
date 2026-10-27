@@ -1458,6 +1458,30 @@ def result_key(item):
     raw_url = str(item.get('url') or item.get('variant_url') or item.get('product_url') or '').strip()
     product_url = str(item.get('product_url') or item.get('url') or '').strip()
     url = raw_url.lower()
+
+    def _offer_url_identity(value):
+        # Ignore tracking/locale query noise when identifying the same listing,
+        # but retain explicit commercial variant selectors and fragments.
+        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+        try:
+            parsed = urlsplit(str(value or '').strip())
+            host = parsed.netloc.lower()
+            if host.startswith('www.'):
+                host = host[4:]
+            path = parsed.path.rstrip('/').lower()
+            selectors = {
+                'variant', 'variant_id', 'id_product_attribute',
+                'combination_id', 'sku', 'size', 'size_ml', 'attribute',
+            }
+            query = [
+                (key.lower(), val)
+                for key, val in parse_qsl(parsed.query, keep_blank_values=False)
+                if key.lower() in selectors
+            ]
+            fragment = parsed.fragment.lower()
+            return urlunsplit((parsed.scheme.lower(), host, path, urlencode(sorted(query)), fragment))
+        except Exception:
+            return str(value or '').strip().lower()
     product_id = str(item.get('store_product_id') or item.get('product_id') or '').strip().lower()
     sku = str(item.get('sku') or '').strip().lower()
     name = ' '.join(str(item.get('name') or item.get('title') or '').split()).lower()
@@ -1466,7 +1490,7 @@ def result_key(item):
     # Catalog IDs can differ when the same retailer listing is linked to duplicate
     # canonical records. Explicit size and variant selectors below still keep
     # genuinely distinct sellable variants separate.
-    identity_key = product_url.lower() or catalog_id or product_id or sku or name
+    identity_key = _offer_url_identity(product_url) or catalog_id or product_id or sku or name
 
     # Preserve commercial variant identity even when size is known. Size alone
     # is not sufficient: retailers can expose multiple sellable combinations
