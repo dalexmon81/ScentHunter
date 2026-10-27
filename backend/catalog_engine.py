@@ -4048,11 +4048,15 @@ def refresh_url(store, url):
                         -- A transient/incomplete parse must not erase a previously
                         -- verified product price. Replace it only when the new parse
                         -- supplies an explicit price; never infer one from other fields.
-                        price=COALESCE(excluded.price,store_products.price),
+                        price=CASE
+                           WHEN excluded.availability='out_of_stock' THEN NULL
+                           WHEN excluded.price IS NOT NULL THEN excluded.price
+                           ELSE store_products.price
+                         END,
                         currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
                         availability=excluded.availability,
-                        fetched_at=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetched_at ELSE store_products.fetched_at END,
-                        fetch_status=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetch_status ELSE store_products.fetch_status END''',
+                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR excluded.availability='out_of_stock' THEN excluded.fetched_at ELSE store_products.fetched_at END,
+                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR excluded.availability='out_of_stock' THEN excluded.fetch_status ELSE store_products.fetch_status END''',
                     (
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
@@ -5459,7 +5463,12 @@ def _hydrate_one_task(task):
                     except (TypeError, ValueError):
                         continue
 
-            if has_valid_offer:
+            # A verified out-of-stock page is a complete catalog observation,
+            # even when the retailer removes its price. Keep the exact product
+            # visible as OUT OF STOCK, clear any stale price in refresh_url(),
+            # and do not retry it as if parsing had failed.
+            verified_out_of_stock = str(item.get('availability') or '').strip().lower() == 'out_of_stock'
+            if has_valid_offer or verified_out_of_stock:
                 _queue_mark_done(task)
                 return True
 
