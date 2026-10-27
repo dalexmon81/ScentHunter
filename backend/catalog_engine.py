@@ -1320,6 +1320,8 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                    WHEN hydration_queue.state='PROCESSING'
                                         AND hydration_queue.leased_until > ?
                                    THEN 'PROCESSING'
+                                   WHEN hydration_queue.state='DEAD'
+                                   THEN 'DEAD'
                                    WHEN EXISTS (
                                        SELECT 1 FROM store_products p
                                         WHERE p.store=excluded.store
@@ -1334,8 +1336,6 @@ def _save_discovery(store, product_urls, started_at, diagnostics):
                                                AND p.fetched_at > ?)
                                           )
                                    ) THEN 'DONE'
-                                   WHEN hydration_queue.state='DEAD'
-                                   THEN 'DEAD'
                                    ELSE 'PENDING'
                                END,
                                available_at=CASE
