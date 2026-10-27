@@ -326,6 +326,7 @@ def _http_fetch(url, timeout=HTTP_TIMEOUT):
         'deloox.com', 'www.deloox.com',
         'deloox.nl', 'www.deloox.nl',
         'deloox.lu', 'www.deloox.lu',
+        'deloox.es', 'www.deloox.es',
     }:
         # Deloox exposes its catalog graph to browser-class requests. Keep
         # catalog discovery generic, but use the same browser request profile
