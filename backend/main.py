@@ -3709,8 +3709,9 @@ def health():
 def diagnose_deloox_generic_search_coverage():
     """Read-only coverage check for representative generic Deloox searches.
 
-    This endpoint only queries the persistent SQLite catalog. It does not call
-    retailer websites, run discovery, hydrate products, or write database rows.
+    Keep the diagnostic cheap while catalog discovery/hydration is active:
+    product examples are bounded, and each queue table is scanned once for all
+    target phrases instead of issuing one full-table LIKE scan per phrase.
     """
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
         return {
@@ -3727,49 +3728,81 @@ def diagnose_deloox_generic_search_coverage():
         ('hawas_la_mer', 'hawas la mer'),
         ('born_in_roma_gold', 'born in roma the gold'),
     )
+    name_patterns = {key: '%' + phrase.lower() + '%' for key, phrase in checks}
+    # URL slugs use separators (usually hyphens), not spaces. Wildcards between
+    # tokens match both canonical slugs and localized URL variants.
+    url_patterns = {
+        key: '%' + '%'.join(phrase.lower().split()) + '%'
+        for key, phrase in checks
+    }
+    keys = tuple(name_patterns)
+    url_pattern_values = tuple(url_patterns.values())
+    where_any = ' OR '.join('lower(url) LIKE ?' for _ in keys)
+    conditional_counts = ', '.join(
+        f'SUM(CASE WHEN lower(url) LIKE ? THEN 1 ELSE 0 END) AS {key}'
+        for key in keys
+    )
+
     conn = catalog_db()
     try:
-        results = []
+        # Bound returned examples, but preserve five recent/healthy examples per
+        # phrase. Product names and URLs are checked in the same query.
+        product_rows = {}
         for key, phrase in checks:
-            pattern = '%' + phrase.lower() + '%'
-            products = conn.execute(
+            rows = conn.execute(
                 """SELECT url,name,brand,price,currency,fetch_status
                    FROM store_products
                    WHERE store='deloox'
-                     AND lower(COALESCE(name,'') || ' ' || COALESCE(url,'')) LIKE ?
+                     AND (lower(COALESCE(name,'')) LIKE ?
+                          OR lower(COALESCE(url,'')) LIKE ?)
                    ORDER BY
                      CASE WHEN fetch_status='OK' THEN 0 ELSE 1 END,
                      fetched_at DESC
                    LIMIT 5""",
-                (pattern,),
+                (name_patterns[key], url_patterns[key]),
             ).fetchall()
-            urls = conn.execute(
-                """SELECT COUNT(*) AS n
-                   FROM store_urls
-                   WHERE store='deloox' AND active=1 AND lower(url) LIKE ?""",
-                (pattern,),
-            ).fetchone()
-            frontier = conn.execute(
-                """SELECT state,COUNT(*) AS n
-                   FROM catalog_discovery_queue
-                   WHERE store='deloox' AND lower(url) LIKE ?
-                   GROUP BY state""",
-                (pattern,),
+            product_rows[key] = [dict(row) for row in rows]
+
+        # Aggregate all three phrases in one pass over each large queue table.
+        url_counts_row = conn.execute(
+            f"""SELECT {conditional_counts}
+                FROM store_urls
+                WHERE store='deloox' AND active=1 AND ({where_any})""",
+            url_pattern_values + url_pattern_values,
+        ).fetchone()
+        url_counts = {
+            key: int(url_counts_row[key] or 0) if url_counts_row else 0
+            for key in keys
+        }
+
+        def queue_counts(table):
+            rows = conn.execute(
+                f"""SELECT state, {conditional_counts}
+                    FROM {table}
+                    WHERE store='deloox' AND ({where_any})
+                    GROUP BY state""",
+                url_pattern_values + url_pattern_values,
             ).fetchall()
-            hydration = conn.execute(
-                """SELECT state,COUNT(*) AS n
-                   FROM hydration_queue
-                   WHERE store='deloox' AND lower(url) LIKE ?
-                   GROUP BY state""",
-                (pattern,),
-            ).fetchall()
+            grouped = {key: {} for key in keys}
+            for row in rows:
+                state = str(row['state'])
+                for key in keys:
+                    count = int(row[key] or 0)
+                    if count:
+                        grouped[key][state] = count
+            return grouped
+
+        frontier_counts = queue_counts('catalog_discovery_queue')
+        hydration_counts = queue_counts('hydration_queue')
+        results = []
+        for key, phrase in checks:
             results.append({
                 'key': key,
                 'query': phrase,
-                'active_url_count': int(urls['n'] or 0) if urls else 0,
-                'product_rows': [dict(row) for row in products],
-                'discovery_queue_states': {str(row['state']): int(row['n']) for row in frontier},
-                'hydration_queue_states': {str(row['state']): int(row['n']) for row in hydration},
+                'active_url_count': url_counts[key],
+                'product_rows': product_rows[key],
+                'discovery_queue_states': frontier_counts[key],
+                'hydration_queue_states': hydration_counts[key],
             })
         return {
             'ok': True,
