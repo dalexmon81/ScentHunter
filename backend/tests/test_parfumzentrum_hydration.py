@@ -236,6 +236,71 @@ class CatalogHydrationTests(unittest.TestCase):
 
 
 
+    def test_refresh_without_price_preserves_old_price_timestamp_and_status(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import catalog_engine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            old_path = catalog_engine.DB_PATH
+            catalog_engine.DB_PATH = Path(tmp) / "catalog.sqlite3"
+            try:
+                conn = sqlite3.connect(str(catalog_engine.DB_PATH))
+                conn.executescript("""
+                CREATE TABLE store_urls(
+                    store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+                    discovered_at REAL, active INTEGER, PRIMARY KEY(store,url));
+                CREATE TABLE hydration_queue(
+                    store TEXT, url TEXT, state TEXT, attempts INTEGER, available_at REAL,
+                    first_seen_at REAL, leased_until REAL, lease_token TEXT,
+                    last_error TEXT, last_http_status INTEGER, last_started_at REAL,
+                    last_finished_at REAL, priority INTEGER DEFAULT 100,
+                    PRIMARY KEY(store,url));
+                CREATE TABLE store_products(
+                    store TEXT, url TEXT, name TEXT, brand TEXT, image TEXT, sku TEXT,
+                    gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT, gender TEXT,
+                    price REAL, currency TEXT, availability TEXT, fetched_at REAL,
+                    fetch_status TEXT, PRIMARY KEY(store,url));
+                CREATE TABLE store_product_variants(
+                    store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT, image TEXT,
+                    sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT,
+                    gender TEXT, price REAL, currency TEXT, availability TEXT,
+                    fetched_at REAL, variant_url TEXT, PRIMARY KEY(store,url,variant_key));
+                """)
+                url = "https://www.deloox.com/product/1323660/test.html"
+                conn.execute("INSERT INTO store_urls VALUES(?,?,?,?,?,1)", ("deloox",url,"test",None,1))
+                conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES(?,?,?,?,?,?)", ("deloox",url,"PROCESSING",2,1,1))
+                conn.execute("INSERT INTO store_products(store,url,name,price,currency,availability,fetched_at,fetch_status) VALUES(?,?,?,?,?,?,?,?)", ("deloox",url,"Rasasi Hawas Ice",34.99,"EUR","in_stock",100.0,"OK"))
+                conn.commit()
+                conn.close()
+
+                item = {
+                    "name": "Rasasi Hawas Ice Eau de Parfum 100 ml",
+                    "brand": "Rasasi",
+                    "price_num": None,
+                    "currency": "EUR",
+                    "availability": "in_stock",
+                    "fetched_at": 200.0,
+                    "url": url,
+                }
+                with patch.object(catalog_engine, "http_get", return_value=(200,url,b"<html/>")), \
+                     patch.object(catalog_engine, "_secondary_store_parser", return_value=item), \
+                     patch.object(catalog_engine, "_update_local_search_index_product"), \
+                     patch.object(catalog_engine, "_foreground_search_running", return_value=False):
+                    result = catalog_engine.refresh_url("deloox", url)
+
+                self.assertIsNotNone(result)
+                conn = sqlite3.connect(str(catalog_engine.DB_PATH))
+                row = conn.execute("SELECT price,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?", ("deloox",url)).fetchone()
+                conn.close()
+                self.assertEqual(row[0], 34.99)
+                self.assertEqual(row[1], 100.0)
+                self.assertEqual(row[2], "OK")
+            finally:
+                catalog_engine.DB_PATH = old_path
+
 
 class HydrationRequiresFreshPriceTests(unittest.TestCase):
     def test_name_without_price_does_not_mark_task_done(self):
