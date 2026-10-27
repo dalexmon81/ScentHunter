@@ -547,6 +547,25 @@
         "Liquid Brun",
         "French Avenue Liquid Brun"
       ],
+      "excluded_products": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue - Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "excluded_aliases": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue - Liquid Brun Limited Edition Extrait de Parfum",
+        "Liquid Brun Limited Edition Men",
+        "French Avenue Liquid Brun Limited Edition Men",
+        "French Avenue - Liquid Brun Limited Edition Men"
+      ],
       "products": [
         {
           "canonical_name": "Liquid Brun",
