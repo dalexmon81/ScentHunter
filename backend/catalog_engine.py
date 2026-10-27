@@ -3955,6 +3955,12 @@ def refresh_url(store, url):
                            END''',
                     (store, url, "PENDING", 0, now, now, now),
                 )
+                if deloox_confirmed_out_of_stock:
+                    # Avoid infinite retries for a verified OOS page with no price.
+                    conn.execute(
+                        "UPDATE hydration_queue SET state='DONE', lease_owner=NULL, leased_until=NULL, last_error=NULL WHERE store=? AND url=? AND NOT (state='PROCESSING' AND leased_until > ?)",
+                        (store, url, now),
+                    )
                 if store == 'sabina' and item.get('variants'):
                     # Validate the complete extracted set before replacing the
                     # stored set. A malformed/non-priced extraction must never
@@ -4034,6 +4040,17 @@ def refresh_url(store, url):
                                  variant.get('availability') or item.get('availability'),now,
                                  _sabina_variant_url(variant.get('url'), url, variant_size) if store == 'sabina' else (_store_allowed_variant_url(store, variant.get('url'), url) or url)),
                             )
+                # An explicit Deloox out-of-stock signal is authoritative even
+                # when the retailer removes its price. In that case clear any old
+                # price and persist the identity/status as a successful catalogue
+                # observation; preserving the old price would misrepresent it as
+                # currently purchasable.
+                deloox_confirmed_out_of_stock = (
+                    store == 'deloox'
+                    and str(item.get('availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
+                    in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
+                    and not has_explicit_price
+                )
                 conn.execute(
                     '''INSERT INTO store_products(
                         store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,gender,
@@ -4045,14 +4062,13 @@ def refresh_url(store, url):
                         size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                         concentration=COALESCE(excluded.concentration,store_products.concentration),
                         gender=COALESCE(excluded.gender,store_products.gender),
-                        -- A transient/incomplete parse must not erase a previously
-                        -- verified product price. Replace it only when the new parse
-                        -- supplies an explicit price; never infer one from other fields.
-                        price=COALESCE(excluded.price,store_products.price),
+                        -- Only a confirmed sold-out Deloox row may clear a previously
+                        -- valid price. Other transient/incomplete parses keep it.
+                        price=CASE WHEN excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL THEN NULL ELSE COALESCE(excluded.price,store_products.price) END,
                         currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
                         availability=excluded.availability,
-                        fetched_at=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetched_at ELSE store_products.fetched_at END,
-                        fetch_status=CASE WHEN excluded.price IS NOT NULL THEN excluded.fetch_status ELSE store_products.fetch_status END''',
+                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetched_at ELSE store_products.fetched_at END,
+                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND excluded.availability IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetch_status ELSE store_products.fetch_status END''',
                     (
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
