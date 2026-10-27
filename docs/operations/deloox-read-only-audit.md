@@ -20,3 +20,11 @@ catalog resync or perform network requests from the recovery script.
 
 Do not use this trigger for generic HTTP failures, placeholder-price failures, or
 unclassified parser errors. Review the dry-run allowlist and per-store counts first.
+
+## Recovery batch execution note
+
+A guarded parser-error recovery batch completed successfully on 2026-10-27:
+20 URLs were queued (10 each for Orioudh and PerfumeMarket). The post-apply
+preview returned a disjoint next batch, so the verification correctly confirmed
+that the just-applied URLs were no longer eligible. Continue only in separately
+triggered, capped batches, checking queue outcomes between batches.
