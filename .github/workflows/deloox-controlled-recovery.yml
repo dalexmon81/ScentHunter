@@ -143,3 +143,5 @@ jobs:
           probe 'Parfum-Zentrum Hawas Ice URL/SKU/GTIN + FTS diagnostic (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-index?q=Hawas%20Ice' 12
           probe 'Parfum-Zentrum Hawas Ice discovery trace (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-discovery-trace' 18
           probe 'Read-only runtime/thread diagnostics' 'https://scenthunter.fly.dev/diagnostic/runtime-deep' 12
+          probe 'Deloox discovery frontier (read-only SQLite diagnostic)' 'https://scenthunter.fly.dev/diagnose-deloox-frontier-path' 12
+          probe 'Deloox generic search coverage (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-generic-search-coverage' 12
