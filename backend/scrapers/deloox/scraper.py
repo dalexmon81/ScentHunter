@@ -867,7 +867,7 @@ def _discover_from_search(session, query, deadline=None):
 
     No product, brand, SKU or variant is encoded here.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
     from urllib.parse import parse_qsl, urlencode, urlunparse
 
     query = clean(query)
@@ -885,10 +885,19 @@ def _discover_from_search(session, query, deadline=None):
 
     def fetch(endpoint):
         try:
+            timeout = TIMEOUT
+            if deadline is not None:
+                remaining = float(deadline) - time.time()
+                if remaining <= 0:
+                    return endpoint, None
+                timeout = (
+                    min(float(TIMEOUT[0]), max(0.1, remaining)),
+                    min(float(TIMEOUT[1]), max(0.1, remaining)),
+                )
             r = session.get(
                 endpoint,
                 headers=HEADERS,
-                timeout=TIMEOUT,
+                timeout=timeout,
                 allow_redirects=True,
             )
             return endpoint, r
@@ -902,10 +911,22 @@ def _discover_from_search(session, query, deadline=None):
     # search route whose pagination did not expose the same result set as the
     # primary .be /chercher.html surface.
     successful = []
-    with ThreadPoolExecutor(max_workers=min(13, len(endpoints))) as pool:
-        futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
-        for future in as_completed(futures):
-            endpoint, r = future.result()
+    pool = ThreadPoolExecutor(max_workers=min(13, len(endpoints)))
+    futures = []
+    try:
+        for endpoint in endpoints:
+            if deadline is not None and time.time() >= float(deadline):
+                break
+            futures.append(pool.submit(fetch, endpoint))
+
+        wait_timeout = None if deadline is None else max(0.0, float(deadline) - time.time())
+        for future in as_completed(futures, timeout=wait_timeout):
+            try:
+                endpoint, r = future.result()
+            except Exception:
+                failed_pages += 1
+                note_failure("request_error")
+                continue
             if r is None:
                 failed_pages += 1
                 note_failure("request_error")
@@ -934,6 +955,14 @@ def _discover_from_search(session, query, deadline=None):
                 "response": r,
                 "found": found,
             })
+    except FuturesTimeoutError:
+        failed_pages += sum(1 for future in futures if not future.done())
+        note_failure("search_deadline_exhausted")
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        pool.shutdown(wait=False, cancel_futures=True)
 
     # Prefer the production .be legacy search surface, then other legacy
     # /chercher.html surfaces, then multilingual /en/search routes.  This keeps

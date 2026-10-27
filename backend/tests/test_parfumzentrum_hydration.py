@@ -34,6 +34,88 @@ class CatalogHydrationTests(unittest.TestCase):
         self.assertEqual(product["price_num"], 29.4)
         self.assertEqual(product["availability"], "in_stock")
 
+    def test_deloox_search_deadline_skips_initial_fanout_when_expired(self):
+        """The deadline must cover initial endpoint probes, not only pagination."""
+        import time
+        from unittest.mock import Mock, patch
+
+        session = Mock()
+        with patch.object(deloox, "_search_endpoints", return_value=[
+            "https://www.deloox.be/chercher.html?q=parfum"
+        ]) as endpoints:
+            result = deloox._discover_from_search(
+                session, "parfum", deadline=time.time() - 1
+            )
+        self.assertEqual(result, [])
+        endpoints.assert_called_once_with("parfum")
+        session.get.assert_not_called()
+        self.assertGreaterEqual(
+            deloox._LAST_DISCOVERY_STATE["search_pages_failed"], 0
+        )
+
+    def test_deloox_discovery_graph_reports_search_then_frontier_progress(self):
+        """The graph emits search progress before crawling and HTML progress after a batch."""
+        import time
+        from unittest.mock import patch
+        import catalog_engine
+
+        seen = []
+        queue_row = ("https://www.deloox.be/", 0, "configured_seed", "test-lease")
+        fetch_result = (
+            "https://www.deloox.be/",
+            "https://www.deloox.be/",
+            b"<html><body><a href='/en/category/12345/fragrances.html'>Fragrances</a></body></html>",
+            None,
+        )
+
+        class FakeConnection:
+            def __init__(self):
+                self.queue_rows = []
+            def execute(self, query, params=()):
+                class Cursor:
+                    def __init__(self, rows=None, one=None):
+                        self._rows=rows or []
+                        self._one=one
+                    def fetchone(self):
+                        return self._one
+                    def fetchall(self):
+                        return self._rows
+                if "SELECT url,depth,priority,source" in query:
+                    return Cursor(rows=[])
+                if "SUM(CASE WHEN state='PENDING'" in query:
+                    return Cursor(one={
+                        "pending": 1, "processing": 0, "done": 0,
+                        "error": 0, "dead": 0, "total": 1
+                    })
+                return Cursor()
+            def close(self):
+                pass
+            def commit(self):
+                pass
+            def rollback(self):
+                pass
+
+        conn=FakeConnection()
+        with patch.object(catalog_engine, "_deloox_queue_enqueue"), \
+             patch.object(catalog_engine, "_deloox_queue_seed", return_value=[]), \
+             patch.object(catalog_engine, "_deloox_queue_recover_stale", return_value=0), \
+             patch.object(catalog_engine, "_deloox_queue_requeue_stale_done", return_value=0), \
+             patch.object(catalog_engine, "_discover_deloox_search_catalog", return_value={
+                 "queries": [], "products": 0, "product_urls": {}, "errors": []
+             }), \
+             patch.object(catalog_engine, "_deloox_queue_claim", side_effect=[[queue_row], []]), \
+             patch.object(catalog_engine, "_fetch_html_page", return_value=fetch_result), \
+             patch.object(catalog_engine, "_deloox_queue_finish"), \
+             patch.object(catalog_engine, "_deloox_persist_products"), \
+             patch.object(catalog_engine, "db", return_value=conn):
+            catalog_engine._discover_deloox_catalog(
+                [], deadline=time.time() + 2, progress_callback=seen.append
+            )
+
+        self.assertTrue(seen)
+        self.assertEqual(seen[0]["phase"], "search")
+        self.assertTrue(any(item.get("phase") == "html" for item in seen))
+
     def test_deloox_candidate_extractor_skips_assets_and_keeps_product_links(self):
         html = """<html><body>
         <a href="/product/12345/maison-example-eau-de-parfum-100-ml.html">Maison Example Eau de Parfum 100 ml</a>
