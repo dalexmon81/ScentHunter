@@ -1,5 +1,6 @@
 """Regression tests for conservative canonical matching and catalog aliases."""
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -157,10 +158,7 @@ class CanonicalMatcherTests(unittest.TestCase):
             self.catalog_path.open("w", encoding="utf-8"),
         )
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
-        self.addCleanup(lambda: self.catalog_path.unlink(missing_ok=True))
-        self.addCleanup(lambda: (self.catalog_dir / "scenthunter_next_engine" / "verified_gtin_variant_map.json").unlink(missing_ok=True))
-        self.addCleanup(lambda: (self.catalog_dir / "scenthunter_next_engine").rmdir() if (self.catalog_dir / "scenthunter_next_engine").exists() else None)
-        self.addCleanup(lambda: self.catalog_dir.rmdir() if self.catalog_dir.exists() else None)
+        self.addCleanup(lambda: shutil.rmtree(self.catalog_dir, ignore_errors=True))
         registry_dir = self.catalog_dir / "scenthunter_next_engine"
         registry_dir.mkdir()
         registry = {
