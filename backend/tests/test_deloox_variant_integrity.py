@@ -1,6 +1,7 @@
 import unittest
 
 from scrapers.deloox import scraper
+import catalog_engine as catalog
 
 
 class DelooxVariantIntegrityTests(unittest.TestCase):
@@ -91,6 +92,15 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         )
         self.assertIsNotNone(result)
         self.assertEqual(result["offer"]["price"], 32.99)
+
+
+    def test_out_of_stock_deloox_offer_is_not_a_comparison_offer(self):
+        # Catalog search must suppress Deloox records that are no longer
+        # purchasable or have no price, rather than counting them as a shop.
+        self.assertTrue(catalog._should_hide_deloox_offer("deloox", "out_of_stock", 44.79))
+        self.assertTrue(catalog._should_hide_deloox_offer("deloox", "in_stock", None))
+        self.assertFalse(catalog._should_hide_deloox_offer("deloox", "in_stock", 32.99))
+        self.assertFalse(catalog._should_hide_deloox_offer("sabina", "out_of_stock", 38.90))
 
 
 if __name__ == "__main__":

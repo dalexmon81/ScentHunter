@@ -4335,6 +4335,14 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
         threading.Thread(target=_repair, name='catalog-stale-price-refresh', daemon=True).start()
 
 
+def _should_hide_deloox_offer(store, availability, price):
+    """Return True for Deloox catalog rows that cannot be compared as live offers."""
+    if str(store or '').strip().lower() != 'deloox':
+        return False
+    status = str(availability or '').strip().lower().replace('-', '_').replace(' ', '_')
+    return status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout', 'unavailable', 'discontinued'} or price in (None, '')
+
+
 def search_local(query, per_store=32, search_terms=None, cancel_event=None, deadline=None):
     """Run fast local search; repair legacy Easycosmetic size gaps asynchronously."""
     try:
@@ -4593,6 +4601,14 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         per_term_counts[term_index] += 1
 
                         if r['product_name']:
+                            # Deloox pages can remain indexed after stock runs out.
+                            # Do not publish a non-purchasable or unpriced row as a
+                            # comparison shop: it inflates the shop count and leaves
+                            # a dead "OUT OF STOCK" card with no price.
+                            if store == 'deloox':
+                                _deloox_price = r['product_price']
+                                if _should_hide_deloox_offer(store, r['product_availability'], _deloox_price):
+                                    continue
                             variant_rows = []
                             if store == 'parfumzentrum':
                                 try:
