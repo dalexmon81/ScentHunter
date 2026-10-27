@@ -7,6 +7,8 @@ primary_region = "ams"
 
 [env]
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  CATALOG_FOREGROUND_REFRESH_ENABLED = "1"
+  CATALOG_REFRESH_BUDGET_SECONDS = "2.5"
 
 [http_service]
   internal_port = 8080
