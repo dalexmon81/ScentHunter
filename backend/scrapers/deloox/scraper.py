@@ -298,7 +298,16 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
-    if not name or not matches(name, query):
+    # Size is validated separately against the page/offer metadata below.
+    # Remove it from lexical name matching so structured size evidence can
+    # establish a valid variant even when the retailer's product name omits ml.
+    identity_query = re.sub(
+        r"(?<!\\d)\\d+(?:[.,]\\d+)?\\s*(?:ml|cl)\\b",
+        " ",
+        clean(query),
+        flags=re.I,
+    ).strip()
+    if not name or not matches(name, identity_query or query):
         return None
 
     # Bottle size is part of the sellable offer identity. The title and URL
