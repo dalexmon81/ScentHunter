@@ -301,6 +301,14 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     if not name or not matches(name, query):
         return None
 
+    # A requested bottle size is part of product identity, not a ranking hint.
+    # Reject a different explicit size before reading/publishing its price;
+    # otherwise a 150 ml Deloox page can be attached to a 100 ml comparison.
+    requested_size = size_ml(query)
+    page_size = size_ml(name, url)
+    if requested_size is not None and page_size is not None and abs(requested_size - page_size) > 0.01:
+        return None
+
     # The product page is authoritative. If the retailer serves a different
     # product under a stale/reused URL slug, reject that candidate instead of
     # silently returning the wrong product. Discovery can then recover the
