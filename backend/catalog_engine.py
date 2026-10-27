@@ -2261,7 +2261,7 @@ def _deloox_persist_products(product_urls):
         conn.close()
     return count
 
-def _discover_deloox_search_catalog(deadline=None):
+def _discover_deloox_search_catalog(deadline=None, progress_callback=None):
     """Import the Deloox scraper's proven generic search discovery into catalog.
 
     The production Deloox scraper already knows how to traverse the public
@@ -2289,6 +2289,14 @@ def _discover_deloox_search_catalog(deadline=None):
         for query in DELOOX_GENERIC_CATALOG_QUERIES:
             if deadline is not None and time.time() >= float(deadline):
                 break
+            if progress_callback:
+                progress_callback({
+                    'phase': 'search',
+                    'query': query,
+                    'queries_completed': len(reports),
+                    'products_found': len(product_urls),
+                    'elapsed_sec': round(time.time() - started, 2),
+                })
             try:
                 urls = discover(session, query, deadline=deadline) or []
                 added = 0
@@ -2306,10 +2314,27 @@ def _discover_deloox_search_catalog(deadline=None):
                     'returned': len(urls),
                     'added': added,
                 })
+                if progress_callback:
+                    progress_callback({
+                        'phase': 'search',
+                        'query': query,
+                        'queries_completed': len(reports),
+                        'products_found': len(product_urls),
+                        'elapsed_sec': round(time.time() - started, 2),
+                    })
             except Exception as exc:
                 error = f'{query}:{type(exc).__name__}:{exc}'
                 errors.append(error)
                 reports.append({'query': query, 'returned': 0, 'added': 0, 'error': error})
+                if progress_callback:
+                    progress_callback({
+                        'phase': 'search',
+                        'query': query,
+                        'queries_completed': len(reports),
+                        'products_found': len(product_urls),
+                        'error': error,
+                        'elapsed_sec': round(time.time() - started, 2),
+                    })
     finally:
         session.close()
 
@@ -2325,7 +2350,7 @@ def _discover_deloox_search_catalog(deadline=None):
     }
 
 
-def _discover_deloox_catalog(seeds, deadline=None):
+def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     """Advance Deloox's persistent catalog graph.
 
     Deloox's sitemap endpoints are unreliable, so catalog discovery is an
@@ -2356,10 +2381,60 @@ def _discover_deloox_catalog(seeds, deadline=None):
         time.time() + 45.0,
         float(deadline) if deadline is not None else time.time() + 45.0,
     )
-    search_catalog = _discover_deloox_search_catalog(search_deadline)
+    if progress_callback:
+        progress_callback({
+            'phase': 'search',
+            'queries_completed': 0,
+            'products_found': 0,
+            'visited': 0,
+            'successes': 0,
+            'frontier': None,
+            'elapsed_sec': round(time.time() - started, 2),
+        })
+    search_catalog = _discover_deloox_search_catalog(
+        search_deadline, progress_callback=progress_callback
+    )
     for url in search_catalog.get('product_urls', {}):
         product_urls[url] = ''
     errors.extend(search_catalog.get('errors') or [])
+
+    # Persisted status used to remain at phase=sitemap throughout this whole
+    # function, making a live HTML crawl indistinguishable from a stalled one.
+    # Keep the callback lightweight and update only the compact sync_state row.
+    def report_frontier(phase):
+        if not progress_callback:
+            return
+        conn = db()
+        try:
+            row = conn.execute(
+                """SELECT
+                     SUM(CASE WHEN state='PENDING' THEN 1 ELSE 0 END) AS pending,
+                     SUM(CASE WHEN state='PROCESSING' THEN 1 ELSE 0 END) AS processing,
+                     SUM(CASE WHEN state='DONE' THEN 1 ELSE 0 END) AS done,
+                     SUM(CASE WHEN state='ERROR' THEN 1 ELSE 0 END) AS error,
+                     SUM(CASE WHEN state='DEAD' THEN 1 ELSE 0 END) AS dead,
+                     COUNT(*) AS total
+                   FROM catalog_discovery_queue
+                  WHERE store='deloox'"""
+            ).fetchone()
+        finally:
+            conn.close()
+        progress_callback({
+            'phase': phase,
+            'queries_completed': len(search_catalog.get('queries') or []),
+            'products_found': len(product_urls),
+            'visited': visited,
+            'successes': successes,
+            'frontier': {
+                'total': int(row['total'] or 0),
+                'pending': int(row['pending'] or 0),
+                'processing': int(row['processing'] or 0),
+                'done': int(row['done'] or 0),
+                'error': int(row['error'] or 0),
+                'dead': int(row['dead'] or 0),
+            },
+            'elapsed_sec': round(time.time() - started, 2),
+        })
 
     def process_page(requested, depth, source, result):
         nonlocal visited, successes
@@ -2511,6 +2586,8 @@ def _discover_deloox_catalog(seeds, deadline=None):
                     errors.append(f'{url} -> {error}')
                     _deloox_queue_finish(url, token, False, error)
 
+        # Keep the public catalog status representative of the real phase.
+        report_frontier('html')
         # Never monopolize the process after a batch finishes.
         if time.time() >= run_deadline:
             break
@@ -3022,9 +3099,34 @@ def discover_store(store):
     deloox_graph = None
     if store == 'deloox' and store in HTML_DISCOVERY_SEEDS:
         deloox_graph_budget = min(120, DISCOVERY_HARD_TIMEOUT // 2)
+
+        def _persist_deloox_progress(progress):
+            phase = str(progress.get('phase') or 'html')
+            frontier = progress.get('frontier') or {}
+            detail = (
+                f'phase=deloox_{phase};last_progress_at={time.time():.3f};'
+                f'queries_completed={int(progress.get("queries_completed") or 0)};'
+                f'visited={int(progress.get("visited") or 0)};'
+                f'successes={int(progress.get("successes") or 0)};'
+                f'products_found={int(progress.get("products_found") or 0)};'
+                f'frontier_pending={int(frontier.get("pending") or 0)};'
+                f'frontier_processing={int(frontier.get("processing") or 0)};'
+                f'frontier_done={int(frontier.get("done") or 0)};'
+                f'frontier_error={int(frontier.get("error") or 0)};'
+                f'frontier_dead={int(frontier.get("dead") or 0)};'
+                f'elapsed_sec={float(progress.get("elapsed_sec") or 0):.2f}'
+            )
+            _set_sync_state(
+                store, 'DISCOVERY_RUNNING', started_at=started_at,
+                discovered_count=int(progress.get('products_found') or 0),
+                fetched_count=int(progress.get('successes') or 0),
+                error=detail,
+            )
+
         deloox_graph = _discover_deloox_catalog(
             list(dict.fromkeys(HTML_DISCOVERY_SEEDS[store])),
             started_at + deloox_graph_budget,
+            progress_callback=_persist_deloox_progress,
         )
         product_urls.update(deloox_graph['product_urls'])
 
