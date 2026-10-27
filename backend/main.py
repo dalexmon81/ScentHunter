@@ -1567,6 +1567,18 @@ def _public_offer_url(item):
     except Exception:
         return url
 
+    # Deloox links in the catalog can be stored from a different locale
+    # (including .es URLs returned by redirects). ScentHunter serves the
+    # Luxembourg/Benelux storefront through Deloox Belgium; keep the original
+    # product path and query, but normalize the host to the supported .be
+    # storefront so the public offer never opens the Spanish shop.
+    if store in {"deloox", "deloox.be", "deloox.nl", "deloox.es", "deloox.com"} or host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
+        from urllib.parse import urlsplit, urlunsplit
+        if host.endswith("deloox.es") or host.endswith("deloox.nl") or host.endswith("deloox.com") or host.endswith("deloox.be"):
+            parsed = parsed._replace(netloc="www.deloox.be")
+            return urlunsplit((parsed.scheme or "https", parsed.netloc, parsed.path, parsed.query, parsed.fragment))
+        return url
+
     if store not in {"sabina", "sabina.com"} and not host.endswith("sabina.com"):
         return url
 
