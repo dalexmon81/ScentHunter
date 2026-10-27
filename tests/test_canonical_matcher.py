@@ -187,6 +187,7 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertTrue(
             any(v.variant_id == "V-LIQUID-150" for v in self.catalog.get("P-LIQUID").variants)
         )
+        self.gtins = self.matcher._gtin_registry
 
     def offer(self, name, brand=None, size=None):
         return RetailerOffer(
@@ -318,7 +319,7 @@ class CanonicalMatcherTests(unittest.TestCase):
                 150,
             )
         )
-        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.status, MatchStatus.MATCHED, f"reason={result.reason}; gtins={self.gtins}")
         self.assertEqual(result.canonical_product_id, "P-LIQUID")
         self.assertEqual(result.canonical_variant_id, "V-LIQUID-150")
 
