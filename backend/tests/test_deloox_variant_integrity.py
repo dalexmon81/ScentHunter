@@ -123,7 +123,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         """
         result = scraper.extract_product_page(
             None,
-            "https://www.deloox.be/produit/1359240/french-avenue-liquid-brun-limited-edition-150-ml.html",
+            "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
             html=html,
         )
         self.assertIsNotNone(result)
@@ -134,7 +134,7 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
 
         # A 150 ml result must never satisfy an explicit 100 ml search.
         rejected = scraper._product(
-            "https://www.deloox.be/produit/1359240/french-avenue-liquid-brun-limited-edition-150-ml.html",
+            "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
             html,
             "Liquid Brun Limited Edition 100 ml",
         )
