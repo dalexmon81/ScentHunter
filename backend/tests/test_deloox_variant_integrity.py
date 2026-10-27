@@ -82,10 +82,10 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
             "offers": {"@type": "Offer", "price": "32.99", "priceCurrency": "EUR"}
           }
           </script>
-        </head><body><h1>French Avenue Liquid Brun</h1></body></html>
+        </head><body><h1>French Avenue Liquid Brun 100 ml</h1></body></html>
         """
         result = scraper._product(
-            "https://www.deloox.be/produit/123/liquid-brun",
+            "https://www.deloox.be/produit/123/liquid-brun-100-ml",
             html,
             "Liquid Brun 100 ml",
         )
