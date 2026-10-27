@@ -3688,7 +3688,31 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     # product-page hydration stores one base product row; retain a real priced
     # variant rather than failing on the list shape.
     if isinstance(parsed, list):
-        parsed = next((row for row in parsed if isinstance(row, dict) and ((row.get('offer') or {}).get('price') is not None or row.get('price_num') is not None or row.get('price') not in (None, ''))), None)
+        # Prefer a genuinely priced variant, but retain an explicitly
+        # out-of-stock variant when the retailer suppresses its price.
+        # Dropping every no-price row here made the Deloox OOS parser fix
+        # disappear before persistence and kept the hydration queue retrying.
+        priced_rows = [
+            row for row in parsed
+            if isinstance(row, dict) and (
+                (row.get('offer') or {}).get('price') is not None
+                or row.get('price_num') is not None
+                or row.get('price') not in (None, '')
+            )
+        ]
+        parsed = priced_rows[0] if priced_rows else next(
+            (
+                row for row in parsed
+                if isinstance(row, dict)
+                and str(
+                    row.get('availability')
+                    or (row.get('offer') or {}).get('availability')
+                    or ''
+                ).strip().lower().rstrip('/').split('/')[-1]
+                in {'outofstock', 'out_of_stock', 'soldout', 'sold_out', 'unavailable', 'discontinued'}
+            ),
+            None,
+        )
     if not isinstance(parsed, dict):
         return None
 
