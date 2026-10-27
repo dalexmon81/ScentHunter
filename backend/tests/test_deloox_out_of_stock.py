@@ -45,6 +45,31 @@ class DelooxOutOfStockNoPriceTests(unittest.TestCase):
         self.assertIsNone(result["price"])
         self.assertFalse(result["available"])
 
+    def test_dutch_niet_op_voorraad_is_not_misread_as_in_stock(self):
+        url = (
+            "https://www.deloox.be/produit/1385920/"
+            "french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        )
+        name = "French Avenue Liquid Brun Extrait de Parfum Limited Edition"
+        html = (
+            "<html><body><h1>" + name + "</h1>"
+            '<div class="availability">Niet op voorraad</div>'
+            "</body></html>"
+        )
+
+        result = _product(
+            url,
+            html,
+            "Liquid Brun Limited Edition 150 ml",
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["attributes"]["size_ml"]["value"], 150)
+        self.assertEqual(result["offer"]["availability"], "out_of_stock")
+        self.assertIsNone(result["offer"]["price"])
+        self.assertIsNone(result["price"])
+        self.assertFalse(result["available"])
+
     def test_in_stock_product_without_price_is_still_rejected(self):
         url = (
             "https://www.deloox.be/produit/1385920/"
