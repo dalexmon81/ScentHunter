@@ -3743,7 +3743,21 @@ def diagnose_deloox_generic_search_coverage():
         for key in keys
     )
 
-    conn = catalog_db()
+    # Do not call catalog_db(): it runs schema initialization and can wait up
+    # to 45 seconds behind a writer. Diagnostics must never queue behind the
+    # discovery/hydration writer or acquire a write-capable connection.
+    import sqlite3
+    import catalog_engine
+
+    db_path = Path(catalog_engine.DB_PATH).resolve()
+    conn = sqlite3.connect(
+        f"file:{db_path.as_posix()}?mode=ro",
+        uri=True,
+        timeout=1.5,
+    )
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=1500')
+    conn.execute('PRAGMA query_only=ON')
     try:
         # Bound returned examples, but preserve five recent/healthy examples per
         # phrase. Product names and URLs are checked in the same query.
@@ -3811,6 +3825,15 @@ def diagnose_deloox_generic_search_coverage():
             'network_called': False,
             'database_written': False,
             'checks': results,
+        }
+    except sqlite3.OperationalError as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': f'{type(exc).__name__}: {exc}',
         }
     finally:
         conn.close()
