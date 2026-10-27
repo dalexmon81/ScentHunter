@@ -54,19 +54,20 @@ class CatalogHydrationTests(unittest.TestCase):
         )
 
     def test_deloox_discovery_graph_reports_search_then_frontier_progress(self):
-        """The graph exposes bounded phase data without changing product identity."""
+        """The graph emits one search update and at least one HTML frontier update."""
+        import time
         from unittest.mock import patch
         import catalog_engine
 
         seen = []
-        with patch.object(catalog_engine, "_deloox_queue_enqueue"), \\
-             patch.object(catalog_engine, "_deloox_queue_seed", return_value=[]), \\
-             patch.object(catalog_engine, "_deloox_queue_recover_stale", return_value=0), \\
-             patch.object(catalog_engine, "_deloox_queue_requeue_stale_done", return_value=0), \\
+        with patch.object(catalog_engine, "_deloox_queue_enqueue"), \
+             patch.object(catalog_engine, "_deloox_queue_seed", return_value=[]), \
+             patch.object(catalog_engine, "_deloox_queue_recover_stale", return_value=0), \
+             patch.object(catalog_engine, "_deloox_queue_requeue_stale_done", return_value=0), \
              patch.object(catalog_engine, "_discover_deloox_search_catalog", return_value={
                  "queries": [], "products": 0, "product_urls": {}, "errors": []
-             }), \\
-             patch.object(catalog_engine, "_deloox_queue_claim", return_value=[]), \\
+             }), \
+             patch.object(catalog_engine, "_deloox_queue_claim", return_value=[]), \
              patch.object(catalog_engine, "db") as db_mock:
             conn = db_mock.return_value
             conn.execute.return_value.fetchone.return_value = {
@@ -74,9 +75,9 @@ class CatalogHydrationTests(unittest.TestCase):
                 "dead": 0, "total": 0
             }
             catalog_engine._discover_deloox_catalog(
-                [], deadline=__import__("time").time() + 2,
-                progress_callback=seen.append
+                [], deadline=time.time() + 2, progress_callback=seen.append
             )
+
         self.assertTrue(seen)
         self.assertEqual(seen[0]["phase"], "search")
         self.assertTrue(any(item.get("phase") == "html" for item in seen))
