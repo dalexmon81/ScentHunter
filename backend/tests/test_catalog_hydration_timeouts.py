@@ -33,6 +33,21 @@ class CatalogHydrationTimeoutTests(unittest.TestCase):
         self.assertEqual(result["status"], 200)
         self.assertEqual(session.get.call_args.kwargs["headers"], catalog_engine.DELOOX_HEADERS)
 
+    def test_deloox_es_uses_browser_headers(self):
+        response = Mock()
+        response.status_code = 200
+        response.url = "https://www.deloox.es/"
+        response.content = b"<html></html>"
+        response.headers = {"Content-Type": "text/html"}
+        session = Mock()
+        session.get.return_value = response
+
+        with patch.object(catalog_engine, "_session", return_value=session):
+            result = catalog_engine._http_fetch("https://www.deloox.es/", timeout=(3.0, 8.0))
+
+        self.assertEqual(result["status"], 200)
+        self.assertEqual(session.get.call_args.kwargs["headers"], catalog_engine.DELOOX_HEADERS)
+
     def test_other_stores_keep_the_default_refresh_timeout(self):
         self.assertEqual(
             catalog_engine._refresh_timeout_for_store("parfumzentrum"),
