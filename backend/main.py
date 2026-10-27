@@ -2206,8 +2206,17 @@ def _catalog_search_terms(query):
             key = candidate.casefold()
             if not candidate or key in seen:
                 continue
+            # Do not let a generic family query pull a separately registered
+            # special edition into its format list. The standard Liquid Brun
+            # query must not discover Limited Edition 150 ml as another size;
+            # an explicit Limited Edition query still searches that variant.
+            candidate_tokens = tokens(candidate)
+            edition_markers = {"limited", "edition"}
+            query_has_edition = edition_markers.issubset(query_tokens)
+            if edition_markers.issubset(candidate_tokens) and not query_has_edition:
+                continue
             seen.add(key)
-            overlap = tokens(candidate) & query_tokens
+            overlap = candidate_tokens & query_tokens
             # A single-token family query (for example "Hawas") may have
             # legitimate catalog aliases whose retailer titles contain none
             # of the family token. Keep those aliases in the matcher's order;
