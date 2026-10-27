@@ -3931,15 +3931,14 @@ def refresh_url(store, url):
                     has_explicit_price = parsed_price > 0
                 except (TypeError, ValueError):
                     has_explicit_price = False
-                # An explicitly reported sold-out page is a successful stock
-                # observation even when Deloox removes the price.
+                # A verified Deloox sold-out page is a valid stock observation
+                # even if the retailer no longer supplies a price.
                 deloox_confirmed_out_of_stock = (
                     store == 'deloox'
                     and str(item.get('availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
                     in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
                     and not has_explicit_price
                 )
-
                 has_valid_variants = False
                 if store == 'sabina' and item.get('variants'):
                     for variant in item['variants']:
