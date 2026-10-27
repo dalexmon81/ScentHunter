@@ -867,7 +867,7 @@ def _discover_from_search(session, query, deadline=None):
 
     No product, brand, SKU or variant is encoded here.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
     from urllib.parse import parse_qsl, urlencode, urlunparse
 
     query = clean(query)
@@ -955,7 +955,7 @@ def _discover_from_search(session, query, deadline=None):
                 "response": r,
                 "found": found,
             })
-    except TimeoutError:
+    except FuturesTimeoutError:
         failed_pages += sum(1 for future in futures if not future.done())
         note_failure("search_deadline_exhausted")
     finally:
