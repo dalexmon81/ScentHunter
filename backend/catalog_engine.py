@@ -4621,14 +4621,16 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         per_term_counts[term_index] += 1
 
                         if r['product_name']:
-                            # Deloox pages can remain indexed after stock runs out.
-                            # Do not publish a non-purchasable or unpriced row as a
-                            # comparison shop: it inflates the shop count and leaves
-                            # a dead "OUT OF STOCK" card with no price.
+                            # Keep verified sold-out Deloox product identity visible.
+                            # The persistence path clears stale prices for this case,
+                            # so the public offer can never show an old price as live.
                             if store == 'deloox':
                                 _deloox_price = r['product_price']
                                 if _should_hide_deloox_offer(store, r['product_availability'], _deloox_price):
                                     continue
+                                _deloox_status = str(r['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
+                                if _deloox_status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
+                                    _deloox_price = None
                             variant_rows = []
                             if store == 'parfumzentrum':
                                 try:
@@ -4686,12 +4688,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 'size_ml': r['product_size_ml'],
                                 'concentration': r['product_concentration'] or '',
                                 'gender': r['product_gender'] or '',
-                                'price': r['product_price'],
+                                'price': _deloox_price if store == 'deloox' else r['product_price'],
                                 'currency': r['product_currency'] or '',
                                 'availability': r['product_availability'] or '',
                                 'fetched_at': r['product_fetched_at'],
                                 'fetch_status': r['fetch_status'] or 'OK',
-                                'price_num': r['product_price'],
+                                'price_num': _deloox_price if store == 'deloox' else r['product_price'],
                                 'store': STORE_LABELS[store],
                                 'store_key': store,
                             })
