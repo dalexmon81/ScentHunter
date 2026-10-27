@@ -1176,6 +1176,21 @@ class ProductMatcher:
                             alias_tokens = self._url_catalog_identity_text(alias).split()
                             if len(alias_tokens) < 2:
                                 continue
+                            # A broad alias shared by a more specific registered
+                            # variant is not evidence of a URL/name conflict.
+                            # Example: the URL for "Liquid Brun Limited Edition"
+                            # necessarily contains "Liquid Brun", but that must
+                            # not make the 150 ml Limited Edition conflict with
+                            # the generic 100 ml variant. Only a URL alias that
+                            # adds identity tokens beyond the exact name variant
+                            # can override an exact title match.
+                            name_variant_tokens = set(
+                                self._url_catalog_identity_text(
+                                    name_variant.get("canonical_name", "")
+                                ).split()
+                            )
+                            if set(alias_tokens).issubset(name_variant_tokens):
+                                continue
                             width = len(alias_tokens)
                             if any(
                                 ordered_url_tokens[start:start + width] == alias_tokens
