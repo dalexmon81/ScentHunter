@@ -659,6 +659,18 @@ class StaleHydrationQueueTests(unittest.TestCase):
         self.assertEqual(states[dead], "DEAD")
 
 
+    def test_parfumzentrum_low_placeholder_price_not_sale_offer(self):
+        url = "https://www.parfum-zentrum.de/french-avenue-liquid-brun-eau-de-parfum-100-ml-man_z1010339/"
+        html = """<!doctype html><html><head><script type="application/ld+json">{
+          "@context":"https://schema.org","@type":"Product",
+          "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
+          "offers":{"@type":"Offer","price":"2.50","priceCurrency":"EUR",
+          "availability":"https://schema.org/InStock"}}</script></head>
+          <body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>"""
+        product = parfumzentrum.extract_product_page(None, url, html=html)
+        self.assertTrue(product is None or product.get("price_num") is None or product.get("price_num") >= 5.0)
+
+
 if __name__ == "__main__":
     unittest.main()
 
