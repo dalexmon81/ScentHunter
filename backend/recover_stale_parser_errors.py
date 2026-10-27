@@ -29,6 +29,11 @@ ELIGIBLE_ERRORS = {
     # row caused by product_parser_not_found, then validated by the new parser
     # regression test. Do not requeue other ParfumZentrum errors automatically.
     "parfumzentrum": "product_parser_not_found",
+    # These German Easycosmetic product pages previously exhausted retries
+    # while the retailer-specific parser was unavailable to hydration. Only
+    # active .aspx product URLs with HTTP 200, JSON-LD Product evidence and an
+    # H1 are eligible for this small, guarded recovery batch.
+    "easycosmetic": "product_parser_not_found",
 }
 PARFUMZENTRUM_RECOVERY_ALLOWLIST = {
     "https://www.parfum-zentrum.de/berdoues-monoi-tiare-eau-de-toilette-100-ml-unisex_z904294/",
@@ -37,6 +42,7 @@ ALLOWED_HOSTS = {
     "orioudh": {"orioudh.com", "www.orioudh.com"},
     "perfumemarket": {"perfumemarket.nl", "www.perfumemarket.nl"},
     "parfumzentrum": {"parfum-zentrum.de", "www.parfum-zentrum.de"},
+    "easycosmetic": {"easycosmetic.de", "www.easycosmetic.de"},
 }
 
 
@@ -99,6 +105,23 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
                     LIMIT ?""",
                 (store, *allowed_urls, signature, limit),
             ).fetchall()
+        elif store == "easycosmetic":
+            rows = conn.execute(
+                """SELECT q.store, q.url, q.state, q.attempts, q.last_error
+                   FROM hydration_queue AS q
+                   JOIN store_urls AS u
+                     ON u.store=q.store AND u.url=q.url AND u.active=1
+                   WHERE q.store=?
+                     AND q.state IN ('ERROR','DEAD')
+                     AND instr(q.last_error, ?) > 0
+                     AND instr(q.last_error, 'http_status=200') > 0
+                     AND instr(q.last_error, 'jsonld_products=') > 0
+                     AND instr(q.last_error, 'jsonld_products=0') = 0
+                     AND instr(q.last_error, ';h1=') > 0
+                   ORDER BY q.last_finished_at DESC, q.attempts DESC, q.url
+                   LIMIT ?""",
+                (store, signature, limit),
+            ).fetchall()
         else:
             rows = conn.execute(
                 """SELECT q.store, q.url, q.state, q.attempts, q.last_error
@@ -128,13 +151,27 @@ def build_recovery_plan(conn, *, now: float | None = None, limit_per_store: int 
                     continue
                 if "jsonld_products=1" not in str(item.get("last_error") or ""):
                     continue
+            if store == "easycosmetic":
+                error_text = str(item.get("last_error") or "")
+                if "product_parser_not_found" not in error_text:
+                    continue
+                if "http_status=200" not in error_text:
+                    continue
+                if "jsonld_products=" not in error_text or "jsonld_products=0" in error_text:
+                    continue
+                if ";h1=" not in error_text:
+                    continue
             if _is_safe_product_url(store, item.get("url")):
                 plan.append({
                     "store": store,
                     "url": item["url"],
                     "previous_state": item["state"],
                     "previous_attempts": item["attempts"],
-                    "reason": "known_parser_call_error_fixed_in_current_code",
+                    "reason": (
+                        "known_easycosmetic_parser_adapter_now_available"
+                        if store == "easycosmetic"
+                        else "known_parser_call_error_fixed_in_current_code"
+                    ),
                     "new_state": "PENDING",
                     "available_at": now,
                 })
