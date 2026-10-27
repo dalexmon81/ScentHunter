@@ -65,6 +65,11 @@ def _is_safe_product_url(store: str, url: str) -> bool:
             url in PARFUMZENTRUM_RECOVERY_ALLOWLIST
             and bool(re.search(r"_z\d+$", path, re.I))
         )
+    if store == "easycosmetic":
+        return (
+            path.endswith(".aspx")
+            and len([part for part in path.split("/") if part]) >= 2
+        )
     return False
 
 
