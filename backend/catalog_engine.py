@@ -3496,6 +3496,18 @@ def _secondary_store_parser(store, final_url, original_url, html_data=None):
     }
 
 
+def _refresh_timeout_for_store(store):
+    """Return bounded socket timeouts for catalog hydration by retailer."""
+    if store == 'easycosmetic':
+        # The German storefront can take longer to return its first response.
+        return max(25, REFRESH_TIMEOUT)
+    if store == 'deloox':
+        # Keep connection establishment tight, but allow a slower product page
+        # to return headers/body before classifying it as a retryable timeout.
+        return (3.0, 8.0)
+    return REFRESH_TIMEOUT
+
+
 def refresh_url(store, url):
     try:
         if store == 'easycosmetic':
@@ -3541,12 +3553,7 @@ def refresh_url(store, url):
             # Deloox response headers can stall, so run this fetch in the existing
             # batch worker with a short socket timeout and let the batch deadline
             # release the scheduler if the peer never responds.
-            if store == 'easycosmetic':
-                store_timeout = max(25, REFRESH_TIMEOUT)
-            elif store == 'deloox':
-                store_timeout = (3.0, 3.0)
-            else:
-                store_timeout = REFRESH_TIMEOUT
+            store_timeout = _refresh_timeout_for_store(store)
             status, final, data = http_get(url, timeout=store_timeout)
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
