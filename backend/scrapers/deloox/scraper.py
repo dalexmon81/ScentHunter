@@ -204,9 +204,13 @@ def availability(text, offer=None, soup=None):
 
         scoped = norm(" ".join(x for x in scoped_parts if x))
         if scoped:
+            # Negative stock phrases must precede positive ones: Dutch
+            # "niet op voorraad" contains "op voorraad" and was misclassified.
             if any(x in scoped for x in (
                 "sold out", "out of stock", "not available",
-                "currently unavailable", "unavailable",
+                "currently unavailable", "unavailable", "niet op voorraad",
+                "niet beschikbaar", "uitverkocht", "epuise",
+                "rupture de stock", "indisponible",
             )):
                 return "out_of_stock"
             if any(x in scoped for x in (
@@ -216,10 +220,12 @@ def availability(text, offer=None, soup=None):
                 return "in_stock"
 
     t = norm(text)
+    # Check localized negative stock signals before the positive substring
+    # "op voorraad", or "niet op voorraad" becomes a false in-stock result.
     if any(x in t for x in (
-        "sold out",
-        "out of stock",
-        "currently unavailable",
+        "sold out", "out of stock", "currently unavailable",
+        "niet op voorraad", "niet beschikbaar", "uitverkocht",
+        "epuise", "rupture de stock", "indisponible",
     )):
         return "out_of_stock"
     if any(x in t for x in ("in stock", "op voorraad")):
