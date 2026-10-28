@@ -84,7 +84,8 @@ def _requeue(db_path: str) -> dict:
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
             """
-            SELECT u.active, p.brand, p.gtin, p.sku, p.size_ml,
+            SELECT u.active, p.brand, p.gtin, p.sku, p.size_ml, p.price,
+                   p.availability, p.fetch_status,
                    q.state AS queue_state, q.leased_until
             FROM store_urls u
             LEFT JOIN store_products p
@@ -103,9 +104,9 @@ def _requeue(db_path: str) -> dict:
             conn.commit()
             return {"status": "ALREADY_PROCESSING", "url": URL, "database_written": False}
         current = dict(row)
-        if _identity_valid(current):
+        if _offer_state_valid(current):
             conn.commit()
-            return {"status": "IDENTITY_ALREADY_VALID", "url": URL, "database_written": False}
+            return {"status": "TARGET_ALREADY_VALID", "url": URL, "database_written": False}
         conn.execute(
             """
             INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at)
