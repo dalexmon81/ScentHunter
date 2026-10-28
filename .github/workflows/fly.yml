@@ -464,7 +464,7 @@ jobs:
                               store = str(offer.get("store") or "").lower()
                               identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
                               combined = group_identity + " " + identity
-                              if "deloox" not in store or not re.search(r"(?<!\\d)150\\s?ml\\b", combined, flags=re.I):
+                              if "deloox" not in store or not re.search(r"(?<!\d)150\s?ml\b", combined, flags=re.I):
                                   continue
                               matches_150.append({
                                   "group": group_identity,
