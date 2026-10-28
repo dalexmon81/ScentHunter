@@ -3826,6 +3826,9 @@ def diagnostic_deloox_pipeline(
             # Without this field, the GTIN registry is bypassed and this
             # diagnostic falsely reports an unresolved canonical match.
             'identity': parsed_product.get('identity'),
+            # Expose the GTIN as a top-level explicit identifier too; the matcher
+            # accepts it from persisted rows and parser-normalized payloads alike.
+            'gtin': ((parsed_product.get('identity') or {}).get('gtin')),
             'brand': parsed_product.get('brand') or parsed_product.get('_raw_brand') or 'French Avenue',
             'size_ml': ((parsed_product.get('attributes') or {}).get('size_ml') or {}).get('value') if isinstance((parsed_product.get('attributes') or {}).get('size_ml'), dict) else parsed_product.get('size_ml'),
             'url': parsed_product.get('url') or response.url,

@@ -2292,7 +2292,9 @@ def _deloox_persist_products(product_urls):
                                            AND p.fetched_at > ?)
                                           OR
                                           ((p.price IS NULL OR p.price <= 0)
-                                           AND p.fetched_at > ?)
+                                           AND p.fetched_at > ?
+                                           AND COALESCE(TRIM(p.brand), '') != ''
+                                           AND p.size_ml IS NOT NULL)
                                       )
                                ) THEN 'DONE'
                                ELSE 'PENDING'
@@ -2312,7 +2314,9 @@ def _deloox_persist_products(product_urls):
                                            AND p.fetched_at > ?)
                                           OR
                                           ((p.price IS NULL OR p.price <= 0)
-                                           AND p.fetched_at > ?)
+                                           AND p.fetched_at > ?
+                                           AND COALESCE(TRIM(p.brand), '') != ''
+                                           AND p.size_ml IS NOT NULL)
                                       )
                                ) THEN hydration_queue.available_at
                                WHEN hydration_queue.state IN ('ERROR','DEAD')
@@ -2331,7 +2335,9 @@ def _deloox_persist_products(product_urls):
                                            AND p.fetched_at > ?)
                                           OR
                                           ((p.price IS NULL OR p.price <= 0)
-                                           AND p.fetched_at > ?)
+                                           AND p.fetched_at > ?
+                                           AND COALESCE(TRIM(p.brand), '') != ''
+                                           AND p.size_ml IS NOT NULL)
                                       )
                                ) THEN hydration_queue.priority
                                ELSE MIN(hydration_queue.priority, 100)
@@ -2348,7 +2354,9 @@ def _deloox_persist_products(product_urls):
                                            AND p.fetched_at > ?)
                                           OR
                                           ((p.price IS NULL OR p.price <= 0)
-                                           AND p.fetched_at > ?)
+                                           AND p.fetched_at > ?
+                                           AND COALESCE(TRIM(p.brand), '') != ''
+                                           AND p.size_ml IS NOT NULL)
                                       )
                                ) THEN hydration_queue.last_error
                                ELSE NULL

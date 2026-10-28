@@ -143,7 +143,7 @@ jobs:
           conn.row_factory = sqlite3.Row
           conn.executescript("""
           CREATE TABLE hydration_queue(store TEXT,url TEXT,state TEXT,priority INTEGER NOT NULL DEFAULT 100,attempts INTEGER,available_at REAL,first_seen_at REAL,leased_until REAL,lease_token TEXT,last_error TEXT,last_http_status INTEGER,PRIMARY KEY(store,url));
-          CREATE TABLE store_products(store TEXT,url TEXT,price REAL,fetched_at REAL,fetch_status TEXT,PRIMARY KEY(store,url));
+          CREATE TABLE store_products(store TEXT,url TEXT,price REAL,fetched_at REAL,fetch_status TEXT,brand TEXT,size_ml REAL,gtin TEXT,sku TEXT,PRIMARY KEY(store,url));
           """)
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/a','ERROR',3,9999999999,1,'timeout')")
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/b','DONE',1,9999999999,1)")
@@ -151,14 +151,19 @@ jobs:
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at,last_error) VALUES('deloox','https://www.deloox.com/product/d','ERROR',1,9999999999,1,'parser')")
           conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/e','DONE',1,9999999999,1)")
           now = 1000.0
-          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?)", ('deloox','https://www.deloox.com/product/b',29.99,now-60,'OK'))
-          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?)", ('deloox','https://www.deloox.com/product/d',25.0,now-60,'OK'))
-          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?)", ('deloox','https://www.deloox.com/product/e',25.0,now-30*3600,'OK'))
+          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?,?,?,?,?)", ('deloox','https://www.deloox.com/product/b',29.99,now-60,'OK','Brand',100,'12345670','sku-b'))
+          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?,?,?,?,?)", ('deloox','https://www.deloox.com/product/d',25.0,now-60,'OK','Brand',100,'12345670','sku-d'))
+          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?,?,?,?,?)", ('deloox','https://www.deloox.com/product/e',25.0,now-30*3600,'OK','Brand',100,'12345670','sku-e'))
+          # A recent null-price row is only hydrated if its core identity is complete.
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/f','DONE',1,9999999999,1)")
+          conn.execute("INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at) VALUES('deloox','https://www.deloox.com/product/g','DONE',1,9999999999,1)")
+          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?,?,?,?,?)", ('deloox','https://www.deloox.com/product/f',None,now-60,'OK','',150,'','1385920'))
+          conn.execute("INSERT INTO store_products VALUES(?,?,?,?,?,?,?,?,?)", ('deloox','https://www.deloox.com/product/g',None,now-60,'OK','French Avenue',150,'','1385921'))
 
           def upsert(url):
               conn.execute(statement, ('deloox',url,'PENDING',0,now,now,now,now-24*3600,now-6*3600,now,now-24*3600,now-6*3600,now-24*3600,now-6*3600,now-24*3600,now-6*3600))
 
-          for suffix in ('a','b','c','d','e'):
+          for suffix in ('a','b','c','d','e','f','g'):
               upsert('https://www.deloox.com/product/'+suffix)
 
           states={row['url'].rsplit('/',1)[-1]:row for row in conn.execute("SELECT * FROM hydration_queue")}
@@ -167,6 +172,8 @@ jobs:
           assert states['c']['state']=='PROCESSING' and states['c']['lease_token']=='lease-c', states['c']
           assert states['d']['state']=='DONE', states['d']
           assert states['e']['state']=='PENDING' and states['e']['available_at'] <= now, states['e']
+          assert states['f']['state']=='PENDING' and states['f']['available_at'] <= now, states['f']
+          assert states['g']['state']=='DONE', states['g']
           # Verify the bounded search-priority hint elevates a matching queue row.
           priority_function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "prioritize_hydration_candidates")
           priority_sql = next(
