@@ -2039,6 +2039,33 @@ class ProductMatcher:
                     if alias and alias not in terms:
                         terms.append(alias)
 
+            # Broad family searches must also discover separately registered
+            # products whose query aliases contain the searched family phrase.
+            # Do not merge them: this only expands discovery terms; match()
+            # still resolves every offer to its own canonical family identity.
+            query_key = catalog_variant_key(query)
+            query_tokens = query_key.split()
+            for sibling_family in self.family_registry:
+                if sibling_family is family:
+                    continue
+                if catalog_norm(sibling_family.get("brand", "")) != catalog_norm(family.get("brand", "")):
+                    continue
+                aliases = sibling_family.get("query_aliases") or ()
+                for alias in aliases:
+                    alias_text = str(alias or "").strip()
+                    alias_key = catalog_variant_key(alias_text)
+                    alias_tokens = alias_key.split()
+                    if (
+                        alias_text
+                        and len(alias_tokens) > len(query_tokens)
+                        and any(
+                            alias_tokens[index:index + len(query_tokens)] == query_tokens
+                            for index in range(len(alias_tokens) - len(query_tokens) + 1)
+                        )
+                        and alias_text not in terms
+                    ):
+                        terms.append(alias_text)
+
         return terms[:80]
 
     def build_identity_scope(self, query: str) -> List[Dict[str, Any]]:
