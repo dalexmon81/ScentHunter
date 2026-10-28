@@ -1121,9 +1121,36 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
             break
 
-    # Try headings first, then metadata, then slug.
-    name_candidates: List[str] = []
+    # Product identity must come from the actual destination page, not from
+    # the search-result card. Notino's reader/search output can accidentally
+    # pair a perfume title with an unrelated product URL; falling back to the
+    # candidate name in that case creates false offers that the family matcher
+    # may then incorrectly canonicalize.
     soup = BeautifulSoup(text, "html.parser")
+    authoritative_titles: List[str] = []
+    for tag in soup.find_all(["h1", "title"], limit=20):
+        title_text = _clean_name(tag.get_text(" ", strip=True))
+        if title_text:
+            authoritative_titles.append(title_text)
+    for meta in soup.find_all("meta"):
+        key = str(meta.get("property") or meta.get("name") or "").casefold()
+        content = _clean_name(meta.get("content") or "")
+        if key in {"og:title", "twitter:title", "title"} and content:
+            authoritative_titles.append(content)
+    for record in records:
+        rec_name, _rec_brand, _rec_url, _rec_price, _rec_size = _structured_record_to_evidence(record)
+        if rec_name:
+            authoritative_titles.append(rec_name)
+
+    if authoritative_titles and not any(
+        _query_matches_name(title, query) and not _has_non_perfume_marker(title)
+        for title in authoritative_titles
+    ):
+        return None
+
+    # Try headings first, then metadata. h2/h3/strong can be recommendations,
+    # so they are only weaker evidence after the destination identity check.
+    name_candidates: List[str] = []
     for tag in soup.find_all(["h1", "h2", "h3", "title", "strong"], limit=80):
         name = _clean_name(tag.get_text(" ", strip=True))
         if name and _query_matches_name(name, query) and not _has_non_perfume_marker(name):
