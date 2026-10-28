@@ -94,3 +94,48 @@ def test_search_delegates_to_approved_creators_api(monkeypatch, module, market):
     report = module.search("Liquid Brun 150 ml")
     assert report == expected
     assert calls == [("Liquid Brun 150 ml", market, f"amazon_{market}")]
+
+@pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
+def test_external_bing_rss_fallback_requires_asin_matching_title_and_price(monkeypatch, module, market):
+    xml = f"""<rss><channel><item>
+      <title>French Avenue Liquid Brun Eau de Parfum 100 ml 39,90 €</title>
+      <link>https://www.amazon.{market}/French-Avenue/dp/B012345678</link>
+      <description>French Avenue Liquid Brun Eau de Parfum 100 ml: 39,90 €</description>
+    </item><item>
+      <title>Unrelated perfume 20,00 €</title>
+      <link>https://www.amazon.{market}/dp/C012345678</link>
+      <description>20,00 €</description>
+    </item><item>
+      <title>French Avenue Liquid Brun no price</title>
+      <link>https://www.amazon.{market}/dp/D012345678</link>
+      <description>Available online</description>
+    </item></channel></rss>"""
+    class Response:
+        status_code = 200
+        text = xml
+        def close(self):
+            return None
+    monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
+    report = module._external_search_fallback("French Avenue Liquid Brun")
+    assert report["status"] == "success"
+    assert len(report["results"]) == 1
+    assert report["results"][0]["url"] == f"https://www.amazon.{market}/dp/B012345678"
+    assert report["results"][0]["price_num"] == 39.90
+    assert report["details"]["source"] == "bing_rss_public_index"
+    assert report["details"]["price_freshness"] == "search_engine_snippet_not_live_product_page"
+
+
+@pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
+def test_external_bing_rss_fallback_returns_none_without_price(monkeypatch, module, market):
+    xml = f"""<rss><channel><item>
+      <title>French Avenue Liquid Brun Eau de Parfum 100 ml</title>
+      <link>https://www.amazon.{market}/dp/B012345678</link>
+      <description>Product details, no current price displayed.</description>
+    </item></channel></rss>"""
+    class Response:
+        status_code = 200
+        text = xml
+        def close(self):
+            return None
+    monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
+    assert module._external_search_fallback("French Avenue Liquid Brun") is None
