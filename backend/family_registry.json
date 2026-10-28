@@ -771,6 +771,118 @@
       ],
       "excluded_products": [],
       "excluded_aliases": []
+    },
+    {
+      "family_id": "khadlaj_shiyaaka",
+      "brand": "Khadlaj",
+      "query_aliases": [
+        "Shiyaaka",
+        "Khadlaj Shiyaaka",
+        "Shiyaaka line",
+        "Shiyaaka collection"
+      ],
+      "products": [
+        {
+          "canonical_name": "Shiyaaka Blue",
+          "aliases": [
+            "Shiyaaka Blue",
+            "Khadlaj Shiyaaka Blue",
+            "Shiyaaka Blue EDP",
+            "Shiyaaka Blue Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Gold",
+          "aliases": [
+            "Shiyaaka Gold",
+            "Khadlaj Shiyaaka Gold",
+            "Shiyaaka Gold EDP",
+            "Shiyaaka Gold Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka For Men",
+          "aliases": [
+            "Shiyaaka For Men",
+            "Khadlaj Shiyaaka For Men",
+            "Shiyaaka Men",
+            "Shiyaaka Silver",
+            "Khadlaj Shiyaaka Silver",
+            "Shiyaaka For Men EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka White",
+          "aliases": [
+            "Shiyaaka White",
+            "Shiyaaka White For Women",
+            "Shiyaaka Women",
+            "Khadlaj Shiyaaka White",
+            "Shiyaaka White EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Rose Gold",
+          "aliases": [
+            "Shiyaaka Rose Gold",
+            "Khadlaj Shiyaaka Rose Gold",
+            "Shiyaaka Rose Gold EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Sky",
+          "aliases": [
+            "Shiyaaka Sky",
+            "Khadlaj Shiyaaka Sky",
+            "Special Edition Shiyaaka Sky",
+            "Shiyaaka Sky EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Shadow",
+          "aliases": [
+            "Shiyaaka Shadow",
+            "Khadlaj Shiyaaka Shadow",
+            "Special Edition Shiyaaka Shadow",
+            "Shiyaaka Shadow EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Snow",
+          "aliases": [
+            "Shiyaaka Snow",
+            "Khadlaj Shiyaaka Snow",
+            "Special Edition Shiyaaka Snow",
+            "Shiyaaka Snow EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
     }
   ]
 }
