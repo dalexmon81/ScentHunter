@@ -150,4 +150,5 @@ jobs:
           probe 'Production catalog status (read-only HTTP)' 'https://scenthunter.fly.dev/catalog-status' 20
           probe 'Recent Deloox hydration errors (read-only)' 'https://scenthunter.fly.dev/catalog/hydration-errors?store=deloox&limit=10' 20
           probe 'Liquid Brun Limited Edition URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1385920%2Ffrench-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html&q=Liquid%20Brun%20Limited%20Edition%20150%20ml' 45
+          probe 'Deloox pipeline GTIN and canonical matching trace (read-only)' 'https://scenthunter.fly.dev/diagnostic/deloox-pipeline' 45
           probe 'Liquid Brun standard 100 ml URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1355229%2Ffrench-avenue-liquid-brun-eau-de-parfum-100-ml.html&q=Liquid%20Brun%20100%20ml' 45
