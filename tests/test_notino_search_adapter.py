@@ -170,6 +170,15 @@ def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypat
     ) is None
 
 
+def test_generic_notino_discovery_tries_current_france_search_route_first():
+    from backend.scrapers.notino import legacy_public
+
+    urls = legacy_public._search_urls("Dior Sauvage")
+    assert urls[0].startswith("https://www.notino.fr/search/?exps=")
+    assert "lastPage=1-0-1" in urls[0]
+    assert any(url.startswith("https://www.notino.fr/search.asp?exps=") for url in urls)
+
+
 def test_liquid_brun_discovery_adds_known_notino_product_url(monkeypatch):
     monkeypatch.setattr(scraper, "_search_urls", lambda query: [])
     monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: (_ for _ in ()).throw(
