@@ -237,3 +237,11 @@ def test_known_product_seed_requires_product_page_verification(monkeypatch):
     )
 
     assert scraper._enrich_one(candidate, "Liquid Brun") is sentinel
+
+
+def test_notino_rejects_suspicious_full_bottle_placeholder_price():
+    assert not scraper._price_is_plausible("4,99€", 100)
+    assert not scraper._price_is_plausible("4,99 â‚¬", 100)
+    assert scraper._price_is_plausible("49,99€", 100)
+    assert scraper._price_is_plausible("4,99€", 5)
+    assert not scraper._price_is_plausible("price unavailable", 100)
