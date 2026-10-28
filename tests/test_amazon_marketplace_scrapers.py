@@ -161,7 +161,7 @@ def test_search_uses_bing_fallback_before_browser_retry_after_http_503(monkeypat
     calls = []
     def fake_get(url, *args, **kwargs):
         calls.append(url)
-        if f"amazon.{market}" in url:
+        if url.startswith(module.BASE):
             return Response(503, module.BASE + "/s?k=Liquid+Brun", "Service Unavailable")
         return Response(200, "https://www.bing.com/search?format=rss", xml)
     monkeypatch.setattr(module.requests, "get", fake_get)
