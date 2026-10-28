@@ -3840,8 +3840,24 @@ def diagnostic_deloox_pipeline(
         from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
         from pathlib import Path
         offer = normalize_offer(normalized_input, retailer='deloox')
-        match = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json')).match(offer)
+        matcher = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json'))
+        match = matcher.match(offer)
+        # Expose read-only GTIN routing evidence so the live trace can distinguish
+        # missing parser identity from a registry/catalog target mismatch.
+        from scenthunter_next_engine.canonical_matcher import _offer_gtin
+        extracted_gtin = _offer_gtin(offer.raw_payload)
+        registered_gtin = matcher._gtin_registry
+        gtin_trace = {
+            'extracted_gtin': extracted_gtin,
+            'registry_contains_gtin': bool(extracted_gtin and extracted_gtin in registered_gtin),
+            'registered_target': ({
+                'product_id': registered_gtin[extracted_gtin].get('product_id'),
+                'variant_id': registered_gtin[extracted_gtin].get('variant_id'),
+                'size_ml': registered_gtin[extracted_gtin].get('size_ml'),
+            } if extracted_gtin and extracted_gtin in registered_gtin else None),
+        }
         matching_stage = {
+            'gtin_trace': gtin_trace,
             'normalized_offer': {
                 'retailer': offer.retailer, 'raw_name': offer.raw_name, 'brand_raw': offer.brand_raw,
                 'size_ml': offer.size_ml, 'price': str(offer.price) if offer.price is not None else None,

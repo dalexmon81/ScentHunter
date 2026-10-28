@@ -240,8 +240,28 @@ def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
         raw_payload.get("ean13"),
         raw_payload.get("ean"),
         identity.get("gtin") if isinstance(identity, Mapping) else None,
+        identity.get("gtin14") if isinstance(identity, Mapping) else None,
+        identity.get("gtin13") if isinstance(identity, Mapping) else None,
+        identity.get("gtin12") if isinstance(identity, Mapping) else None,
         parsed_identity.get("gtin") if isinstance(parsed_identity, Mapping) else None,
+        parsed_identity.get("gtin14") if isinstance(parsed_identity, Mapping) else None,
+        parsed_identity.get("gtin13") if isinstance(parsed_identity, Mapping) else None,
+        parsed_identity.get("gtin12") if isinstance(parsed_identity, Mapping) else None,
+        parsed_product.get("gtin") if isinstance(parsed_product, Mapping) else None,
+        parsed_product.get("gtin14") if isinstance(parsed_product, Mapping) else None,
+        parsed_product.get("gtin13") if isinstance(parsed_product, Mapping) else None,
+        parsed_product.get("gtin12") if isinstance(parsed_product, Mapping) else None,
     ]
+    if isinstance(parsed_product, Mapping):
+        parsed_raw_data = parsed_product.get("raw_data")
+        parsed_jsonld = parsed_raw_data.get("jsonld") if isinstance(parsed_raw_data, Mapping) else None
+        if isinstance(parsed_jsonld, Mapping):
+            candidates.extend([
+                parsed_jsonld.get("gtin14"),
+                parsed_jsonld.get("gtin13"),
+                parsed_jsonld.get("gtin12"),
+                parsed_jsonld.get("gtin"),
+            ])
     if isinstance(jsonld, Mapping):
         candidates.extend([
             jsonld.get("gtin14"),
