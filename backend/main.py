@@ -2575,12 +2575,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
         )
         public_fallback = str(
-            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', 'true')
+            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '')
         ).strip().lower() not in {'0', 'false', 'no', 'off', 'disabled'}
         return api_configured or public_fallback
 
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', 'true')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '')
     ).strip().lower() not in {'0', 'false', 'no', 'off', 'disabled'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
