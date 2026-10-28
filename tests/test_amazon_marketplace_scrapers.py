@@ -27,23 +27,52 @@ def test_marketplace_is_pinned_to_its_own_host(module, base, language, store_key
 
 
 @pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
-def test_search_refuses_unapproved_html_fallback(monkeypatch, module, market):
+def test_search_uses_public_html_fallback_when_creators_api_is_not_configured(monkeypatch, module, market):
     monkeypatch.delenv("AMAZON_CREATORS_API_COMPARISON_APPROVED", raising=False)
     monkeypatch.delenv("AMAZON_CREATORS_API_CLIENT_ID", raising=False)
     monkeypatch.delenv("AMAZON_CREATORS_API_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("AMAZON_ASSOCIATE_TAG_FR", raising=False)
     monkeypatch.delenv("AMAZON_ASSOCIATE_TAG_DE", raising=False)
-
-    def unexpected_request(*args, **kwargs):
-        raise AssertionError("public Amazon HTML must not be requested")
-
-    monkeypatch.setattr(module.requests, "get", unexpected_request)
+    html = """
+      <div data-component-type="s-search-result" data-asin="B012345678">
+        <h2><span>French Avenue Liquid Brun Eau de Parfum 100 ml</span></h2>
+        <span class="a-price"><span class="a-offscreen">39,90 €</span></span>
+        <img class="s-image" src="https://images.example.test/item.jpg">
+      </div>
+    """
+    class Response:
+        status_code = 200
+        url = module.BASE + "/s?k=Liquid+Brun"
+        text = html
+        def raise_for_status(self):
+            return None
+        def close(self):
+            return None
+    monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
     report = module.search("Liquid Brun")
-    assert report["status"] == "unavailable"
+    assert report["status"] == "success"
+    assert report["verified"] is True
+    assert len(report["results"]) == 1
+    assert report["results"][0]["store"] == f"amazon_{market}"
+    assert report["results"][0]["price_num"] == 39.90
+    assert report["details"]["source"] == "public_search_html"
+
+
+@pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
+def test_public_html_challenge_is_rejected_without_bypass(monkeypatch, module, market):
+    class Response:
+        status_code = 200
+        url = module.BASE + "/s?k=Liquid+Brun"
+        text = "<html><title>Robot Check</title><body>captcha</body></html>"
+        def raise_for_status(self):
+            return None
+        def close(self):
+            return None
+    monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
+    report = module._public_html_search("Liquid Brun")
+    assert report["status"] == "blocked"
     assert report["verified"] is False
-    assert report["results"] == []
-    assert report["error"] == "amazon_creators_api_not_configured_or_not_approved"
-    assert report["details"]["market"] == market
+    assert report["error"] == "amazon_challenge_page"
 
 
 @pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])

@@ -2557,21 +2557,24 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
-    # Notino's restored external-discovery adapter is available for explicit
-    # opt-in testing, but production diagnostics show no offers and its browser
-    # fallback can add ~9 seconds to every catalog-first search. Keep normal
-    # searches fast until the authorized CJ/VIV feed is configured and fresh.
-    # Amazon remains Creators-API-only until approved credentials and partner tags
-    # are configured; public marketplace HTML is not a valid substitute.
+    # Prefer authorized Notino feed offers, then use the restored September
+    # external-discovery/browser scraper when no fresh offer matches the query.
+    # Amazon prefers the approved Creators API; if it is not configured, the
+    # ordinary public HTML adapter may try once. Both fallbacks are bounded and
+    # reject challenge pages rather than attempting to bypass them.
     def amazon_bridge_configured(store):
         market = 'fr' if store == 'amazon_fr' else 'de'
         approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
-        return (
+        api_configured = (
             approved in {'1', 'true', 'yes', 'on'}
             and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_ID', '')).strip())
             and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
             and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
         )
+        public_fallback = str(
+            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '')
+        ).strip().lower() in {'1', 'true', 'yes', 'on'}
+        return api_configured or public_fallback
 
     notino_live_fallback_enabled = str(
         os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '')
