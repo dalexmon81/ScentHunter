@@ -1617,7 +1617,7 @@ def _html_product_url(store, raw_url, base_url):
         ))
         if re.search(r'/(?:product|produit|producto|prodotto)/\d+(?:/|$)', low, re.I):
             return canonical
-        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|kategorie|categorias|categorías|chercher|search|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
+        if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|kategorie|categorias|categorías|chercher|search|zoeken|buscar|busqueda|búsqueda|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
         return None
     if store in {'amazon_fr', 'amazon_de'}:
@@ -2480,6 +2480,16 @@ def _discover_deloox_search_catalog(deadline=None, progress_callback=None, max_q
                     url = str(raw).split('#', 1)[0]
                     if not _deloox_queue_allowed(url):
                         continue
+                    # Search discovery returns candidate links, not a guarantee
+                    # that each link is a product detail page. Apply the same
+                    # product-URL contract used by the durable HTML crawler so
+                    # localized search/category pages never reach hydration.
+                    product_url = _html_product_url(
+                        'deloox', url, STORES['deloox'][0]
+                    )
+                    if not product_url:
+                        continue
+                    url = product_url
                     if url not in product_urls:
                         product_urls[url] = ''
                         added += 1
