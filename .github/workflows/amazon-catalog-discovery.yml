@@ -88,8 +88,11 @@ jobs:
                   "status": state.get("status"),
                   "error": state.get("error"),
               }
+              fetched = int(state.get("fetched_products") or 0)
               if indexed <= 0:
                   failures.append(key + " has no indexed product URLs")
+              if fetched <= 0:
+                  failures.append(key + " has no hydrated product records; indexed URLs alone do not prove offers work")
           print("Amazon catalog verification:", json.dumps(results, ensure_ascii=False))
           if failures:
               raise SystemExit("Amazon discovery did not produce usable catalog URLs: " + "; ".join(failures))
