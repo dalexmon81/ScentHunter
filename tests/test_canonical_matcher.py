@@ -150,8 +150,7 @@ class CanonicalMatcherTests(unittest.TestCase):
             self.tmp,
         )
         self.tmp.flush()
-        self.tmp.seek(0)
-        catalog_json = self.tmp.read()
+        catalog_json = Path(self.tmp.name).read_text(encoding="utf-8")
         self.tmp.close()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
         # Give this fixture a unique sibling directory: CanonicalMatcher
