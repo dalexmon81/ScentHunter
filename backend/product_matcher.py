@@ -1919,7 +1919,51 @@ class ProductMatcher:
 
         family = self._family_for_query(query)
         if family is not None:
-            result = self._match_family(offer, query, family)
+            # A broad query can be an exact alias for one family and at the
+            # same time a prefix/subphrase of a separately registered product
+            # family (for example "Liquid Brun" vs "Liquid Brun Limited Edition").
+            # Resolve an offer against those more-specific sibling families
+            # first. This preserves separate canonical product identities and
+            # relies on the same registry/offer identity checks as normal matching.
+            query_key = catalog_variant_key(query)
+            if query_key in family.get("normalized_query_aliases", ()):
+                query_tokens = query_key.split()
+                sibling_families = []
+                for candidate_family in self.family_registry:
+                    if candidate_family is family:
+                        continue
+                    if catalog_norm(candidate_family.get("brand", "")) != catalog_norm(family.get("brand", "")):
+                        continue
+                    specific_aliases = candidate_family.get("normalized_query_aliases", ())
+                    if any(
+                        len(alias.split()) > len(query_tokens)
+                        and any(
+                            alias_tokens[index:index + len(query_tokens)] == query_tokens
+                            for alias_tokens in [alias.split()]
+                            for index in range(len(alias_tokens) - len(query_tokens) + 1)
+                        )
+                        for alias in specific_aliases
+                    ):
+                        sibling_families.append(candidate_family)
+
+                # More specific aliases are tried first, so nested variants
+                # cannot be shadowed by a less-specific sibling family.
+                sibling_families.sort(
+                    key=lambda candidate_family: max(
+                        (len(alias.split()) for alias in candidate_family.get("normalized_query_aliases", ())),
+                        default=0,
+                    ),
+                    reverse=True,
+                )
+                for sibling_family in sibling_families:
+                    sibling_result = self._match_family(offer, query, sibling_family)
+                    if sibling_result is not None:
+                        result = sibling_result
+                        break
+                else:
+                    result = self._match_family(offer, query, family)
+            else:
+                result = self._match_family(offer, query, family)
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             if result is None:
                 if _matcher_diagnostics_enabled():
