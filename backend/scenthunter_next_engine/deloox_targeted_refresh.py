@@ -1,8 +1,9 @@
 """One-URL, idempotent Deloox offer refresh guard for deploy verification.
 
 Only the verified Liquid Brun Limited Edition 150 ml URL is considered.
-The script never changes product data; it only requeues hydration when the
-persisted identity is incomplete, then waits for the normal worker to refresh it.
+The script uses the catalog engine's normal parser/persistence path for this
+exact URL, then verifies the persisted GTIN, SKU, size, price and availability.
+It never writes hand-authored product values or guesses product identity.
 """
 from __future__ import annotations
 
@@ -147,22 +148,47 @@ def main() -> int:
         }, sort_keys=True, default=str))
         return 0
 
+    # Invoke the same parser and SQLite upsert used by normal hydration for
+    # this fixed, reviewed URL. This avoids depending on a background scheduler
+    # slot when production has a stale PROCESSING lease.
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from catalog_engine import refresh_url
+    item = refresh_url(STORE, URL)
+    if not isinstance(item, dict):
+        raise RuntimeError("target_parser_returned_no_product")
+    parsed_gtin = re.sub(r"\\D", "", str(item.get("gtin") or ""))
+    try:
+        parsed_size = float(item.get("size_ml"))
+        parsed_price = float(item.get("price_num"))
+    except (TypeError, ValueError):
+        parsed_size = parsed_price = 0
+    if (
+        str(item.get("brand") or "").strip().casefold() != "french avenue"
+        or parsed_gtin != GTIN
+        or str(item.get("sku") or "").strip() != SKU
+        or parsed_size != SIZE_ML
+        or parsed_price <= 0
+        or str(item.get("availability") or "").strip().lower() != "in_stock"
+    ):
+        raise RuntimeError("target_parser_identity_or_offer_validation_failed")
+    row = _read_row(args.db)
+    if _offer_state_valid(row):
+        print(json.dumps({
+            "status": "TARGET_REFRESHED",
+            "url": URL,
+            "identity_valid": True,
+            "offer_state_valid": True,
+            "availability": row.get("availability"),
+            "price": row.get("price"),
+            "gtin": row.get("gtin"),
+            "sku": row.get("sku"),
+            "size_ml": row.get("size_ml"),
+            "database_written": True,
+            "write_path": "catalog_engine.refresh_url",
+        }, sort_keys=True, default=str))
+        return 0
     result = _requeue(args.db)
-    if result.get("status") == "TARGET_REQUEUED":
-        # The app's background scheduler intentionally yields during foreground
-        # searches. For this one reviewed URL, run one normal leased hydration
-        # batch in this short-lived process so the guarded refresh does not
-        # depend on the scheduler getting an idle slot before the timeout.
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-        from catalog_engine import hydrate_catalog_batch
-        batch_result = hydrate_catalog_batch(
-            max_urls=1,
-            workers=1,
-            stores=[STORE],
-            deadline=time.monotonic() + min(45, max(10, args.wait_seconds)),
-        )
-        result["hydration_batch"] = batch_result
     deadline = time.monotonic() + max(0, args.wait_seconds)
     while True:
         row = _read_row(args.db)
