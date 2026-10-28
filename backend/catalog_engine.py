@@ -4400,6 +4400,30 @@ def _schedule_stale_price_repairs(rows, max_jobs=12):
         threading.Thread(target=_repair, name='catalog-stale-price-refresh', daemon=True).start()
 
 
+def _deloox_candidate_priority(row):
+    """Prefer the freshest regional URL for the same Deloox SKU/GTIN.
+
+    Deloox publishes the same product ID on several country domains. The FTS
+    rank alone can put an old .lu/.es out-of-stock row before a fresh .be offer;
+    the SKU-based duplicate guard would then discard the valid offer. Sort the
+    bounded candidate window by observation recency before that guard runs.
+    """
+    try:
+        fetched_at = float(row['product_fetched_at'] or 0)
+    except (KeyError, TypeError, ValueError):
+        fetched_at = 0.0
+    status = str(row['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
+    try:
+        price = float(row['product_price'])
+    except (KeyError, TypeError, ValueError):
+        price = 0.0
+    priced_in_stock = (
+        status in {'in_stock', 'instock', 'available', 'limited_availability', 'preorder'}
+        and price > 0
+    )
+    return (-fetched_at, 0 if priced_in_stock else 1, str(row['url'] or ''))
+
+
 def _should_hide_deloox_offer(store, availability, price):
     """Hide unpriced Deloox offers except confirmed products that are out of stock."""
     if str(store or '').strip().lower() != 'deloox':
@@ -4623,6 +4647,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                     raise
                 _diag_sql_elapsed = time.monotonic() - _diag_sql_t0
                 _diag_process_t0 = time.monotonic()
+                # The same Deloox SKU is often indexed on .be, .lu, .nl and
+                # .es. Rank the freshest persisted regional observation first
+                # before SKU/GTIN deduplication so a stale sold-out locale cannot
+                # hide a current priced offer from another locale.
+                if store == 'deloox':
+                    candidates = sorted(candidates, key=_deloox_candidate_priority)
+
                 per_term_counts = [0 for _ in term_specs]
                 seen_product_keys_by_term = [set() for _ in term_specs]
                 variant_rows_by_url = {}
