@@ -422,7 +422,11 @@ def _request(session: requests.Session, url: str, reader: bool = False) -> reque
 
 def _search_urls(query: str) -> List[str]:
     q = quote_plus(query)
+    # Notino's current French storefront uses /search/?exps=. Keep the older
+    # routes as fallbacks, but try the canonical route first so generic perfume
+    # searches don't depend on a product-specific hardcoded seed.
     return [
+        f"{BASE_URL}/search/?exps={q}&lastPage=1-0-1",
         f"{SEARCH_URL}?exps={q}",
         f"{BASE_URL}/search?query={q}",
     ]
