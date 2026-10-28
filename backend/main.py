@@ -2245,7 +2245,7 @@ def _catalog_search_terms(query):
         # Multi-token family searches also need room for separately
         # registered variants (e.g. Liquid Brun Limited Edition). Four terms
         # truncated these related aliases before catalog lookup could see them.
-        max_terms = 32 if len(query_tokens) <= 1 else 12
+        max_terms = 32 if len(query_tokens) <= 1 else 4
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
