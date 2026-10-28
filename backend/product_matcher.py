@@ -1835,6 +1835,49 @@ class ProductMatcher:
             offer.get("name") or offer.get("title") or offer.get("product_name") or ""
         )
 
+        # Fail closed when the offer's display metadata and destination URL
+        # explicitly identify different bottle sizes. Retailer catalog rows can
+        # retain a stale 100 ml title while pointing at a 150 ml product page;
+        # resolving the family name alone would then attach that offer to the
+        # wrong canonical size. Read only explicit ml/cl markers, not arbitrary
+        # numbers such as product IDs.
+        def explicit_size_from_text(value: Any) -> Optional[float]:
+            match = re.search(r"\\b(\\d{1,4}(?:[.,]\\d+)?)\\s*(ml|cl)\\b", str(value or ""), re.I)
+            if not match:
+                return None
+            amount = float(match.group(1).replace(",", "."))
+            return amount * 10 if match.group(2).lower() == "cl" else amount
+
+        title_size = explicit_size_from_text(" ".join(
+            str(offer.get(key) or "") for key in ("name", "title", "product_name", "size", "format")
+        ))
+        structured_size = offer.get("size_ml")
+        if structured_size in (None, ""):
+            structured_size = _nested_attribute_value(offer, "size_ml")
+        try:
+            structured_size = float(str(structured_size).replace(",", ".")) if structured_size not in (None, "") else None
+        except (TypeError, ValueError):
+            structured_size = None
+        url_sizes = {
+            parsed_size
+            for raw_url in self._offer_url_identity_texts(offer)
+            if (parsed_size := explicit_size_from_text(raw_url)) is not None
+        }
+        explicit_sizes = set(url_sizes)
+        if title_size is not None:
+            explicit_sizes.add(title_size)
+        if structured_size is not None:
+            explicit_sizes.add(structured_size)
+        if len(explicit_sizes) > 1:
+            if _matcher_diagnostics_enabled():
+                print(
+                    "SCENTHUNTER: MATCHER_REJECTED "
+                    f"store={store!r} name={raw_name!r} "
+                    f"method=size_identity_mismatch sizes={sorted(explicit_sizes)!r}",
+                    flush=True,
+                )
+            return None
+
         # Apply the same generic product-type exclusion used by catalog offer
         # resolution before entering the family matcher.  Otherwise a scraped
         # perfume-like title can override a URL that actually identifies soap,
