@@ -349,24 +349,19 @@ def search(query):
             from . import legacy_public
             fallback_rows = legacy_public.search(query)
             if fallback_rows:
-                results = []
-                for row in fallback_rows:
-                    raw_price = row.get("price_num")
-                    if raw_price is None:
-                        raw_price = _price(row.get("price"))
-                    if raw_price is None or raw_price <= 0:
-                        continue
-                    results.append({
-                        "shop": STORE, "store": "notino",
-                        "brand": _clean(row.get("brand")),
-                        "name": _clean(row.get("name")),
-                        "price": f"{raw_price:.2f} €", "price_num": raw_price,
-                        "currency": "EUR", "available": row.get("available"),
-                        "availability": row.get("availability"),
-                        "image": row.get("image"), "size_ml": row.get("size_ml") or row.get("sizeml"),
-                        "concentration": row.get("concentration"),
-                        "url": row.get("url"),
-                    })
+                # Keep the established fallback adapter's public contract; only
+                # admit offers whose price can be parsed as a positive number.
+                results = [
+                    row for row in fallback_rows
+                    if (
+                        (_price(row.get("price_num")) if row.get("price_num") is not None
+                         else _price(row.get("price"))) is not None
+                        and (
+                            _price(row.get("price_num")) if row.get("price_num") is not None
+                            else _price(row.get("price"))
+                        ) > 0
+                    )
+                ]
             if results:
                 return {
                     "status": "partial" if errors else "success",
