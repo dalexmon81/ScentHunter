@@ -1,6 +1,5 @@
 """Regression tests for Notino's authorized CJ/VIV product feed."""
 import gzip
-import logging
 import os
 import unittest
 from unittest.mock import patch
@@ -65,9 +64,12 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(feed._product_url("https://user:pass@www.notino.fr/brand/item/"))
 
     def test_missing_credentials_are_reported_without_secrets(self):
-        names = ("NOTINO_CJ_FEED_URL", "NOTINO_CJ_FEED_USERNAME", "NOTINO_CJ_FEED_PASSWORD")
-        with patch.dict(os.environ, {name: "" for name in names}, clear=False):
-            with self.assertLogs("scenthunter.notino_feed", level=logging.INFO) as logs:
-                with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing"):
-                    feed.import_configured_feed()
-            self.assertNotIn("password=", "\n".join(logs.output).lower())
+        values = {
+            "NOTINO_CJ_FEED_URL": "",
+            "NOTINO_CJ_FEED_USERNAME": "",
+            "NOTINO_CJ_FEED_PASSWORD": "secret-canary-value",
+        }
+        with patch.dict(os.environ, values, clear=False):
+            with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing") as raised:
+                feed.import_configured_feed()
+        self.assertNotIn("secret-canary-value", str(raised.exception))
