@@ -141,3 +141,30 @@ def test_search_does_not_fallback_when_feed_has_fresh_matching_offer(monkeypatch
 
     assert report["results"] == expected
     assert report["details"]["source"] == "cj_viv_authorized_xml"
+
+
+def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypatch):
+    html = """
+    <html><head><title>Bioderma Pigmentbio H2O</title></head>
+    <body>
+      <h1>Bioderma Pigmentbio H2O Eau Micellaire 250 ml</h1>
+      <div>10,96 €</div>
+    </body></html>
+    """
+
+    class Response:
+        text = html
+
+    monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: Response())
+    candidate = {
+        "url": "https://www.notino.fr/bioderma/pigmentbio-h2o/p-16013446/",
+        "name": "French Avenue Liquid Brun Limited Edition mixte",
+        "card_text": "French Avenue Liquid Brun Limited Edition mixte 10,96 €",
+        "price": "10,96 €",
+        "size_ml": 250,
+        "source": "reader-url-context",
+    }
+
+    assert scraper._reader_product(
+        object(), candidate, "Liquid Brun", _allow_variants=False
+    ) is None
