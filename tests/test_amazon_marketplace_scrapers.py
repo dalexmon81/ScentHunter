@@ -110,3 +110,25 @@ def test_search_reports_amazon_challenge_as_blocked_not_empty_success(monkeypatc
     assert report["status"] == "blocked"
     assert report["verified"] is False
     assert report["results"] == []
+
+
+@pytest.mark.parametrize(
+    ("module", "market"),
+    [(fr, "fr"), (de, "de")],
+)
+def test_amazon_comparison_never_falls_back_to_public_html_without_approval(monkeypatch, module, market):
+    monkeypatch.delenv("AMAZON_CREATORS_API_COMPARISON_APPROVED", raising=False)
+    monkeypatch.setenv("AMAZON_CREATORS_API_CLIENT_ID", "test-client")
+    monkeypatch.setenv("AMAZON_CREATORS_API_CLIENT_SECRET", "test-secret")
+    monkeypatch.setenv("AMAZON_ASSOCIATE_TAG_FR", "test-fr-21")
+    monkeypatch.setenv("AMAZON_ASSOCIATE_TAG_DE", "test-de-21")
+
+    def unexpected_request(*args, **kwargs):
+        raise AssertionError("public Amazon HTML must not be requested")
+
+    monkeypatch.setattr(module.requests, "get", unexpected_request)
+    report = module.search("Liquid Brun")
+    assert report["status"] == "unavailable"
+    assert report["verified"] is False
+    assert report["results"] == []
+    assert report["error"] == "amazon_creators_api_not_configured_or_not_approved"

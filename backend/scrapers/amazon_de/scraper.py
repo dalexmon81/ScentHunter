@@ -102,10 +102,15 @@ def search(query):
     query = _clean(query)
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None, "details": {"empty_query": True}}
-    # Prefer Amazon's approved API when credentials and the local Partner Tag
-    # are configured. Never silently fall back to public HTML after API errors.
-    if _creators_api_is_configured(MARKET):
-        return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
+    # Comparisons must use the approved Creators API. Never scrape public HTML
+    # when credentials or explicit price-comparison approval are absent.
+    if not _creators_api_is_configured(MARKET):
+        return {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": "amazon_creators_api_not_configured_or_not_approved",
+            "details": {"market": MARKET, "source": "amazon_creators_api"},
+        }
+    return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
     url = f"{BASE}/s?k={quote_plus(query)}"
     response = None
     try:

@@ -133,6 +133,33 @@ def _text(value) -> str:
     return str(value or "").strip()
 
 
+def _normalised_tokens(value: str) -> list[str]:
+    import unicodedata
+    text = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode("ascii")
+    return [token for token in re.findall(r"[a-z0-9]+", text.lower()) if len(token) > 1]
+
+
+def _query_matches_title(query: str, title: str) -> bool:
+    wanted = _normalised_tokens(query)
+    available = set(_normalised_tokens(title))
+    return bool(wanted) and all(token in available for token in wanted)
+
+
+def _requested_size(query: str, size_parser):
+    try:
+        return size_parser(query)
+    except Exception:
+        return None
+
+
+def _matches_size(query: str, title: str, size_parser) -> bool:
+    wanted = _requested_size(query, size_parser)
+    if wanted is None:
+        return True
+    offered = _requested_size(title, size_parser)
+    return offered is not None and abs(float(offered) - float(wanted)) < 0.01
+
+
 def _display(item: dict, *path: str) -> str:
     current = item
     for key in path:
@@ -262,7 +289,14 @@ def search_marketplace(
             asin = _text(item.get("asin")).upper()
             url = _safe_product_url(_text(item.get("detailPageURL")), marketplace, asin)
             price, currency, available = _price_and_currency(item)
-            if not title or not url or price is None or currency != "EUR" or url in seen:
+            requested_size = _requested_size(query, size_parser)
+            if (
+                not title or not url or price is None or currency != "EUR"
+                or url in seen
+                or not _query_matches_title(query, title)
+                or not _matches_size(query, title, size_parser)
+                or available not in {"IN_STOCK", "OUT_OF_STOCK", "LIMITED_AVAILABILITY", "PREORDER"}
+            ):
                 continue
             seen.add(url)
             image_data = item.get("images")
@@ -341,7 +375,11 @@ def discover_product_urls(market: str, max_queries: int = 4) -> dict:
                     "partnerTag": _env(tag_name),
                     "searchIndex": "All",
                     "itemCount": 10,
-                    "resources": ["itemInfo.title"],
+                    "resources": [
+                    "itemInfo.title",
+                    "offersV2.listings.price",
+                    "offersV2.listings.availability",
+                ],
                 },
                 timeout=TIMEOUT,
             )
@@ -353,6 +391,14 @@ def discover_product_urls(market: str, max_queries: int = 4) -> dict:
             items = result.get("items") if isinstance(result, dict) else []
             for item in items if isinstance(items, list) else []:
                 if not isinstance(item, dict):
+                    continue
+                title = _display(item, "itemInfo", "title")
+                price, currency, availability = _price_and_currency(item)
+                if (
+                    not title or not _query_matches_title(query, title)
+                    or price is None or currency != "EUR"
+                    or availability not in {"IN_STOCK", "LIMITED_AVAILABILITY", "PREORDER"}
+                ):
                     continue
                 asin = _text(item.get("asin")).upper()
                 raw_url = _text(item.get("detailPageURL"))

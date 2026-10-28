@@ -3838,6 +3838,11 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
+        # Notino must be sourced from its authenticated affiliate feed.
+        # Its public HTML endpoints are blocked and are never a price source.
+        if store == 'notino':
+            raise RuntimeError('notino_requires_authorized_feed_import')
+
         # For Amazon, approved Creators API access owns both discovery and
         # hydration. Never scrape Amazon product pages when API credentials are
         # configured; a missing/failed API offer is recorded as a failed refresh.
@@ -3858,8 +3863,9 @@ def refresh_url(store, url):
                     raise RuntimeError('amazon_creators_api_no_current_priced_offer')
                 status, final, data = 200, url, b''
             else:
-                store_timeout = 20 if store in ('amazon_fr', 'amazon_de') else REFRESH_TIMEOUT
-                status, final, data = http_get(url, timeout=store_timeout)
+                # Never scrape public Amazon HTML without explicit API approval
+                # and all credentials/marketplace tags.
+                raise RuntimeError(amazon_api._configuration_error(market))
         else:
             # Keep retailer fetches bounded; Requests' (connect, read) timeout
             # is still not a hard wall-clock deadline if a server dribbles bytes.
