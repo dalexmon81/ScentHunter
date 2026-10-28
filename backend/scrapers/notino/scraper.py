@@ -387,6 +387,24 @@ def _extract_price(text: Any) -> str:
     return ""
 
 
+def _price_is_plausible(price: Any, size_ml: Optional[float]) -> bool:
+    """Reject malformed prices and suspicious full-bottle placeholders."""
+    cleaned = _clean(price).replace("€", "").replace("EUR", "").strip()
+    if not re.fullmatch(r"\d{1,4}(?:[.,]\d{1,2})?", cleaned, re.I):
+        return False
+    try:
+        numeric = float(cleaned.replace(",", "."))
+    except (TypeError, ValueError):
+        return False
+    if numeric <= 0:
+        return False
+    # Notino reader output returned €4.99 for a 100 ml bottle. Fail closed
+    # for implausible full-size perfume prices; small samples remain allowed.
+    if size_ml is not None and size_ml >= 30 and numeric < 10:
+        return False
+    return True
+
+
 def _stock(text: Any) -> Optional[bool]:
     low = _clean(text).casefold()
     if any(marker in low for marker in OUT_STOCK_MARKERS):
@@ -1187,6 +1205,8 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if variant_offers:
         output = []
         for variant_size, variant_price in variant_offers:
+            if not _price_is_plausible(variant_price, variant_size):
+                continue
             output.append(result(
                 name, variant_price, structured_stock if structured_stock is not None else _stock(text),
                 candidate["url"], variant_size, _extract_concentration(text) or _extract_concentration(name),
@@ -1201,12 +1221,12 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     candidate_price = "" if str(candidate.get("source") or "") in {"known-product-url", "product-variant-url"} else str(candidate.get("price") or "")
     price = structured_price or _extract_price(text) or candidate_price
     if not price:
-        # Search-page evidence remains authoritative enough to retain the
-        # candidate even when the product page does not expose its price.
         return None
 
     stock = structured_stock if structured_stock is not None else (_stock(text) if _stock(text) is not None else candidate.get("stock"))
     size = structured_size or page_size or candidate.get("size_ml")
+    if not _price_is_plausible(price, size):
+        return None
     concentration = _extract_concentration(text) or _extract_concentration(name) or _extract_concentration(candidate.get("card_text"))
     gender = _gender_marker(text) or _gender_marker(name) or _gender_marker(candidate.get("card_text"))
     return result(name, price, stock, candidate["url"], size, concentration, gender, brand=structured_brand or candidate.get("brand", ""))
