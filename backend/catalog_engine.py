@@ -4722,7 +4722,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if _pz_price is not None and _pz_price < 5.0 and _pz_full_size:
                                     print(f"CATALOG FILTER INVALID PARFUMZENTRUM PRICE url={url} price={_pz_price} size_ml={_pz_size}", flush=True)
                                     continue
-                            if store == 'sabina':
+                            if store in {'sabina', 'notino'}:
                                 if url not in variant_rows_by_url:
                                     try:
                                         variant_rows_by_url[url] = store_conn.execute(
@@ -4736,14 +4736,23 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 for vr in variant_rows:
                                     variant_tokens = set(norm(' '.join((
                                         str(r['slug'] or ''),
-                                        str(r['product_name'] or ''),
-                                        str(r['product_brand'] or ''),
+                                        str(vr['name'] or r['product_name'] or ''),
+                                        str(vr['brand'] or r['product_brand'] or ''),
                                         f"{vr['size_ml'] or ''} ml",
                                     ))).split())
                                     if not all(token in variant_tokens for token in ts):
                                         continue
+                                    if store == 'sabina':
+                                        variant_url = _sabina_variant_url(
+                                            vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url,
+                                            url, vr['size_ml']
+                                        )
+                                    else:
+                                        variant_url = _store_allowed_variant_url(
+                                            store, vr['variant_url'] or url, url
+                                        ) or url
                                     store_rows.append({
-                                        'url': _sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']),
+                                        'url': variant_url,
                                         'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
                                         'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
                                         'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
