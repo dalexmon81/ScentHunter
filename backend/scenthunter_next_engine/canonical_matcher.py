@@ -357,13 +357,31 @@ class CanonicalMatcher:
                 reason="verified_gtin_packaging_conflict",
                 candidate_product_ids=(product.product_id,),
             )
-        # Packaging adjectives describe the bottle, not the fragrance identity.
-        # Remove them only for the GTIN-backed name consistency check; true
-        # refill-pack terms have already been rejected above.
+        # Packaging and explicit concentration describe the sellable bottle,
+        # not the core fragrance name. Refill-pack terms were rejected above,
+        # and concentration was already checked against the verified GTIN, so
+        # remove those confirmed descriptors before the exact name consistency
+        # check. This accommodates retailer titles that place concentration in
+        # the middle, e.g. "Liquid Brun Extrait de Parfum Limited Edition".
+        identity_title = normalize_identity_text(offer.raw_name)
+        verified_concentration = evidence.get("concentration")
+        if verified_concentration:
+            concentration_token = normalize_identity_text(str(verified_concentration))
+            if concentration_token:
+                identity_title = re.sub(
+                    rf"\\b{re.escape(concentration_token)}\\b",
+                    " ",
+                    identity_title,
+                )
         identity_title = re.sub(
-            r"\b(?:nachfullbar|refillable|rechargeable|bottle)\b",
+            r"\\b(?:\\d+(?:[.,]\\d+)?\\s*(?:ml|cl))\\b",
             " ",
-            normalize_identity_text(offer.raw_name),
+            identity_title,
+        )
+        identity_title = re.sub(
+            r"\\b(?:nachfullbar|refillable|rechargeable|bottle)\\b",
+            " ",
+            identity_title,
         )
         offer_forms = _offer_name_forms(identity_title, offer.brand_raw)
         catalog_forms = _catalog_forms([product.name, *product.aliases], product.brand)
