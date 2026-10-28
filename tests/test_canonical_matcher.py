@@ -153,8 +153,8 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
         # Give this fixture a unique sibling directory: CanonicalMatcher
         # resolves the reviewed GTIN sidecar relative to the temporary catalog.
-        self.fixture_dir = Path(self.tmp.name).parent / (
-            "scenthunter-test-" + Path(self.tmp.name).name
+        self.fixture_dir = Path(
+            tempfile.mkdtemp(prefix="scenthunter-test-")
         )
         self.fixture_dir.mkdir()
         self.catalog_path = self.fixture_dir / "product_catalog.json"
