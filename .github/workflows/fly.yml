@@ -451,6 +451,7 @@ jobs:
                       }, ensure_ascii=False))
                       if mismatches:
                           raise RuntimeError("Deloox 150 ml offer published in Liquid Brun 100 ml group: " + json.dumps(mismatches[:5], ensure_ascii=False))
+                  # This assertion is the post-recovery regression gate for the persisted Deloox 150 ml offer.
                   if query == "Liquid Brun Limited Edition 150 ml":
                       import re
                       matches_150 = []
