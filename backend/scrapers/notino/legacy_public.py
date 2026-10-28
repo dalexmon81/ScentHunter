@@ -1015,20 +1015,33 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
-    # Search engines are independent sources: run them concurrently instead of
-    # serially spending up to ENGINE_TIMEOUT on each one. In production, one
-    # slow engine previously consumed most of the 24s live-adapter budget before
-    # the other sources or browser fallback could be tried.
+    # Bing RSS is the fastest structured source and often includes the
+    # product price, so preserve the successful early-return path.
+    rss_candidates, rss_report = _bing_rss(query, session)
+    reports.append(rss_report)
+    for candidate in rss_candidates:
+        old = all_found.get(candidate["url"])
+        if old is None or candidate["score"] > old["score"]:
+            all_found[candidate["url"]] = candidate
+
+    if rss_candidates:
+        ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
+        return ordered[:12], {
+            "query": query,
+            "channels": reports,
+            "candidate_count": len(ordered),
+            "candidates": ordered[:12],
+            "primary_channel": "bing-rss",
+        }
+
+    # When RSS has no usable result, run Bing HTML and Google concurrently.
+    # Sequential 5s requests used to consume most of the 24s live-adapter
+    # deadline before the browser fallback could be attempted.
     from concurrent.futures import ThreadPoolExecutor
 
-    engines = (
-        ("bing-rss", _bing_rss),
-        ("bing", _bing),
-        ("google", _google),
-    )
+    engines = (("bing", _bing), ("google", _google))
 
     def run_engine(engine_fn):
-        # requests.Session is not shared across threads.
         local_session = requests.Session()
         local_session.headers.update(HEADERS)
         try:
