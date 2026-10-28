@@ -302,6 +302,11 @@ def search(query):
     rows with a price attached to a specific Notino product URL.
     """
     query = _clean(query)
+    if not query:
+        return {
+            "status": "success", "verified": True, "results": [],
+            "error": None, "details": {"empty_query": True},
+        }
     from .affiliate_feed import search_feed
 
     try:
