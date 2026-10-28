@@ -9,10 +9,6 @@ primary_region = "ams"
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
-  # Restore the proven external-search/browser fallback when Notino has no fresh catalog/feed offer.
-  NOTINO_PUBLIC_FALLBACK_ENABLED = "1"
-  # Try ordinary public Amazon search pages when approved Creators API credentials are not configured.
-  AMAZON_PUBLIC_HTML_FALLBACK_ENABLED = "1"
 
 [http_service]
   internal_port = 8080
