@@ -3840,12 +3840,13 @@ def diagnostic_deloox_pipeline(
         from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
         from pathlib import Path
         offer = normalize_offer(normalized_input, retailer='deloox')
-        match = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json')).match(offer)
+        matcher = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json'))
+        match = matcher.match(offer)
         # Expose read-only GTIN routing evidence so the live trace can distinguish
         # missing parser identity from a registry/catalog target mismatch.
         from scenthunter_next_engine.canonical_matcher import _offer_gtin
         extracted_gtin = _offer_gtin(offer.raw_payload)
-        registered_gtin = getattr(match_matcher := CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json')), '_gtin_registry', {})
+        registered_gtin = matcher._gtin_registry
         gtin_trace = {
             'extracted_gtin': extracted_gtin,
             'registry_contains_gtin': bool(extracted_gtin and extracted_gtin in registered_gtin),
