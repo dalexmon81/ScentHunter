@@ -139,3 +139,41 @@ def test_external_bing_rss_fallback_returns_none_without_price(monkeypatch, modu
             return None
     monkeypatch.setattr(module.requests, "get", lambda *args, **kwargs: Response())
     assert module._external_search_fallback("French Avenue Liquid Brun") is None
+
+
+@pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
+def test_search_uses_bing_fallback_before_browser_retry_after_http_503(monkeypatch, module, market):
+    xml = f"""<rss><channel><item>
+      <title>French Avenue Liquid Brun Eau de Parfum 100 ml 39,90 €</title>
+      <link>https://www.amazon.{market}/dp/B012345678</link>
+      <description>French Avenue Liquid Brun Eau de Parfum 100 ml: 39,90 €</description>
+    </item></channel></rss>"""
+    class Response:
+        def __init__(self, status_code, url, text):
+            self.status_code = status_code
+            self.url = url
+            self.text = text
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise module.requests.HTTPError(str(self.status_code))
+        def close(self):
+            return None
+    calls = []
+    def fake_get(url, *args, **kwargs):
+        calls.append(url)
+        if f"amazon.{market}" in url:
+            return Response(503, module.BASE + "/s?k=Liquid+Brun", "Service Unavailable")
+        return Response(200, "https://www.bing.com/search?format=rss", xml)
+    monkeypatch.setattr(module.requests, "get", fake_get)
+    monkeypatch.setattr(
+        module,
+        "_browser_public_search",
+        lambda query: (_ for _ in ()).throw(AssertionError("browser retry should not precede Bing fallback")),
+    )
+
+    report = module.search("French Avenue Liquid Brun")
+
+    assert report["status"] == "success"
+    assert report["details"]["source"] == "bing_rss_public_index"
+    assert report["results"][0]["price_num"] == 39.90
+    assert len(calls) == 2
