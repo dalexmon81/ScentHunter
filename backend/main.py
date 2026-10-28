@@ -2458,29 +2458,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         indexed_flags = _catalog_indexed_flags(stores)
         indexed_total = sum(1 for store in stores if indexed_flags.get(store))
 
-    # A completely empty catalog means the background bootstrap has not
-    # indexed any store yet. Normal searches must wait for that bootstrap;
-    # they must never trigger retailer discovery or the legacy live scraper.
-    if not raw_rows and indexed_total <= 0:
-        for store in stores:
-            report = _empty_report(
-                store,
-                status='catalog_bootstrapping',
-                elapsed=time.monotonic() - started,
-                error='catalog_bootstrapping',
-            ) | {
-                'verified': False,
-                'details': {
-                    'source': 'persistent_catalog',
-                    'authoritative': True,
-                    'retryable': True,
-                },
-            }
-            reports_by_store[store] = report
-            if callable(on_report):
-                on_report(report)
-        return [reports_by_store[s] for s in stores]
-
+    # An empty persistent catalog must not disable direct store scrapers.
+    # The catalog is the fast path, not a hard prerequisite: Notino and Amazon
+    # still need their bounded live adapters while discovery is blocked or
+    # bootstrapping. Stores without a live adapter remain explicitly unindexed.
     identity_started = time.monotonic()
     identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
 
@@ -2598,8 +2579,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
+    # These adapters perform multiple bounded requests and may use rendered
+    # public pages as a fallback. 3-4 seconds killed them before they could
+    # return, especially Notino's reader/enrichment path.
     bridge_timeouts = {
-        store: (4.0 if store == 'notino' else 3.0)
+        store: (25.0 if store == 'notino' else 12.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
