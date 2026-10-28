@@ -2560,16 +2560,19 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Narrow compatibility bridge for legacy storefront adapters that are
     # not yet represented in the persistent catalog. Only try these stores
     # when the catalog returned no matched offer; all other retailers stay
-    # catalog-only. Each live adapter runs in an isolated, hard-limited worker.
+    # catalog-only. Adapter HTTP clients allow up to 6s for a response, so
+    # the subprocess budget must not kill them before their own timeout expires.
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
         and not (cancel_event is not None and cancel_event.is_set())
     ]
+    live_bridge_timeout = 9.5
     if live_bridge_stores:
         print(
-            f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} timeout=4s',
+            f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
+            f'timeout={live_bridge_timeout:.1f}s',
             flush=True,
         )
         with ThreadPoolExecutor(
@@ -2578,13 +2581,14 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         ) as bridge_pool:
             bridge_futures = {
                 store: bridge_pool.submit(
-                    _run_store_subprocess_once, store, query, on_result, 4.0, cancel_event
+                    _run_store_subprocess_once, store, query, on_result,
+                    live_bridge_timeout, cancel_event
                 )
                 for store in live_bridge_stores
             }
             for store in live_bridge_stores:
                 try:
-                    live_report = bridge_futures[store].result(timeout=4.5)
+                    live_report = bridge_futures[store].result(timeout=live_bridge_timeout + 0.5)
                 except Exception as exc:
                     print(
                         f'CATALOG LIVE BRIDGE ERROR store={store} '
