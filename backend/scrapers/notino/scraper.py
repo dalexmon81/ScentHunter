@@ -1195,7 +1195,11 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         if output:
             return output
 
-    price = structured_price or _extract_price(text) or str(candidate.get("price") or "")
+    # A seeded/variant product URL must prove its own price on the destination page.
+    # Never borrow the search-card price: Notino can pair a correct title/URL with
+    # an unrelated promotional price, leaving price_num null or publishing a false offer.
+    candidate_price = "" if str(candidate.get("source") or "") in {"known-product-url", "product-variant-url"} else str(candidate.get("price") or "")
+    price = structured_price or _extract_price(text) or candidate_price
     if not price:
         # Search-page evidence remains authoritative enough to retain the
         # candidate even when the product page does not expose its price.
@@ -1281,7 +1285,7 @@ def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
     # For these discovery sources, and for every candidate without an explicit
     # size, the product page is authoritative. A search card may expose the
     # price of the currently selected variant while omitting the bottle size.
-    if source in {"embedded-url-context", "reader-url-context"}:
+    if source in {"embedded-url-context", "reader-url-context", "known-product-url", "product-variant-url"}:
         # These candidates are discovered by pairing a title from search-page
         # context with a product URL. The destination page must independently
         # confirm the identity. Never fall back to the search card after a
