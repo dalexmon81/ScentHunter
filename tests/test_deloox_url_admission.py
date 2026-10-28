@@ -325,10 +325,11 @@ def test_deloox_parser_preserves_gtin14_for_limited_edition_150ml():
     assert match.reason == "verified_gtin_exact_variant"
 
 
-def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch):
+def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch, tmp_path):
     import sqlite3
 
-    connection = sqlite3.connect(":memory:")
+    db_path = tmp_path / "catalog.sqlite3"
+    connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     connection.executescript("""
         CREATE TABLE store_urls(
@@ -367,11 +368,20 @@ def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch):
             'PENDING', NULL, NULL, NULL, NULL
         );
     """)
-    monkeypatch.setattr(catalog_engine, "db", lambda: connection)
+    connection.commit()
+    connection.close()
+
+    def open_test_db():
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    monkeypatch.setattr(catalog_engine, "db", open_test_db)
 
     result = catalog_engine._deloox_retire_invalid_active_urls()
 
     assert result == {"retired": 1, "already_done": False, "error": None}
+    connection = open_test_db()
     category = connection.execute(
         "SELECT active FROM store_urls WHERE url LIKE '%/kategorie/%'"
     ).fetchone()
@@ -389,4 +399,32 @@ def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch):
     assert connection.execute(
         "SELECT state FROM hydration_queue WHERE url LIKE '%/1385920/%'"
     ).fetchone()[0] == "PENDING"
+    connection.close()
+
+    # Simulate another discovery path having reintroduced a legacy category
+    # after the first pass wrote its completion marker.
+    connection = open_test_db()
+    connection.execute(
+        "INSERT INTO store_urls VALUES(?,?,1)",
+        ("deloox", "https://www.deloox.lu/de/kategorie/1000999/joop-parfum.html"),
+    )
+    connection.execute(
+        "INSERT INTO catalog_search_fts VALUES(?,?,?)",
+        ("deloox", "https://www.deloox.lu/de/kategorie/1000999/joop-parfum.html", "joop category"),
+    )
+    connection.execute(
+        "INSERT INTO hydration_queue VALUES(?,?,?,?,?,?,?)",
+        ("deloox", "https://www.deloox.lu/de/kategorie/1000999/joop-parfum.html",
+         "PENDING", None, None, None, None),
+    )
+    connection.commit()
+    connection.close()
+
+    repeated = catalog_engine._deloox_retire_invalid_active_urls()
+    assert repeated == {"retired": 1, "already_done": False, "error": None}
+    connection = open_test_db()
+    assert connection.execute(
+        "SELECT active FROM store_urls WHERE url LIKE '%/1000999/%'"
+    ).fetchone()[0] == 0
+    connection.close()
 
