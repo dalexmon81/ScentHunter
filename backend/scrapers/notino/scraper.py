@@ -292,59 +292,12 @@ def _search_market(query, base, accept_language):
 
 
 def search(query):
-    query = _clean(query)
-    if not query:
-        return {"status": "success", "verified": True, "results": [], "error": None, "details": {"empty_query": True}}
+    """Serve normal search from the authorized Notino.fr feed catalog.
 
-    results = []
-    errors = []
-    candidate_count = 0
-    completed_markets = 0
-    with ThreadPoolExecutor(max_workers=len(MARKETS)) as pool:
-        future_to_market = {
-            pool.submit(_search_market, query, base, language): (base, language)
-            for base, language in MARKETS
-        }
-        for future in as_completed(future_to_market):
-            base, _language = future_to_market[future]
-            try:
-                rows, market_errors, count = future.result()
-                results.extend(rows)
-                errors.extend(market_errors)
-                candidate_count += count
-                completed_markets += 1
-            except Exception as exc:
-                errors.append(f"{urlparse(base).hostname}:{type(exc).__name__}:{exc}")
+    Public Notino HTML requests are deliberately not used here: deployment
+    diagnostics showed HTTP 403 for the homepage, search/category page and
+    sitemap. A missing/stale feed returns no fabricated offers.
+    """
+    from .affiliate_feed import search_feed
 
-    # Deduplicate only identical source URLs; keep FR and DE offers separate.
-    unique = {}
-    for row in results:
-        unique[row["url"]] = row
-    results = sorted(unique.values(), key=lambda row: (
-        row.get("price_num") is None,
-        row.get("price_num") if row.get("price_num") is not None else 999999,
-        row.get("url") or "",
-    ))
-    if completed_markets == len(MARKETS):
-        return {
-            "status": "partial" if errors else "success",
-            "verified": True,
-            "results": results,
-            "error": "; ".join(errors[:4]) if errors else None,
-            "details": {"markets_checked": completed_markets, "candidate_count": candidate_count, "candidate_errors": len(errors)},
-        }
-    if completed_markets:
-        return {
-            "status": "partial",
-            "verified": False,
-            "results": results,
-            "error": "; ".join(errors[:4]) if errors else "notino_market_partial",
-            "details": {"markets_checked": completed_markets, "candidate_count": candidate_count},
-        }
-    return {
-        "status": "unavailable",
-        "verified": False,
-        "results": [],
-        "error": "; ".join(errors[:4]) if errors else "notino_unavailable",
-        "details": {"markets_checked": 0, "candidate_count": candidate_count},
-    }
+    return search_feed(_clean(query))

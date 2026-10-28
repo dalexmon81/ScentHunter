@@ -3196,8 +3196,31 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 
 
 def discover_store(store):
-    """Build/update one persistent URL catalog with durable progress state."""
-    started_at=time.time()
+    """Refresh retailer discovery; Notino is imported only from the authorized feed."""
+    started_at = time.time()
+    if store == 'notino':
+        try:
+            feed = importlib.import_module('scrapers.notino.affiliate_feed')
+            report = feed.import_configured_feed()
+            count = int(report.get('imported_offers') or 0)
+            _set_sync_state(
+                store, 'FEED_IMPORTED', started_at=started_at,
+                finished_at=time.time(), discovered_count=count, fetched_count=count,
+                error='source=cj_viv_authorized_xml',
+            )
+            return {'status': 'FEED_IMPORTED' if count else 'FEED_EMPTY',
+                    'count': count, 'source': 'cj_viv_authorized_xml'}
+        except Exception as exc:
+            error = str(exc)
+            if not error.startswith('notino_feed_'):
+                error = f'notino_feed_import_error:{type(exc).__name__}'
+            _set_sync_state(
+                store, 'FEED_UNAVAILABLE', started_at=started_at,
+                finished_at=time.time(), discovered_count=0, fetched_count=0,
+                error=error[:180],
+            )
+            return {'status': 'FEED_UNAVAILABLE', 'count': 0,
+                    'error': error[:180], 'source': 'cj_viv_authorized_xml'}
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
@@ -3838,6 +3861,11 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
+        # Notino is sourced from the authenticated CJ/VIV feed only.
+        # Public HTML is not a valid price source for this blocked storefront.
+        if store == 'notino':
+            raise RuntimeError('notino_requires_authorized_feed_import')
+
         # For Amazon, approved Creators API access owns both discovery and
         # hydration. Never scrape Amazon product pages when API credentials are
         # configured; a missing/failed API offer is recorded as a failed refresh.
@@ -3858,8 +3886,9 @@ def refresh_url(store, url):
                     raise RuntimeError('amazon_creators_api_no_current_priced_offer')
                 status, final, data = 200, url, b''
             else:
-                store_timeout = 20 if store in ('amazon_fr', 'amazon_de') else REFRESH_TIMEOUT
-                status, final, data = http_get(url, timeout=store_timeout)
+                # Never scrape public Amazon HTML without explicit API approval
+                # and all credentials/marketplace tags.
+                raise RuntimeError(amazon_api._configuration_error(market))
         else:
             # Keep retailer fetches bounded; Requests' (connect, read) timeout
             # is still not a hard wall-clock deadline if a server dribbles bytes.
@@ -4722,7 +4751,24 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if _pz_price is not None and _pz_price < 5.0 and _pz_full_size:
                                     print(f"CATALOG FILTER INVALID PARFUMZENTRUM PRICE url={url} price={_pz_price} size_ml={_pz_size}", flush=True)
                                     continue
-                            if store == 'sabina':
+                            if store == 'notino' and str(r['product_availability'] or '').lower() == 'variant_catalog':
+                                if url not in variant_rows_by_url:
+                                    try:
+                                        variant_rows_by_url[url] = store_conn.execute(
+                                            """SELECT * FROM store_product_variants
+                                               WHERE store=? AND url=? AND price IS NOT NULL AND price>0
+                                                 AND upper(COALESCE(currency,''))='EUR'
+                                                 AND lower(COALESCE(availability,'')) IN ('in_stock','preorder')
+                                                 AND fetched_at>=?
+                                               ORDER BY size_ml""",
+                                            (store, url, time.time() - 48 * 60 * 60),
+                                        ).fetchall()
+                                    except sqlite3.OperationalError:
+                                        variant_rows_by_url[url] = []
+                                variant_rows = variant_rows_by_url[url]
+                                if not variant_rows:
+                                    continue
+                            elif store == 'sabina':
                                 if url not in variant_rows_by_url:
                                     try:
                                         variant_rows_by_url[url] = store_conn.execute(
@@ -4736,14 +4782,25 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 for vr in variant_rows:
                                     variant_tokens = set(norm(' '.join((
                                         str(r['slug'] or ''),
-                                        str(r['product_name'] or ''),
-                                        str(r['product_brand'] or ''),
+                                        str(vr['name'] or r['product_name'] or ''),
+                                        str(vr['brand'] or r['product_brand'] or ''),
                                         f"{vr['size_ml'] or ''} ml",
                                     ))).split())
                                     if not all(token in variant_tokens for token in ts):
                                         continue
+                                    if store == 'sabina':
+                                        variant_url = _sabina_variant_url(
+                                            vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url,
+                                            url, vr['size_ml']
+                                        )
+                                    elif store == 'notino':
+                                        variant_url = _store_allowed_variant_url(
+                                            store, vr['variant_url'] or url, url
+                                        ) or url
+                                    else:
+                                        variant_url = vr['variant_url'] or url
                                     store_rows.append({
-                                        'url': _sabina_variant_url(vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url, url, vr['size_ml']),
+                                        'url': variant_url,
                                         'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
                                         'name': vr['name'] or r['product_name'] or '', 'brand': vr['brand'] or r['product_brand'] or '',
                                         'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',

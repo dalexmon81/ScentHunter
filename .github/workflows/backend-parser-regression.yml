@@ -8,6 +8,7 @@ on:
     branches:
       - fix/catalog-hydration-mainline
       - fix/catalog-hydration-slug-normalization
+      - fix/notino-authorized-feed-import
 
 jobs:
   parser-regression:
@@ -29,3 +30,15 @@ jobs:
       - name: Run catalog hydration regression tests
         working-directory: backend
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Install pytest for repository-level regression tests
+        run: python -m pip install pytest
+
+      - name: Run Notino feed and Amazon marketplace regression tests
+        run: >-
+          python -m pytest -q
+          tests/test_notino_authorized_feed.py
+          tests/test_notino_search_adapter.py
+          tests/test_catalog_notino_discovery.py
+          tests/test_amazon_creators_api.py
+          tests/test_amazon_marketplace_scrapers.py
