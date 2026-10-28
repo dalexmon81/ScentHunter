@@ -2577,7 +2577,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         # Keep the public storefront adapter available by default for the
         # asynchronous user search. Operators can still explicitly disable it.
         public_fallback = str(
-            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '0')
+            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1')
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
@@ -2585,7 +2585,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
@@ -2599,7 +2599,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     bridge_timeouts = {
-        store: (24.0 if store == 'notino' else 15.0)
+        store: (10.0 if store == 'notino' else 8.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
