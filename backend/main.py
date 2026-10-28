@@ -2557,6 +2557,56 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
+    # Narrow compatibility bridge for legacy storefront adapters that are
+    # not yet represented in the persistent catalog. Only try these stores
+    # when the catalog returned no matched offer; all other retailers stay
+    # catalog-only. Each live adapter runs in an isolated, hard-limited worker.
+    live_bridge_stores = [
+        store for store in ('notino', 'amazon_fr', 'amazon_de')
+        if store in reports_by_store
+        and not int(reports_by_store[store].get('count') or 0)
+        and not (cancel_event is not None and cancel_event.is_set())
+    ]
+    if live_bridge_stores:
+        print(
+            f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} timeout=4s',
+            flush=True,
+        )
+        with ThreadPoolExecutor(
+            max_workers=len(live_bridge_stores),
+            thread_name_prefix='scenthunter-legacy-bridge',
+        ) as bridge_pool:
+            bridge_futures = {
+                store: bridge_pool.submit(
+                    _run_store_subprocess_once, store, query, on_result, 4.0, cancel_event
+                )
+                for store in live_bridge_stores
+            }
+            for store in live_bridge_stores:
+                try:
+                    live_report = bridge_futures[store].result(timeout=4.5)
+                except Exception as exc:
+                    print(
+                        f'CATALOG LIVE BRIDGE ERROR store={store} '
+                        f'error={type(exc).__name__}',
+                        flush=True,
+                    )
+                    continue
+                if (
+                    isinstance(live_report, dict)
+                    and live_report.get('verified')
+                    and int(live_report.get('count') or 0) > 0
+                    and isinstance(live_report.get('results'), list)
+                ):
+                    live_report['details'] = {
+                        **(live_report.get('details') or {}),
+                        'source': 'bounded_live_adapter_fallback',
+                        'catalog_fallback': True,
+                    }
+                    reports_by_store[store] = live_report
+                    if callable(on_report):
+                        on_report(live_report)
+
     identity_matched_count = sum(
         int((report.get('count') or 0)) for report in reports_by_store.values()
     )
