@@ -4543,8 +4543,6 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
                     if not fts_tokens:
                         continue
-                    if not fts_tokens:
-                        continue
                     fts_query = _fts_query_for_tokens(fts_tokens)
                     if not fts_query:
                         continue
