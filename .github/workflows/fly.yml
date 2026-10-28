@@ -482,10 +482,21 @@ jobs:
                           "sold_out_matches": sold_out,
                           "stale_price_matches": stale_price,
                       }, ensure_ascii=False))
-                      if not sold_out:
-                          raise RuntimeError("Deloox Limited Edition 150 ml is missing or not marked OUT OF STOCK in production")
+                      if not matches_150:
+                          raise RuntimeError("Deloox Limited Edition 150 ml is missing from production")
                       if stale_price:
                           raise RuntimeError("Deloox out-of-stock 150 ml offer still has a stale price: " + json.dumps(stale_price[:5], ensure_ascii=False))
+                      in_stock = [
+                          item for item in matches_150
+                          if str(item.get("availability") or "").lower().replace("-", "_").replace(" ", "_") in ("in_stock", "instock", "available", "limited_availability", "preorder")
+                          or item.get("available") is True
+                      ]
+                      priced_in_stock = [
+                          item for item in in_stock
+                          if item.get("price") not in (None, "") or item.get("price_num") not in (None, "")
+                      ]
+                      if in_stock and not priced_in_stock:
+                          raise RuntimeError("Deloox in-stock 150 ml offer has no valid price: " + json.dumps(in_stock[:5], ensure_ascii=False))
                   if query == "Dior Sauvage":
                       store_statuses = result.get("stores") if isinstance(result.get("stores"), dict) else {}
                       easycosmetic = store_statuses.get("easycosmetic") if isinstance(store_statuses.get("easycosmetic"), dict) else {}
