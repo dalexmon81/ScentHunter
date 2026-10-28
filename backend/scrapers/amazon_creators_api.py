@@ -463,8 +463,12 @@ def get_product(market: str, asin: str, size_parser, concentration_parser) -> di
             return None
         title = _display(item, "itemInfo", "title")
         price, currency, availability = _price_and_currency(item)
-        if not title or price is None or currency != "EUR":
-            # Never publish an API product without a current, priced offer.
+        if (
+            not title or price is None or currency != "EUR"
+            or availability not in {"IN_STOCK", "LIMITED_AVAILABILITY", "PREORDER"}
+        ):
+            # Never publish a product without a current, priced, buyable offer.
+            # An out-of-stock or unknown-availability listing is not an offer.
             return None
         url = _safe_product_url(_text(item.get("detailPageURL")), marketplace, asin)
         if not url:
