@@ -1,8 +1,4 @@
-"""Contract tests for approved Amazon Creators API marketplace adapters.
-
-Comparative offers must not fall back to public HTML when API approval and
-marketplace credentials are absent.
-"""
+"""Contract tests for Amazon Creators API and bounded public search fallback."""
 import pytest
 
 from backend.scrapers.amazon_fr import scraper as fr
@@ -27,23 +23,43 @@ def test_marketplace_is_pinned_to_its_own_host(module, base, language, store_key
 
 
 @pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
-def test_search_refuses_unapproved_html_fallback(monkeypatch, module, market):
+def test_search_restores_public_html_fallback_without_api_credentials(monkeypatch, module, market):
     monkeypatch.delenv("AMAZON_CREATORS_API_COMPARISON_APPROVED", raising=False)
     monkeypatch.delenv("AMAZON_CREATORS_API_CLIENT_ID", raising=False)
     monkeypatch.delenv("AMAZON_CREATORS_API_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("AMAZON_ASSOCIATE_TAG_FR", raising=False)
     monkeypatch.delenv("AMAZON_ASSOCIATE_TAG_DE", raising=False)
 
-    def unexpected_request(*args, **kwargs):
-        raise AssertionError("public Amazon HTML must not be requested")
+    html = """
+    <html><body>
+      <div data-component-type="s-search-result" data-asin="B012345678">
+        <h2><a href="/dp/B012345678"><span>Liquid Brun Eau de Parfum 150 ml</span></a></h2>
+        <span class="a-price"><span class="a-offscreen">49,90 €</span></span>
+      </div>
+    </body></html>
+    """
+    class Response:
+        status_code = 200
+        url = module.BASE + "/s?k=Liquid+Brun"
+        text = html
+        def raise_for_status(self):
+            return None
+        def close(self):
+            return None
+    calls = []
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return Response()
+    monkeypatch.setattr(module.requests, "get", fake_get)
 
-    monkeypatch.setattr(module.requests, "get", unexpected_request)
     report = module.search("Liquid Brun")
-    assert report["status"] == "unavailable"
-    assert report["verified"] is False
-    assert report["results"] == []
-    assert report["error"] == "amazon_creators_api_not_configured_or_not_approved"
-    assert report["details"]["market"] == market
+    assert report["status"] == "success"
+    assert report["verified"] is True
+    assert len(report["results"]) == 1
+    assert report["results"][0]["store"] == f"amazon_{market}"
+    assert report["results"][0]["price_num"] == 49.90
+    assert report["results"][0]["size_ml"] == 150
+    assert calls == [module.BASE + "/s?k=Liquid+Brun"]
 
 
 @pytest.mark.parametrize(("module", "market"), [(fr, "fr"), (de, "de")])
