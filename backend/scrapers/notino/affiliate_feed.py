@@ -377,13 +377,12 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
     try:
         with conn:
             for url, variants in grouped.items():
-                # The parent record exists only to make the product URL searchable.
-                # Do not expose a parent-level price or parent-level size: every
-                # commercial size/edition price is stored separately below.
-                titles = list(dict.fromkeys(item.title for item in variants))
+                # Keep the parent URL searchable without creating an unqualified
+                # price. Every size/edition is persisted as a separate offer row.
+                names = list(dict.fromkeys(item.title for item in variants))
                 brands = list(dict.fromkeys(item.brand for item in variants))
                 representative = variants[0]
-                searchable_name = " | ".join(titles)[:1500]
+                searchable_name = " | ".join(names)[:1500]
                 searchable_brand = " | ".join(brands)[:500]
                 conn.execute(
                     """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
@@ -440,7 +439,6 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
     finally:
         conn.close()
     return len(offers)
-
 
 def import_feed_bytes(data: bytes) -> dict:
     """Parse completely before opening the DB so malformed feeds cannot affect offers."""
