@@ -3847,11 +3847,138 @@ def diagnostic_deloox_pipeline(
                 'candidate_product_ids': list(match.candidate_product_ids),
             },
         }
-        return {**base, 'ok': True, 'failed_at': None if match.status.value == 'matched' else 'canonical_match',
-                'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage, 'normalize': matching_stage['normalized_offer'],
-                'canonical_match': matching_stage['match']},
-                'final': {'availability': offer.availability, 'price': str(offer.price) if offer.price is not None else None,
-                          'matched': match.status.value == 'matched'}}
+        # Compare the live parser/matcher output with the durable catalog without
+        # opening a write-capable connection. This distinguishes a parse/match
+        # failure from a persistence, hydration-queue, or local-search-index gap.
+        persisted = {
+            'read_only': True,
+            'database_written': False,
+            'exact_url': response.url,
+            'tables': {},
+            'errors': [],
+        }
+        try:
+            import sqlite3
+            catalog_module = importlib.import_module('catalog_engine')
+            db_path = Path(catalog_module.DB_PATH).resolve()
+            db_uri = db_path.as_uri() + '?mode=ro'
+            db_conn = sqlite3.connect(db_uri, uri=True, timeout=1.0)
+            db_conn.row_factory = sqlite3.Row
+            db_conn.execute('PRAGMA busy_timeout=1000')
+            db_conn.execute('PRAGMA query_only=ON')
+            try:
+                table_names = {
+                    row['name'] for row in db_conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+
+                def read_table_rows(table, *, exact_url=True, phrase_search=False, limit=8):
+                    if table not in table_names:
+                        return {'exists': False, 'rows': []}
+                    columns = {
+                        row['name'] for row in db_conn.execute(
+                            f'PRAGMA table_info("{table}")'
+                        ).fetchall()
+                    }
+                    clauses = []
+                    params = []
+                    if 'store' in columns:
+                        clauses.append("lower(store)='deloox'")
+                    if exact_url and 'url' in columns:
+                        clauses.append('url=?')
+                        params.append(response.url)
+                    elif phrase_search:
+                        text_columns = [c for c in ('name', 'slug', 'search_text', 'url') if c in columns]
+                        if text_columns:
+                            clauses.append('(' + ' OR '.join(f'lower(COALESCE("{c}",\'\')) LIKE ?' for c in text_columns) + ')')
+                            params.extend(['%liquid%brun%'] * len(text_columns))
+                    if not clauses:
+                        return {'exists': True, 'columns': sorted(columns), 'rows': []}
+                    sql = f'SELECT * FROM "{table}" WHERE ' + ' AND '.join(clauses) + f' LIMIT {int(limit)}'
+                    rows = [dict(row) for row in db_conn.execute(sql, params).fetchall()]
+                    return {'exists': True, 'columns': sorted(columns), 'rows': rows}
+
+                for table in ('store_urls', 'store_products', 'store_product_variants', 'hydration_queue'):
+                    exact = read_table_rows(table, exact_url=True, limit=5)
+                    # Add a bounded name/slug lookup when the exact URL row is
+                    # absent, so a redirected or differently localized URL is visible.
+                    if exact.get('exists') and not exact.get('rows'):
+                        exact['nearby_rows'] = read_table_rows(
+                            table, exact_url=False, phrase_search=True, limit=8
+                        ).get('rows', [])
+                    persisted['tables'][table] = exact
+
+                if 'catalog_search_fts' in table_names:
+                    persisted['tables']['catalog_search_fts'] = read_table_rows(
+                        'catalog_search_fts', exact_url=False, phrase_search=True, limit=12
+                    )
+                else:
+                    persisted['tables']['catalog_search_fts'] = {
+                        'exists': False, 'rows': [],
+                        'note': 'local FTS table is absent; this alone does not prove search failure',
+                    }
+                persisted['database_path'] = str(db_path)
+            finally:
+                db_conn.close()
+        except Exception as db_exc:
+            persisted['errors'].append({
+                'stage': 'persisted_catalog',
+                'error': f'{type(db_exc).__name__}: {str(db_exc)[:300]}',
+            })
+
+        # The next-engine matcher above is isolated/opt-in. Also run the
+        # currently deployed legacy identity resolver on the same parsed offer,
+        # without publishing it or modifying the catalog.
+        production_identity = {'status': 'unavailable'}
+        try:
+            cleaned_for_production = clean_result(parsed_product, 'deloox')
+            resolved_for_production = _resolve_offer_identity(cleaned_for_production, q)
+            if isinstance(resolved_for_production, dict):
+                production_identity = {
+                    'status': resolved_for_production.get('_match_status'),
+                    'catalog_id': resolved_for_production.get('catalog_id'),
+                    'canonical_name': resolved_for_production.get('canonical_name'),
+                    'canonical_brand': resolved_for_production.get('canonical_brand'),
+                    'match_method': resolved_for_production.get('match_method'),
+                    'match_score': resolved_for_production.get('match_score'),
+                    'match_error': resolved_for_production.get('_match_error'),
+                }
+        except Exception as identity_exc:
+            production_identity = {
+                'status': 'error',
+                'error': f'{type(identity_exc).__name__}: {str(identity_exc)[:300]}',
+            }
+
+        failed_at = None
+        if not isinstance(parsed_product, dict):
+            failed_at = 'scraper_parse'
+        elif match.status.value != 'matched':
+            failed_at = 'next_engine_canonical_match'
+        elif production_identity.get('status') not in ('matched', 'resolved', 'exact', None):
+            failed_at = 'legacy_production_identity'
+        return {
+            **base,
+            'ok': True,
+            'failed_at': failed_at,
+            'fetch': fetch,
+            'stages': {
+                'fetch': fetch,
+                'parse': parse_stage,
+                'normalize': matching_stage['normalized_offer'],
+                'next_engine_canonical_match': matching_stage['match'],
+                'legacy_production_identity': production_identity,
+                'persisted_catalog_and_queue': persisted,
+            },
+            'final': {
+                'availability': offer.availability,
+                'price': str(offer.price) if offer.price is not None else None,
+                'next_engine_matched': match.status.value == 'matched',
+                'production_identity': production_identity,
+                'read_only': True,
+                'database_written': False,
+            },
+        }
     except Exception as exc:
         return {**base, 'stage': 'diagnostic_exception', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'}
 
