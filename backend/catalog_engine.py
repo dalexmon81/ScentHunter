@@ -2554,9 +2554,11 @@ def _deloox_retire_invalid_active_urls():
         completed = conn.execute(
             "SELECT value FROM catalog_discovery_meta WHERE key=?", (key,)
         ).fetchone()
-        if completed and str(completed["value"] or "") == "done":
-            return {"retired": 0, "already_done": True, "error": None}
+        was_completed = bool(completed and str(completed["value"] or "") == "done")
 
+        # Re-scan active rows even after the first pass. A separate discovery
+        # path may have reintroduced a legacy URL before its own admission gate
+        # was tightened; the marker must not make that stale row permanent.
         rows = conn.execute(
             "SELECT url FROM store_urls WHERE lower(store)='deloox' AND active=1"
         ).fetchall()
@@ -2566,6 +2568,9 @@ def _deloox_retire_invalid_active_urls():
             url = str(row["url"] or "")
             if not _html_product_url("deloox", url, base_url):
                 invalid_urls.append(url)
+
+        if was_completed and not invalid_urls:
+            return {"retired": 0, "already_done": True, "error": None}
 
         now = time.time()
         with conn:
