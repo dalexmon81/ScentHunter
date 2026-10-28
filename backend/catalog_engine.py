@@ -3196,8 +3196,31 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 
 
 def discover_store(store):
-    """Build/update one persistent URL catalog with durable progress state."""
-    started_at=time.time()
+    """Refresh retailer discovery; Notino is imported only from the authorized feed."""
+    started_at = time.time()
+    if store == 'notino':
+        try:
+            feed = importlib.import_module('scrapers.notino.affiliate_feed')
+            report = feed.import_configured_feed()
+            count = int(report.get('imported_offers') or 0)
+            _set_sync_state(
+                store, 'FEED_IMPORTED', started_at=started_at,
+                finished_at=time.time(), discovered_count=count, fetched_count=count,
+                error='source=cj_viv_authorized_xml',
+            )
+            return {'status': 'FEED_IMPORTED' if count else 'FEED_EMPTY',
+                    'count': count, 'source': 'cj_viv_authorized_xml'}
+        except Exception as exc:
+            error = str(exc)
+            if not error.startswith('notino_feed_'):
+                error = f'notino_feed_import_error:{type(exc).__name__}'
+            _set_sync_state(
+                store, 'FEED_UNAVAILABLE', started_at=started_at,
+                finished_at=time.time(), discovered_count=0, fetched_count=0,
+                error=error[:180],
+            )
+            return {'status': 'FEED_UNAVAILABLE', 'count': 0,
+                    'error': error[:180], 'source': 'cj_viv_authorized_xml'}
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
