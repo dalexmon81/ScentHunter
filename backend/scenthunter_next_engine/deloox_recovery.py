@@ -5,6 +5,11 @@ Default mode is read-only. Applying recovery requires BOTH --apply and
 store_products row still has product_parser_not_found and whose hydration
 queue state is DEAD/ERROR are reset to PENDING. Search/homepage routes, DONE
 rows, active leases, and last-known offer rows are never modified.
+
+After parser-revision validation, apply mode also invokes the separately
+identity-guarded exact-URL refresh for Liquid Brun Limited Edition 150 ml.
+This repairs its persisted brand/GTIN/SKU/size/availability when the generic
+parser-error queue is empty, without editing store_products directly.
 """
 from __future__ import annotations
 
