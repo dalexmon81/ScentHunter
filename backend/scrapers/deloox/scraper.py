@@ -462,7 +462,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     if price is None and avail != "out_of_stock":
         return None
 
-    gtin = clean(data.get("gtin13") or data.get("gtin") or "") or None
+    gtin = clean(data.get("gtin13") or data.get("gtin12") or data.get("gtin14") or data.get("gtin") or "") or None
     mpn = clean(data.get("mpn") or "") or None
     sku = clean(data.get("sku") or "") or None
 
