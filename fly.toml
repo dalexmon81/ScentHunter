@@ -7,9 +7,8 @@ primary_region = "ams"
 
 [env]
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
-  CATALOG_FOREGROUND_REFRESH_ENABLED = "1"
-  # Allow bounded targeted refreshes to finish real retailer requests (timeouts are ~3s).
-  CATALOG_REFRESH_BUDGET_SECONDS = "2.5"
+  # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
+  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
 
 [http_service]
   internal_port = 8080
