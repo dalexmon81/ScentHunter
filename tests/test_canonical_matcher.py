@@ -156,7 +156,6 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.fixture_dir = Path(
             tempfile.mkdtemp(prefix="scenthunter-test-")
         )
-        self.fixture_dir.mkdir()
         self.catalog_path = self.fixture_dir / "product_catalog.json"
         self.catalog_path.write_text(
             Path(self.tmp.name).read_text(encoding="utf-8"),
