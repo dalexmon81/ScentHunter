@@ -157,8 +157,9 @@ class CanonicalMatcherTests(unittest.TestCase):
             tempfile.mkdtemp(prefix="scenthunter-test-")
         )
         self.catalog_path = self.fixture_dir / "product_catalog.json"
+        self.tmp.seek(0)
         self.catalog_path.write_text(
-            Path(self.tmp.name).read_text(encoding="utf-8"),
+            self.tmp.read(),
             encoding="utf-8",
         )
         self.registry_path = self.fixture_dir / "scenthunter_next_engine" / "verified_gtin_variant_map.json"
