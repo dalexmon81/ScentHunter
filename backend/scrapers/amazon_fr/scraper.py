@@ -167,7 +167,7 @@ def _browser_public_search(query):
         )
         try:
             page = browser.new_page(locale=LANGUAGE.split(",")[0])
-            response = page.goto(url, wait_until="domcontentloaded", timeout=5500)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
             status = response.status if response else None
             html = page.content()
             if status in (403, 429):
@@ -210,16 +210,11 @@ def _public_html_search(query):
                 "error": f"blocked_http_{response.status_code}", "details": {"market": MARKET},
             }
         if response.status_code == 503:
-            response.close()
-            response = None
-            try:
-                return _browser_public_search(query)
-            except Exception as exc:
-                return {
-                    "status": "unavailable", "verified": False, "results": [],
-                    "error": f"amazon_browser_fallback:{type(exc).__name__}",
-                    "details": {"market": MARKET, "source": "public_browser"},
-                }
+            return {
+                "status": "unavailable", "verified": False, "results": [],
+                "error": "amazon_http_503",
+                "details": {"market": MARKET, "source": "public_search_html"},
+            }
         response.raise_for_status()
         return _parse_public_search_html(query, response.text)
     except requests.Timeout:
@@ -336,4 +331,16 @@ def search(query):
     fallback = _external_search_fallback(query)
     if fallback:
         return fallback
+    if report.get("error") == "amazon_http_503":
+        try:
+            browser_report = _browser_public_search(query)
+            if browser_report.get("results"):
+                return browser_report
+            return browser_report
+        except Exception as exc:
+            return {
+                "status": "unavailable", "verified": False, "results": [],
+                "error": f"amazon_browser_fallback:{type(exc).__name__}",
+                "details": {"market": MARKET, "source": "public_browser"},
+            }
     return report
