@@ -209,3 +209,31 @@ def test_reader_context_candidate_never_falls_back_to_unverified_search_card(mon
     )
 
     assert scraper._enrich_one(candidate, "Liquid Brun") is None
+
+
+
+def test_known_product_seed_requires_product_page_verification(monkeypatch):
+    candidate = {
+        "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+        "name": "French Avenue Liquid Brun mixte",
+        "card_text": "French Avenue Liquid Brun mixte 4,99 €",
+        "price": "4,99 â‚¬",
+        "size_ml": 100,
+        "source": "known-product-url",
+    }
+
+    class Session:
+        def close(self):
+            pass
+
+    sentinel = {"price": "89,90€", "price_num": 89.90}
+    monkeypatch.setattr(scraper, "_new_session", lambda: Session())
+    monkeypatch.setattr(scraper, "_reader_product", lambda *args, **kwargs: sentinel)
+    monkeypatch.setattr(
+        scraper, "_card_result",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("seeded Notino URL must not fall back to an unverified card price")
+        ),
+    )
+
+    assert scraper._enrich_one(candidate, "Liquid Brun") is sentinel
