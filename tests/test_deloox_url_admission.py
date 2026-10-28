@@ -227,7 +227,7 @@ def test_deloox_visible_out_of_stock_overrides_stale_jsonld_offer():
     assert parsed["identity"]["gtin"]["value"] == "6298042001831"
     assert parsed["offer"]["availability"] == "out_of_stock"
     assert parsed["offer"]["price"] is None
-    assert parsed["price"] == "Prijs niet beschikbaar"
+    assert parsed["price"] is None
 
 
 def test_deloox_parser_preserves_gtin14_for_limited_edition_150ml():
