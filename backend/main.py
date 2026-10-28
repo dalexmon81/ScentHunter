@@ -2557,10 +2557,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
-    # Notino prefers fresh CJ/VIV feed offers, but restores the bounded external
-    # discovery/browser adapter when the feed is unavailable or has no matching
-    # offer. Amazon remains Creators-API-only until approved credentials and the
-    # marketplace partner tag are configured.
+    # Notino's restored external-discovery adapter is available for explicit
+    # opt-in testing, but production diagnostics show no offers and its browser
+    # fallback can add ~9 seconds to every catalog-first search. Keep normal
+    # searches fast until the authorized CJ/VIV feed is configured and fresh.
+    # Amazon remains Creators-API-only until approved credentials and partner tags
+    # are configured; public marketplace HTML is not a valid substitute.
     def amazon_bridge_configured(store):
         market = 'fr' if store == 'amazon_fr' else 'de'
         approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
@@ -2571,11 +2573,17 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
         )
 
+    notino_live_fallback_enabled = str(
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
-        and (store == 'notino' or amazon_bridge_configured(store))
+        and (
+            (store == 'notino' and notino_live_fallback_enabled)
+            or (store in ('amazon_fr', 'amazon_de') and amazon_bridge_configured(store))
+        )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     live_bridge_timeout = 9.5
