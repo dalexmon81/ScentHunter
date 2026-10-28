@@ -103,6 +103,83 @@ jobs:
           printf '%s\n' "$POSTCHECK"
           printf '%s\n' "$POSTCHECK" | grep -Eq '"recovery_apply_allowed": true'
           printf '%s\n' "$POSTCHECK" | grep -Eq '"eligible_product_urls": 0'
+          echo '--- VERIFY LIVE SEARCH AFTER PERSISTED Deloox RECOVERY ---'
+          python - <<'PY'
+          import json
+          import re
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          def get_json(path, timeout=25):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-deloox-post-recovery/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          query = "Liquid Brun Limited Edition 150 ml"
+          started_at = time.monotonic()
+          job_id = ""
+          while time.monotonic() - started_at < 45:
+              started = get_json("/search-start?q=" + urllib.parse.quote(query))
+              if started.get("status") == "busy":
+                  time.sleep(0.25)
+                  continue
+              job_id = str(started.get("job_id") or "")
+              if not job_id:
+                  raise RuntimeError("search-start returned no job_id: " + json.dumps(started))
+              break
+          if not job_id:
+              raise RuntimeError("production search stayed busy after Deloox recovery")
+
+          deadline = time.monotonic() + 120
+          result = {}
+          while time.monotonic() < deadline:
+              result = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
+              if result.get("completed"):
+                  break
+              time.sleep(0.2)
+          else:
+              raise RuntimeError("production search timed out after Deloox recovery")
+
+          found = []
+          for group in result.get("results") or []:
+              if not isinstance(group, dict):
+                  continue
+              group_text = " ".join(str(group.get(k) or "") for k in ("name", "title"))
+              for offer in group.get("offers") or []:
+                  if not isinstance(offer, dict):
+                      continue
+                  store = str(offer.get("store") or "").lower()
+                  text = " ".join(str(offer.get(k) or "") for k in ("name", "title", "url", "product_url"))
+                  combined = group_text + " " + text
+                  url = str(offer.get("url") or offer.get("product_url") or "")
+                  if "deloox" in store and "/1385920/" in url and re.search(r"(?<!\d)150\s?ml\b", combined, re.I):
+                      found.append({
+                          "group": group_text,
+                          "store": offer.get("store"),
+                          "name": offer.get("name") or offer.get("title"),
+                          "url": url,
+                          "availability": offer.get("availability"),
+                          "price": offer.get("price"),
+                          "price_num": offer.get("price_num"),
+                      })
+          print("DELOOX_POST_RECOVERY_SEARCH=" + json.dumps({
+              "query": query,
+              "count": result.get("count"),
+              "matches": found,
+              "errors": result.get("errors"),
+          }, ensure_ascii=False))
+          if not found:
+              raise RuntimeError("verified Deloox 150 ml offer is still missing from production search")
+          if not any(float(item.get("price_num") or 0) > 0 for item in found):
+              raise RuntimeError("Deloox 150 ml offer is present but has no positive price")
+          PY
 
   audit_state:
     # Run a lightweight read-only production audit after every main push so
