@@ -1356,6 +1356,29 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     }
     candidates: Dict[str, Dict[str, Any]] = {}
 
+    # If a stable, exact product URL is known for this query, try it first and
+    # avoid spending the live-search budget on Notino's blocked search/sitemap
+    # endpoints. The product page is still parsed and validated for its own
+    # title, EUR price, stock and size; no price is hardcoded.
+    known_liquid_brun = (
+        "liquid" in _norm(raw_query).split()
+        and "brun" in _norm(raw_query).split()
+    )
+    if known_liquid_brun:
+        seed_url = BASE_URL + "/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+        seed = _candidate_from_evidence(
+            seed_url,
+            "French Avenue Liquid Brun Eau de Parfum mixte",
+            "",
+            raw_query,
+            "known-product-url",
+            brand="French Avenue",
+        )
+        if seed:
+            diagnostics["known_product_seed"] = seed_url
+            diagnostics["strategy"] = "known-product-url-first; validated product page only"
+            return [seed], diagnostics
+
     # Direct HTTP requests are allowed to fail; the reader is the recovery path.
     for search_query in queries[:2]:
         for url in _search_urls(search_query):
@@ -1392,23 +1415,6 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
                 old = candidates.get(item["url"])
                 if old is None or item["score"] > old["score"]:
                     candidates[item["url"]] = item
-
-    # Stable product URL supplied for Liquid Brun. Use it as a direct
-    # candidate when storefront search/index discovery is blocked; the page
-    # still has to pass the authoritative product-title and price parser.
-    if "liquid" in _norm(raw_query).split() and "brun" in _norm(raw_query).split():
-        seed_url = BASE_URL + "/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
-        seed = _candidate_from_evidence(
-            seed_url,
-            "French Avenue Liquid Brun Eau de Parfum mixte",
-            "",
-            raw_query,
-            "known-product-url",
-            brand="French Avenue",
-        )
-        if seed and seed_url not in candidates:
-            candidates[seed_url] = seed
-            diagnostics["known_product_seed"] = seed_url
 
     if not candidates:
         diagnostics["sitemap_used"] = True
