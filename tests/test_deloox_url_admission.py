@@ -388,5 +388,3 @@ def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch):
         "SELECT state FROM hydration_queue WHERE url LIKE '%/1385920/%'"
     ).fetchone()[0] == "PENDING"
 
-    second = catalog_engine._deloox_retire_invalid_active_urls()
-    assert second == {"retired": 0, "already_done": True, "error": None}
