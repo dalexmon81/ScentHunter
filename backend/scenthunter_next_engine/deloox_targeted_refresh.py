@@ -78,6 +78,53 @@ def _offer_state_valid(row: dict | None) -> bool:
     return False
 
 
+def _mark_queue_done(db_path: str) -> bool:
+    """Close the exact target's queue row after its persisted offer is verified."""
+    now = time.time()
+    conn = sqlite3.connect(db_path, timeout=5)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=5000")
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT state, leased_until FROM hydration_queue WHERE lower(store)=? AND url=?",
+            (STORE, URL),
+        ).fetchone()
+        if not row:
+            conn.rollback()
+            raise RuntimeError("target_hydration_queue_row_missing")
+        if row["state"] == "PROCESSING" and row["leased_until"] and row["leased_until"] > now:
+            conn.rollback()
+            return False
+        conn.execute(
+            """
+            UPDATE hydration_queue
+               SET state='DONE', attempts=0, available_at=?,
+                   last_error=NULL, last_http_status=200, last_finished_at=?,
+                   leased_until=NULL, lease_token=NULL
+             WHERE lower(store)=? AND url=?
+            """,
+            (now, now, STORE, URL),
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _offer_state_fresh(row: dict | None, max_age_seconds: float = 300) -> bool:
+    if not _offer_state_valid(row):
+        return False
+    try:
+        fetched_at = float(row.get("fetched_at"))
+    except (TypeError, ValueError):
+        return False
+    return fetched_at >= time.time() - max_age_seconds
+
+
 def _requeue(db_path: str) -> dict:
     conn = sqlite3.connect(db_path, timeout=5)
     conn.row_factory = sqlite3.Row
@@ -148,17 +195,35 @@ def main() -> int:
         }, sort_keys=True, default=str))
         return 0
 
+    # If the last exact-URL refresh already persisted a fresh, identity-verified
+    # offer, finish its queue row instead of fetching it again. Leaving it PENDING
+    # lets the background worker immediately replace the good offer with a
+    # transient parser miss after the next deploy.
+    current = _read_row(args.db)
+    if _offer_state_fresh(current):
+        if not _mark_queue_done(args.db):
+            raise RuntimeError("target_queue_has_active_lease")
+        print(json.dumps({
+            "status": "TARGET_ALREADY_VALID",
+            "url": URL,
+            "identity_valid": True,
+            "offer_state_valid": True,
+            "availability": current.get("availability"),
+            "price": current.get("price"),
+            "gtin": current.get("gtin"),
+            "sku": current.get("sku"),
+            "size_ml": current.get("size_ml"),
+            "queue_state": "DONE",
+            "database_written": False,
+        }, sort_keys=True, default=str))
+        return 0
+
     # Invoke the same parser and SQLite upsert used by normal hydration for
-    # this fixed, reviewed URL. This avoids depending on a background scheduler
-    # slot when production has a stale PROCESSING lease.
+    # this fixed, reviewed URL. The catalog schema is already initialized by the
+    # production app; don't rerun its store-wide migration in this subprocess.
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import catalog_engine
-    # The production app has already initialized/migrated this existing catalog.
-    # This short-lived recovery process must not rerun the full schema migration
-    # and store-wide queue/index backfill before refreshing one exact URL.
-    # _read_row above has already verified that the required tables exist.
-    # Reuse the live process's already-initialized schema contract.
     catalog_engine._SCHEMA_READY = True
     item = catalog_engine.refresh_url(STORE, URL)
     if not isinstance(item, dict):
@@ -179,7 +244,9 @@ def main() -> int:
     ):
         raise RuntimeError("target_parser_identity_or_offer_validation_failed")
     row = _read_row(args.db)
-    if _offer_state_valid(row):
+    if _offer_state_fresh(row):
+        if not _mark_queue_done(args.db):
+            raise RuntimeError("target_queue_has_active_lease")
         print(json.dumps({
             "status": "TARGET_REFRESHED",
             "url": URL,
