@@ -20,7 +20,8 @@ READER_BASE = "https://r.jina.ai/"
 
 TIMEOUT = 12
 READER_TIMEOUT = 10
-ENGINE_TIMEOUT = 2.5
+# Restore the proven September discovery budget; 2.5s truncated normal search-engine responses.
+ENGINE_TIMEOUT = 10
 SCRAPER_VERSION = "notino-external-discovery-browser-product-2026-09-13-v6"
 
 HEADERS = {
