@@ -148,8 +148,59 @@ def parse_price(v):
 
 
 def availability(text, offer=None, soup=None):
-    """Determine availability from product-specific signals only."""
+    """Prefer explicit storefront stock signals over possibly stale JSON-LD."""
 
+    # Some retailer pages retain stale Schema.org Offer data after the visible
+    # purchase panel switches to out of stock. Explicit current stock controls
+    # therefore take precedence over structured availability.
+    if soup is not None:
+        scoped_parts = []
+        selectors = [
+            '[itemprop="availability"]',
+            '[data-testid*="availability" i]',
+            '[data-test*="availability" i]',
+            '[class*="availability" i]',
+            '[class*="stock" i]',
+            '[class*="add-to-cart" i]',
+            '[class*="buy" i]',
+            'button[type="submit"]',
+        ]
+        seen_nodes = set()
+        for selector in selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+            for node in nodes[:20]:
+                marker = id(node)
+                if marker in seen_nodes:
+                    continue
+                seen_nodes.add(marker)
+                scoped_parts.append(clean(
+                    node.get("content")
+                    or node.get("aria-label")
+                    or node.get_text(" ", strip=True)
+                ))
+
+        scoped = norm(" ".join(x for x in scoped_parts if x))
+        if scoped:
+            # Negative phrases must precede positive ones: Dutch
+            # "niet op voorraad" contains "op voorraad".
+            if any(x in scoped for x in (
+                "sold out", "out of stock", "not available",
+                "currently unavailable", "unavailable", "niet op voorraad",
+                "niet beschikbaar", "uitverkocht", "epuise",
+                "rupture de stock", "indisponible",
+            )):
+                return "out_of_stock"
+            if any(x in scoped for x in (
+                "in stock", "available", "op voorraad", "add to cart",
+                "add to basket", "buy now", "bestellen",
+            )):
+                return "in_stock"
+
+    # Use structured availability only when visible product controls have no
+    # decisive stock signal.
     if isinstance(offer, dict):
         raw = clean(
             offer.get("availability")
@@ -169,59 +220,7 @@ def availability(text, offer=None, soup=None):
             )):
                 return "in_stock"
 
-    if soup is not None:
-        scoped_parts = []
-
-        selectors = [
-            '[itemprop="availability"]',
-            '[data-testid*="availability" i]',
-            '[data-test*="availability" i]',
-            '[class*="availability" i]',
-            '[class*="stock" i]',
-            '[class*="add-to-cart" i]',
-            '[class*="buy" i]',
-            'button[type="submit"]',
-        ]
-
-        seen_nodes = set()
-        for selector in selectors:
-            try:
-                nodes = soup.select(selector)
-            except Exception:
-                nodes = []
-            for node in nodes[:20]:
-                marker = id(node)
-                if marker in seen_nodes:
-                    continue
-                seen_nodes.add(marker)
-                scoped_parts.append(
-                    clean(
-                        node.get("content")
-                        or node.get("aria-label")
-                        or node.get_text(" ", strip=True)
-                    )
-                )
-
-        scoped = norm(" ".join(x for x in scoped_parts if x))
-        if scoped:
-            # Negative stock phrases must precede positive ones: Dutch
-            # "niet op voorraad" contains "op voorraad" and was misclassified.
-            if any(x in scoped for x in (
-                "sold out", "out of stock", "not available",
-                "currently unavailable", "unavailable", "niet op voorraad",
-                "niet beschikbaar", "uitverkocht", "epuise",
-                "rupture de stock", "indisponible",
-            )):
-                return "out_of_stock"
-            if any(x in scoped for x in (
-                "in stock", "available", "op voorraad", "add to cart",
-                "add to basket", "buy now", "bestellen",
-            )):
-                return "in_stock"
-
     t = norm(text)
-    # Check localized negative stock signals before the positive substring
-    # "op voorraad", or "niet op voorraad" becomes a false in-stock result.
     if any(x in t for x in (
         "sold out", "out of stock", "currently unavailable",
         "niet op voorraad", "niet beschikbaar", "uitverkocht",
@@ -231,7 +230,6 @@ def availability(text, offer=None, soup=None):
     if any(x in t for x in ("in stock", "op voorraad")):
         return "in_stock"
     return "unknown"
-
 
 def _jsonld(soup):
     """Find the first product JSON-LD node without CSS selector overhead."""
@@ -459,6 +457,10 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
             "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
         )
     )
+    # Do not publish a stale structured price when current storefront controls
+    # explicitly say the product is out of stock.
+    if avail == "out_of_stock":
+        price = None
     if price is None and avail != "out_of_stock":
         return None
 
