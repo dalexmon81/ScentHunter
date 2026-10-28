@@ -149,10 +149,44 @@ class CanonicalMatcherTests(unittest.TestCase):
             },
             self.tmp,
         )
+        self.tmp.flush()
+        catalog_json = Path(self.tmp.name).read_text(encoding="utf-8")
         self.tmp.close()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
+        # Give this fixture a unique sibling directory: CanonicalMatcher
+        # resolves the reviewed GTIN sidecar relative to the temporary catalog.
+        self.fixture_dir = Path(
+            tempfile.mkdtemp(prefix="scenthunter-test-")
+        )
+        self.catalog_path = self.fixture_dir / "product_catalog.json"
+        self.catalog_path.write_text(
+            catalog_json,
+            encoding="utf-8",
+        )
+        self.registry_path = self.fixture_dir / "scenthunter_next_engine" / "verified_gtin_variant_map.json"
+        self.registry_path.parent.mkdir()
+        self.registry_path.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "records": [{
+                    "gtin": "6298042001831",
+                    "gtin_type": "GTIN-13",
+                    "status": "verified",
+                    "product_id": "P-LIQUID",
+                    "variant_id": "V-LIQUID-150",
+                    "size_ml": 150,
+                    "concentration": "Extrait de Parfum",
+                    "refill": False,
+                    "source_urls": [
+                        "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+                    ],
+                }],
+            }),
+            encoding="utf-8",
+        )
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.fixture_dir, ignore_errors=True))
         self.matcher = CanonicalMatcher(
-            CatalogRepository.from_file(self.tmp.name)
+            CatalogRepository.from_file(self.catalog_path)
         )
 
     def offer(self, name, brand=None, size=None):
