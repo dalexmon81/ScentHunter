@@ -795,6 +795,35 @@ def _ensure_schema(conn):
             last_store_index INTEGER NOT NULL DEFAULT 0
         )""")
         conn.execute('INSERT OR IGNORE INTO hydration_scheduler(id,last_store_index) VALUES(1,0)')
+        # One-time startup recovery: older parser versions could persist a Deloox
+        # row as fetch_status=OK with no price and no brand, then mark its queue
+        # item DONE. Such a row is not a trustworthy hydration result. Requeue
+        # only completed, identity-incomplete null-price rows; preserve live leases
+        # and complete out-of-stock rows.
+        conn.execute(
+            """UPDATE hydration_queue
+                  SET state='PENDING',
+                      priority=0,
+                      attempts=0,
+                      available_at=?,
+                      leased_until=NULL,
+                      lease_token=NULL,
+                      last_error=NULL
+                WHERE store='deloox'
+                  AND state='DONE'
+                  AND EXISTS (
+                      SELECT 1
+                        FROM store_products p
+                       WHERE p.store='deloox'
+                         AND p.url=hydration_queue.url
+                         AND (p.price IS NULL OR p.price <= 0)
+                         AND (
+                             COALESCE(TRIM(p.brand), '') = ''
+                             OR p.size_ml IS NULL
+                         )
+                  )""",
+            (time.time(),),
+        )
         conn.commit()
         _SCHEMA_READY = True
 
