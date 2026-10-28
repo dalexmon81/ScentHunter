@@ -1,9 +1,12 @@
-"""Tests for Notino's authorized CJ/VIV product feed."""
+"""Regression tests for Notino's authorized CJ/VIV product feed."""
 import gzip
 import logging
+import os
 import unittest
+from unittest.mock import patch
 
-from backend.scrapers.notino import affiliate_feed as feed
+from scrapers.notino import affiliate_feed as feed
+
 
 SAMPLE = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>
@@ -46,12 +49,14 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
             (b"", "notino_feed_empty"),
             (b"<rss><item>", "notino_feed_invalid_xml"),
             (b"<html><body>Access denied</body></html>", "notino_feed_unrecognized_root"),
-            (b"<!DOCTYPE rss [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><rss/>", "notino_feed_unsafe_xml_declaration"),
-            (b"<rss><channel><item><title>No price 100 ml</title></item></channel></rss>", "notino_feed_no_valid_priced_fr_offers"),
+            (b"<!DOCTYPE rss [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><rss/>",
+             "notino_feed_unsafe_xml_declaration"),
+            (b"<rss><channel><item><title>No price 100 ml</title></item></channel></rss>",
+             "notino_feed_no_valid_priced_fr_offers"),
         ]
-        for payload, expected in cases:
-            with self.subTest(expected=expected):
-                with self.assertRaisesRegex(feed.FeedImportError, expected):
+        for payload, error in cases:
+            with self.subTest(error=error):
+                with self.assertRaisesRegex(feed.FeedImportError, error):
                     feed.parse_feed(payload)
 
     def test_product_url_requires_https_and_notino_fr(self):
@@ -60,17 +65,9 @@ class NotinoAffiliateFeedTests(unittest.TestCase):
         self.assertIsNone(feed._product_url("https://user:pass@www.notino.fr/brand/item/"))
 
     def test_missing_credentials_are_reported_without_secrets(self):
-        import os
         names = ("NOTINO_CJ_FEED_URL", "NOTINO_CJ_FEED_USERNAME", "NOTINO_CJ_FEED_PASSWORD")
-        previous = {name: os.environ.pop(name, None) for name in names}
-        try:
-            with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing"):
-                feed.import_configured_feed()
-        finally:
-            for name, value in previous.items():
-                if value is not None:
-                    os.environ[name] = value
-
-
-if __name__ == "__main__":
-    unittest.main()
+        with patch.dict(os.environ, {name: "" for name in names}, clear=False):
+            with self.assertLogs("scenthunter.notino_feed", level=logging.INFO) as logs:
+                with self.assertRaisesRegex(feed.FeedImportError, "notino_feed_credentials_missing"):
+                    feed.import_configured_feed()
+            self.assertNotIn("password=", "\n".join(logs.output).lower())
