@@ -159,6 +159,7 @@ def main() -> int:
         batch_result = hydrate_catalog_batch(
             max_urls=1,
             workers=1,
+            stores=[STORE],
             deadline=time.monotonic() + min(45, max(10, args.wait_seconds)),
         )
         result["hydration_batch"] = batch_result
