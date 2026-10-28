@@ -2524,6 +2524,79 @@ def _discover_deloox_search_catalog(deadline=None, progress_callback=None, max_q
     }
 
 
+def _deloox_retire_invalid_active_urls():
+    """Retire legacy Deloox navigation URLs once, using the current URL contract.
+
+    New discovery already rejects these URLs; this one-time pass removes old
+    category/search rows from the active catalog and stops their pending queue
+    work from consuming hydration capacity. Live leases are left untouched.
+    """
+    conn = db()
+    try:
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS catalog_discovery_meta (
+                   key TEXT PRIMARY KEY,
+                   value TEXT NOT NULL,
+                   updated_at REAL NOT NULL
+               )"""
+        )
+        key = "deloox_invalid_active_url_cleanup_v1"
+        completed = conn.execute(
+            "SELECT value FROM catalog_discovery_meta WHERE key=?", (key,)
+        ).fetchone()
+        if completed and str(completed["value"] or "") == "done":
+            return {"retired": 0, "already_done": True, "error": None}
+
+        rows = conn.execute(
+            "SELECT url FROM store_urls WHERE lower(store)='deloox' AND active=1"
+        ).fetchall()
+        base_url = STORES["deloox"][0]
+        invalid_urls = []
+        for row in rows:
+            url = str(row["url"] or "")
+            if not _html_product_url("deloox", url, base_url):
+                invalid_urls.append(url)
+
+        now = time.time()
+        with conn:
+            if invalid_urls:
+                conn.executemany(
+                    "UPDATE store_urls SET active=0 WHERE lower(store)='deloox' AND url=?",
+                    ((url,) for url in invalid_urls),
+                )
+                conn.executemany(
+                    "DELETE FROM catalog_search_fts WHERE lower(store)='deloox' AND url=?",
+                    ((url,) for url in invalid_urls),
+                )
+                conn.executemany(
+                    """UPDATE hydration_queue
+                          SET state='DONE',
+                              last_error='retired_non_product_url',
+                              leased_until=NULL,
+                              lease_token=NULL,
+                              last_finished_at=?
+                        WHERE lower(store)='deloox' AND url=?
+                          AND (state!='PROCESSING' OR leased_until IS NULL OR leased_until<=?)""",
+                    ((now, url, now) for url in invalid_urls),
+                )
+            conn.execute(
+                """INSERT INTO catalog_discovery_meta(key,value,updated_at)
+                   VALUES(?,?,?)
+                   ON CONFLICT(key) DO UPDATE SET
+                     value=excluded.value, updated_at=excluded.updated_at""",
+                (key, "done", now),
+            )
+        return {"retired": len(invalid_urls), "already_done": False, "error": None}
+    except Exception as exc:
+        return {
+            "retired": 0,
+            "already_done": False,
+            "error": f"{type(exc).__name__}:{str(exc)[:240]}",
+        }
+    finally:
+        conn.close()
+
+
 def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     """Advance Deloox's persistent catalog graph.
 
@@ -2533,6 +2606,7 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     the remaining frontier for the next run. No product name, brand, query,
     or individual product URL is used as a special case.
     """
+    cleanup_report = _deloox_retire_invalid_active_urls()
     if seeds:
         _deloox_queue_enqueue(
             [(url, 0, 'configured_seed') for url in seeds]
@@ -2544,6 +2618,8 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     started = time.time()
     product_urls = {}
     errors = []
+    if cleanup_report.get("error"):
+        errors.append("legacy_url_cleanup:" + cleanup_report["error"])
     visited = 0
     successes = 0
 

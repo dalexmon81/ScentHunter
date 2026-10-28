@@ -321,3 +321,70 @@ def test_deloox_parser_preserves_gtin14_for_limited_edition_150ml():
     assert match.canonical_product_id == "SH-0031"
     assert match.canonical_variant_id == "VAR-f5aff76b4bb5de8a"
     assert match.reason == "verified_gtin_exact_variant"
+
+
+def test_deloox_discovery_retires_legacy_category_urls_once(monkeypatch):
+    import sqlite3
+
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.executescript("""
+        CREATE TABLE store_urls(
+            store TEXT, url TEXT, active INTEGER, PRIMARY KEY(store,url)
+        );
+        CREATE TABLE catalog_search_fts(store TEXT, url TEXT, search_text TEXT);
+        CREATE TABLE hydration_queue(
+            store TEXT, url TEXT, state TEXT, last_error TEXT,
+            leased_until REAL, lease_token TEXT, last_finished_at REAL,
+            PRIMARY KEY(store,url)
+        );
+        CREATE TABLE store_products(store TEXT, url TEXT);
+        INSERT INTO store_urls VALUES(
+            'deloox',
+            'https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html',
+            1
+        );
+        INSERT INTO store_urls VALUES(
+            'deloox',
+            'https://www.deloox.com/product/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html',
+            1
+        );
+        INSERT INTO catalog_search_fts VALUES(
+            'deloox',
+            'https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html',
+            'joop category'
+        );
+        INSERT INTO hydration_queue VALUES(
+            'deloox',
+            'https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html',
+            'PENDING', NULL, NULL, NULL, NULL
+        );
+        INSERT INTO hydration_queue VALUES(
+            'deloox',
+            'https://www.deloox.com/product/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html',
+            'PENDING', NULL, NULL, NULL, NULL
+        );
+    """)
+    monkeypatch.setattr(catalog_engine, "db", lambda: connection)
+
+    result = catalog_engine._deloox_retire_invalid_active_urls()
+
+    assert result == {"retired": 1, "already_done": False, "error": None}
+    category = connection.execute(
+        "SELECT active FROM store_urls WHERE url LIKE '%/kategorie/%'"
+    ).fetchone()
+    product = connection.execute(
+        "SELECT active FROM store_urls WHERE url LIKE '%/1385920/%'"
+    ).fetchone()
+    assert category["active"] == 0
+    assert product["active"] == 1
+    assert connection.execute(
+        "SELECT COUNT(*) FROM catalog_search_fts WHERE url LIKE '%/kategorie/%'"
+    ).fetchone()[0] == 0
+    assert connection.execute(
+        "SELECT state,last_error FROM hydration_queue WHERE url LIKE '%/kategorie/%'"
+    ).fetchone()[:] == ("DONE", "retired_non_product_url")
+    assert connection.execute(
+        "SELECT state FROM hydration_queue WHERE url LIKE '%/1385920/%'"
+    ).fetchone()[0] == "PENDING"
+
