@@ -1281,7 +1281,19 @@ def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
     # For these discovery sources, and for every candidate without an explicit
     # size, the product page is authoritative. A search card may expose the
     # price of the currently selected variant while omitting the bottle size.
-    if source in {"embedded-url-context", "reader-url-context"} or candidate.get("size_ml") is None:
+    if source in {"embedded-url-context", "reader-url-context"}:
+        # These candidates are discovered by pairing a title from search-page
+        # context with a product URL. The destination page must independently
+        # confirm the identity. Never fall back to the search card after a
+        # failed page identity/price check: family matching downstream can
+        # otherwise canonicalize an unrelated URL as the requested perfume.
+        session = _new_session()
+        try:
+            return _reader_product(session, candidate, query)
+        finally:
+            session.close()
+
+    if candidate.get("size_ml") is None:
         session = _new_session()
         try:
             result = _reader_product(session, candidate, query)
@@ -1290,8 +1302,8 @@ def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
         finally:
             session.close()
 
-    # Fallback: accept the search card only when page enrichment did not
-    # produce a usable product result.
+    # Fallback is permitted only for candidates that were not discovered by
+    # borrowing an identity from URL-neighbourhood context.
     card = _card_result(candidate, query)
     if card:
         return card
