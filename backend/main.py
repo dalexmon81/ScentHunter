@@ -2242,7 +2242,10 @@ def _catalog_search_terms(query):
         # Eight terms truncated families with more aliases (e.g. Hawas), hiding valid
         # variants even when the catalog already contains them. catalog_engine bounds
         # the per-store candidate pool, so allow the full bounded registry expansion.
-        max_terms = 32 if len(query_tokens) <= 1 else 4
+        # Multi-token family searches also need room for separately
+        # registered variants (e.g. Liquid Brun Limited Edition). Four terms
+        # truncated these related aliases before catalog lookup could see them.
+        max_terms = 32 if len(query_tokens) <= 1 else 12
         token_order = sorted(
             query_tokens,
             key=lambda token: (token_frequency.get(token, 0), token),
