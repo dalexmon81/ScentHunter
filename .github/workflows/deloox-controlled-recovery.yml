@@ -1,3 +1,4 @@
+# Guarded recovery is deliberately opt-in via the commit message; target refresh is exact-URL and identity-validated.
 name: Controlled Deloox queue recovery
 
 on:
