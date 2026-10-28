@@ -153,8 +153,13 @@ def main() -> int:
     # slot when production has a stale PROCESSING lease.
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from catalog_engine import refresh_url
-    item = refresh_url(STORE, URL)
+    import catalog_engine
+    # The production app has already initialized/migrated this existing catalog.
+    # This short-lived recovery process must not rerun the full schema migration
+    # and store-wide queue/index backfill before refreshing one exact URL.
+    # _read_row above has already verified that the required tables exist.
+    catalog_engine._SCHEMA_READY = True
+    item = catalog_engine.refresh_url(STORE, URL)
     if not isinstance(item, dict):
         raise RuntimeError("target_parser_returned_no_product")
     parsed_gtin = re.sub(r"\\D", "", str(item.get("gtin") or ""))
