@@ -3381,8 +3381,8 @@ def diagnostic_matcher(store: str, q: str):
 
 
 @app.get('/diagnostic/store-pipeline')
-def diagnostic_store_pipeline(store: str, q: str):
-    """Read-only layered diagnostic for catalog search vs direct retailer adapter."""
+def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
+    """Fast read-only catalog diagnostic; opt into slower live probe with probe=true."""
     import time as _diag_time
 
     machine_store = _normalise_store(store, store)
@@ -3391,7 +3391,7 @@ def diagnostic_store_pipeline(store: str, q: str):
     if machine_store not in allowed:
         return {
             'ok': False,
-            'diagnostic': 'configuration -> persistent_catalog -> direct_scraper -> identity_match',
+            'diagnostic': 'configuration -> persistent_catalog -> local_search -> optional_direct_probe',
             'error': 'unsupported_store',
             'allowed_stores': sorted(allowed),
             'store': machine_store,
@@ -3421,7 +3421,6 @@ def diagnostic_store_pipeline(store: str, q: str):
             'store': machine_store,
             'public_fallback_enabled': public_enabled,
             'creators_api_configured': api_configured,
-            'note': 'Direct diagnostic does not prove the normal async search enabled its live bridge.',
         },
     }
 
@@ -3456,46 +3455,52 @@ def diagnostic_store_pipeline(store: str, q: str):
             'error': f'{type(exc).__name__}: {exc}',
         }
 
-    direct_started = _diag_time.monotonic()
-    try:
-        direct = diagnostic_matcher(machine_store, query)
+    if probe:
+        direct_started = _diag_time.monotonic()
+        try:
+            direct = diagnostic_matcher(machine_store, query)
+            layers['direct_scraper_and_identity'] = {
+                'ok': direct.get('ok'),
+                'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+                'stream_error': direct.get('stream_error'),
+                'raw_count': direct.get('raw_count', 0),
+                'matched_count': direct.get('matched_count', 0),
+                'rejected_count': direct.get('rejected_count', 0),
+                'unresolved_count': direct.get('unresolved_count', 0),
+                'clean_error_count': direct.get('clean_error_count', 0),
+                'matched': direct.get('matched', [])[:5],
+                'rejected': direct.get('rejected', [])[:5],
+                'unresolved': direct.get('unresolved', [])[:5],
+                'clean_errors': direct.get('clean_errors', [])[:3],
+            }
+        except Exception as exc:
+            layers['direct_scraper_and_identity'] = {
+                'ok': False,
+                'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+                'error': f'{type(exc).__name__}: {exc}',
+            }
+    else:
         layers['direct_scraper_and_identity'] = {
-            'ok': direct.get('ok'),
-            'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
-            'stream_error': direct.get('stream_error'),
-            'raw_count': direct.get('raw_count', 0),
-            'matched_count': direct.get('matched_count', 0),
-            'rejected_count': direct.get('rejected_count', 0),
-            'unresolved_count': direct.get('unresolved_count', 0),
-            'clean_error_count': direct.get('clean_error_count', 0),
-            'matched': direct.get('matched', [])[:5],
-            'rejected': direct.get('rejected', [])[:5],
-            'unresolved': direct.get('unresolved', [])[:5],
-            'clean_errors': direct.get('clean_errors', [])[:3],
-        }
-    except Exception as exc:
-        layers['direct_scraper_and_identity'] = {
-            'ok': False,
-            'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
-            'error': f'{type(exc).__name__}: {exc}',
+            'skipped': True,
+            'reason': 'slow network probe disabled by default; add &probe=true to run it',
         }
 
     catalog = layers.get('persistent_catalog_status') or {}
     local_count = (layers.get('local_catalog_search') or {}).get('count', 0)
     direct_layer = layers.get('direct_scraper_and_identity') or {}
-    if direct_layer.get('raw_count', 0) and not direct_layer.get('matched_count', 0):
+    if probe and direct_layer.get('raw_count', 0) and not direct_layer.get('matched_count', 0):
         likely_loss = 'direct_scraper_returns_rows_but_cleaning_or_identity_matching_drops_them'
-    elif direct_layer.get('matched_count', 0):
+    elif probe and direct_layer.get('matched_count', 0):
         likely_loss = 'direct_scraper_and_identity_pass; inspect async live-bridge gate/publication'
     elif local_count:
-        likely_loss = 'catalog_has_candidates_but_direct_adapter_returns_no_matched_offers'
+        likely_loss = 'catalog_has_candidates_but_direct_adapter_returns_no_matched_offers' if probe else 'catalog_search_has_hits; direct adapter not probed'
     elif not catalog.get('indexed_urls'):
         likely_loss = 'store_catalog_not_indexed'
     else:
-        likely_loss = 'no_local_hits_and_no_direct_matches; inspect discovery/hydration and retailer transport'
+        likely_loss = 'no_local_hits_and_no_direct_matches; inspect discovery/hydration and retailer transport' if probe else 'catalog_indexed_but_query_has_no_local_hits; direct adapter not probed'
     return {
         'ok': True,
-        'diagnostic': 'configuration -> persistent_catalog -> local_search -> direct_scraper -> identity_match',
+        'diagnostic': 'configuration -> persistent_catalog -> local_search -> optional_direct_probe',
         'store': machine_store,
         'query': query,
         'elapsed_sec': round(_diag_time.monotonic() - started, 3),
@@ -3503,7 +3508,6 @@ def diagnostic_store_pipeline(store: str, q: str):
         'layers': layers,
         'read_only': True,
     }
-
 
 @app.get('/diagnostic/match-offer')
 def diagnostic_match_offer(
