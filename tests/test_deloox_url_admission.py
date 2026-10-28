@@ -23,6 +23,20 @@ def test_deloox_localized_search_endpoints_are_not_product_urls():
         assert _html_product_url("deloox", url, BASE) is None, url
 
 
+def test_deloox_localized_category_pages_are_not_admitted_as_products():
+    urls = (
+        "https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html",
+        "https://www.deloox.lu/fr/categorie/1000265/joop-parfums.html",
+        "https://www.deloox.nl/categorie/1000265/joop-parfum.html",
+        "https://www.deloox.es/categoria/1000265/joop-perfumes.html",
+        "https://www.deloox.com/en/category/1000265/joop-perfumes.html",
+    )
+
+    for url in urls:
+        assert _html_product_url("deloox", url, BASE) is None, url
+        assert catalog_engine._coverage_allowed_url("deloox", url) == "", url
+
+
 def test_deloox_canonical_numeric_product_urls_remain_admitted():
     urls = (
         (
