@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import backend.catalog_engine as catalog_engine
+import catalog_engine
 
 
 class DelooxIncompleteHydrationStartupTests(unittest.TestCase):
