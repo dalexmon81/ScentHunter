@@ -364,6 +364,12 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
     from catalog_engine import db
     conn = db()
     now = time.time()
+    # Feed rows are variants of the same parent product URL. Preserve the
+    # original commercial identifier in the variant key, but store only one
+    # canonical parent row in store_products.
+    grouped: dict[str, list[NotinoOffer]] = {}
+    for offer in offers:
+        grouped.setdefault(offer.url, []).append(offer)
     try:
         with conn:
             # Parent row keeps the URL indexed and hydrated through the regular

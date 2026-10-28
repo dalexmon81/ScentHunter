@@ -3866,6 +3866,10 @@ def refresh_url(store, url):
         if store == 'notino':
             raise RuntimeError('notino_requires_authorized_feed_import')
 
+        # Notino is sourced from the authenticated CJ/VIV feed only.
+        if store == 'notino':
+            raise RuntimeError('notino_requires_authorized_feed_import')
+
         # For Amazon, approved Creators API access owns both discovery and
         # hydration. Never scrape Amazon product pages when API credentials are
         # configured; a missing/failed API offer is recorded as a failed refresh.
