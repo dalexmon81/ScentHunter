@@ -2,6 +2,7 @@
 import json
 import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 
 from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
