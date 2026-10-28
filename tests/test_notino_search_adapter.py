@@ -239,6 +239,31 @@ def test_known_product_seed_requires_product_page_verification(monkeypatch):
     assert scraper._enrich_one(candidate, "Liquid Brun") is sentinel
 
 
+def test_liquid_brun_limited_edition_uses_its_own_known_notino_product_url(monkeypatch):
+    monkeypatch.setattr(scraper, "_search_urls", lambda query: [])
+    monkeypatch.setattr(
+        scraper, "_request",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            scraper.requests.RequestException("blocked")
+        ),
+    )
+
+    candidates, diagnostics = scraper._discover(
+        "French Avenue Liquid Brun Limited Edition 150 ml",
+        scraper._new_session(),
+    )
+
+    expected_url = (
+        "https://www.notino.fr/french-avenue/"
+        "liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
+    )
+    assert diagnostics["known_product_seed"] == expected_url
+    assert len(candidates) == 1
+    assert candidates[0]["url"] == expected_url
+    assert "Limited Edition" in candidates[0]["name"]
+    assert candidates[0]["size_ml"] == 150
+
+
 def test_notino_rejects_suspicious_full_bottle_placeholder_price():
     assert not scraper._price_is_plausible("4,99€", 100)
     assert not scraper._price_is_plausible("4,99 â‚¬", 100)
