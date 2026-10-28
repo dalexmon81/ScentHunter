@@ -1389,10 +1389,18 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
         and "brun" in _norm(raw_query).split()
     )
     if known_liquid_brun:
-        seed_url = BASE_URL + "/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+        # Keep the two Notino products strictly separated: the 150 ml Limited
+        # Edition has its own product page and must never be represented by the
+        # regular 100 ml Eau de Parfum page.
+        if "limited" in _norm(raw_query).split() and "edition" in _norm(raw_query).split():
+            seed_url = BASE_URL + "/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
+            seed_name = "French Avenue Liquid Brun Limited Edition extrait de parfum mixte 150 ml"
+        else:
+            seed_url = BASE_URL + "/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+            seed_name = "French Avenue Liquid Brun Eau de Parfum mixte 100 ml"
         seed = _candidate_from_evidence(
             seed_url,
-            "French Avenue Liquid Brun Eau de Parfum mixte",
+            seed_name,
             "",
             raw_query,
             "known-product-url",
