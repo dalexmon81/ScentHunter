@@ -2599,7 +2599,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     bridge_timeouts = {
-        store: (18.0 if store == 'notino' else 9.5)
+        store: (24.0 if store == 'notino' else 15.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
