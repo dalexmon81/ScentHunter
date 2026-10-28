@@ -182,3 +182,30 @@ def test_liquid_brun_discovery_adds_known_notino_product_url(monkeypatch):
     ]
     assert seeded
     assert diagnostics["known_product_seed"] == seeded[0]["url"]
+
+
+
+def test_reader_context_candidate_never_falls_back_to_unverified_search_card(monkeypatch):
+    candidate = {
+        "url": "https://www.notino.fr/bioderma/pigmentbio-h2o/p-16013446/",
+        "name": "French Avenue Liquid Brun Limited Edition mixte",
+        "card_text": "French Avenue Liquid Brun Limited Edition mixte 10,96 €",
+        "price": "10,96 €",
+        "size_ml": 250,
+        "source": "reader-url-context",
+    }
+
+    class Session:
+        def close(self):
+            pass
+
+    monkeypatch.setattr(scraper, "_new_session", lambda: Session())
+    monkeypatch.setattr(scraper, "_reader_product", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        scraper, "_card_result",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("unverified search card must not be accepted")
+        ),
+    )
+
+    assert scraper._enrich_one(candidate, "Liquid Brun") is None
