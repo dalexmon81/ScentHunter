@@ -369,17 +369,17 @@ class CanonicalMatcher:
             concentration_token = normalize_identity_text(str(verified_concentration))
             if concentration_token:
                 identity_title = re.sub(
-                    rf"\\b{re.escape(concentration_token)}\\b",
+                    rf"\b{re.escape(concentration_token)}\b",
                     " ",
                     identity_title,
                 )
         identity_title = re.sub(
-            r"\\b(?:\\d+(?:[.,]\\d+)?\\s*(?:ml|cl))\\b",
+            r"\b(?:\d+(?:[.,]\d+)?\s*(?:ml|cl))\b",
             " ",
             identity_title,
         )
         identity_title = re.sub(
-            r"\\b(?:nachfullbar|refillable|rechargeable|bottle)\\b",
+            r"\b(?:nachfullbar|refillable|rechargeable|bottle)\b",
             " ",
             identity_title,
         )
