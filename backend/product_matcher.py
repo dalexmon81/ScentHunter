@@ -1977,40 +1977,15 @@ class ProductMatcher:
 
         terms: List[str] = [query]
         family = self._family_for_query(query)
-        query_key = catalog_variant_key(query)
-        query_tokens = set(query_key.split())
-        related_families = []
         if family is not None:
-            related_families.append(family)
-            # A broad query should discover separately registered variants
-            # whose names extend that query (e.g. a special edition), while
-            # the final matcher still assigns each offer to its own catalog ID.
-            # Limit expansion to the same brand and aliases that contain every
-            # query token; this avoids mixing unrelated products into the family.
-            brand_key = normalize(family.get("brand") or "")
-            for candidate_family in self.family_registry:
-                if candidate_family is family:
-                    continue
-                if normalize(candidate_family.get("brand") or "") != brand_key:
-                    continue
-                for variant in candidate_family.get("variants") or []:
-                    values = [variant.get("canonical_name") or "", *(variant.get("aliases") or [])]
-                    if any(query_tokens and query_tokens.issubset(set(catalog_variant_key(value).split())) for value in values):
-                        related_families.append(candidate_family)
-                        break
-
-        seen_terms = {value.casefold() for value in terms}
-        for related_family in related_families:
-            for variant in related_family.get("variants") or []:
+            for variant in family.get("variants") or []:
                 canonical = str(variant.get("canonical_name") or "").strip()
-                if canonical and canonical.casefold() not in seen_terms:
+                if canonical and canonical not in terms:
                     terms.append(canonical)
-                    seen_terms.add(canonical.casefold())
                 for alias in variant.get("aliases") or []:
                     alias = str(alias or "").strip()
-                    if alias and alias.casefold() not in seen_terms:
+                    if alias and alias not in terms:
                         terms.append(alias)
-                        seen_terms.add(alias.casefold())
 
         return terms[:80]
 
