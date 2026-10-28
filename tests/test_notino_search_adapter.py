@@ -273,6 +273,50 @@ def test_liquid_brun_limited_edition_uses_its_own_known_notino_product_url(monke
     assert candidates[0]["size_ml"] == 150
 
 
+def test_feed_search_requires_exact_parsed_size_when_query_specifies_size(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed
+    import catalog_engine
+
+    base = {
+        "url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/",
+        "variant_url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/",
+        "name": "French Avenue Liquid Brun Limited Edition 150 ml",
+        "brand": "French Avenue",
+        "image": None,
+        "concentration": "Extrait de Parfum",
+        "gtin": None,
+        "sku": None,
+        "price": 49.90,
+        "currency": "EUR",
+        "availability": "in_stock",
+        "fetched_at": 9999999999,
+        "active": 1,
+    }
+    rows = [
+        {**base, "size_ml": None, "price": 39.90},
+        {**base, "size_ml": 100.0, "price": 29.90},
+        {**base, "size_ml": 150.0, "price": 49.90},
+    ]
+
+    class Cursor:
+        def fetchall(self):
+            return rows
+
+    class Connection:
+        def execute(self, *_args):
+            return Cursor()
+        def close(self):
+            pass
+
+    monkeypatch.setattr(catalog_engine, "db", lambda: Connection())
+
+    report = affiliate_feed.search_feed("French Avenue Liquid Brun Limited Edition 150 ml")
+
+    assert len(report["results"]) == 1
+    assert report["results"][0]["size_ml"] == 150.0
+    assert report["results"][0]["price_num"] == 49.90
+
+
 def test_notino_rejects_suspicious_full_bottle_placeholder_price():
     assert not scraper._price_is_plausible("4,99€", 100)
     assert not scraper._price_is_plausible("4,99 â‚¬", 100)
