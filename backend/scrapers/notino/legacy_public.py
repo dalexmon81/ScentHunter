@@ -1121,9 +1121,42 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
             structured_stock = _stock(str(record.get("offers") or "")) if record.get("offers") else None
             break
 
-    # Try headings first, then metadata, then slug.
-    name_candidates: List[str] = []
+    # Product identity must come from the actual destination page, not from
+    # the search-result card. The reader can pair a perfume title with an
+    # unrelated product URL; never publish that false offer.
     soup = BeautifulSoup(text, "html.parser")
+    authoritative_titles: List[str] = []
+    primary_headings: List[str] = []
+    for tag in soup.find_all(["h1", "title"], limit=20):
+        title_text = _clean_name(tag.get_text(" ", strip=True))
+        if title_text:
+            authoritative_titles.append(title_text)
+            if tag.name == "h1":
+                primary_headings.append(title_text)
+    for meta in soup.find_all("meta"):
+        key = str(meta.get("property") or meta.get("name") or "").casefold()
+        content = _clean_name(meta.get("content") or "")
+        if key in {"og:title", "twitter:title", "title"} and content:
+            authoritative_titles.append(content)
+    for record in records:
+        rec_name, _rec_brand, _rec_url, _rec_price, _rec_size = _structured_record_to_evidence(record)
+        if rec_name:
+            authoritative_titles.append(rec_name)
+
+    if primary_headings and not any(
+        _query_matches_name(title, query) and not _has_non_perfume_marker(title)
+        for title in primary_headings
+    ):
+        return None
+    if not primary_headings and authoritative_titles and not any(
+        _query_matches_name(title, query) and not _has_non_perfume_marker(title)
+        for title in authoritative_titles
+    ):
+        return None
+
+    # Weaker headings may help with titles omitted from the main product block,
+    # but cannot override a conflicting primary H1.
+    name_candidates: List[str] = []
     for tag in soup.find_all(["h1", "h2", "h3", "title", "strong"], limit=80):
         name = _clean_name(tag.get_text(" ", strip=True))
         if name and _query_matches_name(name, query) and not _has_non_perfume_marker(name):
