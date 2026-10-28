@@ -85,3 +85,70 @@ jobs:
                       f"- Reported errors: {len(errors)}\n"
                   )
           PY
+
+      - name: Probe public Notino.fr sitemap discovery paths (read-only)
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip
+          import json
+          import urllib.error
+          import urllib.request
+          import xml.etree.ElementTree as ET
+
+          base = "https://www.notino.fr"
+          paths = (
+              "/robots.txt",
+              "/sitemap.xml",
+              "/sitemap_index.xml",
+              "/sitemap-index.xml",
+              "/sitemap.xml.gz",
+              "/sitemap/sitemap.xml",
+              "/sitemap_index.xml.gz",
+          )
+          results = []
+          for path in paths:
+              url = base + path
+              req = urllib.request.Request(url, headers={
+                  "User-Agent": "ScentHunter-Notino-Sitemap-Diagnostic/1.0",
+                  "Accept": "application/xml,text/xml,text/plain,*/*",
+              })
+              try:
+                  with urllib.request.urlopen(req, timeout=12) as response:
+                      body = response.read(2_000_000)
+                      status = response.status
+                      content_type = response.headers.get("Content-Type", "")
+                      if body[:2] == b"\\x1f\\x8b":
+                          try:
+                              body = gzip.decompress(body)
+                          except Exception:
+                              pass
+                      item = {"path": path, "status": status, "content_type": content_type, "bytes": len(body)}
+                      if path == "/robots.txt":
+                          text = body.decode("utf-8", "replace")
+                          item["sitemap_directives"] = [line.strip()[:300] for line in text.splitlines() if line.lower().startswith("sitemap:")][:20]
+                      else:
+                          try:
+                              root = ET.fromstring(body)
+                              tag = root.tag.rsplit("}", 1)[-1].lower()
+                              item["xml_root"] = tag
+                              item["loc_count"] = sum(1 for node in root.iter() if node.tag.rsplit("}", 1)[-1].lower() == "loc")
+                              item["sample_locs"] = [(node.text or "").strip()[:300] for node in root.iter() if node.tag.rsplit("}", 1)[-1].lower() == "loc"][:5]
+                          except Exception:
+                              item["xml_parse"] = "not_xml_or_unparseable"
+                      results.append(item)
+              except urllib.error.HTTPError as exc:
+                  results.append({"path": path, "status": exc.code, "error": "HTTP_ERROR"})
+              except Exception as exc:
+                  results.append({"path": path, "error": type(exc).__name__})
+          print("NOTINO_SITEMAP_PROBE=" + json.dumps(results, ensure_ascii=False))
+          usable = any(x.get("xml_root") in ("urlset", "sitemapindex") and x.get("loc_count", 0) > 0 for x in results)
+          print("NOTINO_SITEMAP_PROBE_STATUS=" + ("PUBLIC_SITEMAP_FOUND" if usable else "NO_PUBLIC_SITEMAP_FOUND"))
+          summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as summary:
+                  summary.write("## Notino.fr public sitemap probe (read-only)\\n\\n")
+                  summary.write("**" + ("PUBLIC_SITEMAP_FOUND" if usable else "NO_PUBLIC_SITEMAP_FOUND") + "**\\n\\n")
+                  summary.write("```json\\n" + json.dumps(results, ensure_ascii=False, indent=2) + "\\n```\\n")
+          PY
