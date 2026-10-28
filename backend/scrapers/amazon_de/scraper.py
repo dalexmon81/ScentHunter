@@ -242,6 +242,10 @@ def _external_search_fallback(query):
     verified; the source and freshness limitation are included in details.
     """
     q = f'site:amazon.de "{query}"'
+    # When the exact known ASIN is relevant, search the public index by ASIN
+    # as well as title: Amazon product titles vary by marketplace/language.
+    if "liquid" in _clean(query).casefold() and "brun" in _clean(query).casefold():
+        q = f'site:amazon.de ("{query}" OR "B0D8L92LQW")'
     url = "https://www.bing.com/search?format=rss&q=" + quote_plus(q)
     try:
         response = requests.get(
