@@ -1928,6 +1928,9 @@ class ProductMatcher:
             query_key = catalog_variant_key(query)
             if query_key in family.get("normalized_query_aliases", ()):
                 query_tokens = query_key.split()
+                offer_identity_key = catalog_variant_key(
+                    self._offer_text(offer) + " " + " ".join(self._offer_url_identity_texts(offer))
+                )
                 sibling_families = []
                 for candidate_family in self.family_registry:
                     if candidate_family is family:
@@ -1941,6 +1944,11 @@ class ProductMatcher:
                             alias_tokens[index:index + len(query_tokens)] == query_tokens
                             for alias_tokens in [alias.split()]
                             for index in range(len(alias_tokens) - len(query_tokens) + 1)
+                        )
+                        and any(
+                            alias in offer_identity_key
+                            for alias in specific_aliases
+                            if len(alias.split()) > len(query_tokens)
                         )
                         for alias in specific_aliases
                     ):
