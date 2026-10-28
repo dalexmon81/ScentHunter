@@ -2561,8 +2561,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # The legacy synchronous /search endpoint is used by health/smoke clients and
     # must stay fast; the user-facing /search-start job can stream other stores
     # while Notino/Amazon finish their bounded attempts.
-    if not allow_live_fallback:
-        live_bridge_stores = []
     # Prefer authorized Notino feed offers, then use the restored September
     # external-discovery/browser scraper when no fresh offer matches the query.
     # Amazon prefers the approved Creators API; otherwise ordinary public HTML
@@ -2586,7 +2584,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     ).strip().lower() not in {'0', 'false', 'no', 'off', 'disabled'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
-        if store in reports_by_store
+        if allow_live_fallback
+        and store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
         and (
             (store == 'notino' and notino_live_fallback_enabled)
