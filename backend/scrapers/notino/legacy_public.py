@@ -1015,66 +1015,45 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
-    # Search engines first: Notino's direct search is challenged in production.
-    # A browser-first attempt used the entire bridge budget before RSS could return.
-    # 1. Bing RSS.
-    #
-    # Questo canale è già implementato nel file (_bing_rss), ma prima
-    # non veniva mai chiamato da _discover().
-    #
-    # È particolarmente utile perché non dipende dal parsing HTML
-    # della pagina Bing.
-    rss_candidates, rss_report = _bing_rss(query, session)
-    reports.append(rss_report)
+    # Search engines are independent sources: run them concurrently instead of
+    # serially spending up to ENGINE_TIMEOUT on each one. In production, one
+    # slow engine previously consumed most of the 24s live-adapter budget before
+    # the other sources or browser fallback could be tried.
+    from concurrent.futures import ThreadPoolExecutor
 
-    for candidate in rss_candidates:
-        old = all_found.get(candidate["url"])
-        if old is None or candidate["score"] > old["score"]:
-            all_found[candidate["url"]] = candidate
+    engines = (
+        ("bing-rss", _bing_rss),
+        ("bing", _bing),
+        ("google", _google),
+    )
 
-    if rss_candidates:
-        ordered = sorted(
-            all_found.values(),
-            key=lambda x: (-x["score"], x["url"])
-        )
-        return ordered[:12], {
-            "query": query,
-            "channels": reports,
-            "candidate_count": len(ordered),
-            "candidates": ordered[:12],
-            "primary_channel": "bing-rss",
-        }
+    def run_engine(engine_fn):
+        # requests.Session is not shared across threads.
+        local_session = requests.Session()
+        local_session.headers.update(HEADERS)
+        try:
+            return engine_fn(query, local_session)
+        finally:
+            local_session.close()
 
-    # 3. Bing HTML.
-    bing_candidates, bing_report = _bing(query, session)
-    reports.append(bing_report)
-
-    for candidate in bing_candidates:
-        old = all_found.get(candidate["url"])
-        if old is None or candidate["score"] > old["score"]:
-            all_found[candidate["url"]] = candidate
-
-    if bing_candidates:
-        ordered = sorted(
-            all_found.values(),
-            key=lambda x: (-x["score"], x["url"])
-        )
-        return ordered[:12], {
-            "query": query,
-            "channels": reports,
-            "candidate_count": len(ordered),
-            "candidates": ordered[:12],
-            "primary_channel": "bing",
-        }
-
-    # 4. Google HTML.
-    google_candidates, google_report = _google(query, session)
-    reports.append(google_report)
-
-    for candidate in google_candidates:
-        old = all_found.get(candidate["url"])
-        if old is None or candidate["score"] > old["score"]:
-            all_found[candidate["url"]] = candidate
+    with ThreadPoolExecutor(max_workers=len(engines), thread_name_prefix="notino-discovery") as pool:
+        futures = [(name, pool.submit(run_engine, fn)) for name, fn in engines]
+        for name, future in futures:
+            try:
+                candidates, report = future.result(timeout=ENGINE_TIMEOUT + 1.5)
+            except Exception as exc:
+                candidates = []
+                report = {
+                    "engine": name,
+                    "status": None,
+                    "candidate_count": 0,
+                    "error": f"{type(exc).__name__}: {str(exc)[:160]}",
+                }
+            reports.append(report)
+            for candidate in candidates:
+                old = all_found.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    all_found[candidate["url"]] = candidate
 
     # Last resort: try the public storefront browser only if independent
     # search engines did not discover a candidate.
