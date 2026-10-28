@@ -1141,16 +1141,46 @@ def search(query: str) -> List[Dict[str, Any]]:
                     break
             return results
 
-        # External discovery can provide valid Notino product URLs even when
-        # it cannot expose a price in the search snippet. Open those product
-        # pages with Chromium: requests is known to receive Cloudflare 403.
-        browser_results = _browser_fetch_products(candidates, query)
+        # Prefer a price-bearing external search result before opening product
+        # pages. Production's Notino product pages frequently return a challenge
+        # to Chromium; the old ordering waited through up to 12 page navigations
+        # and was killed by the 10s live-bridge deadline before reaching this
+        # usable fallback.
+        for candidate in candidates:
+            name = candidate.get("name", "")
+            price = candidate.get("price_hint", "")
+            url = candidate.get("url", "")
+            if not name or not price or not url:
+                continue
+            if not _fuzzy_match(f"{name} {_url_name(url)}", query)[0]:
+                continue
+            if _non_perfume_product(name, url):
+                continue
+            if not _size_valid(name + " " + _url_name(url), query):
+                continue
+            key = url.lower() + "|" + _norm(name)
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append({
+                "store": STORE,
+                "name": _display_name(name, url),
+                "price": price,
+                "url": url,
+                "price_source": "external_search_snippet",
+            })
+            if len(results) >= 10:
+                break
+        if results:
+            return results
+
+        # Only spend browser time on a small number of external candidates when
+        # search snippets did not contain a price.
+        browser_results = _browser_fetch_products(candidates[:3], query)
         if browser_results:
             return browser_results
 
-        # Last bounded fallback for candidates where the external engine also
-        # supplied a usable price.
-        for candidate in candidates:
+        for candidate in candidates[:3]:
             result = _fetch_product(session, candidate, query)
             if not result:
                 continue
