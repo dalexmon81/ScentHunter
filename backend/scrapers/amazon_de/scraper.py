@@ -194,7 +194,7 @@ def _public_html_search(query):
     response = None
     try:
         response = requests.get(
-            url, headers=HEADERS, timeout=(2.0, 3.0), allow_redirects=True
+            url, headers=HEADERS, timeout=(1.0, 1.5), allow_redirects=True
         )
         final = urlparse(response.url)
         if final.scheme != "https" or final.hostname not in {
@@ -245,7 +245,7 @@ def _external_search_fallback(query):
     url = "https://www.bing.com/search?format=rss&q=" + quote_plus(q)
     try:
         response = requests.get(
-            url, headers=HEADERS, timeout=(1.5, 2.5), allow_redirects=True
+            url, headers=HEADERS, timeout=(1.0, 1.5), allow_redirects=True
         )
         try:
             if response.status_code != 200:
