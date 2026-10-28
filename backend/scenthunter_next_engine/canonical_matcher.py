@@ -232,23 +232,19 @@ def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
         if isinstance(parsed_product, Mapping)
         else None
     )
-    candidates = [
-        raw_payload.get("gtin14"),
-        raw_payload.get("gtin13"),
-        raw_payload.get("gtin12"),
-        raw_payload.get("gtin"),
-        raw_payload.get("ean13"),
-        raw_payload.get("ean"),
-        identity.get("gtin") if isinstance(identity, Mapping) else None,
-        parsed_identity.get("gtin") if isinstance(parsed_identity, Mapping) else None,
-    ]
-    if isinstance(jsonld, Mapping):
-        candidates.extend([
-            jsonld.get("gtin14"),
-            jsonld.get("gtin13"),
-            jsonld.get("gtin12"),
-            jsonld.get("gtin"),
-        ])
+    # Retailer parsers do not all flatten identifiers the same way. Deloox's
+    # canonical payload stores the GTIN in identity.gtin.value and raw_data.jsonld,
+    # while other adapters may expose gtin13/gtin14 directly. Inspect only these
+    # documented identity fields; never treat a SKU or arbitrary numeric ID as a GTIN.
+    candidates = []
+    for container in (raw_payload, identity, parsed_product, parsed_identity, raw_data, jsonld):
+        if isinstance(container, Mapping):
+            candidates.extend(
+                container.get(key)
+                for key in ("gtin", "gtin8", "gtin12", "gtin13", "gtin14", "ean", "ean8", "ean13")
+            )
+    if isinstance(identity, Mapping):
+        candidates.extend([identity.get("barcode"), identity.get("ean")])
     for candidate in candidates:
         if isinstance(candidate, Mapping):
             candidate = candidate.get("value")
