@@ -185,3 +185,44 @@ def test_refresh_url_rejects_deloox_search_url_before_network(monkeypatch):
     result = catalog_engine.refresh_url("deloox", "https://www.deloox.nl/zoeken.html")
     assert result is None
     assert calls == []
+
+
+def test_deloox_parser_preserves_gtin14_for_limited_edition_150ml():
+    from backend.scrapers.deloox import scraper as deloox_scraper
+
+    url = (
+        "https://www.deloox.be/produit/1385920/"
+        "french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+    )
+    name = "French Avenue Liquid Brun Extrait de Parfum Limited edition 150 ml"
+    html = f"""<!doctype html>
+    <html><head>
+    <script type="application/ld+json">
+    {{
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "{name}",
+      "brand": {{"@type": "Brand", "name": "French Avenue"}},
+      "sku": "1385920",
+      "gtin14": "6298042001831",
+      "offers": {{
+        "@type": "Offer",
+        "price": "39.89",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock"
+      }}
+    }}
+    </script></head><body><h1>{name}</h1></body></html>"""
+
+    parsed = deloox_scraper._product(
+        url, html, "Liquid Brun Limited Edition 150 ml"
+    )
+
+    assert parsed is not None
+    assert parsed["identity"]["gtin"] == {
+        "value": "6298042001831",
+        "source": "jsonld",
+    }
+    assert parsed["identity"]["sku"]["value"] == "1385920"
+    assert parsed["attributes"]["size_ml"]["value"] == 150
+    assert parsed["attributes"]["concentration"]["value"] == "Extrait de Parfum"
