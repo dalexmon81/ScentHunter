@@ -155,11 +155,12 @@ jobs:
           for store in parfumzentrum sabina deloox perfumemarket easycosmetic orioudh; do
             probe "Recent hydration errors: $store" "https://scenthunter.fly.dev/catalog/hydration-errors?store=$store&limit=10" 8
           done
-          probe 'Parfum-Zentrum Hawas Ice URL/SKU/GTIN + FTS diagnostic (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-index?q=Hawas%20Ice' 12
-          probe 'Parfum-Zentrum Hawas Ice discovery trace (read-only)' 'https://scenthunter.fly.dev/diagnose-parfumzentrum-hawas-discovery-trace' 18
-          probe 'Read-only runtime/thread diagnostics' 'https://scenthunter.fly.dev/diagnostic/runtime-deep' 12
-          probe 'Deloox discovery frontier (read-only SQLite diagnostic)' 'https://scenthunter.fly.dev/diagnose-deloox-frontier-path' 12
-          probe 'Deloox generic search coverage (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-generic-search-coverage' 12
+          probe 'Production catalog status (read-only HTTP)' 'https://scenthunter.fly.dev/catalog-status' 15
+          probe 'Recent Deloox hydration errors (read-only)' 'https://scenthunter.fly.dev/catalog/hydration-errors?store=deloox&limit=10' 15
+          probe 'Liquid Brun Limited Edition URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1385920%2Ffrench-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html&q=Liquid%20Brun%20Limited%20Edition%20150%20ml' 15
+          probe 'Liquid Brun standard 100 ml URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1355229%2Ffrench-avenue-liquid-brun-eau-de-parfum-100-ml.html&q=Liquid%20Brun%20100%20ml' 15
+          probe 'Liquid Brun specific search pipeline (read-only)' 'https://scenthunter.fly.dev/diagnose-catalog-search-pipeline?q=Liquid%20Brun%20Limited%20Edition%20150%20ml' 15
+          probe 'Liquid Brun generic search pipeline (read-only)' 'https://scenthunter.fly.dev/diagnose-catalog-search-pipeline?q=Liquid%20Brun' 15
           probe 'Liquid Brun Limited Edition URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1385920%2Ffrench-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html&q=Liquid%20Brun%20Limited%20Edition%20150%20ml' 15
           probe 'Liquid Brun standard 100 ml URL parser gate (read-only)' 'https://scenthunter.fly.dev/diagnose-deloox-product-url?url=https%3A%2F%2Fwww.deloox.be%2Fproduit%2F1355229%2Ffrench-avenue-liquid-brun-eau-de-parfum-100-ml.html&q=Liquid%20Brun%20100%20ml' 15
           probe 'Liquid Brun specific search pipeline (read-only)' 'https://scenthunter.fly.dev/diagnose-catalog-search-pipeline?q=Liquid%20Brun%20Limited%20Edition%20150%20ml' 15
