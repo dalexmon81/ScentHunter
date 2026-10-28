@@ -2573,17 +2573,14 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
         )
 
-    notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    # Restore the previously working bounded live adapters as a real fallback:
+    # feed/catalog first, then a live retailer search only when no offer matched.
+    # Each adapter must return a parsed product with a price and a marketplace URL;
+    # blocked/unavailable responses remain explicit and never become fake offers.
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
-        and (
-            (store == 'notino' and notino_live_fallback_enabled)
-            or (store in ('amazon_fr', 'amazon_de') and amazon_bridge_configured(store))
-        )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     live_bridge_timeout = 9.5
