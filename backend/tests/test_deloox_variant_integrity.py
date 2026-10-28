@@ -103,6 +103,57 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertTrue(catalog._should_hide_deloox_offer("deloox", "discontinued", None))
         self.assertFalse(catalog._should_hide_deloox_offer("sabina", "out_of_stock", 38.90))
 
+    def test_both_liquid_brun_deloox_pages_keep_separate_explicit_formats(self):
+        limited_url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        standard_url = "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
+        limited_html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context":"https://schema.org",
+          "@type":"Product",
+          "name":"French Avenue Liquid Brun Limited Edition 150 ml",
+          "brand":{"@type":"Brand","name":"French Avenue"},
+          "size":{"@type":"QuantitativeValue","value":150,"unitText":"ml"},
+          "gtin13":"6298042001831",
+          "sku":"1385920",
+          "offers":{"@type":"Offer","availability":"https://schema.org/OutOfStock","priceCurrency":"EUR"}
+        }
+        </script></head><body>
+        <h1>French Avenue Liquid Brun Limited Edition 150 ml</h1>
+        <div class="availability">Out of stock</div>
+        </body></html>
+        """
+        standard_html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context":"https://schema.org",
+          "@type":"Product",
+          "name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
+          "brand":{"@type":"Brand","name":"French Avenue"},
+          "size":{"@type":"QuantitativeValue","value":100,"unitText":"ml"},
+          "gtin13":"6290360375694",
+          "sku":"1355229",
+          "offers":{"@type":"Offer","price":"32.99","priceCurrency":"EUR","availability":"https://schema.org/InStock"}
+        }
+        </script></head><body>
+        <h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1>
+        <div class="availability">In stock</div>
+        </body></html>
+        """
+        limited = scraper.extract_product_page(None, limited_url, html=limited_html)
+        standard = scraper.extract_product_page(None, standard_url, html=standard_html)
+
+        self.assertIsNotNone(limited)
+        self.assertIsNotNone(standard)
+        self.assertEqual(limited["attributes"]["size_ml"]["value"], 150)
+        self.assertEqual(limited["offer"]["availability"], "out_of_stock")
+        self.assertIsNone(limited["offer"]["price"])
+        self.assertEqual(standard["attributes"]["size_ml"]["value"], 100)
+        self.assertEqual(standard["offer"]["availability"], "in_stock")
+        self.assertEqual(standard["offer"]["price"], 32.99)
+        self.assertIsNone(scraper._product(limited_url, limited_html, "Liquid Brun 100 ml"))
+        self.assertIsNone(scraper._product(standard_url, standard_html, "Liquid Brun Limited Edition 150 ml"))
+
     def test_limited_edition_150ml_out_of_stock_is_parsed_without_price(self):
         html = """
         <html><head>
