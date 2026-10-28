@@ -314,10 +314,16 @@ def _fetch_feed() -> bytes:
             },
             timeout=TIMEOUT,
             stream=True,
-            allow_redirects=False,
+            allow_redirects=True,
         )
-        if response.status_code in (301, 302, 303, 307, 308):
-            raise FeedImportError("notino_feed_redirect_refused")
+        final_url = urllib.parse.urlparse(str(response.url or ""))
+        if (
+            final_url.scheme != "https"
+            or not final_url.hostname
+            or final_url.username is not None
+            or final_url.password is not None
+        ):
+            raise FeedImportError("notino_feed_redirect_destination_rejected")
         if response.status_code in (401, 403):
             raise FeedImportError("notino_feed_auth_denied")
         if response.status_code >= 400:
