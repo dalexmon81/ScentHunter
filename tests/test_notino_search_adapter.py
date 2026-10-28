@@ -168,3 +168,17 @@ def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypat
     assert scraper._reader_product(
         object(), candidate, "Liquid Brun", _allow_variants=False
     ) is None
+
+
+def test_liquid_brun_discovery_adds_known_notino_product_url(monkeypatch):
+    monkeypatch.setattr(scraper, "_search_urls", lambda query: [])
+    monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: (_ for _ in ()).throw(
+        scraper.requests.RequestException("blocked")
+    ))
+    candidates, diagnostics = scraper._discover("Liquid Brun 100 ml", scraper._new_session())
+    seeded = [
+        item for item in candidates
+        if item["url"] == "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+    ]
+    assert seeded
+    assert diagnostics["known_product_seed"] == seeded[0]["url"]
