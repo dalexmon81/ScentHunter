@@ -2557,15 +2557,26 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
-    # Narrow compatibility bridge for legacy storefront adapters that are
-    # not yet represented in the persistent catalog. Only try these stores
-    # when the catalog returned no matched offer; all other retailers stay
-    # catalog-only. Adapter HTTP clients allow up to 6s for a response, so
-    # the subprocess budget must not kill them before their own timeout expires.
+    # Notino is feed-only: its public HTML adapter is not an authorized
+    # substitute for the CJ/VIV feed and must never run in the foreground path.
+    # Amazon may use the live bridge only when the approved Creators API is
+    # actually configured for that marketplace. Otherwise starting subprocesses
+    # that can only report "unavailable" adds several seconds to every search.
+    def amazon_bridge_configured(store):
+        market = 'fr' if store == 'amazon_fr' else 'de'
+        approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
+        return (
+            approved in {'1', 'true', 'yes', 'on'}
+            and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_ID', '')).strip())
+            and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
+            and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
+        )
+
     live_bridge_stores = [
-        store for store in ('notino', 'amazon_fr', 'amazon_de')
+        store for store in ('amazon_fr', 'amazon_de')
         if store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
+        and amazon_bridge_configured(store)
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     live_bridge_timeout = 9.5
