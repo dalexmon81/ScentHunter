@@ -8,6 +8,7 @@ on:
     branches:
       - fix/catalog-hydration-mainline
       - fix/catalog-hydration-slug-normalization
+      - fix/notino-authorized-feed-import
 
 jobs:
   parser-regression:
