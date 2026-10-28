@@ -3822,6 +3822,10 @@ def diagnostic_deloox_pipeline(
             return {**base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage}}
         normalized_input = {
             'name': parsed_product.get('name'),
+            # Preserve verified parser identity for the next-engine matcher.
+            # Without this field, the GTIN registry is bypassed and this
+            # diagnostic falsely reports an unresolved canonical match.
+            'identity': parsed_product.get('identity'),
             'brand': parsed_product.get('brand') or parsed_product.get('_raw_brand') or 'French Avenue',
             'size_ml': ((parsed_product.get('attributes') or {}).get('size_ml') or {}).get('value') if isinstance((parsed_product.get('attributes') or {}).get('size_ml'), dict) else parsed_product.get('size_ml'),
             'url': parsed_product.get('url') or response.url,

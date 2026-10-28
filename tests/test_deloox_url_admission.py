@@ -226,3 +226,41 @@ def test_deloox_parser_preserves_gtin14_for_limited_edition_150ml():
     assert parsed["identity"]["sku"]["value"] == "1385920"
     assert parsed["attributes"]["size_ml"]["value"] == 150
     assert parsed["attributes"]["concentration"]["value"] == "Extrait de Parfum"
+
+    # catalog_engine.refresh_url() persists these flat fields. Returning only
+    # the nested schema silently stored this live in-stock offer as an empty,
+    # out-of-stock row with no GTIN or price.
+    assert parsed["brand"] == "French Avenue"
+    assert parsed["gtin"] == "6298042001831"
+    assert parsed["sku"] == "1385920"
+    assert parsed["size_ml"] == 150
+    assert parsed["concentration"] == "Extrait de Parfum"
+    assert parsed["price_num"] == 39.89
+    assert parsed["currency"] == "EUR"
+    assert parsed["availability"] == "in_stock"
+
+    # The diagnostic must pass the parser's verified identity to the matcher;
+    # this exact GTIN maps only to the Limited Edition 150 ml variant.
+    from pathlib import Path
+    from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+    from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from backend.scenthunter_next_engine.offer_normalizer import normalize_offer
+
+    offer = normalize_offer(
+        {
+            "name": parsed["name"],
+            "brand": parsed["brand"],
+            "size_ml": parsed["size_ml"],
+            "price": parsed["price_num"],
+            "availability": parsed["availability"],
+            "url": parsed["url"],
+            "identity": parsed["identity"],
+        },
+        retailer="deloox",
+    )
+    catalog_path = Path(catalog_engine.__file__).resolve().parent / "product_catalog.json"
+    match = CanonicalMatcher(CatalogRepository.from_file(catalog_path)).match(offer)
+    assert match.status.value == "matched"
+    assert match.canonical_product_id == "SH-0031"
+    assert match.canonical_variant_id == "VAR-f5aff76b4bb5de8a"
+    assert match.reason == "verified_gtin_exact_variant"

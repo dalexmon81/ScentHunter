@@ -25,7 +25,7 @@ ALLOWED_HOSTS = {
 }
 PRODUCT_PATH = re.compile(r"/(?:[a-z]{2}/)?(?:product|produit|producto|prodotto)/\d+(?:/|$)", re.I)
 
-EXPECTED_PARSER_GIT_BLOB_SHA = "b31b9130ffa6795e5b498b003b9097340f21d07d"  # Current main parser; size-integrity regression suite passed on this revision
+EXPECTED_PARSER_GIT_BLOB_SHA = "a3cca28c7f99b00d26083fdb8d1879ba67e3faf5"  # Current main parser; size-integrity regression suite passed on this revision
 
 
 def parser_runtime_status() -> dict:
@@ -180,6 +180,26 @@ def apply_recovery(db_path: str = DEFAULT_DB) -> dict:
             )
             changed += cursor.rowcount
         conn.commit()
+        # Also refresh the single reviewed Liquid Brun Limited Edition URL
+        # when its persisted identity/offer is incomplete. This remains a
+        # separate exact-URL guard; generic DONE rows are not reset.
+        import subprocess
+        import sys
+        targeted_script = Path(__file__).with_name("deloox_targeted_refresh.py")
+        targeted = subprocess.run(
+            [
+                sys.executable, str(targeted_script), "--apply",
+                "--wait-seconds", "90", "--db", db_path,
+            ],
+            capture_output=True, text=True, timeout=100, check=False,
+        )
+        if targeted.stdout:
+            print(targeted.stdout.strip())
+        if targeted.returncode != 0:
+            raise RuntimeError(
+                "targeted Liquid Brun refresh failed: "
+                + (targeted.stderr.strip() or targeted.stdout.strip() or str(targeted.returncode))
+            )
         return {
             "status": "RECOVERY_QUEUED",
             "mode": "apply",

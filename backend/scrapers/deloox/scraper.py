@@ -513,6 +513,21 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
             "product_source": "jsonld_or_page",
         },
         "raw_data": {"jsonld": data},
+        # Flat fields are the stable catalog_engine persistence contract.
+        # Keep the provenance-rich nested schema above, but also expose the
+        # normalized commercial fields expected by refresh_url().
+        "brand": clean(brand) or None,
+        "image": urljoin(url, str(image)) if image else None,
+        "sku": sku,
+        "gtin": gtin,
+        "mpn": mpn,
+        "size_ml": size_ml(name, url),
+        "concentration": concentration(name) or None,
+        "gender": "unknown",
+        "price_num": price,
+        "currency": "EUR",
+        "availability": avail,
+        "fetched_at": time.time(),
         "name": name,
         "price": (f"{price:.2f}".replace(".", ",") + " €") if price is not None else None,
         "url": url,
