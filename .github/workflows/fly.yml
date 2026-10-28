@@ -429,7 +429,7 @@ jobs:
                           if not isinstance(group, dict):
                               continue
                           group_name = str(group.get("name") or group.get("title") or "")
-                          if not (abs(float(offer.get("size_ml")) - 100.0) < 0.01 if str(offer.get("size_ml") or "").strip() else re.search(r"(?<!\d)100(?:\s*[-_]?\s*)?ml\b", group_name + " " + offer_identity, flags=re.I)):
+                          if not re.search(r"(?<!\d)100(?:\s*[-_]?\s*)?ml\b", group_name, flags=re.I):
                               continue
                           for offer in (group.get("offers") or []):
                               if not isinstance(offer, dict):
@@ -466,10 +466,10 @@ jobs:
                               identity = " ".join(str(offer.get(key) or "") for key in ("name", "title", "url", "product_url"))
                               combined = group_identity + " " + identity
                               try:
-                          is_150ml = abs(float(offer.get("size_ml")) - 150.0) < 0.01
-                        except (TypeError, ValueError):
-                          is_150ml = bool(re.search(r"(?<!\d)150(?:\s*[-_]?\s*)?ml\b", combined, flags=re.I))
-                        if "deloox" not in store or not is_150ml:
+                                  is_150ml = abs(float(offer.get("size_ml")) - 150.0) < 0.01
+                              except (TypeError, ValueError):
+                                  is_150ml = bool(re.search(r"(?<!\d)150(?:\s*[-_]?\s*)?ml\b", combined, flags=re.I))
+                              if "deloox" not in store or not is_150ml:
                                   continue
                               matches_150.append({
                                   "group": group_identity,
