@@ -20,7 +20,7 @@ READER_BASE = "https://r.jina.ai/"
 
 TIMEOUT = 12
 READER_TIMEOUT = 10
-ENGINE_TIMEOUT = 10
+ENGINE_TIMEOUT = 2.5
 SCRAPER_VERSION = "notino-external-discovery-browser-product-2026-09-13-v6"
 
 HEADERS = {
@@ -763,15 +763,19 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
             page.route("**/*", route_handler)
 
             try:
-                response = page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
                 report["status"] = response.status if response else None
+                if response is not None and response.status != 200:
+                    report["error"] = f"notino_http_{response.status}"
+                    report["elapsed_s"] = round(time.perf_counter() - started, 3)
+                    return [], report
             except Exception as exc:
                 report["navigation_error"] = f"{type(exc).__name__}: {exc}"
 
             # Give the client-side product list a short, fixed window. There
             # are no locator waits here, so this can never turn into a 30s
             # hidden Playwright wait.
-            page.wait_for_timeout(1200)
+            page.wait_for_timeout(250)
 
             def extract_dom():
                 return page.evaluate(r"""() => {
@@ -805,7 +809,7 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
             if not data.get("cards"):
                 # Some Notino responses populate the product grid shortly after
                 # DOMContentLoaded. One more fixed check is cheap and bounded.
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(250)
                 data = extract_dom()
 
             body_text = _clean(data.get("body", ""))
@@ -908,16 +912,16 @@ def _browser_fetch_products(candidates: List[Dict[str, Any]], query: str) -> Lis
 
             page.route("**/*", route_handler)
 
-            for candidate in candidates[:12]:
+            for candidate in candidates[:2]:
                 url = candidate.get("url", "")
                 if not url or url in seen:
                     continue
                 seen.add(url)
 
                 try:
-                    response = page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
                     status = response.status if response else None
-                    page.wait_for_timeout(700)
+                    page.wait_for_timeout(250)
 
                     data = page.evaluate(r"""() => {
                         const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
