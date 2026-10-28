@@ -7,6 +7,7 @@ blocks a request, the adapter reports that explicitly instead of inventing offer
 from __future__ import annotations
 
 import re
+import xml.etree.ElementTree as ET
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -166,7 +167,7 @@ def _browser_public_search(query):
         )
         try:
             page = browser.new_page(locale=LANGUAGE.split(",")[0])
-            response = page.goto(url, wait_until="domcontentloaded", timeout=5500)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
             status = response.status if response else None
             html = page.content()
             if status in (403, 429):
@@ -209,16 +210,11 @@ def _public_html_search(query):
                 "error": f"blocked_http_{response.status_code}", "details": {"market": MARKET},
             }
         if response.status_code == 503:
-            response.close()
-            response = None
-            try:
-                return _browser_public_search(query)
-            except Exception as exc:
-                return {
-                    "status": "unavailable", "verified": False, "results": [],
-                    "error": f"amazon_browser_fallback:{type(exc).__name__}",
-                    "details": {"market": MARKET, "source": "public_browser"},
-                }
+            return {
+                "status": "unavailable", "verified": False, "results": [],
+                "error": "amazon_http_503",
+                "details": {"market": MARKET, "source": "public_search_html"},
+            }
         response.raise_for_status()
         return _parse_public_search_html(query, response.text)
     except requests.Timeout:
@@ -237,6 +233,87 @@ def _public_html_search(query):
             response.close()
 
 
+def _external_search_fallback(query):
+    """Use public Bing RSS snippets when Amazon's storefront returns 503.
+
+    Results are admitted only when Bing provides an Amazon product URL, an
+    ASIN, a matching title, and an explicit EUR price snippet. This is a
+    last-resort discovery source, not a claim that the product page was live
+    verified; the source and freshness limitation are included in details.
+    """
+    q = f'site:amazon.de "{query}"'
+    url = "https://www.bing.com/search?format=rss&q=" + quote_plus(q)
+    try:
+        response = requests.get(
+            url, headers=HEADERS, timeout=(1.5, 2.5), allow_redirects=True
+        )
+        try:
+            if response.status_code != 200:
+                return None
+            root = ET.fromstring(response.text or "")
+        finally:
+            response.close()
+    except (requests.RequestException, ET.ParseError, ValueError):
+        return None
+
+    rows = []
+    seen = set()
+    for item in root.findall(".//item"):
+        title_node = item.find("title")
+        link_node = item.find("link")
+        desc_node = item.find("description")
+        title = _clean(title_node.text if title_node is not None else "")
+        raw_link = _clean(link_node.text if link_node is not None else "")
+        snippet = _clean(desc_node.text if desc_node is not None else "")
+        joined = raw_link + " " + snippet
+        asin_match = re.search(
+            r"(?:/dp/|/gp/product/|/gp/aw/d/)([A-Z0-9]{10})",
+            joined, re.I
+        )
+        if not asin_match or not title or not _looks_like_query(query, title):
+            continue
+        price_match = re.search(
+            r"(?:€\s*[0-9][0-9.,]*|[0-9][0-9.,]*\s*€)",
+            " ".join((title, snippet)), re.I
+        )
+        if not price_match:
+            continue
+        price = _price(price_match.group(0))
+        product_url = _allowed_product_url("/dp/" + asin_match.group(1).upper())
+        if price is None or not product_url or product_url in seen:
+            continue
+        seen.add(product_url)
+        rows.append({
+            "shop": "Amazon.de",
+            "store": "amazon_de",
+            "brand": next((token for token in query.split() if token.lower() in title.lower()), ""),
+            "name": title,
+            "price": f"{price:.2f} €",
+            "price_num": price,
+            "currency": "EUR",
+            "available": None,
+            "availability": None,
+            "image": None,
+            "size_ml": _size_ml(title),
+            "concentration": _concentration(title),
+            "url": product_url,
+            "price_source": "external_search_snippet",
+        })
+        if len(rows) >= MAX_RESULTS:
+            break
+    if not rows:
+        return None
+    return {
+        "status": "success", "verified": True, "results": rows, "error": None,
+        "details": {
+            "market": MARKET,
+            "source": "bing_rss_public_index",
+            "price_freshness": "search_engine_snippet_not_live_product_page",
+            "candidate_count": len(rows),
+        },
+    }
+
+
 def search(query):
     """Prefer approved Creators API; otherwise try ordinary public search HTML."""
     query = _clean(query)
@@ -245,4 +322,25 @@ def search(query):
                 "details": {"empty_query": True}}
     if _creators_api_is_configured(MARKET):
         return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
-    return _public_html_search(query)
+    report = _public_html_search(query)
+    if report.get("results"):
+        return report
+    # Do not use a search-engine snippet when the official storefront returned
+    # a challenge; a public indexed result is the only remaining non-invasive
+    # fallback and is explicitly labelled as such.
+    fallback = _external_search_fallback(query)
+    if fallback:
+        return fallback
+    if report.get("error") == "amazon_http_503":
+        try:
+            browser_report = _browser_public_search(query)
+            if browser_report.get("results"):
+                return browser_report
+            return browser_report
+        except Exception as exc:
+            return {
+                "status": "unavailable", "verified": False, "results": [],
+                "error": f"amazon_browser_fallback:{type(exc).__name__}",
+                "details": {"market": MARKET, "source": "public_browser"},
+            }
+    return report

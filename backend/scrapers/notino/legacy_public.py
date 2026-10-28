@@ -20,7 +20,7 @@ READER_BASE = "https://r.jina.ai/"
 
 TIMEOUT = 12
 READER_TIMEOUT = 10
-ENGINE_TIMEOUT = 10
+ENGINE_TIMEOUT = 2.5
 SCRAPER_VERSION = "notino-external-discovery-browser-product-2026-09-13-v6"
 
 HEADERS = {
@@ -763,15 +763,19 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
             page.route("**/*", route_handler)
 
             try:
-                response = page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
                 report["status"] = response.status if response else None
+                if response is not None and response.status != 200:
+                    report["error"] = f"notino_http_{response.status}"
+                    report["elapsed_s"] = round(time.perf_counter() - started, 3)
+                    return [], report
             except Exception as exc:
                 report["navigation_error"] = f"{type(exc).__name__}: {exc}"
 
             # Give the client-side product list a short, fixed window. There
             # are no locator waits here, so this can never turn into a 30s
             # hidden Playwright wait.
-            page.wait_for_timeout(1200)
+            page.wait_for_timeout(250)
 
             def extract_dom():
                 return page.evaluate(r"""() => {
@@ -805,7 +809,7 @@ def _browser_search(query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
             if not data.get("cards"):
                 # Some Notino responses populate the product grid shortly after
                 # DOMContentLoaded. One more fixed check is cheap and bounded.
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(250)
                 data = extract_dom()
 
             body_text = _clean(data.get("body", ""))
@@ -908,16 +912,16 @@ def _browser_fetch_products(candidates: List[Dict[str, Any]], query: str) -> Lis
 
             page.route("**/*", route_handler)
 
-            for candidate in candidates[:12]:
+            for candidate in candidates[:2]:
                 url = candidate.get("url", "")
                 if not url or url in seen:
                     continue
                 seen.add(url)
 
                 try:
-                    response = page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=2500)
                     status = response.status if response else None
-                    page.wait_for_timeout(700)
+                    page.wait_for_timeout(250)
 
                     data = page.evaluate(r"""() => {
                         const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
@@ -1141,16 +1145,46 @@ def search(query: str) -> List[Dict[str, Any]]:
                     break
             return results
 
-        # External discovery can provide valid Notino product URLs even when
-        # it cannot expose a price in the search snippet. Open those product
-        # pages with Chromium: requests is known to receive Cloudflare 403.
-        browser_results = _browser_fetch_products(candidates, query)
+        # Prefer a price-bearing external search result before opening product
+        # pages. Production's Notino product pages frequently return a challenge
+        # to Chromium; the old ordering waited through up to 12 page navigations
+        # and was killed by the 10s live-bridge deadline before reaching this
+        # usable fallback.
+        for candidate in candidates:
+            name = candidate.get("name", "")
+            price = candidate.get("price_hint", "")
+            url = candidate.get("url", "")
+            if not name or not price or not url:
+                continue
+            if not _fuzzy_match(f"{name} {_url_name(url)}", query)[0]:
+                continue
+            if _non_perfume_product(name, url):
+                continue
+            if not _size_valid(name + " " + _url_name(url), query):
+                continue
+            key = url.lower() + "|" + _norm(name)
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append({
+                "store": STORE,
+                "name": _display_name(name, url),
+                "price": price,
+                "url": url,
+                "price_source": "external_search_snippet",
+            })
+            if len(results) >= 10:
+                break
+        if results:
+            return results
+
+        # Only spend browser time on a small number of external candidates when
+        # search snippets did not contain a price.
+        browser_results = _browser_fetch_products(candidates[:3], query)
         if browser_results:
             return browser_results
 
-        # Last bounded fallback for candidates where the external engine also
-        # supplied a usable price.
-        for candidate in candidates:
+        for candidate in candidates[:3]:
             result = _fetch_product(session, candidate, query)
             if not result:
                 continue
