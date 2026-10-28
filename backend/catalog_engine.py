@@ -4780,10 +4780,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                             vr['variant_url'] if 'variant_url' in vr.keys() and vr['variant_url'] else url,
                                             url, vr['size_ml']
                                         )
-                                    else:
+                                    elif store == 'notino':
                                         variant_url = _store_allowed_variant_url(
                                             store, vr['variant_url'] or url, url
                                         ) or url
+                                    else:
+                                        variant_url = vr['variant_url'] or url
                                     store_rows.append({
                                         'url': variant_url,
                                         'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',

@@ -362,22 +362,16 @@ def _slug(url: str) -> str:
 
 def _persist_offers(offers: list[NotinoOffer]) -> int:
     from catalog_engine import db
+
     conn = db()
     now = time.time()
-    # Feed rows are variants of the same parent product URL. Preserve the
-    # original commercial identifier in the variant key, but store only one
-    # canonical parent row in store_products.
     grouped: dict[str, list[NotinoOffer]] = {}
     for offer in offers:
         grouped.setdefault(offer.url, []).append(offer)
     try:
         with conn:
-            # Parent row keeps the URL indexed and hydrated through the regular
-            # FTS machinery. Per-variant prices live in store_product_variants.
-            per_url = {}
-            for offer in offers:
-                per_url.setdefault(offer.url, offer)
-            for url, representative in per_url.items():
+            for url, url_offers in grouped.items():
+                representative = url_offers[0]
                 conn.execute(
                     """INSERT INTO store_urls(store,url,slug,lastmod,discovered_at,active)
                        VALUES(?,?,?,?,?,1)
@@ -385,6 +379,9 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                          slug=excluded.slug,discovered_at=excluded.discovered_at,active=1""",
                     (STORE_KEY, url, _slug(url), None, now),
                 )
+                # A parent row is needed by the existing FTS URL index, but its
+                # price is deliberately not published; each size/edition has
+                # its own verified price in store_product_variants.
                 conn.execute(
                     """INSERT INTO store_products(
                            store,url,name,brand,image,sku,gtin,mpn,size_ml,concentration,
@@ -393,42 +390,38 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                        ON CONFLICT(store,url) DO UPDATE SET
                          name=excluded.name,brand=excluded.brand,image=excluded.image,
                          sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                         size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
-                         concentration=COALESCE(excluded.concentration,store_products.concentration),
-                         availability=excluded.availability,
-                         price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
-                         currency=excluded.currency,fetched_at=excluded.fetched_at,
+                         size_ml=COALESCE(store_products.size_ml,excluded.size_ml),
+                         concentration=COALESCE(store_products.concentration,excluded.concentration),
+                         availability='variant_catalog',
+                         price=NULL,currency=excluded.currency,fetched_at=excluded.fetched_at,
                          fetch_status='OK'""",
                     (
                         STORE_KEY, url, representative.title, representative.brand,
                         representative.image, representative.sku, representative.gtin,
                         representative.mpn, representative.size_ml, representative.concentration,
-                        None, representative.price, representative.currency,
-                        representative.availability, now,
+                        None, None, representative.currency, 'variant_catalog', now,
                     ),
                 )
-            # Upsert instead of clearing the whole variant set: a partial feed
-            # must not delete offers that were validly imported in a prior run.
-            for offer in offers:
-                conn.execute(
-                    """INSERT INTO store_product_variants(
-                           store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
-                           concentration,gender,price,currency,availability,fetched_at,variant_url)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                       ON CONFLICT(store,url,variant_key) DO UPDATE SET
-                         name=excluded.name,brand=excluded.brand,image=excluded.image,
-                         sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
-                         size_ml=excluded.size_ml,concentration=excluded.concentration,
-                         price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
-                         currency=excluded.currency,availability=excluded.availability,
-                         fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
-                    (
-                        STORE_KEY, offer.url, _stable_variant_key(offer), offer.title,
-                        offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
-                        offer.size_ml, offer.concentration, None,
-                        offer.price, offer.currency, offer.availability, now, offer.url,
-                    ),
-                )
+                for offer in url_offers:
+                    conn.execute(
+                        """INSERT INTO store_product_variants(
+                               store,url,variant_key,name,brand,image,sku,gtin,mpn,size_ml,
+                               concentration,gender,price,currency,availability,fetched_at,variant_url)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                           ON CONFLICT(store,url,variant_key) DO UPDATE SET
+                             name=excluded.name,brand=excluded.brand,image=excluded.image,
+                             sku=excluded.sku,gtin=excluded.gtin,mpn=excluded.mpn,
+                             size_ml=excluded.size_ml,concentration=excluded.concentration,
+                             price=CASE WHEN excluded.availability='out_of_stock' THEN NULL ELSE excluded.price END,
+                             currency=excluded.currency,availability=excluded.availability,
+                             fetched_at=excluded.fetched_at,variant_url=excluded.variant_url""",
+                        (
+                            STORE_KEY, url, _stable_variant_key(offer), offer.title,
+                            offer.brand, offer.image, offer.sku, offer.gtin, offer.mpn,
+                            offer.size_ml, offer.concentration, None,
+                            offer.price, offer.currency, offer.availability, now, url,
+                        ),
+                    )
                 conn.execute(
                     """INSERT INTO hydration_queue(
                            store,url,state,priority,attempts,available_at,first_seen_at)
@@ -436,7 +429,7 @@ def _persist_offers(offers: list[NotinoOffer]) -> int:
                        ON CONFLICT(store,url) DO UPDATE SET
                          state='DONE',priority=0,attempts=0,available_at=excluded.available_at,
                          leased_until=NULL,lease_token=NULL,last_error=NULL""",
-                    (STORE_KEY, offer.url, now, now),
+                    (STORE_KEY, url, now, now),
                 )
     finally:
         conn.close()
