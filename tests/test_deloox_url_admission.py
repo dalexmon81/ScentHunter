@@ -63,6 +63,8 @@ def test_deloox_search_catalog_filters_navigation_urls_before_persisting(monkeyp
         _discover=lambda session, query: [
             "https://www.deloox.nl/zoeken.html",
             "https://www.deloox.com/search.html",
+            "https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html",
+            "https://www.deloox.lu/de/kategorie/1000265/joop-damendufte.html?sort=price",
             product_url,
         ]
     )
