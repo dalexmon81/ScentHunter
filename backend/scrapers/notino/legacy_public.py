@@ -1024,7 +1024,10 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
         if old is None or candidate["score"] > old["score"]:
             all_found[candidate["url"]] = candidate
 
-    if rss_candidates:
+    # RSS may discover product URLs without any usable price. In that case,
+    # do not stop discovery: Bing HTML and Google often carry the price snippet
+    # that lets us return a result without slow/challenged product-page fetches.
+    if any(candidate.get("price_hint") for candidate in rss_candidates):
         ordered = sorted(all_found.values(), key=lambda x: (-x["score"], x["url"]))
         return ordered[:12], {
             "query": query,
