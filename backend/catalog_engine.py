@@ -2559,9 +2559,28 @@ def _deloox_retire_invalid_active_urls():
         # Re-scan active rows even after the first pass. A separate discovery
         # path may have reintroduced a legacy URL before its own admission gate
         # was tightened; the marker must not make that stale row permanent.
-        rows = conn.execute(
-            "SELECT url FROM store_urls WHERE lower(store)='deloox' AND active=1"
-        ).fetchall()
+        if was_completed:
+            # After the initial full audit, only probe paths that can represent
+            # localized navigation endpoints. This catches legacy categories
+            # reintroduced by a stale discovery path without rescanning all
+            # ~67k product URLs on every catalog run.
+            navigation_patterns = (
+                "%/category/%", "%/categorie/%", "%/catégorie/%",
+                "%/categoria/%", "%/categorias/%", "%/categorías/%",
+                "%/kategorie/%", "%/zoeken%", "%/chercher%", "%/search%",
+                "%/buscar%", "%/busqueda%", "%/búsqueda%", "%/sitemap%",
+                "%/brand/%", "%/marque/%", "%/marca/%", "%/login%",
+                "%/account%", "%/cart%", "%/checkout%",
+            )
+            rows = conn.execute(
+                "SELECT url FROM store_urls WHERE lower(store)='deloox' AND active=1 AND (" +
+                " OR ".join("lower(url) LIKE ?" for _ in navigation_patterns) + ")",
+                navigation_patterns,
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT url FROM store_urls WHERE lower(store)='deloox' AND active=1"
+            ).fetchall()
         base_url = STORES["deloox"][0]
         invalid_urls = []
         for row in rows:
