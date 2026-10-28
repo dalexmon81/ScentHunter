@@ -3380,6 +3380,131 @@ def diagnostic_matcher(store: str, q: str):
     }
 
 
+@app.get('/diagnostic/store-pipeline')
+def diagnostic_store_pipeline(store: str, q: str):
+    """Read-only layered diagnostic for catalog search vs direct retailer adapter."""
+    import time as _diag_time
+
+    machine_store = _normalise_store(store, store)
+    query = str(q or '').strip()
+    allowed = {'notino', 'amazon_fr', 'amazon_de'}
+    if machine_store not in allowed:
+        return {
+            'ok': False,
+            'diagnostic': 'configuration -> persistent_catalog -> direct_scraper -> identity_match',
+            'error': 'unsupported_store',
+            'allowed_stores': sorted(allowed),
+            'store': machine_store,
+            'query': query,
+        }
+    if not query:
+        return {'ok': False, 'store': machine_store, 'error': 'missing_query'}
+
+    def enabled(name, default='0'):
+        return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+    market = 'fr' if machine_store == 'amazon_fr' else 'de'
+    api_configured = (
+        enabled('AMAZON_CREATORS_API_COMPARISON_APPROVED')
+        and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_ID', '')).strip())
+        and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
+        and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
+    ) if machine_store.startswith('amazon_') else None
+    public_enabled = enabled(
+        'NOTINO_PUBLIC_FALLBACK_ENABLED' if machine_store == 'notino'
+        else 'AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1'
+    )
+    started = _diag_time.monotonic()
+    layers = {
+        'configuration': {
+            'catalog_engine_available': bool(CATALOG_ENGINE_AVAILABLE),
+            'store': machine_store,
+            'public_fallback_enabled': public_enabled,
+            'creators_api_configured': api_configured,
+            'note': 'Direct diagnostic does not prove the normal async search enabled its live bridge.',
+        },
+    }
+
+    try:
+        status_map = catalog_store_status() if CATALOG_ENGINE_AVAILABLE and callable(catalog_store_status) else {}
+        layers['persistent_catalog_status'] = (status_map or {}).get(machine_store, {
+            'error': 'catalog_status_unavailable'
+        })
+    except Exception as exc:
+        layers['persistent_catalog_status'] = {'error': f'{type(exc).__name__}: {exc}'}
+
+    local_started = _diag_time.monotonic()
+    try:
+        local_rows = catalog_search_local(query, per_store=12) if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local) else []
+        local_rows = [r for r in (local_rows or []) if isinstance(r, dict) and str(r.get('store') or '').lower() == machine_store]
+        layers['local_catalog_search'] = {
+            'count': len(local_rows),
+            'elapsed_sec': round(_diag_time.monotonic() - local_started, 3),
+            'sample': [{
+                'name': r.get('name') or r.get('title'),
+                'brand': r.get('brand'),
+                'price': r.get('price') or r.get('price_num'),
+                'size_ml': r.get('size_ml'),
+                'url': r.get('url') or r.get('product_url'),
+                'availability': r.get('availability'),
+            } for r in local_rows[:5]],
+        }
+    except Exception as exc:
+        layers['local_catalog_search'] = {
+            'count': 0,
+            'elapsed_sec': round(_diag_time.monotonic() - local_started, 3),
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+    direct_started = _diag_time.monotonic()
+    try:
+        direct = diagnostic_matcher(machine_store, query)
+        layers['direct_scraper_and_identity'] = {
+            'ok': direct.get('ok'),
+            'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+            'stream_error': direct.get('stream_error'),
+            'raw_count': direct.get('raw_count', 0),
+            'matched_count': direct.get('matched_count', 0),
+            'rejected_count': direct.get('rejected_count', 0),
+            'unresolved_count': direct.get('unresolved_count', 0),
+            'clean_error_count': direct.get('clean_error_count', 0),
+            'matched': direct.get('matched', [])[:5],
+            'rejected': direct.get('rejected', [])[:5],
+            'unresolved': direct.get('unresolved', [])[:5],
+            'clean_errors': direct.get('clean_errors', [])[:3],
+        }
+    except Exception as exc:
+        layers['direct_scraper_and_identity'] = {
+            'ok': False,
+            'elapsed_sec': round(_diag_time.monotonic() - direct_started, 3),
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+    catalog = layers.get('persistent_catalog_status') or {}
+    local_count = (layers.get('local_catalog_search') or {}).get('count', 0)
+    direct_layer = layers.get('direct_scraper_and_identity') or {}
+    if direct_layer.get('raw_count', 0) and not direct_layer.get('matched_count', 0):
+        likely_loss = 'direct_scraper_returns_rows_but_cleaning_or_identity_matching_drops_them'
+    elif direct_layer.get('matched_count', 0):
+        likely_loss = 'direct_scraper_and_identity_pass; inspect async live-bridge gate/publication'
+    elif local_count:
+        likely_loss = 'catalog_has_candidates_but_direct_adapter_returns_no_matched_offers'
+    elif not catalog.get('indexed_urls'):
+        likely_loss = 'store_catalog_not_indexed'
+    else:
+        likely_loss = 'no_local_hits_and_no_direct_matches; inspect discovery/hydration and retailer transport'
+    return {
+        'ok': True,
+        'diagnostic': 'configuration -> persistent_catalog -> local_search -> direct_scraper -> identity_match',
+        'store': machine_store,
+        'query': query,
+        'elapsed_sec': round(_diag_time.monotonic() - started, 3),
+        'likely_loss_point': likely_loss,
+        'layers': layers,
+        'read_only': True,
+    }
+
+
 @app.get('/diagnostic/match-offer')
 def diagnostic_match_offer(
     store: str,
