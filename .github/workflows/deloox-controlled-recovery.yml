@@ -148,6 +148,7 @@ jobs:
               raise RuntimeError("production search timed out after Deloox recovery")
 
           found = []
+          all_deloox = []
           for group in result.get("results") or []:
               if not isinstance(group, dict):
                   continue
@@ -157,6 +158,17 @@ jobs:
                       continue
                   store = str(offer.get("store") or "").lower()
                   text = " ".join(str(offer.get(k) or "") for k in ("name", "title", "url", "product_url"))
+                  if "deloox" in store:
+                      all_deloox.append({
+                          "group": group_text,
+                          "store": offer.get("store"),
+                          "name": offer.get("name") or offer.get("title"),
+                          "url": offer.get("url") or offer.get("product_url"),
+                          "size_ml": offer.get("size_ml"),
+                          "availability": offer.get("availability"),
+                          "price": offer.get("price"),
+                          "price_num": offer.get("price_num"),
+                      })
                   combined = group_text + " " + text
                   url = str(offer.get("url") or offer.get("product_url") or "")
                   if "deloox" in store and "/1385920/" in url and re.search(r"(?<!\d)150\s?ml\b", combined, re.I):
@@ -173,6 +185,8 @@ jobs:
               "query": query,
               "count": result.get("count"),
               "matches": found,
+              "all_deloox_offers": all_deloox,
+              "results": result.get("results"),
               "errors": result.get("errors"),
           }, ensure_ascii=False))
           if not found:
