@@ -1128,10 +1128,13 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     # may then incorrectly canonicalize.
     soup = BeautifulSoup(text, "html.parser")
     authoritative_titles: List[str] = []
+    primary_headings: List[str] = []
     for tag in soup.find_all(["h1", "title"], limit=20):
         title_text = _clean_name(tag.get_text(" ", strip=True))
         if title_text:
             authoritative_titles.append(title_text)
+            if tag.name == "h1":
+                primary_headings.append(title_text)
     for meta in soup.find_all("meta"):
         key = str(meta.get("property") or meta.get("name") or "").casefold()
         content = _clean_name(meta.get("content") or "")
@@ -1142,7 +1145,14 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         if rec_name:
             authoritative_titles.append(rec_name)
 
-    if authoritative_titles and not any(
+    # A present H1 is the strongest identity signal and cannot be
+    # overridden by a matching related-product JSON-LD item elsewhere on page.
+    if primary_headings and not any(
+        _query_matches_name(title, query) and not _has_non_perfume_marker(title)
+        for title in primary_headings
+    ):
+        return None
+    if not primary_headings and authoritative_titles and not any(
         _query_matches_name(title, query) and not _has_non_perfume_marker(title)
         for title in authoritative_titles
     ):
