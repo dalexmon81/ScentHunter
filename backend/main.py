@@ -2557,11 +2557,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
-    # Notino is feed-only: its public HTML adapter is not an authorized
-    # substitute for the CJ/VIV feed and must never run in the foreground path.
-    # Amazon may use the live bridge only when the approved Creators API is
-    # actually configured for that marketplace. Otherwise starting subprocesses
-    # that can only report "unavailable" adds several seconds to every search.
+    # Notino prefers fresh CJ/VIV feed offers, but restores the bounded external
+    # discovery/browser adapter when the feed is unavailable or has no matching
+    # offer. Amazon remains Creators-API-only until approved credentials and the
+    # marketplace partner tag are configured.
     def amazon_bridge_configured(store):
         market = 'fr' if store == 'amazon_fr' else 'de'
         approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
@@ -2573,10 +2572,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
 
     live_bridge_stores = [
-        store for store in ('amazon_fr', 'amazon_de')
+        store for store in ('notino', 'amazon_fr', 'amazon_de')
         if store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
-        and amazon_bridge_configured(store)
+        and (store == 'notino' or amazon_bridge_configured(store))
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     live_bridge_timeout = 9.5
