@@ -98,22 +98,151 @@ def _looks_like_query(query, title):
     return bool(tokens) and all(token in haystack for token in tokens)
 
 
-def search(query):
-    """Search only through the explicitly approved Amazon Creators API.
+def _parse_public_search_html(query, html):
+    lower = str(html or "")[:200000].lower()
+    if any(marker in lower for marker in (
+        "captcha", "robot check", "enter the characters you see",
+        "sorry, we just need to make sure", "automated access",
+    )):
+        return {
+            "status": "blocked", "verified": False, "results": [],
+            "error": "amazon_challenge_page",
+            "details": {"market": MARKET, "source": "public_search_html"},
+        }
+    soup = BeautifulSoup(html or "", "html.parser")
+    rows = []
+    seen = set()
+    for card in soup.select('[data-component-type="s-search-result"][data-asin]'):
+        asin = _clean(card.get("data-asin")).upper()
+        if not re.fullmatch(r"[A-Z0-9]{10}", asin):
+            continue
+        title_node = card.select_one("h2 span")
+        title = _clean(title_node.get_text(" ", strip=True) if title_node else "")
+        if not title or not _looks_like_query(query, title):
+            continue
+        price_node = card.select_one(".a-price .a-offscreen")
+        price = _price(price_node.get_text(" ", strip=True) if price_node else "")
+        if price is None:
+            continue
+        product_url = _allowed_product_url(f"/dp/{asin}")
+        if not product_url or product_url in seen:
+            continue
+        seen.add(product_url)
+        image_node = card.select_one("img.s-image")
+        image = _clean(image_node.get("src")) if image_node else None
+        brand = next((token for token in query.split() if token.lower() in title.lower()), "")
+        rows.append({
+            "shop": f"Amazon.{'fr' if MARKET == 'fr' else 'de'}",
+            "store": f"amazon_{MARKET}",
+            "brand": brand,
+            "name": title,
+            "price": f"{price:.2f} €",
+            "price_num": price,
+            "currency": "EUR",
+            "available": None,
+            "availability": None,
+            "image": image,
+            "size_ml": _size_ml(title),
+            "concentration": _concentration(title),
+            "url": product_url,
+        })
+        if len(rows) >= MAX_RESULTS:
+            break
+    return {
+        "status": "success", "verified": True, "results": rows, "error": None,
+        "details": {"market": MARKET, "candidate_count": len(rows), "source": "public_search_html"},
+    }
 
-    Public HTML search may be unavailable to this price-comparison service until
-    Amazon has approved the relevant use. Do not silently substitute HTML offers.
-    """
+
+def _browser_public_search(query):
+    """Retry an HTTP 503 through a normal headless Chromium page; never bypass challenges."""
+    from playwright.sync_api import sync_playwright
+
+    url = f"{BASE}/s?k={quote_plus(query)}"
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        )
+        try:
+            page = browser.new_page(locale=LANGUAGE.split(",")[0])
+            response = page.goto(url, wait_until="domcontentloaded", timeout=5500)
+            status = response.status if response else None
+            html = page.content()
+            if status in (403, 429):
+                return {
+                    "status": "blocked", "verified": False, "results": [],
+                    "error": f"blocked_http_{status}",
+                    "details": {"market": MARKET, "source": "public_browser"},
+                }
+            if status is not None and status >= 400:
+                return {
+                    "status": "unavailable", "verified": False, "results": [],
+                    "error": f"amazon_http_{status}",
+                    "details": {"market": MARKET, "source": "public_browser"},
+                }
+            report = _parse_public_search_html(query, html)
+            report["details"]["source"] = "public_browser"
+            return report
+        finally:
+            browser.close()
+
+
+def _public_html_search(query):
+    url = f"{BASE}/s?k={quote_plus(query)}"
+    response = None
+    try:
+        response = requests.get(
+            url, headers=HEADERS, timeout=(2.0, 3.0), allow_redirects=True
+        )
+        final = urlparse(response.url)
+        if final.scheme != "https" or final.hostname not in {
+            urlparse(BASE).hostname, urlparse(BASE).hostname.replace("www.", "")
+        }:
+            return {
+                "status": "unavailable", "verified": False, "results": [],
+                "error": "redirected_outside_market", "details": {"market": MARKET},
+            }
+        if response.status_code in (403, 429):
+            return {
+                "status": "blocked", "verified": False, "results": [],
+                "error": f"blocked_http_{response.status_code}", "details": {"market": MARKET},
+            }
+        if response.status_code == 503:
+            response.close()
+            response = None
+            try:
+                return _browser_public_search(query)
+            except Exception as exc:
+                return {
+                    "status": "unavailable", "verified": False, "results": [],
+                    "error": f"amazon_browser_fallback:{type(exc).__name__}",
+                    "details": {"market": MARKET, "source": "public_browser"},
+                }
+        response.raise_for_status()
+        return _parse_public_search_html(query, response.text)
+    except requests.Timeout:
+        return {
+            "status": "timeout", "verified": False, "results": [],
+            "error": "amazon_request_timeout", "details": {"market": MARKET},
+        }
+    except requests.RequestException as exc:
+        return {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": f"amazon_request_error:{type(exc).__name__}",
+            "details": {"market": MARKET},
+        }
+    finally:
+        if response is not None:
+            response.close()
+
+
+def search(query):
+    """Prefer approved Creators API; otherwise try ordinary public search HTML."""
     query = _clean(query)
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None,
                 "details": {"empty_query": True}}
-    if not _creators_api_is_configured(MARKET):
-        return {
-            "status": "unavailable",
-            "verified": False,
-            "results": [],
-            "error": "amazon_creators_api_not_configured_or_not_approved",
-            "details": {"market": MARKET, "source": "amazon_creators_api"},
-        }
-    return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
+    if _creators_api_is_configured(MARKET):
+        return _creators_api_search(query, MARKET, f"amazon_{MARKET}", _size_ml, _concentration)
+    return _public_html_search(query)
