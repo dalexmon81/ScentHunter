@@ -7,6 +7,52 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from scrapers.deloox.scraper import _product
+import catalog_engine
+
+
+class DelooxRegionalOfferPriorityTests(unittest.TestCase):
+    def test_fresh_in_stock_locale_beats_stale_sold_out_locale_for_same_sku(self):
+        rows = [
+            {
+                "url": "https://www.deloox.lu/fr/produit/1385920/liquid-brun-limited-edition-150-ml.html",
+                "product_availability": "out_of_stock",
+                "product_price": None,
+                "product_fetched_at": 1793158033.5,
+            },
+            {
+                "url": "https://www.deloox.be/produit/1385920/liquid-brun-limited-edition-150-ml.html",
+                "product_availability": "in_stock",
+                "product_price": 39.89,
+                "product_fetched_at": 1793176295.8,
+            },
+        ]
+
+        ordered = sorted(rows, key=catalog_engine._deloox_candidate_priority)
+
+        self.assertIn("deloox.be", ordered[0]["url"])
+        self.assertEqual(ordered[0]["product_availability"], "in_stock")
+        self.assertEqual(ordered[0]["product_price"], 39.89)
+
+    def test_newer_out_of_stock_observation_beats_older_in_stock_observation(self):
+        rows = [
+            {
+                "url": "https://www.deloox.be/produit/1385920/liquid-brun-limited-edition-150-ml.html",
+                "product_availability": "in_stock",
+                "product_price": 39.89,
+                "product_fetched_at": 1793158033.5,
+            },
+            {
+                "url": "https://www.deloox.lu/fr/produit/1385920/liquid-brun-limited-edition-150-ml.html",
+                "product_availability": "out_of_stock",
+                "product_price": None,
+                "product_fetched_at": 1793176295.8,
+            },
+        ]
+
+        ordered = sorted(rows, key=catalog_engine._deloox_candidate_priority)
+
+        self.assertIn("deloox.lu", ordered[0]["url"])
+        self.assertEqual(ordered[0]["product_availability"], "out_of_stock")
 
 
 class DelooxOutOfStockNoPriceTests(unittest.TestCase):
