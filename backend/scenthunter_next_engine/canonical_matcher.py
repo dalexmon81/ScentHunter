@@ -218,15 +218,37 @@ def _validated_gtin(value: object) -> str | None:
 
 
 def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
-    """Extract GTIN only from explicit GTIN/EAN fields, never from a generic SKU."""
+    """Extract explicit GTIN/EAN from normalized records or nested retailer JSON-LD.
+
+    Deloox exposes the identifier as JSON-LD gtin14 inside raw_data.jsonld.
+    Never infer a GTIN from SKU or another generic retailer identifier.
+    """
     identity = raw_payload.get("identity")
+    raw_data = raw_payload.get("raw_data")
+    jsonld = raw_data.get("jsonld") if isinstance(raw_data, Mapping) else None
+    parsed_product = raw_payload.get("parsed_product")
+    parsed_identity = (
+        parsed_product.get("identity")
+        if isinstance(parsed_product, Mapping)
+        else None
+    )
     candidates = [
+        raw_payload.get("gtin14"),
         raw_payload.get("gtin13"),
+        raw_payload.get("gtin12"),
         raw_payload.get("gtin"),
         raw_payload.get("ean13"),
         raw_payload.get("ean"),
         identity.get("gtin") if isinstance(identity, Mapping) else None,
+        parsed_identity.get("gtin") if isinstance(parsed_identity, Mapping) else None,
     ]
+    if isinstance(jsonld, Mapping):
+        candidates.extend([
+            jsonld.get("gtin14"),
+            jsonld.get("gtin13"),
+            jsonld.get("gtin12"),
+            jsonld.get("gtin"),
+        ])
     for candidate in candidates:
         if isinstance(candidate, Mapping):
             candidate = candidate.get("value")
