@@ -3861,12 +3861,8 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Notino must be sourced from its authenticated affiliate feed.
-        # Its public HTML endpoints are blocked and are never a price source.
-        if store == 'notino':
-            raise RuntimeError('notino_requires_authorized_feed_import')
-
         # Notino is sourced from the authenticated CJ/VIV feed only.
+        # Public HTML is not a valid price source for this blocked storefront.
         if store == 'notino':
             raise RuntimeError('notino_requires_authorized_feed_import')
 
@@ -4755,7 +4751,19 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if _pz_price is not None and _pz_price < 5.0 and _pz_full_size:
                                     print(f"CATALOG FILTER INVALID PARFUMZENTRUM PRICE url={url} price={_pz_price} size_ml={_pz_size}", flush=True)
                                     continue
-                            if store in {'sabina', 'notino'}:
+                            if store == 'notino' and str(r['product_availability'] or '').lower() == 'variant_catalog':
+                                if url not in variant_rows_by_url:
+                                    try:
+                                        variant_rows_by_url[url] = store_conn.execute(
+                                            "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
+                                            (store, url),
+                                        ).fetchall()
+                                    except sqlite3.OperationalError:
+                                        variant_rows_by_url[url] = []
+                                variant_rows = variant_rows_by_url[url]
+                                if not variant_rows:
+                                    continue
+                            elif store == 'sabina':
                                 if url not in variant_rows_by_url:
                                     try:
                                         variant_rows_by_url[url] = store_conn.execute(
