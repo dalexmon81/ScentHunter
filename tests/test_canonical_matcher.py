@@ -395,6 +395,23 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertEqual(result.offer.availability, "out_of_stock")
         self.assertIsNone(result.offer.price)
 
+    def test_deloox_nested_jsonld_gtin14_maps_limited_edition_to_real_150ml_variant(self):
+        result = self.matcher.match(
+            RetailerOffer(
+                retailer="deloox",
+                raw_name="French Avenue Liquid Brun Extrait de Parfum Limited edition 150 ml",
+                brand_raw="French Avenue",
+                size_ml=150,
+                price=Decimal("39.89"),
+                availability="in_stock",
+                product_url="https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+                raw_payload={"raw_data": {"jsonld": {"gtin14": "6298042001831", "sku": "1385920"}}},
+            )
+        )
+        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "P-LIQUID")
+        self.assertEqual(result.canonical_variant_id, "V-LIQUID-150")
+
     def test_liquid_brun_standard_100ml_stays_separate_from_limited_edition(self):
         limited = self.matcher.match(
             RetailerOffer(
