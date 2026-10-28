@@ -227,3 +227,27 @@ def test_product_url_preserves_api_link_but_rejects_wrong_path_or_host():
     assert api._safe_product_url(
         "https://www.amazon.fr/search?q=B012345678", "www.amazon.fr", "B012345678"
     ) is None
+
+def test_get_product_rejects_out_of_stock_offer(monkeypatch):
+    token_response = Response(payload={"access_token": "test-token", "expires_in": 3600})
+    api_response = Response(payload={"itemsResult": {"items": [{
+        "asin": "B012345678",
+        "detailPageURL": "https://www.amazon.fr/dp/B012345678?tag=partner-21",
+        "itemInfo": {
+            "title": {"displayValue": "French Avenue Liquid Brun Limited Edition 150 ml"},
+            "byLineInfo": {"brand": {"displayValue": "French Avenue"}},
+        },
+        "offersV2": {"listings": [{
+            "price": {"money": {"amount": 79.90, "currency": "EUR"}},
+            "availability": {"type": "OUT_OF_STOCK"},
+        }]},
+    }]}})
+    monkeypatch.setattr(api.requests, "post", lambda url, **kwargs: (
+        token_response if url.endswith("/auth/o2/token") else api_response
+    ))
+    item = api.get_product(
+        "fr", "B012345678",
+        lambda title: 150 if "150 ml" in title else None,
+        lambda title: "Limited Edition" if "Limited Edition" in title else None,
+    )
+    assert item is None
