@@ -292,12 +292,62 @@ def _search_market(query, base, accept_language):
 
 
 def search(query):
-    """Serve normal search from the authorized Notino.fr feed catalog.
+    """Prefer fresh authorized feed offers, then use the proven bounded public discovery.
 
-    Public Notino HTML requests are deliberately not used here: deployment
-    diagnostics showed HTTP 403 for the homepage, search/category page and
-    sitemap. A missing/stale feed returns no fabricated offers.
+    The September implementation used independent search-engine discovery and
+    rendered product-card extraction. Notino's direct Requests endpoint is now
+    returning 403 from production, so the old direct-only adapter silently lost
+    a working discovery path. The fallback does not defeat challenges: it uses
+    ordinary search-engine results and a normal headless browser, and emits only
+    rows with a price attached to a specific Notino product URL.
     """
+    query = _clean(query)
     from .affiliate_feed import search_feed
 
-    return search_feed(_clean(query))
+    try:
+        feed_report = search_feed(query)
+    except Exception as exc:
+        feed_report = {
+            "status": "unavailable", "verified": False, "results": [],
+            "error": f"notino_feed_search_error:{type(exc).__name__}",
+            "details": {"source": "cj_viv_authorized_xml"},
+        }
+    feed_results = feed_report.get("results", []) if isinstance(feed_report, dict) else []
+    if feed_results:
+        return feed_report
+
+    try:
+        from .legacy_public import search as legacy_search
+        rows = legacy_search(query)
+    except Exception as exc:
+        rows = []
+        legacy_error = f"{type(exc).__name__}:{str(exc)[:180]}"
+    else:
+        legacy_error = None
+
+    if rows:
+        return {
+            "status": "success", "verified": True, "results": rows,
+            "error": None,
+            "details": {
+                "source": "notino_public_external_discovery",
+                "feed_status": feed_report.get("status") if isinstance(feed_report, dict) else "unavailable",
+                "feed_error": feed_report.get("error") if isinstance(feed_report, dict) else "notino_feed_invalid_report",
+                "fallback": "legacy_bing_google_jina_playwright",
+                "result_count": len(rows),
+            },
+        }
+
+    return {
+        "status": "unavailable", "verified": False, "results": [],
+        "error": legacy_error or (
+            feed_report.get("error") if isinstance(feed_report, dict)
+            else "notino_feed_invalid_report"
+        ) or "notino_no_verified_offer",
+        "details": {
+            "source": "notino_public_external_discovery",
+            "feed_status": feed_report.get("status") if isinstance(feed_report, dict) else "unavailable",
+            "feed_error": feed_report.get("error") if isinstance(feed_report, dict) else "notino_feed_invalid_report",
+            "fallback": "legacy_bing_google_jina_playwright",
+        },
+    }
