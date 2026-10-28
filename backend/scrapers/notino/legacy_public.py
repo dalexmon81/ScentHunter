@@ -1071,10 +1071,13 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
                 if old is None or candidate["score"] > old["score"]:
                     all_found[candidate["url"]] = candidate
 
-    # Last resort: try the public storefront browser only if independent
-    # search engines did not discover a candidate.
+    # Search engines can return product URLs without a usable price. In
+    # that case, a rendered Notino search page is still valuable: it exposes
+    # the actual product-card price and avoids opening several challenge-prone
+    # product pages one by one. Only skip the browser when we already have a
+    # price-bearing candidate from an independent public source.
     browser_candidates = []
-    if not all_found:
+    if not any(candidate.get("price_hint") for candidate in all_found.values()):
         browser_candidates, browser_report = _browser_search(query)
         reports.append(browser_report)
         for candidate in browser_candidates:
