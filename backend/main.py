@@ -2275,7 +2275,7 @@ def _catalog_search_terms(query):
         return terms
 
 
-def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
+def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
     """Primary catalog-first search path.
 
     Discovery is performed by catalog_engine, not by retailer search endpoints.
@@ -2557,11 +2557,14 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             reports_by_store[store] = report
             if callable(on_report):
                 on_report(report)
+    # Slow retailer fallbacks are only enabled in the asynchronous search job.
+    # The legacy synchronous /search endpoint is used by health/smoke clients and
+    # must stay fast; the user-facing /search-start job can stream other stores
+    # while Notino/Amazon finish their bounded attempts.
     # Prefer authorized Notino feed offers, then use the restored September
     # external-discovery/browser scraper when no fresh offer matches the query.
-    # Amazon prefers the approved Creators API; if it is not configured, the
-    # ordinary public HTML adapter may try once. Both fallbacks are bounded and
-    # reject challenge pages rather than attempting to bypass them.
+    # Amazon prefers the approved Creators API; otherwise ordinary public HTML
+    # is tried once. Challenge pages are rejected, never bypassed.
     def amazon_bridge_configured(store):
         market = 'fr' if store == 'amazon_fr' else 'de'
         approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
@@ -2581,7 +2584,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     ).strip().lower() not in {'0', 'false', 'no', 'off', 'disabled'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
-        if store in reports_by_store
+        if allow_live_fallback
+        and store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
         and (
             (store == 'notino' and notino_live_fallback_enabled)
@@ -2589,11 +2593,14 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    live_bridge_timeout = 9.5
+    bridge_timeouts = {
+        store: (18.0 if store == 'notino' else 9.5)
+        for store in live_bridge_stores
+    }
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
-            f'timeout={live_bridge_timeout:.1f}s',
+            f'timeouts={bridge_timeouts}',
             flush=True,
         )
         with ThreadPoolExecutor(
@@ -2603,13 +2610,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             bridge_futures = {
                 store: bridge_pool.submit(
                     _run_store_subprocess_once, store, query, on_result,
-                    live_bridge_timeout, cancel_event
+                    bridge_timeouts[store], cancel_event
                 )
                 for store in live_bridge_stores
             }
             for store in live_bridge_stores:
                 try:
-                    live_report = bridge_futures[store].result(timeout=live_bridge_timeout + 0.5)
+                    live_report = bridge_futures[store].result(timeout=bridge_timeouts[store] + 0.5)
                 except Exception as exc:
                     print(
                         f'CATALOG LIVE BRIDGE ERROR store={store} '
@@ -2670,11 +2677,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     return [reports_by_store[s] for s in stores if s in reports_by_store]
 
 
-def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None):
+def collect_store_reports_isolated(query, stores, on_report=None, on_result=None, cancel_event=None, job_id=None, allow_live_fallback=True):
     requested = list(stores)
     if CATALOG_ENGINE_AVAILABLE and callable(catalog_search_local):
         try:
-            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id)
+            return _collect_catalog_reports_isolated(query, requested, on_report=on_report, on_result=on_result, cancel_event=cancel_event, job_id=job_id, allow_live_fallback=allow_live_fallback)
         except Exception as exc:
             # Normal search is catalog-only. Never fall back to the legacy live
             # scraper here: that path is what caused one slow search to occupy
@@ -4858,6 +4865,7 @@ def search_perfume(q: str):
     reports = collect_store_reports_isolated(
         query,
         STORES,
+        allow_live_fallback=False,
     )
 
     all_offers = []
