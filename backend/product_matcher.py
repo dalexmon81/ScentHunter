@@ -1842,7 +1842,7 @@ class ProductMatcher:
         # wrong canonical size. Read only explicit ml/cl markers, not arbitrary
         # numbers such as product IDs.
         def explicit_size_from_text(value: Any) -> Optional[float]:
-                        match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", str(value or ""), re.I)
+            match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", str(value or ""), re.I)
             if not match:
                 return None
             amount = float(match.group(1).replace(",", "."))
