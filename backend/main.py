@@ -2574,13 +2574,18 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
             and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
         )
+        # Keep the public storefront adapter available by default for the
+        # asynchronous user search. Operators can still explicitly disable it.
         public_fallback = str(
-            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '')
+            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1')
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
+    # Restore the September Notino external-search + rendered-card path.
+    # Direct HTTP 403 only disables that transport; it must not disable the
+    # independent public search/browser adapter. Can be opted out explicitly.
     notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '')
+        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
