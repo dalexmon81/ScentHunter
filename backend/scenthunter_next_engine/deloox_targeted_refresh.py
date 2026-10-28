@@ -109,10 +109,10 @@ def _requeue(db_path: str) -> dict:
             return {"status": "TARGET_ALREADY_VALID", "url": URL, "database_written": False}
         conn.execute(
             """
-            INSERT INTO hydration_queue(store,url,state,attempts,available_at,first_seen_at)
-            VALUES(?,?, 'PENDING',0,?,?)
+            INSERT INTO hydration_queue(store,url,state,priority,attempts,available_at,first_seen_at)
+            VALUES(?,?, 'PENDING',0,0,?,?)
             ON CONFLICT(store,url) DO UPDATE SET
-              state='PENDING', attempts=0, available_at=?,
+              state='PENDING', priority=0, attempts=0, available_at=?,
               last_error=NULL, last_http_status=NULL,
               last_started_at=NULL, last_finished_at=NULL,
               leased_until=NULL, lease_token=NULL
@@ -148,6 +148,20 @@ def main() -> int:
         return 0
 
     result = _requeue(args.db)
+    if result.get("status") == "TARGET_REQUEUED":
+        # The app's background scheduler intentionally yields during foreground
+        # searches. For this one reviewed URL, run one normal leased hydration
+        # batch in this short-lived process so the guarded refresh does not
+        # depend on the scheduler getting an idle slot before the timeout.
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from catalog_engine import hydrate_catalog_batch
+        batch_result = hydrate_catalog_batch(
+            max_urls=1,
+            workers=1,
+            deadline=time.monotonic() + min(45, max(10, args.wait_seconds)),
+        )
+        result["hydration_batch"] = batch_result
     deadline = time.monotonic() + max(0, args.wait_seconds)
     while True:
         row = _read_row(args.db)
