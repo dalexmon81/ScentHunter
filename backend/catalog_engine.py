@@ -4543,6 +4543,23 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         fts_tokens = tuple(token for token in ts if token not in sabina_size_tokens)
                     if not fts_tokens:
                         continue
+                    # Deloox and other retailer URLs often place the numeric
+                    # product ID in the path but omit size from their FTS text
+                    # unless the variant-specific slug itself contains it.
+                    # Keep the requested bottle size for final identity validation,
+                    # but do not require "150" or "ml" to exist in FTS before the
+                    # exact canonical Limited Edition alias can be considered.
+                    if store == 'deloox' and any(
+                        token.isdigit() and token in {'50', '75', '80', '90', '100', '125', '150', '200', '250'}
+                        for token in fts_tokens
+                    ) and any(token in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'} for token in fts_tokens):
+                        fts_tokens = tuple(
+                            token for token in fts_tokens
+                            if not (token.isdigit() and token in {'50', '75', '80', '90', '100', '125', '150', '200', '250'})
+                            and token not in {'ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'}
+                        )
+                    if not fts_tokens:
+                        continue
                     fts_query = _fts_query_for_tokens(fts_tokens)
                     if not fts_query:
                         continue
