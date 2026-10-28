@@ -158,6 +158,7 @@ def main() -> int:
     # This short-lived recovery process must not rerun the full schema migration
     # and store-wide queue/index backfill before refreshing one exact URL.
     # _read_row above has already verified that the required tables exist.
+    # Reuse the live process's already-initialized schema contract.
     catalog_engine._SCHEMA_READY = True
     item = catalog_engine.refresh_url(STORE, URL)
     if not isinstance(item, dict):
