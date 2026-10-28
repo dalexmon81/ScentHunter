@@ -1015,28 +1015,9 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     all_found: Dict[str, Dict[str, Any]] = {}
     reports = []
 
-    # 1. Playwright: tentativo diretto sulla ricerca Notino.
-    # Se Cloudflare risponde 403, NON insistiamo.
-    browser_candidates, browser_report = _browser_search(query)
-    reports.append(browser_report)
-
-    for candidate in browser_candidates:
-        all_found[candidate["url"]] = candidate
-
-    if browser_candidates:
-        ordered = sorted(
-            all_found.values(),
-            key=lambda x: (-x["score"], x["url"])
-        )
-        return ordered[:12], {
-            "query": query,
-            "channels": reports,
-            "candidate_count": len(ordered),
-            "candidates": ordered[:12],
-            "primary_channel": "playwright-notino",
-        }
-
-    # 2. Bing RSS.
+    # Search engines first: Notino's direct search is challenged in production.
+    # A browser-first attempt used the entire bridge budget before RSS could return.
+    # 1. Bing RSS.
     #
     # Questo canale è già implementato nel file (_bing_rss), ma prima
     # non veniva mai chiamato da _discover().
@@ -1095,6 +1076,15 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
         if old is None or candidate["score"] > old["score"]:
             all_found[candidate["url"]] = candidate
 
+    # Last resort: try the public storefront browser only if independent
+    # search engines did not discover a candidate.
+    browser_candidates = []
+    if not all_found:
+        browser_candidates, browser_report = _browser_search(query)
+        reports.append(browser_report)
+        for candidate in browser_candidates:
+            all_found[candidate["url"]] = candidate
+
     ordered = sorted(
         all_found.values(),
         key=lambda x: (-x["score"], x["url"])
@@ -1105,8 +1095,10 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
         "channels": reports,
         "candidate_count": len(ordered),
         "candidates": ordered[:12],
+        "primary_channel": "playwright-notino" if browser_candidates else (
+            reports[-1].get("engine") if reports else None
+        ),
     }
-
 
 def search(query: str) -> List[Dict[str, Any]]:
     query = _clean(query)
