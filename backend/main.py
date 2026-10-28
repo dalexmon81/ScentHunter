@@ -2596,20 +2596,42 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                         flush=True,
                     )
                     continue
+                if not isinstance(live_report, dict):
+                    live_report = {
+                        'status': 'error', 'verified': False, 'count': 0,
+                        'results': [], 'error': 'live_adapter_invalid_report',
+                        'details': {},
+                    }
+                live_details = {
+                    **(live_report.get('details') or {}),
+                    'source': 'bounded_live_adapter_fallback',
+                    'catalog_fallback': True,
+                    'attempted': True,
+                }
                 if (
-                    isinstance(live_report, dict)
-                    and live_report.get('verified')
+                    live_report.get('verified')
                     and int(live_report.get('count') or 0) > 0
                     and isinstance(live_report.get('results'), list)
                 ):
-                    live_report['details'] = {
-                        **(live_report.get('details') or {}),
-                        'source': 'bounded_live_adapter_fallback',
-                        'catalog_fallback': True,
-                    }
+                    live_report['details'] = live_details
                     reports_by_store[store] = live_report
-                    if callable(on_report):
-                        on_report(live_report)
+                else:
+                    # Preserve the catalog's honest no-match status while
+                    # exposing why the fallback did not produce verified offers.
+                    existing = dict(reports_by_store.get(store) or {})
+                    existing['details'] = {
+                        **(existing.get('details') or {}),
+                        'live_fallback': {
+                            'attempted': True,
+                            'status': live_report.get('status'),
+                            'verified': bool(live_report.get('verified')),
+                            'error': live_report.get('error'),
+                            'details': live_details,
+                        },
+                    }
+                    reports_by_store[store] = existing
+                if callable(on_report):
+                    on_report(reports_by_store[store])
 
     identity_matched_count = sum(
         int((report.get('count') or 0)) for report in reports_by_store.values()
