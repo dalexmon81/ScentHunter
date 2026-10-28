@@ -151,12 +151,19 @@ class CanonicalMatcherTests(unittest.TestCase):
         )
         self.tmp.close()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
-        # The GTIN registry is a sidecar next to the canonical catalog.
-        # Use a temporary, reviewed mapping for the Liquid Brun regression
-        # fixtures so these tests verify the same GTIN-backed path as production.
-        registry_dir = Path(self.tmp.name).parent / "scenthunter_next_engine"
-        registry_dir.mkdir(exist_ok=True)
-        self.registry_path = registry_dir / "verified_gtin_variant_map.json"
+        # Give this fixture a unique sibling directory: CanonicalMatcher
+        # resolves the reviewed GTIN sidecar relative to the temporary catalog.
+        self.fixture_dir = Path(self.tmp.name).parent / (
+            "scenthunter-test-" + Path(self.tmp.name).name
+        )
+        self.fixture_dir.mkdir()
+        self.catalog_path = self.fixture_dir / "product_catalog.json"
+        self.catalog_path.write_text(
+            Path(self.tmp.name).read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        self.registry_path = self.fixture_dir / "scenthunter_next_engine" / "verified_gtin_variant_map.json"
+        self.registry_path.parent.mkdir()
         self.registry_path.write_text(
             json.dumps({
                 "schema_version": 1,
@@ -176,10 +183,9 @@ class CanonicalMatcherTests(unittest.TestCase):
             }),
             encoding="utf-8",
         )
-        self.addCleanup(lambda: self.registry_path.unlink(missing_ok=True))
-        self.addCleanup(lambda: self.registry_path.parent.rmdir() if self.registry_path.parent.exists() and not any(self.registry_path.parent.iterdir()) else None)
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.fixture_dir, ignore_errors=True))
         self.matcher = CanonicalMatcher(
-            CatalogRepository.from_file(self.tmp.name)
+            CatalogRepository.from_file(self.catalog_path)
         )
 
     def offer(self, name, brand=None, size=None):
