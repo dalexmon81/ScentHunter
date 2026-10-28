@@ -151,6 +151,33 @@ class CanonicalMatcherTests(unittest.TestCase):
         )
         self.tmp.close()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
+        # The GTIN registry is a sidecar next to the canonical catalog.
+        # Use a temporary, reviewed mapping for the Liquid Brun regression
+        # fixtures so these tests verify the same GTIN-backed path as production.
+        registry_dir = Path(self.tmp.name).parent / "scenthunter_next_engine"
+        registry_dir.mkdir(exist_ok=True)
+        self.registry_path = registry_dir / "verified_gtin_variant_map.json"
+        self.registry_path.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "records": [{
+                    "gtin": "6298042001831",
+                    "gtin_type": "GTIN-13",
+                    "status": "verified",
+                    "product_id": "P-LIQUID",
+                    "variant_id": "V-LIQUID-150",
+                    "size_ml": 150,
+                    "concentration": "Extrait de Parfum",
+                    "refill": False,
+                    "source_urls": [
+                        "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+                    ],
+                }],
+            }),
+            encoding="utf-8",
+        )
+        self.addCleanup(lambda: self.registry_path.unlink(missing_ok=True))
+        self.addCleanup(lambda: self.registry_path.parent.rmdir() if self.registry_path.parent.exists() and not any(self.registry_path.parent.iterdir()) else None)
         self.matcher = CanonicalMatcher(
             CatalogRepository.from_file(self.tmp.name)
         )
