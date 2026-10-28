@@ -149,7 +149,7 @@ class CanonicalMatcherTests(unittest.TestCase):
             },
             self.tmp,
         )
-        self.tmp.close()
+        self.tmp.flush()
         self.addCleanup(lambda: Path(self.tmp.name).unlink(missing_ok=True))
         # Give this fixture a unique sibling directory: CanonicalMatcher
         # resolves the reviewed GTIN sidecar relative to the temporary catalog.
