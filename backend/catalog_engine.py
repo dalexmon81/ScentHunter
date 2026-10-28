@@ -4755,8 +4755,13 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 if url not in variant_rows_by_url:
                                     try:
                                         variant_rows_by_url[url] = store_conn.execute(
-                                            "SELECT * FROM store_product_variants WHERE store=? AND url=? ORDER BY size_ml",
-                                            (store, url),
+                                            """SELECT * FROM store_product_variants
+                                               WHERE store=? AND url=? AND price IS NOT NULL AND price>0
+                                                 AND upper(COALESCE(currency,''))='EUR'
+                                                 AND lower(COALESCE(availability,'')) IN ('in_stock','preorder')
+                                                 AND fetched_at>=?
+                                               ORDER BY size_ml""",
+                                            (store, url, time.time() - 48 * 60 * 60),
                                         ).fetchall()
                                     except sqlite3.OperationalError:
                                         variant_rows_by_url[url] = []
