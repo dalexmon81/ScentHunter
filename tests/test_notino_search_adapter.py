@@ -225,3 +225,20 @@ def test_notino_rejects_stale_product_title_when_url_is_another_product():
         "https://www.notino.fr/valentino/born-in-roma-green-stravaganza-uomo-eau-de-toilette/p-16223842/",
     )
 
+def test_notino_legacy_fallback_rejects_unrelated_green_product_urls():
+    from backend.scrapers.notino import legacy_public
+
+    query = "Green Stravaganza Uomo 100 ml"
+    assert not legacy_public._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/elizabeth-arden/green-tea-nectarine-blossom-eau-de-toilette-pour-femme/p-555992/",
+    )
+    assert not legacy_public._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/green-pharmacy/hair-care-red-peppers-huile-de-bardane/p-505306/",
+    )
+    assert legacy_public._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/valentino/born-in-roma-green-stravaganza-uomo-eau-de-toilette/p-16223842/",
+    )
+
