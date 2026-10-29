@@ -2592,20 +2592,27 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             f'timeouts={bridge_timeouts}',
             flush=True,
         )
-        with ThreadPoolExecutor(
+        bridge_pool = ThreadPoolExecutor(
             max_workers=len(live_bridge_stores),
             thread_name_prefix='scenthunter-legacy-bridge',
-        ) as bridge_pool:
-            bridge_futures = {
-                store: bridge_pool.submit(
-                    _run_store_subprocess_once, store, query, on_result,
-                    bridge_timeouts[store], cancel_event
-                )
-                for store in live_bridge_stores
-            }
+        )
+        bridge_futures = {
+            store: bridge_pool.submit(
+                _run_store_subprocess_once, store, query, on_result,
+                bridge_timeouts[store], cancel_event
+            )
+            for store in live_bridge_stores
+        }
+        # Use one shared deadline for all live fallbacks. Calling Future.result()
+        # with a fresh per-store timeout serially can multiply the interactive
+        # latency, and a ThreadPoolExecutor context manager waits for timed-out
+        # workers on exit. Both behaviors defeated the advertised timeout cap.
+        bridge_deadline = time.monotonic() + max(bridge_timeouts.values()) + 0.5
+        try:
             for store in live_bridge_stores:
                 try:
-                    live_report = bridge_futures[store].result(timeout=bridge_timeouts[store] + 0.5)
+                    remaining = max(0.0, bridge_deadline - time.monotonic())
+                    live_report = bridge_futures[store].result(timeout=remaining)
                 except Exception as exc:
                     print(
                         f'CATALOG LIVE BRIDGE ERROR store={store} '
@@ -2649,6 +2656,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
                     reports_by_store[store] = existing
                 if callable(on_report):
                     on_report(reports_by_store[store])
+        finally:
+            # Do not make the foreground request wait for a subprocess that
+            # has already exceeded the shared deadline. The subprocess runner
+            # owns its own hard timeout and terminates the child process.
+            bridge_pool.shutdown(wait=False, cancel_futures=True)
 
     identity_matched_count = sum(
         int((report.get('count') or 0)) for report in reports_by_store.values()
