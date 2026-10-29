@@ -132,7 +132,7 @@ jobs:
           PY
 
       - name: Force-refresh and verify the affected Deloox offer
-        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
+        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
         timeout-minutes: 3
         shell: bash
         run: |
