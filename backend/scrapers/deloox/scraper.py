@@ -1430,17 +1430,11 @@ def _discover(session, q, deadline=None):
             seen.add(url)
             candidates.append(url)
 
-    # Search is the primary discovery surface. If it produced relevant
-    # candidates, stop here: category and sitemap crawling are fallbacks, not
-    # additional work that every successful search must perform. This keeps
-    # discovery fast and preserves the proven Deloox search mechanism.
-    if candidates:
-        return candidates[:MAX_CANDIDATES]
-
-    # Only when search produced no candidates do we use the generic fallback
-    # surfaces. A successful search with no matches is still a verified search
-    # result; fallback discovery may nevertheless recover products omitted by
-    # the retailer search surface.
+    # Search is the primary discovery surface, but it can return a partial
+    # catalog from a localized storefront. Continue with generic category/filter
+    # and sitemap discovery even when search found candidates, within the same
+    # bounded deadline and candidate cap. This prevents a partial search page
+    # from hiding legitimate products from the persistent catalog.
     if deadline is not None and time.time() >= float(deadline):
         return candidates[:MAX_CANDIDATES]
     category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
