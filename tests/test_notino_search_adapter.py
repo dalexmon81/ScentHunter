@@ -256,3 +256,35 @@ def test_notino_legacy_fallback_rejects_unrelated_green_product_urls():
         "https://www.notino.fr/valentino/born-in-roma-green-stravaganza-uomo-eau-de-toilette/p-16223842/",
     )
 
+
+
+def test_targeted_liquid_brun_search_uses_exact_live_page_before_broad_search(monkeypatch):
+    url = "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+    expected = {
+        "shop": "Notino", "store": "notino", "name": "Liquid Brun Eau de Parfum",
+        "brand": "French Avenue", "price": "48.00 €", "price_num": 48.0,
+        "currency": "EUR", "available": True, "availability": "In stock",
+        "image": None, "size_ml": 100, "concentration": "Eau de Parfum", "url": url,
+    }
+    captured = {}
+    monkeypatch.setattr(scraper, "_request_html", lambda requested_url, language: (captured.update({"url": requested_url}) or "<html>live product</html>"))
+    monkeypatch.setattr(scraper, "_parse_product", lambda requested_url, html, query: expected)
+    monkeypatch.setattr(scraper, "_search_market", lambda *args: (_ for _ in ()).throw(AssertionError("broad search should not run")))
+    from backend.scrapers.notino import affiliate_feed
+    monkeypatch.setattr(affiliate_feed, "search_feed", lambda query: {"results": [], "details": {}})
+    report = scraper.search("French Avenue Liquid Brun 100 ml")
+    assert captured["url"] == url
+    assert report["results"] == [expected]
+    assert report["details"]["source"] == "targeted_live_product_page"
+
+
+def test_targeted_liquid_brun_rejects_wrong_size_or_missing_price(monkeypatch):
+    url = "https://www.notino.fr/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
+    monkeypatch.setattr(scraper, "_request_html", lambda *args: "live product")
+    monkeypatch.setattr(scraper, "_parse_product", lambda *args: {
+        "shop": "Notino", "store": "notino", "name": "Liquid Brun Limited Edition",
+        "brand": "French Avenue", "price": None, "price_num": None, "currency": "EUR",
+        "available": None, "availability": None, "image": None, "size_ml": 100,
+        "concentration": "Extrait de Parfum", "url": url,
+    })
+    assert scraper._targeted_liquid_brun("French Avenue Liquid Brun Limited Edition 150 ml") == []
