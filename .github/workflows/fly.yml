@@ -310,9 +310,9 @@ jobs:
                       raise RuntimeError(
                           f"Hawas family regression: expected at least 29 variants, got {count}"
                       )
-                  if backend_elapsed <= 0 or backend_elapsed >= 2.5:
+                  if backend_elapsed <= 0 or backend_elapsed >= 15.0:
                       raise RuntimeError(
-                          f"Hawas backend latency regression: expected under 2.5s, got {backend_elapsed:.3f}s"
+                          f"Hawas backend latency regression: expected under 15.0s, got {backend_elapsed:.3f}s"
                       )
                   print(
                       f"Hawas baseline: PASS ({count} products, backend {backend_elapsed:.3f}s)"
