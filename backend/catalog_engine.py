@@ -4112,12 +4112,27 @@ def refresh_url(store, url):
 
         if not item or not item.get('name'):
             h1_text = ''
+            title_text = ''
+            body_preview = ''
             jsonld_count = 0
+            challenge_markers = []
             try:
                 soup = BeautifulSoup(data or b'', 'html.parser')
                 h1 = soup.find('h1')
                 h1_text = h1.get_text(' ', strip=True)[:180] if h1 else ''
+                title = soup.find('title')
+                title_text = title.get_text(' ', strip=True)[:180] if title else ''
+                body = soup.find('body')
+                body_preview = re.sub(r'\\s+', ' ', body.get_text(' ', strip=True))[:220] if body else ''
                 jsonld_count = len(_jsonld(soup))
+                lower_body = f"{title_text} {body_preview}".lower()
+                challenge_markers = [
+                    marker for marker in (
+                        'captcha', 'cloudflare', 'access denied', 'verify you are human',
+                        'robot', 'temporarily blocked', 'security check', 'forbidden',
+                    )
+                    if marker in lower_body
+                ]
             except Exception:
                 pass
             detail = (
@@ -4129,7 +4144,10 @@ def refresh_url(store, url):
                 f';secondary_parser={"ok" if secondary_ok else "none"}'
                 f';jsonld_products={jsonld_count}'
                 f';parser_error={parser_error!r}'
+                f';title={title_text!r}'
                 f';h1={h1_text!r}'
+                f';body_preview={body_preview!r}'
+                f';challenge_markers={challenge_markers!r}'
             )
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
