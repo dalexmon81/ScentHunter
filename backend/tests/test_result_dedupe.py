@@ -120,6 +120,20 @@ class ResultDeduplicationTests(unittest.TestCase):
                      "product_url": "https://www.sabina.com/es/product/example-b", "catalog_id": "canonical-b"}
         self.assertEqual(len(dedupe_results([first, duplicate])), 1)
 
+    def test_sabina_duplicate_without_price_is_deduplicated(self):
+        first = {
+            "store": "sabina", "url": "https://www.sabina.com/es/product/example-a",
+            "name": "French Avenue Liquid Brun 100 ml", "size_ml": 100,
+            "price": None, "price_num": None,
+        }
+        duplicate = {
+            **first,
+            "url": "https://www.sabina.com/es/product/example-b",
+            "product_url": "https://www.sabina.com/es/product/example-b",
+            "catalog_id": "canonical-b",
+        }
+        self.assertEqual(len(dedupe_results([first, duplicate])), 1)
+
     def test_same_store_name_size_different_price_is_preserved(self):
         first = {"store": "sabina", "url": "https://www.sabina.com/es/product/example-a",
                  "name": "Example Eau de Parfum", "size_ml": 100, "price_num": 38.90}
