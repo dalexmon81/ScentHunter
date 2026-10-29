@@ -86,7 +86,10 @@ def test_targeted_liquid_brun_notino_lookup_rejects_wrong_size(monkeypatch):
 
 
 def test_targeted_liquid_brun_notino_lookup_rejects_missing_price(monkeypatch):
-    monkeypatch.setattr(legacy_public, "_new_session", lambda: object())
+    class FakeSession:
+        def close(self):
+            pass
+    monkeypatch.setattr(legacy_public, "_new_session", FakeSession)
     monkeypatch.setattr(legacy_public, "_reader_product", lambda *args, **kwargs: {
         "name": "French Avenue Liquid Brun", "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
         "price": "", "size_ml": 100.0,
