@@ -71,7 +71,12 @@ def _url_matches_query_identity(query, url):
 
 
 def _query_matches(query, brand, name, url):
-    wanted = [t for t in _normalise(query).split() if len(t) > 1]
+    # Volume is a product attribute, not part of its name/URL identity.
+    # Validate it against the parsed product size separately in _parse_product.
+    wanted = [
+        token for token in _normalise(query).split()
+        if len(token) > 1 and not token.isdigit() and token not in {"ml", "cl"}
+    ]
     haystack = set(_normalise(f"{brand} {name} {url}").split())
     # A matching title is not enough when the actual destination identifies
     # another product. Check URL identity independently to prevent false offers.
@@ -237,7 +242,14 @@ def _parse_product(url, html, query):
         brand = brand.get("name")
     brand = _clean(brand)
 
+    size = _size_ml(name, url, data.get("description"))
+    requested_size = _size_ml(query)
     if not _query_matches(query, brand, name, url):
+        return None
+    # Do not require "100 ml" to appear in the title or URL: Notino often
+    # exposes size as a selected variant/description. But if the query names
+    # a size, only publish the offer when the page provides that exact size.
+    if requested_size is not None and size != requested_size:
         return None
 
     offers = data.get("offers")
@@ -279,7 +291,6 @@ def _parse_product(url, html, query):
         image = image.get("url")
     image = urljoin(url, str(image)) if image else None
 
-    size = _size_ml(name, url, data.get("description"))
     concentration = _concentration(name, url)
     return {
         "shop": STORE,
