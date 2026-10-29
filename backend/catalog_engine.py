@@ -5538,6 +5538,13 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
                      ) < 2
                    ORDER BY
                      q.priority ASC,
+                     CASE
+                       WHEN q.store='deloox' AND q.url LIKE 'https://www.deloox.be/%' THEN 0
+                       WHEN q.store='deloox' AND q.url LIKE 'https://www.deloox.nl/%' THEN 1
+                       WHEN q.store='deloox' AND q.url LIKE 'https://www.deloox.lu/%' THEN 2
+                       WHEN q.store='deloox' AND q.url LIKE 'https://www.deloox.com/%' THEN 3
+                       ELSE 0
+                     END ASC,
                      CASE WHEN q.attempts=0 THEN 0 ELSE 1 END,
                      q.available_at ASC,
                      q.first_seen_at ASC
