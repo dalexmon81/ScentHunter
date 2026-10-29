@@ -10,9 +10,9 @@ primary_region = "ams"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
   # Keep the slow public Notino adapter out of foreground searches until its timeout is fixed.
-  NOTINO_PUBLIC_FALLBACK_ENABLED = "0"
+  NOTINO_PUBLIC_FALLBACK_ENABLED = "1"
   # Public Amazon HTML currently times out too; use it only after its bounded adapter is repaired.
-  AMAZON_PUBLIC_HTML_FALLBACK_ENABLED = "0"
+  AMAZON_PUBLIC_HTML_FALLBACK_ENABLED = "1"
 
 [http_service]
   internal_port = 8080
