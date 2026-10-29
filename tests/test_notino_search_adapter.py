@@ -73,11 +73,11 @@ def test_notino_query_size_is_checked_against_product_description():
     product = {
         "@type": "Product",
         "name": "Liquid Brun Eau de Parfum",
-        "description": "French Avenue Liquid Brun Eau de Parfum mixte, 100 ml",
+        "description": "French Avenue Liquid Brun Eau de Parfum mixte",
         "brand": {"name": "French Avenue"},
         "offers": {"price": "45.50", "priceCurrency": "EUR", "availability": "https://schema.org/InStock"},
     }
-    html = f'<script type="application/ld+json">{json.dumps(product)}</script><h1>Liquid Brun Eau de Parfum</h1>'
+    html = f'<script type="application/ld+json">{json.dumps(product)}</script><h1>Liquid Brun Eau de Parfum</h1><section><span>100 ml</span></section>'
     url = "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/"
     row = scraper._parse_product(url, html, "French Avenue Liquid Brun 100 ml")
     assert row is not None and row["size_ml"] == 100 and row["price_num"] == 45.50
