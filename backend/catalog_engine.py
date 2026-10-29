@@ -1871,15 +1871,32 @@ def _browser_fetch_html(url, timeout_ms=15000):
 
 
 def _fetch_html_page(store, url, timeout=HTTP_TIMEOUT):
-    """Fetch one HTML page; callers may set a shorter diagnostic timeout."""
+    """Fetch HTML, retrying browser fallback when Deloox returns a JS challenge."""
+    http_error = "HTML_FETCH_FAILED"
     try:
         resp = _http_fetch(url, timeout=timeout)
         if resp['status'] < 400 and resp['data']:
             data = resp['data']
             ctype = (resp.get('content_type') or '').lower()
-            if 'html' in ctype or re.search(br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I):
+            is_html = 'html' in ctype or re.search(
+                br'<(?:!doctype\s+html|html|body)\b', data[:2000], re.I
+            )
+            is_deloox_challenge = (
+                store == 'deloox'
+                and (
+                    b'client challenge' in data[:12000].lower()
+                    or b'challenge-platform' in data[:12000].lower()
+                    or b'cf-chl-' in data[:12000].lower()
+                )
+            )
+            # The old early return treated HTTP 200 challenge interstitials as
+            # valid HTML, so Deloox's browser fallback was never reached.
+            if is_html and not is_deloox_challenge:
                 return url, resp['url'], data, None
-            http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
+            if is_deloox_challenge:
+                http_error = 'CLIENT_CHALLENGE_ON_HTTP_FETCH'
+            elif not is_html:
+                http_error = f'NON_HTML;status={resp["status"]};type={ctype or "?"};bytes={len(data)}'
         else:
             http_error = _diagnostic(resp, url)
     except Exception as exc:
@@ -1889,7 +1906,7 @@ def _fetch_html_page(store, url, timeout=HTTP_TIMEOUT):
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
-            # Do not treat an interstitial as valid storefront HTML.
+            # Never parse an interstitial as product or catalog HTML.
             if store == 'deloox' and (
                 b'client challenge' in data[:12000].lower()
                 or b'challenge-platform' in data[:12000].lower()
