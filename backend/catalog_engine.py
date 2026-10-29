@@ -4945,6 +4945,10 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                         ) or url
                                     else:
                                         variant_url = vr['variant_url'] or url
+                                    _variant_stale = _catalog_price_is_stale(vr['fetched_at'])
+                                    _variant_status = str(vr['availability'] or r['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
+                                    if _variant_stale and _variant_status not in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
+                                        _variant_status = 'unknown'
                                     store_rows.append({
                                         'url': variant_url,
                                         'product_url': url, 'slug': r['slug'] or '', 'lastmod': r['lastmod'] or '',
@@ -4952,9 +4956,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                         'image': vr['image'] or r['product_image'] or '', 'sku': vr['sku'] or r['product_sku'] or '',
                                         'gtin': vr['gtin'] or r['product_gtin'] or '', 'mpn': vr['mpn'] or r['product_mpn'] or '',
                                         'size_ml': vr['size_ml'], 'concentration': vr['concentration'] or r['product_concentration'] or '',
-                                        'gender': vr['gender'] or r['product_gender'] or '', 'price': vr['price'],
-                                        'currency': vr['currency'] or 'EUR', 'availability': vr['availability'] or r['product_availability'] or '',
-                                        'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': vr['price'],
+                                        'gender': vr['gender'] or r['product_gender'] or '', 'price': None if _variant_stale else vr['price'],
+                                        'currency': vr['currency'] or 'EUR', 'availability': _variant_status,
+                                        'fetched_at': vr['fetched_at'], 'fetch_status': 'OK', 'price_num': None if _variant_stale else vr['price'],
                                         'store': STORE_LABELS[store], 'store_key': store, 'variant_key': vr['variant_key'],
                                     })
                                 continue
