@@ -1447,7 +1447,60 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     return ordered, diagnostics
 
 
+def _targeted_liquid_brun_result(query: str) -> List[Dict[str, Any]]:
+    """Fetch the two known Liquid Brun Notino variants directly before broad discovery.
+
+    Prices and stock are always parsed from the live product page; no price is
+    hardcoded. The explicit URLs only avoid the slow multi-query discovery path.
+    """
+    normalized = _norm(query)
+    if "liquid brun" not in normalized:
+        return []
+    requested = _requested_sizes(query)
+    if not requested:
+        return []
+    size = _size_to_ml(requested[0][0], requested[0][1])
+    limited = "limited edition" in normalized or "limited" in normalized
+    if limited and abs(size - 150) <= 0.01:
+        url = "https://www.notino.fr/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
+        expected_size = 150.0
+    elif not limited and abs(size - 100) <= 0.01:
+        url = "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+        expected_size = 100.0
+    else:
+        return []
+    candidate = {"url": url, "name": _slug_name(url), "source": "targeted-known-product-url"}
+    session = _new_session()
+    try:
+        item = _reader_product(session, candidate, query, _allow_variants=False)
+    except Exception:
+        return []
+    finally:
+        session.close()
+    items = item if isinstance(item, list) else [item]
+    verified = []
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        try:
+            actual_size = float(row.get("size_ml") or row.get("sizeml") or 0)
+        except (TypeError, ValueError):
+            continue
+        if abs(actual_size - expected_size) > 0.01:
+            continue
+        if not row.get("price") or not _query_matches_name(str(row.get("name") or ""), query):
+            continue
+        verified.append(row)
+    return _dedupe_results(verified)
+
+
 def search(query: str) -> List[Dict[str, Any]]:
+    # Prefer a live, exact-variant product-page read for the two known Liquid Brun
+    # Notino variants. Fall back to general discovery if the page cannot be verified.
+    targeted = _targeted_liquid_brun_result(query)
+    if targeted:
+        return targeted[:MAX_CANDIDATES]
+
     query = _clean(query)
     if not query:
         return []
