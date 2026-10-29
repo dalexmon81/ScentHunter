@@ -5549,11 +5549,23 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     token = uuid.uuid4().hex
     # Claiming is a hot-path operation shared with discovery and coverage.
     # Do not let this worker sit behind SQLite's global 45s busy timeout.
-    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn = sqlite3.connect(str(DB_PATH), timeout=1.0)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA busy_timeout=1000')
     try:
-        conn.execute('BEGIN IMMEDIATE')
+        # SQLite still permits only one writer, even in WAL mode. Discovery,
+        # offer persistence and the hydration workers can collide briefly here.
+        # Retry only the transaction acquisition (before any writes) so short
+        # contention does not kill the whole hydration loop; do not mask other
+        # OperationalErrors or hold a transaction while waiting.
+        for lock_attempt in range(4):
+            try:
+                conn.execute('BEGIN IMMEDIATE')
+                break
+            except sqlite3.OperationalError as exc:
+                if 'locked' not in str(exc).lower() or lock_attempt == 3:
+                    raise
+                time.sleep(0.1 * (2 ** lock_attempt))
 
         # A worker crash/restart must never strand a URL forever.
         conn.execute(
