@@ -73,7 +73,7 @@ def test_notino_query_size_is_checked_against_product_description():
     product = {
         "@type": "Product",
         "name": "Liquid Brun Eau de Parfum",
-        "description": "French Avenue Liquid Brun Eau de Parfum mixte, 100 ml",
+        "description": "French Avenue Liquid Brun Eau de Parfum mixte",
         "brand": {"name": "French Avenue"},
         "offers": {"price": "45.50", "priceCurrency": "EUR", "availability": "https://schema.org/InStock"},
     }
