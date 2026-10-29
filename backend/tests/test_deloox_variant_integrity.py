@@ -194,13 +194,17 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
     def test_discovery_continues_to_generic_fallback_when_search_has_candidates(self):
         search_url = "https://www.deloox.be/product/1111111/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
         category_url = "https://www.deloox.be/product/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
-        with patch.object(scraper, "_discover_from_search", return_value=[search_url]), \
+        with patch.object(scraper, "_discover_from_search", return_value=[search_url]) as search, \
              patch.object(scraper, "_discover_from_categories", return_value=[category_url]) as categories, \
-             patch.object(scraper, "_sitemap_product_urls", return_value=[]):
-            result = scraper._discover(object(), "Liquid Brun", deadline=time.time() + 10)
+             patch.object(scraper, "_sitemap_product_urls", return_value=[]), \
+             patch.object(scraper.time, "time", return_value=100.0):
+            result = scraper._discover(object(), "Liquid Brun", deadline=110.0)
         self.assertIn(search_url, result)
         self.assertIn(category_url, result)
         categories.assert_called_once()
+        # Search must leave time for category fallback rather than consuming
+        # the entire discovery deadline and silently skipping alternate sources.
+        self.assertLessEqual(search.call_args.kwargs["deadline"], 105.0)
 
     def test_limited_edition_150ml_out_of_stock_is_parsed_without_price(self):
         html = """
