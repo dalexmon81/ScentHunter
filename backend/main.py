@@ -4041,7 +4041,1202 @@ def diagnostic_deloox_pipeline(
             'parsed_product': parsed_product,
         }
         if not isinstance(parsed_product, dict):
-            return {**base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch, 'stages': {'fetch': fetch, 'parse': parse_stage}}
+            # Parse failures must still inspect persisted catalog state; otherwise
+            # this diagnostic cannot distinguish a live-fetch failure from stale data.
+            html_title = soup.title.get_text(' ', strip=True) if soup.title else None
+            meta_description = soup.find('meta', attrs={'name': re.compile('^description        normalized_input = {
+            'name': parsed_product.get('name'),
+            # Preserve verified parser identity for the next-engine matcher.
+            # Without this field, the GTIN registry is bypassed and this
+            # diagnostic falsely reports an unresolved canonical match.
+            'identity': parsed_product.get('identity'),
+            # Expose the GTIN as a top-level explicit identifier too; the matcher
+            # accepts it from persisted rows and parser-normalized payloads alike.
+            'gtin': ((parsed_product.get('identity') or {}).get('gtin')),
+            'brand': parsed_product.get('brand') or parsed_product.get('_raw_brand') or 'French Avenue',
+            'size_ml': ((parsed_product.get('attributes') or {}).get('size_ml') or {}).get('value') if isinstance((parsed_product.get('attributes') or {}).get('size_ml'), dict) else parsed_product.get('size_ml'),
+            'url': parsed_product.get('url') or response.url,
+            'price': (parsed_product.get('offer') or {}).get('price'),
+            'availability': (parsed_product.get('offer') or {}).get('availability') or parsed_product.get('available'),
+        }
+        from scenthunter_next_engine.offer_normalizer import normalize_offer
+        from scenthunter_next_engine.catalog_repository import CatalogRepository
+        from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+        from pathlib import Path
+        offer = normalize_offer(normalized_input, retailer='deloox')
+        matcher = CanonicalMatcher(CatalogRepository.from_file(Path(__file__).resolve().parent / 'product_catalog.json'))
+        match = matcher.match(offer)
+        # Expose read-only GTIN routing evidence so the live trace can distinguish
+        # missing parser identity from a registry/catalog target mismatch.
+        from scenthunter_next_engine.canonical_matcher import _offer_gtin
+        extracted_gtin = _offer_gtin(offer.raw_payload)
+        registered_gtin = matcher._gtin_registry
+        gtin_trace = {
+            'extracted_gtin': extracted_gtin,
+            'registry_contains_gtin': bool(extracted_gtin and extracted_gtin in registered_gtin),
+            'registered_target': ({
+                'product_id': registered_gtin[extracted_gtin].get('product_id'),
+                'variant_id': registered_gtin[extracted_gtin].get('variant_id'),
+                'size_ml': registered_gtin[extracted_gtin].get('size_ml'),
+            } if extracted_gtin and extracted_gtin in registered_gtin else None),
+        }
+        matching_stage = {
+            'gtin_trace': gtin_trace,
+            'normalized_offer': {
+                'retailer': offer.retailer, 'raw_name': offer.raw_name, 'brand_raw': offer.brand_raw,
+                'size_ml': offer.size_ml, 'price': str(offer.price) if offer.price is not None else None,
+                'availability': offer.availability, 'product_url': offer.product_url,
+            },
+            'match': {
+                'status': match.status.value, 'reason': match.reason,
+                'canonical_product_id': match.canonical_product_id,
+                'canonical_variant_id': match.canonical_variant_id,
+                'candidate_product_ids': list(match.candidate_product_ids),
+            },
+        }
+        # Compare the live parser/matcher output with the durable catalog without
+        # opening a write-capable connection. This distinguishes a parse/match
+        # failure from a persistence, hydration-queue, or local-search-index gap.
+        persisted = {
+            'read_only': True,
+            'database_written': False,
+            'exact_url': response.url,
+            'tables': {},
+            'errors': [],
+        }
+        try:
+            import sqlite3
+            catalog_module = importlib.import_module('catalog_engine')
+            db_path = Path(catalog_module.DB_PATH).resolve()
+            db_uri = db_path.as_uri() + '?mode=ro'
+            db_conn = sqlite3.connect(db_uri, uri=True, timeout=1.0)
+            db_conn.row_factory = sqlite3.Row
+            db_conn.execute('PRAGMA busy_timeout=1000')
+            db_conn.execute('PRAGMA query_only=ON')
+            try:
+                table_names = {
+                    row['name'] for row in db_conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+
+                def read_table_rows(table, *, exact_url=True, phrase_search=False, limit=8):
+                    if table not in table_names:
+                        return {'exists': False, 'rows': []}
+                    columns = {
+                        row['name'] for row in db_conn.execute(
+                            f'PRAGMA table_info("{table}")'
+                        ).fetchall()
+                    }
+                    clauses = []
+                    params = []
+                    if 'store' in columns:
+                        clauses.append("lower(store)='deloox'")
+                    if exact_url and 'url' in columns:
+                        clauses.append('url=?')
+                        params.append(response.url)
+                    elif phrase_search:
+                        text_columns = [c for c in ('name', 'slug', 'search_text', 'url') if c in columns]
+                        if text_columns:
+                            clauses.append('(' + ' OR '.join(f'lower(COALESCE("{c}",\'\')) LIKE ?' for c in text_columns) + ')')
+                            params.extend(['%liquid%brun%'] * len(text_columns))
+                    if not clauses:
+                        return {'exists': True, 'columns': sorted(columns), 'rows': []}
+                    sql = f'SELECT * FROM "{table}" WHERE ' + ' AND '.join(clauses) + f' LIMIT {int(limit)}'
+                    rows = [dict(row) for row in db_conn.execute(sql, params).fetchall()]
+                    return {'exists': True, 'columns': sorted(columns), 'rows': rows}
+
+                for table in ('store_urls', 'store_products', 'store_product_variants', 'hydration_queue'):
+                    exact = read_table_rows(table, exact_url=True, limit=5)
+                    # Add a bounded name/slug lookup when the exact URL row is
+                    # absent, so a redirected or differently localized URL is visible.
+                    if exact.get('exists') and not exact.get('rows'):
+                        exact['nearby_rows'] = read_table_rows(
+                            table, exact_url=False, phrase_search=True, limit=8
+                        ).get('rows', [])
+                    persisted['tables'][table] = exact
+
+                if 'catalog_search_fts' in table_names:
+                    persisted['tables']['catalog_search_fts'] = read_table_rows(
+                        'catalog_search_fts', exact_url=False, phrase_search=True, limit=12
+                    )
+                else:
+                    persisted['tables']['catalog_search_fts'] = {
+                        'exists': False, 'rows': [],
+                        'note': 'local FTS table is absent; this alone does not prove search failure',
+                    }
+                persisted['database_path'] = str(db_path)
+            finally:
+                db_conn.close()
+        except Exception as db_exc:
+            persisted['errors'].append({
+                'stage': 'persisted_catalog',
+                'error': f'{type(db_exc).__name__}: {str(db_exc)[:300]}',
+            })
+
+        # The next-engine matcher above is isolated/opt-in. Also run the
+        # currently deployed legacy identity resolver on the same parsed offer,
+        # without publishing it or modifying the catalog.
+        production_identity = {'status': 'unavailable'}
+        try:
+            cleaned_for_production = clean_result(parsed_product, 'deloox')
+            resolved_for_production = _resolve_offer_identity(cleaned_for_production, q)
+            if isinstance(resolved_for_production, dict):
+                production_identity = {
+                    'status': resolved_for_production.get('_match_status'),
+                    'catalog_id': resolved_for_production.get('catalog_id'),
+                    'canonical_name': resolved_for_production.get('canonical_name'),
+                    'canonical_brand': resolved_for_production.get('canonical_brand'),
+                    'match_method': resolved_for_production.get('match_method'),
+                    'match_score': resolved_for_production.get('match_score'),
+                    'match_error': resolved_for_production.get('_match_error'),
+                }
+        except Exception as identity_exc:
+            production_identity = {
+                'status': 'error',
+                'error': f'{type(identity_exc).__name__}: {str(identity_exc)[:300]}',
+            }
+
+        failed_at = None
+        if not isinstance(parsed_product, dict):
+            failed_at = 'scraper_parse'
+        elif match.status.value != 'matched':
+            failed_at = 'next_engine_canonical_match'
+        elif production_identity.get('status') not in ('matched', 'resolved', 'exact', None):
+            failed_at = 'legacy_production_identity'
+        return {
+            **base,
+            'ok': True,
+            'failed_at': failed_at,
+            'fetch': fetch,
+            'stages': {
+                'fetch': fetch,
+                'parse': parse_stage,
+                'normalize': matching_stage['normalized_offer'],
+                'next_engine_canonical_match': matching_stage['match'],
+                'legacy_production_identity': production_identity,
+                'persisted_catalog_and_queue': persisted,
+            },
+            'final': {
+                'availability': offer.availability,
+                'price': str(offer.price) if offer.price is not None else None,
+                'next_engine_matched': match.status.value == 'matched',
+                'production_identity': production_identity,
+                'read_only': True,
+                'database_written': False,
+            },
+        }
+    except Exception as exc:
+        return {**base, 'stage': 'diagnostic_exception', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'}
+
+
+@app.get('/health')
+def health():
+    return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
+
+@app.get('/diagnose-deloox-generic-search-coverage')
+def diagnose_deloox_generic_search_coverage():
+    """Read-only coverage check for representative generic Deloox searches.
+
+    Keep the diagnostic cheap while catalog discovery/hydration is active:
+    product examples are bounded, and each queue table is scanned once for all
+    target phrases instead of issuing one full-table LIKE scan per phrase.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': 'catalog_db_unavailable',
+        }
+
+    checks = (
+        ('hawas_atlantis', 'hawas atlantis'),
+        ('hawas_la_mer', 'hawas la mer'),
+        ('born_in_roma_gold', 'born in roma the gold'),
+    )
+    name_patterns = {key: '%' + phrase.lower() + '%' for key, phrase in checks}
+    # URL slugs use separators (usually hyphens), not spaces. Wildcards between
+    # tokens match both canonical slugs and localized URL variants.
+    url_patterns = {
+        key: '%' + '%'.join(phrase.lower().split()) + '%'
+        for key, phrase in checks
+    }
+    keys = tuple(name_patterns)
+    url_pattern_values = tuple(url_patterns.values())
+    where_any = ' OR '.join('lower(url) LIKE ?' for _ in keys)
+    conditional_counts = ', '.join(
+        f'SUM(CASE WHEN lower(url) LIKE ? THEN 1 ELSE 0 END) AS {key}'
+        for key in keys
+    )
+
+    # Do not call catalog_db(): it runs schema initialization and can wait up
+    # to 45 seconds behind a writer. Diagnostics must never queue behind the
+    # discovery/hydration writer or acquire a write-capable connection.
+    import sqlite3
+    import catalog_engine
+
+    db_path = Path(catalog_engine.DB_PATH).resolve()
+    conn = sqlite3.connect(
+        f"file:{db_path.as_posix()}?mode=ro",
+        uri=True,
+        timeout=1.5,
+    )
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA busy_timeout=1500')
+    conn.execute('PRAGMA query_only=ON')
+    try:
+        # Bound returned examples, but preserve five recent/healthy examples per
+        # phrase. Product names and URLs are checked in the same query.
+        product_rows = {}
+        for key, phrase in checks:
+            rows = conn.execute(
+                """SELECT url,name,brand,price,currency,fetch_status
+                   FROM store_products
+                   WHERE store='deloox'
+                     AND (lower(COALESCE(name,'')) LIKE ?
+                          OR lower(COALESCE(url,'')) LIKE ?)
+                   ORDER BY
+                     CASE WHEN fetch_status='OK' THEN 0 ELSE 1 END,
+                     fetched_at DESC
+                   LIMIT 5""",
+                (name_patterns[key], url_patterns[key]),
+            ).fetchall()
+            product_rows[key] = [dict(row) for row in rows]
+
+        # Aggregate all three phrases in one pass over each large queue table.
+        url_counts_row = conn.execute(
+            f"""SELECT {conditional_counts}
+                FROM store_urls
+                WHERE store='deloox' AND active=1 AND ({where_any})""",
+            url_pattern_values + url_pattern_values,
+        ).fetchone()
+        url_counts = {
+            key: int(url_counts_row[key] or 0) if url_counts_row else 0
+            for key in keys
+        }
+
+        def queue_counts(table):
+            rows = conn.execute(
+                f"""SELECT state, {conditional_counts}
+                    FROM {table}
+                    WHERE store='deloox' AND ({where_any})
+                    GROUP BY state""",
+                url_pattern_values + url_pattern_values,
+            ).fetchall()
+            grouped = {key: {} for key in keys}
+            for row in rows:
+                state = str(row['state'])
+                for key in keys:
+                    count = int(row[key] or 0)
+                    if count:
+                        grouped[key][state] = count
+            return grouped
+
+        frontier_counts = queue_counts('catalog_discovery_queue')
+        hydration_counts = queue_counts('hydration_queue')
+        results = []
+        for key, phrase in checks:
+            results.append({
+                'key': key,
+                'query': phrase,
+                'active_url_count': url_counts[key],
+                'product_rows': product_rows[key],
+                'discovery_queue_states': frontier_counts[key],
+                'hydration_queue_states': hydration_counts[key],
+            })
+        return {
+            'ok': True,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'checks': results,
+        }
+    except sqlite3.OperationalError as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'deloox-generic-search-coverage-read-only-v1',
+            'read_only': True,
+            'network_called': False,
+            'database_written': False,
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+    finally:
+        conn.close()
+
+
+@app.get('/catalog-status')
+def catalog_status_endpoint():
+    """Read-only catalog/discovery/hydration status for diagnostics."""
+    try:
+        statuses = catalog_store_status() if callable(catalog_store_status) else {}
+    except Exception as exc:
+        statuses = {'_error': f'{type(exc).__name__}:{exc}'}
+    with _CATALOG_BOOTSTRAP_LOCK:
+        return {
+            'bootstrap_started': _CATALOG_BOOTSTRAP_STARTED,
+            'bootstrap_running': _CATALOG_BOOTSTRAP_RUNNING,
+            'bootstrap_done': _CATALOG_BOOTSTRAP_DONE,
+            'bootstrap_error': _CATALOG_BOOTSTRAP_ERROR,
+            'hydration_started': _CATALOG_HYDRATION_STARTED,
+            'stores': statuses,
+        }
+
+
+@app.api_route('/catalog/refresh-deloox-url', methods=['GET', 'POST'])
+def catalog_refresh_deloox_url_endpoint(url: str = ''):
+    """Operator tool: force refresh_url('deloox', url) for one product URL.
+
+    Generic: only validates that the URL is an allowed Deloox product URL,
+    then uses the normal refresh path (store_products + search index update).
+    """
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+    import catalog_engine
+    target = catalog_engine._html_product_url('deloox', str(url or '').strip(), 'https://www.deloox.be/')
+    if not target or not str(url or '').strip().lower().startswith(('http://', 'https://')):
+        return {'ok': False, 'error': 'invalid_deloox_product_url', 'url': url}
+    item = catalog_engine.refresh_url('deloox', target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            'SELECT price,currency,fetched_at,fetch_status FROM store_products WHERE store=? AND url=?',
+            ('deloox', target),
+        ).fetchone()
+    finally:
+        conn.close()
+    return {
+        'ok': bool(item),
+        'store': 'deloox',
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': dict(row) if row else None,
+    }
+
+
+@app.api_route('/catalog/refresh-store-url', methods=['GET', 'POST'])
+def catalog_refresh_store_url_endpoint(store: str = '', url: str = ''):
+    """Refresh exactly one approved product URL for an approved retailer.
+
+    This operational endpoint does not run discovery or a store-wide resync.
+    The URL is admitted by catalog_engine's existing retailer host/path rules,
+    then passed through the same refresh_url persistence path as hydration.
+    """
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {'ok': False, 'error': 'catalog_engine_unavailable'}
+
+    import urllib.parse
+    import catalog_engine
+
+    store_key = str(store or '').strip().lower()
+    raw_url = str(url or '').strip()
+    if store_key not in STORES:
+        return {'ok': False, 'error': 'unknown_store', 'store': store_key, 'allowed_stores': STORES}
+    if not raw_url.lower().startswith(('https://', 'http://')):
+        return {'ok': False, 'error': 'invalid_product_url', 'store': store_key, 'url': raw_url}
+
+    # _html_product_url applies the store's existing official-host and
+    # product-path admission rules. It does not initiate discovery.
+    try:
+        target = catalog_engine._html_product_url(
+            store_key, raw_url, catalog_engine.STORES[store_key]
+        )
+    except Exception as exc:
+        return {
+            'ok': False, 'error': 'url_validation_failed', 'store': store_key,
+            'detail': f'{type(exc).__name__}: {exc}',
+        }
+    if not target:
+        return {'ok': False, 'error': 'url_not_allowed_for_store', 'store': store_key, 'url': raw_url}
+
+    parsed_target = urllib.parse.urlparse(target)
+    if parsed_target.scheme != 'https':
+        return {'ok': False, 'error': 'https_required', 'store': store_key, 'url': target}
+
+    item = catalog_engine.refresh_url(store_key, target)
+    conn = catalog_db()
+    try:
+        row = conn.execute(
+            """SELECT store,url,name,brand,image,sku,gtin,mpn,size_ml,
+                      concentration,gender,price,currency,availability,
+                      fetched_at,fetch_status
+               FROM store_products WHERE store=? AND url=?""",
+            (store_key, target),
+        ).fetchone()
+        persisted = dict(row) if row else None
+    finally:
+        conn.close()
+
+    return {
+        'ok': bool(item) and bool(persisted) and persisted.get('fetch_status') == 'OK',
+        'diagnostic': 'catalog-targeted-store-url-refresh-v1',
+        'discovery_called': False,
+        'store_resync_called': False,
+        'store': store_key,
+        'url': target,
+        'refreshed': bool(item),
+        'store_product': persisted,
+    }
+
+
+@app.get('/catalog/hydration-errors')
+def catalog_hydration_errors_endpoint(store: str = 'perfumemarket', limit: int = 20):
+    """Read-only diagnostic view of recent hydration errors."""
+    store_key = str(store or '').strip().lower()
+    if store_key not in STORES:
+        return {'error': f'unknown_store:{store_key}', 'stores': STORES}
+    limit_value = max(1, min(int(limit or 20), 100))
+    if not callable(catalog_db):
+        return {'store': store_key, 'errors': [], 'error': 'catalog_db_unavailable'}
+    conn = catalog_db()
+    try:
+        rows = conn.execute(
+            """SELECT store,url,state,attempts,last_error,last_http_status,
+                              last_started_at,last_finished_at,available_at
+                       FROM hydration_queue
+                       WHERE store=? AND state IN ('ERROR','DEAD')
+                       ORDER BY last_finished_at DESC, attempts DESC
+                       LIMIT ?""",
+            (store_key, limit_value),
+        ).fetchall()
+        return {
+            'store': store_key,
+            'count': len(rows),
+            'errors': [dict(row) for row in rows],
+        }
+    finally:
+        conn.close()
+
+
+@app.get('/catalog/hydration-processing')
+def catalog_hydration_processing_endpoint():
+    """Read-only inspection of active hydration leases; exposes no credentials."""
+    import sqlite3
+    db_path = os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )
+    now = time.time()
+    conn = None
+    try:
+        # URI read-only mode prevents diagnostics from creating schema or mutating queue state.
+        conn = sqlite3.connect(
+            'file:' + str(Path(db_path).resolve()) + '?mode=ro',
+            uri=True,
+            timeout=2.0,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        rows = conn.execute(
+            """SELECT store, url, state, attempts, last_started_at,
+                      leased_until, last_error
+               FROM hydration_queue
+               WHERE state='PROCESSING'
+               ORDER BY store, last_started_at"""
+        ).fetchall()
+        tasks = []
+        for row in rows:
+            item = dict(row)
+            item['age_sec'] = (
+                round(now - float(item['last_started_at']), 1)
+                if item.get('last_started_at') is not None else None
+            )
+            item['lease_remaining_sec'] = (
+                round(float(item['leased_until']) - now, 1)
+                if item.get('leased_until') is not None else None
+            )
+            # Keep the product URL available for pinpointing the stuck queue row.
+            tasks.append(item)
+        return {'timestamp': now, 'count': len(tasks), 'processing': tasks}
+    except Exception as exc:
+        return {'timestamp': now, 'error': f'{type(exc).__name__}: {exc}'}
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.get('/catalog/family-coverage-status')
+def catalog_family_coverage_status_endpoint():
+    """Read-only progress snapshot from the isolated family-coverage process."""
+    status_path = Path(__file__).resolve().parent / 'family_coverage_status.json'
+    now = time.time()
+    try:
+        with status_path.open('r', encoding='utf-8') as handle:
+            status = json.load(handle)
+        updated = status.get('last_update')
+        try:
+            age_sec = round(max(0.0, now - float(updated)), 1) if updated is not None else None
+        except (TypeError, ValueError):
+            age_sec = None
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'age_sec': age_sec,
+            'stale': age_sec is None or age_sec > max(900.0, 2.0 * float(status.get('interval_seconds') or 21600.0)),
+            'status': status,
+        }
+    except FileNotFoundError:
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'status': None,
+            'state': 'status_file_not_created_yet',
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-family-coverage-status-v1',
+            'timestamp': now,
+            'error': f'{type(exc).__name__}: {exc}',
+        }
+
+
+@app.get('/catalog/hydration-status')
+def catalog_hydration_status_endpoint():
+    """Detailed persistent hydration queue status, read-only."""
+    try:
+        statuses = catalog_hydration_status() if callable(catalog_hydration_status) else {}
+        return {
+            'workers': 2,
+            'max_workers_per_store': 2,
+            'statuses': statuses,
+        }
+    except Exception as exc:
+        return {
+            'workers': 2,
+            'max_workers_per_store': 2,
+            'statuses': {},
+            'error': f'{type(exc).__name__}:{exc}',
+        }
+
+
+@app.get('/diagnose-catalog-price-freshness-read-only')
+def diagnose_catalog_price_freshness_read_only():
+    """Aggregate per-store price/fetch freshness using a read-only SQLite connection."""
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': 'catalog_engine_unavailable',
+        }
+
+    conn = None
+    try:
+        import sqlite3
+
+        catalog_module = importlib.import_module('catalog_engine')
+        database_uri = catalog_module.DB_PATH.resolve().as_uri() + '?mode=ro'
+        conn = sqlite3.connect(database_uri, uri=True, timeout=5)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        snapshot = catalog_module.catalog_price_freshness_snapshot(conn)
+        snapshot['ok'] = True
+        snapshot['diagnostic'] = 'catalog-price-freshness-read-only-v1'
+        return snapshot
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-price-freshness-read-only-v1',
+            'read_only': True,
+            'writes_database': False,
+            'network_requests': False,
+            'error': f'{type(exc).__name__}: {str(exc)[:400]}',
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.get('/diagnose-catalog-live-parse')
+def diagnose_catalog_live_parse_endpoint(
+    store: str = 'deloox',
+    url: str = '',
+):
+    """Read-only live fetch + generic catalog parser diagnostic; never writes to SQLite."""
+    import urllib.request
+    from urllib.parse import urlparse
+
+    store_key = str(store or '').strip().lower()
+    target_url = str(url or '').strip()
+    allowed_host = 'www.deloox.com'
+    parsed_url = urlparse(target_url)
+
+    if store_key != 'deloox':
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'unsupported_store', 'store': store_key}
+    if (
+        parsed_url.scheme != 'https'
+        or parsed_url.hostname != allowed_host
+        or not parsed_url.path.startswith('/product/')
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                'read_only': True, 'error': 'url_not_allowed',
+                'allowed_host': allowed_host}
+
+    try:
+        catalog_module = importlib.import_module('catalog_engine')
+        parser = getattr(catalog_module, 'parse_product', None)
+        if not callable(parser):
+            return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                    'read_only': True, 'store': store_key,
+                    'url': target_url, 'error': 'catalog_parse_product_unavailable'}
+
+        request = urllib.request.Request(
+            target_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; ScentHunterDiagnostic/1.0)',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            method='GET',
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            http_status = response.status
+            final_url = response.geturl()
+            html = response.read(5 * 1024 * 1024 + 1)
+            if len(html) > 5 * 1024 * 1024:
+                return {'ok': False, 'diagnostic': 'catalog-live-parse-v1',
+                        'read_only': True, 'store': store_key,
+                        'url': target_url, 'http_status': http_status,
+                        'error': 'page_exceeds_5mb'}
+            encoding = response.headers.get_content_charset() or 'utf-8'
+            html_text = html.decode(encoding, errors='replace')
+
+        live_parsed = parser(store_key, final_url, html_text)
+        if not isinstance(live_parsed, dict):
+            parsed_result = None
+        else:
+            parsed_result = {
+                key: live_parsed.get(key)
+                for key in (
+                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin', 'mpn',
+                    'price_num', 'price', 'currency', 'availability'
+                )
+            }
+        return {
+            'ok': True,
+            'diagnostic': 'catalog-live-parse-v1',
+            'read_only': True,
+            'writes_database': False,
+            'store': store_key,
+            'requested_url': target_url,
+            'final_url': final_url,
+            'http_status': http_status,
+            'parser': 'catalog_engine.parse_product',
+            'parsed_product': parsed_result,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'catalog-live-parse-v1',
+            'read_only': True,
+            'writes_database': False,
+            'store': store_key,
+            'requested_url': target_url,
+            'error': f'{type(exc).__name__}: {str(exc)[:500]}',
+        }
+
+
+
+@app.get('/diagnose-hawas-ice-offers-read-only')
+def diagnose_hawas_ice_offers_read_only():
+    """Read-only differential diagnostic for the three known Hawas Ice retailer URLs.
+
+    It compares persisted catalog rows and queue state with the retailer parser
+    output. It never calls refresh_url and never writes to SQLite.
+    """
+    import sqlite3
+    import time
+
+    started = time.monotonic()
+    targets = [
+        {
+            'store': 'deloox',
+            'url': 'https://www.deloox.com/product/1323660/rasasi-hawas-ice-eau-de-parfum-100-ml.html',
+        },
+        {
+            'store': 'bplatz',
+            'url': 'https://en.bplatz.de/products/rasasi-hawas-ice-eau-de-parfum-100ml',
+        },
+        {
+            'store': 'parfumzentrum',
+            'url': 'https://www.parfum-zentrum.de/rasasi-hawas-ice-eau-de-parfum-100-ml-man_z913265/',
+        },
+    ]
+    out = {
+        'ok': False,
+        'diagnostic': 'hawas-ice-offers-read-only-v1',
+        'read_only': True,
+        'writes_database': False,
+        'refresh_url_called': False,
+        'targets': [],
+        'errors': [],
+    }
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        out['errors'].append({'stage': 'database', 'error': 'catalog_engine_unavailable'})
+        return out
+
+    try:
+        import catalog_engine as ce
+        conn = catalog_db()
+        conn.row_factory = sqlite3.Row
+        try:
+            for target in targets:
+                store = target['store']
+                url = target['url']
+                item = {'store': store, 'url': url, 'persisted': {}, 'live': {}}
+                key = url.rstrip('/')
+                for label, sql, params in [
+                    ('base_product_rows',
+                     "SELECT store,url,name,brand,sku,gtin,mpn,size_ml,price,currency,availability,fetched_at,fetch_status FROM store_products WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                    ('variant_rows',
+                     "SELECT store,url,variant_key,name,brand,sku,size_ml,price,currency,availability,fetched_at,variant_url FROM store_product_variants WHERE store=? AND ((url=? OR RTRIM(url,'/')=?) OR variant_url=?) ORDER BY size_ml,variant_key LIMIT 30",
+                     (store, url, key, url)),
+                    ('hydration_queue_rows',
+                     "SELECT store,url,state,attempts,available_at,leased_until,last_started_at,last_finished_at,last_error,last_http_status FROM hydration_queue WHERE store=? AND (url=? OR RTRIM(url,'/')=?) LIMIT 10",
+                     (store, url, key)),
+                ]:
+                    try:
+                        item['persisted'][label] = [dict(row) for row in conn.execute(sql, params).fetchall()]
+                    except Exception as exc:
+                        item['persisted'][label] = []
+                        item.setdefault('errors', []).append({
+                            'stage': 'db_' + label,
+                            'error': f'{type(exc).__name__}: {str(exc)[:250]}',
+                        })
+                try:
+                    status, final_url, data = ce.http_get(url, timeout=getattr(ce, 'REFRESH_TIMEOUT', 12))
+                    item['live']['http_status'] = status
+                    item['live']['final_url'] = final_url
+                    item['live']['bytes'] = len(data or b'')
+                    if status < 400 and data:
+                        parsed = ce._secondary_store_parser(store, final_url, url, html_data=data)
+                        if not isinstance(parsed, dict):
+                            parsed = ce.parse_product(store, final_url, data.decode('utf-8', errors='replace'))
+                        if isinstance(parsed, dict):
+                            item['live']['parsed_product'] = {
+                                field: parsed.get(field) for field in (
+                                    'store_key', 'url', 'name', 'brand', 'sku', 'gtin',
+                                    'mpn', 'size_ml', 'price_num', 'price', 'currency',
+                                    'availability', 'variants'
+                                )
+                            }
+                        else:
+                            item['live']['parsed_product'] = None
+                            item['live']['parser_result_type'] = type(parsed).__name__
+                except Exception as exc:
+                    item['live']['error'] = f'{type(exc).__name__}: {str(exc)[:400]}'
+                out['targets'].append(item)
+        finally:
+            conn.close()
+    except Exception as exc:
+        out['errors'].append({'stage': 'diagnostic', 'error': f'{type(exc).__name__}: {str(exc)[:500]}'})
+
+    out['elapsed_sec'] = round(time.monotonic() - started, 3)
+    out['ok'] = not out['errors'] and all(not item.get('errors') for item in out['targets'])
+    return out
+
+
+@app.get('/search-start')
+def search_start(q: str):
+    query = str(q or '').strip()
+    if not query:
+        return {
+            'job_id': '',
+            'query': '',
+            'completed': True,
+            'status': 'completed',
+            'count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {},
+            'stores': {},
+        }
+
+    # IMPORTANT: /search-start must remain a lightweight orchestration
+    # endpoint. Do not call catalog_store_status() / _catalog_is_ready() here:
+    # that performs multiple SQLite reads, including a hydration-related
+    # LEFT JOIN, and can contend with the background catalog hydrator exactly
+    # when a user starts a second search.
+    #
+    # Catalog bootstrap readiness is established once during application
+    # startup and cached in _CATALOG_BOOTSTRAP_DONE / _CATALOG_BOOTSTRAP_ERROR.
+    # A normal persistent catalog is therefore allowed to start a job without
+    # re-scanning SQLite on every search.
+    with _CATALOG_BOOTSTRAP_LOCK:
+        bootstrap_running = _CATALOG_BOOTSTRAP_RUNNING
+        bootstrap_done = _CATALOG_BOOTSTRAP_DONE
+        bootstrap_error = _CATALOG_BOOTSTRAP_ERROR
+
+    if bootstrap_running and not bootstrap_done:
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 250,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': 'catalog_bootstrapping'},
+            'stores': {},
+        }
+
+    if bootstrap_error and not bootstrap_running:
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': True,
+            'status': 'error',
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'catalog': bootstrap_error},
+            'stores': {},
+        }
+
+    # Cancellation handshake must never block the HTTP request for a full
+    # store/job timeout.  If the previous job is still shutting down, the
+    # frontend can retry /search-start after a short delay.
+    if not _cancel_active_jobs(wait_timeout=0.15):
+        return {
+            'job_id': '',
+            'query': query,
+            'completed': False,
+            'status': 'busy',
+            'retry_after_ms': 200,
+            'count': 0,
+            'offer_count': 0,
+            'results': [],
+            'unresolved_offers': [],
+            'identity_scope': [],
+            'comparisons': [],
+            'errors': {'job': 'previous_search_still_stopping'},
+            'stores': {},
+        }
+
+    job_id = _new_job(query)
+    threading.Thread(
+        target=_run_job,
+        args=(job_id, query),
+        daemon=True,
+        name=f'scenthunter-search-{job_id[:8]}'
+    ).start()
+
+    # Most catalog searches finish within this short window. Waiting here
+    # avoids a start response plus many status-poll round trips, while slower
+    # searches still return a searching snapshot and continue asynchronously.
+    try:
+        start_wait = min(
+            0.75,
+            max(0.0, float(os.environ.get('SEARCH_START_WAIT_SECONDS', '0.75'))),
+        )
+    except (TypeError, ValueError):
+        start_wait = 0.75
+    with JOBS_LOCK:
+        started_job = JOBS.get(job_id)
+        done_event = started_job.get("done_event") if started_job else None
+    if done_event is not None and start_wait > 0:
+        done_event.wait(timeout=start_wait)
+
+    return _snapshot(job_id)
+
+
+@app.get('/search-status/{job_id}')
+def search_status_path(job_id:str): return _snapshot(job_id)
+@app.get('/search-status')
+def search_status_query(job_id:str): return _snapshot(job_id)
+
+@app.get("/search")
+def search_perfume(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "offer_count": 0,
+            "results": [],
+            "unresolved_offers": [],
+            "identity_scope": [],
+            "errors": {},
+            "stores": {},
+            "dedupe_diagnostics": [],
+        }
+
+    reports = collect_store_reports_isolated(
+        query,
+        STORES,
+        allow_live_fallback=False,
+    )
+
+    all_offers = []
+
+    for report in reports:
+        for item in report.get(
+            "results",
+            [],
+        ):
+            if not isinstance(item, dict):
+                continue
+            if _is_non_fragrance_offer(item) or _is_concentration_mismatch_offer(item):
+                continue
+            all_offers.append(item)
+
+    _diag_before_dedupe = len(all_offers)
+    dedupe_diagnostics = []
+    all_offers = dedupe_results(
+        all_offers,
+        dedupe_diagnostics,
+    )
+    if any(_normalise_store(x.get("store") or x.get("shop"), "") in {"easycosmetic", "parfumzentrum"} for x in all_offers) or any(_normalise_store(x.get("dropped", {}).get("store"), "") in {"easycosmetic", "parfumzentrum"} for x in dedupe_diagnostics):
+        print(f"SEARCH PIPELINE DIAG query={query!r} offers_before_dedupe={_diag_before_dedupe} offers_after_dedupe={len(all_offers)} dedupe_drops={len(dedupe_diagnostics)}", flush=True)
+        for _drop in dedupe_diagnostics:
+            _store = _normalise_store((_drop.get("dropped") or {}).get("store"), "")
+            if _store in {"easycosmetic", "parfumzentrum"}:
+                print(f"SEARCH DEDUPE DROP store={_store} reason={_drop.get('reason')} key={_drop.get('dedupe_key')} dropped={_drop.get('dropped')} kept={_drop.get('kept')}", flush=True)
+
+    grouped, unresolved = (
+        _aggregate_identity_results(
+            all_offers
+        )
+    )
+    for _store in ("easycosmetic", "parfumzentrum"):
+        _store_offers = [x for x in all_offers if _normalise_store(x.get("store") or x.get("shop"), "") == _store]
+        if _store_offers:
+            print(f"SEARCH FINAL DIAG query={query!r} store={_store} offers={len(_store_offers)} sizes={[x.get('size_ml') for x in _store_offers]} prices={[x.get('price_num', x.get('price')) for x in _store_offers]} availability={[x.get('availability') or x.get('availability_status') for x in _store_offers]}", flush=True)
+
+    return {
+        "query": query,
+        "count": len(grouped),
+        "offer_count": len(all_offers),
+        "results": grouped,
+        "unresolved_offers": unresolved,
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "identity_scope": _identity_scope(query),
+        "errors": {
+            report["store"]: report["error"]
+            for report in reports
+            if report.get("error")
+        },
+        "stores": {
+            report["store"]: {
+                "status": report["status"],
+                "verified": bool(report.get("verified")),
+                "count": report["count"],
+                "elapsed": report["elapsed"],
+                "details": dict(report.get("details") or {}),
+            }
+            for report in reports
+        },
+    }
+
+@app.get("/diagnose-search-final")
+def diagnose_search_final(store: str, q: str):
+    """Read-only replay of the final normal-search pipeline for one store.
+
+    This diagnostic intentionally uses the same catalog-first collection,
+    non-fragrance filtering, dedupe and identity aggregation as /search,
+    but exposes every stage so we can locate any loss between matched
+    catalog candidates and the final public groups.
+    """
+    query = str(q or "").strip()
+    store_key = _normalise_store(store, "")
+
+    if not query:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "missing_query",
+        }
+
+    if not store_key or store_key not in STORES:
+        return {
+            "ok": False,
+            "diagnostic": "search-final-v1",
+            "error": "unknown_store",
+            "store": store,
+            "known_stores": list(STORES),
+        }
+
+    reports = _collect_catalog_reports_isolated(query, [store_key])
+
+    matched_offers = []
+    rejected_or_skipped = []
+
+    for report in reports:
+        for item in report.get("results", []):
+            if not isinstance(item, dict):
+                continue
+            if _is_non_fragrance_offer(item):
+                rejected_or_skipped.append({
+                    "reason": "non_fragrance_offer",
+                    "name": item.get("name") or item.get("title"),
+                    "canonical_name": item.get("canonical_name"),
+                    "catalog_id": item.get("catalog_id"),
+                    "url": item.get("url") or item.get("product_url"),
+                })
+                continue
+            matched_offers.append(item)
+
+    dedupe_diagnostics = []
+    deduped_offers = dedupe_results(
+        matched_offers,
+        dedupe_diagnostics,
+    )
+
+    grouped, unresolved = _aggregate_identity_results(deduped_offers)
+
+    def compact_offer(item):
+        return {
+            "store": item.get("store") or item.get("shop"),
+            "name": item.get("name") or item.get("title"),
+            "canonical_name": item.get("canonical_name"),
+            "catalog_id": item.get("catalog_id"),
+            "match_status": item.get("_match_status"),
+            "match_method": item.get("match_method") or item.get("_match_method"),
+            "match_score": item.get("match_score") or item.get("_match_score"),
+            "size_ml": item.get("size_ml"),
+            "price": item.get("price"),
+            "url": item.get("url") or item.get("product_url"),
+        }
+
+    return {
+        "ok": True,
+        "diagnostic": "search-final-v1",
+        "read_only": True,
+        "production_search_called": False,
+        "store": store_key,
+        "query": query,
+        "pipeline": [
+            "catalog_search_local",
+            "clean_result",
+            "_resolve_offer_identity",
+            "non_fragrance_filter",
+            "dedupe_results",
+            "_aggregate_identity_results",
+        ],
+        "report": [
+            {
+                "store": report.get("store"),
+                "status": report.get("status"),
+                "verified": bool(report.get("verified")),
+                "count": report.get("count"),
+                "elapsed": report.get("elapsed"),
+                "details": dict(report.get("details") or {}),
+                "error": report.get("error"),
+            }
+            for report in reports
+        ],
+        "stage_counts": {
+            "matched_offers_before_dedupe": len(matched_offers),
+            "deduped_offers": len(deduped_offers),
+            "final_groups": len(grouped),
+            "unresolved": len(unresolved),
+            "non_fragrance_skipped": len(rejected_or_skipped),
+            "dedupe_drops": len(dedupe_diagnostics),
+        },
+        "matched_offers": [compact_offer(item) for item in matched_offers],
+        "deduped_offers": [compact_offer(item) for item in deduped_offers],
+        "final_groups": [
+            {
+                "catalog_id": group.get("catalog_id"),
+                "canonical_name": group.get("canonical_name") or group.get("name"),
+                "offer_count": len(group.get("offers") or []),
+            }
+            for group in grouped
+        ],
+        "unresolved_offers": [compact_offer(item) for item in unresolved],
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "non_fragrance_skipped": rejected_or_skipped,
+    }
+
+@app.get('/frontend')
+def frontend():
+    if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
+    return {'error':'frontend/index.html not found'}
+, re.I)})
+            visible_text = re.sub(r'\\s+', ' ', soup.get_text(' ', strip=True))[:1200]
+            price_matches = re.findall(r'(?:€\\s?\\d[\\d.,]*|\\d[\\d.,]*\\s?€)', html[:50000], re.I)[:12]
+            block_signals = {
+                'captcha': bool(re.search(r'captcha|verify you are human|robot check', html, re.I)),
+                'cloudflare': bool(re.search(r'cloudflare|cf-chl-|challenge-platform', html, re.I)),
+                'access_denied': bool(re.search(r'access denied|temporarily blocked|request blocked|forbidden', html, re.I)),
+                'consent': bool(re.search(r'cookie consent|consent management|accept cookies', html, re.I)),
+            }
+            persisted = {'read_only': True, 'database_written': False, 'exact_url': response.url, 'tables': {}, 'errors': []}
+            try:
+                import sqlite3
+                catalog_module = importlib.import_module('catalog_engine')
+                db_path = Path(catalog_module.DB_PATH).resolve()
+                db_conn = sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=1.0)
+                db_conn.row_factory = sqlite3.Row
+                db_conn.execute('PRAGMA busy_timeout=1000')
+                db_conn.execute('PRAGMA query_only=ON')
+                try:
+                    table_names = {row['name'] for row in db_conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                    for table in ('store_urls', 'store_products', 'store_product_variants', 'hydration_queue'):
+                        if table not in table_names:
+                            persisted['tables'][table] = {'exists': False, 'rows': []}
+                            continue
+                        columns = {row['name'] for row in db_conn.execute(f'PRAGMA table_info("{table}")').fetchall()}
+                        clauses, params = [], []
+                        if 'store' in columns:
+                            clauses.append("lower(store)='deloox'")
+                        if 'url' in columns:
+                            clauses.append('url=?')
+                            params.append(response.url)
+                        sql = f'SELECT * FROM "{table}"' + (' WHERE ' + ' AND '.join(clauses) if clauses else '') + ' LIMIT 8'
+                        rows = [dict(row) for row in db_conn.execute(sql, params).fetchall()]
+                        nearby = []
+                        if not rows:
+                            text_columns = [c for c in ('name', 'slug', 'search_text', 'url', 'product_name') if c in columns]
+                            if text_columns:
+                                near_clauses = ["lower(COALESCE(\"" + c + "\",'')) LIKE ?" for c in text_columns]
+                                near_params = ['%liquid%brun%'] * len(text_columns)
+                                if 'store' in columns:
+                                    near_clauses.insert(0, "lower(store)='deloox'")
+                                near_sql = f'SELECT * FROM "{table}" WHERE ' + ' AND '.join(near_clauses) + ' LIMIT 8'
+                                nearby = [dict(row) for row in db_conn.execute(near_sql, near_params).fetchall()]
+                        persisted['tables'][table] = {'exists': True, 'columns': sorted(columns), 'rows': rows, 'nearby_rows': nearby}
+                    persisted['database_path'] = str(db_path)
+                finally:
+                    db_conn.close()
+            except Exception as db_exc:
+                persisted['errors'].append({'stage': 'persisted_catalog', 'error': f'{type(db_exc).__name__}: {str(db_exc)[:300]}'})
+            return {
+                **base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch,
+                'stages': {
+                    'fetch': fetch,
+                    'parse': parse_stage,
+                    'html_evidence': {
+                        'title': html_title,
+                        'meta_description': meta_description.get('content') if meta_description else None,
+                        'visible_text_excerpt': visible_text,
+                        'price_text_matches': price_matches,
+                        'block_signals': block_signals,
+                    },
+                    'persisted_catalog_and_queue': persisted,
+                },
+            }
         normalized_input = {
             'name': parsed_product.get('name'),
             # Preserve verified parser identity for the next-engine matcher.
