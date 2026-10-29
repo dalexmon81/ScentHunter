@@ -4256,18 +4256,19 @@ def refresh_url(store, url):
                         size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                         concentration=COALESCE(excluded.concentration,store_products.concentration),
                         gender=COALESCE(excluded.gender,store_products.gender),
-                        -- A transient/incomplete parse must not erase a previously
-                        -- verified product price. Replace it only when the new parse
-                        -- supplies an explicit price; never infer one from other fields.
+                        -- Only a confirmed sold-out Deloox observation may clear a stale price.
+                        -- Incomplete parses from any store preserve the last verified price.
                         price=CASE
-                           WHEN excluded.availability='out_of_stock' THEN NULL
+                           WHEN excluded.store='deloox'
+                             AND lower(replace(replace(excluded.availability,'-','_'),' ','_')) IN ('out_of_stock','outofstock','sold_out','soldout')
+                             AND excluded.price IS NULL THEN NULL
                            WHEN excluded.price IS NOT NULL THEN excluded.price
                            ELSE store_products.price
                          END,
                         currency=CASE WHEN excluded.price IS NOT NULL THEN excluded.currency ELSE COALESCE(store_products.currency,excluded.currency) END,
                         availability=excluded.availability,
-                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR excluded.availability='out_of_stock' THEN excluded.fetched_at ELSE store_products.fetched_at END,
-                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR excluded.availability='out_of_stock' THEN excluded.fetch_status ELSE store_products.fetch_status END''',
+                        fetched_at=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND lower(replace(replace(excluded.availability,'-','_'),' ','_')) IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetched_at ELSE store_products.fetched_at END,
+                        fetch_status=CASE WHEN excluded.price IS NOT NULL OR (excluded.store='deloox' AND lower(replace(replace(excluded.availability,'-','_'),' ','_') ) IN ('out_of_stock','outofstock','sold_out','soldout') AND excluded.price IS NULL) THEN excluded.fetch_status ELSE store_products.fetch_status END''',
                     (
                         store, url, item.get('name'), item.get('brand'), item.get('image'),
                         item.get('sku'), item.get('gtin'), item.get('mpn'),
