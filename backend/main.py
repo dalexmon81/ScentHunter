@@ -2558,7 +2558,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         # Keep the public storefront adapter available by default for the
         # asynchronous user search. Operators can still explicitly disable it.
         public_fallback = str(
-            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1')
+            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '0')
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
@@ -2580,15 +2580,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    # Notino's generic public adapter can spend ~36s in the scraper and
-    # identity diagnostics for Liquid Brun. The 40s bridge deadline has been
-    # observed timing out on that same valid two-offer result in production.
-    # Give Notino enough headroom for reader + normalization + IPC; keep other
-    # retailer bridges bounded at 12s. This runs only in asynchronous search.
-    bridge_timeouts = {
-        store: (60.0 if store == 'notino' else 12.0)
-        for store in live_bridge_stores
-    }
+    # Live retailer fallbacks must never hold an unrelated search for a minute.
+    # Notino's public adapter has repeatedly timed out in production; cap every
+    # bridge at 12s while the authorized product-feed route is being configured.
+    # Amazon public HTML is opt-in because the approved Creators API is gated
+    # on marketplace credentials, affiliate tags, and explicit comparison approval.
+    bridge_timeouts = {store: 12.0 for store in live_bridge_stores}
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
