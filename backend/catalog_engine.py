@@ -4112,12 +4112,27 @@ def refresh_url(store, url):
 
         if not item or not item.get('name'):
             h1_text = ''
+            title_text = ''
+            body_preview = ''
             jsonld_count = 0
+            challenge_markers = []
             try:
                 soup = BeautifulSoup(data or b'', 'html.parser')
                 h1 = soup.find('h1')
                 h1_text = h1.get_text(' ', strip=True)[:180] if h1 else ''
+                title = soup.find('title')
+                title_text = title.get_text(' ', strip=True)[:180] if title else ''
+                body = soup.find('body')
+                body_preview = re.sub(r'\s+', ' ', body.get_text(' ', strip=True))[:220] if body else ''
                 jsonld_count = len(_jsonld(soup))
+                lower_body = f"{title_text} {body_preview}".lower()
+                challenge_markers = [
+                    marker for marker in (
+                        'captcha', 'cloudflare', 'access denied', 'verify you are human',
+                        'robot', 'temporarily blocked', 'security check', 'forbidden',
+                    )
+                    if marker in lower_body
+                ]
             except Exception:
                 pass
             detail = (
@@ -4129,7 +4144,10 @@ def refresh_url(store, url):
                 f';secondary_parser={"ok" if secondary_ok else "none"}'
                 f';jsonld_products={jsonld_count}'
                 f';parser_error={parser_error!r}'
+                f';title={title_text!r}'
                 f';h1={h1_text!r}'
+                f';body_preview={body_preview!r}'
+                f';challenge_markers={challenge_markers!r}'
             )
             print(f'CATALOG PRODUCT PARSER DIAG: store={store} url={url} {detail}', flush=True)
             raise RuntimeError(detail)
@@ -5543,17 +5561,33 @@ def _hydration_store_order(conn):
     return stores[start:] + stores[:start], start
 
 
+def _begin_immediate_with_retry(conn, attempts=4):
+    """Acquire SQLite's single writer slot with bounded retry on transient locks."""
+    attempts = max(1, int(attempts))
+    for lock_attempt in range(attempts):
+        try:
+            conn.execute('BEGIN IMMEDIATE')
+            return
+        except sqlite3.OperationalError as exc:
+            if 'locked' not in str(exc).lower() or lock_attempt == attempts - 1:
+                raise
+            # The failed BEGIN has not opened a transaction, so waiting here
+            # cannot retain a write lock or partially apply a queue update.
+            time.sleep(0.1 * (2 ** lock_attempt))
+
+
 def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     """Atomically claim one ready URL, with at most two active tasks per store."""
     now = time.time()
     token = uuid.uuid4().hex
     # Claiming is a hot-path operation shared with discovery and coverage.
     # Do not let this worker sit behind SQLite's global 45s busy timeout.
-    conn = sqlite3.connect(str(DB_PATH), timeout=2.0)
+    conn = sqlite3.connect(str(DB_PATH), timeout=1.0)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA busy_timeout=2000')
+    conn.execute('PRAGMA busy_timeout=1000')
     try:
-        conn.execute('BEGIN IMMEDIATE')
+        # SQLite has one writer even in WAL mode; tolerate brief collisions.
+        _begin_immediate_with_retry(conn)
 
         # A worker crash/restart must never strand a URL forever.
         conn.execute(
