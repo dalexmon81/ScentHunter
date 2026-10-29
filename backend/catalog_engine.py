@@ -1885,10 +1885,17 @@ def _fetch_html_page(store, url, timeout=HTTP_TIMEOUT):
     except Exception as exc:
         http_error = f'{type(exc).__name__}:{exc}'
 
-    if store == 'easycosmetic':
+    if store in {'easycosmetic', 'deloox'}:
         browser_result, browser_error = _browser_fetch_html(url)
         if browser_result:
             final, data = browser_result
+            # Do not treat an interstitial as valid storefront HTML.
+            if store == 'deloox' and (
+                b'client challenge' in data[:12000].lower()
+                or b'challenge-platform' in data[:12000].lower()
+                or b'cf-chl-' in data[:12000].lower()
+            ):
+                return url, final, None, 'CLIENT_CHALLENGE_AFTER_BROWSER_FETCH'
             return url, final, data, None
         return url, url, None, f'HTTP={http_error};{browser_error}'
     return url, url, None, http_error

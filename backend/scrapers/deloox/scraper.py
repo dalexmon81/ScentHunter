@@ -231,6 +231,67 @@ def availability(text, offer=None, soup=None):
         return "in_stock"
     return "unknown"
 
+def _is_client_challenge(html):
+    """Recognize the retailer's interstitial instead of parsing it as a product."""
+    sample = str(html or "")[:12000].lower()
+    return (
+        "client challenge" in sample
+        or "challenge-platform" in sample
+        or ("cf-chl-" in sample and "checking your browser" in sample)
+    )
+
+
+def _get_page(session, url, headers=None, timeout=None, allow_redirects=True):
+    """Fetch HTML normally, then retry a detected JS challenge in Chromium.
+
+    This uses the same public URL and does not attempt to defeat CAPTCHA or
+    other interactive access controls. If the storefront still serves a
+    challenge, callers can identify it rather than misclassifying it as no match.
+    """
+    headers = headers or HEADERS
+    timeout = timeout or TIMEOUT
+    response = session.get(
+        url, headers=headers, timeout=timeout, allow_redirects=allow_redirects
+    )
+    if response.status_code >= 400 or not _is_client_challenge(response.text):
+        return response
+
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            try:
+                context = browser.new_context(
+                    user_agent=headers.get("User-Agent", HEADERS["User-Agent"]),
+                    locale="en-GB",
+                    extra_http_headers={
+                        "Accept-Language": headers.get("Accept-Language", "en-GB,en;q=0.9")
+                    },
+                )
+                page = context.new_page()
+                page.goto(url, wait_until="domcontentloaded",
+                          timeout=max(12000, int(float(timeout[-1] if isinstance(timeout, tuple) else timeout) * 1000)))
+                page.wait_for_timeout(1800)
+                html = page.content()
+                browser_response = requests.Response()
+                browser_response.status_code = (
+                    page.locator("body").count() and 200
+                ) or response.status_code
+                browser_response.url = page.url or response.url or url
+                browser_response.headers = {"content-type": "text/html; charset=utf-8"}
+                browser_response.encoding = "utf-8"
+                browser_response._content = (html or "").encode("utf-8", "ignore")
+                if _is_client_challenge(html):
+                    browser_response.status_code = 503
+                    browser_response.headers["x-scenthunter-fetch"] = "client-challenge"
+                return browser_response
+            finally:
+                browser.close()
+    except Exception:
+        # Preserve the original evidence; never fabricate a successful page.
+        return response
+
+
 def _jsonld(soup):
     """Find the first product JSON-LD node without CSS selector overhead."""
     for script in soup.find_all('script', attrs={'type': 'application/ld+json'}):
@@ -1816,13 +1877,11 @@ def search(query):
 
         def fetch(url):
             try:
-                r = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
+                r = _get_page(
+                    session, url, headers=HEADERS, timeout=TIMEOUT,
                     allow_redirects=True,
                 )
-                if r.status_code >= 400:
+                if r.status_code >= 400 or _is_client_challenge(r.text):
                     return None
                 return _product(r.url or url, r.text, query)
             except requests.RequestException:
