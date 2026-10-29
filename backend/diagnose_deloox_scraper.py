@@ -267,13 +267,30 @@ def diagnose_deloox_hydration_target():
                         "size_ml": item.get("size_ml"),
                     })
                 else:
+                    # refresh_url() captures the concrete exception in the
+                    # process-local error map. Prefer it to store_products.fetch_status,
+                    # which intentionally preserves the last known-good offer and can
+                    # therefore still say OK after this refresh has failed.
+                    refresh_errors = getattr(catalog_engine, "_LAST_REFRESH_ERRORS", {})
+                    refresh_error_lock = getattr(catalog_engine, "_LAST_REFRESH_ERRORS_LOCK", None)
+                    if refresh_error_lock:
+                        with refresh_error_lock:
+                            detail = refresh_errors.get(("deloox", url))
+                    else:
+                        detail = refresh_errors.get(("deloox", url))
                     conn = db_fn()
                     try:
                         row = conn.execute(
                             "SELECT fetch_status FROM store_products WHERE store=? AND url=?",
                             ("deloox", url),
                         ).fetchone()
-                        detail = str(row["fetch_status"]) if row and row["fetch_status"] else "product_parser_not_found"
+                        stored_status = str(row["fetch_status"]) if row and row["fetch_status"] else None
+                        if not detail:
+                            detail = (
+                                f"refresh_returned_no_product;stored_fetch_status={stored_status}"
+                                if stored_status
+                                else "refresh_returned_no_product;no_stored_fetch_status"
+                            )
                         with conn:
                             conn.execute(
                                 """
