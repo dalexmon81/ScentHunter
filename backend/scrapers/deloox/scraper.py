@@ -667,10 +667,32 @@ def _candidate_product_urls(
         # generic .html slug. Deloox product detail pages use a numeric ID path;
         # accepting every other .html route pulls unrelated haircare/cosmetics
         # into the fragrance hydration queue.
-        if not product_path:
-            return
-
         score = relevance(url, context)
+
+        # Some current localized storefront routes expose product details as
+        # descriptive .html slugs instead of /product/<id>/... paths. Accept
+        # those only when the URL is not a known navigation route and the
+        # requested product terms are strongly present in the URL/card context.
+        # The fetched product page still has to pass _product() identity and
+        # size validation before it can become an offer.
+        if not product_path:
+            if not slug_product_path:
+                return
+            combined_norm = norm(f"{context} {url}")
+            combined_tokens = set(combined_norm.split())
+            meaningful_tokens = [
+                token for token in query_tokens
+                if token not in {"ml", "cl", "eau", "de", "parfum", "perfume", "edp", "edt"}
+            ]
+            if len(meaningful_tokens) < 2:
+                return
+            if not all(token in combined_tokens for token in meaningful_tokens):
+                return
+            # Avoid turning generic .html navigation links into candidates:
+            # require either an exact phrase match or a strong multi-token score.
+            if score < 30 and not (query_norm and query_norm in combined_norm):
+                return
+
         if not accept_all_products and score <= 0:
             return
         existing = candidates.get(url)
