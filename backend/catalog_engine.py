@@ -2027,14 +2027,18 @@ def _deloox_queue_seed():
     # This exact Belgium product URL was missing from discovery despite being
     # the canonical regional page. Seed it directly so hydration can validate
     # its current stock/price; never infer availability from discovery alone.
-    seeds.append(
+    product_seed = (
         'https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html'
     )
+    # Product detail URLs are deliberately rejected by _html_listing_url.
+    # Persist this known product through the product/hydration path instead of
+    # passing it to the listing queue, where it would silently be discarded.
     seeds = list(dict.fromkeys(seeds))
     _deloox_queue_enqueue(
         [(url, 0, 'configured_seed') for url in seeds]
     )
-    return seeds
+    _deloox_persist_products({product_seed: ''})
+    return seeds + [product_seed]
 
 
 def _deloox_queue_enqueue(items):
