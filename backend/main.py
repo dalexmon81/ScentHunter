@@ -2587,11 +2587,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
-    # The Notino adapter now has a strict shared 12s deadline and is only
-    # invoked from the asynchronous /search-start job. It must run on catalog
-    # misses; a stale machine secret must not silently remove Notino from every
-    # search. The synchronous /search endpoint still explicitly disables live
-    # fallbacks, and the shared deadline bounds the added wait for async searches.
+    # The Notino public adapter is a bounded fallback for catalog misses in
+    # asynchronous /search-start jobs. Production smoke tests showed the live
+    # adapter timing out at 12s despite its direct diagnostic succeeding, so
+    # allow up to 25s for this one retailer while preserving a shared deadline.
+    # The synchronous /search endpoint still explicitly disables live fallbacks.
     notino_live_fallback_enabled = True
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
@@ -2604,12 +2604,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    # Live retailer fallbacks must never hold an unrelated search for a minute.
-    # Notino's public adapter has repeatedly timed out in production; cap every
-    # bridge at 12s while the authorized product-feed route is being configured.
+    # Live retailer fallbacks are bounded and run only on asynchronous
+    # searches. Notino needs a little more time than the original 12s cap:
+    # direct live diagnostics verify the correct product, but production search
+    # was cutting off the subprocess before it could return the offer.
     # Amazon public HTML is opt-in because the approved Creators API is gated
     # on marketplace credentials, affiliate tags, and explicit comparison approval.
-    bridge_timeouts = {store: 12.0 for store in live_bridge_stores}
+    bridge_timeouts = {store: (25.0 if store == 'notino' else 12.0) for store in live_bridge_stores}
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
