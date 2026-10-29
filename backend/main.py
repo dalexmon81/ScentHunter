@@ -2580,12 +2580,13 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    # Notino's generic public adapter verifies candidate product pages through
-    # the public reader (up to 30s per request). A 12s subprocess deadline
-    # consistently kills valid searches such as Liquid Brun before results return.
-    # Preserve its proven 40s budget; keep other retailer bridges bounded at 12s.
+    # Notino's generic public adapter can spend ~36s in the scraper and
+    # identity diagnostics for Liquid Brun. The 40s bridge deadline has been
+    # observed timing out on that same valid two-offer result in production.
+    # Give Notino enough headroom for reader + normalization + IPC; keep other
+    # retailer bridges bounded at 12s. This runs only in asynchronous search.
     bridge_timeouts = {
-        store: (40.0 if store == 'notino' else 12.0)
+        store: (60.0 if store == 'notino' else 12.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
