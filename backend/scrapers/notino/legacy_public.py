@@ -546,6 +546,20 @@ def _query_score(name: str, query: str, url: str = "", size_ml: Optional[float] 
     return score
 
 
+def _url_matches_query_identity(query: str, url: str) -> bool:
+    """Fail closed when a search-card title points to an unrelated product URL."""
+    identity_tokens = [
+        token for token in _query_identity_tokens(query)
+        if token not in {"green"}  # "green" alone is generic across unrelated products.
+        and not token.isdigit()
+    ]
+    if len(identity_tokens) < 2:
+        return True
+    slug_tokens = set(_norm(_slug_name(url)).split())
+    matched = sum(1 for token in identity_tokens if token in slug_tokens)
+    return matched >= min(2, len(identity_tokens))
+
+
 def _candidate_from_evidence(
     url: str,
     name: str,
@@ -566,6 +580,8 @@ def _candidate_from_evidence(
     if not name:
         return None
     if not _query_matches_name(name, query):
+        return None
+    if not _url_matches_query_identity(query, url):
         return None
     if _has_non_perfume_marker(name) or _has_non_perfume_marker(url):
         return None
