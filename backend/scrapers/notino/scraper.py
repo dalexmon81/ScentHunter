@@ -242,7 +242,13 @@ def _parse_product(url, html, query):
         brand = brand.get("name")
     brand = _clean(brand)
 
+    # Notino's selected volume is rendered in the product purchase panel,
+    # while both JSON-LD name and description may omit it. The selected variant
+    # appears before recommendations in the page text, so use it as the final
+    # fallback after the product-specific metadata.
     size = _size_ml(name, url, data.get("description"))
+    if size is None:
+        size = _size_ml(soup.get_text(" ", strip=True))
     requested_size = _size_ml(query)
     if not _query_matches(query, brand, name, url):
         return None
