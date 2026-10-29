@@ -2587,13 +2587,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
-    # Notino's public fallback currently exceeds its foreground deadline on real
-    # production searches. Keep it opt-in until its reader completes within a
-    # strict interactive budget; otherwise every unrelated query can wait 40s.
-    # The persistent Notino catalog remains searchable while the adapter is repaired.
-    notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    # The Notino adapter now has a strict shared 12s deadline and is only
+    # invoked from the asynchronous /search-start job. It must run on catalog
+    # misses; a stale machine secret must not silently remove Notino from every
+    # search. The synchronous /search endpoint still explicitly disables live
+    # fallbacks, and the shared deadline bounds the added wait for async searches.
+    notino_live_fallback_enabled = True
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if allow_live_fallback

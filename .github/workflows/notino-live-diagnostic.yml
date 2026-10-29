@@ -1,0 +1,43 @@
+name: Notino live Liquid Brun diagnostic
+
+on:
+  push:
+    branches:
+      - fix/notino-live-fallback-actually-runs
+  workflow_dispatch:
+
+jobs:
+  live-notino:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scraper dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Probe Notino.fr for both Liquid Brun variants
+        env:
+          SCENTHUNTER_CATALOG_DB: /tmp/notino-diagnostic-empty.sqlite3
+        run: |
+          python - <<'PY'
+          import json
+          from backend.scrapers.notino import scraper
+
+          for query in (
+              "French Avenue Liquid Brun 100 ml",
+              "French Avenue Liquid Brun Limited Edition 150 ml",
+          ):
+              report = scraper.search(query)
+              print("NOTINO_LIVE_RESULT=" + json.dumps({
+                  "query": query,
+                  "status": report.get("status"),
+                  "verified": report.get("verified"),
+                  "source": (report.get("details") or {}).get("source"),
+                  "result_count": len(report.get("results") or []),
+                  "results": report.get("results") or [],
+                  "error": report.get("error"),
+                  "details": report.get("details") or {},
+              }, ensure_ascii=False, sort_keys=True))
+          PY
