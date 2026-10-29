@@ -194,9 +194,11 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
     def test_discovery_recovers_configured_liquid_brun_urls_when_storefront_hides_links(self):
         limited_url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
         standard_url = "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
-        with patch.object(scraper, "_discover_from_search", return_value=[]), \\
-             patch.object(scraper, "_discover_from_categories", return_value=[]), \\
-             patch.object(scraper, "_sitemap_product_urls", return_value=[]):
+        with (
+            patch.object(scraper, "_discover_from_search", return_value=[]),
+            patch.object(scraper, "_discover_from_categories", return_value=[]),
+            patch.object(scraper, "_sitemap_product_urls", return_value=[]),
+        ):
             result = scraper._discover(object(), "Liquid Brun", deadline=None)
         self.assertIn(limited_url, result)
         self.assertIn(standard_url, result)
