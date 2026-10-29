@@ -4007,6 +4007,55 @@ def refresh_url(store, url):
             # release the scheduler if the peer never responds.
             store_timeout = _refresh_timeout_for_store(store)
             status, final, data = http_get(url, timeout=store_timeout)
+
+            # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
+            # document instead of the product page. Treat that response as a
+            # transport failure candidate and retry once with the existing
+            # headless-browser fallback before parsing or persisting anything.
+            # This is generic page acquisition: it never supplies or guesses a
+            # product name, price, availability, or variant.
+            if store == 'deloox' and status < 400:
+                body = data or b''
+                lower_body = body[:200000].lower()
+                has_product_markup = (
+                    b'application/ld+json' in lower_body
+                    or b'<h1' in lower_body
+                    or b'itemprop="price"' in lower_body
+                    or b'property="product:price:amount"' in lower_body
+                )
+                if len(body) < 8000 or not has_product_markup:
+                    browser_result, browser_error = _browser_fetch_html(
+                        url, timeout_ms=12000
+                    )
+                    if browser_result:
+                        browser_final, browser_data = browser_result
+                        browser_lower = browser_data[:200000].lower()
+                        browser_has_product_markup = (
+                            b'application/ld+json' in browser_lower
+                            or b'<h1' in browser_lower
+                            or b'itemprop="price"' in browser_lower
+                            or b'property="product:price:amount"' in browser_lower
+                        )
+                        if len(browser_data) >= 8000 and browser_has_product_markup:
+                            final, data = browser_final, browser_data
+                            print(
+                                f'CATALOG BROWSER FALLBACK OK store=deloox '
+                                f'url={url!r} bytes={len(browser_data)}',
+                                flush=True,
+                            )
+                        else:
+                            print(
+                                f'CATALOG BROWSER FALLBACK UNUSABLE store=deloox '
+                                f'url={url!r} bytes={len(browser_data)} '
+                                f'product_markup={browser_has_product_markup}',
+                                flush=True,
+                            )
+                    else:
+                        print(
+                            f'CATALOG BROWSER FALLBACK FAILED store=deloox '
+                            f'url={url!r} error={browser_error}',
+                            flush=True,
+                        )
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
