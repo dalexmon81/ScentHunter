@@ -2590,7 +2590,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # The Notino public adapter is a bounded fallback for catalog misses in
     # asynchronous /search-start jobs. Production smoke tests showed the live
     # adapter timing out at 12s despite its direct diagnostic succeeding, so
-    # allow up to 25s for this one retailer while preserving a shared deadline.
+    # allow a bounded 8s attempt while preserving a shared deadline.
     # The synchronous /search endpoint still explicitly disables live fallbacks.
     notino_live_fallback_enabled = True
     live_bridge_stores = [
@@ -2605,12 +2605,12 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     # Live retailer fallbacks are bounded and run only on asynchronous
-    # searches. Notino needs a little more time than the original 12s cap:
+    # searches. Notino gets a bounded attempt, but must not hold the user-facing search open:
     # direct live diagnostics verify the correct product, but production search
     # was cutting off the subprocess before it could return the offer.
     # Amazon public HTML is opt-in because the approved Creators API is gated
     # on marketplace credentials, affiliate tags, and explicit comparison approval.
-    bridge_timeouts = {store: (25.0 if store == 'notino' else 12.0) for store in live_bridge_stores}
+    bridge_timeouts = {store: (8.0 if store == 'notino' else 5.0) for store in live_bridge_stores}
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
@@ -2632,7 +2632,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         # with a fresh per-store timeout serially can multiply the interactive
         # latency, and a ThreadPoolExecutor context manager waits for timed-out
         # workers on exit. Both behaviors defeated the advertised timeout cap.
-        bridge_deadline = time.monotonic() + max(bridge_timeouts.values()) + 0.5
+        bridge_deadline = time.monotonic() + min(8.0, max(bridge_timeouts.values())) + 0.5
         try:
             for store in live_bridge_stores:
                 try:
