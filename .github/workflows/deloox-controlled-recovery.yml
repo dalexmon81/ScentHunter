@@ -2,8 +2,7 @@
 name: Controlled Deloox queue recovery
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
