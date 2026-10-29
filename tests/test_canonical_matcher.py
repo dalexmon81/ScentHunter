@@ -461,6 +461,72 @@ class CanonicalMatcherTests(unittest.TestCase):
         self.assertEqual(standard.canonical_product_id, "P-LIQUID-BASE")
         self.assertEqual(standard.canonical_variant_id, "V-LIQUID-100")
 
+    def test_real_deloox_nested_identity_gtin_matches_verified_variant(self):
+        result = self.matcher.match(
+            RetailerOffer(
+                retailer="deloox",
+                raw_name="French Avenue Liquid Brun Extrait de Parfum Limited Edition",
+                brand_raw="French Avenue",
+                size_ml=150,
+                price=Decimal("39.89"),
+                availability="in_stock",
+                product_url="https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+                raw_payload={
+                    "identity": {
+                        "gtin": {"value": "6298042001831", "source": "jsonld"},
+                        "sku": {"value": "1385920", "source": "jsonld"},
+                    },
+                    "raw_data": {"jsonld": {"gtin14": "6298042001831"}},
+                    "attributes": {
+                        "size_ml": {"value": 150},
+                        "concentration": {"value": "Extrait de Parfum"},
+                    },
+                },
+            )
+        )
+        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "P-LIQUID")
+        self.assertEqual(result.canonical_variant_id, "V-LIQUID-150")
+        self.assertEqual(result.reason, "verified_gtin_exact_variant")
+
+    def test_verified_gtin_rejects_wrong_brand_or_concentration(self):
+        wrong_brand = self.matcher.match(
+            RetailerOffer(
+                retailer="deloox",
+                raw_name="French Avenue Liquid Brun Extrait de Parfum Limited Edition",
+                brand_raw="Wrong Brand",
+                size_ml=150,
+                raw_payload={"identity": {"gtin": {"value": "6298042001831"}}},
+            )
+        )
+        wrong_concentration = self.matcher.match(
+            RetailerOffer(
+                retailer="deloox",
+                raw_name="French Avenue Liquid Brun Eau de Parfum Limited Edition",
+                brand_raw="French Avenue",
+                size_ml=150,
+                raw_payload={"identity": {"gtin": {"value": "6298042001831"}}},
+            )
+        )
+        self.assertEqual(wrong_brand.status, MatchStatus.UNRESOLVED)
+        self.assertEqual(wrong_brand.reason, "verified_gtin_brand_conflict")
+        self.assertEqual(wrong_concentration.status, MatchStatus.UNRESOLVED)
+        self.assertEqual(wrong_concentration.reason, "verified_gtin_concentration_conflict")
+
+    def test_unknown_gtin_does_not_override_exact_variant_matching(self):
+        result = self.matcher.match(
+            RetailerOffer(
+                retailer="deloox",
+                raw_name="Liquid Brun Limited Edition",
+                brand_raw="French Avenue",
+                size_ml=150,
+                raw_payload={"identity": {"gtin": {"value": "6298042009999"}}},
+            )
+        )
+        self.assertEqual(result.status, MatchStatus.MATCHED)
+        self.assertEqual(result.canonical_product_id, "P-LIQUID")
+        self.assertEqual(result.canonical_variant_id, "V-LIQUID-150")
+
     def test_verified_gtin_with_wrong_size_stays_unresolved(self):
         result = self.matcher.match(
             RetailerOffer(

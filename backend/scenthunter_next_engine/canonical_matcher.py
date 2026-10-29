@@ -232,43 +232,41 @@ def _offer_gtin(raw_payload: Mapping[str, object]) -> str | None:
         if isinstance(parsed_product, Mapping)
         else None
     )
-    candidates = [
-        raw_payload.get("gtin14"),
-        raw_payload.get("gtin13"),
-        raw_payload.get("gtin12"),
-        raw_payload.get("gtin"),
-        raw_payload.get("ean13"),
-        raw_payload.get("ean"),
-        identity.get("gtin") if isinstance(identity, Mapping) else None,
-        identity.get("gtin14") if isinstance(identity, Mapping) else None,
-        identity.get("gtin13") if isinstance(identity, Mapping) else None,
-        identity.get("gtin12") if isinstance(identity, Mapping) else None,
-        parsed_identity.get("gtin") if isinstance(parsed_identity, Mapping) else None,
-        parsed_identity.get("gtin14") if isinstance(parsed_identity, Mapping) else None,
-        parsed_identity.get("gtin13") if isinstance(parsed_identity, Mapping) else None,
-        parsed_identity.get("gtin12") if isinstance(parsed_identity, Mapping) else None,
-        parsed_product.get("gtin") if isinstance(parsed_product, Mapping) else None,
-        parsed_product.get("gtin14") if isinstance(parsed_product, Mapping) else None,
-        parsed_product.get("gtin13") if isinstance(parsed_product, Mapping) else None,
-        parsed_product.get("gtin12") if isinstance(parsed_product, Mapping) else None,
-    ]
-    if isinstance(parsed_product, Mapping):
-        parsed_raw_data = parsed_product.get("raw_data")
-        parsed_jsonld = parsed_raw_data.get("jsonld") if isinstance(parsed_raw_data, Mapping) else None
-        if isinstance(parsed_jsonld, Mapping):
-            candidates.extend([
-                parsed_jsonld.get("gtin14"),
-                parsed_jsonld.get("gtin13"),
-                parsed_jsonld.get("gtin12"),
-                parsed_jsonld.get("gtin"),
-            ])
-    if isinstance(jsonld, Mapping):
-        candidates.extend([
-            jsonld.get("gtin14"),
-            jsonld.get("gtin13"),
-            jsonld.get("gtin12"),
-            jsonld.get("gtin"),
-        ])
+    # Retailer adapters may preserve identifiers in normalized fields, nested
+    # identity objects, or the original JSON-LD payload. Inspect only explicit
+    # GTIN/EAN keys and their documented value wrappers; never infer from SKU.
+    parsed_raw_data = (
+        parsed_product.get("raw_data")
+        if isinstance(parsed_product, Mapping)
+        else None
+    )
+    parsed_jsonld = (
+        parsed_raw_data.get("jsonld")
+        if isinstance(parsed_raw_data, Mapping)
+        else None
+    )
+    containers = (
+        raw_payload,
+        identity,
+        parsed_product,
+        parsed_identity,
+        raw_data,
+        jsonld,
+        parsed_raw_data,
+        parsed_jsonld,
+    )
+    candidates = []
+    for container in containers:
+        if isinstance(container, Mapping):
+            candidates.extend(
+                container.get(key)
+                for key in (
+                    "gtin", "gtin8", "gtin12", "gtin13", "gtin14",
+                    "ean", "ean8", "ean13",
+                )
+            )
+    if isinstance(identity, Mapping):
+        candidates.extend((identity.get("barcode"), identity.get("ean")))
     for candidate in candidates:
         if isinstance(candidate, Mapping):
             candidate = candidate.get("value")
