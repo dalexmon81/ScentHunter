@@ -411,7 +411,7 @@ def search(query):
             "verified": True,
             "results": results,
             "error": "; ".join(errors[:4]) if errors else None,
-            "details": {"markets_checked": completed_markets, "candidate_count": candidate_count, "candidate_errors": len(errors)},
+            "details": {"source": "notino_public_search", "markets_checked": completed_markets, "candidate_count": candidate_count, "candidate_errors": len(errors)},
         }
     if completed_markets:
         return {
