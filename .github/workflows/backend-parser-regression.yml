@@ -6,10 +6,7 @@ on:
       - main
   push:
     branches:
-      - fix/catalog-hydration-mainline
-      - fix/catalog-hydration-slug-normalization
-      - fix/notino-authorized-feed-import
-      - fix/notino-exact-size-feed-match
+      - main
 
 jobs:
   parser-regression:
@@ -19,7 +16,7 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
