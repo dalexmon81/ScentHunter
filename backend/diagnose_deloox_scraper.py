@@ -50,7 +50,13 @@ def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
             for url in (candidates or [])[:80]:
                 check = {"url": url}
                 try:
-                    r = session.get(
+                    fetch_fn = getattr(scraper, "_get_page", session.get)
+                    r = fetch_fn(
+                        session, url,
+                        headers=getattr(scraper, "HEADERS", HEADERS),
+                        timeout=getattr(scraper, "TIMEOUT", (3.5, 8.0)),
+                        allow_redirects=True,
+                    ) if fetch_fn is not session.get else session.get(
                         url,
                         headers=getattr(scraper, "HEADERS", HEADERS),
                         timeout=getattr(scraper, "TIMEOUT", (3.5, 8.0)),
@@ -60,6 +66,9 @@ def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
                     check["final_url"] = r.url or url
                     check["content_type"] = (r.headers.get("content-type") or "")[:120]
                     check["html_length"] = len(r.text or "")
+                    check["challenge_detected"] = bool(
+                        getattr(scraper, "_is_client_challenge", lambda _html: False)(r.text or "")
+                    )
                     if r.status_code >= 400:
                         check["rejected_at"] = "http_status"
                         page_checks.append(check)
