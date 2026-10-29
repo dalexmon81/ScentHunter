@@ -1289,7 +1289,7 @@ def _category_page_2_url(url):
     ))
 
 
-def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
+def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES, deadline=None):
     """Generic category fallback with bounded, complete pagination.
 
     Category discovery follows the retailer's own pagination/navigation first.
@@ -1300,6 +1300,8 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
     seen_products = set()
 
     for page_url in _category_pages()[:12]:
+        if deadline is not None and time.time() >= float(deadline):
+            break
         try:
             r = session.get(
                 page_url,
@@ -1335,6 +1337,8 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
 
         index = 0
         while index < len(pages) and index < MAX_CATEGORY_PAGES:
+            if deadline is not None and time.time() >= float(deadline):
+                break
             current_url = pages[index]
 
             if current_url in loaded:
@@ -1424,7 +1428,17 @@ def _discover(session, q, deadline=None):
     candidates = []
     seen = set()
 
-    search_candidates = _discover_from_search(session, q, deadline=deadline)
+    # Do not let the primary search consume the entire discovery window. On
+    # production, the generic search can use every second of its deadline,
+    # causing the category/sitemap fallbacks to be skipped even when search
+    # only returns a partial product set. Reserve at least half of a bounded
+    # window for the generic category graph; the category crawler checks the
+    # outer deadline between requests/pages.
+    search_deadline = deadline
+    if deadline is not None:
+        remaining = max(0.0, float(deadline) - time.time())
+        search_deadline = time.time() + max(0.25, remaining * 0.45)
+    search_candidates = _discover_from_search(session, q, deadline=search_deadline)
     for url in search_candidates:
         if url not in seen:
             seen.add(url)
@@ -1437,7 +1451,9 @@ def _discover(session, q, deadline=None):
     # from hiding legitimate products from the persistent catalog.
     if deadline is not None and time.time() >= float(deadline):
         return candidates[:MAX_CANDIDATES]
-    category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
+    category_candidates = _discover_from_categories(
+        session, q, MAX_CANDIDATES, deadline=deadline
+    )
     if category_candidates:
         _LAST_DISCOVERY_STATE["category_verified"] = True
     for url in category_candidates:
