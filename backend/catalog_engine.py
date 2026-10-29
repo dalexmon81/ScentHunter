@@ -5543,6 +5543,21 @@ def _hydration_store_order(conn):
     return stores[start:] + stores[:start], start
 
 
+def _begin_immediate_with_retry(conn, attempts=4):
+    """Acquire SQLite's single writer slot with bounded retry on transient locks."""
+    attempts = max(1, int(attempts))
+    for lock_attempt in range(attempts):
+        try:
+            conn.execute('BEGIN IMMEDIATE')
+            return
+        except sqlite3.OperationalError as exc:
+            if 'locked' not in str(exc).lower() or lock_attempt == attempts - 1:
+                raise
+            # The failed BEGIN has not opened a transaction, so waiting here
+            # cannot retain a write lock or partially apply a queue update.
+            time.sleep(0.1 * (2 ** lock_attempt))
+
+
 def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     """Atomically claim one ready URL, with at most two active tasks per store."""
     now = time.time()
@@ -5553,19 +5568,8 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA busy_timeout=1000')
     try:
-        # SQLite still permits only one writer, even in WAL mode. Discovery,
-        # offer persistence and the hydration workers can collide briefly here.
-        # Retry only the transaction acquisition (before any writes) so short
-        # contention does not kill the whole hydration loop; do not mask other
-        # OperationalErrors or hold a transaction while waiting.
-        for lock_attempt in range(4):
-            try:
-                conn.execute('BEGIN IMMEDIATE')
-                break
-            except sqlite3.OperationalError as exc:
-                if 'locked' not in str(exc).lower() or lock_attempt == 3:
-                    raise
-                time.sleep(0.1 * (2 ** lock_attempt))
+        # SQLite has one writer even in WAL mode; tolerate brief collisions.
+        _begin_immediate_with_retry(conn)
 
         # A worker crash/restart must never strand a URL forever.
         conn.execute(
