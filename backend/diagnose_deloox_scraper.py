@@ -45,8 +45,10 @@ def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
         product_fn = getattr(scraper, "_product", None)
         validated = []
         validation_errors = []
+        page_checks = []
         if product_fn:
             for url in (candidates or [])[:80]:
+                check = {"url": url}
                 try:
                     r = session.get(
                         url,
@@ -54,17 +56,49 @@ def diagnose_deloox_scraper(q: str = Query("Liquid Brun")):
                         timeout=getattr(scraper, "TIMEOUT", (3.5, 8.0)),
                         allow_redirects=True,
                     )
+                    check["status_code"] = r.status_code
+                    check["final_url"] = r.url or url
+                    check["content_type"] = (r.headers.get("content-type") or "")[:120]
+                    check["html_length"] = len(r.text or "")
                     if r.status_code >= 400:
+                        check["rejected_at"] = "http_status"
+                        page_checks.append(check)
                         continue
+                    try:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(r.text or "", "lxml")
+                        title = soup.find("title")
+                        h1 = soup.find("h1")
+                        check["title"] = (title.get_text(" ", strip=True) if title else "")[:240]
+                        check["h1"] = (h1.get_text(" ", strip=True) if h1 else "")[:240]
+                        data = scraper._jsonld(soup) if callable(getattr(scraper, "_jsonld", None)) else {}
+                        if isinstance(data, dict):
+                            check["jsonld_name"] = str(data.get("name") or "")[:240]
+                            offers = data.get("offers")
+                            if isinstance(offers, dict):
+                                check["jsonld_price"] = offers.get("price")
+                                check["jsonld_availability"] = offers.get("availability")
+                            elif isinstance(offers, list):
+                                check["jsonld_offer_count"] = len(offers)
+                    except Exception as exc:
+                        check["metadata_error"] = f"{type(exc).__name__}: {exc}"
                     item = product_fn(r.url or url, r.text, query)
                     if item:
                         validated.append(item)
+                        check["parser_result"] = "accepted"
+                    else:
+                        check["parser_result"] = "rejected"
+                        check["rejected_at"] = "product_validation_returned_none"
+                    page_checks.append(check)
                 except Exception as exc:
                     validation_errors.append({
                         "url": url,
                         "error": f"{type(exc).__name__}: {exc}",
                     })
+                    check["exception"] = f"{type(exc).__name__}: {exc}"
+                    page_checks.append(check)
         out["validated_products"] = validated
+        out["page_checks"] = page_checks[:20]
         out["validation_error_count"] = len(validation_errors)
         out["validation_errors"] = validation_errors[:20]
         out["ok"] = True
