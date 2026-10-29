@@ -1678,7 +1678,7 @@ def extract_product_page(session, url, query=None, html=None):
         initial = html[:200000].lower()
         product_markup = (
             "application/ld+json" in initial
-            or re.search(r"<h1\\b", initial) is not None
+            or re.search(r"<h1\b", initial) is not None
             or 'itemprop="price"' in initial
             or 'property="product:price:amount"' in initial
         )
@@ -1704,7 +1704,7 @@ def extract_product_page(session, url, query=None, html=None):
                 browser_lower = browser_html[:200000].lower()
                 browser_has_product = (
                     "application/ld+json" in browser_lower
-                    or re.search(r"<h1\\b", browser_lower) is not None
+                    or re.search(r"<h1\b", browser_lower) is not None
                     or 'itemprop="price"' in browser_lower
                     or 'property="product:price:amount"' in browser_lower
                 )
