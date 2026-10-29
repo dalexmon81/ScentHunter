@@ -1852,7 +1852,7 @@ def _deloox_browser_html_is_product_candidate(body):
     lower = raw[:200000].lower()
     return (
         b"application/ld+json" in lower
-        or re.search(br"<h1\\b", lower) is not None
+        or re.search(br"<h1\b", lower) is not None
         or b'itemprop="price"' in lower
         or b'property="product:price:amount"' in lower
     )

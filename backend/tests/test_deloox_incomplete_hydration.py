@@ -86,6 +86,10 @@ class DelooxBrowserFallbackPageRecognitionTests(unittest.TestCase):
         )
         self.assertTrue(catalog_engine._deloox_browser_html_is_product_candidate(html))
 
+    def test_accepts_compact_rendered_page_with_h1(self):
+        html = b"<html><body><h1>French Avenue Liquid Brun 150 ml</h1>" + (b" " * 1900) + b"</body></html>"
+        self.assertTrue(catalog_engine._deloox_browser_html_is_product_candidate(html))
+
     def test_rejects_small_interstitial_without_product_markup(self):
         html = b"<html><body><h1>Checking your browser</h1></body></html>"
         self.assertFalse(catalog_engine._deloox_browser_html_is_product_candidate(html))
