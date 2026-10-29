@@ -208,4 +208,20 @@ def test_feed_search_requires_exact_parsed_size_when_query_specifies_size(monkey
     assert report["results"][0]["size_ml"] == 150.0
     assert report["results"][0]["price_num"] == 49.90
 
+def test_notino_rejects_stale_product_title_when_url_is_another_product():
+    from backend.scrapers.notino import scraper
+
+    query = "Green Stravaganza Uomo 100 ml"
+    assert not scraper._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/elizabeth-arden/green-tea-nectarine-blossom-eau-de-toilette-pour-femme/p-555992/",
+    )
+    assert not scraper._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/green-pharmacy/hair-care-red-peppers-huile-de-bardane/p-505306/",
+    )
+    assert scraper._url_matches_query_identity(
+        query,
+        "https://www.notino.fr/valentino/born-in-roma-green-stravaganza-uomo-eau-de-toilette/p-16223842/",
+    )
 
