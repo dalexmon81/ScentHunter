@@ -1858,7 +1858,7 @@ def _deloox_browser_html_is_product_candidate(body):
     )
 
 
-def _browser_fetch_html(url, timeout_ms=15000, settle_ms=0):
+def _browser_fetch_html(url, timeout_ms=15000, settle_ms=0, locale='de-DE'):
     """Browser fallback for storefronts that stall normal HTTP clients."""
     try:
         from playwright.sync_api import sync_playwright
@@ -1870,7 +1870,7 @@ def _browser_fetch_html(url, timeout_ms=15000, settle_ms=0):
             try:
                 page = browser.new_page(
                     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-                    locale='de-DE',
+                    locale=locale,
                 )
                 page.goto(url, wait_until='domcontentloaded', timeout=timeout_ms)
                 if settle_ms > 0:
@@ -4041,7 +4041,7 @@ def refresh_url(store, url):
                 )
                 if len(body) < 8000 or not has_product_markup:
                     browser_result, browser_error = _browser_fetch_html(
-                        url, timeout_ms=12000, settle_ms=1200
+                        url, timeout_ms=12000, settle_ms=1200, locale='nl-BE'
                     )
                     if browser_result:
                         browser_final, browser_data = browser_result

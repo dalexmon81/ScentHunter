@@ -131,49 +131,96 @@ jobs:
               raise SystemExit(f"Production smoke test failed after retries: {last_error}")
           PY
 
-      - name: Force-refresh and verify the affected Deloox offer
+      - name: Force-refresh and verify the affected Deloox offer directly on Fly
         if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition') }}
-        timeout-minutes: 3
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
-          import time
-          import urllib.parse
-          import urllib.request
+          import shlex
+          import subprocess
+          import sys
 
-          base = "https://scenthunter.fly.dev"
+          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+          remote_python = r"""
+          import json, sys, time
+          sys.path.insert(0, "/app/backend")
+          import catalog_engine
           target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
           started = time.time()
-          path = "/catalog/refresh-deloox-url?url=" + urllib.parse.quote(target, safe="")
-          request = urllib.request.Request(
-              base + path,
-              headers={"Accept": "application/json", "User-Agent": "ScentHunter-deloox-live-refresh/1.0"},
-              method="POST",
-          )
-          with urllib.request.urlopen(request, timeout=100) as response:
-              if response.status != 200:
-                  raise RuntimeError(f"targeted Deloox refresh returned HTTP {response.status}")
-              payload = json.loads(response.read().decode("utf-8"))
-
-          print("DELOOX_TARGETED_REFRESH=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
-          row = payload.get("store_product") if isinstance(payload, dict) else None
-          if payload.get("ok") is not True or payload.get("refreshed") is not True or not isinstance(row, dict):
-              raise RuntimeError("Deloox targeted refresh did not persist a validated product: " + json.dumps(payload, ensure_ascii=False))
+          item = None
+          error = None
+          try:
+              item = catalog_engine.refresh_url("deloox", target)
+          except Exception as exc:
+              error = type(exc).__name__ + ":" + str(exc)
+          conn = catalog_engine.db()
+          try:
+              row = conn.execute(
+                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
+                  ("deloox", target),
+              ).fetchone()
+              persisted = dict(row) if row else None
+          finally:
+              conn.close()
+          print("DELOOX_TARGETED_REFRESH=" + json.dumps({
+              "item_ok": bool(item and item.get("name")),
+              "item_name": (item or {}).get("name"),
+              "item_price": (item or {}).get("price_num"),
+              "refresh_error": error,
+              "store_product": persisted,
+              "started_at": started,
+          }, ensure_ascii=False, default=str), flush=True)
+          """
+          remote_command = "cd /app/backend && /app/.venv/bin/python -c " + shlex.quote(remote_python)
+          try:
+              result = subprocess.run(
+                  ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", remote_command],
+                  capture_output=True, text=True, timeout=210,
+              )
+          except subprocess.TimeoutExpired as exc:
+              raise SystemExit("Timed out while running the targeted refresh directly on the Fly machine.") from exc
+          if result.stdout:
+              print(result.stdout, end="")
+          if result.stderr:
+              print(result.stderr, file=sys.stderr, end="")
+          marker = "DELOOX_TARGETED_REFRESH="
+          line = next((line for line in result.stdout.splitlines() if marker in line), None)
+          if result.returncode != 0:
+              raise SystemExit(f"Fly SSH refresh command failed with exit code {result.returncode}")
+          if not line:
+              raise SystemExit("Fly SSH refresh returned no structured result.")
+          payload = json.loads(line.split(marker, 1)[1])
+          row = payload.get("store_product")
+          if not payload.get("item_ok") or not isinstance(row, dict):
+              raise SystemExit("Deloox refresh did not persist a validated product: " + json.dumps(payload, ensure_ascii=False))
           try:
               price = float(row.get("price"))
               fetched_at = float(row.get("fetched_at"))
+              started_at = float(payload.get("started_at"))
           except (TypeError, ValueError):
-              raise RuntimeError("Deloox refresh returned no explicit numeric price/fetch timestamp: " + json.dumps(row, ensure_ascii=False))
+              raise SystemExit("Deloox refresh returned no explicit price/fetch timestamp: " + json.dumps(payload, ensure_ascii=False))
           if price <= 0:
-              raise RuntimeError(f"Deloox refreshed price is not positive: {price}")
-          if fetched_at < started - 5 or fetched_at > time.time() + 5:
-              raise RuntimeError(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started}")
+              raise SystemExit(f"Deloox refreshed price is not positive: {price}")
+          import time
+          if fetched_at < started_at - 5 or fetched_at > time.time() + 5:
+              raise SystemExit(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started_at}")
           if abs(price - 42.59) > 0.01:
-              raise RuntimeError(f"Live Deloox price differs from the reported current price €42.59: received €{price:.2f}; do not mark the incident resolved.")
+              raise SystemExit(f"Live Deloox price differs from the reported current price €42.59: received €{price:.2f}; do not mark the incident resolved.")
           print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
           PY
+
+      - name: Capture Fly logs if the targeted Deloox refresh fails
+        if: ${{ failure() && (contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition')) }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          timeout 25s flyctl logs --app scenthunter --no-tail || true
 
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
         shell: bash
