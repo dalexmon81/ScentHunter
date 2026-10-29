@@ -2580,10 +2580,14 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    # Keep all live bridges bounded so one slow retailer cannot block the
-    # foreground search. Catalog results are returned independently of bridge
-    # completion; the bridge enriches missing offers only within this deadline.
-    bridge_timeouts = {store: 12.0 for store in live_bridge_stores}
+    # Notino's generic public adapter verifies candidate product pages through
+    # the public reader (up to 30s per request). A 12s subprocess deadline
+    # consistently kills valid searches such as Liquid Brun before results return.
+    # Preserve its proven 40s budget; keep other retailer bridges bounded at 12s.
+    bridge_timeouts = {
+        store: (40.0 if store == 'notino' else 12.0)
+        for store in live_bridge_stores
+    }
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
