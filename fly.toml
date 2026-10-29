@@ -9,9 +9,6 @@ primary_region = "ams"
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
-  # Always allow generic Notino public discovery when the authorized feed has no matching offer.
-  # Product matching and price/size verification remain in the shared adapter; no per-perfume exceptions.
-  NOTINO_PUBLIC_FALLBACK_ENABLED = "1"
 
 [http_service]
   internal_port = 8080
