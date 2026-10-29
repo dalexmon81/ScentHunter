@@ -163,6 +163,32 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertIsNone(scraper._product(limited_url, limited_html, "Liquid Brun 100 ml"))
         self.assertIsNone(scraper._product(standard_url, standard_html, "Liquid Brun Limited Edition 150 ml"))
 
+    def test_generic_search_discovered_urls_are_persisted_for_catalog_hydration(self):
+        product_url = "https://www.deloox.be/product/2222222/generic-fragrance-100-ml.html"
+
+        class FakeConnection:
+            def execute(self, *_args, **_kwargs):
+                class Cursor:
+                    def fetchone(self):
+                        return {"pending": 0, "processing": 0, "done": 0, "error": 0, "dead": 0, "total": 0}
+                return Cursor()
+
+            def close(self):
+                pass
+
+        with patch.object(catalog, "_deloox_retire_invalid_active_urls", return_value={}), \\
+             patch.object(catalog, "_deloox_queue_seed", return_value=[]), \\
+             patch.object(catalog, "_deloox_queue_recover_stale", return_value=0), \\
+             patch.object(catalog, "_deloox_queue_requeue_stale_done", return_value=0), \\
+             patch.object(catalog, "_discover_deloox_search_catalog", return_value={"product_urls": {product_url: ""}, "errors": [], "queries": []}), \\
+             patch.object(catalog, "_deloox_persist_products") as persist, \\
+             patch.object(catalog, "_deloox_queue_claim", return_value=[]), \\
+             patch.object(catalog, "db", return_value=FakeConnection()):
+            result = catalog._discover_deloox_catalog([], deadline=time.time() + 5)
+
+        persist.assert_called_once_with({product_url: ""})
+        self.assertIn(product_url, result["product_urls"])
+
     def test_discovery_continues_to_generic_fallback_when_search_has_candidates(self):
         search_url = "https://www.deloox.be/product/1111111/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
         category_url = "https://www.deloox.be/product/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
