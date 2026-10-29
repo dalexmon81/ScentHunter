@@ -4032,6 +4032,7 @@ def refresh_url(store, url):
 
         item = amazon_api_item
         secondary_ok = bool(amazon_api_item)
+        primary_ok = False
         parser_available = False
         if item is None:
             # The retailer scraper owns retailer-specific product-page semantics
@@ -4054,10 +4055,12 @@ def refresh_url(store, url):
                     item = None
                 if not item or not item.get('name'):
                     fallback_item = parse_product(store, final, data)
-                    if fallback_item and fallback_item.get('name'):
+                    primary_ok = bool(fallback_item and fallback_item.get('name'))
+                    if primary_ok:
                         item = fallback_item
             else:
                 item = parse_product(store, final, data)
+                primary_ok = bool(item and item.get('name'))
         else:
             parser_error = None
 
