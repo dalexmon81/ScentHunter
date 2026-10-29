@@ -4081,7 +4081,7 @@ def diagnostic_deloox_pipeline(
                         if not rows:
                             text_columns = [c for c in ('name', 'slug', 'search_text', 'url', 'product_name') if c in columns]
                             if text_columns:
-                                near_clauses = [f'lower(COALESCE("{c}",\\'\\')) LIKE ?' for c in text_columns]
+                                near_clauses = [f"lower(COALESCE(\"{c}\",'')) LIKE ?" for c in text_columns]
                                 near_params = ['%liquid%brun%'] * len(text_columns)
                                 if 'store' in columns:
                                     near_clauses.insert(0, "lower(store)='deloox'")
