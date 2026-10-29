@@ -467,7 +467,7 @@ def _remove_local_search_index_url(store, url):
 
 
 _SEARCH_FTS_TABLE = 'catalog_search_fts'
-_SEARCH_FTS_SCHEMA_VERSION = '2'
+_SEARCH_FTS_SCHEMA_VERSION = '3'
 
 
 def _ensure_search_fts(conn):
