@@ -55,3 +55,34 @@ def test_discovery_uses_external_rss_before_blocked_store_browser(monkeypatch):
     )
     assert candidates == [candidate]
     assert report["primary_channel"] == "bing-rss"
+
+
+def test_targeted_liquid_brun_notino_lookup_uses_live_exact_variant(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(legacy_public, "_new_session", lambda: object())
+    monkeypatch.setattr(legacy_public, "_reader_product", lambda session, candidate, query, _allow_variants=True: (
+        captured.update({"url": candidate["url"], "allow_variants": _allow_variants})
+        or {"name": "Liquid Brun", "url": candidate["url"], "price": "48,00€", "size_ml": 100.0}
+    ))
+    rows = legacy_public._targeted_liquid_brun_result("French Avenue Liquid Brun 100 ml")
+    assert captured["url"].endswith("p-16289640/")
+    assert captured["allow_variants"] is False
+    assert len(rows) == 1 and rows[0]["price"] == "48,00€"
+
+
+def test_targeted_liquid_brun_notino_lookup_rejects_wrong_size(monkeypatch):
+    monkeypatch.setattr(legacy_public, "_new_session", lambda: object())
+    monkeypatch.setattr(legacy_public, "_reader_product", lambda *args, **kwargs: {
+        "name": "Liquid Brun Limited Edition", "url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/",
+        "price": "47,17€", "size_ml": 100.0,
+    })
+    assert legacy_public._targeted_liquid_brun_result("French Avenue Liquid Brun Limited Edition 150 ml") == []
+
+
+def test_targeted_liquid_brun_notino_lookup_rejects_missing_price(monkeypatch):
+    monkeypatch.setattr(legacy_public, "_new_session", lambda: object())
+    monkeypatch.setattr(legacy_public, "_reader_product", lambda *args, **kwargs: {
+        "name": "Liquid Brun", "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+        "price": "", "size_ml": 100.0,
+    })
+    assert legacy_public._targeted_liquid_brun_result("French Avenue Liquid Brun 100 ml") == []
