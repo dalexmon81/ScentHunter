@@ -1428,6 +1428,23 @@ def _discover(session, q, deadline=None):
     candidates = []
     seen = set()
 
+    # Deloox's own product URLs can disappear from search/category HTML while
+    # the canonical product page remains reachable. Keep a small, explicit
+    # recovery set for the two already-configured Liquid Brun variants; the
+    # product-page parser remains authoritative for identity, size and stock.
+    # This is a discovery fallback only: it never creates a price or offer.
+    known_product_urls = (
+        "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html",
+        "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
+    )
+    query_norm = norm(q)
+    for known_url in known_product_urls:
+        slug = urlparse(known_url).path.rsplit("/", 1)[-1]
+        slug_text = norm(re.sub(r"\\.html?$", "", slug, flags=re.I).replace("-", " "))
+        if query_norm and all(token in tokens(slug_text) for token in tokens(q)):
+            seen.add(known_url)
+            candidates.append(known_url)
+
     # Do not let the primary search consume the entire discovery window. On
     # production, the generic search can use every second of its deadline,
     # causing the category/sitemap fallbacks to be skipped even when search
