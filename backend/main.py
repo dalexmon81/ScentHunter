@@ -2580,15 +2580,10 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         )
         and not (cancel_event is not None and cancel_event.is_set())
     ]
-    # Notino's generic public adapter may need to verify product pages through
-    # the public reader, whose individual request timeout is 30 seconds. A
-    # 25-second subprocess deadline cut off otherwise valid generic searches
-    # (for example Dior Sauvage and Liquid Brun) before they could return.
-    # Allow a bounded 40 seconds for that adapter; keep other bridges at 12s.
-    bridge_timeouts = {
-        store: (40.0 if store == 'notino' else 12.0)
-        for store in live_bridge_stores
-    }
+    # Keep all live bridges bounded so one slow retailer cannot block the
+    # foreground search. Catalog results are returned independently of bridge
+    # completion; the bridge enriches missing offers only within this deadline.
+    bridge_timeouts = {store: 12.0 for store in live_bridge_stores}
     if live_bridge_stores:
         print(
             f'CATALOG LIVE BRIDGE query={query!r} stores={live_bridge_stores} '
