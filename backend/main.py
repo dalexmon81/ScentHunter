@@ -1543,6 +1543,27 @@ def dedupe_results(results, diagnostics=None):
         size = _safe_float(item.get('size_ml'))
         price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
         variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
+        # Preserve explicit URL variant selectors when the catalog has not
+        # populated a variant_id. Otherwise the fallback fingerprint below can
+        # collapse two distinct variants even though result_key separates them.
+        raw_url = str(item.get('url') or item.get('variant_url') or '').strip()
+        try:
+            from urllib.parse import parse_qsl, urlsplit
+            parsed_url = urlsplit(raw_url)
+            selector_keys = {
+                'variant', 'variant_id', 'id_product_attribute',
+                'combination_id', 'sku', 'size', 'size_ml', 'attribute',
+            }
+            selectors = sorted(
+                (key.lower(), value)
+                for key, value in parse_qsl(parsed_url.query, keep_blank_values=False)
+                if key.lower() in selector_keys
+            )
+            fragment = parsed_url.fragment.lower()
+            if not variant and (selectors or re.search(r'\\d+.*(?:size|ml|variant)|(?:size|ml|variant).*\\d+', fragment, re.I)):
+                variant = repr((selectors, fragment))
+        except Exception:
+            pass
         # Missing prices must not disable duplicate suppression for Sabina:
         # duplicate catalog URLs often both arrive without a parsed price, which
         # otherwise creates two identical "price unavailable" cards. Keep the
