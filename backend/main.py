@@ -4044,7 +4044,71 @@ def diagnostic_deloox_pipeline(
             # Parse failures must still inspect persisted catalog state; otherwise
             # this diagnostic cannot distinguish a live-fetch failure from stale data.
             html_title = soup.title.get_text(' ', strip=True) if soup.title else None
-            meta_description = soup.find('meta', attrs={'name': re.compile('^description        normalized_input = {
+            meta_description = soup.find('meta', attrs={'name': re.compile('^description$', re.I)})
+            visible_text = re.sub(r'\s+', ' ', soup.get_text(' ', strip=True))[:1200]
+            price_matches = re.findall(r'(?:€\s?\d[\d.,]*|\d[\d.,]*\s?€)', html[:50000], re.I)[:12]
+            block_signals = {
+                'captcha': bool(re.search(r'captcha|verify you are human|robot check', html, re.I)),
+                'cloudflare': bool(re.search(r'cloudflare|cf-chl-|challenge-platform', html, re.I)),
+                'access_denied': bool(re.search(r'access denied|temporarily blocked|request blocked|forbidden', html, re.I)),
+                'consent': bool(re.search(r'cookie consent|consent management|accept cookies', html, re.I)),
+            }
+            persisted = {'read_only': True, 'database_written': False, 'exact_url': response.url, 'tables': {}, 'errors': []}
+            try:
+                import sqlite3
+                catalog_module = importlib.import_module('catalog_engine')
+                db_path = Path(catalog_module.DB_PATH).resolve()
+                db_conn = sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=1.0)
+                db_conn.row_factory = sqlite3.Row
+                db_conn.execute('PRAGMA busy_timeout=1000')
+                db_conn.execute('PRAGMA query_only=ON')
+                try:
+                    table_names = {row['name'] for row in db_conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+                    for table in ('store_urls', 'store_products', 'store_product_variants', 'hydration_queue'):
+                        if table not in table_names:
+                            persisted['tables'][table] = {'exists': False, 'rows': []}
+                            continue
+                        columns = {row['name'] for row in db_conn.execute(f'PRAGMA table_info("{table}")').fetchall()}
+                        clauses, params = [], []
+                        if 'store' in columns:
+                            clauses.append("lower(store)='deloox'")
+                        if 'url' in columns:
+                            clauses.append('url=?')
+                            params.append(response.url)
+                        sql = f'SELECT * FROM "{table}"' + (' WHERE ' + ' AND '.join(clauses) if clauses else '') + ' LIMIT 8'
+                        rows = [dict(row) for row in db_conn.execute(sql, params).fetchall()]
+                        nearby = []
+                        if not rows:
+                            text_columns = [c for c in ('name', 'slug', 'search_text', 'url', 'product_name') if c in columns]
+                            if text_columns:
+                                near_clauses = [f'lower(COALESCE("{c}",\\'\\')) LIKE ?' for c in text_columns]
+                                near_params = ['%liquid%brun%'] * len(text_columns)
+                                if 'store' in columns:
+                                    near_clauses.insert(0, "lower(store)='deloox'")
+                                near_sql = f'SELECT * FROM "{table}" WHERE ' + ' AND '.join(near_clauses) + ' LIMIT 8'
+                                nearby = [dict(row) for row in db_conn.execute(near_sql, near_params).fetchall()]
+                        persisted['tables'][table] = {'exists': True, 'columns': sorted(columns), 'rows': rows, 'nearby_rows': nearby}
+                    persisted['database_path'] = str(db_path)
+                finally:
+                    db_conn.close()
+            except Exception as db_exc:
+                persisted['errors'].append({'stage': 'persisted_catalog', 'error': f'{type(db_exc).__name__}: {str(db_exc)[:300]}'})
+            return {
+                **base, 'ok': True, 'failed_at': 'scraper_parse', 'fetch': fetch,
+                'stages': {
+                    'fetch': fetch,
+                    'parse': parse_stage,
+                    'html_evidence': {
+                        'title': html_title,
+                        'meta_description': meta_description.get('content') if meta_description else None,
+                        'visible_text_excerpt': visible_text,
+                        'price_text_matches': price_matches,
+                        'block_signals': block_signals,
+                    },
+                    'persisted_catalog_and_queue': persisted,
+                },
+            }
+        normalized_input = {
             'name': parsed_product.get('name'),
             # Preserve verified parser identity for the next-engine matcher.
             # Without this field, the GTIN registry is bypassed and this
