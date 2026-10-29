@@ -1560,7 +1560,7 @@ def dedupe_results(results, diagnostics=None):
                 if key.lower() in selector_keys
             )
             fragment = parsed_url.fragment.lower()
-            if not variant and (selectors or re.search(r'\\d+.*(?:size|ml|variant)|(?:size|ml|variant).*\\d+', fragment, re.I)):
+            if not variant and (selectors or re.search(r'\d+.*(?:size|ml|variant)|(?:size|ml|variant).*\d+', fragment, re.I)):
                 variant = repr((selectors, fragment))
         except Exception:
             pass
