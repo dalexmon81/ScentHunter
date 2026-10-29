@@ -179,3 +179,15 @@ def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
     ]}
     assert _first_offer(product)["availability"] == "https://schema.org/OutOfStock"
 
+
+
+
+def test_notino_always_supplements_sitemap_with_bounded_html_discovery():
+    assert catalog._should_run_html_fallback("notino", 10000, [], 1)
+    assert catalog._should_run_html_fallback("notino", 0, ["sitemap unavailable"], 0)
+
+
+def test_html_fallback_policy_remains_bounded_for_other_stores():
+    assert catalog._should_run_html_fallback("deloox", 0, ["sitemap unavailable"], 0) is False
+    assert catalog._should_run_html_fallback("amazon_fr", 10000, [], 1) is False
+    assert catalog._should_run_html_fallback("sabina", 10000, [], 1) is True

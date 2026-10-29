@@ -3305,6 +3305,23 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
     conn.commit(); conn.close()
 
 
+
+def _should_run_html_fallback(store, product_url_count, sitemap_errors, sitemap_successes):
+    """Use bounded HTML discovery when sitemap coverage may be incomplete.
+
+    Notino.fr is always supplemented because its sitemap can omit canonical
+    French slug-based product pages even when sitemap requests succeed.
+    """
+    return (
+        store in HTML_DISCOVERY_SEEDS
+        and store != 'deloox'
+        and (
+            store in ('sabina', 'parfumzentrum', 'easycosmetic', 'notino')
+            or product_url_count < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
+            or (bool(sitemap_errors) and sitemap_successes == 0)
+        )
+    )
+
 def discover_store(store):
     """Refresh retailer discovery; Notino is imported only from the authorized feed."""
     started_at = time.time()
@@ -3458,14 +3475,8 @@ def discover_store(store):
     # no product, brand, name or query is embedded here.
     #
     # Other non-Deloox retailers retain the bounded fallback behaviour.
-    if (
-        store in HTML_DISCOVERY_SEEDS
-        and store != 'deloox'
-        and (
-            store in ('sabina', 'parfumzentrum', 'easycosmetic')
-            or len(product_urls) < HTML_FALLBACK_SITEMAP_PRODUCT_THRESHOLD
-            or (bool(sitemap_errors) and sitemap_successes == 0)
-        )
+    if _should_run_html_fallback(
+        store, len(product_urls), sitemap_errors, sitemap_successes
     ):
         html_seeds=list(dict.fromkeys(
             list(HTML_DISCOVERY_SEEDS[store]) + sorted(html_sitemap_seeds)
