@@ -42,9 +42,41 @@ def _normalise(value):
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
+def _url_matches_query_identity(query, url):
+    """Reject stale search-card titles attached to unrelated product URLs.
+
+    A retailer page can expose the searched product title in its page shell
+    while the candidate URL actually points to another product. Validate the
+    distinctive query identity against the URL slug independently of the
+    visible title. Size units/numbers are attributes, not URL identity tokens.
+    """
+    query_tokens = [
+        token for token in _normalise(query).split()
+        if len(token) > 1 and token not in {
+            "ml", "cl", "pour", "femme", "femmes", "homme", "hommes",
+            "for", "the", "and", "avec", "de", "du", "des", "la", "le",
+            "les", "eau", "edp", "edt", "edc", "parfum", "parfums",
+            "perfume", "perfumes", "woman", "women", "man", "men",
+            "unisex", "unisexe", "extrait", "spray", "vaporisateur",
+        } and not token.isdigit()
+    ]
+    if len(query_tokens) < 2:
+        return True
+    slug_tokens = set(_normalise(urlparse(str(url or "")).path).split())
+    matched = sum(1 for token in query_tokens if token in slug_tokens)
+    # At least two distinctive terms must agree with the destination URL.
+    # This rejects "Green Tea" URLs returned under a "Green Stravaganza"
+    # result title, while allowing retailer slugs to omit nonessential words.
+    return matched >= min(2, len(query_tokens))
+
+
 def _query_matches(query, brand, name, url):
     wanted = [t for t in _normalise(query).split() if len(t) > 1]
     haystack = set(_normalise(f"{brand} {name} {url}").split())
+    # A matching title is not enough when the actual destination identifies
+    # another product. Check URL identity independently to prevent false offers.
+    if not _url_matches_query_identity(query, url):
+        return False
     # Require every meaningful query token to be present. This is deliberately
     # conservative: uncertain matches are omitted rather than attached wrongly.
     return bool(wanted) and all(token in haystack for token in wanted)
