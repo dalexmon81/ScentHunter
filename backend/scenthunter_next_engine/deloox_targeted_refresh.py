@@ -78,6 +78,28 @@ def _offer_state_valid(row: dict | None) -> bool:
     return False
 
 
+def _parsed_offer_state_valid(item: dict | None) -> bool:
+    """Validate a freshly parsed exact-URL offer without assuming it is in stock.
+
+    An authoritative out-of-stock parse is valid only when the parser has
+    cleared its price. Keeping a stale numeric price on such a row is forbidden.
+    """
+    if not _identity_valid(item):
+        return False
+    availability = str(item.get("availability") or "").strip().lower().replace("-", "_").replace(" ", "_")
+    raw_price = item.get("price_num")
+    if raw_price in (None, ""):
+        raw_price = item.get("price")
+    if availability in {"in_stock", "instock", "available", "limited_availability", "preorder"}:
+        try:
+            return float(raw_price) > 0
+        except (TypeError, ValueError):
+            return False
+    if availability in {"out_of_stock", "outofstock", "sold_out", "soldout", "unavailable", "discontinued"}:
+        return raw_price in (None, "")
+    return False
+
+
 def _mark_queue_done(db_path: str) -> bool:
     """Close the exact target's queue row after its persisted offer is verified."""
     now = time.time()
@@ -152,7 +174,7 @@ def _requeue(db_path: str) -> dict:
             conn.commit()
             return {"status": "ALREADY_PROCESSING", "url": URL, "database_written": False}
         current = dict(row)
-        if _offer_state_valid(current):
+        if _offer_state_fresh(current):
             conn.commit()
             return {"status": "TARGET_ALREADY_VALID", "url": URL, "database_written": False}
         conn.execute(
@@ -228,20 +250,7 @@ def main() -> int:
     item = catalog_engine.refresh_url(STORE, URL)
     if not isinstance(item, dict):
         raise RuntimeError("target_parser_returned_no_product")
-    parsed_gtin = re.sub(r"\\D", "", str(item.get("gtin") or ""))
-    try:
-        parsed_size = float(item.get("size_ml"))
-        parsed_price = float(item.get("price_num"))
-    except (TypeError, ValueError):
-        parsed_size = parsed_price = 0
-    if (
-        str(item.get("brand") or "").strip().casefold() != "french avenue"
-        or parsed_gtin != GTIN
-        or str(item.get("sku") or "").strip() != SKU
-        or parsed_size != SIZE_ML
-        or parsed_price <= 0
-        or str(item.get("availability") or "").strip().lower() != "in_stock"
-    ):
+    if not _parsed_offer_state_valid(item):
         raise RuntimeError("target_parser_identity_or_offer_validation_failed")
     row = _read_row(args.db)
     if _offer_state_fresh(row):
@@ -265,7 +274,7 @@ def main() -> int:
     deadline = time.monotonic() + max(0, args.wait_seconds)
     while True:
         row = _read_row(args.db)
-        if _offer_state_valid(row):
+        if _offer_state_fresh(row):
             print(json.dumps({
                 "status": "TARGET_REFRESHED" if result["database_written"] else "TARGET_VALID",
                 "url": URL,

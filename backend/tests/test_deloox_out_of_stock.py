@@ -8,6 +8,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from scrapers.deloox.scraper import _product
 import catalog_engine
+from scenthunter_next_engine import deloox_targeted_refresh
 
 
 class DelooxRegionalOfferPriorityTests(unittest.TestCase):
@@ -182,3 +183,36 @@ class DelooxOutOfStockNoPriceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DelooxTargetedRefreshOfferStateTests(unittest.TestCase):
+    def _identity(self, **overrides):
+        row = {
+            "brand": "French Avenue",
+            "gtin": "6298042001831",
+            "sku": "1385920",
+            "size_ml": 150,
+            "availability": "in_stock",
+            "price_num": 39.89,
+        }
+        row.update(overrides)
+        return row
+
+    def test_targeted_refresh_accepts_verified_in_stock_offer(self):
+        self.assertTrue(deloox_targeted_refresh._parsed_offer_state_valid(self._identity()))
+
+    def test_targeted_refresh_accepts_verified_out_of_stock_without_price(self):
+        self.assertTrue(deloox_targeted_refresh._parsed_offer_state_valid(
+            self._identity(availability="out_of_stock", price_num=None)
+        ))
+
+    def test_targeted_refresh_rejects_out_of_stock_with_stale_price(self):
+        self.assertFalse(deloox_targeted_refresh._parsed_offer_state_valid(
+            self._identity(availability="out_of_stock", price_num=39.89)
+        ))
+
+    def test_targeted_refresh_rejects_wrong_variant_identity(self):
+        self.assertFalse(deloox_targeted_refresh._parsed_offer_state_valid(
+            self._identity(size_ml=100)
+        ))
+
