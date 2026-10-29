@@ -1708,7 +1708,8 @@ def extract_product_page(session, url, query=None, html=None):
                     or 'itemprop="price"' in browser_lower
                     or 'property="product:price:amount"' in browser_lower
                 )
-                if len(browser_html.encode("utf-8", errors="replace")) >= 8000 and browser_has_product:
+                # Compact rendered product pages are valid candidates; _product() still validates identity, size and offer.
+                if len(browser_html.encode("utf-8", errors="replace")) >= 1800 and browser_has_product:
                     html, final_url = browser_html, browser_url
                 else:
                     print(

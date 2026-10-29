@@ -71,3 +71,25 @@ class DelooxIncompleteHydrationStartupTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class DelooxBrowserFallbackPageRecognitionTests(unittest.TestCase):
+    def test_accepts_compact_rendered_product_document(self):
+        html = (
+            b'<html><head><script type="application/ld+json">'
+            b'{"@type":"Product","name":"French Avenue Liquid Brun Limited Edition 150 ml",'
+            b'"offers":{"price":"42.59","priceCurrency":"EUR"}}'
+            b'</script></head><body><h1>French Avenue Liquid Brun Limited Edition 150 ml</h1>'
+            + (b" " * 1900)
+            + b"</body></html>"
+        )
+        self.assertTrue(catalog_engine._deloox_browser_html_is_product_candidate(html))
+
+    def test_rejects_small_interstitial_without_product_markup(self):
+        html = b"<html><body><h1>Checking your browser</h1></body></html>"
+        self.assertFalse(catalog_engine._deloox_browser_html_is_product_candidate(html))
+
+    def test_rejects_large_document_without_product_markup(self):
+        html = b"<html><body>" + (b"please wait " * 250) + b"</body></html>"
+        self.assertFalse(catalog_engine._deloox_browser_html_is_product_candidate(html))

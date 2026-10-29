@@ -1844,7 +1844,21 @@ def _html_listing_url(store, raw_url, base_url, label=''):
     return None
 
 
-def _browser_fetch_html(url, timeout_ms=15000):
+def _deloox_browser_html_is_product_candidate(body):
+    """Recognize a plausible rendered Deloox page; the retailer parser still validates identity/price."""
+    raw = body if isinstance(body, bytes) else str(body or "").encode("utf-8", "replace")
+    if len(raw) < 1800:
+        return False
+    lower = raw[:200000].lower()
+    return (
+        b"application/ld+json" in lower
+        or re.search(br"<h1\\b", lower) is not None
+        or b'itemprop="price"' in lower
+        or b'property="product:price:amount"' in lower
+    )
+
+
+def _browser_fetch_html(url, timeout_ms=15000, settle_ms=0):
     """Browser fallback for storefronts that stall normal HTTP clients."""
     try:
         from playwright.sync_api import sync_playwright
@@ -1859,6 +1873,8 @@ def _browser_fetch_html(url, timeout_ms=15000):
                     locale='de-DE',
                 )
                 page.goto(url, wait_until='domcontentloaded', timeout=timeout_ms)
+                if settle_ms > 0:
+                    page.wait_for_timeout(min(int(settle_ms), 3000))
                 html = page.content()
                 final = page.url
                 if not html:
@@ -4025,7 +4041,7 @@ def refresh_url(store, url):
                 )
                 if len(body) < 8000 or not has_product_markup:
                     browser_result, browser_error = _browser_fetch_html(
-                        url, timeout_ms=12000
+                        url, timeout_ms=12000, settle_ms=1200
                     )
                     if browser_result:
                         browser_final, browser_data = browser_result
@@ -4036,7 +4052,11 @@ def refresh_url(store, url):
                             or b'itemprop="price"' in browser_lower
                             or b'property="product:price:amount"' in browser_lower
                         )
-                        if len(browser_data) >= 8000 and browser_has_product_markup:
+                        # A valid rendered product page can be compact. Do not
+                        # reject it solely for being under 8 KB; the retailer
+                        # parser below remains responsible for product identity
+                        # and an explicit current offer.
+                        if _deloox_browser_html_is_product_candidate(browser_data):
                             final, data = browser_final, browser_data
                             print(
                                 f'CATALOG BROWSER FALLBACK OK store=deloox '

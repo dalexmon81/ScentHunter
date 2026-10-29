@@ -48,7 +48,28 @@ jobs:
       - name: Deploy ScentHunter
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --remote-only
+        shell: bash
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3 4 5; do
+            echo "Fly deploy attempt $attempt/5"
+            flyctl deploy --remote-only 2>&1 | tee /tmp/fly-deploy.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if ! grep -Eqi 'status 503|503 Service Unavailable|No server is available|temporarily unavailable|connection reset|i/o timeout|context deadline exceeded' /tmp/fly-deploy.log; then
+              echo "Fly deploy failed for a non-transient reason; not retrying." >&2
+              exit "$status"
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Fly deploy still failed after five transient-error retries." >&2
+              exit "$status"
+            fi
+            delay=$((attempt * 10))
+            echo "Transient Fly.io error detected; retrying in ${delay}s."
+            sleep "$delay"
+          done
 
       - name: Verify production health and catalog API
         shell: bash
@@ -108,6 +129,50 @@ jobs:
                       time.sleep(5)
           else:
               raise SystemExit(f"Production smoke test failed after retries: {last_error}")
+          PY
+
+      - name: Force-refresh and verify the affected Deloox offer
+        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter.fly.dev"
+          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+          started = time.time()
+          path = "/catalog/refresh-deloox-url?url=" + urllib.parse.quote(target, safe="")
+          request = urllib.request.Request(
+              base + path,
+              headers={"Accept": "application/json", "User-Agent": "ScentHunter-deloox-live-refresh/1.0"},
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=100) as response:
+              if response.status != 200:
+                  raise RuntimeError(f"targeted Deloox refresh returned HTTP {response.status}")
+              payload = json.loads(response.read().decode("utf-8"))
+
+          print("DELOOX_TARGETED_REFRESH=" + json.dumps(payload, ensure_ascii=False, sort_keys=True))
+          row = payload.get("store_product") if isinstance(payload, dict) else None
+          if payload.get("ok") is not True or payload.get("refreshed") is not True or not isinstance(row, dict):
+              raise RuntimeError("Deloox targeted refresh did not persist a validated product: " + json.dumps(payload, ensure_ascii=False))
+          try:
+              price = float(row.get("price"))
+              fetched_at = float(row.get("fetched_at"))
+          except (TypeError, ValueError):
+              raise RuntimeError("Deloox refresh returned no explicit numeric price/fetch timestamp: " + json.dumps(row, ensure_ascii=False))
+          if price <= 0:
+              raise RuntimeError(f"Deloox refreshed price is not positive: {price}")
+          if fetched_at < started - 5 or fetched_at > time.time() + 5:
+              raise RuntimeError(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started}")
+          if abs(price - 42.59) > 0.01:
+              raise RuntimeError(f"Live Deloox price differs from the reported current price €42.59: received €{price:.2f}; do not mark the incident resolved.")
+          print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
           PY
 
       - name: Check Deloox discovered product URLs are re-queued unless already hydrated
