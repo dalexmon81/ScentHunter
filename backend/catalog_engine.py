@@ -2680,8 +2680,16 @@ def _discover_deloox_catalog(seeds, deadline=None, progress_callback=None):
     search_catalog = _discover_deloox_search_catalog(
         search_deadline, progress_callback=progress_callback, max_queries=1
     )
-    for url in search_catalog.get('product_urls', {}):
+    search_product_urls = search_catalog.get('product_urls') or {}
+    for url in search_product_urls:
         product_urls[url] = ''
+    # Search-discovered product URLs must be persisted immediately, just like
+    # URLs discovered from category pages. Without this handoff they existed
+    # only in this invocation's in-memory mapping: no store_urls rows, search
+    # index entries, or hydration jobs were created, so production searches
+    # could never see products found by the generic Deloox search discovery.
+    if search_product_urls:
+        _deloox_persist_products({url: '' for url in search_product_urls})
     errors.extend(search_catalog.get('errors') or [])
 
     # Persisted status used to remain at phase=sitemap throughout this whole
