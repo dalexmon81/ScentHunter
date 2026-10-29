@@ -191,6 +191,16 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         persist.assert_called_once_with({product_url: ""})
         self.assertIn(product_url, result["product_urls"])
 
+    def test_discovery_recovers_configured_liquid_brun_urls_when_storefront_hides_links(self):
+        limited_url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        standard_url = "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
+        with patch.object(scraper, "_discover_from_search", return_value=[]), \\
+             patch.object(scraper, "_discover_from_categories", return_value=[]), \\
+             patch.object(scraper, "_sitemap_product_urls", return_value=[]):
+            result = scraper._discover(object(), "Liquid Brun", deadline=None)
+        self.assertIn(limited_url, result)
+        self.assertIn(standard_url, result)
+
     def test_discovery_continues_to_generic_fallback_when_search_has_candidates(self):
         search_url = "https://www.deloox.be/product/1111111/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
         category_url = "https://www.deloox.be/product/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
