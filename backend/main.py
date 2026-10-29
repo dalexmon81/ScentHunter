@@ -2565,9 +2565,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Restore the September Notino external-search + rendered-card path.
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
-    notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    # Generic Notino discovery is part of normal search, not an optional
+    # product-specific exception. If the catalog/feed has no matching offer,
+    # always try the shared public adapter; the adapter validates identity,
+    # market URL, price and requested size before publishing any offer.
+    notino_live_fallback_enabled = True
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if allow_live_fallback
