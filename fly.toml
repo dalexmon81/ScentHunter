@@ -11,6 +11,8 @@ primary_region = "ams"
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
   # Keep the slow public Notino adapter out of foreground searches until its timeout is fixed.
   NOTINO_PUBLIC_FALLBACK_ENABLED = "0"
+  # Public Amazon HTML currently times out too; use it only after its bounded adapter is repaired.
+  AMAZON_PUBLIC_HTML_FALLBACK_ENABLED = "0"
 
 [http_service]
   internal_port = 8080
