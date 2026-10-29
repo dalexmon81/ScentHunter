@@ -176,14 +176,16 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
             def close(self):
                 pass
 
-        with patch.object(catalog, "_deloox_retire_invalid_active_urls", return_value={}), \\
-             patch.object(catalog, "_deloox_queue_seed", return_value=[]), \\
-             patch.object(catalog, "_deloox_queue_recover_stale", return_value=0), \\
-             patch.object(catalog, "_deloox_queue_requeue_stale_done", return_value=0), \\
-             patch.object(catalog, "_discover_deloox_search_catalog", return_value={"product_urls": {product_url: ""}, "errors": [], "queries": []}), \\
-             patch.object(catalog, "_deloox_persist_products") as persist, \\
-             patch.object(catalog, "_deloox_queue_claim", return_value=[]), \\
-             patch.object(catalog, "db", return_value=FakeConnection()):
+        with (
+            patch.object(catalog, "_deloox_retire_invalid_active_urls", return_value={}),
+            patch.object(catalog, "_deloox_queue_seed", return_value=[]),
+            patch.object(catalog, "_deloox_queue_recover_stale", return_value=0),
+            patch.object(catalog, "_deloox_queue_requeue_stale_done", return_value=0),
+            patch.object(catalog, "_discover_deloox_search_catalog", return_value={"product_urls": {product_url: ""}, "errors": [], "queries": []}),
+            patch.object(catalog, "_deloox_persist_products") as persist,
+            patch.object(catalog, "_deloox_queue_claim", return_value=[]),
+            patch.object(catalog, "db", return_value=FakeConnection()),
+        ):
             result = catalog._discover_deloox_catalog([], deadline=time.time() + 5)
 
         persist.assert_called_once_with({product_url: ""})
