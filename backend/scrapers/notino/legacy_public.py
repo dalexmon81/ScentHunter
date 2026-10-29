@@ -18,10 +18,10 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 
-TIMEOUT = 18
-READER_TIMEOUT = 30
-RETRY_COUNT = 2
-MAX_CANDIDATES = 48
+TIMEOUT = 6
+READER_TIMEOUT = 8
+RETRY_COUNT = 0
+MAX_CANDIDATES = 12
 ENRICH_WORKERS = 6
 SCRAPER_VERSION = "notino-3.5-2026-09-03-title-authoritative-all-paths"
 
@@ -433,8 +433,16 @@ def _search_urls(query: str) -> List[str]:
 
 
 def _reader_search(session: requests.Session, url: str) -> Tuple[Optional[str], Optional[str]]:
+    # Reader calls run concurrently in _discover. Bound each request and do
+    # not retry a slow third-party proxy: sequential retries starved the bridge.
     try:
-        response = _request(session, READER_BASE + url, reader=True)
+        response = session.get(
+            READER_BASE + url,
+            headers=READER_HEADERS,
+            timeout=READER_TIMEOUT,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
         return response.text or "", None
     except requests.RequestException as exc:
         return None, f"{type(exc).__name__}: {exc}"
@@ -1362,9 +1370,24 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
                     "error": f"{type(exc).__name__}: {exc}",
                 })
 
-    for search_query in queries[:3]:
-        for url in _search_urls(search_query):
-            text, error = _reader_search(session, url)
+    reader_jobs = [
+        (search_query, url)
+        for search_query in queries[:3]
+        for url in _search_urls(search_query)
+    ]
+    # The former nested loop could wait 9 x 3 x 30 seconds before enrichment.
+    # Run generic reader searches concurrently with a strict per-request bound.
+    with ThreadPoolExecutor(max_workers=min(9, len(reader_jobs))) as reader_pool:
+        future_jobs = {
+            reader_pool.submit(_reader_search, session, url): (search_query, url)
+            for search_query, url in reader_jobs
+        }
+        for future in as_completed(future_jobs):
+            search_query, url = future_jobs[future]
+            try:
+                text, error = future.result()
+            except Exception as exc:
+                text, error = None, f"{type(exc).__name__}: {exc}"
             if text is None:
                 diagnostics["reader"].append({"url": url, "query": search_query, "status": None, "candidates": 0, "error": error})
                 continue
