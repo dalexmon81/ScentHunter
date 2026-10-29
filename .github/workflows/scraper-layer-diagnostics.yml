@@ -1,0 +1,152 @@
+name: Scraper Layer-by-Layer Diagnostics
+
+on:
+  workflow_run:
+    workflows: ["Fly Deploy"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Probe health and each configured HTML discovery scraper (read-only)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, time, urllib.error, urllib.parse, urllib.request
+
+          BASE = "https://scenthunter.fly.dev"
+          UA = "ScentHunter-layer-diagnostics/1.0"
+          def get(path, timeout=28):
+              req = urllib.request.Request(BASE + path, headers={"Accept":"application/json","User-Agent":UA})
+              started = time.monotonic()
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as r:
+                      raw = r.read(2_000_000).decode("utf-8", "replace")
+                      try: data = json.loads(raw)
+                      except Exception: data = {"raw_prefix": raw[:1200]}
+                      return {"http":r.status,"elapsed_sec":round(time.monotonic()-started,2),"data":data}
+              except urllib.error.HTTPError as e:
+                  return {"http":e.code,"elapsed_sec":round(time.monotonic()-started,2),"error":e.read().decode("utf-8","replace")[:1200]}
+              except Exception as e:
+                  return {"http":None,"elapsed_sec":round(time.monotonic()-started,2),"error":type(e).__name__+": "+str(e)}
+
+          report = {"diagnostic":"scraper-layer-by-layer-v1","base":BASE,"read_only":True,"layers":{}}
+          for path in ("/health", "/catalog-status"):
+              report["layers"][path] = get(path, 15)
+
+          stores = ("deloox","notino","easycosmetic","sabina","parfumzentrum","amazon_fr","amazon_de")
+          for store in stores:
+              path = "/diagnose-html-discovery-trace?" + urllib.parse.urlencode({
+                  "store":store,"q":"Liquid Brun","max_pages":10,"max_depth":2,"max_events":50
+              })
+              result = get(path, 25)
+              data = result.get("data") or {}
+              events = data.get("events") or []
+              errors = data.get("errors") or []
+              report["layers"]["html_discovery:"+store] = {
+                  "http":result.get("http"),"elapsed_sec":result.get("elapsed_sec"),
+                  "ok":data.get("ok"),"error":data.get("error"),
+                  "visited":data.get("visited"),"successes":data.get("successes"),
+                  "product_urls_found":data.get("product_urls_found"),
+                  "listing_urls_found":data.get("listing_urls_found"),
+                  "query_url_hits":data.get("query_url_hits"),
+                  "query_page_hits":data.get("query_page_hits"),
+                  "event_sample":events[:12],"errors":errors[:12],
+              }
+              print("HTML_DISCOVERY_"+store.upper()+"="+json.dumps(report["layers"]["html_discovery:"+store],ensure_ascii=False))
+
+          print("HEALTH_AND_CATALOG="+json.dumps({k:v for k,v in report["layers"].items() if k in ("/health","/catalog-status")},ensure_ascii=False))
+          with open("/tmp/scraper-layer-diagnostics.json","w",encoding="utf-8") as f:
+              json.dump(report,f,ensure_ascii=False,indent=2)
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:
+              f.write("# Scraper diagnostics — health and discovery layer\n\n")
+              for key,val in report["layers"].items():
+                  if key.startswith("html_discovery:"):
+                      f.write("## "+key+"\n\n```json\n"+json.dumps(val,ensure_ascii=False,indent=2)+"\n```\n")
+                  else:
+                      f.write("## "+key+"\n\n```json\n"+json.dumps(val,ensure_ascii=False,indent=2)+"\n```\n")
+          PY
+
+      - name: Trace Deloox scraper, catalog discovery, and persisted frontier separately
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, time, urllib.error, urllib.parse, urllib.request
+
+          BASE = "https://scenthunter.fly.dev"
+          UA = "ScentHunter-layer-diagnostics/1.0"
+          target = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+          base_product = "https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
+          def get(path, timeout=50):
+              req=urllib.request.Request(BASE+path,headers={"Accept":"application/json","User-Agent":UA})
+              t=time.monotonic()
+              try:
+                  with urllib.request.urlopen(req,timeout=timeout) as r:
+                      raw=r.read(3_000_000).decode("utf-8","replace")
+                      try: data=json.loads(raw)
+                      except Exception: data={"raw_prefix":raw[:1500]}
+                      return {"http":r.status,"elapsed_sec":round(time.monotonic()-t,2),"data":data}
+              except urllib.error.HTTPError as e:
+                  return {"http":e.code,"elapsed_sec":round(time.monotonic()-t,2),"error":e.read().decode("utf-8","replace")[:2000]}
+              except Exception as e:
+                  return {"http":None,"elapsed_sec":round(time.monotonic()-t,2),"error":type(e).__name__+": "+str(e)}
+
+          results={}
+          # Layer 1: the retailer scraper itself, before catalog persistence or matching.
+          for label,q in (("liquid_brun","Liquid Brun"),("limited_edition_150","Liquid Brun Limited Edition 150 ml")):
+              results["scraper_"+label]=get("/diagnose-deloox-scraper?"+urllib.parse.urlencode({"q":q}),timeout=100)
+              d=results["scraper_"+label].get("data") or {}
+              print("DELOOX_SCRAPER_"+label.upper()+"="+json.dumps({
+                  "http":results["scraper_"+label].get("http"),"elapsed_sec":results["scraper_"+label].get("elapsed_sec"),
+                  "ok":d.get("ok"),"error":d.get("error"),"candidate_count":d.get("candidate_count"),
+                  "candidates":d.get("candidates"),"validated_products":d.get("validated_products"),
+                  "validation_error_count":d.get("validation_error_count"),"validation_errors":d.get("validation_errors"),
+                  "discovery_state":d.get("discovery_state")
+              },ensure_ascii=False))
+
+          # Layer 2: generic persistent catalog discovery, without catalog writes.
+          results["catalog_discovery"]=get("/diagnose-deloox-catalog-discovery",timeout=45)
+          d=results["catalog_discovery"].get("data") or {}
+          print("DELOOX_CATALOG_DISCOVERY="+json.dumps({
+              "http":results["catalog_discovery"].get("http"),"elapsed_sec":results["catalog_discovery"].get("elapsed_sec"),
+              "ok":d.get("ok"),"error":d.get("error"),"visited":d.get("visited"),
+              "successes":d.get("successes"),"errors":d.get("errors"),"product_count":d.get("product_count"),
+              "target_product_urls_found":d.get("target_product_urls_found"),"diagnosis":d.get("diagnosis"),
+              "configured_seed_count":d.get("configured_seed_count"),"seed_hosts":d.get("seed_hosts")
+          },ensure_ascii=False))
+
+          # Layer 3: exact URL in the persistent frontier/store index, read-only.
+          results["persisted_frontier"]=get("/diagnose-deloox-frontier-path?"+urllib.parse.urlencode({
+              "atlantis_url":target,"la_mer_url":base_product,"max_token_matches":20
+          }),timeout=20)
+          d=results["persisted_frontier"].get("data") or {}
+          print("DELOOX_PERSISTED_FRONTIER="+json.dumps({
+              "http":results["persisted_frontier"].get("http"),"elapsed_sec":results["persisted_frontier"].get("elapsed_sec"),
+              "ok":d.get("ok"),"error":d.get("error"),"frontier":d.get("frontier"),
+              "store_urls":d.get("store_urls"),"comparison":d.get("comparison")
+          },ensure_ascii=False))
+
+          report={"diagnostic":"deloox-layered-read-only-v1","read_only":True,"results":results}
+          with open("/tmp/deloox-layer-diagnostics.json","w",encoding="utf-8") as f:
+              json.dump(report,f,ensure_ascii=False,indent=2)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:
+              f.write("# Deloox — scraper → catalog discovery → persistent index\n\n")
+              for key,val in results.items():
+                  f.write("## "+key+"\n\n```json\n"+json.dumps(val,ensure_ascii=False,indent=2)[:22000]+"\n```\n")
+          PY
+
+      - name: Upload diagnostic JSON artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scent-hunter-scraper-layer-diagnostics
+          path: /tmp/*layer-diagnostics.json
+          if-no-files-found: warn
+          retention-days: 14
