@@ -4123,7 +4123,7 @@ def refresh_url(store, url):
                 title = soup.find('title')
                 title_text = title.get_text(' ', strip=True)[:180] if title else ''
                 body = soup.find('body')
-                body_preview = re.sub(r'\\s+', ' ', body.get_text(' ', strip=True))[:220] if body else ''
+                body_preview = re.sub(r'\s+', ' ', body.get_text(' ', strip=True))[:220] if body else ''
                 jsonld_count = len(_jsonld(soup))
                 lower_body = f"{title_text} {body_preview}".lower()
                 challenge_markers = [
