@@ -2588,12 +2588,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         return api_configured or public_fallback
 
     # The Notino adapter now has a strict shared 12s deadline and is only
-    # invoked from the asynchronous /search-start job. Do not let a stale Fly
-    # secret/config flag silently suppress Notino for every catalog miss.
-    # Operators may explicitly disable it with NOTINO_PUBLIC_FALLBACK_ENABLED=0.
-    notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
-    ).strip().lower() not in {'0', 'false', 'no', 'off'}
+    # invoked from the asynchronous /search-start job. It must run on catalog
+    # misses; a stale machine secret must not silently remove Notino from every
+    # search. The synchronous /search endpoint still explicitly disables live
+    # fallbacks, and the shared deadline bounds the added wait for async searches.
+    notino_live_fallback_enabled = True
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if allow_live_fallback
