@@ -398,7 +398,7 @@ def search(query):
                 return {
                     "status": "partial" if errors else "success",
                     "verified": True, "results": results, "error": None,
-                    "details": {"source": "notino_public_external_discovery",
+                    "details": {"source": "notino_public_search",
                                 "markets_checked": completed_markets,
                                 "candidate_count": candidate_count},
                 }
