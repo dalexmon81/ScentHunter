@@ -2562,13 +2562,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         ).strip().lower() in {'1', 'true', 'yes', 'on'}
         return api_configured or public_fallback
 
-    # Keep the slow external/browser discovery path opt-in: production
-    # smoke tests showed it can add substantial latency without finding offers.
-    # Normal search uses the authorized feed/catalog; public fallback is enabled
-    # only for controlled validation.
-    notino_live_fallback_enabled = str(
-        os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '0')
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+    # Notino's authorized feed/catalog does not cover every perfume.
+    # Always run the shared generic public-search fallback on catalog misses;
+    # never make retailer discovery depend on a product-specific exception or
+    # an environment flag. The adapter validates product identity and price.
+    notino_live_fallback_enabled = True
     live_bridge_stores = [
         store for store in ('notino', 'amazon_fr', 'amazon_de')
         if allow_live_fallback
