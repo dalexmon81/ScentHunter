@@ -294,7 +294,12 @@ def _slug_name(url: str) -> str:
     try:
         path = unquote(urlparse(normaliseurl(url)).path).strip("/")
         parts = [part for part in path.split("/") if part]
-        slug = parts[-1] if parts else ""
+        # Notino product URLs commonly put the numeric product ID in a final
+        # /p-123456/ segment; identity lives in the preceding descriptive slug.
+        if parts and re.fullmatch(r"p-\d+", parts[-1], flags=re.I) and len(parts) > 1:
+            slug = parts[-2]
+        else:
+            slug = parts[-1] if parts else ""
         slug = re.sub(r"^p-\d+", "", slug, flags=re.I).strip("-")
         return re.sub(r"\s+", " ", slug.replace("-", " ")).strip().title()
     except Exception:
