@@ -154,10 +154,22 @@ jobs:
           started = time.time()
           item = None
           error = None
-          try:
-              item = catalog_engine.refresh_url("deloox", target)
-          except Exception as exc:
-              error = type(exc).__name__ + ":" + str(exc)
+          attempts = 0
+          for attempts in range(1, 3):
+              try:
+                  item = catalog_engine.refresh_url("deloox", target)
+                  error = None
+              except Exception as exc:
+                  error = type(exc).__name__ + ":" + str(exc)
+                  item = None
+              try:
+                  item_price = float((item or {}).get("price_num"))
+              except (TypeError, ValueError):
+                  item_price = 0.0
+              if item and item.get("name") and item_price > 0:
+                  break
+              if attempts < 2:
+                  time.sleep(5)
           conn = catalog_engine.db()
           try:
               row = conn.execute(
@@ -172,11 +184,12 @@ jobs:
               "item_name": (item or {}).get("name"),
               "item_price": (item or {}).get("price_num"),
               "refresh_error": error,
+              "attempts": attempts,
               "store_product": persisted,
               "started_at": started,
           }, ensure_ascii=False, default=str), flush=True)
           """
-          remote_command = "cd /app/backend && /app/.venv/bin/python -c " + shlex.quote(remote_python)
+          remote_command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
           try:
               result = subprocess.run(
                   ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", remote_command],
