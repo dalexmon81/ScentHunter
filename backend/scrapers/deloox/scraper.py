@@ -1670,6 +1670,59 @@ def extract_product_page(session, url, query=None, html=None):
             response.raise_for_status()
         final_url = clean(getattr(response, "url", "") or target)
         html = getattr(response, "text", "") or ""
+
+        # Deloox can answer HTTP 200 with a tiny interstitial rather than the
+        # actual product document. Retry acquisition in a browser before
+        # treating the product as unparseable. Only a real rendered page is
+        # passed to the existing identity/price parser; no values are guessed.
+        initial = html[:200000].lower()
+        product_markup = (
+            "application/ld+json" in initial
+            or re.search(r"<h1\\b", initial) is not None
+            or 'itemprop="price"' in initial
+            or 'property="product:price:amount"' in initial
+        )
+        if len(html.encode("utf-8", errors="replace")) < 8000 or not product_markup:
+            try:
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as pw:
+                    browser = pw.chromium.launch(headless=True)
+                    try:
+                        page = browser.new_page(
+                            user_agent=(
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                "AppleWebKit/537.36 Chrome/131 Safari/537.36"
+                            ),
+                            locale="nl-BE",
+                        )
+                        page.goto(target, wait_until="domcontentloaded", timeout=12000)
+                        page.wait_for_timeout(1200)
+                        browser_html = page.content() or ""
+                        browser_url = clean(page.url or target)
+                    finally:
+                        browser.close()
+                browser_lower = browser_html[:200000].lower()
+                browser_has_product = (
+                    "application/ld+json" in browser_lower
+                    or re.search(r"<h1\\b", browser_lower) is not None
+                    or 'itemprop="price"' in browser_lower
+                    or 'property="product:price:amount"' in browser_lower
+                )
+                if len(browser_html.encode("utf-8", errors="replace")) >= 8000 and browser_has_product:
+                    html, final_url = browser_html, browser_url
+                else:
+                    print(
+                        "DELOOX_BROWSER_FALLBACK_UNUSABLE "
+                        f"url={target!r} bytes={len(browser_html.encode('utf-8', errors='replace'))} "
+                        f"product_markup={browser_has_product}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(
+                    f"DELOOX_BROWSER_FALLBACK_FAILED url={target!r} "
+                    f"error={type(exc).__name__}:{exc}",
+                    flush=True,
+                )
     else:
         final_url = target
         if isinstance(html, bytes):
