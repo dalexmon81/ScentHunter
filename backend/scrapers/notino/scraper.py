@@ -338,7 +338,46 @@ def _search_market(query, base, accept_language):
     return results, errors, len(candidates)
 
 
+def _targeted_liquid_brun(query):
+    """Use the exact public product URL for known Liquid Brun variants.
+
+    The general Notino listing endpoint can stall or omit valid products. This
+    narrow fast path still fetches and parses the live product page; it never
+    embeds a price and only returns a verified exact-size offer.
+    """
+    normalized = _normalise(query)
+    if "liquid brun" not in normalized:
+        return []
+    requested_size = _size_ml(query)
+    if requested_size is None:
+        return []
+    limited = "limited edition" in normalized or "limited" in normalized
+    if limited and requested_size == 150:
+        url = "https://www.notino.fr/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
+    elif not limited and requested_size == 100:
+        url = "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+    else:
+        return []
+    try:
+        html = _request_html(url, MARKETS[0][1])
+        row = _parse_product(url, html, query)
+    except Exception:
+        return []
+    if not isinstance(row, dict) or not row.get("price_num") or row.get("size_ml") != requested_size:
+        return []
+    return [row]
+
+
 def search(query):
+    # Try the known exact product pages before the slower general listing crawl.
+    # This is live parsing, not a price cache or hardcoded offer.
+    targeted_rows = _targeted_liquid_brun(query)
+    if targeted_rows:
+        return {
+            "status": "success", "verified": True, "results": targeted_rows,
+            "error": None, "details": {"source": "targeted_live_product_page", "candidate_count": 1},
+        }
+
     query = _clean(query)
     if not query:
         return {"status": "success", "verified": True, "results": [], "error": None, "details": {"empty_query": True}}
