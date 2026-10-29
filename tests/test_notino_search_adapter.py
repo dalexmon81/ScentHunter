@@ -274,8 +274,11 @@ def test_liquid_brun_limited_edition_uses_its_own_known_notino_product_url(monke
 
 
 def test_feed_search_requires_exact_parsed_size_when_query_specifies_size(monkeypatch):
+    import sys
     from backend.scrapers.notino import affiliate_feed
     from backend import catalog_engine
+
+    monkeypatch.setitem(sys.modules, "catalog_engine", catalog_engine)
 
     base = {
         "url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/",
