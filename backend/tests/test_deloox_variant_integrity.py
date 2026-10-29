@@ -94,6 +94,13 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertEqual(result["offer"]["price"], 32.99)
 
 
+    def test_persisted_price_is_stale_after_24_hours_or_without_timestamp(self):
+        now = 2_000_000.0
+        self.assertFalse(catalog._catalog_price_is_stale(now - 23 * 60 * 60, now=now))
+        self.assertTrue(catalog._catalog_price_is_stale(now - 25 * 60 * 60, now=now))
+        self.assertTrue(catalog._catalog_price_is_stale(None, now=now))
+        self.assertTrue(catalog._catalog_price_is_stale("not-a-timestamp", now=now))
+
     def test_out_of_stock_deloox_offer_remains_visible_without_price(self):
         # Confirmed stock status should be visible, but it must not invent a price.
         self.assertFalse(catalog._should_hide_deloox_offer("deloox", "out_of_stock", None))
