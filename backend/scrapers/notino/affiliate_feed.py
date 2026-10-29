@@ -504,8 +504,12 @@ def search_feed(query: str, max_age_seconds: int = 48 * 60 * 60) -> dict:
         haystack = set(norm(f"{brand} {name} {size} ml").split())
         if not wanted or not all(token in haystack for token in wanted):
             continue
-        if requested_size is not None and size is not None and abs(float(size) - requested_size) > 0.01:
-            continue
+        # If the user requested a bottle size, never return an offer whose
+        # parsed variant size is missing or different. A title token alone is
+        # not reliable evidence that the feed's price belongs to that size.
+        if requested_size is not None:
+            if size is None or abs(float(size) - requested_size) > 0.01:
+                continue
         if str(row["availability"] or "").lower() not in {"in_stock", "preorder"}:
             continue
         key = (row["url"], float(size or 0), float(row["price"]))

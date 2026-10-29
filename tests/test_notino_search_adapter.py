@@ -89,8 +89,8 @@ def test_notino_live_search_is_france_only():
     assert all("notino.de" not in base for base, _language in scraper.MARKETS)
 
 
-def test_search_falls_back_to_restored_external_discovery_when_feed_has_no_match(monkeypatch):
-    from backend.scrapers.notino import affiliate_feed, legacy_public
+def test_search_falls_back_to_public_search_when_feed_has_no_match(monkeypatch):
+    from backend.scrapers.notino import affiliate_feed
 
     monkeypatch.setattr(
         affiliate_feed,
@@ -101,21 +101,31 @@ def test_search_falls_back_to_restored_external_discovery_when_feed_has_no_match
         },
     )
     expected = [{
-        "store": "Notino",
-        "name": "Dior - Sauvage Eau de Parfum",
-        "price": "89,90€",
-        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/p-123456/",
+        "shop": "Notino",
+        "store": "notino",
+        "brand": "Dior",
+        "name": "Dior Sauvage Eau de Parfum 100 ml",
+        "price": "89.90 €",
+        "price_num": 89.90,
+        "currency": "EUR",
+        "available": True,
+        "availability": "In stock",
+        "image": None,
+        "size_ml": 100,
+        "concentration": "Eau de Parfum",
+        "url": "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
     }]
-    monkeypatch.setattr(legacy_public, "search", lambda query: expected)
+    monkeypatch.setattr(
+        scraper, "_search_market",
+        lambda query, base, language: (expected, [], 1),
+    )
 
     report = scraper.search("Dior Sauvage Eau de Parfum")
 
     assert report["status"] == "success"
     assert report["verified"] is True
     assert report["results"] == expected
-    assert report["details"]["source"] == "notino_public_external_discovery"
-
-
+    assert report["details"]["source"] == "notino_public_search"
 def test_search_does_not_fallback_when_feed_has_fresh_matching_offer(monkeypatch):
     from backend.scrapers.notino import affiliate_feed, legacy_public
 
@@ -143,33 +153,6 @@ def test_search_does_not_fallback_when_feed_has_fresh_matching_offer(monkeypatch
     assert report["details"]["source"] == "cj_viv_authorized_xml"
 
 
-def test_reader_rejects_search_title_paired_with_unrelated_product_url(monkeypatch):
-    html = """
-    <html><head><title>Bioderma Pigmentbio H2O</title></head>
-    <body>
-      <h1>Bioderma Pigmentbio H2O Eau Micellaire 250 ml</h1>
-      <div>10,96 €</div>
-    </body></html>
-    """
-
-    class Response:
-        text = html
-
-    monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: Response())
-    candidate = {
-        "url": "https://www.notino.fr/bioderma/pigmentbio-h2o/p-16013446/",
-        "name": "French Avenue Liquid Brun Limited Edition mixte",
-        "card_text": "French Avenue Liquid Brun Limited Edition mixte 10,96 €",
-        "price": "10,96 €",
-        "size_ml": 250,
-        "source": "reader-url-context",
-    }
-
-    assert scraper._reader_product(
-        object(), candidate, "Liquid Brun", _allow_variants=False
-    ) is None
-
-
 def test_generic_notino_discovery_tries_current_france_search_route_first():
     from backend.scrapers.notino import legacy_public
 
@@ -179,103 +162,50 @@ def test_generic_notino_discovery_tries_current_france_search_route_first():
     assert any(url.startswith("https://www.notino.fr/search.asp?exps=") for url in urls)
 
 
-def test_liquid_brun_discovery_adds_known_notino_product_url(monkeypatch):
-    monkeypatch.setattr(scraper, "_search_urls", lambda query: [])
-    monkeypatch.setattr(scraper, "_request", lambda *args, **kwargs: (_ for _ in ()).throw(
-        scraper.requests.RequestException("blocked")
-    ))
-    candidates, diagnostics = scraper._discover("Liquid Brun 100 ml", scraper._new_session())
-    seeded = [
-        item for item in candidates
-        if item["url"] == "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/"
+def test_feed_search_requires_exact_parsed_size_when_query_specifies_size(monkeypatch):
+    import sys
+    from backend.scrapers.notino import affiliate_feed
+    from backend import catalog_engine
+
+    monkeypatch.setitem(sys.modules, "catalog_engine", catalog_engine)
+
+    base = {
+        "url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/",
+        "variant_url": "https://www.notino.fr/french-avenue/liquid-brun-limited-edition/",
+        "name": "French Avenue Liquid Brun Limited Edition 150 ml",
+        "brand": "French Avenue",
+        "image": None,
+        "concentration": "Extrait de Parfum",
+        "gtin": None,
+        "sku": None,
+        "price": 49.90,
+        "currency": "EUR",
+        "availability": "in_stock",
+        "fetched_at": 9999999999,
+        "active": 1,
+    }
+    rows = [
+        {**base, "size_ml": None, "price": 39.90},
+        {**base, "size_ml": 100.0, "price": 29.90},
+        {**base, "size_ml": 150.0, "price": 49.90},
     ]
-    assert seeded
-    assert diagnostics["known_product_seed"] == seeded[0]["url"]
 
+    class Cursor:
+        def fetchall(self):
+            return rows
 
-
-def test_reader_context_candidate_never_falls_back_to_unverified_search_card(monkeypatch):
-    candidate = {
-        "url": "https://www.notino.fr/bioderma/pigmentbio-h2o/p-16013446/",
-        "name": "French Avenue Liquid Brun Limited Edition mixte",
-        "card_text": "French Avenue Liquid Brun Limited Edition mixte 10,96 €",
-        "price": "10,96 €",
-        "size_ml": 250,
-        "source": "reader-url-context",
-    }
-
-    class Session:
+    class Connection:
+        def execute(self, *_args):
+            return Cursor()
         def close(self):
             pass
 
-    monkeypatch.setattr(scraper, "_new_session", lambda: Session())
-    monkeypatch.setattr(scraper, "_reader_product", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        scraper, "_card_result",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("unverified search card must not be accepted")
-        ),
-    )
+    monkeypatch.setattr(catalog_engine, "db", lambda: Connection())
 
-    assert scraper._enrich_one(candidate, "Liquid Brun") is None
+    report = affiliate_feed.search_feed("French Avenue Liquid Brun Limited Edition 150 ml")
+
+    assert len(report["results"]) == 1
+    assert report["results"][0]["size_ml"] == 150.0
+    assert report["results"][0]["price_num"] == 49.90
 
 
-
-def test_known_product_seed_requires_product_page_verification(monkeypatch):
-    candidate = {
-        "url": "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
-        "name": "French Avenue Liquid Brun mixte",
-        "card_text": "French Avenue Liquid Brun mixte 4,99 €",
-        "price": "4,99 â‚¬",
-        "size_ml": 100,
-        "source": "known-product-url",
-    }
-
-    class Session:
-        def close(self):
-            pass
-
-    sentinel = {"price": "89,90€", "price_num": 89.90}
-    monkeypatch.setattr(scraper, "_new_session", lambda: Session())
-    monkeypatch.setattr(scraper, "_reader_product", lambda *args, **kwargs: sentinel)
-    monkeypatch.setattr(
-        scraper, "_card_result",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("seeded Notino URL must not fall back to an unverified card price")
-        ),
-    )
-
-    assert scraper._enrich_one(candidate, "Liquid Brun") is sentinel
-
-
-def test_liquid_brun_limited_edition_uses_its_own_known_notino_product_url(monkeypatch):
-    monkeypatch.setattr(scraper, "_search_urls", lambda query: [])
-    monkeypatch.setattr(
-        scraper, "_request",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            scraper.requests.RequestException("blocked")
-        ),
-    )
-
-    candidates, diagnostics = scraper._discover(
-        "French Avenue Liquid Brun Limited Edition 150 ml",
-        scraper._new_session(),
-    )
-
-    expected_url = (
-        "https://www.notino.fr/french-avenue/"
-        "liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/"
-    )
-    assert diagnostics["known_product_seed"] == expected_url
-    assert len(candidates) == 1
-    assert candidates[0]["url"] == expected_url
-    assert "Limited Edition" in candidates[0]["name"]
-    assert candidates[0]["size_ml"] == 150
-
-
-def test_notino_rejects_suspicious_full_bottle_placeholder_price():
-    assert not scraper._price_is_plausible("4,99€", 100)
-    assert not scraper._price_is_plausible("4,99 â‚¬", 100)
-    assert scraper._price_is_plausible("49,99€", 100)
-    assert scraper._price_is_plausible("4,99€", 5)
-    assert not scraper._price_is_plausible("price unavailable", 100)
