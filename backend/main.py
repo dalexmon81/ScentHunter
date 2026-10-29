@@ -1543,18 +1543,22 @@ def dedupe_results(results, diagnostics=None):
         size = _safe_float(item.get('size_ml'))
         price = _safe_float(item.get('price_num') if item.get('price_num') not in (None, '') else item.get('price'))
         variant = str(item.get('variant_id') or item.get('variant_key') or item.get('variant_sku') or '').strip().lower()
-        if price is None:
-            return None
-        # Easycosmetic often emits the same product offer from separate catalog
-        # rows with inconsistent title/size metadata. Within a canonical result
-        # group, same retailer + same price is sufficient to collapse that
-        # repeated offer; different prices remain visible. For Sabina, retain
-        # the stricter name/size fingerprint to avoid merging variants.
+        # Missing prices must not disable duplicate suppression for Sabina:
+        # duplicate catalog URLs often both arrive without a parsed price, which
+        # otherwise creates two identical "price unavailable" cards. Keep the
+        # identity strict (normalized name + size + explicit variant) and use a
+        # dedicated missing-price marker; priced and unpriced rows are not merged.
         if store == 'easycosmetic':
+            if price is None:
+                return None
+            # Easycosmetic often emits the same offer from separate catalog rows
+            # with inconsistent title/size metadata; same retailer + price is
+            # sufficient within the already-resolved product result group.
             return ('offer-fingerprint', store, round(price, 2))
         if not name or size is None:
             return None
-        return ('offer-fingerprint', store, name, round(size, 3), round(price, 2), variant)
+        price_identity = ('price', round(price, 2)) if price is not None else ('price-missing',)
+        return ('offer-fingerprint', store, name, round(size, 3), *price_identity, variant)
 
     for index, item in enumerate(results):
         key = result_key(item)
