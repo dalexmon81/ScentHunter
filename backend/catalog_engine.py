@@ -4433,6 +4433,21 @@ def _missing_price_retry_due(price, fetched_at, now=None, retry_seconds=_MISSING
     return fetched <= 0 or current_time - fetched >= float(retry_seconds)
 
 
+def _catalog_price_is_stale(fetched_at, now=None, max_age_seconds=24 * 60 * 60):
+    """Fail closed for persisted prices not confirmed by a recent retailer fetch.
+
+    Missing timestamps are stale too: an unaged price is not evidence of a
+    current offer. Product identity can remain searchable without publishing
+    an unverified price or stock claim.
+    """
+    current_time = time.time() if now is None else float(now)
+    try:
+        fetched = float(fetched_at or 0)
+    except (TypeError, ValueError):
+        fetched = 0.0
+    return fetched <= 0 or current_time - fetched > float(max_age_seconds)
+
+
 def _catalog_row_needs_refresh(price, fetched_at, now=None):
     """Return whether a query-selected catalog row is due for a bounded refresh."""
     current_time = time.time() if now is None else float(now)
@@ -4855,14 +4870,20 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                         per_term_counts[term_index] += 1
 
                         if r['product_name']:
-                            # Keep confirmed out-of-stock Deloox products visible,
-                            # but never show a stale persisted price as purchasable.
+                            # A persisted price is not a current offer unless the
+                            # retailer page was successfully fetched within 24 hours.
+                            # Keep product identity searchable, but fail closed on stale
+                            # prices and stale stock claims for every retailer.
+                            _catalog_stale = _catalog_price_is_stale(r['product_fetched_at'])
+                            _catalog_price = None if _catalog_stale else r['product_price']
+                            _catalog_status = str(r['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
+                            if _catalog_stale and _catalog_status not in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
+                                _catalog_status = 'unknown'
                             if store == 'deloox':
-                                _deloox_price = r['product_price']
-                                if _should_hide_deloox_offer(store, r['product_availability'], _deloox_price):
+                                _deloox_price = _catalog_price
+                                if _should_hide_deloox_offer(store, _catalog_status, _deloox_price):
                                     continue
-                                _deloox_status = str(r['product_availability'] or '').strip().lower().replace('-', '_').replace(' ', '_')
-                                if _deloox_status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
+                                if _catalog_status in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}:
                                     _deloox_price = None
                             variant_rows = []
                             if store == 'parfumzentrum':
@@ -4949,12 +4970,12 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
                                 'size_ml': r['product_size_ml'],
                                 'concentration': r['product_concentration'] or '',
                                 'gender': r['product_gender'] or '',
-                                'price': _deloox_price if store == 'deloox' else r['product_price'],
+                                'price': _deloox_price if store == 'deloox' else _catalog_price,
                                 'currency': r['product_currency'] or '',
-                                'availability': r['product_availability'] or '',
+                                'availability': _catalog_status,
                                 'fetched_at': r['product_fetched_at'],
                                 'fetch_status': r['fetch_status'] or 'OK',
-                                'price_num': _deloox_price if store == 'deloox' else r['product_price'],
+                                'price_num': _deloox_price if store == 'deloox' else _catalog_price,
                                 'store': STORE_LABELS[store],
                                 'store_key': store,
                             })
@@ -5166,12 +5187,18 @@ def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, d
                     'size_ml': r.get('product_size_ml'),
                     'concentration': r.get('product_concentration') or '',
                     'gender': r.get('product_gender') or '',
-                    'price': r.get('product_price'),
+                    'price': None if _catalog_price_is_stale(r.get('product_fetched_at')) else r.get('product_price'),
                     'currency': r.get('product_currency') or '',
-                    'availability': r.get('product_availability') or '',
+                    'availability': (
+                        r.get('product_availability') or ''
+                    ) if (
+                        not _catalog_price_is_stale(r.get('product_fetched_at'))
+                        or str(r.get('product_availability') or '').strip().lower().replace('-', '_').replace(' ', '_')
+                        in {'out_of_stock', 'outofstock', 'sold_out', 'soldout'}
+                    ) else 'unknown',
                     'fetched_at': r.get('product_fetched_at'),
                     'fetch_status': r.get('fetch_status') or 'OK',
-                    'price_num': r.get('product_price'),
+                    'price_num': None if _catalog_price_is_stale(r.get('product_fetched_at')) else r.get('product_price'),
                     'store': STORE_LABELS[store],'store_key': store,
                 })
             else:
