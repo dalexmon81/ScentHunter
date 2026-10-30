@@ -22,8 +22,8 @@ class OfferEngineContractTests(unittest.TestCase):
   self.assertFalse(d.publish); self.assertEqual(d.reason,"not_verified")
  def test_explicit_sold_out_can_be_verified(self):
   now=datetime.now(timezone.utc)
-  o=OfferObservation("deloox:1",now,Decimal("42.89"),"EUR",Availability.OUT_OF_STOCK,"product_page",Verification.VERIFIED,"p","v","https://example.com/p","sha256:abc")
+  o=OfferObservation("deloox:1",now,None,"EUR",Availability.OUT_OF_STOCK,"product_page",Verification.VERIFIED,"p","v","https://example.com/p","sha256:abc")
   decision=OfferPolicy().evaluate(o,now=now)
-  self.assertFalse(decision.publish); self.assertEqual(decision.reason,"out_of_stock")
+  self.assertTrue(decision.publish); self.assertEqual(decision.reason,"verified_out_of_stock")
 
 if __name__ == "__main__": unittest.main()
