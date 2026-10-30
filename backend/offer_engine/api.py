@@ -1,11 +1,9 @@
 """Read-only FastAPI surface for the isolated Offer Engine.
 
 Mounting is controlled by SCENTHUNTER_OFFER_ENGINE_API_ENABLED. The route
-opens only the dedicated PostgreSQL DSN and never touches the legacy SQLite DB.
+opens only the dedicated Offer Engine database (SQLite on Fly by default, optional PostgreSQL) and never touches the legacy catalog DB.
 """
 from __future__ import annotations
-
-import os
 
 from fastapi import APIRouter, HTTPException, Query
 
