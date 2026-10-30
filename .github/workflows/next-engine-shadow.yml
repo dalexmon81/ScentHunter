@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/next-engine-shadow
+      - architecture/offer-engine-v1
   pull_request:
     branches:
       - main
