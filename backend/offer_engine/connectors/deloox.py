@@ -37,6 +37,17 @@ def _deloox_market(url: str, fallback: str = "EU") -> str:
     return DELOOX_MARKETS.get(host, fallback)
 
 
+def _supported_storefront_url(url: str) -> bool:
+    """Reject unsupported hosts and Spanish-language /producto/ routes."""
+    parsed = urlparse(str(url or ""))
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in {"http", "https"} or host not in DELOOX_MARKETS:
+        return False
+    first_segment = next((part.casefold() for part in parsed.path.split("/") if part), "")
+    # A .be/.nl/.lu/.com host must not silently persist a Spanish product route.
+    return first_segment != "producto"
+
+
 class DelooxConnector:
     retailer = "deloox"
     source = "product_page"
@@ -56,7 +67,7 @@ class DelooxConnector:
                 continue
             url = str(row.get("url") or "").strip()
             name = str(row.get("name") or "").strip()
-            if not url or not name:
+            if not url or not name or not _supported_storefront_url(url):
                 continue
             attrs = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
             size = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else {}
@@ -94,7 +105,7 @@ class DelooxConnector:
             raise ValueError("deloox_variant_size_changed_since_discovery")
         offer = row.get("offer") if isinstance(row.get("offer"), dict) else {}
         evidence_url = str(row.get("url") or listing.product_url).strip()
-        if not evidence_url.startswith(("https://", "http://")) or _deloox_market(evidence_url, "") == "":
+        if not _supported_storefront_url(evidence_url):
             raise ValueError("deloox_final_url_invalid_or_wrong_market")
         if _deloox_market(evidence_url) != listing.market:
             raise ValueError("deloox_market_changed_since_discovery")
