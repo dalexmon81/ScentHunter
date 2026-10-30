@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import os
+import unittest
+from unittest.mock import patch
+
+from backend.offer_engine import runtime
+from backend.offer_engine.runner import EngineRunResult
+
+
+class FakeCursor:
+    def __init__(self):
+        self.sql = None
+    def __enter__(self):
+        return self
+    def __exit__(self, *_args):
+        return False
+    def execute(self, sql):
+        self.sql = sql
+
+
+class FakeConnection:
+    def __init__(self):
+        self.cursor_instance = FakeCursor()
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = False
+    def cursor(self):
+        return self.cursor_instance
+    def commit(self):
+        self.commits += 1
+    def rollback(self):
+        self.rollbacks += 1
+    def close(self):
+        self.closed = True
+
+
+class OfferEngineRuntimeTests(unittest.TestCase):
+    def test_dsn_is_required_and_can_be_injected(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "SCENTHUNTER_OFFER_ENGINE_DSN"):
+                runtime._dsn()
+        self.assertEqual(runtime._dsn("postgresql://test"), "postgresql://test")
+
+    def test_migration_commits_and_closes_dedicated_connection(self):
+        connection = FakeConnection()
+        with patch.object(runtime.psycopg, "connect", return_value=connection) as connect:
+            runtime.apply_migration("postgresql://test")
+        connect.assert_called_once_with("postgresql://test")
+        self.assertIn("CREATE TABLE IF NOT EXISTS sh_products", connection.cursor_instance.sql)
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
+        self.assertTrue(connection.closed)
+
+    def test_runner_connection_is_closed_after_execution(self):
+        connection = FakeConnection()
+        class FakeRunner:
+            def __init__(self, matcher, repository_factory):
+                self.repository_factory = repository_factory
+            def run(self, connectors, query):
+                repository = self.repository_factory(next(iter(connectors)))
+                self.assert_repository = repository
+                return EngineRunResult([])
+        with (
+            patch.object(runtime.psycopg, "connect", return_value=connection),
+            patch.object(runtime.CatalogRepository, "from_file", return_value=object()),
+            patch.object(runtime, "CanonicalMatcher", return_value=object()),
+            patch.object(runtime, "OfferEngineRunner", FakeRunner),
+        ):
+            result = runtime.run_offer_engine("Liquid Brun", dsn="postgresql://test")
+        self.assertEqual(result.connectors, [])
+        self.assertTrue(connection.closed)
+
+
+if __name__ == "__main__":
+    unittest.main()
