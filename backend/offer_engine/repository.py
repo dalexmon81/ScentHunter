@@ -50,7 +50,7 @@ class OfferRepository:
             raise ValueError(f"canonical variant has no exact size: {variant_id}")
         labels = " ".join((variant.label or "", *variant.aliases)).casefold()
         package_type = "limited_edition" if "limited edition" in labels else "standard"
-        cursor.execute(
+        self._execute(cursor,
             """INSERT INTO sh_variants(variant_id, product_id, size_ml, concentration, package_type)
                VALUES (%s,%s,%s,%s,%s)
                ON CONFLICT (variant_id) DO UPDATE SET
@@ -72,13 +72,13 @@ class OfferRepository:
         try:
             if observation.verification is Verification.VERIFIED:
                 self._ensure_canonical_identity(cursor, observation.product_id, observation.variant_id)
-            cursor.execute(
+            self._execute(cursor,
                 """INSERT INTO sh_retailers(retailer_id, display_name, market)
                    VALUES (%s, %s, %s)
                    ON CONFLICT (retailer_id) DO NOTHING""",
                 (listing.retailer, listing.retailer.title(), listing.market),
             )
-            cursor.execute(
+            self._execute(cursor,
                 """INSERT INTO sh_retailer_listings
                    (retailer_id, external_id, product_url, market, raw_title, raw_brand,
                     raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
@@ -104,7 +104,7 @@ class OfferRepository:
                  "matched" if observation.verification is Verification.VERIFIED else "unresolved"),
             )
             listing_id = cursor.fetchone()[0]
-            cursor.execute(
+            self._execute(cursor,
                 """INSERT INTO sh_offer_observations
                    (listing_id, observed_at, price, currency, availability, source,
                     verification, evidence_url, evidence_hash, rejection_reason, raw_payload)
@@ -119,7 +119,7 @@ class OfferRepository:
 
             published = False
             if decision.publish:
-                cursor.execute(
+                self._execute(cursor,
                     """INSERT INTO sh_current_offers
                        (listing_id, observation_id, product_id, variant_id, verified_at)
                        VALUES (%s,%s,%s,%s,%s)
@@ -136,7 +136,7 @@ class OfferRepository:
             elif observation.verification is Verification.VERIFIED and decision.reason in {"out_of_stock_price_present", "price_missing"}:
                 # A newer, verified non-purchasable observation must retire an
                 # older current offer; otherwise stale prices remain visible.
-                cursor.execute(
+                self._execute(cursor,
                     """DELETE FROM sh_current_offers
                        WHERE listing_id=%s AND verified_at <= %s""",
                     (listing_id, observation.observed_at),
