@@ -53,11 +53,11 @@ class OfferEnginePostgresTests(unittest.TestCase):
             evidence_url=url, evidence_hash="sha256:postgres-integration",
         )
         result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(listing, observation)
-        self.assertFalse(result["published"])
-        self.assertEqual(result["policy_reason"], "price_missing")
+        self.assertTrue(result["published"])
+        self.assertEqual(result["policy_reason"], "verified_out_of_stock")
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT product_id, variant_id FROM sh_current_offers WHERE listing_id=%s", (result["listing_id"],))
-            self.assertIsNone(cursor.fetchone())
+            self.assertEqual(cursor.fetchone(), (product.product_id, variant.variant_id))
             cursor.execute("SELECT canonical_product_id, canonical_variant_id, match_status FROM sh_retailer_listings WHERE listing_id=%s", (result["listing_id"],))
             self.assertEqual(cursor.fetchone(), (product.product_id, variant.variant_id, "matched"))
             cursor.execute("SELECT count(*) FROM sh_offer_observations WHERE listing_id=%s", (result["listing_id"],))
