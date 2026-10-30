@@ -210,6 +210,59 @@ jobs:
                   + json.dumps({"expected": sorted(expected_ids), "actual": sorted(ui_product_ids)})
               )
 
+          # A product identity card is not evidence of a usable comparison.
+          # Require verified offers to survive the exact /search-start/status
+          # response consumed by the browser, for each canonical bottle size.
+          ui_groups = {
+              str(item.get("catalog_id") or ""): item
+              for item in (ui_result.get("results") or [])
+              if isinstance(item, dict)
+          }
+          expected_sizes = {"SH-0030": 100, "SH-0031": 150}
+          group_diagnostics = {}
+          for product_id, expected_size in expected_sizes.items():
+              group = ui_groups.get(product_id) or {}
+              group_offers = [
+                  offer for offer in (group.get("offers") or [])
+                  if isinstance(offer, dict)
+              ]
+              matching_size = [
+                  offer for offer in group_offers
+                  if int(offer.get("size_ml") or 0) == expected_size
+              ]
+              group_diagnostics[product_id] = {
+                  "expected_size_ml": expected_size,
+                  "offer_count": len(group_offers),
+                  "matching_size_offer_count": len(matching_size),
+                  "offers": [
+                      {
+                          "store": offer.get("store") or offer.get("shop"),
+                          "size_ml": offer.get("size_ml"),
+                          "price": offer.get("price_num") or offer.get("price"),
+                          "url": offer.get("url"),
+                      }
+                      for offer in group_offers
+                  ],
+              }
+              if not matching_size:
+                  raise RuntimeError(
+                      "Browser search returned a product card without a verified offer "
+                      "for its exact bottle size: " + json.dumps(group_diagnostics, ensure_ascii=False)
+                  )
+              for offer in matching_size:
+                  url = str(offer.get("url") or "").lower()
+                  import re
+                  explicit_sizes = [
+                      int(value) for value in re.findall(r"(?<![0-9])(30|50|75|100|150|200)\\s*ml", url)
+                  ]
+                  if explicit_sizes and expected_size not in explicit_sizes:
+                      raise RuntimeError(
+                          "Offer URL explicitly conflicts with the canonical bottle size: "
+                          + json.dumps({"product_id": product_id, "expected_size_ml": expected_size,
+                                        "offer": offer}, ensure_ascii=False)
+                      )
+          print("PILOT_BROWSER_GROUP_OFFERS=" + json.dumps(group_diagnostics, ensure_ascii=False), flush=True)
+
           stores = ui_result.get("stores") or {}
           legacy_catalog_failures = {
               store: report for store, report in stores.items()
