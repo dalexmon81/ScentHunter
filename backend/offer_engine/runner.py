@@ -75,6 +75,9 @@ class OfferEngineRunner:
                         if len(result.unresolved_samples) < 12:
                             result.unresolved_samples.append({
                                 "title": listing.raw_title,
+                                "brand": listing.raw_brand,
+                                "size_ml": listing.raw_size_ml,
+                                "gtin": listing.raw_gtin,
                                 "url": listing.product_url,
                                 "status": resolution.status,
                                 "reason": resolution.reason,
