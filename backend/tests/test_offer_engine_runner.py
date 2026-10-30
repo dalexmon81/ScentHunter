@@ -94,7 +94,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
             calls["count"] += 1
             if calls["count"] == 1:
                 raise ValueError("bad identity")
-            return type("Resolution", (), {"status": "unresolved", "observation": observation})()
+            return type("Resolution", (), {"status": "unresolved", "reason": "test_unresolved", "observation": observation})()
 
         with patch("backend.offer_engine.runner.resolve_observation", side_effect=resolve):
             result = runner.run([connector], "perfume")
