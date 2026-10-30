@@ -58,7 +58,7 @@ class DelooxConnector:
             gtin = identity.get("gtin") if isinstance(identity.get("gtin"), dict) else {}
             yield RetailerListing(
                 retailer=self.retailer,
-                external_id=str(sku.get("value") or row.get("sku") or "") or None,
+                external_id=str(sku.get("value") or row.get("sku") or hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]),
                 product_url=url,
                 raw_title=name,
                 raw_brand=str(row.get("brand") or "") or None,
