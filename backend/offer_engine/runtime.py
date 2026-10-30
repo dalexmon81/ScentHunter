@@ -15,6 +15,7 @@ import psycopg
 from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
+from .connectors.notino import NotinoFeedConnector
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
