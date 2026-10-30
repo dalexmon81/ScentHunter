@@ -237,6 +237,72 @@ jobs:
           print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; size_ml={size_ml:g}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
           PY
 
+      - name: Force-refresh and verify Valentino Born in Roma Donna 50 ml on the Luxembourg storefront
+        if: ${{ contains(github.event.head_commit.message, 'trigger Deloox live refresh') }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, shlex, subprocess, sys
+          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
+          remote_python = r"""
+          import json, sys, time
+          sys.path.insert(0, "/app/backend")
+          import catalog_engine
+          target = "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html"
+          started = time.time()
+          item = catalog_engine.refresh_url("deloox", target)
+          conn = catalog_engine.db()
+          try:
+              row = conn.execute(
+                  "SELECT price,currency,fetched_at,fetch_status,name,size_ml,availability FROM store_products WHERE store=? AND url=?",
+                  ("deloox", target),
+              ).fetchone()
+              persisted = dict(row) if row else None
+          finally:
+              conn.close()
+          print("DELOOX_VALENTINO_50ML=" + json.dumps({
+              "item": item, "store_product": persisted, "started_at": started
+          }, ensure_ascii=False, default=str), flush=True)
+          """
+          command = "/app/.venv/bin/python -c " + shlex.quote(remote_python)
+          result = subprocess.run(
+              ["flyctl", "ssh", "console", "--app", "scenthunter", "--select=false", "-C", command],
+              capture_output=True, text=True, timeout=210,
+          )
+          print(result.stdout, end="")
+          if result.stderr:
+              print(result.stderr, file=sys.stderr, end="")
+          if result.returncode:
+              raise SystemExit(f"Fly SSH Valentino refresh failed: {result.returncode}")
+          marker = "DELOOX_VALENTINO_50ML="
+          line = next((x for x in result.stdout.splitlines() if marker in x), None)
+          if not line:
+              raise SystemExit("No structured Valentino refresh result returned.")
+          payload = json.loads(line.split(marker, 1)[1])
+          item, row = payload.get("item") or {}, payload.get("store_product") or {}
+          try:
+              parsed_price = float(item.get("price_num"))
+              saved_price = float(row.get("price"))
+              size_ml = float(row.get("size_ml"))
+              fetched_at = float(row.get("fetched_at"))
+              started_at = float(payload.get("started_at"))
+          except (TypeError, ValueError):
+              raise SystemExit("Valentino refresh missing validated price/size/timestamp: " + json.dumps(payload, ensure_ascii=False))
+          if "valentino" not in str(row.get("name") or "").lower() or "born in roma" not in str(row.get("name") or "").lower():
+              raise SystemExit("Wrong product persisted: " + json.dumps(row, ensure_ascii=False))
+          if abs(size_ml - 50.0) > 0.01:
+              raise SystemExit("Wrong Valentino size persisted: " + json.dumps(row, ensure_ascii=False))
+          if abs(parsed_price - saved_price) > 0.01:
+              raise SystemExit(f"Valentino parsed price EUR {parsed_price:.2f} differs from saved price EUR {saved_price:.2f}")
+          if fetched_at < started_at - 5 or row.get("fetch_status") != "OK":
+              raise SystemExit("Valentino offer was not freshly and successfully persisted: " + json.dumps(row, ensure_ascii=False))
+          print(f"DELOOX_VALENTINO_50ML_VERIFIED=EUR {saved_price:.2f}; size={size_ml:g}ml; fetched_at={fetched_at}")
+          PY
+
       - name: Capture Fly logs if the targeted Deloox refresh fails
         if: ${{ failure() && (contains(github.event.head_commit.message, 'trigger Deloox live refresh') || contains(github.event.head_commit.message, 'Correct Deloox compact-page markup recognition')) }}
         env:
