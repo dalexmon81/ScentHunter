@@ -126,6 +126,8 @@ class OfferRepository:
                     current_verified_at is None
                     or self._as_utc(observation.observed_at) >= current_verified_at
                 )
+                if not incoming_is_current:
+                    preserve_existing_listing = True
                 if identity_changed and incoming_is_current:
                     self._execute(cursor, "DELETE FROM sh_current_offers WHERE listing_id=%s", (existing[0],))
                 elif identity_changed and not incoming_is_current:
