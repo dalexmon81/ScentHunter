@@ -68,7 +68,7 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(resolved.status, "matched")
         self.assertEqual(resolved.observation.product_id, "SH-0031")
         self.assertEqual(resolved.observation.variant_id, "VAR-f5aff76b4bb5de8a")
-        self.assertFalse(OfferPolicy().evaluate(resolved.observation).publish)
+        self.assertTrue(OfferPolicy().evaluate(resolved.observation).publish)
 
     def test_market_and_evidence_url_follow_actual_storefront_locale(self):
         url = "https://www.deloox.nl/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
