@@ -6,6 +6,7 @@ on:
       - architecture/offer-engine-v1
     paths:
       - '.github/workflows/fly-pilot.yml'
+      - 'fly.staging.toml'
   workflow_dispatch:
     inputs:
       confirm_deploy:
