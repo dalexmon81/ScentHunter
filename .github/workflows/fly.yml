@@ -222,9 +222,18 @@ jobs:
           import time
           if fetched_at < started_at - 5 or fetched_at > time.time() + 5:
               raise SystemExit(f"Deloox catalog row was not freshly fetched: fetched_at={fetched_at}, started_at={started_at}")
-          if abs(price - 42.59) > 0.01:
-              raise SystemExit(f"Live Deloox price differs from the reported current price €42.59: received €{price:.2f}; do not mark the incident resolved.")
-          print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
+          try:
+              parsed_price = float(payload.get("item_price"))
+              size_ml = float(row.get("size_ml"))
+          except (TypeError, ValueError):
+              raise SystemExit("Deloox refresh returned no parsed price or product size: " + json.dumps(payload, ensure_ascii=False))
+          if abs(price - parsed_price) > 0.01:
+              raise SystemExit(f"Persisted Deloox price EUR {price:.2f} differs from freshly parsed price EUR {parsed_price:.2f}.")
+          if abs(size_ml - 150.0) > 0.01 or "liquid brun" not in str(row.get("name") or "").lower():
+              raise SystemExit("Deloox refreshed the wrong product/size: " + json.dumps(row, ensure_ascii=False))
+          if row.get("fetch_status") != "OK":
+              raise SystemExit(f"Deloox product fetch status is not OK: {row.get('fetch_status')}")
+          print(f"DELOOX_LIVE_PRICE_VERIFIED=EUR {price:.2f}; size_ml={size_ml:g}; fetched_at={fetched_at}; status={row.get('fetch_status')}")
           PY
 
       - name: Capture Fly logs if the targeted Deloox refresh fails
