@@ -481,8 +481,6 @@ class ParsedSearchConnector:
                 # URLs of the same size, retain a deterministic URL suffix.
                 external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
             if external_id in seen:
-                external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
-            if external_id in seen:
                 continue
             seen.add(external_id)
             listing = RetailerListing(
