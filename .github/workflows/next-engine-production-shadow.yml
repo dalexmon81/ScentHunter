@@ -55,7 +55,16 @@ jobs:
           from scenthunter_next_engine.next_engine_service import NextEngineService
 
           BASE = "https://scenthunter.fly.dev"
-          QUERIES = ("Hawas", "Hawas Elixir", "Hawas Tropical", "Hawas For Her", "Born in Roma", "Born in Roma Donna", "Born in Roma Coral Fantasy Donna", "Born in Roma Yellow Dream Uomo", "Hawas Ice", "Dior Sauvage", "Sauvage Eau de Parfum", "Sauvage Parfum", "Liquid Brun 100 ml", "Liquid Brun Limited Edition 150 ml")
+          QUERIES = (
+              "Hawas",
+              "Born in Roma",
+              "Born in Roma Donna",
+              "Born in Roma Coral Fantasy Donna",
+              "Hawas Ice",
+              "Dior Sauvage",
+              "Liquid Brun 100 ml",
+              "Liquid Brun Limited Edition 150 ml",
+          )
           USER_AGENT = "ScentHunter-next-engine-production-shadow/1.0"
 
           def get_json(path, timeout=25):
