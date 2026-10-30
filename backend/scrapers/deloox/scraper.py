@@ -1181,7 +1181,53 @@ def _discover_from_search(session, query, deadline=None):
             if len(candidates) == before:
                 break
 
+    browser_diagnostic = {"attempted": False}
+    if not candidates:
+        # The storefront sometimes returns a tiny anti-bot/interstitial HTML
+        # document to plain requests while its browser-rendered search works.
+        # Reuse the same conservative URL extractor after a real browser load;
+        # product-page parsing remains the authority for product identity.
+        browser_diagnostic["attempted"] = True
+        try:
+            from playwright.sync_api import sync_playwright
+            browser_endpoint = f"{BASE_URL}/chercher.html?q={quote_plus(query)}"
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                try:
+                    page = browser.new_page(
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+                        ),
+                        locale="fr-BE",
+                    )
+                    page.goto(browser_endpoint, wait_until="domcontentloaded", timeout=18000)
+                    page.wait_for_timeout(1200)
+                    browser_html = page.content() or ""
+                    browser_url = clean(page.url or browser_endpoint)
+                    browser_title = clean(page.title() or "")
+                    browser_found = _candidate_product_urls(
+                        browser_html,
+                        query,
+                        discovery_query=query,
+                        accept_all_products=False,
+                        base_url=f"{urlparse(browser_url).scheme}://{urlparse(browser_url).netloc}",
+                    )
+                    browser_diagnostic.update({
+                        "final_url": browser_url,
+                        "title": browser_title,
+                        "html_bytes": len(browser_html.encode("utf-8", errors="replace")),
+                        "candidate_count": len(browser_found),
+                    })
+                    for url in browser_found:
+                        candidates[url] = True
+                finally:
+                    browser.close()
+        except Exception as exc:
+            browser_diagnostic["error"] = f"{type(exc).__name__}: {exc}"
+
     global _LAST_DISCOVERY_STATE
+    _LAST_DISCOVERY_STATE["browser_search"] = browser_diagnostic
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
     _LAST_DISCOVERY_STATE["search_failure_reasons"] = dict(sorted(failure_reasons.items()))
