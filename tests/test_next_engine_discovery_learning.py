@@ -285,3 +285,64 @@ def test_proposes_new_product_when_only_candidate_is_missing_family_placeholder(
     assert product["brand_name"] == "Rasasi"
     assert result["report"]["variants_added"] == 1
     assert result["report"]["added_variants"][0]["product_id"] == product["product_id"]
+
+def test_rejects_variant_when_url_slug_identifies_a_distinct_flanker():
+    catalog = {
+        "products": [{
+            "product_id": "SH-DIOR-S", "brand_name": "Dior",
+            "canonical_name": "Sauvage", "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store A",
+            "product_url": "https://a.example/dior-sauvage-eau-forte-eau-forte-60-ml",
+        },
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store B",
+            "product_url": "https://b.example/dior-sauvage-eau-forte-eau-forte-60-ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["url_identity_conflict"] == 2
+
+
+def test_url_identity_accepts_matching_product_slug_with_generic_packaging_words():
+    catalog = {
+        "products": [{
+            "product_id": "SH-DIOR-S", "brand_name": "Dior",
+            "canonical_name": "Sauvage", "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store A",
+            "product_url": "https://a.example/dior-sauvage-edp-vapo-spray-60-ml",
+        },
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store B",
+            "product_url": "https://b.example/dior-sauvage-eau-de-parfum-spray-60-ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+
