@@ -65,6 +65,17 @@ def run() -> dict:
             "NOTINO_CJ_FEED_PASSWORD",
         ))
         retailer_warnings = []
+        required_retailers = {
+            "bplatz", "deloox", "easycosmetic", "orioudh",
+            "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+        }
+        observed_retailers = {item.retailer for item in engine_result.connectors}
+        for missing_retailer in sorted(required_retailers - observed_retailers):
+            retailer_warnings.append({
+                "retailer": missing_retailer,
+                "status": "missing_connector",
+                "reason": "required_live_smoke_retailer_not_executed",
+            })
         for item in engine_result.connectors:
             if item.retailer == "notino" and not configured_notino:
                 retailer_warnings.append({
@@ -73,10 +84,17 @@ def run() -> dict:
                     "reason": "notino_feed_credentials_missing",
                 })
                 continue
-            if item.status != "success" or item.errors or item.unresolved:
+            if (
+                item.status != "success"
+                or item.errors
+                or item.unresolved
+                or (item.retailer in required_retailers and item.offers_published < 1)
+            ):
                 retailer_warnings.append({
                     "retailer": item.retailer,
                     "status": item.status,
+                    "listings_seen": item.listings_seen,
+                    "offers_published": item.offers_published,
                     "errors": item.errors,
                     "unresolved": item.unresolved,
                     "unresolved_samples": item.unresolved_samples,
