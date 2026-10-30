@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: next-engine-production-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   production-shadow:
     if: >-
@@ -54,12 +58,12 @@ jobs:
           from scenthunter_next_engine.next_engine_service import NextEngineService
 
           BASE = "https://scenthunter.fly.dev"
+          # Keep the live comparison representative and bounded. The
+          # separate retailer smoke tests cover connector-specific behavior;
+          # this job compares the new matcher with production search.
           QUERIES = (
               "Hawas",
-              "Born in Roma",
               "Born in Roma Donna",
-              "Born in Roma Coral Fantasy Donna",
-              "Hawas Ice",
               "Dior Sauvage",
               "Liquid Brun 100 ml",
               "Liquid Brun Limited Edition 150 ml",
@@ -82,7 +86,7 @@ jobs:
               try:
                   direct = get_json(
                       "/search?q=" + urllib.parse.quote(query),
-                      timeout=45,
+                      timeout=20,
                   )
                   direct_groups = direct.get("results") if isinstance(direct.get("results"), list) else []
                   direct_has_offers = any(
@@ -101,7 +105,7 @@ jobs:
                       flush=True,
                   )
 
-              start_deadline = time.monotonic() + 45
+              start_deadline = time.monotonic() + 20
               job_id = None
               while time.monotonic() < start_deadline:
                   started = get_json("/search-start?q=" + urllib.parse.quote(query))
@@ -117,7 +121,7 @@ jobs:
               if not job_id:
                   raise RuntimeError(f"Production search stayed busy for {query}")
 
-              deadline = time.monotonic() + 120
+              deadline = time.monotonic() + 35
               while time.monotonic() < deadline:
                   payload = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
                   if payload.get("completed"):
@@ -135,7 +139,7 @@ jobs:
                           try:
                               direct = get_json(
                                   "/search?q=" + urllib.parse.quote(query),
-                                  timeout=45,
+                                  timeout=20,
                               )
                               direct_groups = direct.get("results") if isinstance(direct.get("results"), list) else []
                               direct_has_offers = any(
