@@ -1,22 +1,26 @@
 """Deloox adapter for the Offer Engine contract.
 
-This adapter reuses the existing retailer-specific parser but emits only raw
-listing/observation facts. Canonical IDs are deliberately not assigned here.
+Discovery yields raw listings only; page observations are independently checked.
 """
 from __future__ import annotations
+
 import hashlib
 import json
 import re
 from decimal import Decimal
 from typing import Iterable
 from urllib.parse import urlparse
+
 import requests
+
 from ..adapters import ConnectorHealth
 from ..contracts import Availability, OfferObservation, RetailerListing, Verification
+
 try:
     from scrapers.deloox import scraper
 except ModuleNotFoundError:
     from backend.scrapers.deloox import scraper
+
 
 DELOOX_MARKETS = {
     "deloox.be": "BE",
@@ -33,24 +37,20 @@ DELOOX_MARKETS = {
 
 
 def _deloox_market(url: str, fallback: str = "EU") -> str:
-    """Derive market from the actual storefront host, never from a default."""
     host = (urlparse(url).hostname or "").lower()
     return DELOOX_MARKETS.get(host, fallback)
 
 
 def _supported_storefront_url(url: str) -> bool:
-    """Reject unsupported hosts and Spanish-language /producto/ routes."""
     parsed = urlparse(str(url or ""))
     host = (parsed.hostname or "").lower()
     if parsed.scheme not in {"http", "https"} or host not in DELOOX_MARKETS:
         return False
     first_segment = next((part.casefold() for part in parsed.path.split("/") if part), "")
-    # Spanish product routes are valid only on the Spanish storefront.
     return first_segment != "producto" or host in {"deloox.es", "www.deloox.es"}
 
 
 def _same_product_path(discovered_url: str, evidence_url: str) -> bool:
-    """A same-storefront redirect is still unsafe if it lands on another product."""
     discovered = urlparse(discovered_url)
     evidence = urlparse(evidence_url)
     return (
@@ -68,17 +68,30 @@ class DelooxConnector:
     def __init__(self, session=None):
         self._session = session
 
+    @staticmethod
+    def _searchable_tokens(value: str) -> set[str]:
+        return {
+            token
+            for token in re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).split()
+            if token
+        }
+
     def discover(self, query: str) -> Iterable[RetailerListing]:
-        query_tokens = [
-            token for token in re.sub(r"[^a-z0-9]+", " ", str(query or "").casefold()).split()
+        # Search-stream accepts broad product-family terms. Requested size is
+        # checked against both search facts and the subsequently fetched page,
+        # while all family listings remain discoverable for broader refreshes.
+        query_tokens = {
+            token for token in self._searchable_tokens(query)
             if len(token) > 1 and token not in {"ml", "edp", "edt"}
-        ]
+        }
         result = scraper.search_stream(query)
         if not isinstance(result, dict) or result.get("status") != "success" or not result.get("verified"):
             status = result.get("status", "invalid_result") if isinstance(result, dict) else "invalid_result"
             details = result.get("details", {}) if isinstance(result, dict) else {}
             reasons = details.get("search_failure_reasons") or details.get("browser_search") or {}
             raise RuntimeError(f"deloox_discovery_{status}:{reasons}")
+
+        seen: set[tuple[str, int | None, str | None]] = set()
         for row in result.get("results") or []:
             if not isinstance(row, dict):
                 continue
@@ -89,32 +102,50 @@ class DelooxConnector:
             attrs = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
             size = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else {}
             concentration = attrs.get("concentration") if isinstance(attrs.get("concentration"), dict) else {}
-            # Search-result titles can omit the bottle size even when the
-            # parsed product facts and canonical URL expose it. Include those
-            # independent page facts so a size-qualified query (e.g. 150 ml)
-            # does not discard the exact variant before observation.
-            searchable_text = " ".join((
-                name,
-                str(row.get("brand") or ""),
-                url,
-                str(size.get("value") or ""),
-                str(concentration.get("value") or ""),
-            ))
-            searchable = re.sub(r"[^a-z0-9]+", " ", searchable_text.casefold())
-            if query_tokens and not all(token in searchable.split() for token in query_tokens):
+            size_value = size.get("value")
+            try:
+                size_ml = int(size_value) if size_value is not None else None
+            except (TypeError, ValueError):
                 continue
-            identity = row.get("identity") if isinstance(row.get("identity"), dict) else {}
-            sku = identity.get("sku") if isinstance(identity.get("sku"), dict) else {}
-            gtin = identity.get("gtin") if isinstance(identity.get("gtin"), dict) else {}
+            brand = str(row.get("brand") or "").strip() or None
+            sku_obj = (row.get("identity") or {}).get("sku") if isinstance(row.get("identity"), dict) else {}
+            gtin_obj = (row.get("identity") or {}).get("gtin") if isinstance(row.get("identity"), dict) else {}
+            sku = str((sku_obj or {}).get("value") or row.get("sku") or "").strip() or None
+            gtin = str((gtin_obj or {}).get("value") or "").strip() or None
+
+            # A search request like "Liquid Brun 150 ml" must not discard a
+            # result merely because the retailer title omits its size; page
+            # size and GTIN become authoritative at observe/resolve time.
+            searchable = self._searchable_tokens(" ".join((
+                name, brand or "", url, str(size_value or ""),
+                str((concentration or {}).get("value") or ""),
+            )))
+            if query_tokens and not query_tokens.issubset(searchable):
+                # Size is optional in the search result; all other query
+                # tokens still have to match.
+                non_size = query_tokens - {"150", "100", "200", "75", "50", "30"}
+                if not non_size.issubset(searchable):
+                    continue
+
+            dedupe_key = (url, size_ml, gtin or sku)
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            external_id = sku or gtin or hashlib.sha256(
+                f"{url}|{size_ml or ''}|{name}".encode("utf-8")
+            ).hexdigest()[:24]
+            if size_ml is not None and not (sku or gtin):
+                external_id = f"{external_id}:{size_ml}ml"
+
             yield RetailerListing(
                 retailer=self.retailer,
-                external_id=str(sku.get("value") or row.get("sku") or hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]),
+                external_id=external_id,
                 product_url=url,
                 raw_title=name,
-                raw_brand=str(row.get("brand") or "") or None,
-                raw_size_ml=int(size["value"]) if size.get("value") is not None else None,
-                raw_concentration=str(concentration.get("value") or "") or None,
-                raw_gtin=str(gtin.get("value") or "") or None,
+                raw_brand=brand,
+                raw_size_ml=size_ml,
+                raw_concentration=str((concentration or {}).get("value") or "") or None,
+                raw_gtin=gtin,
                 market=_deloox_market(url),
             )
 
@@ -129,6 +160,7 @@ class DelooxConnector:
                 session.close()
         if not isinstance(row, dict):
             raise RuntimeError("deloox_product_page_not_verified")
+
         attrs = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
         size_obj = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else {}
         observed_size = size_obj.get("value")
@@ -142,18 +174,35 @@ class DelooxConnector:
             raise ValueError("deloox_market_changed_since_discovery")
         if not _same_product_path(listing.product_url, evidence_url):
             raise ValueError("deloox_product_page_redirected_to_different_product")
+
         raw_availability = str(offer.get("availability") or "unknown").lower()
-        availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
+        availability = (
+            Availability(raw_availability)
+            if raw_availability in Availability._value2member_map_
+            else Availability.UNKNOWN
+        )
         raw_price = offer.get("price")
         price = Decimal(str(raw_price)) if raw_price is not None else None
+        if availability is Availability.OUT_OF_STOCK:
+            price = None
+
         evidence = json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
-        # Matching is a separate, reviewed step; a connector never assigns canonical IDs.
+        identity = row.get("identity") if isinstance(row.get("identity"), dict) else {}
+        raw_gtin = identity.get("gtin") if isinstance(identity.get("gtin"), dict) else {}
+        observed_gtin = str((raw_gtin or {}).get("value") or "").strip() or None
+        if listing.raw_gtin and observed_gtin and listing.raw_gtin != observed_gtin:
+            raise ValueError("deloox_gtin_changed_since_discovery")
+
         return OfferObservation.now(
             listing_key=f"{listing.retailer}:{listing.external_id or listing.product_url}",
-            price=price, currency=str(offer.get("currency") or "EUR"),
-            availability=availability, source=self.source, verification=Verification.UNVERIFIED,
-            evidence_url=evidence_url, evidence_hash=digest,
+            price=price,
+            currency=str(offer.get("currency") or "EUR"),
+            availability=availability,
+            source=self.source,
+            verification=Verification.UNVERIFIED,
+            evidence_url=evidence_url,
+            evidence_hash=digest,
             raw_payload={"retailer": self.retailer, "parsed_page": row},
         )
 
