@@ -58,7 +58,10 @@ class OfferReadRepository:
                    JOIN sh_variants AS v
                      ON v.variant_id=current.variant_id
                     AND v.product_id=current.product_id
-                   WHERE (
+                   WHERE current.verified_at >= now() - (r.max_offer_age_seconds * interval '1 second')
+                     AND o.verification = 'verified'
+                     AND o.availability IN ('in_stock', 'out_of_stock')
+                     AND (
                        p.canonical_name ILIKE %s
                        OR p.brand ILIKE %s
                        OR l.raw_title ILIKE %s
