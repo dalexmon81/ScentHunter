@@ -595,3 +595,12 @@ def test_url_identity_accepts_deloox_size_tokens_and_reordered_brand_words():
     assert result["report"]["variants_added"] == 1
     assert result["report"]["added_variants"][0]["size_ml"] == 30
 
+def test_two_country_domains_of_one_retailer_do_not_count_as_independent_evidence():
+    observations = [
+        _offer("Deloox", "www.deloox.be"),
+        _offer("Deloox", "www.deloox.lu"),
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["insufficient_independent_retailers"] == 1
+
