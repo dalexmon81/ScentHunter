@@ -20,7 +20,7 @@ FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
   <item>
     <g:id>LB150</g:id><g:title>French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml</g:title>
     <g:brand>French Avenue</g:brand><g:gtin>6298042001831</g:gtin>
-    <g:price>89.95 EUR</g:price><g:availability>out of stock</g:availability>
+    <g:currency>EUR</g:currency><g:availability>out of stock</g:availability>
     <g:link>https://www.notino.fr/french-avenue/liquid-brun-limited/</g:link>
     <g:size>150 ml</g:size>
   </item>
