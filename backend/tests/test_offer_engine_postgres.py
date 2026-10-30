@@ -54,7 +54,7 @@ class OfferEnginePostgresTests(unittest.TestCase):
         )
         result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(listing, observation)
         self.assertFalse(result["published"])
-        self.assertEqual(result["policy_reason"], "not_in_stock")
+        self.assertEqual(result["policy_reason"], "price_missing")
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT product_id, variant_id FROM sh_current_offers WHERE listing_id=%s", (result["listing_id"],))
             self.assertIsNone(cursor.fetchone())
