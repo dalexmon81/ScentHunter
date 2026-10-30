@@ -25,7 +25,7 @@ The `OfferEngineRunner` executes connectors independently, records each observat
 The opt-in worker is executable with `SCENTHUNTER_OFFER_ENGINE_DSN=postgresql://... python -m backend.offer_engine.cli --query "Liquid Brun"`. Apply the isolated schema explicitly with `--apply-migration`; migrations are never run automatically. The worker opens and closes its own dedicated PostgreSQL connections and never touches the legacy SQLite catalog.
 
 ## Storage
-The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for repository/worker implementation, reviewed backfill, live connector tests and parity gates.
+The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for dedicated PostgreSQL provisioning, read API/application integration, reviewed backfill, live connector tests and parity gates.
 
 ## First vertical slice
 Implement Deloox end-to-end against this contract. Prove Liquid Brun 100 ml and Limited Edition 150 ml, including sold-out state, from live source pages; sold-out variants must remain visible without a price. Then add the next retailer. Do not enable the new API until these live tests pass.
