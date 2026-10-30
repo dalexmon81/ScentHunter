@@ -58,7 +58,7 @@ def listing(sku):
 
 class OfferEngineRunnerTests(unittest.TestCase):
     def test_discovery_failure_does_not_stop_other_retailers(self):
-        healthy = FakeConnector("healthy", [listing("ok")])
+        healthy = FakeConnector("healthy", [listing("ok", retailer="healthy")])
         broken = FakeConnector("broken", discovery_error=RuntimeError("blocked"))
         repositories = {}
 
