@@ -125,9 +125,10 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
             result = parser(session, listing.product_url)
         elif retailer == "sabina":
             result = parser(session, listing.product_url, listing.raw_title, authoritative_search=True)
-        elif retailer == "orioudh":
-            # The Shopify product JSON endpoint is already tied to this exact
-            # discovered URL; derive its identity from the URL, not search text.
+        elif retailer in {"orioudh", "perfumemarket"}:
+            # These product parsers are URL-bound. The discovered exact URL is
+            # authoritative; do not reapply search-snippet title tokens to the
+            # product page, where localized or shortened titles can differ.
             result = parser(session, listing.product_url, "")
         else:
             result = parser(session, listing.product_url, listing.raw_title)
