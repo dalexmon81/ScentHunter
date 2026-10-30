@@ -227,6 +227,7 @@ jobs:
               size_ml = float(row.get("size_ml"))
           except (TypeError, ValueError):
               raise SystemExit("Deloox refresh returned no parsed price or product size: " + json.dumps(payload, ensure_ascii=False))
+          # Compare against the live parser result, never against a historical hard-coded retail price.
           if abs(price - parsed_price) > 0.01:
               raise SystemExit(f"Persisted Deloox price EUR {price:.2f} differs from freshly parsed price EUR {parsed_price:.2f}.")
           if abs(size_ml - 150.0) > 0.01 or "liquid brun" not in str(row.get("name") or "").lower():
