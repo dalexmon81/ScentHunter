@@ -71,7 +71,7 @@ class OfferEngineRunner:
                     resolution = resolve_observation(listing, observation, self.matcher)
                     if resolution.status != "matched":
                         result.unresolved += 1
-                    persisted = repository.record(listing, resolution.observation)
+                    persisted = repository.record(listing, resolution.observation, match_status=resolution.status)
                     result.observations_written += 1
                     if persisted.get("published"):
                         result.offers_published += 1
