@@ -15,6 +15,20 @@ permissions:
 jobs:
   next-engine-shadow-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scent hunter
+          POSTGRES_PASSWORD: scent hunter
+          POSTGRES_DB: scent hunter
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scent hunter -d scent hunter"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     timeout-minutes: 8
     steps:
       - name: Checkout
@@ -24,10 +38,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml 'psycopg[binary]'
       - name: Compile engine
         run: python -m compileall -q backend/scenthunter_next_engine backend/offer_engine
       - name: Run engine and integration contract tests
+        env:
+          SCENTHUNTER_TEST_POSTGRES_DSN: postgresql://scent hunter:scent hunter@localhost:5432/scent hunter
         run: >-
           python -m pytest -q
           tests/test_canonical_matcher.py
@@ -53,6 +69,7 @@ jobs:
           backend/tests/test_offer_engine_resolver.py
           backend/tests/test_offer_engine_deloox_liquid_brun.py
           backend/tests/test_offer_engine_repository.py
+          backend/tests/test_offer_engine_postgres.py
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
