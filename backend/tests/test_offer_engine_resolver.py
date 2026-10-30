@@ -50,7 +50,7 @@ def fixture(availability=Availability.OUT_OF_STOCK, size=150):
     }
     observation = OfferObservation.now(
         listing_key="deloox:1385920",
-        price=Decimal("0") if availability is Availability.OUT_OF_STOCK else Decimal("49.95"),
+        price=None if availability is Availability.OUT_OF_STOCK else Decimal("49.95"),
         currency="EUR",
         availability=availability,
         source="product_page",
@@ -72,6 +72,9 @@ class OfferEngineResolverTests(unittest.TestCase):
         self.assertEqual(result.observation.product_id, "SH-0031")
         self.assertEqual(result.observation.variant_id, "VAR-f5aff76b4bb5de8a")
         self.assertEqual(result.observation.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(result.observation.price)
+        from backend.offer_engine.policy import OfferPolicy
+        self.assertFalse(OfferPolicy().evaluate(result.observation).publish)
         self.assertEqual(result.observation.verification, Verification.VERIFIED)
         self.assertEqual(matcher.seen_offer.size_ml, 150)
         self.assertEqual(
