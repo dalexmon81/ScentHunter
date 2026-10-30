@@ -15,6 +15,7 @@ import psycopg
 from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
+from .connectors.parsed_search import ParsedSearchConnector
 from .connectors.notino import NotinoFeedConnector
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
@@ -77,12 +78,24 @@ def run_offer_engine(
 
     try:
         runner = OfferEngineRunner(matcher, repository_factory)
-        active_connectors = list(connectors) if connectors is not None else [DelooxConnector()]
-        # Notino's approved CJ/VIV feed is an authenticated, structured source.
-        # Add it only when all credentials are configured; never make the
-        # entire run fail just because this optional feed is not provisioned.
-        if connectors is None and NotinoFeedConnector.configured():
-            active_connectors.append(NotinoFeedConnector())
+        if connectors is not None:
+            active_connectors = list(connectors)
+        else:
+            active_connectors = [
+                DelooxConnector(),
+                ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
+                ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
+                ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
+                ParsedSearchConnector("parfumcity", "scrapers.parfumcity.scraper", "NL"),
+                ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE"),
+                ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
+                ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
+            ]
+            # Notino's approved CJ/VIV feed is an authenticated, structured source.
+            # Add it only when all credentials are configured; never make the
+            # entire run fail just because this optional feed is not provisioned.
+            if NotinoFeedConnector.configured():
+                active_connectors.insert(1, NotinoFeedConnector())
         return runner.run(active_connectors, query)
     finally:
         for connection in connections:
