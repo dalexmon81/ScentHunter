@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - exercised only in the CI PostgreSQL jo
 
 from backend.offer_engine.contracts import Availability, OfferObservation, RetailerListing, Verification
 from backend.offer_engine.repository import OfferRepository
+from backend.offer_engine.read_repository import OfferReadRepository
 from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
 
@@ -73,6 +74,15 @@ class OfferEnginePostgresTests(unittest.TestCase):
                     (result["listing_id"], datetime.now(timezone.utc), Decimal("10.00"), "EUR"),
                 )
         self.connection.rollback()
+        current = OfferReadRepository(self.connection).search("Liquid Brun", market="BE")
+        sold_out = next(
+            row for row in current
+            if row["product_id"] == product.product_id
+            and row["variant_id"] == variant.variant_id
+        )
+        self.assertEqual(sold_out["availability"], "out_of_stock")
+        self.assertIsNone(sold_out["price"])
+        self.assertEqual(sold_out["size_ml"], 150)
 
 
 if __name__ == "__main__":
