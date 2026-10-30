@@ -40,7 +40,7 @@ class FakeRepository:
     def __init__(self):
         self.records = []
 
-    def record(self, listing, observation):
+    def record(self, listing, observation, *, match_status=None):
         self.records.append((listing, observation))
         return {"published": False}
 
