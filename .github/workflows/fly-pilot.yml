@@ -132,6 +132,7 @@ jobs:
           base = "https://sh-pilot-20261030.fly.dev"
           query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml"})
           last_error = None
+          refresh_started = False
 
           for attempt in range(1, 25):
               try:
@@ -156,6 +157,7 @@ jobs:
                   # empty database. Exercise the explicit refresh endpoint so
                   # the pilot test proves that real connectors can ingest and
                   # publish verified offers, not merely that SQLite is online.
+                  refresh_started = True
                   refresh_request = urllib.request.Request(
                       base + "/offer-engine/search?" + query,
                       data=b"",
@@ -227,6 +229,12 @@ jobs:
               except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
                   last_error = f"{type(exc).__name__}: {exc}"
                   print(f"Attempt {attempt}/24: {last_error}", flush=True)
+                  # A refresh POST can take time and is not safe to replay as
+                  # part of a broad readiness retry loop. Retrying it can launch
+                  # duplicate retailer crawls and hide the original failure.
+                  # Retry only GET readiness checks before the first POST.
+                  if refresh_started:
+                      raise SystemExit("Pilot refresh failed after one attempt; refusing to replay POST: " + last_error)
                   if attempt < 24:
                       time.sleep(5)
           else:
