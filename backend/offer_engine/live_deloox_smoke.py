@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 
 from backend.offer_engine.connectors.deloox import DelooxConnector
+from backend.scrapers.deloox import scraper
 from backend.offer_engine.contracts import Availability
 from backend.offer_engine.resolver import resolve_observation
 from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
@@ -32,7 +33,9 @@ def run() -> dict[str, object]:
     by_id = {listing.external_id: listing for listing in listings if listing.external_id in EXPECTED}
     missing = sorted(set(EXPECTED) - set(by_id))
     if missing:
-        raise AssertionError(f"Deloox live search did not discover expected product IDs: {missing}")
+        raise AssertionError(\n            "Deloox live search did not discover expected product IDs: "
+            f"{missing}; discovery_state={scraper._LAST_DISCOVERY_STATE}"
+        )
 
     verified: dict[str, object] = {}
     for external_id, (product_id, variant_id, size_ml) in EXPECTED.items():
