@@ -191,6 +191,17 @@ jobs:
                       ui_result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
                   if not ui_result.get("completed"):
                       raise RuntimeError("User search job did not complete: " + json.dumps(ui_result))
+                  ui_product_ids = {
+                      str(item.get("catalog_id") or "")
+                      for item in ui_result.get("results") or []
+                      if isinstance(item, dict)
+                  }
+                  expected_liquid_brun_ids = {"SH-0030", "SH-0031"}
+                  if not expected_liquid_brun_ids.issubset(ui_product_ids):
+                      raise RuntimeError(
+                          "Broad Liquid Brun search did not return both canonical products: "
+                          + json.dumps({"expected": sorted(expected_liquid_brun_ids), "actual": sorted(ui_product_ids), "results": ui_result.get("results")})
+                      )
                   stores = ui_result.get("stores") or {}
                   legacy_catalog_failures = {
                       store: report for store, report in stores.items()
