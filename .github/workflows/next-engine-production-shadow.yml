@@ -1,18 +1,16 @@
 name: One-time Production Next Engine Shadow Comparison
 
 on:
-  push:
-    branches: [architecture/offer-engine-v1]
-    paths:
-      - ".github/workflows/next-engine-production-shadow.yml"
-      - "backend/scenthunter_next_engine/**"
-      - "backend/offer_engine/**"
-      - "backend/product_catalog.json"
-  workflow_run:
-    workflows: ["Fly Deploy"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_production_shadow:
+        description: "Confirm read-only requests to the legacy production search endpoint"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
 
 permissions:
   contents: read
@@ -23,11 +21,7 @@ concurrency:
 
 jobs:
   production-shadow:
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      contains(github.event.workflow_run.head_commit.message, 'RUN-NEXT-ENGINE-PROD-SHADOW')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_production_shadow == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
