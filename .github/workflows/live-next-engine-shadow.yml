@@ -1,30 +1,16 @@
 name: Manual Live Next Engine Shadow
 
 on:
-  push:
-    branches: [architecture/offer-engine-v1]
-    paths:
-      - "backend/offer_engine/**"
-      - "backend/scrapers/deloox/**"
-      - "backend/scrapers/orioudh/**"
-      - "backend/scrapers/perfumemarket/**"
-      - "backend/scrapers/sabina/**"
-      - "backend/scrapers/parfumcity/**"
-      - "backend/scrapers/parfumzentrum/**"
-      - "backend/scrapers/bplatz/**"
-      - "backend/scrapers/easycosmetic/**"
-  pull_request:
-    branches: [main]
-    paths:
-      - "backend/offer_engine/**"
-      - "backend/scrapers/deloox/**"
-      - "backend/scrapers/orioudh/**"
-      - "backend/scrapers/perfumemarket/**"
-      - "backend/scrapers/sabina/**"
-      - "backend/scrapers/parfumcity/**"
-      - "backend/scrapers/parfumzentrum/**"
-      - "backend/scrapers/bplatz/**"
-      - "backend/scrapers/easycosmetic/**"
+  workflow_dispatch:
+    inputs:
+      confirm_live_read_only:
+        description: "Confirm live retailer requests only; no production search, database, or catalog writes"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
   workflow_dispatch:
     inputs:
       confirm_live_read_only:
@@ -39,9 +25,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: offer-engine-live-shadow
-  cancel-in-progress: true
 
 jobs:
   live-shadow:
