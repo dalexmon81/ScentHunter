@@ -91,12 +91,12 @@ def _url_identity_name(url: Any, brand: Any) -> str | None:
     except ValueError:
         return None
     slug = parsed.path.rsplit("/", 1)[-1]
-    slug = re.sub(r"\\.(?:html?|aspx?|php)$", "", slug, flags=re.I)
+    slug = re.sub(r"\.(?:html?|aspx?|php)$", "", slug, flags=re.I)
     slug = _norm(slug)
     if not slug:
         return None
     slug = re.sub(
-        r"\\b(?:perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
+        r"\b(?:perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
         r"vaporisateur|vaporizador|atomizer|aerosol|eau)\\b",
         " ",
         slug,
