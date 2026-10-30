@@ -1,6 +1,11 @@
 name: Deploy isolated Offer Engine pilot
 
 on:
+  push:
+    branches:
+      - architecture/offer-engine-v1
+    paths:
+      - '.github/workflows/fly-pilot.yml'
   workflow_dispatch:
     inputs:
       confirm_deploy:
@@ -20,7 +25,7 @@ concurrency:
 jobs:
   deploy-pilot:
     name: Deploy isolated pilot (not production)
-    if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}
+    if: ${{ github.event_name == 'push' || github.event.inputs.confirm_deploy == 'deploy' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
