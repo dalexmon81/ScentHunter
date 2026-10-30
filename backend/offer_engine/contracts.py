@@ -69,11 +69,11 @@ class OfferObservation:
             raise ValueError("currency must be a three-letter code")
         if self.verification is Verification.VERIFIED:
             if not self.product_id or not self.variant_id:
-                raise ValueError("verified offers require canonical product and variant IDs")
-            if self.price is None or self.availability is Availability.UNKNOWN:
-                raise ValueError("verified offers require price and explicit availability")
+                raise ValueError("verified observations require canonical product and variant IDs")
+            if self.availability is Availability.UNKNOWN:
+                raise ValueError("verified observations require explicit availability")
             if not self.evidence_url or not self.evidence_hash:
-                raise ValueError("verified offers require evidence URL and content hash")
+                raise ValueError("verified observations require evidence URL and content hash")
         elif self.product_id or self.variant_id:
             raise ValueError("unverified/rejected offers cannot expose canonical IDs")
         if self.evidence_url and not _valid_url(self.evidence_url):
