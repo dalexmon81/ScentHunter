@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS sh_retailer_listings (
  match_status TEXT NOT NULL DEFAULT 'unresolved'
  CHECK(match_status IN ('matched','unresolved','ambiguous','rejected')),
  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(), last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
- UNIQUE(retailer_id,external_id), UNIQUE(retailer_id,product_url),
+ UNIQUE(retailer_id,external_id),
  UNIQUE(listing_id,canonical_product_id,canonical_variant_id),
  FOREIGN KEY(canonical_variant_id,canonical_product_id) REFERENCES sh_variants(variant_id,product_id),
  CHECK((match_status='matched')=(canonical_product_id IS NOT NULL AND canonical_variant_id IS NOT NULL))
