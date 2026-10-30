@@ -375,11 +375,17 @@ class OfferEngineSQLiteTests(unittest.TestCase):
             ),
         )
         self.assertTrue(result["published"])
-        self.connection.execute(
-            "UPDATE sh_offer_observations SET price=39.99 WHERE observation_id=?",
-            (result["observation_id"],),
-        )
-        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        # Bypass the defensive table CHECK only to simulate historical/manual
+        # corruption; the public read model must still fail closed.
+        self.connection.execute("PRAGMA ignore_check_constraints = ON")
+        try:
+            self.connection.execute(
+                "UPDATE sh_offer_observations SET price=39.99 WHERE observation_id=?",
+                (result["observation_id"],),
+            )
+            offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        finally:
+            self.connection.execute("PRAGMA ignore_check_constraints = OFF")
         self.assertFalse(any(row["external_id"] == "sold-out-price-corruption" for row in offers))
 
     def test_read_model_never_exposes_zero_price_even_if_current_row_is_corrupted(self):
