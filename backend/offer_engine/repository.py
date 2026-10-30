@@ -15,9 +15,37 @@ from .policy import OfferPolicy
 
 
 class OfferRepository:
-    def __init__(self, connection: Any, policy: OfferPolicy | None = None):
+    def __init__(self, connection: Any, policy: OfferPolicy | None = None, canonical_catalog: Any | None = None):
         self.connection = connection
         self.policy = policy or OfferPolicy()
+        self.canonical_catalog = canonical_catalog
+
+    def _ensure_canonical_identity(self, cursor: Any, product_id: str, variant_id: str) -> None:
+        """Persist the exact reviewed catalog records required by current-offer FKs."""
+        if self.canonical_catalog is None:
+            raise ValueError("verified offers require the canonical catalog repository")
+        product = self.canonical_catalog.get(product_id)
+        if product is None:
+            raise ValueError(f"canonical product is absent from catalog: {product_id}")
+        variant = next((item for item in product.variants if item.variant_id == variant_id), None)
+        if variant is None:
+            raise ValueError(f"canonical variant is absent from product {product_id}: {variant_id}")
+        cursor.execute(
+            """INSERT INTO sh_products(product_id, brand, canonical_name, concentration)
+               VALUES (%s,%s,%s,%s)
+               ON CONFLICT (product_id) DO UPDATE SET
+                 brand=EXCLUDED.brand, canonical_name=EXCLUDED.canonical_name,
+                 concentration=EXCLUDED.concentration""",
+            (product.product_id, product.brand, product.name, product.concentration),
+        )
+        cursor.execute(
+            """INSERT INTO sh_variants(variant_id, product_id, size_ml, concentration, package_type)
+               VALUES (%s,%s,%s,%s,'standard')
+               ON CONFLICT (variant_id) DO UPDATE SET
+                 product_id=EXCLUDED.product_id, size_ml=EXCLUDED.size_ml,
+                 concentration=EXCLUDED.concentration""",
+            (variant.variant_id, product.product_id, variant.size_ml or 1, product.concentration),
+        )
 
     def record(self, listing: RetailerListing, observation: OfferObservation) -> dict[str, Any]:
         expected = f"{listing.retailer}:{listing.external_id or listing.product_url}"
@@ -30,6 +58,8 @@ class OfferRepository:
         decision = self.policy.evaluate(observation)
         cursor = self.connection.cursor()
         try:
+            if observation.verification is Verification.VERIFIED:
+                self._ensure_canonical_identity(cursor, observation.product_id, observation.variant_id)
             cursor.execute(
                 """INSERT INTO sh_retailers(retailer_id, display_name, market)
                    VALUES (%s, %s, %s)
