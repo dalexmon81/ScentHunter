@@ -72,6 +72,19 @@ def run() -> dict:
                 }
                 for row in sorted(deloox_rows, key=lambda item: int(item["size_ml"]))
             ],
+            "published_offers": [
+                {
+                    "retailer": row["retailer_id"],
+                    "product_id": row["product_id"],
+                    "variant_id": row["variant_id"],
+                    "size_ml": row["size_ml"],
+                    "market": row["market"],
+                    "availability": row["availability"],
+                    "price": str(row["price"]) if row["price"] is not None else None,
+                    "url": row["product_url"],
+                }
+                for row in rows
+            ],
             "retailers": [
                 {
                     "retailer": item.retailer,
