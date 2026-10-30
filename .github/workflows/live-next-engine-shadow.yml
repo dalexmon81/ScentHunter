@@ -6,8 +6,6 @@ on:
     paths:
       - "backend/offer_engine/**"
       - "backend/scrapers/deloox/**"
-      - "backend/scenthunter_next_engine/**"
-      - ".github/workflows/live-next-engine-shadow.yml"
   workflow_dispatch:
     inputs:
       confirm_live_read_only:
