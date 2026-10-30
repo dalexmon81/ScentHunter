@@ -165,7 +165,7 @@ REFRESH_WORKERS = 2
 # Persistent hydration queue configuration.
 # Keep concurrency bounded across retailers, but high enough to drain stale
 # prices while discovery and hydration share the catalog volume.
-HYDRATION_WORKERS = 4
+HYDRATION_WORKERS = 8
 HYDRATION_LEASE_SECONDS = 120.0
 HYDRATION_MAX_ATTEMPTS = 8
 HYDRATION_BACKOFF_SECONDS = (60.0, 300.0, 1800.0, 7200.0, 21600.0, 86400.0)
