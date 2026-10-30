@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS sh_offer_observations (
  evidence_url TEXT, evidence_hash TEXT, rejection_reason TEXT, raw_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
  UNIQUE(observation_id,listing_id),
  CHECK(price IS NULL OR price>=0),
- CHECK(verification<>'verified' OR (price IS NOT NULL AND availability<>'unknown' AND evidence_url IS NOT NULL AND evidence_hash IS NOT NULL))
+ CHECK(verification<>'verified' OR (availability<>'unknown' AND evidence_url IS NOT NULL AND evidence_hash IS NOT NULL))
 );
 CREATE INDEX IF NOT EXISTS sh_observation_listing_time_idx ON sh_offer_observations(listing_id,observed_at DESC);
 CREATE TABLE IF NOT EXISTS sh_current_offers (
