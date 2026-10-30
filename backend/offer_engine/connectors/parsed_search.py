@@ -179,13 +179,15 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
     if not name:
         raise RuntimeError(f"{retailer}_product_page_missing_product_title")
     brand = str(page.get("brand") or source.get("source_brand") or "").strip() or None
-    size = _positive_size(attributes.get("size_ml") or page.get("size_ml"))
-    concentration = _field_value(attributes.get("concentration") or page.get("concentration"))
-    gtin = _field_value(identity.get("gtin") or page.get("gtin") or page.get("ean"))
-    sku = _field_value(identity.get("sku") or page.get("sku"))
+    size = _positive_size(attributes.get("size_ml")) or _positive_size(page.get("size_ml"))
+    concentration = _field_value(attributes.get("concentration")) or _field_value(page.get("concentration"))
+    gtin = _field_value(identity.get("gtin")) or page.get("gtin") or page.get("ean")
+    sku = _field_value(identity.get("sku")) or page.get("sku")
     price = offer.get("price")
     if price is None:
-        price = page.get("price_num", page.get("price"))
+        price = page.get("price_num")
+    if price is None:
+        price = page.get("price")
     availability = offer.get("availability")
     if availability is None:
         availability = page.get("availability")
