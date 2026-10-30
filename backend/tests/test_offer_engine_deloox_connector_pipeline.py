@@ -218,5 +218,30 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(observation.price, Decimal("49.95"))
 
 
+    def test_same_market_redirect_to_another_product_path_is_rejected(self):
+        discovered = page(
+            URL_100,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 49.95,
+        )
+        redirected_url = "https://www.deloox.be/produit/9999999/another-liquid-brun-100-ml.html"
+        redirected = page(
+            redirected_url,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 49.95,
+        )
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={"status": "success", "verified": True, "results": [discovered], "details": {}},
+        ), patch(
+            "backend.offer_engine.connectors.deloox.scraper.extract_product_page",
+            return_value=redirected,
+        ):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            with self.assertRaisesRegex(ValueError, "redirected_to_different_product"):
+                connector.observe(listing)
+
+
 if __name__ == "__main__":
     unittest.main()
