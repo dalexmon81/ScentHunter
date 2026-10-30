@@ -173,9 +173,10 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(observation.evidence_url, variant_url)
 
     def test_reused_product_sku_does_not_collapse_different_sizes(self):
+        shared_url = "https://www.parfum-zentrum.de/liquid-brun.html"
         rows = [
-            self._row(url="https://www.parfum-zentrum.de/liquid-brun-100.html", size_ml=100),
-            self._row(url="https://www.parfum-zentrum.de/liquid-brun-150.html", size_ml=150),
+            self._row(url=shared_url, size_ml=100),
+            self._row(url=shared_url, size_ml=150),
         ]
         connector = ParsedSearchConnector(
             "parfumzentrum",
