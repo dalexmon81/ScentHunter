@@ -38,13 +38,17 @@ class OfferRepository:
                  concentration=EXCLUDED.concentration""",
             (product.product_id, product.brand, product.name, product.concentration),
         )
+        if variant.size_ml is None:
+            raise ValueError(f"canonical variant has no exact size: {variant_id}")
+        labels = " ".join((variant.label or "", *variant.aliases)).casefold()
+        package_type = "limited_edition" if "limited edition" in labels else "standard"
         cursor.execute(
             """INSERT INTO sh_variants(variant_id, product_id, size_ml, concentration, package_type)
-               VALUES (%s,%s,%s,%s,'standard')
+               VALUES (%s,%s,%s,%s,%s)
                ON CONFLICT (variant_id) DO UPDATE SET
                  product_id=EXCLUDED.product_id, size_ml=EXCLUDED.size_ml,
-                 concentration=EXCLUDED.concentration""",
-            (variant.variant_id, product.product_id, variant.size_ml or 1, product.concentration),
+                 concentration=EXCLUDED.concentration, package_type=EXCLUDED.package_type""",
+            (variant.variant_id, product.product_id, variant.size_ml, product.concentration, package_type),
         )
 
     def record(self, listing: RetailerListing, observation: OfferObservation) -> dict[str, Any]:
