@@ -230,6 +230,21 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "redirected_to_different_product"):
             connector.observe(listing)
 
+    def test_multi_item_gift_sets_are_not_treated_as_single_perfume_listings(self):
+        row = self._row(
+            name="French Avenue Liquid Brun Mystery Box Gift Set 300 ml",
+            size_ml=300,
+            sku="MYSTERY-BOX",
+        )
+        connector = ParsedSearchConnector(
+            "orioudh", "scrapers.orioudh.scraper", "EU",
+            scraper=FakeScraper({
+                "status": "success", "verified": True,
+                "results": [row],
+            }),
+        )
+        self.assertEqual(list(connector.discover("Liquid Brun")), [])
+
     def test_tracking_query_duplicates_are_removed_but_other_sizes_are_kept(self):
         first = self._row(
             url="https://www.parfum-zentrum.de/products/liquid-brun-100.html",
