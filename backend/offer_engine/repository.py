@@ -117,6 +117,7 @@ class OfferRepository:
                     canonical_variant_id, match_status)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    {conflict_target}
+                     product_url=EXCLUDED.product_url,
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
                      raw_brand=EXCLUDED.raw_brand,
