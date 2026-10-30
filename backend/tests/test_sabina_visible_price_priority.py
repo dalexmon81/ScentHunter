@@ -27,3 +27,19 @@ def test_sabina_metadata_is_only_a_fallback_when_visible_price_is_missing():
     price, source = extract_price_from_html(soup)
     assert price == 42.89
     assert source == "sabina_html_price_metadata_fallback"
+
+
+def test_sabina_rejects_ambiguous_visible_product_prices():
+    soup = BeautifulSoup(
+        """
+        <main class="product-detail">
+          <h1>Liquid Brun Extrait 100 ml</h1>
+          <span class="current-price">42,89 €</span>
+          <span class="current-price">49,99 €</span>
+        </main>
+        """,
+        "lxml",
+    )
+    price, source = extract_price_from_html(soup)
+    assert price is None
+    assert source is None
