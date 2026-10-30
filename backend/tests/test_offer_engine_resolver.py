@@ -152,6 +152,32 @@ class OfferEngineResolverTests(unittest.TestCase):
                 self.assertEqual(match.canonical_product_id, "SH-0031" if size == 150 else "SH-0030")
                 self.assertEqual(match.canonical_variant_id, expected_variant)
 
+    def test_marketplace_vendor_does_not_override_explicit_canonical_brand_in_title(self):
+        root = Path(__file__).resolve().parents[2]
+        catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
+        matcher = CanonicalMatcher(catalog)
+        cases = (
+            ("Liquid Brun French Avenue 100ML", 100, "VAR-f87146c82d167f4c"),
+            ("Liquid Brun Limited Edition French Avenue 150ML", 150, "VAR-f5aff76b4bb5de8a"),
+        )
+        for index, (title, size, expected_variant) in enumerate(cases):
+            with self.subTest(title=title):
+                offer = RetailerOffer(
+                    retailer="parfumcity",
+                    raw_name=title,
+                    product_url=f"https://www.parfumcity.nl/products/{index}",
+                    retailer_product_id=str(index),
+                    brand_raw="Parfum City",
+                    size_ml=size,
+                    price=Decimal("49.95"),
+                    currency="EUR",
+                    availability="in_stock",
+                    raw_payload={},
+                )
+                match = matcher.match(offer)
+                self.assertEqual(match.status, MatchStatus.MATCHED, match.reason)
+                self.assertEqual(match.canonical_variant_id, expected_variant)
+
     def test_fractional_size_is_rejected_instead_of_truncated(self):
         listing, observation = fixture(size=150.5)
         matcher = StubMatcher()
