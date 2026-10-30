@@ -78,6 +78,32 @@ def _retailer_domain(url: Any) -> str | None:
     return host or None
 
 
+def _url_identity_name(url: Any, brand: Any) -> str | None:
+    """Extract the product identity from the final URL slug, ignoring only generic packaging words.
+
+    A retailer title can be normalized too aggressively (for example, a broad
+    "Sauvage Eau de Parfum" label can point at the distinct "Sauvage Eau Forte"
+    page). The URL slug is an independent identity signal; meaningful flanker
+    words must remain and must agree with the title.
+    """
+    try:
+        parsed = urlparse(str(url or ""))
+    except ValueError:
+        return None
+    slug = parsed.path.rsplit("/", 1)[-1]
+    slug = re.sub(r"\\.(?:html?|aspx?|php)$", "", slug, flags=re.I)
+    slug = _norm(slug)
+    if not slug:
+        return None
+    slug = re.sub(
+        r"\\b(?:perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
+        r"vaporisateur|vaporizador|atomizer|aerosol|eau)\\b",
+        " ",
+        slug,
+    )
+    return _identity_name(slug, brand)
+
+
 def _explicit_size(value: Any) -> int | None:
     if isinstance(value, bool) or value is None:
         return None
@@ -210,8 +236,12 @@ def learn_variants(
         concentration = _concentration(name)
         url_concentration = _concentration(url)
         canonical_name = _canonical_product_name(name, brand)
+        url_identity = _url_identity_name(url, brand)
         if url_concentration and concentration and url_concentration != concentration:
             rejected["url_concentration_conflict"] += 1
+            continue
+        if url_identity and url_identity != _identity_name(name, brand):
+            rejected["url_identity_conflict"] += 1
             continue
         if (
             not name or not brand or not size or not domain or not concentration
@@ -330,6 +360,7 @@ def learn_variants(
         if _identity_name(name, brand or product_brand) != _identity_name(product_name, product_brand):
             rejected["product_name_conflict"] += 1
             continue
+        url_identity = _url_identity_name(url, brand or product_brand)
         if (
             not offer_concentration
             or not canonical_concentration
@@ -337,6 +368,9 @@ def learn_variants(
             or (url_concentration is not None and url_concentration != offer_concentration)
         ):
             rejected["concentration_unverified_or_conflict"] += 1
+            continue
+        if url_identity and url_identity != _identity_name(name, brand or product_brand):
+            rejected["url_identity_conflict"] += 1
             continue
         url_concentration = _concentration(url)
         if url_concentration and url_concentration != offer_concentration:
