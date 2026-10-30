@@ -63,9 +63,12 @@ def connect_offer_engine_db(
     configured_dsn = (dsn or (os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") if db_path is None else "") or "").strip()
     if configured_dsn:
         return psycopg.connect(configured_dsn)
-    connection = sqlite3.connect(str(_sqlite_path(db_path)))
+    connection = sqlite3.connect(str(_sqlite_path(db_path)), timeout=30)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
+    connection.execute("PRAGMA journal_mode = WAL")
+    connection.execute("PRAGMA synchronous = NORMAL")
     return connection
 
 
