@@ -34,4 +34,6 @@ The `live_deloox_smoke` command exercises the real Deloox search and product pag
 The PostgreSQL migration creates a separate `sh_*` data model and does not alter legacy tables. Production cutover waits for dedicated PostgreSQL provisioning, read API/application integration, reviewed backfill, live connector tests and parity gates.
 
 ## First vertical slice
-Implement Deloox end-to-end against this contract. Prove Liquid Brun 100 ml and Limited Edition 150 ml, including the sold-out state, from live source pages; sold-out variants must remain visible without a price. Then add the next retailer. Do not enable the new API until these live tests pass.
+- Deloox uses the existing parser through a browser-aware search/product-page connector. Its live source smoke test must prove Liquid Brun 100 ml and Limited Edition 150 ml, including the sold-out state, before cutover.
+- Notino uses the authorized CJ/VIV XML feed when credentials are configured. Feed variants remain separate by size/GTIN and pass through the same canonical resolver and publication policy.
+- Then add the remaining retailers one at a time with their own source-specific tests. Do not enable the new API until live Deloox validation, Notino feed validation, backfill and parity gates pass.
