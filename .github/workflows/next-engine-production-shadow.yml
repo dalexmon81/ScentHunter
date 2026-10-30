@@ -1,14 +1,6 @@
 name: One-time Production Next Engine Shadow Comparison
 
 on:
-  push:
-    branches: [architecture/offer-engine-v1]
-    paths:
-      - "backend/product_catalog.json"
-      - "backend/main.py"
-      - "backend/offer_engine/**"
-      - "backend/scrapers/**"
-      - "backend/scenthunter_next_engine/**"
   workflow_run:
     workflows: ["Fly Deploy"]
     types: [completed]
@@ -22,7 +14,6 @@ jobs:
   production-shadow:
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
       (github.event.workflow_run.conclusion == 'success' &&
       contains(github.event.workflow_run.head_commit.message, 'RUN-NEXT-ENGINE-PROD-SHADOW')) }}
     runs-on: ubuntu-latest
