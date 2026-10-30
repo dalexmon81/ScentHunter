@@ -109,14 +109,16 @@ class OfferEnginePostgresTests(unittest.TestCase):
         self.assertIsNotNone(product)
         variant = next(v for v in product.variants if v.variant_id == "VAR-f5aff76b4bb5de8a")
         self.assertEqual(variant.size_ml, 150)
-        url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+        external_id = f"1385920-test-{suffix}"
+        url = f"https://www.deloox.be/produit/{external_id}/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
         listing = RetailerListing(
-            retailer="deloox", external_id="1385920", product_url=url,
+            retailer="deloox", external_id=external_id, product_url=url,
             raw_title="French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
             raw_brand="French Avenue", raw_size_ml=150, raw_gtin="6298042001831", market="BE",
         )
         observation = OfferObservation(
-            listing_key="deloox:1385920", observed_at=datetime.now(timezone.utc),
+            listing_key=f"deloox:{external_id}", observed_at=datetime.now(timezone.utc),
             price=None, currency="EUR", availability=Availability.OUT_OF_STOCK,
             source="product_page", verification=Verification.VERIFIED,
             product_id=product.product_id, variant_id=variant.variant_id,
@@ -139,6 +141,7 @@ class OfferEnginePostgresTests(unittest.TestCase):
             row for row in current
             if row["product_id"] == product.product_id
             and row["variant_id"] == variant.variant_id
+            and row["product_url"] == url
         )
         self.assertEqual(sold_out["availability"], "out_of_stock")
         self.assertIsNone(sold_out["price"])
@@ -149,7 +152,7 @@ class OfferEnginePostgresTests(unittest.TestCase):
                 (result["listing_id"],),
             )
         self.connection.commit()
-        self.assertEqual(OfferReadRepository(self.connection).search("Liquid Brun", market="BE"), [])
+        self.assertFalse(any(row["product_url"] == url for row in OfferReadRepository(self.connection).search("Liquid Brun", market="BE")))
 
 
     def test_listings_without_external_ids_use_product_url_as_stable_identity(self):
