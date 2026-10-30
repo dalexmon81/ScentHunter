@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   live-shadow:
-    if: ${{ github.event_name == 'push' || inputs.confirm_live_read_only == 'yes' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.confirm_live_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
