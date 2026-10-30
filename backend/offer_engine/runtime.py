@@ -6,6 +6,7 @@ backend touches the legacy catalog tables.
 """
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -101,6 +102,105 @@ def apply_migration(
         raise
     finally:
         connection.close()
+
+
+
+def seed_canonical_catalog(
+    *,
+    dsn: str | None = None,
+    db_path: str | Path | None = None,
+    catalog_path: str | Path = CATALOG_PATH,
+) -> dict[str, Any]:
+    """Idempotently stage explicit canonical products and variants.
+
+    Missing images and products without declared variants are non-blocking for
+    identity staging: they remain non-purchasable until a real variant is
+    explicitly catalogued. Structural corruption (duplicate IDs, orphan or
+    malformed variants, missing brand/name) blocks the whole transaction.
+    This routine never creates IDs, sizes, aliases, GTINs, or offer observations.
+    """
+    from ..scenthunter_next_engine.catalog_preflight import audit_catalog_data
+
+    source = Path(catalog_path).expanduser().resolve()
+    with source.open("r", encoding="utf-8") as handle:
+        raw = json.load(handle)
+    audit = audit_catalog_data(raw)
+    allowed_findings = {"products_without_variants", "products_missing_canonical_image"}
+    blockers = [
+        finding for finding in audit.get("findings", [])
+        if finding.get("code") not in allowed_findings
+    ]
+    if blockers or audit.get("duplicate_product_ids") or audit.get("duplicate_variant_ids"):
+        raise RuntimeError(f"canonical_catalog_preflight_failed: {blockers or 'duplicate_ids'}")
+
+    catalog = CatalogRepository.from_file(source)
+    if (
+        catalog.skipped_product_count()
+        or catalog.skipped_variant_count()
+        or catalog.product_count() != audit.get("product_count")
+        or catalog.variant_count() != audit.get("variant_count")
+    ):
+        raise RuntimeError("canonical_catalog_parse_reconciliation_failed")
+
+    connection = connect_offer_engine_db(dsn=dsn, db_path=db_path)
+    sqlite_backend = isinstance(connection, sqlite3.Connection)
+    cursor = connection.cursor()
+
+    def execute(sql: str, params: tuple[Any, ...]) -> None:
+        if sqlite_backend:
+            sql = sql.replace("%s", "?")
+        cursor.execute(sql, params)
+
+    products_written = 0
+    variants_written = 0
+    try:
+        for product in catalog.all_products():
+            execute(
+                """INSERT INTO sh_products(product_id, brand, canonical_name, concentration)
+                   VALUES (%s,%s,%s,%s)
+                   ON CONFLICT (product_id) DO UPDATE SET
+                     brand=EXCLUDED.brand, canonical_name=EXCLUDED.canonical_name,
+                     concentration=EXCLUDED.concentration""",
+                (product.product_id, product.brand, product.name, product.concentration),
+            )
+            products_written += 1
+            for variant in product.variants:
+                if variant.size_ml is None or int(variant.size_ml) <= 0:
+                    raise RuntimeError(f"canonical_variant_missing_valid_size: {variant.variant_id}")
+                labels = " ".join((variant.label or "", *variant.aliases)).casefold()
+                package_type = "limited_edition" if "limited edition" in labels else "standard"
+                execute(
+                    """INSERT INTO sh_variants(variant_id, product_id, size_ml, concentration, package_type)
+                       VALUES (%s,%s,%s,%s,%s)
+                       ON CONFLICT (variant_id) DO UPDATE SET
+                         product_id=EXCLUDED.product_id, size_ml=EXCLUDED.size_ml,
+                         concentration=EXCLUDED.concentration, package_type=EXCLUDED.package_type""",
+                    (variant.variant_id, product.product_id, int(variant.size_ml),
+                     product.concentration, package_type),
+                )
+                variants_written += 1
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        cursor.close()
+        connection.close()
+
+    return {
+        "status": "staged",
+        "products_upserted": products_written,
+        "variants_upserted": variants_written,
+        "products_without_variants": audit.get("products_without_variants", 0),
+        "products_missing_canonical_image": next(
+            (item["count"] for item in audit.get("findings", [])
+             if item.get("code") == "products_missing_canonical_image"), 0
+        ),
+        "offers_published": 0,
+        "catalog_mutated": False,
+        "automatic_identity_repairs": 0,
+        "note": "Identity staging only; no retailer offers or inferred variants were created.",
+    }
 
 
 def run_offer_engine(
