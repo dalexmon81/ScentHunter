@@ -60,17 +60,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if flyctl apps show "$FLY_APP" >/dev/null 2>&1; then
-            echo "Isolated pilot app already exists."
-          else
-            flyctl apps create "$FLY_APP"
+          # Do not trust "apps show" alone: flyctl may return success with
+          # a not-found message on some CLI/API combinations. Try creation,
+          # then verify the app explicitly if it already exists.
+          if ! flyctl apps create "$FLY_APP"; then
+            echo "App creation returned non-zero; verifying existing app."
           fi
+          app_details="$(flyctl apps show "$FLY_APP" 2>&1)" || {
+            printf '%s\n' "$app_details" >&2
+            echo "Fly app is not visible to this token; refusing volume/deploy." >&2
+            exit 1
+          }
+          printf '%s\n' "$app_details"
+          printf '%s\n' "$app_details" | grep -Fq "$FLY_APP" || {
+            echo "Fly app verification did not return the expected app name." >&2
+            exit 1
+          }
 
       - name: Create or verify dedicated persistent volume
         shell: bash
         run: |
           set -euo pipefail
-          if flyctl volumes list --app "$FLY_APP" | grep -Fq "$FLY_VOLUME"; then
+          # Allow the newly-created app a short time to become visible to the
+          # volumes API before attempting volume creation.
+          volume_list=""
+          for attempt in $(seq 1 6); do
+            if volume_list="$(flyctl volumes list --app "$FLY_APP" 2>&1)"; then
+              break
+            fi
+            echo "Waiting for Fly app/volume API propagation ($attempt/6): $volume_list"
+            sleep 5
+          done
+          if printf '%s\n' "$volume_list" | grep -Fq "$FLY_VOLUME"; then
             echo "Dedicated pilot volume already exists."
           else
             flyctl volumes create "$FLY_VOLUME" \
