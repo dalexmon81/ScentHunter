@@ -294,5 +294,57 @@ class OfferEnginePostgresTests(unittest.TestCase):
         self.connection.rollback()
 
 
+    def test_limit_is_applied_after_retailer_deduplication(self):
+        product = self.catalog.get("SH-0030")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+
+        for external_id, price in ((f"duplicate-a-{suffix}", "10.00"), (f"duplicate-b-{suffix}", "11.00")):
+            url = f"https://www.parfumzentrum.de/liquid-brun-{external_id}.html"
+            listing = RetailerListing(
+                retailer="parfumzentrum", external_id=external_id,
+                product_url=url, raw_title="French Avenue Liquid Brun 100 ml",
+                raw_brand="French Avenue", raw_size_ml=100, market="DE",
+            )
+            repository.record(
+                listing,
+                OfferObservation.now(
+                    listing_key=f"parfumzentrum:{external_id}",
+                    price=Decimal(price), currency="EUR",
+                    availability=Availability.IN_STOCK, source="product_page",
+                    verification=Verification.VERIFIED,
+                    product_id=product.product_id, variant_id=variant.variant_id,
+                    evidence_url=url, evidence_hash=f"sha256:{external_id}",
+                ),
+            )
+
+        external_id = f"liquid-brun-100-{suffix}"
+        url = f"https://www.deloox.de/liquid-brun-100-{suffix}.html"
+        listing = RetailerListing(
+            retailer="deloox", external_id=external_id,
+            product_url=url, raw_title="French Avenue Liquid Brun 100 ml",
+            raw_brand="French Avenue", raw_size_ml=100, market="DE",
+        )
+        repository.record(
+            listing,
+            OfferObservation.now(
+                listing_key=f"deloox:{external_id}",
+                price=Decimal("12.00"), currency="EUR",
+                availability=Availability.IN_STOCK, source="product_page",
+                verification=Verification.VERIFIED,
+                product_id=product.product_id, variant_id=variant.variant_id,
+                evidence_url=url, evidence_hash=f"sha256:{external_id}",
+            ),
+        )
+
+        offers = OfferReadRepository(self.connection).search(
+            "Liquid Brun", market="DE", limit=2
+        )
+        self.assertEqual(len(offers), 2)
+        self.assertEqual({offer["retailer_id"] for offer in offers}, {"parfumzentrum", "deloox"})
+        self.connection.commit()
+
+
 if __name__ == "__main__":
     unittest.main()
