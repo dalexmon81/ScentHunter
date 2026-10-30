@@ -71,7 +71,7 @@ class NotinoFeedConnector:
         seen = set()
         self._offers = {}
         for offer in offers:
-            haystack = set(_norm(f"{offer.brand} {offer.title}").split())
+            haystack = set(_norm(f"{offer.brand} {offer.title} {offer.size_ml:g} ml").split())
             if not all(token in haystack for token in wanted):
                 continue
             if requested_size is not None and abs(float(offer.size_ml) - requested_size) > 0.01:
