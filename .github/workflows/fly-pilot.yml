@@ -125,119 +125,94 @@ jobs:
           python - <<'PY'
           import json
           import time
-          import urllib.error
           import urllib.parse
           import urllib.request
 
           base = "https://sh-pilot-20261030.fly.dev"
+
+          def get(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path}: HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
+          # Wait for health/read API and for the independent worker to publish
+          # a real offer. No POST is issued here, so the smoke test cannot
+          # trigger duplicate full retailer crawls.
           query = urllib.parse.urlencode({"query": "Liquid Brun"})
-          last_error = None
-
+          offer_api = None
           for attempt in range(1, 61):
-              try:
-                  def get(path):
-                      request = urllib.request.Request(
-                          base + path,
-                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
-                      )
-                      with urllib.request.urlopen(request, timeout=20) as response:
-                          if response.status != 200:
-                              raise RuntimeError(f"{path}: HTTP {response.status}")
-                          return json.loads(response.read().decode("utf-8"))
-
-                  health = get("/health")
-                  if health.get("status") != "healthy":
-                      raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                      raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
-
-                  # The dedicated background worker owns ingestion. Never
-                  # start a second full retailer crawl from the smoke test:
-                  # it would duplicate network load and compete with the worker.
-                  product_ids = {str(item.get("product_id") or "") for item in offer_api.get("offers", [])}
-                  print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)), flush=True)
-                  print("PILOT_OFFER_PRODUCT_IDS=" + json.dumps(sorted(product_ids)), flush=True)
-                  if "SH-0030" in product_ids:
-                      break
-                  if attempt == 60:
-                      raise RuntimeError("Background worker did not publish a verified Liquid Brun 100 ml offer within 10 minutes: " + json.dumps(offer_api))
-                  time.sleep(10)
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = f"{type(exc).__name__}: {exc}"
-                  print(f"Attempt {attempt}/60: {last_error}", flush=True)
-                  if attempt == 60:
-                      raise SystemExit("Pilot read/worker check failed: " + last_error)
-                  time.sleep(10)
+              health = get("/health")
+              if health.get("status") != "healthy":
+                  raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
+              offer_api = get("/offer-engine/search?" + query)
+              if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
+                  raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
+              product_ids = {str(item.get("product_id") or "") for item in offer_api.get("offers", [])}
+              print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)), flush=True)
+              print("PILOT_OFFER_PRODUCT_IDS=" + json.dumps(sorted(product_ids)), flush=True)
+              if "SH-0030" in product_ids:
+                  break
+              if attempt == 60:
+                  raise RuntimeError("Background worker did not publish a verified Liquid Brun 100 ml offer within 10 minutes: " + json.dumps(offer_api))
+              time.sleep(10)
 
           ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(ui_search, dict):
-                      raise RuntimeError("Synchronous user search endpoint returned a non-object response.")
+          if not isinstance(ui_search, dict):
+              raise RuntimeError("Synchronous user search endpoint returned a non-object response.")
 
-                  # The browser uses /search-start + /search-status. Test that
-                  # exact path too: /search alone can pass while the UI still
-                  # runs the legacy catalog collector.
-                  started = get("/search-start?q=" + urllib.parse.quote("Liquid Brun"))
-                  if not isinstance(started, dict):
-                      raise RuntimeError("User search-start endpoint returned a non-object response.")
-                  job_id = started.get("job_id")
-                  ui_result = started
-                  for poll in range(40):
-                      if ui_result.get("completed"):
-                          break
-                      if not job_id:
-                          raise RuntimeError("User search did not return a job_id: " + json.dumps(ui_result))
-                      time.sleep(1.5)
-                      ui_result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
-                  if not ui_result.get("completed"):
-                      raise RuntimeError("User search job did not complete: " + json.dumps(ui_result))
-                  ui_product_ids = {
-                      str(item.get("catalog_id") or "")
-                      for item in ui_result.get("results") or []
-                      if isinstance(item, dict)
-                  }
-                  expected_liquid_brun_ids = {"SH-0030", "SH-0031"}
-                  if not expected_liquid_brun_ids.issubset(ui_product_ids):
-                      raise RuntimeError(
-                          "Broad Liquid Brun search did not return both canonical products: "
-                          + json.dumps({"expected": sorted(expected_liquid_brun_ids), "actual": sorted(ui_product_ids), "results": ui_result.get("results")})
-                      )
-                  stores = ui_result.get("stores") or {}
-                  legacy_catalog_failures = {
-                      store: report for store, report in stores.items()
-                      if str(report.get("status") or "").lower() == "catalog_not_indexed"
-                      or str(report.get("error") or "").lower() == "catalog_not_indexed"
-                  }
-                  if legacy_catalog_failures:
-                      raise RuntimeError(
-                          "Browser search is still using the legacy catalog collector: "
-                          + json.dumps(legacy_catalog_failures)
-                      )
-                  if ui_result.get("status") not in {"completed", "completed_with_store_issues"}:
-                      raise RuntimeError("Unexpected browser search status: " + json.dumps(ui_result))
-
-                  print("PILOT_HEALTH=PASS")
-                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_SYNC_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_BROWSER_SEARCH_START_STATUS=PASS")
-                  print("PILOT_BROWSER_SEARCH_STATUS=" + str(ui_result.get("status")))
-                  print("PILOT_BROWSER_OFFER_COUNT=" + str(ui_result.get("offer_count", 0)))
-                  print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)))
-                  print("PILOT_URL=" + base)
+          # Exercise the exact browser flow and verify both distinct canonical
+          # products are present for the broad family query.
+          started = get("/search-start?q=" + urllib.parse.quote("Liquid Brun"))
+          if not isinstance(started, dict):
+              raise RuntimeError("User search-start endpoint returned a non-object response.")
+          job_id = started.get("job_id")
+          ui_result = started
+          for poll in range(40):
+              if ui_result.get("completed"):
                   break
-              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
-                  last_error = f"{type(exc).__name__}: {exc}"
-                  print(f"Attempt {attempt}/24: {last_error}", flush=True)
-                  # A refresh POST can take time and is not safe to replay as
-                  # part of a broad readiness retry loop. Retrying it can launch
-                  # duplicate retailer crawls and hide the original failure.
-                  # Retry only GET readiness checks before the first POST.
-                  if refresh_started:
-                      raise SystemExit("Pilot refresh failed after one attempt; refusing to replay POST: " + last_error)
-                  if attempt < 24:
-                      time.sleep(5)
-          else:
-              raise SystemExit("Pilot smoke test failed: " + str(last_error))
+              if not job_id:
+                  raise RuntimeError("User search did not return a job_id: " + json.dumps(ui_result))
+              time.sleep(1.5)
+              ui_result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
+          if not ui_result.get("completed"):
+              raise RuntimeError("User search job did not complete: " + json.dumps(ui_result))
+
+          ui_product_ids = {
+              str(item.get("catalog_id") or "")
+              for item in ui_result.get("results") or []
+              if isinstance(item, dict)
+          }
+          expected_ids = {"SH-0030", "SH-0031"}
+          if not expected_ids.issubset(ui_product_ids):
+              raise RuntimeError(
+                  "Broad Liquid Brun search did not return both canonical products: "
+                  + json.dumps({"expected": sorted(expected_ids), "actual": sorted(ui_product_ids)})
+              )
+
+          stores = ui_result.get("stores") or {}
+          legacy_catalog_failures = {
+              store: report for store, report in stores.items()
+              if str(report.get("status") or "").lower() == "catalog_not_indexed"
+              or str(report.get("error") or "").lower() == "catalog_not_indexed"
+          }
+          if legacy_catalog_failures:
+              raise RuntimeError("Browser search is still using the legacy catalog collector: " + json.dumps(legacy_catalog_failures))
+          if ui_result.get("status") not in {"completed", "completed_with_store_issues"}:
+              raise RuntimeError("Unexpected browser search status: " + json.dumps(ui_result))
+
+          print("PILOT_HEALTH=PASS")
+          print("PILOT_OFFER_ENGINE_READ_API=PASS")
+          print("PILOT_SYNC_SEARCH_ENDPOINT=PASS")
+          print("PILOT_BROWSER_SEARCH_START_STATUS=PASS")
+          print("PILOT_BROWSER_SEARCH_STATUS=" + str(ui_result.get("status")))
+          print("PILOT_BROWSER_OFFER_COUNT=" + str(ui_result.get("offer_count", 0)))
+          print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)))
+          print("PILOT_URL=" + base)
           PY
 
       - name: Print pilot URL
