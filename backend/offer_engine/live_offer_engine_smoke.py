@@ -164,7 +164,12 @@ def run() -> dict:
                 }
                 for item in engine_result.connectors
             ],
-            "total_offers_published": engine_result.offers_published,
+            # Connector counters count listing publication events; the
+            # read model may collapse duplicate pages for the same retailer,
+            # canonical variant and market. Report both numbers explicitly.
+            "total_offers_published": len(rows),
+            "connector_publication_events": engine_result.offers_published,
+            "duplicate_listing_publications_collapsed": max(0, engine_result.offers_published - len(rows)),
             "retailer_warnings": retailer_warnings,
         }
 
