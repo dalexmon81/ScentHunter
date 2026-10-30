@@ -5048,15 +5048,14 @@ def _offer_engine_search_enabled():
 def _search_with_offer_engine(query: str):
     try:
         try:
-            from offer_engine.runtime import connect_offer_engine_db, run_offer_engine
+            from offer_engine.runtime import connect_offer_engine_db
             from offer_engine.read_repository import OfferReadRepository
         except ModuleNotFoundError:
-            from backend.offer_engine.runtime import connect_offer_engine_db, run_offer_engine
+            from backend.offer_engine.runtime import connect_offer_engine_db
             from backend.offer_engine.read_repository import OfferReadRepository
 
-        run_result = run_offer_engine(query)
-        if not run_result.connectors or all(item.status == "failed" for item in run_result.connectors):
-            raise RuntimeError("all_offer_engine_retailers_failed")
+        # User searches are strictly read-only. Retailer ingestion belongs to
+        # an independent refresh process, never to the foreground request.
         connection = connect_offer_engine_db()
         try:
             current_rows = OfferReadRepository(connection).search(query, limit=200)
@@ -5111,22 +5110,19 @@ def _search_with_offer_engine(query: str):
     dedupe_diagnostics = []
     grouped, unresolved = _aggregate_identity_results(all_offers)
     store_reports = {}
-    errors = {}
-    for item in run_result.connectors:
-        store_reports[item.retailer] = {
-            "status": item.status,
-            "verified": item.status == "success",
-            "count": item.listings_seen,
+    for row in current_rows:
+        retailer = str(row.get("retailer_id") or "")
+        if not retailer:
+            continue
+        report = store_reports.setdefault(retailer, {
+            "status": "success",
+            "verified": True,
+            "count": 0,
             "elapsed": 0.0,
-            "details": {
-                "observations_written": item.observations_written,
-                "offers_published": item.offers_published,
-                "unresolved": item.unresolved,
-                "errors": item.errors,
-            },
-        }
-        if item.errors:
-            errors[item.retailer] = "; ".join(item.errors)
+            "details": {"source": "cached_verified_current_offers"},
+        })
+        report["count"] += 1
+    errors = {}
 
     return {
         "query": query,
