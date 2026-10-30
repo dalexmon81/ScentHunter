@@ -36,7 +36,7 @@ class FakeScraper:
             "currency": page.get("currency", "EUR"),
             "availability": page.get("availability"),
         }
-        page["url"] = url
+        page["url"] = self.page_overrides.get("url", url)
         return page
 
 
