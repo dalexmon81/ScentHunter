@@ -1,5 +1,9 @@
 import unittest
+from pathlib import Path
 
+from backend.offer_engine.resolver import resolve_observation
+from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 from backend.offer_engine.connectors.notino import NotinoFeedConnector
 from backend.offer_engine.contracts import Availability, Verification
 
@@ -56,6 +60,24 @@ class NotinoFeedConnectorTests(unittest.TestCase):
         self.assertEqual(observation.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(observation.price)
         self.assertEqual(observation.verification, Verification.UNVERIFIED)
+
+    def test_feed_variants_resolve_against_real_canonical_catalog(self):
+        root = Path(__file__).resolve().parents[2]
+        catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
+        matcher = CanonicalMatcher(catalog)
+        rows = list(self.connector.discover("Liquid Brun"))
+        resolved = {
+            row.raw_size_ml: resolve_observation(row, self.connector.observe(row), matcher)
+            for row in rows
+        }
+        self.assertEqual(resolved[100].status, "matched")
+        self.assertEqual(resolved[100].observation.product_id, "SH-0030")
+        self.assertEqual(resolved[100].observation.variant_id, "VAR-f87146c82d167f4c")
+        self.assertEqual(resolved[150].status, "matched")
+        self.assertEqual(resolved[150].observation.product_id, "SH-0031")
+        self.assertEqual(resolved[150].observation.variant_id, "VAR-f5aff76b4bb5de8a")
+        self.assertEqual(resolved[150].observation.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(resolved[150].observation.price)
 
     def test_observation_rejects_listing_not_in_current_discovery(self):
         listing = next(iter(self.connector.discover("Liquid Brun 100 ml")))
