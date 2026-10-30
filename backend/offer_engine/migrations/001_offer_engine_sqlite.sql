@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS sh_offer_observations (
     verification TEXT NOT NULL CHECK(verification IN ('verified', 'unverified', 'rejected')),
     evidence_url TEXT, evidence_hash TEXT, rejection_reason TEXT, raw_payload TEXT NOT NULL DEFAULT '{}',
     UNIQUE(observation_id, listing_id), CHECK(price IS NULL OR price >= 0),
-    CHECK(availability <> 'out_of_stock' OR (price IS NULL AND verification = 'verified')),
+    CHECK(availability <> 'out_of_stock' OR price IS NULL),
     CHECK(verification <> 'verified' OR
         (availability <> 'unknown' AND evidence_url IS NOT NULL AND evidence_hash IS NOT NULL))
 );
