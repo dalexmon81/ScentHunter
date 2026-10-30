@@ -1,11 +1,6 @@
 name: Manual Live Next Engine Shadow
 
 on:
-  push:
-    branches: [architecture/offer-engine-v1]
-    paths:
-      - "backend/offer_engine/**"
-      - "backend/scrapers/deloox/**"
   workflow_dispatch:
     inputs:
       confirm_live_read_only:
