@@ -510,7 +510,7 @@ class CanonicalMatcher:
                 if (
                     offer_brand
                     and offer_brand != product_brand
-                    and product_brand not in normalized_offer_title
+                    and (not product_brand or product_brand not in normalized_offer_title)
                 ):
                     # Some marketplaces put their own store name in the
                     # vendor field. Accept a different catalog brand only
