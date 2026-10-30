@@ -68,32 +68,13 @@ jobs:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Verify Fly authentication and target organization
+      - name: Verify app-scoped Fly token and existing pilot app
         shell: bash
         run: |
           set -euo pipefail
-          flyctl auth whoami
-          flyctl orgs list
-          echo "Checking token scope metadata (no token values are printed)..."
-          flyctl tokens list --scope org
-
-      - name: Create or verify isolated Fly app
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
-            echo "App creation returned non-zero; checking whether it already exists."
-          fi
-          app_names="$(flyctl apps list --org "$FLY_ORG" --quiet 2>&1)" || {
-            printf '%s\n' "$app_names" >&2
-            echo "Cannot list apps in target organization; refusing volume/deploy." >&2
-            exit 1
-          }
-          printf '%s\n' "$app_names"
-          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
-            echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
-            exit 1
-          }
+          # This workflow now uses a deploy token scoped to the already-created pilot app.
+          # It deliberately performs no organization-wide token or app-list operations.
+          flyctl status --app "$FLY_APP"
 
       - name: Create or verify dedicated persistent volume
         shell: bash
