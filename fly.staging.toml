@@ -1,5 +1,5 @@
 # Isolated ScentHunter Offer Engine pilot. Never used by production deploys.
-app = "scenthunter-pilot-20261030"
+app = "sh-pilot-20261030"
 primary_region = "ams"
 
 [build]
@@ -26,7 +26,7 @@ primary_region = "ams"
   processes = ["app"]
 
 [mounts]
-  source = "scenthunter_pilot_data"
+  source = "scenthunter_data"
   destination = "/data"
   auto_extend_size_threshold = 70
   auto_extend_size_increment = "1GB"
