@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import os
+import sqlite3
+import tempfile
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 from backend.offer_engine import runtime
 from backend.offer_engine.runner import EngineRunResult
+from backend.offer_engine.contracts import Availability, OfferObservation, RetailerListing, Verification
+from backend.offer_engine.repository import OfferRepository
+from backend.offer_engine.read_repository import OfferReadRepository
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
 
 class FakeCursor:
@@ -85,6 +93,56 @@ class OfferEngineRuntimeTests(unittest.TestCase):
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
         self.assertTrue(connection.closed)
+
+    def test_sqlite_migration_creates_isolated_schema(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True):
+            db_path = Path(directory) / "offer_engine.sqlite3"
+            runtime.apply_migration(db_path=db_path)
+            connection = runtime.connect_offer_engine_db(db_path=db_path)
+            try:
+                tables = {
+                    row[0] for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+                self.assertTrue({"sh_products", "sh_variants", "sh_retailer_listings", "sh_current_offers"} <= tables)
+                self.assertNotIn("store_products", tables)
+                self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
+            finally:
+                connection.close()
+
+    def test_sqlite_repository_publishes_sold_out_variant_without_price(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True):
+            db_path = Path(directory) / "offer_engine.sqlite3"
+            runtime.apply_migration(db_path=db_path)
+            connection = runtime.connect_offer_engine_db(db_path=db_path)
+            try:
+                root = Path(__file__).resolve().parents[2]
+                catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
+                product = catalog.get("SH-0031")
+                variant = next(item for item in product.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+                url = "https://www.deloox.be/produit/1385920/liquid-brun-limited-150.html"
+                listing = RetailerListing(
+                    retailer="deloox", external_id="1385920", product_url=url,
+                    raw_title="French Avenue Liquid Brun Limited Edition 150 ml",
+                    raw_brand="French Avenue", raw_size_ml=150, market="BE",
+                )
+                observation = OfferObservation(
+                    listing_key="deloox:1385920", observed_at=datetime.now(timezone.utc),
+                    price=None, currency="EUR", availability=Availability.OUT_OF_STOCK,
+                    source="product_page", verification=Verification.VERIFIED,
+                    product_id=product.product_id, variant_id=variant.variant_id,
+                    evidence_url=url, evidence_hash="sha256:sqlite-runtime",
+                )
+                result = OfferRepository(connection, canonical_catalog=catalog).record(listing, observation)
+                self.assertTrue(result["published"])
+                current = OfferReadRepository(connection).search("Liquid Brun", market="BE")
+                self.assertEqual(len(current), 1)
+                self.assertEqual(current[0]["variant_id"], variant.variant_id)
+                self.assertEqual(current[0]["availability"], "out_of_stock")
+                self.assertIsNone(current[0]["price"])
+            finally:
+                connection.close()
 
     def test_runner_connection_is_closed_after_execution(self):
         connection = FakeConnection()
