@@ -60,7 +60,8 @@ class OfferRepository:
         )
 
     def record(self, listing: RetailerListing, observation: OfferObservation, *, match_status: str | None = None) -> dict[str, Any]:
-        expected = f"{listing.retailer}:{listing.external_id or listing.product_url}"
+        external_id = listing.external_id or None
+        expected = f"{listing.retailer}:{external_id or listing.product_url}"
         if observation.listing_key != expected:
             raise ValueError("observation does not belong to listing")
         if observation.verification is Verification.VERIFIED:
@@ -79,12 +80,22 @@ class OfferRepository:
                 self._ensure_canonical_identity(cursor, observation.product_id, observation.variant_id)
             incoming_product_id = observation.product_id if status == "matched" else None
             incoming_variant_id = observation.variant_id if status == "matched" else None
-            self._execute(cursor,
-                """SELECT listing_id, canonical_product_id, canonical_variant_id, match_status
-                   FROM sh_retailer_listings
-                   WHERE retailer_id=%s AND COALESCE(external_id,'')=COALESCE(%s,'')""",
-                (listing.retailer, listing.external_id),
-            )
+            if external_id is not None:
+                self._execute(cursor,
+                    """SELECT listing_id, canonical_product_id, canonical_variant_id, match_status
+                       FROM sh_retailer_listings
+                       WHERE retailer_id=%s AND external_id=%s
+                       ORDER BY listing_id DESC LIMIT 1""",
+                    (listing.retailer, external_id),
+                )
+            else:
+                self._execute(cursor,
+                    """SELECT listing_id, canonical_product_id, canonical_variant_id, match_status
+                       FROM sh_retailer_listings
+                       WHERE retailer_id=%s AND external_id IS NULL AND product_url=%s
+                       ORDER BY listing_id DESC LIMIT 1""",
+                    (listing.retailer, listing.product_url),
+                )
             existing = cursor.fetchone()
             if existing is not None:
                 if (existing[1], existing[2]) != (incoming_product_id, incoming_variant_id):
@@ -95,14 +106,17 @@ class OfferRepository:
                    ON CONFLICT (retailer_id) DO NOTHING""",
                 (listing.retailer, listing.retailer.title(), listing.market),
             )
-            self._execute(cursor,
-                """INSERT INTO sh_retailer_listings
+            conflict_target = (
+                "ON CONFLICT (retailer_id, external_id) DO UPDATE SET"
+                if external_id is not None
+                else "ON CONFLICT (retailer_id, product_url) WHERE external_id IS NULL DO UPDATE SET"
+            )
+            listing_sql = f"""INSERT INTO sh_retailer_listings
                    (retailer_id, external_id, product_url, market, raw_title, raw_brand,
                     raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
                     canonical_variant_id, match_status)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                   ON CONFLICT (retailer_id, external_id) DO UPDATE SET
-                     product_url=EXCLUDED.product_url,
+                   {conflict_target}
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
                      raw_brand=EXCLUDED.raw_brand,
@@ -112,8 +126,9 @@ class OfferRepository:
                      canonical_product_id=EXCLUDED.canonical_product_id,
                      canonical_variant_id=EXCLUDED.canonical_variant_id,
                      match_status=EXCLUDED.match_status
-                   RETURNING listing_id""",
-                (listing.retailer, listing.external_id, listing.product_url, listing.market,
+                   RETURNING listing_id"""
+            self._execute(cursor, listing_sql,
+                (listing.retailer, external_id, listing.product_url, listing.market,
                  listing.raw_title, listing.raw_brand, listing.raw_size_ml,
                  listing.raw_concentration, listing.raw_gtin,
                  incoming_product_id,
