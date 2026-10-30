@@ -420,5 +420,58 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(offers, [])
 
 
+    def test_future_dated_identity_change_cannot_retire_current_offer(self):
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+        product_150 = self.catalog.get("SH-0031")
+        variant_150 = next(item for item in product_150.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+        product_100 = self.catalog.get("SH-0030")
+        variant_100 = next(item for item in product_100.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        url = "https://www.deloox.be/produit/1385920/liquid-brun.html"
+        listing_150 = RetailerListing(
+            retailer="deloox", external_id="1385920", product_url=url,
+            raw_title="French Avenue Liquid Brun Limited Edition 150 ml",
+            raw_brand="French Avenue", raw_size_ml=150, market="BE",
+        )
+        current = repository.record(
+            listing_150,
+            OfferObservation.now(
+                listing_key="deloox:1385920", price=Decimal("42.89"),
+                currency="EUR", availability=Availability.IN_STOCK,
+                source="product_page", verification=Verification.VERIFIED,
+                product_id=product_150.product_id, variant_id=variant_150.variant_id,
+                evidence_url=url, evidence_hash="sha256:current-150",
+            ),
+        )
+        self.assertTrue(current["published"])
+
+        conflicting_listing = RetailerListing(
+            retailer="deloox", external_id="1385920", product_url=url,
+            raw_title="French Avenue Liquid Brun 100 ml",
+            raw_brand="French Avenue", raw_size_ml=100, market="BE",
+        )
+        future = OfferObservation(
+            listing_key="deloox:1385920",
+            observed_at=datetime.now(timezone.utc) + timedelta(days=1),
+            price=Decimal("39.99"), currency="EUR",
+            availability=Availability.IN_STOCK, source="product_page",
+            verification=Verification.VERIFIED,
+            product_id=product_100.product_id, variant_id=variant_100.variant_id,
+            evidence_url=url, evidence_hash="sha256:future-100",
+        )
+        result = repository.record(conflicting_listing, future)
+        self.assertFalse(result["published"])
+        self.assertEqual(result["policy_reason"], "observation_from_future")
+
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="BE")
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(offers[0]["variant_id"], variant_150.variant_id)
+        self.assertEqual(str(offers[0]["price"]), "42.89")
+        stored = self.connection.execute(
+            "SELECT raw_size_ml, canonical_variant_id, match_status "
+            "FROM sh_retailer_listings WHERE retailer_id='deloox' AND external_id='1385920'"
+        ).fetchone()
+        self.assertEqual(tuple(stored), (150, variant_150.variant_id, "matched"))
+
+
 if __name__ == "__main__":
     unittest.main()
