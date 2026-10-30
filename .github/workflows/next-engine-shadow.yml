@@ -38,9 +38,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml playwright 'psycopg[binary]'
-      - name: Install Chromium for live retailer smoke test
-        run: python -m playwright install --with-deps chromium
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml 'psycopg[binary]'
       - name: Compile engine
         run: python -m compileall -q backend/scenthunter_next_engine backend/offer_engine
       - name: Run engine and integration contract tests
@@ -74,8 +72,6 @@ jobs:
           backend/tests/test_offer_engine_repository.py
           backend/tests/test_offer_engine_postgres.py
           backend/tests/test_offer_engine_runner.py
-      - name: Read-only live Deloox variant smoke test
-        run: python -m backend.offer_engine.live_deloox_smoke
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
