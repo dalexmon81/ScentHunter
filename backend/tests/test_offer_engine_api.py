@@ -51,7 +51,7 @@ class OfferEngineApiTests(unittest.TestCase):
             patch.object(api, "connect_offer_engine_db", return_value=connection),
             patch.object(api.OfferReadRepository, "search", return_value=[{"availability": "out_of_stock", "price": None}]) as search,
         ):
-            result = api.refresh_and_search_offer_engine("Liquid Brun", market="BE")
+            result = api.refresh_and_search_offer_engine("Liquid Brun", market="BE", limit=50)
         run.assert_called_once_with("Liquid Brun")
         search.assert_called_once_with("Liquid Brun", market="BE", limit=50)
         self.assertEqual(result["status"], "success")
