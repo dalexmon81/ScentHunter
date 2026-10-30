@@ -48,11 +48,16 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python -m backend.offer_engine.live_deloox_smoke
 
+      - name: Run live Offer Engine end-to-end smoke in temporary SQLite
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python -m backend.offer_engine.live_offer_engine_smoke
+
       - name: Upload live comparison report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: next-engine-live-deloox-smoke
-          path: next-engine-live-deloox-smoke.json
+          path: |\n            next-engine-live-deloox-smoke.json\n            next-engine-live-offer-engine-smoke.json
           if-no-files-found: warn
           retention-days: 7
