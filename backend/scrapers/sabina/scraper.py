@@ -396,17 +396,14 @@ def extract_price_from_html(soup):
     Only product-bound metadata/current-price nodes are accepted. This avoids
     accidentally taking a price belonging to a related/recommended product.
     """
+    # Metadata is a fallback: Sabina can leave a stale meta price after
+    # the visible price changes with the selected bottle variant.
     direct = meta_content(
         soup,
         'meta[itemprop="price"]',
         'meta[property="product:price:amount"]',
         'meta[name="product:price:amount"]',
     )
-
-    if direct:
-        value = money_to_float(direct)
-        if value is not None:
-            return value, "sabina_html_price"
 
     selectors = (
         '[itemprop="price"]',
@@ -419,6 +416,8 @@ def extract_price_from_html(soup):
 
     for selector in selectors:
         for node in soup.select(selector):
+            if node.name == "meta":
+                continue
             classes = " ".join(node.get("class", []))
             marker_text = norm(
                 f"{classes} {node.get_text(' ', strip=True)}"
@@ -488,6 +487,11 @@ def extract_price_from_html(soup):
         value = money_to_float(raw)
         if value is not None:
             return value, "sabina_html_price"
+
+    if direct:
+        value = money_to_float(direct)
+        if value is not None:
+            return value, "sabina_html_price_metadata_fallback"
 
     return None, None
 
