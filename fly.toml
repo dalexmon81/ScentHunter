@@ -7,6 +7,7 @@ primary_region = "ams"
 
 [env]
   SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
+  SCENTHUNTER_OFFER_ENGINE_DB = "/data/offer_engine.sqlite3"
   # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
   CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
 
