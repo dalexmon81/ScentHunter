@@ -54,6 +54,17 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         resolved = resolve_observation(listing, observation, self.matcher)
         return listing, observation, resolved
 
+    def test_discovery_challenge_is_reported_as_failure_not_empty_success(self):
+        blocked = {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "details": {"search_failure_reasons": {"client_challenge": 12}},
+        }
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value=blocked):
+            with self.assertRaisesRegex(RuntimeError, "deloox_discovery_unavailable"):
+                list(DelooxConnector(session=object()).discover("Liquid Brun"))
+
     def test_150ml_limited_edition_keeps_out_of_stock_and_no_price(self):
         listing, raw, resolved = self._run(
             URL_150,
