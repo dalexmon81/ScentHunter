@@ -7,6 +7,7 @@ catalog tables.
 from __future__ import annotations
 
 import json
+import sqlite3
 from decimal import Decimal
 from typing import Any
 
@@ -19,6 +20,13 @@ class OfferRepository:
         self.connection = connection
         self.policy = policy or OfferPolicy()
         self.canonical_catalog = canonical_catalog
+        self._sqlite = isinstance(connection, sqlite3.Connection)
+
+    def _execute(self, cursor: Any, sql: str, params: tuple = ()) -> None:
+        if self._sqlite:
+            sql = sql.replace("%s", "?").replace("now()", "CURRENT_TIMESTAMP").replace("::jsonb", "")
+            params = tuple(str(value) if isinstance(value, Decimal) else value for value in params)
+        cursor.execute(sql, params)
 
     def _ensure_canonical_identity(self, cursor: Any, product_id: str, variant_id: str) -> None:
         """Persist the exact reviewed catalog records required by current-offer FKs."""
@@ -30,7 +38,7 @@ class OfferRepository:
         variant = next((item for item in product.variants if item.variant_id == variant_id), None)
         if variant is None:
             raise ValueError(f"canonical variant is absent from product {product_id}: {variant_id}")
-        cursor.execute(
+        self._execute(cursor,
             """INSERT INTO sh_products(product_id, brand, canonical_name, concentration)
                VALUES (%s,%s,%s,%s)
                ON CONFLICT (product_id) DO UPDATE SET
