@@ -7,12 +7,17 @@ from __future__ import annotations
 
 import json
 
-from backend.offer_engine.connectors.deloox import DelooxConnector
-from backend.scrapers.deloox import scraper
-from backend.offer_engine.contracts import Availability
-from backend.offer_engine.resolver import resolve_observation
-from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
-from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from .connectors.deloox import DelooxConnector
+from .contracts import Availability
+from .resolver import resolve_observation
+try:
+    from scrapers.deloox import scraper
+    from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from scenthunter_next_engine.catalog_repository import CatalogRepository
+except ModuleNotFoundError:
+    from backend.scrapers.deloox import scraper
+    from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
 
 EXPECTED = {
