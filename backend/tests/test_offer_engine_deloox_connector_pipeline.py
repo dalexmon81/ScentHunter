@@ -64,6 +64,7 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(raw.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(raw.price)
         self.assertEqual(raw.verification.value, "unverified")
+        self.assertEqual(raw.listing_key, "deloox:1385920")
         self.assertEqual(resolved.status, "matched")
         self.assertEqual(resolved.observation.product_id, "SH-0031")
         self.assertEqual(resolved.observation.variant_id, "VAR-f5aff76b4bb5de8a")
