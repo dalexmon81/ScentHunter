@@ -97,7 +97,15 @@ jobs:
           }
 
           for query in QUERIES:
-              production = production_search(query)
+              try:
+                  production = production_search(query)
+              except Exception as exc:
+                  report.setdefault("query_errors", []).append({
+                      "query": query,
+                      "error": f"{type(exc).__name__}: {exc}",
+                  })
+                  print(f"NEXT_ENGINE_SHADOW_QUERY_SKIPPED {query}: {type(exc).__name__}: {exc}", flush=True)
+                  continue
               groups = production.get("results") if isinstance(production.get("results"), list) else []
               offers = [
                   (group, offer)
@@ -106,7 +114,23 @@ jobs:
                   if isinstance(offer, dict)
               ]
               if not offers:
-                  raise RuntimeError(f"Production query {query!r} returned no offers for shadow comparison")
+                  report.setdefault("query_errors", []).append({
+                      "query": query,
+                      "error": "production_search_returned_no_offers",
+                  })
+                  report["queries"].append({
+                      "query": query,
+                      "production_product_count": int(production.get("count") or len(groups)),
+                      "production_offer_count": 0,
+                      "backend_elapsed_sec": production.get("elapsed"),
+                      "retailers": [],
+                      "totals": {
+                          "normalized": 0, "matched": 0, "unresolved": 0,
+                          "ambiguous": 0, "rejected": 0, "matched_rate_pct": 0.0,
+                      },
+                  })
+                  print(f"NEXT_ENGINE_SHADOW_QUERY_SKIPPED {query}: no production offers", flush=True)
+                  continue
 
               by_retailer = defaultdict(list)
               for group, offer in offers:
