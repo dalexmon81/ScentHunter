@@ -1,10 +1,10 @@
-name: One-time Production Next Engine Shadow Comparison
+name: One-time Production Search Shadow Comparison (may enqueue hydration)
 
 on:
   workflow_dispatch:
     inputs:
       confirm_production_shadow:
-        description: "Confirm read-only requests to the legacy production search endpoint"
+        description: "Confirm live production searches. They may reprioritize hydration, update the catalog asynchronously, and invoke configured retailer fallbacks."
         required: true
         type: choice
         options:
@@ -263,7 +263,7 @@ jobs:
                   f"errors={len(report.get('query_errors', []))}. "
                   "See the uploaded read-only report artifact."
               )
-          print("Production Next Engine shadow comparison: PASS (read-only; production search unchanged)")
+          print("Production Next Engine shadow comparison: PASS (production search executed; hydration/fallback side effects were possible)")
           PY
 
       - name: Generate evidence-backed canonical variant proposal
