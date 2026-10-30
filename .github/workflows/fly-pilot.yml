@@ -101,6 +101,22 @@ jobs:
           set -euo pipefail
           flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
 
+      - name: Ensure pilot has public Fly IP addresses
+        shell: bash
+        run: |
+          set -euo pipefail
+          ip_list="$(flyctl ips list --app "$FLY_APP")"
+          printf '%s\n' "$ip_list"
+          if ! printf '%s\n' "$ip_list" | grep -Eq '^[[:space:]]*v4[[:space:]]'; then
+            echo "No public IPv4 found; allocating a free shared IPv4."
+            flyctl ips allocate-v4 --shared --app "$FLY_APP" --yes
+          fi
+          if ! printf '%s\n' "$ip_list" | grep -Eq '^[[:space:]]*v6[[:space:]]'; then
+            echo "No public IPv6 found; allocating IPv6."
+            flyctl ips allocate-v6 --app "$FLY_APP"
+          fi
+          echo "Public IP allocation check complete."
+
       - name: Verify pilot health, read API and user search path
         shell: bash
         run: |
