@@ -44,8 +44,8 @@ def _supported_storefront_url(url: str) -> bool:
     if parsed.scheme not in {"http", "https"} or host not in DELOOX_MARKETS:
         return False
     first_segment = next((part.casefold() for part in parsed.path.split("/") if part), "")
-    # A .be/.nl/.lu/.com host must not silently persist a Spanish product route.
-    return first_segment != "producto"
+    # Spanish product routes are valid only on the Spanish storefront.
+    return first_segment != "producto" or host in {"deloox.es", "www.deloox.es"}
 
 
 class DelooxConnector:
