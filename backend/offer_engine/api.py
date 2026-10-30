@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import os
 
-import psycopg
 from fastapi import APIRouter, HTTPException, Query
 
 from .read_repository import OfferReadRepository
+from .runtime import connect_offer_engine_db
 
 
 router = APIRouter()
@@ -25,16 +25,9 @@ def search_offer_engine(
     if not query.strip():
         raise HTTPException(status_code=422, detail="query_must_not_be_empty")
 
-    dsn = (os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") or "").strip()
-    if not dsn:
-        raise HTTPException(
-            status_code=503,
-            detail="offer_engine_database_not_configured",
-        )
-
     connection = None
     try:
-        connection = psycopg.connect(dsn)
+        connection = connect_offer_engine_db()
         offers = OfferReadRepository(connection).search(
             query,
             market=market,
