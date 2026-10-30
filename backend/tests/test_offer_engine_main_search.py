@@ -100,6 +100,65 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         self.assertIsNone(offer["price_num"])
         self.assertTrue(offer["url"].startswith("https://www.deloox.be/"))
 
+    def test_offer_engine_does_not_collapse_different_easycosmetic_products_at_same_price(self):
+        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+        rows = [
+            {
+                "product_id": "SH-ALPHA",
+                "brand": "Brand Alpha",
+                "canonical_name": "Perfume Alpha",
+                "concentration": "Eau de Parfum",
+                "variant_id": "VAR-ALPHA-100",
+                "size_ml": 100,
+                "retailer_id": "easycosmetic",
+                "retailer_name": "Easycosmetic",
+                "market": "DE",
+                "product_url": "https://www.easycosmetic.de/alpha",
+                "price": 49.99,
+                "currency": "EUR",
+                "availability": "in_stock",
+            },
+            {
+                "product_id": "SH-BETA",
+                "brand": "Brand Beta",
+                "canonical_name": "Perfume Beta",
+                "concentration": "Eau de Parfum",
+                "variant_id": "VAR-BETA-100",
+                "size_ml": 100,
+                "retailer_id": "easycosmetic",
+                "retailer_name": "Easycosmetic",
+                "market": "DE",
+                "product_url": "https://www.easycosmetic.de/beta",
+                "price": 49.99,
+                "currency": "EUR",
+                "availability": "in_stock",
+            },
+        ]
+        connection = type("FakeConnection", (), {"close": lambda self: None})()
+        run_result = EngineRunResult([
+            ConnectorRunResult("easycosmetic", "success", listings_seen=2, offers_published=2)
+        ])
+        try:
+            from offer_engine import runtime as runtime_module
+            from offer_engine import read_repository as read_module
+        except ModuleNotFoundError:
+            from backend.offer_engine import runtime as runtime_module
+            from backend.offer_engine import read_repository as read_module
+
+        with (
+            patch.object(runtime_module, "run_offer_engine", return_value=run_result),
+            patch.object(runtime_module, "connect_offer_engine_db", return_value=connection),
+            patch.object(read_module.OfferReadRepository, "search", return_value=rows),
+        ):
+            result = main._search_with_offer_engine("Perfume")
+
+        self.assertEqual(result["offer_count"], 2)
+        self.assertEqual(result["count"], 2)
+        self.assertEqual(
+            {offer["catalog_id"] for group in result["results"] for offer in group["offers"]},
+            {"SH-ALPHA", "SH-BETA"},
+        )
+
     def test_offer_engine_fails_closed_when_all_retailers_fail(self):
         from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
         try:
