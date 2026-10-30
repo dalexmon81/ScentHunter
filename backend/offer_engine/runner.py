@@ -7,7 +7,7 @@ connection creation and cleanup.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable
 
 from .adapters import RetailerConnector
 from .resolver import resolve_observation
@@ -67,6 +67,8 @@ class OfferEngineRunner:
             for listing in listings:
                 result.listings_seen += 1
                 try:
+                    if listing.retailer != connector.retailer:
+                        raise ValueError("discovered listing belongs to another retailer")
                     observation = connector.observe(listing)
                     resolution = resolve_observation(listing, observation, self.matcher)
                     if resolution.status != "matched":
