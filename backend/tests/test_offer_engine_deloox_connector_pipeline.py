@@ -187,6 +187,32 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
 
 
 
+    def test_jsonld_in_stock_is_overridden_by_visible_sold_out_control(self):
+        from backend.scrapers.deloox import scraper
+
+        html = """
+        <html><head>
+          <script type="application/ld+json">
+          {"@type":"Product",
+           "name":"French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+           "brand":{"@type":"Brand","name":"French Avenue"},
+           "sku":"1385920","gtin13":"6298042001831",
+           "offers":{"@type":"Offer","price":"42.89","priceCurrency":"EUR",
+                     "availability":"https://schema.org/InStock"}}
+          </script>
+        </head><body>
+          <h1>French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml</h1>
+          <div data-testid="availability">Uitverkocht</div>
+        </body></html>
+        """
+        parsed = scraper.extract_product_page(
+            session=object(), url=URL_150, html=html,
+            query="Liquid Brun 150 ml",
+        )
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["offer"]["availability"], "out_of_stock")
+        self.assertIsNone(parsed["offer"]["price"])
+
     def test_connector_records_explicit_sold_out_when_page_parser_reports_it(self):
         parsed = page(
             URL_150,
