@@ -44,6 +44,17 @@ def build_product_queries(catalog: Any) -> list[str]:
                 queries.append(query)
     return queries
 
+def prioritize_product_queries(queries: list[str], priority_queries: list[str]) -> list[str]:
+    """Move explicitly requested pilot queries to the front without losing catalog coverage."""
+    priority = {value.strip().casefold(): index for index, value in enumerate(priority_queries) if value.strip()}
+    return [
+        query for _index, query in sorted(
+            enumerate(queries),
+            key=lambda item: (priority.get(item[1].casefold(), len(priority)), item[0]),
+        )
+    ]
+
+
 def _execute(connection: Any, sql: str, params: tuple = ()) -> Any:
     sqlite_backend = isinstance(connection, sqlite3.Connection)
     if sqlite_backend:
@@ -112,6 +123,12 @@ def refresh_once() -> dict[str, Any]:
     """Refresh one canonical product across configured independent connectors."""
     catalog = CatalogRepository.from_file(CATALOG_PATH)
     queries = build_product_queries(catalog)
+    priority_queries = [
+        item.strip()
+        for item in os.environ.get("SCENTHUNTER_OFFER_ENGINE_REFRESH_PRIORITY_QUERIES", "").split(";")
+        if item.strip()
+    ]
+    queries = prioritize_product_queries(queries, priority_queries)
     connection = connect_offer_engine_db()
     try:
         # A missing migration is a hard failure; the worker must never silently
