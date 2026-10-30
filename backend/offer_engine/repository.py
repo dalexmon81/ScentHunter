@@ -143,14 +143,14 @@ class OfferRepository:
                 (listing.retailer, listing.retailer.title(), listing.market),
             )
             conflict_target = (
-                "ON CONFLICT (retailer_id, external_id) DO UPDATE SET"
+                "ON CONFLICT (retailer_id, external_id)"
                 if external_id is not None
-                else "ON CONFLICT (retailer_id, product_url) WHERE external_id IS NULL DO UPDATE SET"
+                else "ON CONFLICT (retailer_id, product_url) WHERE external_id IS NULL"
             )
             conflict_update = (
-                "last_seen_at=sh_retailer_listings.last_seen_at"
+                "DO UPDATE SET last_seen_at=sh_retailer_listings.last_seen_at"
                 if preserve_existing_listing
-                else """
+                else """DO UPDATE SET
                      product_url=EXCLUDED.product_url,
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
@@ -162,7 +162,6 @@ class OfferRepository:
                      canonical_variant_id=EXCLUDED.canonical_variant_id,
                      match_status=EXCLUDED.match_status"""
             )
-            conflict_target = conflict_target.replace("DO UPDATE SET", conflict_update, 1)
             listing_sql = f"""INSERT INTO sh_retailer_listings
                    (retailer_id, external_id, product_url, market, raw_title, raw_brand,
                     raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
