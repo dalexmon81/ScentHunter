@@ -33,7 +33,8 @@ def run() -> dict[str, object]:
     by_id = {listing.external_id: listing for listing in listings if listing.external_id in EXPECTED}
     missing = sorted(set(EXPECTED) - set(by_id))
     if missing:
-        raise AssertionError(\n            "Deloox live search did not discover expected product IDs: "
+        raise AssertionError(
+            "Deloox live search did not discover expected product IDs: "
             f"{missing}; discovery_state={scraper._LAST_DISCOVERY_STATE}"
         )
 
