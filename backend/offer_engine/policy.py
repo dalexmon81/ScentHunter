@@ -35,7 +35,9 @@ class OfferPolicy:
         if observation.availability is Availability.UNKNOWN:
             return PolicyDecision(False, "availability_unknown")
         if observation.availability is Availability.OUT_OF_STOCK:
-            return PolicyDecision(False, "out_of_stock")
+            if observation.price is not None:
+                return PolicyDecision(False, "out_of_stock_price_present")
+            return PolicyDecision(True, "verified_out_of_stock")
         if observation.price is None:
             return PolicyDecision(False, "price_missing")
         return PolicyDecision(True, "verified_and_fresh")
