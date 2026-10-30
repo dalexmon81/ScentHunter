@@ -282,6 +282,14 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
         or _positive_size(page.get("size_ml"))
         or _size_from_product_title(name)
     )
+    # Discovery size is a candidate constraint, not proof. The fetched detail
+    # page must independently confirm the same exact variant size; otherwise
+    # reject the observation instead of publishing a sibling bottle's price.
+    if listing.raw_size_ml is not None and size != listing.raw_size_ml:
+        raise RuntimeError(
+            f"{retailer}_product_variant_size_mismatch:"
+            f"expected={listing.raw_size_ml}:observed={size}"
+        )
     concentration = _field_value(attributes.get("concentration")) or _field_value(page.get("concentration"))
     gtin = _field_value(identity.get("gtin")) or page.get("gtin") or page.get("ean")
     sku = _field_value(identity.get("sku")) or page.get("sku")
