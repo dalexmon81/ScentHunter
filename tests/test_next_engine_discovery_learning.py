@@ -346,3 +346,53 @@ def test_url_identity_accepts_matching_product_slug_with_generic_packaging_words
     result = learn_variants(catalog, observations)
     assert result["report"]["variants_added"] == 1
 
+def test_uses_explicit_url_concentration_when_retailer_title_omits_it():
+    catalog = _catalog()
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/blue-night-eau-de-parfum-100ml",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-edp-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["concentration"] == "eau de parfum"
+
+
+def test_title_and_url_concentration_must_both_match_canonical_product():
+    catalog = _catalog()
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/blue-night-eau-de-toilette-100ml",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["concentration_unverified_or_conflict"] == 1
+    assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
+
