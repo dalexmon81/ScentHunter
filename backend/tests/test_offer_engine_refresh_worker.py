@@ -59,6 +59,20 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         self.assertEqual(row[1], "test_error")
         connection.close()
 
+    def test_fly_bootstrap_migration_precedes_refresh_worker_and_is_opt_in(self):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
+        fly_config = (root / "fly.toml").read_text(encoding="utf-8")
+        migration = dockerfile.index("apply_migration; apply_migration()")
+        worker = dockerfile.index("python -m offer_engine.refresh_worker")
+        self.assertLess(migration, worker)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "0"', fly_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"', fly_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_API_ENABLED = "0"', fly_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "0"', fly_config)
+
 
 if __name__ == "__main__":
     unittest.main()
