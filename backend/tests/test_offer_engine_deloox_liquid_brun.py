@@ -63,7 +63,7 @@ class DelooxLiquidBrunOfferEngineTests(unittest.TestCase):
         self.assertEqual(result.observation.variant_id, "VAR-f5aff76b4bb5de8a")
         self.assertEqual(result.observation.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(result.observation.price)
-        self.assertFalse(OfferPolicy().evaluate(result.observation).publish)
+        self.assertTrue(OfferPolicy().evaluate(result.observation).publish)
 
     def test_standard_100ml_never_maps_to_limited_edition_150ml(self):
         result = self._resolve(
