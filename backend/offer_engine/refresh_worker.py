@@ -21,19 +21,25 @@ except ModuleNotFoundError:
 
 
 def build_product_queries(catalog: Any) -> list[str]:
-    """Return one deterministic retailer query per canonical product with variants."""
+    """Return one deterministic brand/name/size query for each explicit variant."""
     queries: list[str] = []
     seen: set[str] = set()
     for product in catalog.all_products():
-        if not product.variants:
-            continue
-        query = " ".join(part.strip() for part in (product.brand, product.name) if part and part.strip())
-        key = query.casefold()
-        if query and key not in seen:
-            seen.add(key)
-            queries.append(query)
+        for variant in product.variants:
+            if variant.size_ml is None:
+                continue
+            parts = [product.brand, product.name]
+            if variant.label and variant.label.casefold() not in {
+                product.name.casefold(), product.brand.casefold()
+            }:
+                parts.append(variant.label)
+            parts.append(f"{int(variant.size_ml)} ml")
+            query = " ".join(part.strip() for part in parts if part and part.strip())
+            key = query.casefold()
+            if query and key not in seen:
+                seen.add(key)
+                queries.append(query)
     return queries
-
 
 def _execute(connection: Any, sql: str, params: tuple = ()) -> Any:
     sqlite_backend = isinstance(connection, sqlite3.Connection)
