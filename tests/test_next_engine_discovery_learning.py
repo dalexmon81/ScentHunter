@@ -506,3 +506,25 @@ def test_url_identity_allows_reordered_brand_and_gender_tokens():
     result = learn_variants(catalog, observations)
     assert result["report"]["variants_added"] == 1
 
+def test_url_identity_ignores_retailer_product_ids_and_brand_suffixes():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/12345-example-blue-night-eau-de-parfum-100ml-example",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/67890-blue-night-edp-100ml-by-example",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 1
+
