@@ -534,18 +534,29 @@ def _extract_selected_variant_price(soup: BeautifulSoup) -> Optional[float]:
         '[data-price]', '[itemprop="price"]', 'meta[itemprop="price"]',
     )
     rejected = ("old", "was", "strike", "cross", "regular", "uvp", "list-price", "discount-percent")
+    current = ("current", "sale", "final", "selling", "actual")
+    # Selector priority is intentional, but multiple distinct values at the
+    # same priority are ambiguous. Never pick whichever HTML node appears first.
     for selector in selectors:
+        candidates = []
+        preferred = []
         for element in root.select(selector):
             classes = " ".join(element.get("class", [])).lower()
             element_id = str(element.get("id") or "").lower()
-            if any(marker in f"{classes} {element_id}" for marker in rejected):
+            marker = f"{classes} {element_id}"
+            if any(word in marker for word in rejected):
                 continue
             raw = element.get("content") or element.get("data-price") or element.get_text(" ", strip=True)
             price = _price_to_float(raw)
             if price is None:
                 price = _extract_price_from_text(_clean(raw))
             if price is not None and price > 0:
-                return price
+                candidates.append(price)
+                if any(word in marker for word in current):
+                    preferred.append(price)
+        selected = set(preferred) if preferred else set(candidates)
+        if selected:
+            return next(iter(selected)) if len(selected) == 1 else None
     return None
 
 
