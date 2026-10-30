@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+import re
 import sqlite3
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -26,7 +27,15 @@ class OfferReadRepository:
         if not 1 <= int(limit) <= 200:
             raise ValueError("limit must be between 1 and 200")
         normalized_market = str(market).strip().upper() if market else None
-        pattern = f"%{term}%"
+        tokens = re.findall(r"[a-z0-9]+", term.casefold())
+        size_match = re.search(r"(?<!\\d)(\\d{1,4})\\s*ml\\b", term, flags=re.I)
+        requested_size = int(size_match.group(1)) if size_match else None
+        if requested_size is not None:
+            tokens = [token for token in tokens if token != size_match.group(1) and token != "ml"]
+        else:
+            tokens = [token for token in tokens if token != "ml"]
+        if not tokens and requested_size is None:
+            tokens = [term.casefold()]
 
         cursor = self.connection.cursor()
         try:
@@ -53,17 +62,26 @@ class OfferReadRepository:
                          AND o.availability IN ('in_stock','out_of_stock')
                          AND ((o.availability='out_of_stock' AND o.price IS NULL)
                               OR (o.availability='in_stock' AND o.price > 0))
-                         AND (
-                             lower(p.canonical_name) LIKE lower(?)
-                             OR lower(p.brand) LIKE lower(?)
-                             OR lower(l.raw_title) LIKE lower(?)
-                         )
+                         AND ({search_clause})
+                         {size_clause}
                          AND (? IS NULL OR l.market=?)
                        ORDER BY (o.price IS NULL) ASC, o.price ASC,
                                 r.display_name ASC, l.market ASC, p.product_id ASC,
                                 v.variant_id ASC, o.observed_at DESC, l.product_url ASC
                        LIMIT ?"""
-                params = (pattern, pattern, pattern, normalized_market, normalized_market, int(limit))
+                search_clause = " AND ".join(
+                    "(" + " OR ".join(
+                        f"lower(COALESCE({column}, '')) LIKE lower(?)"
+                        for column in ("p.canonical_name", "p.brand", "l.raw_title", "v.concentration", "v.package_type")
+                    ) + ")"
+                    for _ in tokens
+                ) or "1=1"
+                size_clause = "AND v.size_ml = ?" if requested_size is not None else ""
+                sql = sql.format(search_clause=search_clause, size_clause=size_clause)
+                search_params = [f"%{token}%" for token in tokens for _ in range(5)]
+                if requested_size is not None:
+                    search_params.append(requested_size)
+                params = tuple(search_params + [normalized_market, normalized_market, int(limit)])
             else:
                 sql = """SELECT
                            p.product_id, p.brand, p.canonical_name, p.concentration,
@@ -85,17 +103,26 @@ class OfferReadRepository:
                          AND o.availability IN ('in_stock','out_of_stock')
                          AND ((o.availability='out_of_stock' AND o.price IS NULL)
                               OR (o.availability='in_stock' AND o.price > 0))
-                         AND (
-                             p.canonical_name ILIKE %s
-                             OR p.brand ILIKE %s
-                             OR l.raw_title ILIKE %s
-                         )
+                         AND ({search_clause})
+                         {size_clause}
                          AND (%s::text IS NULL OR l.market=%s)
                        ORDER BY (o.price IS NULL) ASC, o.price ASC NULLS LAST,
                                 r.display_name ASC, l.market ASC, p.product_id ASC,
                                 v.variant_id ASC, o.observed_at DESC, l.product_url ASC
                        LIMIT %s"""
-                params = (pattern, pattern, pattern, normalized_market, normalized_market, int(limit))
+                search_clause = " AND ".join(
+                    "(" + " OR ".join(
+                        f"COALESCE({column}, '') ILIKE %s"
+                        for column in ("p.canonical_name", "p.brand", "l.raw_title", "v.concentration", "v.package_type")
+                    ) + ")"
+                    for _ in tokens
+                ) or "1=1"
+                size_clause = "AND v.size_ml = %s" if requested_size is not None else ""
+                sql = sql.format(search_clause=search_clause, size_clause=size_clause)
+                search_params = [f"%{token}%" for token in tokens for _ in range(5)]
+                if requested_size is not None:
+                    search_params.append(requested_size)
+                params = tuple(search_params + [normalized_market, normalized_market, int(limit)])
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             columns = [
