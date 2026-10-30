@@ -79,6 +79,28 @@ def _availability(value: Any) -> Availability:
 
 
 
+def _size_from_product_title(value: Any) -> int | None:
+    """Extract an exact volume only from the fetched product-page title."""
+    text = str(value or "")
+    match = re.search(
+        r"(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|milliliters?|millilitres?|l|liters?|litres?)\b",
+        text,
+        flags=re.I,
+    )
+    if not match:
+        return None
+    try:
+        amount = Decimal(match.group(1).replace(",", "."))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    unit = match.group(2).casefold()
+    if unit in {"l", "liter", "liters", "litre", "litres"}:
+        amount *= 1000
+    if not amount.is_finite() or amount <= 0 or amount != amount.to_integral_value():
+        return None
+    return int(amount)
+
+
 def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session, query: str) -> Mapping[str, Any]:
     """Fetch and parse the exact retailer product URL; search snippets are never offer evidence."""
     if retailer == "parfumcity":
@@ -217,7 +239,11 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
     if not name:
         raise RuntimeError(f"{retailer}_product_page_missing_product_title")
     brand = str(page.get("brand") or source.get("source_brand") or "").strip() or None
-    size = _positive_size(attributes.get("size_ml")) or _positive_size(page.get("size_ml"))
+    size = (
+        _positive_size(attributes.get("size_ml"))
+        or _positive_size(page.get("size_ml"))
+        or _size_from_product_title(name)
+    )
     concentration = _field_value(attributes.get("concentration")) or _field_value(page.get("concentration"))
     gtin = _field_value(identity.get("gtin")) or page.get("gtin") or page.get("ean")
     sku = _field_value(identity.get("sku")) or page.get("sku")
