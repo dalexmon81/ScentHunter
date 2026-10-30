@@ -1785,7 +1785,7 @@ def extract_product_page(session, url, query=None, html=None):
                             locale="nl-BE",
                         )
                         page.goto(target, wait_until="domcontentloaded", timeout=12000)
-                        page.wait_for_timeout(1200)
+                        page.wait_for_timeout(2500)
                         browser_html = page.content() or ""
                         browser_url = clean(page.url or target)
                     finally:
