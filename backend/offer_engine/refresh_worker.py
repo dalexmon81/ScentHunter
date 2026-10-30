@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import signal
+import sqlite3
 import time
 from typing import Any
 
@@ -34,10 +35,21 @@ def build_product_queries(catalog: Any) -> list[str]:
     return queries
 
 
+def _execute(connection: Any, sql: str, params: tuple = ()) -> Any:
+    sqlite_backend = isinstance(connection, sqlite3.Connection)
+    if sqlite_backend:
+        sql = sql.replace("%s", "?")
+    cursor = connection.cursor()
+    cursor.execute(sql, params)
+    return cursor
+
+
 def _ensure_scheduler_row(connection: Any) -> None:
-    connection.execute(
-        "INSERT OR IGNORE INTO sh_refresh_scheduler(id, product_cursor) VALUES (1, 0)"
+    cursor = _execute(
+        connection,
+        "INSERT INTO sh_refresh_scheduler(id, product_cursor) VALUES (1, 0) ON CONFLICT(id) DO NOTHING",
     )
+    cursor.close()
     connection.commit()
 
 
@@ -45,33 +57,45 @@ def _next_query(connection: Any, queries: list[str]) -> str:
     if not queries:
         raise RuntimeError("offer_engine_catalog_has_no_refreshable_products")
     _ensure_scheduler_row(connection)
-    connection.execute("BEGIN IMMEDIATE")
+    sqlite_backend = isinstance(connection, sqlite3.Connection)
+    cursor = connection.cursor()
     try:
-        row = connection.execute(
-            "SELECT product_cursor FROM sh_refresh_scheduler WHERE id=1"
-        ).fetchone()
-        cursor = int(row[0] or 0) % len(queries)
-        connection.execute(
+        cursor.execute("BEGIN IMMEDIATE" if sqlite_backend else "BEGIN")
+        lock_clause = "" if sqlite_backend else " FOR UPDATE"
+        select = _execute(
+            connection,
+            "SELECT product_cursor FROM sh_refresh_scheduler WHERE id=1" + lock_clause,
+        )
+        row = select.fetchone()
+        select.close()
+        position = int(row[0] or 0) % len(queries)
+        update = _execute(
+            connection,
             """UPDATE sh_refresh_scheduler
-                  SET product_cursor=?, last_started_at=CURRENT_TIMESTAMP,
+                  SET product_cursor=%s, last_started_at=CURRENT_TIMESTAMP,
                       last_error=NULL
                 WHERE id=1""",
-            ((cursor + 1) % len(queries),),
+            ((position + 1) % len(queries),),
         )
+        update.close()
         connection.commit()
-        return queries[cursor]
+        return queries[position]
     except Exception:
         connection.rollback()
         raise
+    finally:
+        cursor.close()
 
 
 def _record_result(connection: Any, error: str | None = None) -> None:
-    connection.execute(
+    cursor = _execute(
+        connection,
         """UPDATE sh_refresh_scheduler
-              SET last_finished_at=CURRENT_TIMESTAMP, last_error=?
+              SET last_finished_at=CURRENT_TIMESTAMP, last_error=%s
             WHERE id=1""",
         (error[:1000] if error else None,),
     )
+    cursor.close()
     connection.commit()
 
 
@@ -83,7 +107,8 @@ def refresh_once() -> dict[str, Any]:
     try:
         # A missing migration is a hard failure; the worker must never silently
         # create production schema or alter the migration safety switches.
-        connection.execute("SELECT product_cursor FROM sh_refresh_scheduler LIMIT 1")
+        cursor = _execute(connection, "SELECT product_cursor FROM sh_refresh_scheduler LIMIT 1")
+        cursor.close()
         query = _next_query(connection, queries)
     finally:
         connection.close()
