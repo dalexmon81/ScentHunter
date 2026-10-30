@@ -104,10 +104,14 @@ jobs:
 
           service = NextEngineService.from_catalog_file(Path("backend/product_catalog.json"))
           report = {
-              "mode": "read-only-live-production-offer-shadow",
+              "mode": "live-production-search-shadow-with-possible-operational-side-effects",
               "production_base": BASE,
-              "catalog_modified": False,
-              "database_mutated": False,
+              "side_effects": {
+                  "workflow_direct_catalog_writes": False,
+                  "production_search_may_reprioritize_hydration_queue": True,
+                  "background_hydration_may_update_catalog": True,
+                  "configured_live_retailer_fallbacks_may_run": True,
+              },
               "queries": [],
           }
 
