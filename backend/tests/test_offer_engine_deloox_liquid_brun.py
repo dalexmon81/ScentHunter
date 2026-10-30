@@ -52,8 +52,8 @@ class DelooxLiquidBrunOfferEngineTests(unittest.TestCase):
     def test_limited_edition_150ml_resolves_to_its_own_variant_and_stays_sold_out(self):
         result = self._resolve(
             size=150,
-            title="Liquid Brun Limited Edition Extrait de Parfum 150 ml",
-            url="https://www.deloox.be/produit/1385920/liquid-brun-limited-edition-150-ml.html",
+            title="French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            url="https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html",
             gtin="6298042001831",
             availability=Availability.OUT_OF_STOCK,
             price=None,
