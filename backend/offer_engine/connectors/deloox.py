@@ -71,7 +71,7 @@ class DelooxConnector:
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
         # Matching is a separate, reviewed step; a connector never assigns canonical IDs.
         return OfferObservation.now(
-            listing_key=f"deloox:{listing.external_id or listing.product_url}",
+            listing_key=f"{listing.retailer}:{listing.external_id or listing.product_url}",
             price=price, currency=str(offer.get("currency") or "EUR"),
             availability=availability, source=self.source, verification=Verification.UNVERIFIED,
             evidence_url=listing.product_url, evidence_hash=digest,
