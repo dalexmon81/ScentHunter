@@ -73,11 +73,28 @@ class OfferEngineRunner:
                     if resolution.status != "matched":
                         result.unresolved += 1
                         if len(result.unresolved_samples) < 12:
+                            payload = observation.raw_payload if isinstance(observation.raw_payload, dict) else {}
+                            page = payload.get("parsed_page") or payload.get("feed_record") or {}
+                            if not isinstance(page, dict):
+                                page = {}
+                            attributes = page.get("attributes") or {}
+                            identity = page.get("identity") or {}
+                            if not isinstance(attributes, dict):
+                                attributes = {}
+                            if not isinstance(identity, dict):
+                                identity = {}
+                            size_fact = attributes.get("size_ml") or page.get("size_ml")
+                            gtin_fact = identity.get("gtin") or page.get("gtin") or page.get("ean")
                             result.unresolved_samples.append({
                                 "title": listing.raw_title,
                                 "brand": listing.raw_brand,
                                 "size_ml": listing.raw_size_ml,
                                 "gtin": listing.raw_gtin,
+                                "evidence_title": page.get("name") or page.get("title"),
+                                "evidence_brand": page.get("brand"),
+                                "evidence_size_ml": size_fact.get("value") if isinstance(size_fact, dict) else size_fact,
+                                "evidence_gtin": gtin_fact.get("value") if isinstance(gtin_fact, dict) else gtin_fact,
+                                "evidence_concentration": attributes.get("concentration") or page.get("concentration"),
                                 "url": listing.product_url,
                                 "status": resolution.status,
                                 "reason": resolution.reason,
