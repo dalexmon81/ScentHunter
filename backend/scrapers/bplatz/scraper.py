@@ -361,7 +361,9 @@ def product_from_page(session, url, query):
 
     brand = data.get("brand")
     brand = clean(brand.get("name")) if isinstance(brand, dict) else clean(brand)
-    size = size_ml(name, soup.get_text(" ", strip=True))
+    # Do not infer the selected bottle size from the whole page: recommendation
+    # cards often list other formats. If the product title lacks size, keep it unknown.
+    size = size_ml(name)
     offers = offer_list(data)
     price = None
     availability = None
