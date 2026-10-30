@@ -295,12 +295,13 @@ def learn_variants(
     rewritten_observations = [dict(item) for item in observation_rows]
     for (brand_key, name_key, concentration), rows in new_product_groups.items():
         by_size: dict[int, set[str]] = defaultdict(set)
-        all_domains: set[str] = set()
+        all_retailers: set[str] = set()
         for row in rows:
-            by_size[int(row["size_ml"])].add(str(row["domain"]))
-            all_domains.add(str(row["domain"]))
-        if len(all_domains) < min_retailers or not any(
-            len(domains) >= min_retailers for domains in by_size.values()
+            retailer_key = _norm(row["retailer"])
+            by_size[int(row["size_ml"])].add(retailer_key)
+            all_retailers.add(retailer_key)
+        if len(all_retailers) < min_retailers or not any(
+            len(retailers) >= min_retailers for retailers in by_size.values()
         ):
             rejected["new_product_insufficient_independent_evidence"] += 1
             continue
@@ -431,8 +432,12 @@ def learn_variants(
             "concentration": offer_concentration,
             "retailers": {},
         })
-        bucket["retailers"].setdefault(domain, {
+        # A retailer may use multiple country domains; that is still one
+        # independent source, not two independent retailers.
+        retailer_key = _norm(retailer)
+        bucket["retailers"].setdefault(retailer_key, {
             "retailer": retailer,
+            "domain": domain,
             "product_url": url,
             "name": name,
         })
