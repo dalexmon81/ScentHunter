@@ -33,7 +33,17 @@ The API mounts only when `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=1`. `GET /offer-e
 The `python -m backend.offer_engine.live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data. Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront.
 
 ## Storage and cutover
-The SQLite migration creates a separate `sh_*` data model in its own file on the Fly volume; it does not alter the legacy catalog database. A separate PostgreSQL database is also supported when `SCENTHUNTER_OFFER_ENGINE_DSN` is configured. Production cutover waits for live connector validation, read API/application integration, reviewed backfill and parity gates.
+The SQLite migration creates a separate `sh_*` data model in its own file on the Fly volume; it does not alter the legacy catalog database. A separate PostgreSQL database is also supported when `SCENTHUNTER_OFFER_ENGINE_DSN` is configured.
+
+Production cutover is blocked until every gate below is reviewed and passes:
+- Live connector validation for every enabled retailer, including market/locale, exact variant, current stock and price evidence.
+- Read API and UI integration tests against the dedicated database.
+- A read-only catalog preflight with zero duplicate IDs, orphan variants and unresolved required identities; any remaining product/variant/image gaps must have a reviewed remediation plan.
+- A reviewed, repeatable backfill into the isolated schema with row counts and reconciliation; no legacy catalog deletion.
+- Shadow parity against production for representative single-size and multi-size queries, with no incorrect cross-variant match, no stale price or duplicate retailer offer.
+- Operational safeguards: bounded timeouts, freshness limits, per-retailer health, rollback by turning off the feature flag, and no startup migration unless explicitly authorized.
+
+The current catalog preflight is **not safe to migrate yet**: it reports 1,059 products without variants and 199 products without canonical images (no duplicate product IDs, duplicate variant IDs or orphan variants). The isolated engine tests passing do not waive this gate. Keep `SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE=0`, `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=0` and `SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED=0` until all gates pass.
 
 ## First vertical slice
 - Deloox uses the existing parser through a browser-aware search/product-page connector. Its live source smoke test must prove Liquid Brun 100 ml and Limited Edition 150 ml, including the sold-out state, before cutover.
