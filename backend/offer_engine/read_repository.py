@@ -72,7 +72,7 @@ class OfferReadRepository:
                        ORDER BY (o.price IS NULL) ASC, o.price ASC,
                                 r.display_name ASC, l.market ASC, p.product_id ASC,
                                 v.variant_id ASC, o.observed_at DESC, l.product_url ASC
-                       LIMIT ?"""
+                       """
                 search_clause = " AND ".join(
                     "(" + " OR ".join(
                         f"lower(COALESCE({column}, '')) LIKE lower(?)"
@@ -85,7 +85,7 @@ class OfferReadRepository:
                 search_params = [f"%{token}%" for token in tokens for _ in range(5)]
                 if requested_size is not None:
                     search_params.append(requested_size)
-                params = tuple(search_params + [normalized_market, normalized_market, int(limit)])
+                params = tuple(search_params + [normalized_market, normalized_market])
             else:
                 sql = """SELECT
                            p.product_id, p.brand, p.canonical_name, p.concentration,
@@ -113,7 +113,7 @@ class OfferReadRepository:
                        ORDER BY (o.price IS NULL) ASC, o.price ASC NULLS LAST,
                                 r.display_name ASC, l.market ASC, p.product_id ASC,
                                 v.variant_id ASC, o.observed_at DESC, l.product_url ASC
-                       LIMIT %s"""
+                       """
                 search_clause = " AND ".join(
                     "(" + " OR ".join(
                         f"COALESCE({column}, '') ILIKE %s"
@@ -161,6 +161,6 @@ class OfferReadRepository:
                     str(item["market"]),
                 )
                 deduplicated.setdefault(key, item)
-            return list(deduplicated.values())
+            return list(deduplicated.values())[:int(limit)]
         finally:
             cursor.close()
