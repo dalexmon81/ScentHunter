@@ -38,7 +38,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml 'psycopg[binary]'
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml playwright 'psycopg[binary]'
+      - name: Install Chromium for live retailer smoke test
+        run: python -m playwright install --with-deps chromium
       - name: Compile engine
         run: python -m compileall -q backend/scenthunter_next_engine backend/offer_engine
       - name: Run engine and integration contract tests
