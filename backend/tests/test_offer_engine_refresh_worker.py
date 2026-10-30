@@ -79,6 +79,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
         fly_config = (root / "fly.toml").read_text(encoding="utf-8")
+        pilot_config = (root / "fly.staging.toml").read_text(encoding="utf-8")
         migration = dockerfile.index("apply_migration; apply_migration()")
         worker = dockerfile.index("python -m offer_engine.refresh_worker")
         self.assertLess(migration, worker)
@@ -86,6 +87,11 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"', fly_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_API_ENABLED = "0"', fly_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "0"', fly_config)
+        self.assertIn('app = "scenthunter-pilot-20261030"', pilot_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"', pilot_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"', pilot_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"', pilot_config)
+        self.assertIn('SCENTHUNTER_CATALOG_FAMILY_COVERAGE_ENABLED = "0"', pilot_config)
 
 
 if __name__ == "__main__":
