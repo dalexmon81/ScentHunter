@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from backend.scrapers.deloox import scraper
+from backend.offer_engine.connectors.deloox import DelooxConnector
 
 
 class FakeResponse:
@@ -36,6 +37,15 @@ class DelooxChallengeDiscoveryTests(unittest.TestCase):
         self.assertEqual(state["search_pages_ok"], 0)
         self.assertEqual(state["search_pages_failed"], 1)
         self.assertEqual(state["search_failure_reasons"], {"client_challenge": 1})
+
+    def test_healthcheck_does_not_report_http_200_challenge_as_healthy(self):
+        with patch(
+            "backend.offer_engine.connectors.deloox.requests.get",
+            return_value=FakeResponse(),
+        ):
+            health = DelooxConnector().healthcheck()
+        self.assertFalse(health.ok)
+        self.assertEqual(health.message, "client_challenge")
 
 
 if __name__ == "__main__":
