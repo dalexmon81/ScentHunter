@@ -18,7 +18,7 @@ class FakeScraper:
     def product_from_page(self, session, url, query=""):
         return self.extract_product_page(session, url, query)
 
-    def extract_product_page(self, session, url, query=""):
+    def extract_product_page(self, session, url, query="", **kwargs):
         self.page_fetches.append(url)
         row = next(
             item for item in self.result.get("results", [])
@@ -104,6 +104,51 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         observation = connector.observe(listing)
         self.assertEqual(str(observation.price), "37.4")
         self.assertEqual(scraper.page_fetches, [listing.product_url])
+
+    def test_sabina_selects_the_exact_variant_offer_not_parent_page_price(self):
+        variant_url = "https://www.sabina.com/liquid-brun.html#/25-tama_o-100_ml"
+        row = self._row(
+            url=variant_url,
+            sku="SAB-100",
+            gtin="",
+            price_num=89.99,
+            size_ml=100,
+        )
+        scraper = FakeScraper(
+            {"status": "success", "verified": True, "results": [row]},
+            page_overrides={
+                "variants": [
+                    {
+                        "size_ml": 100,
+                        "price_num": 42.50,
+                        "currency": "EUR",
+                        "availability": "in_stock",
+                        "sku": "SAB-100",
+                        "url": variant_url,
+                    },
+                    {
+                        "size_ml": 150,
+                        "price_num": 59.90,
+                        "currency": "EUR",
+                        "availability": "in_stock",
+                        "sku": "SAB-150",
+                        "url": "https://www.sabina.com/liquid-brun.html#/26-tama_o-150_ml",
+                    },
+                ],
+            },
+        )
+        scraper.BASE_URL = "https://www.sabina.com"
+        connector = ParsedSearchConnector(
+            "sabina",
+            "scrapers.sabina.scraper",
+            "ES",
+            scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        observation = connector.observe(listing)
+        self.assertEqual(str(observation.price), "42.5")
+        self.assertEqual(observation.availability, Availability.IN_STOCK)
+        self.assertEqual(observation.evidence_url, variant_url)
 
     def test_reused_product_sku_does_not_collapse_different_sizes(self):
         rows = [
