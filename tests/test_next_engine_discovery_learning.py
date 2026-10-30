@@ -396,3 +396,50 @@ def test_title_and_url_concentration_must_both_match_canonical_product():
     assert result["report"]["rejected_observation_counts"]["concentration_unverified_or_conflict"] == 1
     assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
 
+def test_rejects_deloox_spanish_route_on_belgian_market_during_learning():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.be/producto/12345/blue-night-eau-de-parfum-100-ml.html",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["storefront_locale_conflict"] == 1
+    assert result["report"]["rejected_observation_counts"]["insufficient_independent_retailers"] == 1
+
+
+def test_accepts_deloox_spanish_route_on_spanish_market():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.es/producto/12345/blue-night-eau-de-parfum-100-ml.html",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 1
+
