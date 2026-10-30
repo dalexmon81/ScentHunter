@@ -8,10 +8,29 @@ import hashlib
 import json
 from decimal import Decimal
 from typing import Iterable
+from urllib.parse import urlparse
 import requests
 from backend.offer_engine.adapters import ConnectorHealth
 from backend.offer_engine.contracts import Availability, OfferObservation, RetailerListing, Verification
 from backend.scrapers.deloox import scraper
+
+DELOOX_MARKETS = {
+    "deloox.be": "BE",
+    "www.deloox.be": "BE",
+    "deloox.nl": "NL",
+    "www.deloox.nl": "NL",
+    "deloox.lu": "LU",
+    "www.deloox.lu": "LU",
+    "deloox.com": "EU",
+    "www.deloox.com": "EU",
+}
+
+
+def _deloox_market(url: str, fallback: str = "EU") -> str:
+    """Derive market from the actual storefront host, never from a default."""
+    host = (urlparse(url).hostname or "").lower()
+    return DELOOX_MARKETS.get(host, fallback)
+
 
 class DelooxConnector:
     retailer = "deloox"
@@ -43,7 +62,7 @@ class DelooxConnector:
                 raw_size_ml=int(size["value"]) if size.get("value") is not None else None,
                 raw_concentration=str(concentration.get("value") or "") or None,
                 raw_gtin=str(gtin.get("value") or "") or None,
-                market="BE",
+                market=_deloox_market(url),
             )
 
     def observe(self, listing: RetailerListing) -> OfferObservation:
@@ -63,6 +82,9 @@ class DelooxConnector:
         if listing.raw_size_ml is not None and observed_size != listing.raw_size_ml:
             raise ValueError("deloox_variant_size_changed_since_discovery")
         offer = row.get("offer") if isinstance(row.get("offer"), dict) else {}
+        evidence_url = str(row.get("url") or listing.product_url).strip()
+        if not evidence_url.startswith(("https://", "http://")) or _deloox_market(evidence_url, "") == "":
+            raise ValueError("deloox_final_url_invalid_or_wrong_market")
         raw_availability = str(offer.get("availability") or "unknown").lower()
         availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
         raw_price = offer.get("price")
@@ -74,7 +96,7 @@ class DelooxConnector:
             listing_key=f"{listing.retailer}:{listing.external_id or listing.product_url}",
             price=price, currency=str(offer.get("currency") or "EUR"),
             availability=availability, source=self.source, verification=Verification.UNVERIFIED,
-            evidence_url=listing.product_url, evidence_hash=digest,
+            evidence_url=evidence_url, evidence_hash=digest,
             raw_payload={"retailer": self.retailer, "parsed_page": row},
         )
 
