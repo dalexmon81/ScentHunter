@@ -7,11 +7,37 @@ from backend.offer_engine.contracts import Availability, Verification
 class FakeScraper:
     BASE_URL = "https://www.parfum-zentrum.de"
 
-    def __init__(self, result):
+    def __init__(self, result, page_overrides=None):
         self.result = result
+        self.page_overrides = page_overrides or {}
+        self.page_fetches = []
 
     def search_stream(self, query):
         return self.result
+
+    def extract_product_page(self, session, url, query=""):
+        self.page_fetches.append(url)
+        row = next(
+            item for item in self.result.get("results", [])
+            if item.get("url") == url
+        )
+        page = dict(row)
+        page.update(self.page_overrides)
+        page["attributes"] = {
+            "size_ml": {"value": page.get("size_ml")},
+            "concentration": {"value": page.get("concentration")},
+        }
+        page["identity"] = {
+            "gtin": {"value": page.get("gtin")},
+            "sku": {"value": page.get("sku")},
+        }
+        page["offer"] = {
+            "price": page.get("price_num"),
+            "currency": page.get("currency", "EUR"),
+            "availability": page.get("availability"),
+        }
+        page["url"] = url
+        return page
 
 
 class ParsedSearchConnectorTests(unittest.TestCase):
@@ -51,9 +77,30 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(listing.market, "DE")
         self.assertEqual(str(observation.price), "49.95")
         self.assertEqual(observation.availability, Availability.IN_STOCK)
+        self.assertEqual(connector._scraper.page_fetches, [listing.product_url])
+        self.assertEqual(observation.raw_payload["evidence_source"], "fetched_product_detail")
         self.assertEqual(observation.verification, Verification.UNVERIFIED)
         self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 100)
         self.assertEqual(observation.raw_payload["parsed_page"]["identity"]["gtin"]["value"], "6298042001008")
+
+    def test_search_snippet_price_is_ignored_in_favor_of_product_page_price(self):
+        scraper = FakeScraper(
+            {
+                "status": "success", "verified": True,
+                "results": [self._row(price_num=49.95)],
+            },
+            page_overrides={"price_num": 37.40},
+        )
+        connector = ParsedSearchConnector(
+            "parfumzentrum",
+            "scrapers.parfumzentrum.scraper",
+            "DE",
+            scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        observation = connector.observe(listing)
+        self.assertEqual(str(observation.price), "37.4")
+        self.assertEqual(scraper.page_fetches, [listing.product_url])
 
     def test_verified_partial_discovery_keeps_page_verified_candidates(self):
         connector = ParsedSearchConnector(
