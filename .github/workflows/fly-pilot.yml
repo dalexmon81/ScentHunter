@@ -130,18 +130,17 @@ jobs:
           import urllib.request
 
           base = "https://sh-pilot-20261030.fly.dev"
-          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml"})
+          query = urllib.parse.urlencode({"query": "Liquid Brun"})
           last_error = None
-          refresh_started = False
 
-          for attempt in range(1, 25):
+          for attempt in range(1, 61):
               try:
                   def get(path):
                       request = urllib.request.Request(
                           base + path,
                           headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
                       )
-                      with urllib.request.urlopen(request, timeout=15) as response:
+                      with urllib.request.urlopen(request, timeout=20) as response:
                           if response.status != 200:
                               raise RuntimeError(f"{path}: HTTP {response.status}")
                           return json.loads(response.read().decode("utf-8"))
@@ -153,36 +152,25 @@ jobs:
                   if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
                       raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
 
-                  # A GET is deliberately read-only and cannot populate an
-                  # empty database. Exercise the explicit refresh endpoint so
-                  # the pilot test proves that real connectors can ingest and
-                  # publish verified offers, not merely that SQLite is online.
-                  refresh_started = True
-                  refresh_request = urllib.request.Request(
-                      base + "/offer-engine/search?" + query,
-                      data=b"",
-                      method="POST",
-                      headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
-                  )
-                  with urllib.request.urlopen(refresh_request, timeout=120) as response:
-                      if response.status != 200:
-                          raise RuntimeError("Offer Engine refresh returned HTTP " + str(response.status))
-                      refresh_api = json.loads(response.read().decode("utf-8"))
-                  refresh = refresh_api.get("refresh") or {}
-                  connector_results = refresh.get("connectors") or []
-                  print("PILOT_REFRESH_STATUS=" + str(refresh_api.get("status")))
-                  print("PILOT_REFRESH_CONNECTORS=" + json.dumps(connector_results))
-                  print("PILOT_REFRESH_LISTINGS_SEEN=" + str(refresh.get("listings_seen", 0)))
-                  print("PILOT_REFRESH_OBSERVATIONS_WRITTEN=" + str(refresh.get("observations_written", 0)))
-                  print("PILOT_REFRESH_OFFERS_PUBLISHED=" + str(refresh.get("offers_published", 0)))
-                  if not connector_results or all(item.get("status") == "failed" for item in connector_results):
-                      raise RuntimeError("All Offer Engine retailer connectors failed: " + json.dumps(refresh_api))
-                  if int(refresh.get("offers_published") or 0) < 1:
-                      raise RuntimeError("Retailer refresh completed without publishing a verified offer: " + json.dumps(refresh_api))
-                  offer_api = get("/offer-engine/search?" + query)
-                  if int(offer_api.get("count") or 0) < 1:
-                      raise RuntimeError("Refresh reported published offers but read API returned none: " + json.dumps(offer_api))
-                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
+                  # The dedicated background worker owns ingestion. Never
+                  # start a second full retailer crawl from the smoke test:
+                  # it would duplicate network load and compete with the worker.
+                  product_ids = {str(item.get("product_id") or "") for item in offer_api.get("offers", [])}
+                  print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)), flush=True)
+                  print("PILOT_OFFER_PRODUCT_IDS=" + json.dumps(sorted(product_ids)), flush=True)
+                  if "SH-0030" in product_ids:
+                      break
+                  if attempt == 60:
+                      raise RuntimeError("Background worker did not publish a verified Liquid Brun 100 ml offer within 10 minutes: " + json.dumps(offer_api))
+                  time.sleep(10)
+              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+                  last_error = f"{type(exc).__name__}: {exc}"
+                  print(f"Attempt {attempt}/60: {last_error}", flush=True)
+                  if attempt == 60:
+                      raise SystemExit("Pilot read/worker check failed: " + last_error)
+                  time.sleep(10)
+
+          ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
                   if not isinstance(ui_search, dict):
                       raise RuntimeError("Synchronous user search endpoint returned a non-object response.")
 
