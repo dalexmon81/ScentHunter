@@ -94,6 +94,15 @@ class OfferEngineResolverTests(unittest.TestCase):
         self.assertIsNone(matcher.seen_offer)
         self.assertEqual(result.observation.verification, Verification.UNVERIFIED)
 
+    def test_fractional_size_is_rejected_instead_of_truncated(self):
+        listing, observation = fixture(size=150.5)
+        matcher = StubMatcher()
+        result = resolve_observation(listing, observation, matcher)
+
+        self.assertEqual(result.status, "unresolved")
+        self.assertEqual(result.reason, "variant_size_missing_or_changed")
+        self.assertIsNone(matcher.seen_offer)
+
     def test_unknown_stock_is_never_promoted_to_verified(self):
         listing, observation = fixture(availability=Availability.UNKNOWN)
         result = resolve_observation(listing, observation, StubMatcher())
