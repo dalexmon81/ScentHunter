@@ -267,7 +267,7 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
             "French Avenue Liquid Brun Eau de Parfum 100 ml",
             100, "in_stock", 49.95,
         )
-        sibling_url = URL_150.replace("1385920", "1355229").replace("liquid-brun-extrait-de-parfum-limited-edition-150-ml", "liquid-brun-extrait-de-parfum-limited-edition-150-ml")
+        sibling_url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
         sibling = page(
             sibling_url,
             "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
