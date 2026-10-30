@@ -2,12 +2,12 @@
 
 The connector never assigns canonical IDs. This module delegates identity to
 ScentHunter's reviewed catalog matcher and promotes an observation only when
-identity, price, availability and source evidence are all explicit.
+identity, explicit availability and source evidence are all established.
+Price publication remains a separate policy decision.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any, Mapping
 
 from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
@@ -51,7 +51,8 @@ def resolve_observation(
     matcher: CanonicalMatcher,
 ) -> ResolutionResult:
     """Resolve identity conservatively; never infer stock or price."""
-    if observation.listing_key != f"{listing.retailer}:{listing.external_id or listing.product_url}":
+    expected_key = f"{listing.retailer}:{listing.external_id or listing.product_url}"
+    if observation.listing_key != expected_key:
         return ResolutionResult(observation, "unresolved", "listing_key_mismatch")
 
     page = _page_facts(observation.raw_payload or {})
@@ -83,16 +84,14 @@ def resolve_observation(
     match = matcher.match(offer)
     if match.status is not MatchStatus.MATCHED:
         return ResolutionResult(observation, match.status.value, match.reason or "identity_not_resolved")
-
-    # A correct identity alone is insufficient: require a real price, explicit
-    # stock state and immutable page evidence before the policy can publish.
-    if observation.price is None:
-        return ResolutionResult(observation, "unresolved", "price_missing")
     if observation.availability is Availability.UNKNOWN:
         return ResolutionResult(observation, "unresolved", "availability_unknown")
     if not observation.evidence_url or not observation.evidence_hash:
         return ResolutionResult(observation, "unresolved", "evidence_missing")
 
+    # An out-of-stock product can have verified identity and stock state but
+    # no price. OfferPolicy separately prevents price-less observations from
+    # becoming current purchasable offers.
     verified = OfferObservation(
         listing_key=observation.listing_key,
         observed_at=observation.observed_at,
