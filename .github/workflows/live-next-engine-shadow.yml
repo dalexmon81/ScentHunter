@@ -43,7 +43,7 @@ jobs:
         run: python -m pip install -r backend/requirements.txt
 
       - name: Install Chromium for Deloox's browser-aware anti-bot fallback
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
 
       - name: Run bounded live Deloox offer smoke test
         env:
