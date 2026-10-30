@@ -233,11 +233,12 @@ def learn_variants(
         size = _explicit_size(item.get("size_ml"))
         url = str(item.get("product_url") or item.get("url") or "")
         domain = _retailer_domain(url)
-        concentration = _concentration(name)
-        url_concentration = _concentration(url)
+        title_concentration = _concentration(name)
+        url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
+        concentration = title_concentration or url_concentration
         canonical_name = _canonical_product_name(name, brand)
         url_identity = _url_identity_name(url, brand)
-        if url_concentration and concentration and url_concentration != concentration:
+        if url_concentration and title_concentration and url_concentration != title_concentration:
             rejected["url_concentration_conflict"] += 1
             continue
         if url_identity and url_identity != _identity_name(name, brand):
@@ -347,9 +348,10 @@ def learn_variants(
         name = str(item.get("name") or item.get("raw_name") or "").strip()
         product_brand = str(product.get("brand_name") or "").strip()
         product_name = str(product.get("canonical_name") or product.get("name") or "").strip()
-        offer_concentration = _concentration(name)
-        canonical_concentration = _concentration(product.get("concentration"))
+        title_concentration = _concentration(name)
         url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
+        offer_concentration = title_concentration or url_concentration
+        canonical_concentration = _concentration(product.get("concentration"))
 
         if not size or not retailer or not domain or not name or not product_brand or not product_name:
             rejected["missing_required_evidence"] += 1
@@ -365,7 +367,8 @@ def learn_variants(
             not offer_concentration
             or not canonical_concentration
             or offer_concentration != canonical_concentration
-            or (url_concentration is not None and url_concentration != offer_concentration)
+            or (title_concentration is not None and title_concentration != canonical_concentration)
+            or (url_concentration is not None and url_concentration != canonical_concentration)
         ):
             rejected["concentration_unverified_or_conflict"] += 1
             continue
