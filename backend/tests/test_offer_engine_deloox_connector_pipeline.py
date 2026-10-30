@@ -81,6 +81,18 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(listing.market, "NL")
         self.assertEqual(observation.evidence_url, url)
 
+    def test_cross_market_redirect_is_rejected(self):
+        be_url = URL_100
+        nl_url = URL_100.replace(".deloox.be", ".deloox.nl")
+        discovered = page(be_url, "French Avenue Liquid Brun Eau de Parfum 100 ml", 100, "in_stock", 49.95)
+        redirected = page(nl_url, "French Avenue Liquid Brun Eau de Parfum 100 ml", 100, "in_stock", 49.95)
+        with patch("backend.offer_engine.connectors.deloox.scraper.search", return_value=[discovered]), \\
+             patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=redirected):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            with self.assertRaisesRegex(ValueError, "market_changed_since_discovery"):
+                connector.observe(listing)
+
     def test_100ml_standard_is_not_collapsed_into_150ml_limited_edition(self):
         listing, raw, resolved = self._run(
             URL_100,
