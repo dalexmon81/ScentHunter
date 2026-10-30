@@ -70,7 +70,7 @@ jobs:
           backend/tests/test_offer_engine_deloox_liquid_brun.py
           backend/tests/test_offer_engine_deloox_connector_pipeline.py
           backend/tests/test_offer_engine_repository.py
-          backend/tests/test_offer_engine_postgres.py
+          backend/tests/test_offer_engine_postgres.py\n          backend/tests/test_offer_engine_runner.py
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
