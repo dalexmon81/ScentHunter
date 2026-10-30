@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS sh_retailer_listings (
  FOREIGN KEY(canonical_variant_id,canonical_product_id) REFERENCES sh_variants(variant_id,product_id),
  CHECK((match_status='matched')=(canonical_product_id IS NOT NULL AND canonical_variant_id IS NOT NULL))
 );
+ALTER TABLE sh_retailer_listings DROP CONSTRAINT IF EXISTS sh_retailer_listings_retailer_id_product_url_key;
 CREATE INDEX IF NOT EXISTS sh_listing_match_idx ON sh_retailer_listings(canonical_variant_id,retailer_id);
 CREATE INDEX IF NOT EXISTS sh_listing_url_idx ON sh_retailer_listings(retailer_id,product_url);
 CREATE UNIQUE INDEX IF NOT EXISTS sh_listing_url_without_external_id_idx
