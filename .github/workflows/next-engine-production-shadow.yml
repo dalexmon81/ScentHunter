@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Compare production offers against Next Engine without changing production
+      - name: Run bounded production searches and compare their offers against Next Engine
         env:
           PYTHONUNBUFFERED: "1"
         run: |
@@ -265,7 +265,7 @@ jobs:
                   "Production shadow comparison was incomplete; "
                   f"completed_queries={len(report.get('queries', []))}, "
                   f"errors={len(report.get('query_errors', []))}. "
-                  "See the uploaded read-only report artifact."
+                  "See the uploaded production-search shadow report artifact."
               )
           print("Production Next Engine shadow comparison: PASS (production search executed; hydration/fallback side effects were possible)")
           PY
