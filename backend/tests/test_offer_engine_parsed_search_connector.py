@@ -49,7 +49,7 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(listing.raw_size_ml, 100)
         self.assertEqual(listing.raw_gtin, "6298042001008")
         self.assertEqual(listing.market, "DE")
-        self.assertEqual(observation.price, 49.95)
+        self.assertEqual(str(observation.price), "49.95")
         self.assertEqual(observation.availability, Availability.IN_STOCK)
         self.assertEqual(observation.verification, Verification.UNVERIFIED)
         self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 100)
