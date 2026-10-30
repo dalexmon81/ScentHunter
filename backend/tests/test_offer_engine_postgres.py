@@ -113,12 +113,12 @@ class OfferEnginePostgresTests(unittest.TestCase):
         external_id = f"1385920-test-{suffix}"
         url = f"https://www.deloox.be/produit/{external_id}/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
         listing = RetailerListing(
-            retailer="deloox", external_id=external_id, product_url=url,
+            retailer="deloox-postgres-test", external_id=external_id, product_url=url,
             raw_title="French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
             raw_brand="French Avenue", raw_size_ml=150, raw_gtin="6298042001831", market="BE",
         )
         observation = OfferObservation(
-            listing_key=f"deloox:{external_id}", observed_at=datetime.now(timezone.utc),
+            listing_key=f"deloox-postgres-test:{external_id}", observed_at=datetime.now(timezone.utc),
             price=None, currency="EUR", availability=Availability.OUT_OF_STOCK,
             source="product_page", verification=Verification.VERIFIED,
             product_id=product.product_id, variant_id=variant.variant_id,
