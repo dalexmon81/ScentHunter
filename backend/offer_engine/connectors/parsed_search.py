@@ -376,6 +376,32 @@ class ParsedSearchConnector:
         self._rows = {}
         seen = set()
         seen_urls = set()
+        # Some retailers reuse a product-level SKU for several bottle sizes.
+        # Decide up front whether the base identifier is variant-unique so the
+        # resulting listing IDs do not depend on the order of search results.
+        base_id_variants: dict[str, set[str]] = {}
+        for candidate in result.get("results") or []:
+            if not isinstance(candidate, Mapping):
+                continue
+            candidate_identity = _mapping(candidate.get("identity"))
+            candidate_attrs = _mapping(candidate.get("attributes"))
+            candidate_size = _positive_size(candidate_attrs.get("size_ml", candidate.get("size_ml")))
+            candidate_sku = _field_value(candidate_identity.get("sku", candidate.get("sku")))
+            candidate_gtin = _field_value(candidate_identity.get("gtin", candidate.get("gtin") or candidate.get("ean")))
+            candidate_variant_id = _field_value(candidate_identity.get("store_variant_id"))
+            candidate_title = str(candidate.get("name") or candidate.get("title") or candidate.get("product_name") or "")
+            base_id = str(candidate_variant_id or candidate_sku or candidate_gtin or hashlib.sha256(
+                f"{candidate.get('url') or candidate.get('product_url') or candidate.get('link') or ''}|{candidate_size or ''}|{candidate_title}".encode("utf-8")
+            ).hexdigest()[:24]).strip()
+            variant_id = str(
+                candidate_variant_id
+                or (f"{candidate_gtin}:{candidate_size}" if candidate_gtin and candidate_size is not None else candidate_gtin)
+                or (f"{candidate_sku}:{candidate_size}" if candidate_sku and candidate_size is not None else candidate_sku)
+                or candidate_size
+                or hashlib.sha256(candidate_title.encode("utf-8")).hexdigest()[:12]
+            )
+            base_id_variants.setdefault(base_id, set()).add(variant_id)
+
         for raw in result.get("results") or []:
             if not isinstance(raw, Mapping):
                 continue
@@ -438,16 +464,22 @@ class ParsedSearchConnector:
                 f"{url}|{size_ml or ''}|{title}".encode("utf-8")
             ).hexdigest()[:24]).strip()
             external_id = base_external_id
-            if external_id in seen:
-                # Product-level SKUs are sometimes reused across bottle sizes.
-                # Keep sibling sellable variants as independent retailer listings.
+            if len(base_id_variants.get(base_external_id, ())) > 1:
+                # Suffix every sibling consistently, not just whichever result
+                # happens to arrive second. This keeps listing keys stable when
+                # retailer search ordering changes between refreshes.
                 suffix = str(
                     store_variant_id
                     or (f"{gtin}:{size_ml}" if gtin and size_ml is not None else gtin)
+                    or (f"{sku}:{size_ml}" if sku and size_ml is not None else sku)
                     or size_ml
                     or hashlib.sha256(url.encode("utf-8")).hexdigest()[:10]
                 )
                 external_id = f"{base_external_id}:{suffix}"
+            if external_id in seen:
+                # If the retailer reuses the same identifier for two distinct
+                # URLs of the same size, retain a deterministic URL suffix.
+                external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
             if external_id in seen:
                 external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
             if external_id in seen:
