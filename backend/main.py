@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
 try:
-    from product_matcher import ProductMatcher
+    from product_matcher import ProductMatcher, catalog_norm, catalog_variant_key
 except Exception as exc:
     ProductMatcher = None
     print(f'ProductMatcher unavailable: {type(exc).__name__}: {exc}', flush=True)
