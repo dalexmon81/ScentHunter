@@ -434,7 +434,37 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
 
     offers = data.get("offers")
     offers = offers if isinstance(offers, list) else [offers]
-    offer = next((x for x in offers if isinstance(x, dict)), {})
+    offer_candidates = [x for x in offers if isinstance(x, dict)]
+
+    def _offer_size_values(candidate):
+        values = []
+        for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
+            found_size = _volume_from_structured(candidate.get(key))
+            if found_size is not None:
+                values.append(found_size)
+        specification = candidate.get("sizeSpecification")
+        specifications = specification if isinstance(specification, list) else [specification]
+        for item in specifications:
+            if isinstance(item, dict):
+                found_size = _volume_from_structured(item)
+                if found_size is not None:
+                    values.append(found_size)
+        return values
+
+    # Never take the first JSON-LD offer blindly: a product page can expose
+    # several bottle sizes with different prices. For explicit-size requests,
+    # select only the unique offer whose own structured size matches.
+    if requested_size is not None and len(offer_candidates) > 1:
+        matching_offers = [
+            candidate for candidate in offer_candidates
+            if any(abs(value - requested_size) <= 0.01
+                   for value in _offer_size_values(candidate))
+        ]
+        if len(matching_offers) != 1:
+            return None
+        offer = matching_offers[0]
+    else:
+        offer = offer_candidates[0] if offer_candidates else {}
 
     price = parse_price(offer.get("price"))
     if price is None:
