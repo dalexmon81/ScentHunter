@@ -26,6 +26,8 @@ DELOOX_MARKETS = {
     "www.deloox.lu": "LU",
     "deloox.com": "EU",
     "www.deloox.com": "EU",
+    "deloox.es": "ES",
+    "www.deloox.es": "ES",
 }
 
 
