@@ -84,3 +84,18 @@ jobs:
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
         run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+      - name: Build detailed catalog identity and migration reports
+        run: |
+          python -m backend.scenthunter_next_engine.catalog_preflight_detail
+          python -m backend.scenthunter_next_engine.catalog_identity_audit
+          python -m backend.scenthunter_next_engine.catalog_migration_plan
+      - name: Upload read-only catalog review reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-catalog-review
+          path: |
+            catalog-preflight-detail.json
+            catalog-identity-audit.json
+            catalog-migration-plan.json
+          if-no-files-found: error
+          retention-days: 14
