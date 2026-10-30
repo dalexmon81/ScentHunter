@@ -12,7 +12,7 @@ import os
 import re
 import unicodedata
 from dataclasses import asdict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
 from ..adapters import ConnectorHealth
