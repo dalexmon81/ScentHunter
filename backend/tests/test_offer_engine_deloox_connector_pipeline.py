@@ -65,6 +65,41 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "deloox_discovery_unavailable"):
                 list(DelooxConnector(session=object()).discover("Liquid Brun"))
 
+    def test_discovery_rejects_unrelated_products_sharing_only_the_word_liquid(self):
+        relevant = page(
+            URL_100,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 39.99,
+        )
+        unrelated = [
+            {
+                **page(
+                    "https://www.deloox.be/produit/1401316/pupa-im-sexy-liquid-lip-colour-006-strawberry-red-27-ml.html",
+                    "Pupa I'm Sexy Liquid Lip Colour 006 Strawberry Red 27 ml",
+                    27, "in_stock", 8.99,
+                ),
+                "brand": "Pupa",
+            },
+            {
+                **page(
+                    "https://www.deloox.be/produit/1347246/chanel-rouge-allure-liquid-55-ml.html",
+                    "Chanel Rouge Allure Liquid 55 ml",
+                    55, "in_stock", 39.99,
+                ),
+                "brand": "Chanel",
+            },
+        ]
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={
+                "status": "success", "verified": True,
+                "results": [*unrelated, relevant], "details": {},
+            },
+        ):
+            listings = list(DelooxConnector(session=object()).discover("Liquid Brun"))
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0].product_url, URL_100)
+
     def test_150ml_limited_edition_keeps_out_of_stock_and_no_price(self):
         listing, raw, resolved = self._run(
             URL_150,
