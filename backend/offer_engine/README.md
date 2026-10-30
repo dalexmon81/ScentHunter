@@ -7,14 +7,14 @@ Additive replacement architecture boundary. It is not mounted into production.
 2. Persist listing and raw attributes. Connectors never invent canonical IDs.
 3. Resolve listing to one explicit product and variant. Unresolved/ambiguous listings stay out of comparison.
 4. Record immutable price/stock observations with source, timestamp, evidence URL and content hash.
-5. Publish only fresh, verified observations with explicit price, availability and canonical variant.
+5. Publish fresh, verified observations with explicit availability and canonical variant; in-stock observations also require a price, while sold-out observations are retained without a price.
 6. Keep observations as history; current offers are a pointer to the latest accepted observation.
 
 ## Non-negotiable invariants
 - Retailer listing is not canonical product identity.
 - Variant identity includes exact size and package type; concentration is explicit.
 - Request failure means unknown, never out of stock.
-- Missing price or evidence means no publication.
+- Missing evidence means no publication. In-stock observations without a price are not published as purchasable offers.\n- A verified out-of-stock observation with no price remains the current availability state, so an old in-stock price cannot linger.
 - Stale observations remain history, never current offers.
 - One retailer failure cannot stop other connectors.
 - Ambiguous matches are never auto-published.
@@ -26,4 +26,4 @@ The `OfferEngineRunner` executes connectors independently, records each observat
 The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for repository/worker implementation, reviewed backfill, live connector tests and parity gates.
 
 ## First vertical slice
-Implement Deloox end-to-end against this contract. Prove Liquid Brun 100 ml and Limited Edition 150 ml, including sold-out state, from live source pages. Then add the next retailer. Do not enable the new API until these live tests pass.
+Implement Deloox end-to-end against this contract. Prove Liquid Brun 100 ml and Limited Edition 150 ml, including sold-out state, from live source pages; sold-out variants must remain visible without a price. Then add the next retailer. Do not enable the new API until these live tests pass.
