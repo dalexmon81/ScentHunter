@@ -146,9 +146,9 @@ class OfferRepository:
                 else "ON CONFLICT (retailer_id, product_url) WHERE external_id IS NULL DO UPDATE SET"
             )
             conflict_update = (
-                "DO UPDATE SET last_seen_at=sh_retailer_listings.last_seen_at"
+                "last_seen_at=sh_retailer_listings.last_seen_at"
                 if preserve_existing_listing
-                else """DO UPDATE SET
+                else """
                      product_url=EXCLUDED.product_url,
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
