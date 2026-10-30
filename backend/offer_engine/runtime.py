@@ -16,6 +16,7 @@ import psycopg
 from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
+from .connectors.parsed_search import ParsedSearchConnector
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
@@ -28,7 +29,7 @@ except ModuleNotFoundError:
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "backend" / "product_catalog.json"
-POSTGRES_MIGRATION_PATH = ROOT / "backend" / "offer_engine" / "migrations" / "001_offer_engine.sql"
+MIGRATIONS_DIR = ROOT / "backend" / "offer_engine" / "migrations"
 SQLITE_MIGRATION_PATH = ROOT / "backend" / "offer_engine" / "migrations" / "001_offer_engine_sqlite.sql"
 
 
@@ -78,9 +79,15 @@ def apply_migration(
     connection = connect_offer_engine_db(dsn=configured_dsn or None, db_path=db_path)
     try:
         if configured_dsn:
-            migration = POSTGRES_MIGRATION_PATH.read_text(encoding="utf-8")
+            migration_paths = sorted(
+                path for path in MIGRATIONS_DIR.glob("*.sql")
+                if not path.name.endswith("_sqlite.sql")
+            )
+            if not migration_paths:
+                raise RuntimeError("offer_engine_postgres_migrations_missing")
             with connection.cursor() as cursor:
-                cursor.execute(migration)
+                for migration_path in migration_paths:
+                    cursor.execute(migration_path.read_text(encoding="utf-8"))
             connection.commit()
         else:
             migration = SQLITE_MIGRATION_PATH.read_text(encoding="utf-8")
@@ -115,9 +122,18 @@ def run_offer_engine(
     try:
         runner = OfferEngineRunner(matcher, repository_factory)
         if connectors is None:
-            configured_connectors = [DelooxConnector()]
+            configured_connectors = [
+                DelooxConnector(),
+                ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
+                ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
+                ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
+                ParsedSearchConnector("parfumcity", "scrapers.parfumcity.scraper", "NL"),
+                ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE"),
+                ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
+                ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
+            ]
             if NotinoFeedConnector.configured():
-                configured_connectors.append(NotinoFeedConnector())
+                configured_connectors.insert(1, NotinoFeedConnector())
         else:
             configured_connectors = list(connectors)
         return runner.run(configured_connectors, query)
