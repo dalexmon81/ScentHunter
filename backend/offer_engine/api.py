@@ -22,6 +22,9 @@ def search_offer_engine(
     market: str | None = Query(default=None, min_length=2, max_length=3),
     limit: int = Query(default=50, ge=1, le=200),
 ):
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="query_must_not_be_empty")
+
     dsn = (os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") or "").strip()
     if not dsn:
         raise HTTPException(
