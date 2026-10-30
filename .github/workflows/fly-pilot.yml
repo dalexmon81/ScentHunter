@@ -130,7 +130,7 @@ jobs:
           import urllib.request
 
           base = "https://sh-pilot-20261030.fly.dev"
-          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml", "market": "LU"})
+          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml"})
           last_error = None
 
           for attempt in range(1, 25):
