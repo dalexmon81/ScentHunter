@@ -68,8 +68,8 @@ class DelooxLiquidBrunOfferEngineTests(unittest.TestCase):
     def test_standard_100ml_never_maps_to_limited_edition_150ml(self):
         result = self._resolve(
             size=100,
-            title="Liquid Brun Extrait de Parfum 100 ml",
-            url="https://www.deloox.be/produit/1385919/liquid-brun-100-ml.html",
+            title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+            url="https://www.deloox.be/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html",
             gtin=None,
             availability=Availability.IN_STOCK,
             price=Decimal("49.95"),
