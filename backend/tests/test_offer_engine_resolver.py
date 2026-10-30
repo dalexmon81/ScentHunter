@@ -127,6 +127,11 @@ class OfferEngineResolverTests(unittest.TestCase):
                 150,
                 "VAR-f5aff76b4bb5de8a",
             ),
+            (
+                "Liquid Brun Limited Edition by French Avenue - Extrait de Parfum Men - 150 ml",
+                150,
+                "VAR-f5aff76b4bb5de8a",
+            ),
         )
         for index, (title, size, expected_variant) in enumerate(cases):
             with self.subTest(title=title):
