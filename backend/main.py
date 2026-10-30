@@ -2583,7 +2583,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # public pages as a fallback. 3-4 seconds killed them before they could
     # return, especially Notino's reader/enrichment path.
     bridge_timeouts = {
-        store: (25.0 if store == 'notino' else 12.0)
+        store: (8.0 if store == 'notino' else 8.0)
         for store in live_bridge_stores
     }
     if live_bridge_stores:
