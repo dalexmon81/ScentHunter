@@ -1202,7 +1202,7 @@ def _discover_from_search(session, query, deadline=None):
                         locale="fr-BE",
                     )
                     page.goto(browser_endpoint, wait_until="domcontentloaded", timeout=18000)
-                    page.wait_for_timeout(1200)
+                    page.wait_for_timeout(3500)
                     browser_html = page.content() or ""
                     browser_url = clean(page.url or browser_endpoint)
                     browser_title = clean(page.title() or "")
@@ -1919,7 +1919,7 @@ def search(query):
             except Exception:
                 return None
 
-        with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
+        with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as pool:
             futures = {pool.submit(fetch, url): url for url in candidates}
             for future in as_completed(futures):
                 item = future.result()
