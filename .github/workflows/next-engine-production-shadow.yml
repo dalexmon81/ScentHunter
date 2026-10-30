@@ -78,6 +78,30 @@ jobs:
                   return json.loads(response.read().decode("utf-8"))
 
           def production_search(query):
+              # Prefer the synchronous read-only endpoint; it avoids queue
+              # contention when several shadow checks run close together.
+              try:
+                  direct = get_json(
+                      "/search?q=" + urllib.parse.quote(query),
+                      timeout=45,
+                  )
+                  direct_groups = direct.get("results") if isinstance(direct.get("results"), list) else []
+                  direct_has_offers = any(
+                      isinstance(group, dict)
+                      and isinstance(group.get("offers"), list)
+                      and any(isinstance(offer, dict) for offer in group["offers"])
+                      for group in direct_groups
+                  )
+                  if direct_has_offers:
+                      direct["shadow_source"] = "synchronous_search_primary"
+                      return direct
+              except Exception as exc:
+                  print(
+                      f"NEXT_ENGINE_SHADOW_DIRECT_PRIMARY_FAILED {query}: "
+                      f"{type(exc).__name__}: {exc}",
+                      flush=True,
+                  )
+
               start_deadline = time.monotonic() + 45
               job_id = None
               while time.monotonic() < start_deadline:
