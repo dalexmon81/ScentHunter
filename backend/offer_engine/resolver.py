@@ -29,7 +29,10 @@ class ResolutionResult:
 
 def _page_facts(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     page = payload.get("parsed_page")
-    return page if isinstance(page, Mapping) else {}
+    if isinstance(page, Mapping):
+        return page
+    feed_record = payload.get("feed_record")
+    return feed_record if isinstance(feed_record, Mapping) else {}
 
 
 def _size_ml(listing: RetailerListing, page: Mapping[str, Any]) -> int | None:
@@ -64,7 +67,7 @@ def resolve_observation(
     if listing.raw_size_ml is not None and size_ml is None:
         return ResolutionResult(observation, "unresolved", "variant_size_missing_or_changed")
 
-    raw_name = str(page.get("name") or listing.raw_title).strip()
+    raw_name = str(page.get("name") or page.get("title") or listing.raw_title).strip()
     raw_brand = str(page.get("brand") or listing.raw_brand or "").strip() or None
     raw_data = page.get("raw_data")
     identity = page.get("identity")
