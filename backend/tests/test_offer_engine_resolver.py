@@ -236,7 +236,6 @@ class OfferEngineResolverTests(unittest.TestCase):
             retailer_product_id="947818",
             brand_raw="Armani",
             size_ml=100,
-            gtin="3614273953849",
             price=Decimal("83.95"),
             currency="EUR",
             availability="in_stock",
