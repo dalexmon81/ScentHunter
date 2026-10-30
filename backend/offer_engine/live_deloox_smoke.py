@@ -104,7 +104,7 @@ def main() -> None:
     result = run()
     output = json.dumps(result, ensure_ascii=False, indent=2)
     from pathlib import Path
-    Path("next-engine-live-deloox-smoke.json").write_text(output + "\\n", encoding="utf-8")
+    Path("next-engine-live-deloox-smoke.json").write_text(output + "\n", encoding="utf-8")
     print(output)
 
 
