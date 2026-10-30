@@ -15,6 +15,9 @@ class FakeScraper:
     def search_stream(self, query):
         return self.result
 
+    def product_from_page(self, session, url, query=""):
+        return self.extract_product_page(session, url, query)
+
     def extract_product_page(self, session, url, query=""):
         self.page_fetches.append(url)
         row = next(
