@@ -1,38 +1,41 @@
-# ScentHunter Fly.io configuration
+# fly.toml app configuration file generated for sh-pilot-20261030 on 2026-10-30T18:10:50Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "scenthunter"
-primary_region = "ams"
+app = 'sh-pilot-20261030'
+primary_region = 'ams'
 
 [build]
 
 [env]
-  SCENTHUNTER_CATALOG_DB = "/data/store_catalog.sqlite3"
-  SCENTHUNTER_OFFER_ENGINE_DB = "/data/offer_engine.sqlite3"
-  SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE = "0"
-  SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "0"
-  SCENTHUNTER_OFFER_ENGINE_API_ENABLED = "0"
-  SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "0"
-  SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"
-  SCENTHUNTER_OFFER_ENGINE_REFRESH_INTERVAL_SECONDS = "60"
-  # Interactive searches must not block on retailer HTTP fetches; the background hydrator owns refresh.
-  CATALOG_FOREGROUND_REFRESH_ENABLED = "0"
+  CATALOG_FOREGROUND_REFRESH_ENABLED = '0'
+  SCENTHUNTER_CATALOG_DB = '/data/store_catalog.sqlite3'
+  SCENTHUNTER_OFFER_ENGINE_API_ENABLED = '0'
+  SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE = '0'
+  SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = '0'
+  SCENTHUNTER_OFFER_ENGINE_DB = '/data/offer_engine.sqlite3'
+  SCENTHUNTER_OFFER_ENGINE_REFRESH_INTERVAL_SECONDS = '60'
+  SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = '0'
+  SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = '0'
+
+[[mounts]]
+  source = 'scenthunter_data'
+  destination = '/data'
+  auto_extend_size_threshold = 70
+  auto_extend_size_increment = '1GB'
+  auto_extend_size_limit = '5GB'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
-
-[mounts]
-  source = "scenthunter_data"
-  destination = "/data"
-  auto_extend_size_threshold = 70
-  auto_extend_size_increment = "1GB"
-  auto_extend_size_limit = "5GB"
+  processes = ['app']
 
 [[vm]]
-  memory = "2gb"
-  cpu_kind = "shared"
+  memory = '2gb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
