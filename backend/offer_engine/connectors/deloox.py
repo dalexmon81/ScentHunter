@@ -49,6 +49,34 @@ def _supported_storefront_url(url: str) -> bool:
     return first_segment != "producto" or host in {"deloox.es", "www.deloox.es"}
 
 
+
+
+def _live_page_availability(url: str) -> Availability:
+    """Read only explicit current stock controls, never structured JSON-LD."""
+    session = requests.Session()
+    try:
+        response = session.get(
+            url, headers=scraper.HEADERS, timeout=scraper.TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.status_code >= 400:
+            return Availability.UNKNOWN
+        final_url = str(getattr(response, "url", "") or url).strip()
+        if not _supported_storefront_url(final_url):
+            return Availability.UNKNOWN
+        html = str(getattr(response, "text", "") or "")
+        if not html.strip() or scraper._is_client_challenge_html(html):
+            return Availability.UNKNOWN
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "lxml")
+        # With offer=None, this helper cannot fall back to stale JSON-LD stock.
+        state = scraper.availability("", offer=None, soup=soup)
+        return Availability(state) if state in Availability._value2member_map_ else Availability.UNKNOWN
+    except Exception:
+        return Availability.UNKNOWN
+    finally:
+        session.close()
+
 class DelooxConnector:
     retailer = "deloox"
     source = "product_page"
@@ -121,6 +149,17 @@ class DelooxConnector:
         availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
         raw_price = offer.get("price")
         price = Decimal(str(raw_price)) if raw_price is not None else None
+        # A structured Offer can remain stale after the storefront stock panel
+        # changes. Independently inspect the live purchase controls before
+        # trusting an InStock value. If this evidence is unavailable, fail closed.
+        if availability is Availability.IN_STOCK:
+            live_availability = _live_page_availability(evidence_url)
+            if live_availability is Availability.UNKNOWN:
+                availability = Availability.UNKNOWN
+                price = None
+            elif live_availability is Availability.OUT_OF_STOCK:
+                availability = Availability.OUT_OF_STOCK
+                price = None
         evidence = json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
         # Matching is a separate, reviewed step; a connector never assigns canonical IDs.
