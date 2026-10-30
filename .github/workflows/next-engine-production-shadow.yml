@@ -290,10 +290,22 @@ jobs:
               print("NEXT_ENGINE_SHADOW " + json.dumps(query_report, ensure_ascii=False, sort_keys=True))
               report["queries"].append(query_report)
 
+          report["status"] = (
+              "success" if not report.get("query_errors")
+              else "partial" if report.get("queries")
+              else "failed"
+          )
           Path("next-engine-production-shadow-report.json").write_text(
               json.dumps(report, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8",
           )
+          if report["status"] != "success":
+              raise RuntimeError(
+                  "Production shadow comparison was incomplete; "
+                  f"completed_queries={len(report.get('queries', []))}, "
+                  f"errors={len(report.get('query_errors', []))}. "
+                  "See the uploaded read-only report artifact."
+              )
           print("Production Next Engine shadow comparison: PASS (read-only; production search unchanged)")
           PY
 
