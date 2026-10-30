@@ -2830,6 +2830,8 @@ def _new_job(query):
             "completed": False,
             "status": "searching",
             "atomic_results": True,
+            "engine": "offer_engine" if _offer_engine_search_enabled() else "legacy",
+            "timeout_seconds": 150.0 if _offer_engine_search_enabled() else JOB_TIMEOUT_SECONDS,
             "cancel_event": threading.Event(),
             "done_event": threading.Event(),
             "aggregate_lock": threading.Lock(),
@@ -2872,7 +2874,8 @@ def _snapshot(job_id):
         # cancellation, and release the job slot if the search exceeds its
         # bounded execution window plus a small finalization allowance.
         started_at = float(job.get("started_at") or time.time())
-        if not job.get("completed") and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0):
+        job_timeout = float(job.get("timeout_seconds") or JOB_TIMEOUT_SECONDS)
+        if not job.get("completed") and time.time() - started_at > (job_timeout + 20.0):
             job["completed"] = True
             job["status"] = "completed_with_store_issues"
             job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
@@ -3108,6 +3111,45 @@ def _run_job(job_id, query):
             current_job["thread"] = threading.current_thread()
             cancel_event = current_job.get("cancel_event")
             job = current_job
+
+        # The public UI uses /search-start and /search-status, not the
+        # synchronous /search route. Route that background job through the
+        # same verified Offer Engine when the feature flag is enabled.
+        if _offer_engine_search_enabled():
+            engine_started = time.monotonic()
+            engine_payload = _search_with_offer_engine(query)
+            engine_elapsed = round(time.monotonic() - engine_started, 3)
+            store_reports = engine_payload.get("stores") or {}
+            store_issues = [
+                report for report in store_reports.values()
+                if not report.get("verified")
+                or str(report.get("status") or "").lower() != "success"
+            ]
+            with JOBS_LOCK:
+                current_job = JOBS.get(job_id)
+                if current_job is not None:
+                    current_job["offers"] = list(engine_payload.get("offers") or [])
+                    current_job["results"] = list(engine_payload.get("results") or [])
+                    current_job["unresolved_offers"] = list(engine_payload.get("unresolved_offers") or [])
+                    current_job["identity_scope"] = list(engine_payload.get("identity_scope") or [])
+                    current_job["dedupe_diagnostics"] = list(engine_payload.get("dedupe_diagnostics") or [])
+                    current_job["errors"] = dict(engine_payload.get("errors") or {})
+                    current_job["stores"] = dict(store_reports)
+                    current_job["completed"] = True
+                    current_job["status"] = "completed_with_store_issues" if store_issues else "completed"
+                    current_job["store_issue_count"] = len(store_issues)
+                    current_job["elapsed"] = engine_elapsed
+                    current_job["collect_elapsed"] = engine_elapsed
+                    total = len(current_job["results"])
+                else:
+                    total = 0
+            elapsed = engine_elapsed
+            print(
+                f"SEARCH OFFER ENGINE COMPLETE job={job_id} query={query!r} "
+                f"stores={len(store_reports)} elapsed={engine_elapsed}",
+                flush=True,
+            )
+            return
 
         def on_report(r):
             _publish_store(job_id, r)
@@ -5088,6 +5130,7 @@ def _search_with_offer_engine(query: str):
         "count": len(grouped),
         "offer_count": len(all_offers),
         "results": grouped,
+        "offers": all_offers,
         "unresolved_offers": unresolved,
         "dedupe_diagnostics": dedupe_diagnostics,
         "identity_scope": _identity_scope(query),
