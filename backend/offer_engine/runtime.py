@@ -125,9 +125,14 @@ def run_offer_engine(
     try:
         runner = OfferEngineRunner(matcher, repository_factory)
         if connectors is None:
-            configured_connectors = [
-                DelooxConnector(),
-                NotinoFeedConnector(),
+            configured_connectors = [DelooxConnector()]
+            if all(os.environ.get(name, "").strip() for name in (
+                "NOTINO_CJ_FEED_URL",
+                "NOTINO_CJ_FEED_USERNAME",
+                "NOTINO_CJ_FEED_PASSWORD",
+            )):
+                configured_connectors.append(NotinoFeedConnector())
+            configured_connectors.extend([
                 ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
                 ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
                 ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
@@ -135,7 +140,7 @@ def run_offer_engine(
                 ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE"),
                 ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
                 ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
-            ]
+            ])
         else:
             configured_connectors = list(connectors)
         return runner.run(configured_connectors, query)
