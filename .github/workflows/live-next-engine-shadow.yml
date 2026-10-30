@@ -1,6 +1,18 @@
 name: Manual Live Next Engine Shadow
 
 on:
+  push:
+    branches: [architecture/offer-engine-v1]
+    paths:
+      - "backend/offer_engine/**"
+      - "backend/scrapers/deloox/**"
+      - "backend/scrapers/orioudh/**"
+      - "backend/scrapers/perfumemarket/**"
+      - "backend/scrapers/sabina/**"
+      - "backend/scrapers/parfumcity/**"
+      - "backend/scrapers/parfumzentrum/**"
+      - "backend/scrapers/bplatz/**"
+      - "backend/scrapers/easycosmetic/**"
   pull_request:
     branches: [main]
     paths:
