@@ -352,6 +352,36 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(tuple(row), (product.product_id, variant.variant_id, "matched"))
 
 
+
+    def test_read_model_never_exposes_price_on_sold_out_offer_if_current_row_is_corrupted(self):
+        product = self.catalog.get("SH-0031")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+        url = "https://www.parfumzentrum.de/french-avenue-liquid-brun-limited-150-ml.html"
+        listing = RetailerListing(
+            retailer="parfumzentrum", external_id="sold-out-price-corruption",
+            product_url=url,
+            raw_title="French Avenue Liquid Brun Limited Edition 150 ml",
+            raw_brand="French Avenue", raw_size_ml=150, market="DE",
+        )
+        result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(
+            listing,
+            OfferObservation.now(
+                listing_key="parfumzentrum:sold-out-price-corruption",
+                price=None, currency="EUR",
+                availability=Availability.OUT_OF_STOCK, source="product_page",
+                verification=Verification.VERIFIED,
+                product_id=product.product_id, variant_id=variant.variant_id,
+                evidence_url=url, evidence_hash="sha256:sold-out-price-corruption",
+            ),
+        )
+        self.assertTrue(result["published"])
+        self.connection.execute(
+            "UPDATE sh_offer_observations SET price=39.99 WHERE observation_id=?",
+            (result["observation_id"],),
+        )
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        self.assertFalse(any(row["external_id"] == "sold-out-price-corruption" for row in offers))
+
     def test_read_model_never_exposes_zero_price_even_if_current_row_is_corrupted(self):
         product = self.catalog.get("SH-0030")
         variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
