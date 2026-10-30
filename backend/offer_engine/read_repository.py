@@ -66,7 +66,7 @@ class OfferReadRepository:
                        OR p.brand ILIKE %s
                        OR l.raw_title ILIKE %s
                    )
-                     AND (%s IS NULL OR l.market=%s)
+                     AND (%s::text IS NULL OR l.market=%s)
                    ORDER BY
                        (o.price IS NULL) ASC,
                        o.price ASC NULLS LAST,
