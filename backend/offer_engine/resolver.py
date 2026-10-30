@@ -86,7 +86,7 @@ def resolve_observation(
         raw_payload=matcher_payload,
     )
     match = matcher.match(offer)
-    if match.status is not MatchStatus.MATCHED:
+    if getattr(match.status, "value", match.status) != MatchStatus.MATCHED.value:
         return ResolutionResult(observation, match.status.value, match.reason or "identity_not_resolved")
     if observation.availability is Availability.UNKNOWN:
         return ResolutionResult(observation, "unresolved", "availability_unknown")
