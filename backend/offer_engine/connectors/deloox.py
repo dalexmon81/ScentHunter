@@ -43,7 +43,13 @@ class DelooxConnector:
         self._session = session
 
     def discover(self, query: str) -> Iterable[RetailerListing]:
-        for row in scraper.search(query) or []:
+        result = scraper.search_stream(query)
+        if not isinstance(result, dict) or result.get("status") != "success" or not result.get("verified"):
+            status = result.get("status", "invalid_result") if isinstance(result, dict) else "invalid_result"
+            details = result.get("details", {}) if isinstance(result, dict) else {}
+            reasons = details.get("search_failure_reasons") or details.get("browser_search") or {}
+            raise RuntimeError(f"deloox_discovery_{status}:{reasons}")
+        for row in result.get("results") or []:
             if not isinstance(row, dict):
                 continue
             url = str(row.get("url") or "").strip()
