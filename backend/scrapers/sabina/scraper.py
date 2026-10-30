@@ -415,6 +415,8 @@ def extract_price_from_html(soup):
     )
 
     for selector in selectors:
+        candidates = []
+        preferred = []
         for node in soup.select(selector):
             if node.name == "meta":
                 continue
@@ -448,7 +450,13 @@ def extract_price_from_html(soup):
 
             value = money_to_float(raw)
             if value is not None:
-                return value, "sabina_html_price"
+                candidates.append(value)
+                if any(word in marker_text for word in ("current", "sale", "final", "selling", "actual")):
+                    preferred.append(value)
+
+        selected = set(preferred) if preferred else set(candidates)
+        if selected:
+            return (next(iter(selected)), "sabina_html_price") if len(selected) == 1 else (None, None)
 
     # Last fallback: inspect only a product container and only labelled
     # customer-facing prices. Never scan arbitrary EUR amounts on the page.
