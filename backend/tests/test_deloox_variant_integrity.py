@@ -180,8 +180,6 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertIsNone(scraper._product(url, html, "Liquid Brun Limited Edition 100 ml"))
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
     def test_visible_sold_out_control_overrides_stale_jsonld_in_stock(self):
@@ -223,3 +221,6 @@ if __name__ == "__main__":
         self.assertIsNone(result["offer"]["price"])
         self.assertIsNone(result["price"])
         self.assertFalse(result["available"])
+
+if __name__ == "__main__":
+    unittest.main()
