@@ -157,6 +157,45 @@ def parse_price(v):
         return None
 
 
+
+def visible_price(soup):
+    """Extract only explicitly price-scoped markup; never scan whole-page text."""
+    selectors = (
+        'meta[itemprop="price"][content]', '[itemprop="price"]',
+        '[data-testid*="price" i]', '[data-test*="price" i]', '[data-price]',
+        '[class*="price" i]', '[id*="price" i]',
+    )
+    candidates = []
+    for selector in selectors:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes[:100]:
+            marker = " ".join(str(node.get(k) or "") for k in (
+                "itemprop", "data-testid", "data-test", "class", "id", "aria-label"
+            )).casefold()
+            if re.search(r"old|was|regular|rrp|list.price|strike|compare|original", marker):
+                continue
+            if any(
+                "price" in " ".join(str(child.get(k) or "") for k in (
+                    "itemprop", "data-testid", "data-test", "class", "id"
+                )).casefold()
+                for child in node.find_all(True)
+            ):
+                continue
+            raw = node.get("content") or node.get("data-price") or node.get("aria-label") or node.get_text(" ", strip=True)
+            value = parse_price(raw)
+            if value is not None and value > 0:
+                candidates.append((round(float(value), 2), marker))
+    if not candidates:
+        return None
+    preferred = {value for value, marker in candidates if re.search(r"current|sale|special|selling|final|actual", marker)}
+    if len(preferred) == 1:
+        return next(iter(preferred))
+    values = {value for value, _marker in candidates}
+    return next(iter(values)) if len(values) == 1 else None
+
 def availability(text, offer=None, soup=None):
     """Prefer explicit storefront stock signals over possibly stale JSON-LD."""
 
@@ -482,15 +521,8 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
 
     price = parse_price(offer.get("price"))
     if price is None:
-        # Only consider visible text outside the product title when falling
-        # back to page-price extraction. Otherwise a title such as "125 ml"
-        # can be misread as a 125.00 price when JSON-LD omits its offer.
-        price_text = text
-        if h1 is not None:
-            title_text = clean(h1.get_text(" ", strip=True))
-            if title_text:
-                price_text = price_text.replace(title_text, " ", 1)
-        price = parse_price(price_text)
+        # Whole-page text includes unrelated prices, shipping thresholds and sizes.
+        price = visible_price(stock_soup)
 
     # An out-of-stock product remains a useful catalog result even when the
     # retailer removes its price. Preserve its exact product/variant identity,
