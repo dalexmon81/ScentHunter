@@ -82,7 +82,10 @@ class OfferRepository:
                      raw_brand=EXCLUDED.raw_brand,
                      raw_size_ml=EXCLUDED.raw_size_ml,
                      raw_concentration=EXCLUDED.raw_concentration,
-                     raw_gtin=EXCLUDED.raw_gtin
+                     raw_gtin=EXCLUDED.raw_gtin,
+                     canonical_product_id=COALESCE(EXCLUDED.canonical_product_id, sh_retailer_listings.canonical_product_id),
+                     canonical_variant_id=COALESCE(EXCLUDED.canonical_variant_id, sh_retailer_listings.canonical_variant_id),
+                     match_status=CASE WHEN EXCLUDED.match_status='matched' THEN 'matched' ELSE sh_retailer_listings.match_status END
                    RETURNING listing_id""",
                 (listing.retailer, listing.external_id, listing.product_url, listing.market,
                  listing.raw_title, listing.raw_brand, listing.raw_size_ml,
