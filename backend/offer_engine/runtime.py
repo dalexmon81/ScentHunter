@@ -60,7 +60,7 @@ def connect_offer_engine_db(
     db_path: str | Path | None = None,
 ) -> Any:
     """Open the dedicated Offer Engine DB: PostgreSQL when configured, SQLite otherwise."""
-    configured_dsn = (dsn or os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") or "").strip()
+    configured_dsn = (dsn or (os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") if db_path is None else "") or "").strip()
     if configured_dsn:
         return psycopg.connect(configured_dsn)
     connection = sqlite3.connect(str(_sqlite_path(db_path)))
@@ -75,7 +75,7 @@ def apply_migration(
     db_path: str | Path | None = None,
 ) -> None:
     """Apply the additive sh_* schema to the dedicated Offer Engine database."""
-    configured_dsn = (dsn or os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") or "").strip()
+    configured_dsn = (dsn or (os.environ.get("SCENTHUNTER_OFFER_ENGINE_DSN") if db_path is None else "") or "").strip()
     connection = connect_offer_engine_db(dsn=configured_dsn or None, db_path=db_path)
     try:
         if configured_dsn:
