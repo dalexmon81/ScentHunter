@@ -563,3 +563,35 @@ def test_learns_missing_variant_from_two_retailers_when_title_omits_url_verified
     assert learned["size_ml"] == 100
     assert learned["independent_retailer_count"] == 2
 
+def test_url_identity_accepts_deloox_size_tokens_and_reordered_brand_words():
+    catalog = {
+        "products": [{
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "brand_name": "Valentino",
+            "canonical_name": "Born in Roma Donna",
+            "concentration": "",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "name": "Born in Roma Donna",
+            "brand": "Valentino",
+            "size_ml": 30,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.lu/produit/1215284/valentino-born-in-roma-donna-eau-de-parfum-30-ml.html",
+        },
+        {
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "name": "Born in Roma Donna",
+            "brand": "Valentino",
+            "size_ml": 30,
+            "retailer": "Easycosmetic",
+            "product_url": "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-edp-vapo.aspx",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["size_ml"] == 30
+
