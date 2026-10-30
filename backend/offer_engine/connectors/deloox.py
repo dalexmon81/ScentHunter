@@ -10,9 +10,12 @@ from decimal import Decimal
 from typing import Iterable
 from urllib.parse import urlparse
 import requests
-from backend.offer_engine.adapters import ConnectorHealth
-from backend.offer_engine.contracts import Availability, OfferObservation, RetailerListing, Verification
-from backend.scrapers.deloox import scraper
+from ..adapters import ConnectorHealth
+from ..contracts import Availability, OfferObservation, RetailerListing, Verification
+try:
+    from scrapers.deloox import scraper
+except ModuleNotFoundError:
+    from backend.scrapers.deloox import scraper
 
 DELOOX_MARKETS = {
     "deloox.be": "BE",
