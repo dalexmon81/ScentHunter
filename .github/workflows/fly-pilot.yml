@@ -151,6 +151,35 @@ jobs:
                   offer_api = get("/offer-engine/search?" + query)
                   if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
                       raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
+
+                  # A GET is deliberately read-only and cannot populate an
+                  # empty database. Exercise the explicit refresh endpoint so
+                  # the pilot test proves that real connectors can ingest and
+                  # publish verified offers, not merely that SQLite is online.
+                  refresh_request = urllib.request.Request(
+                      base + "/offer-engine/search?" + query,
+                      data=b"",
+                      method="POST",
+                      headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
+                  )
+                  with urllib.request.urlopen(refresh_request, timeout=120) as response:
+                      if response.status != 200:
+                          raise RuntimeError("Offer Engine refresh returned HTTP " + str(response.status))
+                      refresh_api = json.loads(response.read().decode("utf-8"))
+                  refresh = refresh_api.get("refresh") or {}
+                  connector_results = refresh.get("connectors") or []
+                  print("PILOT_REFRESH_STATUS=" + str(refresh_api.get("status")))
+                  print("PILOT_REFRESH_CONNECTORS=" + json.dumps(connector_results))
+                  print("PILOT_REFRESH_LISTINGS_SEEN=" + str(refresh.get("listings_seen", 0)))
+                  print("PILOT_REFRESH_OBSERVATIONS_WRITTEN=" + str(refresh.get("observations_written", 0)))
+                  print("PILOT_REFRESH_OFFERS_PUBLISHED=" + str(refresh.get("offers_published", 0)))
+                  if not connector_results or all(item.get("status") == "failed" for item in connector_results):
+                      raise RuntimeError("All Offer Engine retailer connectors failed: " + json.dumps(refresh_api))
+                  if int(refresh.get("offers_published") or 0) < 1:
+                      raise RuntimeError("Retailer refresh completed without publishing a verified offer: " + json.dumps(refresh_api))
+                  offer_api = get("/offer-engine/search?" + query)
+                  if int(offer_api.get("count") or 0) < 1:
+                      raise RuntimeError("Refresh reported published offers but read API returned none: " + json.dumps(offer_api))
                   ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
                   if not isinstance(ui_search, dict):
                       raise RuntimeError("Synchronous user search endpoint returned a non-object response.")
