@@ -84,6 +84,50 @@ class OfferRepositoryTests(unittest.TestCase):
         self.assertTrue(any("INSERT INTO sh_variants" in sql for sql, _ in conn.cur.calls))
         self.assertTrue(any("INSERT INTO sh_current_offers" in sql for sql, _ in conn.cur.calls))
 
+    def test_verified_out_of_stock_observation_retires_previous_current_offer(self):
+        conn = Connection()
+        listing, observation = fixtures(verified=True)
+        observation = OfferObservation(
+            listing_key=observation.listing_key,
+            observed_at=datetime.now(timezone.utc),
+            price=Decimal("49.95"),
+            currency="EUR",
+            availability=Availability.OUT_OF_STOCK,
+            source="product_page",
+            verification=Verification.VERIFIED,
+            product_id=observation.product_id,
+            variant_id=observation.variant_id,
+            evidence_url=observation.evidence_url,
+            evidence_hash=observation.evidence_hash,
+        )
+        result = OfferRepository(conn, canonical_catalog=self.catalog).record(listing, observation)
+        self.assertFalse(result["published"])
+        self.assertEqual(result["policy_reason"], "out_of_stock")
+        self.assertTrue(any("DELETE FROM sh_current_offers" in sql for sql, _ in conn.cur.calls))
+        self.assertEqual(conn.commits, 1)
+
+    def test_stale_out_of_stock_observation_does_not_retire_newer_offer(self):
+        from datetime import timedelta
+        conn = Connection()
+        listing, observation = fixtures(verified=True)
+        observation = OfferObservation(
+            listing_key=observation.listing_key,
+            observed_at=datetime.now(timezone.utc) - timedelta(days=3),
+            price=None,
+            currency="EUR",
+            availability=Availability.OUT_OF_STOCK,
+            source="product_page",
+            verification=Verification.VERIFIED,
+            product_id=observation.product_id,
+            variant_id=observation.variant_id,
+            evidence_url=observation.evidence_url,
+            evidence_hash=observation.evidence_hash,
+        )
+        result = OfferRepository(conn, canonical_catalog=self.catalog).record(listing, observation)
+        self.assertFalse(result["published"])
+        self.assertEqual(result["policy_reason"], "observation_stale")
+        self.assertFalse(any("DELETE FROM sh_current_offers" in sql for sql, _ in conn.cur.calls))
+
     def test_any_write_failure_rolls_back_the_unit_of_work(self):
         conn = Connection(fail=True)
         listing, observation = fixtures()
