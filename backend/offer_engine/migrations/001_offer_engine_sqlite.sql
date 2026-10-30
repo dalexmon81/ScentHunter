@@ -64,4 +64,13 @@ CREATE TABLE IF NOT EXISTS sh_connector_runs (
     listings_seen INTEGER NOT NULL DEFAULT 0, observations_written INTEGER NOT NULL DEFAULT 0,
     offers_published INTEGER NOT NULL DEFAULT 0, error_summary TEXT
 );
+-- Persistent cursor for the independent, rate-limited catalog refresh worker.
+CREATE TABLE IF NOT EXISTS sh_refresh_scheduler (
+    id INTEGER PRIMARY KEY CHECK(id=1),
+    product_cursor INTEGER NOT NULL DEFAULT 0 CHECK(product_cursor >= 0),
+    last_started_at TEXT,
+    last_finished_at TEXT,
+    last_error TEXT
+);
+
 COMMIT;
