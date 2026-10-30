@@ -4088,8 +4088,13 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_redirect;final={final}'
                 )
 
+        # Initialize parser diagnostics before any branch that can fail.
+        # A parser exception must never be replaced by NameError while building
+        # the failure detail, otherwise hydration retries lose the real cause.
+        secondary_ok = bool(amazon_api_item and amazon_api_item.get('name'))
+        primary_ok = False
+        parser_error = None
         item = amazon_api_item
-        secondary_ok = bool(amazon_api_item)
         parser_available = False
         if item is None:
             # The retailer scraper owns retailer-specific product-page semantics
