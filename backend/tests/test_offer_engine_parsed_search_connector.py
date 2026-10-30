@@ -11,6 +11,7 @@ class FakeScraper:
         self.result = result
         self.page_overrides = page_overrides or {}
         self.page_fetches = []
+        self.page_queries = []
 
     def search_stream(self, query):
         return self.result
@@ -20,6 +21,7 @@ class FakeScraper:
 
     def extract_product_page(self, session, url, query="", **kwargs):
         self.page_fetches.append(url)
+        self.page_queries.append(query)
         row = next(
             item for item in self.result.get("results", [])
             if item.get("url") == url
@@ -81,6 +83,7 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(str(observation.price), "49.95")
         self.assertEqual(observation.availability, Availability.IN_STOCK)
         self.assertEqual(connector._scraper.page_fetches, [listing.product_url])
+        self.assertEqual(connector._scraper.page_queries, ["Liquid Brun 100 ml"])
         self.assertEqual(observation.raw_payload["evidence_source"], "fetched_product_detail")
         self.assertEqual(observation.verification, Verification.UNVERIFIED)
         self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 100)
