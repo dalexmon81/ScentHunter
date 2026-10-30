@@ -261,5 +261,30 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
                 connector.observe(listing)
 
 
+    def test_discovery_preserves_same_sku_for_distinct_sizes_as_distinct_listings(self):
+        base = page(
+            URL_100,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 49.95,
+        )
+        sibling_url = URL_150.replace("1385920", "1355229").replace("liquid-brun-extrait-de-parfum-limited-edition-150-ml", "liquid-brun-extrait-de-parfum-limited-edition-150-ml")
+        sibling = page(
+            sibling_url,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            150, "out_of_stock", None, "6298042001831",
+        )
+        # Simulate a retailer that reuses one product-level SKU across sizes.
+        sibling["sku"] = base["sku"]
+        sibling["identity"]["sku"] = base["identity"]["sku"]
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={"status": "success", "verified": True, "results": [base, sibling], "details": {}},
+        ):
+            listings = list(DelooxConnector(session=object()).discover("Liquid Brun"))
+        self.assertEqual({item.raw_size_ml for item in listings}, {100, 150})
+        self.assertEqual(len({item.external_id for item in listings}), 2)
+        self.assertEqual(len({item.product_url for item in listings}), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
