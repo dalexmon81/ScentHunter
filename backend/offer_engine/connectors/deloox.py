@@ -152,14 +152,6 @@ class DelooxConnector:
         # A structured Offer can remain stale after the storefront stock panel
         # changes. Independently inspect the live purchase controls before
         # trusting an InStock value. If this evidence is unavailable, fail closed.
-        if availability is Availability.IN_STOCK:
-            live_availability = _live_page_availability(evidence_url)
-            if live_availability is Availability.UNKNOWN:
-                availability = Availability.UNKNOWN
-                price = None
-            elif live_availability is Availability.OUT_OF_STOCK:
-                availability = Availability.OUT_OF_STOCK
-                price = None
         evidence = json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
         # Matching is a separate, reviewed step; a connector never assigns canonical IDs.
