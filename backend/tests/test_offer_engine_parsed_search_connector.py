@@ -55,6 +55,23 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 100)
         self.assertEqual(observation.raw_payload["parsed_page"]["identity"]["gtin"]["value"], "6298042001008")
 
+    def test_verified_partial_discovery_keeps_page_verified_candidates(self):
+        connector = ParsedSearchConnector(
+            "bplatz",
+            "scrapers.bplatz.scraper",
+            "DE",
+            scraper=FakeScraper({
+                "status": "partial",
+                "verified": True,
+                "results": [self._row()],
+                "details": {"discovery_errors": [{"source": "search_json", "status": "error"}]},
+            }),
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        observation = connector.observe(listing)
+        self.assertEqual(listing.external_id, "LB100")
+        self.assertEqual(observation.availability, Availability.IN_STOCK)
+
     def test_sold_out_result_never_keeps_a_stale_price(self):
         connector = ParsedSearchConnector(
             "parfumzentrum",
