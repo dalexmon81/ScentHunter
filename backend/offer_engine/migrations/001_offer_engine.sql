@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS sh_variants (
  variant_id TEXT PRIMARY KEY, product_id TEXT NOT NULL REFERENCES sh_products(product_id),
  size_ml INTEGER NOT NULL CHECK(size_ml>0), concentration TEXT, gtin TEXT,
  package_type TEXT NOT NULL DEFAULT 'standard',
- UNIQUE NULLS NOT DISTINCT(product_id,size_ml,concentration,package_type), UNIQUE(variant_id,product_id)
+ UNIQUE(variant_id,product_id)
 );
 CREATE TABLE IF NOT EXISTS sh_retailers (
  retailer_id TEXT PRIMARY KEY, display_name TEXT NOT NULL, market TEXT NOT NULL,
