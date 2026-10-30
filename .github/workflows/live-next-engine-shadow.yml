@@ -52,6 +52,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: next-engine-live-deloox-smoke
-          path: next-engine-live-shadow-comparison.json
+          path: next-engine-live-deloox-smoke.json
           if-no-files-found: warn
           retention-days: 7
