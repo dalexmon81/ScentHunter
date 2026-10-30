@@ -422,10 +422,14 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         return None
 
     product_line = ""
-    # Cache the normalized full-page text once; several downstream checks use it.
-    # Bound the fallback text extraction: product JSON-LD is authoritative
-    # for name/offer, and scanning multi-megabyte HTML adds cost without helping
-    # identity. Keep enough leading page text for generic line/category signals.
+    # Keep the JSON-LD fast path, but inspect the current storefront controls
+    # even when the caller supplied already-parsed structured data. Deloox can
+    # leave a stale Schema.org InStock value after the visible buy panel changes.
+    # The full HTML is already bounded by extract_product_page (4 MiB).
+    stock_soup = soup if soup is not None else BeautifulSoup(html or "", "lxml")
+
+    # Cache normalized page text once for the downstream identity/category
+    # checks. Keep the bounded text fallback when the caller used JSON-LD mode.
     text = soup.get_text(" ", strip=True) if soup is not None else clean(re.sub(r"<[^>]+>", " ", (html or "")[:524288]))
 
     # Deloox also has haircare, skincare and makeup pages under the same
@@ -492,11 +496,7 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # retailer removes its price. Preserve its exact product/variant identity,
     # but never infer or fabricate a price. In-stock/unknown-price products
     # still fail closed as before.
-    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
-        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
-            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
-        )
-    )
+    avail = availability(text, offer=offer, soup=stock_soup)
     # Do not publish a stale structured price when current storefront controls
     # explicitly say the product is out of stock.
     if avail == "out_of_stock":
