@@ -26,7 +26,10 @@ class OfferEnginePostgresTests(unittest.TestCase):
         cls.connection = psycopg.connect(os.environ["SCENTHUNTER_TEST_POSTGRES_DSN"])
         migration_dir = root / "backend" / "offer_engine" / "migrations"
         with cls.connection.cursor() as cursor:
-            for migration_path in sorted(migration_dir.glob("*.sql")):
+            for migration_path in sorted(
+                path for path in migration_dir.glob("*.sql")
+                if not path.name.endswith("_sqlite.sql")
+            ):
                 cursor.execute(migration_path.read_text(encoding="utf-8"))
         cls.connection.commit()
         cls.catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
