@@ -76,7 +76,7 @@ def _is_client_challenge_html(value):
     """Recognize Cloudflare challenge documents, including HTTP-200 interstitials."""
     sample = str(value or "")[:20000].lower()
     return bool(
-        re.search(r"<title[^>]*>\\s*client challenge\\s*</title>", sample)
+        re.search(r"<title[^>]*>\s*client challenge\s*</title>", sample)
         or "cf-chl-" in sample
         or "challenge-platform" in sample
     )
