@@ -8,6 +8,7 @@ Price publication remains a separate policy decision.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
 try:
@@ -41,12 +42,15 @@ def _size_ml(listing: RetailerListing, page: Mapping[str, Any]) -> int | None:
     value = size.get("value") if isinstance(size, Mapping) else None
     if value is None:
         value = page.get("size_ml")
+    if value is None or isinstance(value, bool):
+        return None
     try:
-        parsed = int(value) if value is not None else None
-    except (TypeError, ValueError):
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
         return None
-    if parsed is not None and parsed <= 0:
+    if not amount.is_finite() or amount <= 0 or amount != amount.to_integral_value():
         return None
+    parsed = int(amount)
     if listing.raw_size_ml is not None and parsed != listing.raw_size_ml:
         return None
     return parsed
