@@ -285,9 +285,18 @@ class ParsedSearchConnector:
             concentration = _field_value(attrs.get("concentration", row.get("concentration")))
             sku = _field_value(identity.get("sku", row.get("sku")))
             gtin = _field_value(identity.get("gtin", row.get("gtin") or row.get("ean")))
-            external_id = str(sku or gtin or hashlib.sha256(
+            store_variant_id = _field_value(identity.get("store_variant_id"))
+            base_external_id = str(store_variant_id or sku or gtin or hashlib.sha256(
                 f"{url}|{size_ml or ''}|{title}".encode("utf-8")
             ).hexdigest()[:24]).strip()
+            external_id = base_external_id
+            if external_id in seen:
+                # Product-level SKUs are sometimes reused across bottle sizes.
+                # Keep sibling sellable variants as independent retailer listings.
+                suffix = str(gtin or size_ml or hashlib.sha256(url.encode("utf-8")).hexdigest()[:10])
+                external_id = f"{base_external_id}:{suffix}"
+            if external_id in seen:
+                external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
             if external_id in seen:
                 continue
             seen.add(external_id)
