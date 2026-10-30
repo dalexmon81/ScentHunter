@@ -22,6 +22,8 @@ Additive replacement architecture boundary. It is not mounted into production.
 ## Execution
 The `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. The `live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data; Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected. The runner does not create database connections or enable production traffic.
 
+The opt-in worker is executable with `SCENTHUNTER_OFFER_ENGINE_DSN=postgresql://... python -m backend.offer_engine.cli --query "Liquid Brun"`. Apply the isolated schema explicitly with `--apply-migration`; migrations are never run automatically. The worker opens and closes its own dedicated PostgreSQL connections and never touches the legacy SQLite catalog.
+
 ## Storage
 The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for repository/worker implementation, reviewed backfill, live connector tests and parity gates.
 
