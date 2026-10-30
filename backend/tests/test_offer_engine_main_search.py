@@ -38,10 +38,17 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         }
         connection = type("FakeConnection", (), {"close": lambda self: None})()
         run_result = EngineRunResult([ConnectorRunResult("deloox", "success", listings_seen=1)])
+        try:
+            from offer_engine import runtime as runtime_module
+            from offer_engine import read_repository as read_module
+        except ModuleNotFoundError:
+            from backend.offer_engine import runtime as runtime_module
+            from backend.offer_engine import read_repository as read_module
+
         with (
-            patch("backend.offer_engine.runtime.run_offer_engine", return_value=run_result),
-            patch("backend.offer_engine.runtime.connect_offer_engine_db", return_value=connection),
-            patch("backend.offer_engine.read_repository.OfferReadRepository.search", return_value=[row]),
+            patch.object(runtime_module, "run_offer_engine", return_value=run_result),
+            patch.object(runtime_module, "connect_offer_engine_db", return_value=connection),
+            patch.object(read_module.OfferReadRepository, "search", return_value=[row]),
         ):
             result = main._search_with_offer_engine("Liquid Brun")
 
