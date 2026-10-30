@@ -443,3 +443,35 @@ def test_accepts_deloox_spanish_route_on_spanish_market():
     result = learn_variants(_catalog(), observations)
     assert result["report"]["variants_added"] == 1
 
+def test_nonstandard_catalog_concentration_label_does_not_block_explicit_variant_evidence():
+    catalog = {
+        "products": [{
+            "product_id": "SH-HAWAS-ELIXIR",
+            "brand_name": "Rasasi",
+            "canonical_name": "Hawas Élixir",
+            "concentration": "Elixir",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-HAWAS-ELIXIR",
+            "name": "Hawas Elixir",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/rasasi-hawas-elixir-100ml-edp",
+        },
+        {
+            "product_id": "SH-HAWAS-ELIXIR",
+            "name": "Hawas Elixir",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/rasasi-hawas-elixir-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["size_ml"] == 100
+
