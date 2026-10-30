@@ -26,6 +26,7 @@ jobs:
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_APP: scenthunter-pilot-20261030
+      FLY_ORG: personal
       FLY_VOLUME: scenthunter_pilot_data
       PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
     steps:
@@ -60,20 +61,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Do not trust "apps show" alone: flyctl may return success with
-          # a not-found message on some CLI/API combinations. Try creation,
-          # then verify the app explicitly if it already exists.
-          if ! flyctl apps create "$FLY_APP"; then
-            echo "App creation returned non-zero; verifying existing app."
+          # Explicitly target the personal organization. Scoped tokens should
+          # not rely on flyctl's implicit organization selection.
+          if ! flyctl apps create "$FLY_APP" --org "$FLY_ORG" --yes; then
+            echo "App creation returned non-zero; checking whether it already exists."
           fi
-          app_details="$(flyctl apps show "$FLY_APP" 2>&1)" || {
-            printf '%s\n' "$app_details" >&2
-            echo "Fly app is not visible to this token; refusing volume/deploy." >&2
+          app_names="$(flyctl apps list --org "$FLY_ORG" --quiet 2>&1)" || {
+            printf '%s\n' "$app_names" >&2
+            echo "Cannot list apps in the target organization; refusing volume/deploy." >&2
             exit 1
           }
-          printf '%s\n' "$app_details"
-          printf '%s\n' "$app_details" | grep -Fq "$FLY_APP" || {
-            echo "Fly app verification did not return the expected app name." >&2
+          printf '%s\n' "$app_names"
+          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
+            echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
             exit 1
           }
 
