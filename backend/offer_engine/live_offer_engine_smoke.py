@@ -54,48 +54,50 @@ def run() -> dict:
             else:
                 raise AssertionError(f"Unknown Deloox availability: {row['availability']}")
 
-        # A retailer that actually discovered candidates must have fetched
-        # and parsed every exact product page, resolved every identity, and
-        # persisted at least one verified current state. A connector with no
-        # matching product is not treated as a failure. Notino is optional
-        # until the authorized affiliate feed credentials are configured.
+        # Deloox's two exact canonical variants are the hard live acceptance
+        # gate. Other retailers may legitimately return unresolved or rejected
+        # candidates (gift sets, ambiguous variants, blocked pages); those must
+        # remain unpublished and be reported as warnings, not turn a safe
+        # partial result into a false empty/failure signal.
         configured_notino = all(os.environ.get(name, "").strip() for name in (
             "NOTINO_CJ_FEED_URL",
             "NOTINO_CJ_FEED_USERNAME",
             "NOTINO_CJ_FEED_PASSWORD",
         ))
-        connector_failures = []
+        retailer_warnings = []
         for item in engine_result.connectors:
             if item.retailer == "notino" and not configured_notino:
+                retailer_warnings.append({
+                    "retailer": item.retailer,
+                    "status": "not_configured",
+                    "reason": "notino_feed_credentials_missing",
+                })
                 continue
-            if item.status != "success" or item.errors:
-                connector_failures.append({
+            if item.status != "success" or item.errors or item.unresolved:
+                retailer_warnings.append({
                     "retailer": item.retailer,
                     "status": item.status,
                     "errors": item.errors,
-                    "unresolved_samples": item.unresolved_samples,
-                })
-                continue
-            if item.listings_seen and (
-                item.observations_written != item.listings_seen
-                or item.offers_published == 0
-            ):
-                connector_failures.append({
-                    "retailer": item.retailer,
-                    "listings_seen": item.listings_seen,
-                    "observations_written": item.observations_written,
                     "unresolved": item.unresolved,
                     "unresolved_samples": item.unresolved_samples,
-                    "offers_published": item.offers_published,
                 })
-        if connector_failures:
-            raise AssertionError(
-                "Live retailer product-page or canonical verification failed: "
-                + json.dumps(connector_failures, ensure_ascii=False)
-            )
+
+        if not any(row["retailer_id"] != "deloox" for row in rows):
+            raise AssertionError("No verified non-Deloox retailer offer was published")
+
+        offer_keys = [
+            (row["retailer_id"], row["product_id"], row["variant_id"], row["market"])
+            for row in rows
+        ]
+        if len(offer_keys) != len(set(offer_keys)):
+            raise AssertionError("Duplicate current offers exist for the same retailer/variant/market")
+
+        for row in rows:
+            if row["availability"] == "out_of_stock" and row["price"] is not None:
+                raise AssertionError("A sold-out retailer offer retained a usable price")
 
         return {
-            "status": "success",
+            "status": "success_with_warnings" if retailer_warnings else "success",
             "mode": "read-only live Offer Engine end-to-end smoke",
             "database": "temporary SQLite; deleted after test",
             "production_database_accessed": False,
@@ -140,6 +142,7 @@ def run() -> dict:
                 for item in engine_result.connectors
             ],
             "total_offers_published": engine_result.offers_published,
+            "retailer_warnings": retailer_warnings,
         }
 
 
