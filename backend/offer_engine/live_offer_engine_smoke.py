@@ -1,7 +1,7 @@
 """Read-only live end-to-end smoke test for the isolated Offer Engine.
 
-Uses a temporary SQLite database only. It never connects to or mutates the
-production database or canonical catalog.
+Uses bounded retailer reads and a temporary SQLite database only. It never
+connects to or mutates the production database or canonical catalog.
 """
 from __future__ import annotations
 
