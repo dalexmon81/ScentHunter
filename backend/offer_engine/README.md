@@ -20,7 +20,7 @@ Additive replacement architecture boundary. It is not mounted into production.
 - Ambiguous matches are never auto-published.
 
 ## Execution
-The `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. The `live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data; CI runs it against the 100 ml and sold-out 150 ml variants. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected. The runner does not create database connections or enable production traffic.
+The `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. The `live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data; Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected. The runner does not create database connections or enable production traffic.
 
 ## Storage
 The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for repository/worker implementation, reviewed backfill, live connector tests and parity gates.
