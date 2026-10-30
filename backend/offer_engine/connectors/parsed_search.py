@@ -77,6 +77,134 @@ def _availability(value: Any) -> Availability:
     return Availability.UNKNOWN
 
 
+
+def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session) -> Mapping[str, Any]:
+    """Fetch and parse the exact retailer product URL; search snippets are never offer evidence."""
+    if retailer == "parfumcity":
+        product_json = getattr(scraper, "product_json", None)
+        make_item = getattr(scraper, "make_item", None)
+        if not callable(product_json) or not callable(make_item):
+            raise RuntimeError("parfumcity_product_page_parser_unavailable")
+        product = product_json(session, listing.product_url)
+        if not isinstance(product, Mapping):
+            raise RuntimeError("parfumcity_product_page_unavailable")
+        candidates = []
+        for variant in product.get("variants") or []:
+            if not isinstance(variant, Mapping):
+                continue
+            parsed = make_item(product, variant, listing.product_url, listing.raw_title)
+            if isinstance(parsed, Mapping):
+                candidates.append(parsed)
+        wanted_sku = str(listing.external_id or "")
+        wanted_size = listing.raw_size_ml
+        exact = [
+            item for item in candidates
+            if (
+                str(_field_value(_mapping(item.get("identity")).get("sku")) or "") == wanted_sku
+                or (
+                    wanted_size is not None
+                    and _positive_size(_mapping(item.get("attributes")).get("size_ml")) == wanted_size
+                )
+            )
+        ]
+        if len(exact) != 1:
+            raise RuntimeError("parfumcity_product_variant_not_uniquely_verified")
+        return exact[0]
+
+    if retailer == "bplatz":
+        parser = getattr(scraper, "product_from_page", None)
+        if not callable(parser):
+            raise RuntimeError("bplatz_product_page_parser_unavailable")
+        result = parser(session, listing.product_url, listing.raw_title)
+    else:
+        parser = getattr(scraper, "extract_product_page", None)
+        if not callable(parser):
+            raise RuntimeError(f"{retailer}_product_page_parser_unavailable")
+        if retailer == "easycosmetic":
+            result = parser(session, listing.product_url)
+        else:
+            result = parser(session, listing.product_url, listing.raw_title)
+
+    if isinstance(result, list):
+        expected_size = listing.raw_size_ml
+        expected_id = str(listing.external_id or "")
+        matches = []
+        for item in result:
+            if not isinstance(item, Mapping):
+                continue
+            attrs = _mapping(item.get("attributes"))
+            identity = _mapping(item.get("identity"))
+            size = _positive_size(attrs.get("size_ml", item.get("size_ml")))
+            ids = {
+                str(_field_value(identity.get(key)) or "")
+                for key in ("sku", "gtin", "store_variant_id", "store_product_id")
+            }
+            if (expected_size is None or size == expected_size) and (expected_id in ids or (expected_size is not None and size == expected_size)):
+                matches.append(item)
+        if len(matches) != 1:
+            raise RuntimeError(f"{retailer}_product_variant_not_uniquely_verified")
+        result = matches[0]
+    if not isinstance(result, Mapping):
+        raise RuntimeError(f"{retailer}_product_page_unavailable")
+    return result
+
+
+def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session) -> dict[str, Any]:
+    page = _normalise_product_page(scraper, retailer, listing, session)
+    source = _mapping(page.get("source"))
+    provenance = _mapping(page.get("provenance"))
+    attributes = _mapping(page.get("attributes"))
+    identity = _mapping(page.get("identity"))
+    offer = _mapping(page.get("offer"))
+
+    page_url = str(
+        page.get("url") or source.get("url") or provenance.get("source_page") or listing.product_url
+    ).strip()
+    expected_host = (urlparse(listing.product_url).hostname or "").lower().removeprefix("www.")
+    actual = urlparse(page_url)
+    actual_host = (actual.hostname or "").lower().removeprefix("www.")
+    if actual.scheme not in {"http", "https"} or actual_host != expected_host:
+        raise RuntimeError(f"{retailer}_product_page_redirected_outside_storefront")
+    if actual.path.rstrip("/") != urlparse(listing.product_url).path.rstrip("/"):
+        raise RuntimeError(f"{retailer}_product_page_redirected_to_different_product")
+
+    name = str(page.get("name") or page.get("title") or source.get("source_name") or "").strip()
+    brand = str(page.get("brand") or source.get("source_brand") or "").strip() or None
+    size = _positive_size(attributes.get("size_ml", page.get("size_ml")))
+    concentration = _field_value(attributes.get("concentration", page.get("concentration")))
+    gtin = _field_value(identity.get("gtin", page.get("gtin") or page.get("ean")))
+    sku = _field_value(identity.get("sku", page.get("sku")))
+    price = offer.get("price")
+    if price is None:
+        price = page.get("price_num", page.get("price"))
+    availability = offer.get("availability")
+    if availability is None:
+        availability = page.get("availability")
+    currency = offer.get("currency") or page.get("currency") or "EUR"
+
+    # These values are all taken from the fetched product detail, never the
+    # search-result row. Missing page facts remain missing and fail closed.
+    return {
+        "name": name,
+        "brand": brand,
+        "url": page_url,
+        "attributes": {
+            "size_ml": {"value": size} if size is not None else {},
+            "concentration": {"value": concentration} if concentration else {},
+        },
+        "identity": {
+            "gtin": {"value": gtin} if gtin else {},
+            "sku": {"value": sku} if sku else {},
+        },
+        "offer": {
+            "price": price,
+            "currency": currency,
+            "availability": availability,
+        },
+        "raw_data": dict(page),
+    }
+
+
 class ParsedSearchConnector:
     """Translate one retailer's verified search-stream results into observations."""
 
@@ -184,47 +312,27 @@ class ParsedSearchConnector:
         row = self._rows.get(str(listing.external_id or ""))
         if row is None:
             raise RuntimeError(f"{self.retailer}_listing_not_in_current_discovery")
-        url = str(row.get("url") or row.get("product_url") or row.get("link") or "").strip()
-        scraper = self._module()
-        base_url = str(getattr(scraper, "BASE_URL", "") or "").strip()
-        url = urljoin(base_url.rstrip("/") + "/", url) if url else ""
-        if url != listing.product_url:
-            raise ValueError(f"{self.retailer}_listing_url_changed")
 
-        attrs = _mapping(row.get("attributes"))
-        identity = _mapping(row.get("identity"))
-        offer = _mapping(row.get("offer"))
-        availability = _availability(
-            offer.get("availability", row.get("availability"))
-        )
-        raw_price = offer.get("price")
-        if raw_price is None:
-            raw_price = row.get("price_num", row.get("price"))
-        price = _price(raw_price)
+        scraper = self._module()
+        with requests.Session() as session:
+            page = _page_facts(scraper, self.retailer, listing, session)
+
+        availability = _availability(_mapping(page.get("offer")).get("availability"))
+        price = _price(_mapping(page.get("offer")).get("price"))
         if availability is Availability.OUT_OF_STOCK:
             price = None
-        currency = str(offer.get("currency") or row.get("currency") or "EUR").upper()
+        currency = str(_mapping(page.get("offer")).get("currency") or "EUR").upper()
         if not re.fullmatch(r"[A-Z]{3}", currency):
             currency = "EUR"
-        evidence = json.dumps(row, ensure_ascii=False, sort_keys=True, default=str)
-        digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
 
-        size = _positive_size(attrs.get("size_ml", row.get("size_ml")))
-        concentration = _field_value(attrs.get("concentration", row.get("concentration")))
-        gtin = _field_value(identity.get("gtin", row.get("gtin") or row.get("ean")))
-        sku = _field_value(identity.get("sku", row.get("sku")))
-        page = {
-            "name": listing.raw_title,
-            "brand": listing.raw_brand,
-            "attributes": {
-                "size_ml": {"value": size} if size is not None else {},
-                "concentration": {"value": concentration} if concentration else {},
-            },
-            "identity": {
-                "gtin": {"value": gtin} if gtin else {},
-                "sku": {"value": sku} if sku else {},
-            },
-            "raw_data": _mapping(row.get("raw_data")),
+        evidence = json.dumps(page, ensure_ascii=False, sort_keys=True, default=str)
+        digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
+        parsed_page = {
+            "name": page.get("name"),
+            "brand": page.get("brand"),
+            "attributes": page.get("attributes") or {},
+            "identity": page.get("identity") or {},
+            "raw_data": page.get("raw_data") or {},
         }
         return OfferObservation.now(
             listing_key=f"{self.retailer}:{listing.external_id}",
@@ -233,9 +341,14 @@ class ParsedSearchConnector:
             availability=availability,
             source="product_page",
             verification=Verification.UNVERIFIED,
-            evidence_url=listing.product_url,
+            evidence_url=str(page.get("url") or listing.product_url),
             evidence_hash=digest,
-            raw_payload={"retailer": self.retailer, "parsed_page": page, "search_row": row},
+            raw_payload={
+                "retailer": self.retailer,
+                "parsed_page": parsed_page,
+                "search_row": row,
+                "evidence_source": "fetched_product_detail",
+            },
         )
 
     def healthcheck(self) -> ConnectorHealth:
