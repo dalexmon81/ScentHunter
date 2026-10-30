@@ -76,7 +76,8 @@ class OfferRepository:
                     raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
                     canonical_variant_id, match_status)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                   ON CONFLICT (retailer_id, product_url) DO UPDATE SET
+                   ON CONFLICT (retailer_id, external_id) DO UPDATE SET
+                     product_url=EXCLUDED.product_url,
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
                      raw_brand=EXCLUDED.raw_brand,
