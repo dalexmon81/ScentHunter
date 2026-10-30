@@ -102,6 +102,42 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(str(observation.price), "37.4")
         self.assertEqual(scraper.page_fetches, [listing.product_url])
 
+    def test_reused_product_sku_does_not_collapse_different_sizes(self):
+        rows = [
+            self._row(url="https://www.parfum-zentrum.de/liquid-brun-100.html", size_ml=100),
+            self._row(url="https://www.parfum-zentrum.de/liquid-brun-150.html", size_ml=150),
+        ]
+        connector = ParsedSearchConnector(
+            "parfumzentrum",
+            "scrapers.parfumzentrum.scraper",
+            "DE",
+            scraper=FakeScraper({
+                "status": "success", "verified": True, "results": rows,
+            }),
+        )
+        listings = list(connector.discover("Liquid Brun"))
+        self.assertEqual(len(listings), 2)
+        self.assertEqual({item.raw_size_ml for item in listings}, {100, 150})
+        self.assertEqual(len({item.external_id for item in listings}), 2)
+
+    def test_product_page_redirect_to_another_path_is_rejected(self):
+        scraper = FakeScraper(
+            {
+                "status": "success", "verified": True,
+                "results": [self._row()],
+            },
+            page_overrides={"url": "https://www.parfum-zentrum.de/another-product.html"},
+        )
+        connector = ParsedSearchConnector(
+            "parfumzentrum",
+            "scrapers.parfumzentrum.scraper",
+            "DE",
+            scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        with self.assertRaisesRegex(RuntimeError, "redirected_to_different_product"):
+            connector.observe(listing)
+
     def test_verified_partial_discovery_keeps_page_verified_candidates(self):
         connector = ParsedSearchConnector(
             "bplatz",
