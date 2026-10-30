@@ -6,7 +6,7 @@ from pathlib import Path
 from backend.offer_engine.resolver import resolve_observation
 from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
 from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
-from backend.offer_engine.connectors.notino import NotinoFeedConnector
+from backend.offer_engine.connectors.notino import NotinoFeedConnector, _exact_size_ml
 from backend.offer_engine.contracts import Availability, Verification
 
 
@@ -32,6 +32,11 @@ FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
 class NotinoFeedConnectorTests(unittest.TestCase):
     def setUp(self):
         self.connector = NotinoFeedConnector(fetch_feed=lambda: FEED)
+
+    def test_fractional_package_sizes_are_rejected(self):
+        self.assertEqual(_exact_size_ml(100.0), 100)
+        self.assertIsNone(_exact_size_ml(100.5))
+        self.assertIsNone(_exact_size_ml("unknown"))
 
     def test_missing_feed_credentials_are_reported_explicitly(self):
         with patch.dict(os.environ, {}, clear=True):
