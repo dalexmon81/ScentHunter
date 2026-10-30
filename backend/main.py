@@ -43,8 +43,8 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
-# Optional read-only Offer Engine API. Disabled by default: it uses only the
-# dedicated PostgreSQL DSN and does not alter the legacy SQLite search path.
+# Optional read-only Offer Engine API. Disabled by default: it uses a separate
+# Offer Engine SQLite file (or optional PostgreSQL DSN), never the legacy catalog DB.
 _OFFER_ENGINE_API_MOUNTED = False
 if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_API_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
     try:
