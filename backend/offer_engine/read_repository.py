@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 import sqlite3
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 class OfferReadRepository:
@@ -34,7 +35,7 @@ class OfferReadRepository:
                            p.product_id, p.brand, p.canonical_name, p.concentration,
                            v.variant_id, v.size_ml, v.package_type,
                            r.retailer_id, r.display_name AS retailer_name,
-                           l.market, l.product_url, o.price, o.currency,
+                           l.market, l.product_url, l.external_id, o.price, o.currency,
                            o.availability, o.observed_at, o.evidence_url
                        FROM sh_current_offers AS current
                        JOIN sh_offer_observations AS o
@@ -104,6 +105,20 @@ class OfferReadRepository:
             deduplicated: dict[tuple[str, str, str, str], dict[str, Any]] = {}
             for raw_row in rows:
                 item = dict(zip(columns, raw_row))
+                # Shopify product pages can host multiple variants at one URL.
+                # Preserve the exact selected bottle in the customer click-through
+                # when the listing key is the numeric Shopify variant ID.
+                if (
+                    item["retailer_id"] in {"parfumcity", "orioudh", "perfumemarket"}
+                    and str(item.get("external_id") or "").isdigit()
+                ):
+                    parsed_url = urlsplit(str(item["product_url"]))
+                    query = dict(parse_qsl(parsed_url.query, keep_blank_values=True))
+                    query["variant"] = str(item["external_id"])
+                    item["product_url"] = urlunsplit((
+                        parsed_url.scheme, parsed_url.netloc, parsed_url.path,
+                        urlencode(query), parsed_url.fragment,
+                    ))
                 key = (
                     str(item["retailer_id"]),
                     str(item["product_id"]),
