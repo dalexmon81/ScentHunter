@@ -51,11 +51,9 @@ class OfferEngineRunner:
     def run(self, connectors: Iterable[RetailerConnector], query: str) -> EngineRunResult:
         results: list[ConnectorRunResult] = []
         for connector in connectors:
-            result = ConnectorRunResult(
-                retailer=str(connector.retailer),
-                status="running",
-            )
+            result = ConnectorRunResult(retailer=str(connector.retailer), status="running")
             results.append(result)
+            repository = None
             try:
                 repository = self.repository_factory(connector)
                 listings = list(connector.discover(query) or [])
