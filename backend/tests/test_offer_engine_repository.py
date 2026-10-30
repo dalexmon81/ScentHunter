@@ -17,12 +17,12 @@ class Cursor:
         self._selected = None
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
-        if sql.lstrip().startswith("SELECT listing_id, canonical_product_id"):
+        if "FROM sh_retailer_listings AS l" in sql:
             self._selected = None
         if self.fail and "INSERT INTO sh_offer_observations" in sql:
             raise RuntimeError("write failed")
     def fetchone(self):
-        if self._selected is None and self.calls and self.calls[-1][0].lstrip().startswith("SELECT listing_id, canonical_product_id"):
+        if self.calls and "FROM sh_retailer_listings AS l" in self.calls[-1][0]:
             return None
         return (self._fetch.pop(0),)
     def close(self):
