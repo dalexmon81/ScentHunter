@@ -352,5 +352,37 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(tuple(row), (product.product_id, variant.variant_id, "matched"))
 
 
+    def test_read_model_never_exposes_zero_price_even_if_current_row_is_corrupted(self):
+        product = self.catalog.get("SH-0030")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        url = "https://www.parfumzentrum.de/french-avenue-liquid-brun-100-ml.html"
+        listing = RetailerListing(
+            retailer="parfumzentrum", external_id="zero-price-corruption",
+            product_url=url,
+            raw_title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+            raw_brand="French Avenue", raw_size_ml=100, market="DE",
+        )
+        result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(
+            listing,
+            OfferObservation.now(
+                listing_key="parfumzentrum:zero-price-corruption",
+                price=Decimal("39.99"), currency="EUR",
+                availability=Availability.IN_STOCK, source="product_page",
+                verification=Verification.VERIFIED,
+                product_id=product.product_id, variant_id=variant.variant_id,
+                evidence_url=url, evidence_hash="sha256:zero-price-corruption",
+            ),
+        )
+        self.assertTrue(result["published"])
+        # Simulate a legacy/manual write bypassing OfferPolicy. The customer
+        # read model must still fail closed and never show a free purchasable item.
+        self.connection.execute(
+            "UPDATE sh_offer_observations SET price=0 WHERE observation_id=?",
+            (result["observation_id"],),
+        )
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        self.assertEqual(offers, [])
+
+
 if __name__ == "__main__":
     unittest.main()
