@@ -246,6 +246,12 @@ class OfferEnginePostgresTests(unittest.TestCase):
         )
         self.assertTrue(result["published"])
         with self.connection.cursor() as cursor:
+            # The schema CHECK is normally the first line of defence. Drop it
+            # inside this rollback-only test transaction to simulate a corrupt
+            # historical row and exercise the independent read-model guard.
+            cursor.execute(
+                "ALTER TABLE sh_offer_observations DROP CONSTRAINT sh_offer_observations_check"
+            )
             cursor.execute(
                 "UPDATE sh_offer_observations SET price=39.99 WHERE observation_id=%s",
                 (result["observation_id"],),
