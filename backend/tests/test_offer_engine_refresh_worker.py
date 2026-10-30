@@ -24,7 +24,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
             build_product_queries(catalog),
             [
                 "Lattafa Liquid Brun 100 ml",
-                "Lattafa Liquid Brun Liquid Brun Limited Edition 150 ml",
+                "Lattafa Liquid Brun Limited Edition 150 ml",
                 "Afnan 9PM 100 ml",
             ],
         )
