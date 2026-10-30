@@ -91,6 +91,7 @@ class OfferRepository:
             raise ValueError("matched listing status must agree with verified observation")
         decision = self.policy.evaluate(observation)
         allow_current_publication = decision.publish
+        preserve_existing_listing = False
         cursor = self.connection.cursor()
         try:
             if observation.verification is Verification.VERIFIED:
@@ -132,6 +133,7 @@ class OfferRepository:
                     # verified offer or overwrite its canonical identity.
                     incoming_product_id, incoming_variant_id, status = existing[1], existing[2], existing[3]
                     allow_current_publication = False
+                    preserve_existing_listing = True
             self._execute(cursor,
                 """INSERT INTO sh_retailers(retailer_id, display_name, market)
                    VALUES (%s, %s, %s)
@@ -143,12 +145,10 @@ class OfferRepository:
                 if external_id is not None
                 else "ON CONFLICT (retailer_id, product_url) WHERE external_id IS NULL DO UPDATE SET"
             )
-            listing_sql = f"""INSERT INTO sh_retailer_listings
-                   (retailer_id, external_id, product_url, market, raw_title, raw_brand,
-                    raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
-                    canonical_variant_id, match_status)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                   {conflict_target}
+            conflict_update = (
+                "DO UPDATE SET last_seen_at=sh_retailer_listings.last_seen_at"
+                if preserve_existing_listing
+                else """DO UPDATE SET
                      product_url=EXCLUDED.product_url,
                      last_seen_at=now(),
                      raw_title=EXCLUDED.raw_title,
@@ -158,7 +158,15 @@ class OfferRepository:
                      raw_gtin=EXCLUDED.raw_gtin,
                      canonical_product_id=EXCLUDED.canonical_product_id,
                      canonical_variant_id=EXCLUDED.canonical_variant_id,
-                     match_status=EXCLUDED.match_status
+                     match_status=EXCLUDED.match_status"""
+            )
+            conflict_target = conflict_target.replace("DO UPDATE SET", conflict_update, 1)
+            listing_sql = f"""INSERT INTO sh_retailer_listings
+                   (retailer_id, external_id, product_url, market, raw_title, raw_brand,
+                    raw_size_ml, raw_concentration, raw_gtin, canonical_product_id,
+                    canonical_variant_id, match_status)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   {conflict_target}
                    RETURNING listing_id"""
             self._execute(cursor, listing_sql,
                 (listing.retailer, external_id, listing.product_url, listing.market,
