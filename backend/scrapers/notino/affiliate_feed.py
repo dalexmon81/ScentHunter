@@ -235,7 +235,7 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
         sku=sku.strip() or None,
         mpn=mpn.strip() or None,
         size_ml=size_ml,
-        price=float(price),
+        price=float(price) if price is not None else None,
         currency=currency,
         availability=availability,
         url=link,
