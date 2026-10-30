@@ -19,6 +19,45 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         self.assertEqual(result, expected)
         new_search.assert_called_once_with("Liquid Brun")
 
+    def test_async_search_start_job_uses_offer_engine_when_flag_enabled(self):
+        payload = {
+            "query": "Liquid Brun",
+            "count": 1,
+            "offer_count": 1,
+            "results": [{"catalog_id": "SH-0031", "offers": [{"store": "deloox"}]}],
+            "offers": [{"catalog_id": "SH-0031", "store": "deloox"}],
+            "unresolved_offers": [],
+            "identity_scope": [],
+            "dedupe_diagnostics": [],
+            "errors": {},
+            "stores": {
+                "deloox": {
+                    "status": "success",
+                    "verified": True,
+                    "count": 1,
+                    "elapsed": 0.2,
+                    "details": {},
+                }
+            },
+        }
+        with (
+            patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1"}),
+            patch.object(main, "_search_with_offer_engine", return_value=payload) as search,
+        ):
+            job_id = main._new_job("Liquid Brun")
+            try:
+                main._run_job(job_id, "Liquid Brun")
+                snapshot = main._snapshot(job_id)
+            finally:
+                with main.JOBS_LOCK:
+                    main.JOBS.pop(job_id, None)
+
+        search.assert_called_once_with("Liquid Brun")
+        self.assertTrue(snapshot["completed"])
+        self.assertEqual(snapshot["status"], "completed")
+        self.assertEqual(snapshot["results"], payload["results"])
+        self.assertEqual(snapshot["offer_count"], 1)
+
     def test_offer_engine_rows_keep_sold_out_variant_in_legacy_ui_contract(self):
         from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
         row = {
