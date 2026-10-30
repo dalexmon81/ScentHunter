@@ -393,6 +393,19 @@ class ParsedSearchConnector:
                 or not host or (base_host and host != base_host and not host.endswith("." + base_host))
             ):
                 continue
+            normalized_title = re.sub(r"[^a-z0-9]+", " ", title.casefold()).strip()
+            normalized_query = re.sub(r"[^a-z0-9]+", " ", query.casefold()).strip()
+            bundle_markers = (
+                "gift set", "mystery box", "discovery set", "sample set",
+                "miniature set", "perfume bundle", "fragrance bundle", "coffret",
+            )
+            if (
+                any(marker in normalized_title for marker in bundle_markers)
+                and not any(marker in normalized_query for marker in bundle_markers)
+            ):
+                # A gift bundle containing the searched perfume is not the
+                # same sellable fragrance variant and must not enter comparison.
+                continue
             canonical_url = _canonical_listing_url(url, self.retailer)
 
             attrs = _mapping(row.get("attributes"))
