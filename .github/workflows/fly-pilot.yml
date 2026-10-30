@@ -253,7 +253,7 @@ jobs:
                   url = str(offer.get("url") or "").lower()
                   import re
                   explicit_sizes = [
-                      int(value) for value in re.findall(r"(?<![0-9])(30|50|75|100|150|200)\s*ml", url)
+                      int(value) for value in re.findall(r"(?<![0-9])(30|50|75|100|150|200)[\s-]*ml", url)
                   ]
                   if explicit_sizes and expected_size not in explicit_sizes:
                       raise RuntimeError(
