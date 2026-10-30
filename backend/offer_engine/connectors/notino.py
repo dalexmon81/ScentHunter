@@ -44,6 +44,7 @@ class NotinoFeedConnector:
 
     def __init__(self, fetch_feed=None):
         self._fetch_feed = fetch_feed or affiliate_feed._fetch_feed
+        self._configured_override = fetch_feed is not None
         self._offers: dict[str, object] = {}
 
     @staticmethod
@@ -62,6 +63,8 @@ class NotinoFeedConnector:
         query = str(query or "").strip()
         if not query:
             return []
+        if not self._configured_override and not self.configured():
+            raise RuntimeError("notino_feed_credentials_missing")
         wanted = [token for token in _norm(query).split() if len(token) > 1]
         if not wanted:
             return []
@@ -133,6 +136,8 @@ class NotinoFeedConnector:
         )
 
     def healthcheck(self) -> ConnectorHealth:
+        if not self._configured_override and not self.configured():
+            return ConnectorHealth(self.retailer, False, self.source, "notino_feed_credentials_missing")
         try:
             offers = self._load()
             return ConnectorHealth(
