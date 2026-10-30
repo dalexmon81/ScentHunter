@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      FLY_API_TOKEN: ${{ secrets.FLY_PILOT_DEPLOY_TOKEN }}
+      FLY_PILOT_DEPLOY_TOKEN: ${{ secrets.FLY_PILOT_DEPLOY_TOKEN }}
       FLY_APP: scenthunter-pilot-20261030
       FLY_ORG: personal
       FLY_VOLUME: scenthunter_pilot_data
@@ -48,16 +48,16 @@ jobs:
             echo "Run this workflow from architecture/offer-engine-v1 only." >&2
             exit 1
           }
-          test -n "$FLY_API_TOKEN" || {
+          test -n "$FLY_PILOT_DEPLOY_TOKEN" || {
             echo "Repository secret FLY_PILOT_DEPLOY_TOKEN is missing." >&2
             exit 1
           }
-          normalized_token="$FLY_API_TOKEN"
+          normalized_token="$FLY_PILOT_DEPLOY_TOKEN"
           case "$normalized_token" in
             fm2_*) normalized_token="FlyV1 $normalized_token" ;;
           esac
           echo "::add-mask::$normalized_token"
-          printf 'FLY_API_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
+          printf 'FLY_PILOT_DEPLOY_TOKEN=%s\n' "$normalized_token" >> "$GITHUB_ENV"
           grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
           grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
