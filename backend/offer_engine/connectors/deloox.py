@@ -116,6 +116,9 @@ class DelooxConnector:
     def healthcheck(self) -> ConnectorHealth:
         try:
             response = requests.get(scraper.BASE_URL, headers=scraper.HEADERS, timeout=scraper.TIMEOUT)
-            return ConnectorHealth(self.retailer, response.status_code < 500, self.source, f"HTTP {response.status_code}")
+            blocked = scraper._is_client_challenge_html(getattr(response, "text", ""))
+            ok = response.status_code < 500 and not blocked
+            message = "client_challenge" if blocked else f"HTTP {response.status_code}"
+            return ConnectorHealth(self.retailer, ok, self.source, message)
         except requests.RequestException as exc:
             return ConnectorHealth(self.retailer, False, self.source, type(exc).__name__)
