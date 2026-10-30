@@ -51,32 +51,6 @@ def _supported_storefront_url(url: str) -> bool:
 
 
 
-def _live_page_availability(url: str) -> Availability:
-    """Read only explicit current stock controls, never structured JSON-LD."""
-    session = requests.Session()
-    try:
-        response = session.get(
-            url, headers=scraper.HEADERS, timeout=scraper.TIMEOUT,
-            allow_redirects=True,
-        )
-        if response.status_code >= 400:
-            return Availability.UNKNOWN
-        final_url = str(getattr(response, "url", "") or url).strip()
-        if not _supported_storefront_url(final_url):
-            return Availability.UNKNOWN
-        html = str(getattr(response, "text", "") or "")
-        if not html.strip() or scraper._is_client_challenge_html(html):
-            return Availability.UNKNOWN
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(html, "lxml")
-        # With offer=None, this helper cannot fall back to stale JSON-LD stock.
-        state = scraper.availability("", offer=None, soup=soup)
-        return Availability(state) if state in Availability._value2member_map_ else Availability.UNKNOWN
-    except Exception:
-        return Availability.UNKNOWN
-    finally:
-        session.close()
-
 class DelooxConnector:
     retailer = "deloox"
     source = "product_page"
