@@ -60,6 +60,22 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         self.assertIsNone(offer["price_num"])
         self.assertTrue(offer["url"].startswith("https://www.deloox.be/"))
 
+    def test_offer_engine_fails_closed_when_all_retailers_fail(self):
+        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+        try:
+            from offer_engine import runtime as runtime_module
+        except ModuleNotFoundError:
+            from backend.offer_engine import runtime as runtime_module
+
+        failed = EngineRunResult([
+            ConnectorRunResult("deloox", "failed", errors=["blocked"]),
+            ConnectorRunResult("sabina", "failed", errors=["timeout"]),
+        ])
+        with patch.object(runtime_module, "run_offer_engine", return_value=failed):
+            with self.assertRaises(Exception) as raised:
+                main._search_with_offer_engine("Liquid Brun")
+        self.assertEqual(getattr(raised.exception, "status_code", None), 503)
+
     def test_search_flag_defaults_off(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertFalse(main._offer_engine_search_enabled())
