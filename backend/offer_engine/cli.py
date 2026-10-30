@@ -5,7 +5,7 @@ import argparse
 import json
 from dataclasses import asdict
 
-from backend.offer_engine.runtime import apply_migration, run_offer_engine
+from .runtime import apply_migration, run_offer_engine
 
 
 def main() -> None:
