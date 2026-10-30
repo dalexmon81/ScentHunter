@@ -64,6 +64,15 @@ class OfferEnginePostgresTests(unittest.TestCase):
             self.assertEqual(cursor.fetchone()[0], 1)
             cursor.execute("SELECT availability, price, verification FROM sh_offer_observations WHERE listing_id=%s", (result["listing_id"],))
             self.assertEqual(cursor.fetchone(), ("out_of_stock", None, "verified"))
+        with self.assertRaises(psycopg.errors.CheckViolation):
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO sh_offer_observations
+                       (listing_id, observed_at, price, currency, availability, source, verification, raw_payload)
+                       VALUES (%s,%s,%s,%s,'out_of_stock','product_page','unverified','{}'::jsonb)""",
+                    (result["listing_id"], datetime.now(timezone.utc), Decimal("10.00"), "EUR"),
+                )
+        self.connection.rollback()
 
 
 if __name__ == "__main__":
