@@ -4122,6 +4122,7 @@ def refresh_url(store, url):
         # Keep the diagnostic flag defined on every parser path. A missing
         # product must report a parser miss, not raise NameError while building
         # the diagnostic detail (which would strand the hydration lease).
+        # This flag records primary-parser success only; fallback success is tracked separately.
         primary_ok = bool(item and item.get('name') and not secondary_ok)
 
         if item and store in ('easycosmetic', 'parfumzentrum'):
