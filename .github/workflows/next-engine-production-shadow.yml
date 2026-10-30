@@ -1,21 +1,27 @@
-name: One-time Production Next Engine Shadow Comparison
+name: One-time Production Search Shadow Comparison (may enqueue hydration)
 
 on:
-  workflow_run:
-    workflows: ["Fly Deploy"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_production_shadow:
+        description: "Confirm live production searches. They may reprioritize hydration, update the catalog asynchronously, and invoke configured retailer fallbacks."
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
 
 permissions:
   contents: read
 
+concurrency:
+  group: next-engine-production-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   production-shadow:
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      contains(github.event.workflow_run.head_commit.message, 'RUN-NEXT-ENGINE-PROD-SHADOW')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_production_shadow == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -29,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Compare production offers against Next Engine without changing production
+      - name: Run bounded production searches and compare their offers against Next Engine
         env:
           PYTHONUNBUFFERED: "1"
         run: |
@@ -46,7 +52,16 @@ jobs:
           from scenthunter_next_engine.next_engine_service import NextEngineService
 
           BASE = "https://scenthunter.fly.dev"
-          QUERIES = ("Hawas", "Born in Roma", "Hawas Ice", "Dior Sauvage")
+          # Keep the live comparison representative and bounded. The
+          # separate retailer smoke tests cover connector-specific behavior;
+          # this job compares the new matcher with production search.
+          QUERIES = (
+              "Hawas",
+              "Born in Roma Donna",
+              "Dior Sauvage",
+              "Liquid Brun 100 ml",
+              "Liquid Brun Limited Edition 150 ml",
+          )
           USER_AGENT = "ScentHunter-next-engine-production-shadow/1.0"
 
           def get_json(path, timeout=25):
@@ -60,6 +75,9 @@ jobs:
                   return json.loads(response.read().decode("utf-8"))
 
           def production_search(query):
+              # Use the same asynchronous endpoint as the user-facing search.
+              # The synchronous legacy /search route can hold retailer workers
+              # after a client timeout and make /search-start report busy.
               start_deadline = time.monotonic() + 45
               job_id = None
               while time.monotonic() < start_deadline:
@@ -86,15 +104,27 @@ jobs:
 
           service = NextEngineService.from_catalog_file(Path("backend/product_catalog.json"))
           report = {
-              "mode": "read-only-live-production-offer-shadow",
+              "mode": "live-production-search-shadow-with-possible-operational-side-effects",
               "production_base": BASE,
-              "catalog_modified": False,
-              "database_mutated": False,
+              "side_effects": {
+                  "workflow_direct_catalog_writes": False,
+                  "production_search_may_reprioritize_hydration_queue": True,
+                  "background_hydration_may_update_catalog": True,
+                  "configured_live_retailer_fallbacks_may_run": True,
+              },
               "queries": [],
           }
 
           for query in QUERIES:
-              production = production_search(query)
+              try:
+                  production = production_search(query)
+              except Exception as exc:
+                  report.setdefault("query_errors", []).append({
+                      "query": query,
+                      "error": f"{type(exc).__name__}: {exc}",
+                  })
+                  print(f"NEXT_ENGINE_SHADOW_QUERY_SKIPPED {query}: {type(exc).__name__}: {exc}", flush=True)
+                  continue
               groups = production.get("results") if isinstance(production.get("results"), list) else []
               offers = [
                   (group, offer)
@@ -103,7 +133,23 @@ jobs:
                   if isinstance(offer, dict)
               ]
               if not offers:
-                  raise RuntimeError(f"Production query {query!r} returned no offers for shadow comparison")
+                  report.setdefault("query_errors", []).append({
+                      "query": query,
+                      "error": "production_search_returned_no_offers",
+                  })
+                  report["queries"].append({
+                      "query": query,
+                      "production_product_count": int(production.get("count") or len(groups)),
+                      "production_offer_count": 0,
+                      "backend_elapsed_sec": production.get("elapsed"),
+                      "retailers": [],
+                      "totals": {
+                          "normalized": 0, "matched": 0, "unresolved": 0,
+                          "ambiguous": 0, "rejected": 0, "matched_rate_pct": 0.0,
+                      },
+                  })
+                  print(f"NEXT_ENGINE_SHADOW_QUERY_SKIPPED {query}: no production offers", flush=True)
+                  continue
 
               by_retailer = defaultdict(list)
               for group, offer in offers:
@@ -205,11 +251,23 @@ jobs:
               print("NEXT_ENGINE_SHADOW " + json.dumps(query_report, ensure_ascii=False, sort_keys=True))
               report["queries"].append(query_report)
 
+          report["status"] = (
+              "success" if not report.get("query_errors")
+              else "partial" if report.get("queries")
+              else "failed"
+          )
           Path("next-engine-production-shadow-report.json").write_text(
               json.dumps(report, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8",
           )
-          print("Production Next Engine shadow comparison: PASS (read-only; production search unchanged)")
+          if report["status"] != "success":
+              raise RuntimeError(
+                  "Production shadow comparison was incomplete; "
+                  f"completed_queries={len(report.get('queries', []))}, "
+                  f"errors={len(report.get('query_errors', []))}. "
+                  "See the uploaded production-search shadow report artifact."
+              )
+          print("Production Next Engine shadow comparison: PASS (production search executed; hydration/fallback side effects were possible)")
           PY
 
       - name: Generate evidence-backed canonical variant proposal

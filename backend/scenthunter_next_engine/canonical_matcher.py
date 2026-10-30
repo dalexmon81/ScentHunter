@@ -36,6 +36,13 @@ _GENERIC_TITLE_SUFFIXES = (
     "for men",
     "for women",
     "unisex",
+    "edp",
+    "edt",
+    "edc",
+    "extrait",
+    "spray",
+    "men perfume",
+    "women perfume",
 )
 
 
@@ -54,8 +61,8 @@ def normalize_identity_text(value: str | None) -> str:
     return _SPACE_RE.sub(" ", value).strip()
 
 
-_SIZE_SUFFIX_RE = re.compile(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl\s*oz)$")
-_RETAILER_GENDER_SUFFIXES = {"man", "men", "herren", "male", "woman", "women", "damen", "female", "unisex"}
+_SIZE_SUFFIX_RE = re.compile(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl\s*oz)\s*[)\]]*$")
+_RETAILER_GENDER_SUFFIXES = {"man", "men", "herren", "heren", "male", "woman", "women", "damen", "dames", "female", "homme", "femme", "unisex"}
 
 
 def _retailer_title_core(value: str) -> str:
@@ -66,6 +73,16 @@ def _retailer_title_core(value: str) -> str:
     distinguish a different sellable product.
     """
     core = normalize_identity_text(value)
+    # Concentration is a separate canonical attribute, not part of the
+    # product name. Remove explicit concentration markers wherever retailers
+    # place them; _explicit_concentration() still preserves this evidence for
+    # disambiguating products that share a name.
+    core = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|edp|edt|edc)\b",
+        " ",
+        core,
+    )
+    core = _SPACE_RE.sub(" ", core).strip()
     changed = True
     while core and changed:
         changed = False
@@ -153,7 +170,7 @@ def _strict_name_forms(value: str, brand: str | None) -> set[str]:
 
 
 def _offer_name_forms(value: str, brand: str | None) -> set[str]:
-    """Add generic retailer-only suffix normalization to incoming offer titles."""
+    """Normalize explicit retailer metadata while preserving product qualifiers."""
     forms = _strict_name_forms(value, brand)
     core = _retailer_title_core(value)
     if core:
@@ -161,6 +178,21 @@ def _offer_name_forms(value: str, brand: str | None) -> set[str]:
         brand_norm = normalize_identity_text(brand)
         if brand_norm and core.startswith(brand_norm + " "):
             forms.add(core[len(brand_norm):].strip())
+    brand_norm = normalize_identity_text(brand)
+    if brand_norm:
+        # Retailers place the explicitly parsed brand at the beginning, middle,
+        # or after "by". Remove only that exact brand phrase; keep the original
+        # forms above so a brand token that is genuinely part of a product name
+        # remains available for exact matching.
+        without_brand = re.sub(
+            rf"\b{re.escape(brand_norm)}\b",
+            " ",
+            normalize_identity_text(value),
+        )
+        without_brand = re.sub(r"\bby\b", " ", without_brand)
+        normalized_core = _retailer_title_core(without_brand)
+        if normalized_core:
+            forms.add(normalized_core)
     return forms
 
 
@@ -471,19 +503,22 @@ class CanonicalMatcher:
             ] = []
 
             name_forms = _strict_name_forms if strict else _name_forms
-            offer_forms = _offer_name_forms(
-                offer.raw_name,
-                offer.brand_raw,
-            )
+            normalized_offer_title = normalize_identity_text(offer.raw_name)
 
             for product in products:
+                product_brand = normalize_brand_text(product.brand)
                 if (
                     offer_brand
-                    and offer_brand
-                    != normalize_brand_text(product.brand)
+                    and offer_brand != product_brand
+                    and (not product_brand or product_brand not in normalized_offer_title)
                 ):
+                    # Some marketplaces put their own store name in the
+                    # vendor field. Accept a different catalog brand only
+                    # when that exact canonical brand is explicitly present
+                    # in the product title; otherwise keep the mismatch fatal.
                     continue
 
+                offer_forms = _offer_name_forms(offer.raw_name, product.brand)
                 product_forms: set[str] = set()
 
                 for value in [product.name, *product.aliases]:
@@ -504,11 +539,11 @@ class CanonicalMatcher:
                         normalize_identity_text(offer.raw_name)
                         == normalize_identity_text(value)
                         or (
-                            offer_brand
-                            and normalize_identity_text(offer.raw_name).startswith(
+                            product_brand
+                            and normalized_offer_title.startswith(
                                 normalize_identity_text(product.brand) + " "
                             )
-                            and normalize_identity_text(offer.raw_name)[
+                            and normalized_offer_title[
                                 len(normalize_identity_text(product.brand)) + 1:
                             ] == normalize_identity_text(value)
                         )

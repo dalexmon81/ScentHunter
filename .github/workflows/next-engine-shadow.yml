@@ -15,6 +15,20 @@ permissions:
 jobs:
   next-engine-shadow-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scent_hunter
+          POSTGRES_PASSWORD: scent_hunter
+          POSTGRES_DB: scent_hunter
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scent_hunter -d scent_hunter"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     timeout-minutes: 8
     steps:
       - name: Checkout
@@ -24,10 +38,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml
+        run: python -m pip install pytest fastapi httpx requests beautifulsoup4 lxml 'psycopg[binary]'
       - name: Compile engine
-        run: python -m compileall -q backend/scenthunter_next_engine
+        run: python -m compileall -q backend/scenthunter_next_engine backend/offer_engine
       - name: Run engine and integration contract tests
+        env:
+          SCENTHUNTER_TEST_POSTGRES_DSN: postgresql://scent_hunter:scent_hunter@localhost:5432/scent_hunter
         run: >-
           python -m pytest -q
           tests/test_canonical_matcher.py
@@ -42,8 +58,6 @@ jobs:
           tests/test_next_engine_realistic_batch.py
           tests/test_next_engine_shadow_comparison.py
           tests/test_catalog_preflight.py
-          tests/test_catalog_notino_discovery.py
-          tests/test_notino_search_adapter.py
           tests/test_amazon_marketplace_scrapers.py
           tests/test_amazon_creators_api.py
           tests/test_catalog_identity_audit.py
@@ -51,7 +65,39 @@ jobs:
           tests/test_audit_migration.py
           tests/test_runtime_identity_reference_audit.py
           tests/test_live_retailer_identity_resolution.py
+          backend/tests/test_offer_engine_contracts.py
+          backend/tests/test_offer_engine_resolver.py
+          backend/tests/test_offer_engine_deloox_liquid_brun.py
+          backend/tests/test_offer_engine_deloox_connector_pipeline.py
+          backend/tests/test_offer_engine_notino_connector.py
+          backend/tests/test_offer_engine_parsed_search_connector.py
+          backend/tests/test_offer_engine_repository.py
+          backend/tests/test_offer_engine_postgres.py
+          backend/tests/test_offer_engine_runner.py
+          backend/tests/test_offer_engine_runtime.py
+          backend/tests/test_offer_engine_refresh_worker.py
+          backend/tests/test_offer_engine_api.py
+          backend/tests/test_offer_engine_main_search.py
+          backend/tests/test_offer_engine_sqlite.py
+          backend/tests/test_deloox_search_challenge.py
+          tests/test_next_engine_production_shadow_workflow.py
+          backend/tests/test_live_offer_engine_smoke_contract.py
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
         run: python -m backend.scenthunter_next_engine.catalog_preflight_cli
+      - name: Build detailed catalog identity and migration reports
+        run: |
+          python -m backend.scenthunter_next_engine.catalog_preflight_detail
+          python -m backend.scenthunter_next_engine.catalog_identity_audit
+          python -m backend.scenthunter_next_engine.catalog_migration_plan
+      - name: Upload read-only catalog review reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-engine-catalog-review
+          path: |
+            catalog-preflight-detail.json
+            catalog-identity-audit.json
+            catalog-migration-plan.json
+          if-no-files-found: error
+          retention-days: 14

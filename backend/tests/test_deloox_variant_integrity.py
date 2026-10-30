@@ -180,5 +180,47 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertIsNone(scraper._product(url, html, "Liquid Brun Limited Edition 100 ml"))
 
 
+
+
+    def test_visible_sold_out_control_overrides_stale_jsonld_in_stock(self):
+        html = """
+        <html><head>
+          <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": "French Avenue Liquid Brun Limited Edition 150 ml",
+            "brand": {"@type": "Brand", "name": "French Avenue"},
+            "size": {"@type": "QuantitativeValue", "value": 150, "unitText": "ml"},
+            "offers": {
+              "@type": "Offer",
+              "availability": "https://schema.org/InStock",
+              "price": "44.79",
+              "priceCurrency": "EUR"
+            }
+          }
+          </script>
+        </head><body>
+          <h1>French Avenue Liquid Brun Limited Edition 150 ml</h1>
+          <div class="availability">Uitverkocht</div>
+          <button class="add-to-cart" disabled>Niet op voorraad</button>
+        </body></html>
+        """
+        url = (
+            "https://www.deloox.be/produit/1385920/"
+            "french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        )
+
+        result = scraper.extract_product_page(
+            None, url, query="Liquid Brun Limited Edition 150 ml", html=html
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["attributes"]["size_ml"]["value"], 150)
+        self.assertEqual(result["offer"]["availability"], "out_of_stock")
+        self.assertIsNone(result["offer"]["price"])
+        self.assertIsNone(result["price"])
+        self.assertFalse(result["available"])
+
 if __name__ == "__main__":
     unittest.main()

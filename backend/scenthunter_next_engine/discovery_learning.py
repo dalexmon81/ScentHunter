@@ -59,12 +59,25 @@ def _identity_name(value: Any, brand: Any) -> str:
     )
     for pattern, _ in _CONCENTRATION_PATTERNS:
         text = pattern.sub(" ", text)
+    text = re.sub(r"\bfor her\b", "women", text)
+    text = re.sub(r"\bfor him\b", "men", text)
     text = re.sub(
-        r"\b(?:for men|for women|men|man|women|woman|herren|damen|unisex)\b",
+        r"\b(?:for men|for women|men|man|women|woman|herren|damen|unisex|male|female)\b",
         " ",
         text,
     )
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _unsupported_storefront_locale(url: Any) -> bool:
+    """Detect Deloox Spanish routes accidentally attached to another market host."""
+    try:
+        parsed = urlparse(str(url or ""))
+    except ValueError:
+        return True
+    host = (parsed.hostname or "").casefold().removeprefix("www.")
+    first_segment = next((part.casefold() for part in parsed.path.split("/") if part), "")
+    return host.startswith("deloox.") and first_segment == "producto" and host != "deloox.es"
 
 
 def _retailer_domain(url: Any) -> str | None:
@@ -76,6 +89,46 @@ def _retailer_domain(url: Any) -> str | None:
         return None
     host = parsed.hostname.casefold().removeprefix("www.")
     return host or None
+
+
+def _url_identity_name(url: Any, brand: Any) -> str | None:
+    """Extract the product identity from the final URL slug, ignoring only generic packaging words.
+
+    A retailer title can be normalized too aggressively (for example, a broad
+    "Sauvage Eau de Parfum" label can point at the distinct "Sauvage Eau Forte"
+    page). The URL slug is an independent identity signal; meaningful flanker
+    words must remain and must agree with the title.
+    """
+    try:
+        parsed = urlparse(str(url or ""))
+    except ValueError:
+        return None
+    slug = parsed.path.rsplit("/", 1)[-1]
+    slug = re.sub(r"\.(?:html?|aspx?|php)$", "", slug, flags=re.I)
+    slug = _norm(slug)
+    if not slug:
+        return None
+    # Remove size + unit as one token sequence before stripping standalone
+    # numeric product IDs. Otherwise "100 ml" becomes a dangling "ml" token
+    # and makes otherwise identical retailer URLs disagree.
+    slug = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl oz)\b",
+        " ",
+        slug,
+    )
+    # Product IDs and retailer SEO suffixes are not perfume identity. Retain
+    # meaningful flankers such as "Eau Forte", "Elixir", or "Limited Edition".
+    slug = re.sub(r"\b\d+\b", " ", slug)
+    brand_tokens = set(_norm(brand).split())
+    tokens = [token for token in slug.split() if token not in brand_tokens]
+    slug = " ".join(tokens)
+    slug = re.sub(
+        r"\b(?:by|copy|perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
+        r"vaporisateur|vaporizador|atomizer|aerosol)\b",
+        " ",
+        slug,
+    )
+    return _identity_name(slug, brand)
 
 
 def _explicit_size(value: Any) -> int | None:
@@ -207,14 +260,23 @@ def learn_variants(
         size = _explicit_size(item.get("size_ml"))
         url = str(item.get("product_url") or item.get("url") or "")
         domain = _retailer_domain(url)
-        concentration = _concentration(name)
-        url_concentration = _concentration(url)
+        if _unsupported_storefront_locale(url):
+            rejected["storefront_locale_conflict"] += 1
+            continue
+        title_concentration = _concentration(name)
+        url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
+        concentration = title_concentration or url_concentration
         canonical_name = _canonical_product_name(name, brand)
-        if url_concentration and concentration and url_concentration != concentration:
+        url_identity = _url_identity_name(url, brand)
+        if url_concentration and title_concentration and url_concentration != title_concentration:
             rejected["url_concentration_conflict"] += 1
+            continue
+        if url_identity and set(url_identity.split()) != set(_identity_name(name, brand).split()):
+            rejected["url_identity_conflict"] += 1
             continue
         if (
             not name or not brand or not size or not domain or not concentration
+            or not str(item.get("retailer") or "").strip()
             or not canonical_name
             or _UNSAFE_PACKAGING.search(name)
             or _UNSAFE_PACKAGING.search(url)
@@ -234,12 +296,24 @@ def learn_variants(
     rewritten_observations = [dict(item) for item in observation_rows]
     for (brand_key, name_key, concentration), rows in new_product_groups.items():
         by_size: dict[int, set[str]] = defaultdict(set)
+        by_size_domains: dict[int, set[str]] = defaultdict(set)
+        all_retailers: set[str] = set()
         all_domains: set[str] = set()
         for row in rows:
-            by_size[int(row["size_ml"])].add(str(row["domain"]))
-            all_domains.add(str(row["domain"]))
-        if len(all_domains) < min_retailers or not any(
-            len(domains) >= min_retailers for domains in by_size.values()
+            retailer_key = _norm(row["retailer"])
+            domain = str(row["domain"])
+            by_size[int(row["size_ml"])].add(retailer_key)
+            by_size_domains[int(row["size_ml"])].add(domain)
+            all_retailers.add(retailer_key)
+            all_domains.add(domain)
+        if (
+            len(all_retailers) < min_retailers
+            or len(all_domains) < min_retailers
+            or not any(
+                len(retailers) >= min_retailers
+                and len(by_size_domains[size]) >= min_retailers
+                for size, retailers in by_size.items()
+            )
         ):
             rejected["new_product_insufficient_independent_evidence"] += 1
             continue
@@ -313,13 +387,17 @@ def learn_variants(
         retailer = str(item.get("retailer") or "").strip()
         url = str(item.get("product_url") or item.get("url") or "").strip()
         domain = _retailer_domain(url)
+        if _unsupported_storefront_locale(url):
+            rejected["storefront_locale_conflict"] += 1
+            continue
         brand = str(item.get("brand") or "").strip()
         name = str(item.get("name") or item.get("raw_name") or "").strip()
         product_brand = str(product.get("brand_name") or "").strip()
         product_name = str(product.get("canonical_name") or product.get("name") or "").strip()
-        offer_concentration = _concentration(name)
-        canonical_concentration = _concentration(product.get("concentration"))
+        title_concentration = _concentration(name)
         url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
+        offer_concentration = title_concentration or url_concentration
+        canonical_concentration = _concentration(product.get("concentration"))
 
         if not size or not retailer or not domain or not name or not product_brand or not product_name:
             rejected["missing_required_evidence"] += 1
@@ -330,13 +408,23 @@ def learn_variants(
         if _identity_name(name, brand or product_brand) != _identity_name(product_name, product_brand):
             rejected["product_name_conflict"] += 1
             continue
+        url_identity = _url_identity_name(url, brand or product_brand)
         if (
             not offer_concentration
-            or not canonical_concentration
-            or offer_concentration != canonical_concentration
-            or (url_concentration is not None and url_concentration != offer_concentration)
+            or (
+                canonical_concentration is not None
+                and offer_concentration != canonical_concentration
+            )
+            or (
+                title_concentration is not None
+                and url_concentration is not None
+                and title_concentration != url_concentration
+            )
         ):
             rejected["concentration_unverified_or_conflict"] += 1
+            continue
+        if url_identity and set(url_identity.split()) != set(_identity_name(name, brand or product_brand).split()):
+            rejected["url_identity_conflict"] += 1
             continue
         url_concentration = _concentration(url)
         if url_concentration and url_concentration != offer_concentration:
@@ -356,8 +444,12 @@ def learn_variants(
             "concentration": offer_concentration,
             "retailers": {},
         })
-        bucket["retailers"].setdefault(domain, {
+        # A retailer may use multiple country domains; that is still one
+        # independent source, not two independent retailers.
+        retailer_key = _norm(retailer)
+        bucket["retailers"].setdefault(retailer_key, {
             "retailer": retailer,
+            "domain": domain,
             "product_url": url,
             "name": name,
         })
@@ -367,7 +459,8 @@ def learn_variants(
     added = []
     for key, bucket in sorted(evidence.items()):
         retailer_evidence = list(bucket["retailers"].values())
-        if len(retailer_evidence) < min_retailers:
+        independent_domains = {str(item.get("domain") or "") for item in retailer_evidence}
+        if len(retailer_evidence) < min_retailers or len(independent_domains) < min_retailers:
             rejected["insufficient_independent_retailers"] += 1
             continue
         product_id, size, concentration = key

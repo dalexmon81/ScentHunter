@@ -285,3 +285,322 @@ def test_proposes_new_product_when_only_candidate_is_missing_family_placeholder(
     assert product["brand_name"] == "Rasasi"
     assert result["report"]["variants_added"] == 1
     assert result["report"]["added_variants"][0]["product_id"] == product["product_id"]
+
+def test_rejects_variant_when_url_slug_identifies_a_distinct_flanker():
+    catalog = {
+        "products": [{
+            "product_id": "SH-DIOR-S", "brand_name": "Dior",
+            "canonical_name": "Sauvage", "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store A",
+            "product_url": "https://a.example/dior-sauvage-eau-forte-eau-forte-60-ml",
+        },
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store B",
+            "product_url": "https://b.example/dior-sauvage-eau-forte-eau-forte-60-ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["url_identity_conflict"] == 2
+
+
+def test_url_identity_accepts_matching_product_slug_with_generic_packaging_words():
+    catalog = {
+        "products": [{
+            "product_id": "SH-DIOR-S", "brand_name": "Dior",
+            "canonical_name": "Sauvage", "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store A",
+            "product_url": "https://a.example/dior-sauvage-edp-vapo-spray-60-ml",
+        },
+        {
+            "product_id": "SH-DIOR-S",
+            "name": "Sauvage Eau de Parfum",
+            "brand": "Dior",
+            "size_ml": 60,
+            "retailer": "Store B",
+            "product_url": "https://b.example/dior-sauvage-eau-de-parfum-spray-60-ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+
+def test_uses_explicit_url_concentration_when_retailer_title_omits_it():
+    catalog = _catalog()
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/blue-night-eau-de-parfum-100ml",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-edp-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["concentration"] == "eau de parfum"
+
+
+def test_title_and_url_concentration_must_both_match_canonical_product():
+    catalog = _catalog()
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/blue-night-eau-de-toilette-100ml",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["concentration_unverified_or_conflict"] == 1
+    assert result["report"]["rejected_observation_counts"]["url_concentration_conflict"] == 1
+
+def test_rejects_deloox_spanish_route_on_belgian_market_during_learning():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.be/producto/12345/blue-night-eau-de-parfum-100-ml.html",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["storefront_locale_conflict"] == 1
+    assert result["report"]["rejected_observation_counts"]["insufficient_independent_retailers"] == 1
+
+
+def test_accepts_deloox_spanish_route_on_spanish_market():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.es/producto/12345/blue-night-eau-de-parfum-100-ml.html",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/blue-night-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 1
+
+def test_nonstandard_catalog_concentration_label_does_not_block_explicit_variant_evidence():
+    catalog = {
+        "products": [{
+            "product_id": "SH-HAWAS-ELIXIR",
+            "brand_name": "Rasasi",
+            "canonical_name": "Hawas Élixir",
+            "concentration": "Elixir",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-HAWAS-ELIXIR",
+            "name": "Hawas Elixir",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/rasasi-hawas-elixir-100ml-edp",
+        },
+        {
+            "product_id": "SH-HAWAS-ELIXIR",
+            "name": "Hawas Elixir",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/rasasi-hawas-elixir-eau-de-parfum-100ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["size_ml"] == 100
+
+def test_url_identity_allows_reordered_brand_and_gender_tokens():
+    catalog = {
+        "products": [{
+            "product_id": "SH-VALENTINO-1",
+            "brand_name": "Valentino",
+            "canonical_name": "Born in Roma Donna",
+            "concentration": "",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-VALENTINO-1",
+            "name": "Born in Roma Donna Eau de Parfum",
+            "brand": "Valentino",
+            "size_ml": 50,
+            "retailer": "Store A",
+            "product_url": "https://a.example/valentino-donna-born-in-roma-eau-de-parfum-50ml",
+        },
+        {
+            "product_id": "SH-VALENTINO-1",
+            "name": "Born in Roma Donna Eau de Parfum",
+            "brand": "Valentino",
+            "size_ml": 50,
+            "retailer": "Store B",
+            "product_url": "https://b.example/valentino-born-in-roma-donna-edp-vapo-50ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+
+def test_url_identity_ignores_retailer_product_ids_and_brand_suffixes():
+    observations = [
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store A",
+            "product_url": "https://a.example/12345-example-blue-night-eau-de-parfum-100ml-example",
+        },
+        {
+            "product_id": "SH-TEST-1",
+            "name": "Blue Night Eau de Parfum",
+            "brand": "Example",
+            "size_ml": 100,
+            "retailer": "Store B",
+            "product_url": "https://b.example/67890-blue-night-edp-100ml-by-example",
+        },
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 1
+
+def test_learns_missing_variant_from_two_retailers_when_title_omits_url_verified_concentration():
+    catalog = {
+        "products": [{
+            "product_id": "SH-FAMILY-HAWAS-CHROME",
+            "brand_name": "Rasasi",
+            "canonical_name": "Hawas Chrome",
+            "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "candidate_product_ids": ["SH-FAMILY-HAWAS-CHROME"],
+            "name": "Hawas Chrome",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Bplatz",
+            "product_url": "https://en.bplatz.de/products/rasasi-hawas-chrome-eau-de-parfum-100ml",
+        },
+        {
+            "candidate_product_ids": ["SH-FAMILY-HAWAS-CHROME"],
+            "name": "Hawas Chrome",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.be/product/1398772/rasasi-hawas-chrome-eau-de-parfum-100-ml.html",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    learned = result["report"]["added_variants"][0]
+    assert learned["product_id"] == "SH-FAMILY-HAWAS-CHROME"
+    assert learned["size_ml"] == 100
+    assert learned["independent_retailer_count"] == 2
+
+def test_url_identity_accepts_deloox_size_tokens_and_reordered_brand_words():
+    catalog = {
+        "products": [{
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "brand_name": "Valentino",
+            "canonical_name": "Born in Roma Donna",
+            "concentration": "",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "name": "Born in Roma Donna",
+            "brand": "Valentino",
+            "size_ml": 30,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.lu/produit/1215284/valentino-born-in-roma-donna-eau-de-parfum-30-ml.html",
+        },
+        {
+            "product_id": "SH-VALENTINO-BORN-ROMA",
+            "name": "Born in Roma Donna",
+            "brand": "Valentino",
+            "size_ml": 30,
+            "retailer": "Easycosmetic",
+            "product_url": "https://www.easycosmetic.de/valentino/donna-born-in-roma/valentino-donna-born-in-roma-edp-vapo.aspx",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    assert result["report"]["added_variants"][0]["size_ml"] == 30
+
+def test_two_country_domains_of_one_retailer_do_not_count_as_independent_evidence():
+    observations = [
+        _offer("Deloox", "www.deloox.be"),
+        _offer("Deloox", "www.deloox.lu"),
+    ]
+    result = learn_variants(_catalog(), observations)
+    assert result["report"]["variants_added"] == 0
+    assert result["report"]["rejected_observation_counts"]["insufficient_independent_retailers"] == 1
+

@@ -445,7 +445,10 @@ def _extract_product(
         if not isinstance(variant, dict):
             continue
         item = _raw_offer(product, variant, url)
-        if item["offer"]["price"] is None:
+        if (
+            item["offer"]["price"] is None
+            and item["offer"].get("availability") != "out_of_stock"
+        ):
             continue
         results.append(item)
 

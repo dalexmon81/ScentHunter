@@ -17,7 +17,8 @@ permissions:
 
 jobs:
   live-shadow:
-    if: ${{ inputs.confirm_live_read_only == 'yes' }}
+    # Fail closed: this job may run only from an explicitly confirmed manual dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_live_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -25,26 +26,39 @@ jobs:
       - name: Check out dedicated branch
         uses: actions/checkout@v4
         with:
-          ref: scenthunter-next-engine
+          ref: architecture/offer-engine-v1
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install scraper and test dependencies
-        run: python -m pip install requests beautifulsoup4 pytest fastapi httpx
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
 
-      - name: Run manual bounded live-offer shadow comparison
+      - name: Install Chromium for Deloox's browser-aware anti-bot fallback
+        run: python -m playwright install chromium
+
+      - name: Run bounded live Deloox offer smoke test
         env:
           PYTHONUNBUFFERED: "1"
-        run: python -m tests.run_next_engine_live_shadow
+        run: python -m backend.offer_engine.live_deloox_smoke
+
+      - name: Run live Offer Engine end-to-end smoke in temporary SQLite
+        env:
+          PYTHONUNBUFFERED: "1"
+          NOTINO_CJ_FEED_URL: ${{ secrets.NOTINO_CJ_FEED_URL }}
+          NOTINO_CJ_FEED_USERNAME: ${{ secrets.NOTINO_CJ_FEED_USERNAME }}
+          NOTINO_CJ_FEED_PASSWORD: ${{ secrets.NOTINO_CJ_FEED_PASSWORD }}
+        run: python -m backend.offer_engine.live_offer_engine_smoke
 
       - name: Upload live comparison report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: next-engine-live-shadow-comparison
-          path: next-engine-live-shadow-comparison.json
+          name: next-engine-live-deloox-smoke
+          path: |
+            next-engine-live-deloox-smoke.json
+            next-engine-live-offer-engine-smoke.json
           if-no-files-found: warn
           retention-days: 7

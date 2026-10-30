@@ -932,11 +932,10 @@ def extract_product_page(session, url, query):
             if price is not None:
                 break
 
-    if price is None:
-        return None
-
     currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
     availability = _pm_extract_availability(product, offer, soup)
+    if price is None and availability != "out_of_stock":
+        return None
     image = _pm_extract_image(product, response.url)
 
     sku = str(product.get("sku") or "").strip()

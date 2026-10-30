@@ -33722,6 +33722,46 @@
         "Guerlain Vol de Nuit"
       ],
       "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-68603ae4357708fb",
+      "product_id": "SH-AUTO-0178",
+      "size_ml": 60,
+      "aliases": [
+        "Sauvage Eau de Parfum"
+      ]
+    },
+    {
+      "variant_id": "VAR-c72b45a00ad75e57",
+      "product_id": "SH-AUTO-0730",
+      "size_ml": 100,
+      "aliases": [
+        "Hawas Elixir"
+      ]
+    },
+    {
+      "variant_id": "VAR-c27b8b0c807f79f3",
+      "product_id": "SH-FAMILY-a9fbdaefd3d5",
+      "size_ml": 50,
+      "aliases": [
+        "Born in Roma Purple Melancholia Uomo"
+      ]
+    },
+    {
+      "variant_id": "VAR-8b6788d0daedb3b5",
+      "product_id": "SH-FAMILY-aa11dc284ad3",
+      "size_ml": 100,
+      "aliases": [
+        "Hawas Tropical"
+      ]
+    },
+    {
+      "variant_id": "VAR-1306fb65e3319915",
+      "product_id": "SH-FAMILY-f7a59a54c6db",
+      "size_ml": 100,
+      "aliases": [
+        "Born in Roma Yellow Dream Uomo"
+      ]
     }
   ],
   "offers": [],

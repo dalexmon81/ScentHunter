@@ -43,7 +43,7 @@ class NotinoOffer:
     sku: str | None
     mpn: str | None
     size_ml: float
-    price: float
+    price: float | None
     currency: str
     availability: str
     url: str
@@ -217,7 +217,11 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
                 break
 
     link = _product_url(raw_link)
-    if not title or not brand or price is None or currency != "EUR" or not link or size_ml is None:
+    if (
+        not title or not brand
+        or (price is None and availability != "out_of_stock")
+        or currency != "EUR" or not link or size_ml is None
+    ):
         return None
     if not external_id:
         external_id = gtin or sku or hashlib.sha256(
@@ -231,7 +235,7 @@ def _parse_item(item: ET.Element) -> NotinoOffer | None:
         sku=sku.strip() or None,
         mpn=mpn.strip() or None,
         size_ml=size_ml,
-        price=float(price),
+        price=float(price) if price is not None else None,
         currency=currency,
         availability=availability,
         url=link,

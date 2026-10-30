@@ -43,6 +43,42 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+# An explicit one-time migration switch for the isolated Offer Engine file.
+# It is off by default; when enabled, startup fails rather than serving a
+# partially migrated Offer Engine database.
+_OFFER_ENGINE_MIGRATION_APPLIED = False
+if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    try:
+        try:
+            from offer_engine.runtime import apply_migration as apply_offer_engine_migration
+        except ModuleNotFoundError:
+            from backend.offer_engine.runtime import apply_migration as apply_offer_engine_migration
+        apply_offer_engine_migration()
+        _OFFER_ENGINE_MIGRATION_APPLIED = True
+        print('OFFER_ENGINE_MIGRATION_APPLIED', flush=True)
+    except Exception as exc:
+        raise RuntimeError(f'OFFER_ENGINE_MIGRATION_FAILED: {type(exc).__name__}: {exc}') from exc
+
+
+# Optional read-only Offer Engine API. Disabled by default: it uses a separate
+# Offer Engine SQLite file (or optional PostgreSQL DSN), never the legacy catalog DB.
+_OFFER_ENGINE_API_MOUNTED = False
+if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_API_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    try:
+        try:
+            from offer_engine.api import router as offer_engine_router
+        except ModuleNotFoundError:
+            from backend.offer_engine.api import router as offer_engine_router
+        app.include_router(offer_engine_router)
+        _OFFER_ENGINE_API_MOUNTED = True
+    except Exception as exc:
+        print(
+            f'OFFER_ENGINE_API_UNAVAILABLE: {type(exc).__name__}: {exc}; '
+            'starting without the isolated Offer Engine API',
+            flush=True,
+        )
+
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of
@@ -2794,6 +2830,8 @@ def _new_job(query):
             "completed": False,
             "status": "searching",
             "atomic_results": True,
+            "engine": "offer_engine" if _offer_engine_search_enabled() else "legacy",
+            "timeout_seconds": 150.0 if _offer_engine_search_enabled() else JOB_TIMEOUT_SECONDS,
             "cancel_event": threading.Event(),
             "done_event": threading.Event(),
             "aggregate_lock": threading.Lock(),
@@ -2836,7 +2874,8 @@ def _snapshot(job_id):
         # cancellation, and release the job slot if the search exceeds its
         # bounded execution window plus a small finalization allowance.
         started_at = float(job.get("started_at") or time.time())
-        if not job.get("completed") and time.time() - started_at > (JOB_TIMEOUT_SECONDS + 20.0):
+        job_timeout = float(job.get("timeout_seconds") or JOB_TIMEOUT_SECONDS)
+        if not job.get("completed") and time.time() - started_at > (job_timeout + 20.0):
             job["completed"] = True
             job["status"] = "completed_with_store_issues"
             job.setdefault("errors", {})["job"] = "search_watchdog_timeout_partial_results"
@@ -3072,6 +3111,45 @@ def _run_job(job_id, query):
             current_job["thread"] = threading.current_thread()
             cancel_event = current_job.get("cancel_event")
             job = current_job
+
+        # The public UI uses /search-start and /search-status, not the
+        # synchronous /search route. Route that background job through the
+        # same verified Offer Engine when the feature flag is enabled.
+        if _offer_engine_search_enabled():
+            engine_started = time.monotonic()
+            engine_payload = _search_with_offer_engine(query)
+            engine_elapsed = round(time.monotonic() - engine_started, 3)
+            store_reports = engine_payload.get("stores") or {}
+            store_issues = [
+                report for report in store_reports.values()
+                if not report.get("verified")
+                or str(report.get("status") or "").lower() != "success"
+            ]
+            with JOBS_LOCK:
+                current_job = JOBS.get(job_id)
+                if current_job is not None:
+                    current_job["offers"] = list(engine_payload.get("offers") or [])
+                    current_job["results"] = list(engine_payload.get("results") or [])
+                    current_job["unresolved_offers"] = list(engine_payload.get("unresolved_offers") or [])
+                    current_job["identity_scope"] = list(engine_payload.get("identity_scope") or [])
+                    current_job["dedupe_diagnostics"] = list(engine_payload.get("dedupe_diagnostics") or [])
+                    current_job["errors"] = dict(engine_payload.get("errors") or {})
+                    current_job["stores"] = dict(store_reports)
+                    current_job["completed"] = True
+                    current_job["status"] = "completed_with_store_issues" if store_issues else "completed"
+                    current_job["store_issue_count"] = len(store_issues)
+                    current_job["elapsed"] = engine_elapsed
+                    current_job["collect_elapsed"] = engine_elapsed
+                    total = len(current_job["results"])
+                else:
+                    total = 0
+            elapsed = engine_elapsed
+            print(
+                f"SEARCH OFFER ENGINE COMPLETE job={job_id} query={query!r} "
+                f"stores={len(store_reports)} elapsed={engine_elapsed}",
+                flush=True,
+            )
+            return
 
         def on_report(r):
             _publish_store(job_id, r)
@@ -4963,6 +5041,103 @@ def search_status_path(job_id:str): return _snapshot(job_id)
 @app.get('/search-status')
 def search_status_query(job_id:str): return _snapshot(job_id)
 
+def _offer_engine_search_enabled():
+    return str(os.environ.get("SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _search_with_offer_engine(query: str):
+    try:
+        try:
+            from offer_engine.runtime import connect_offer_engine_db
+            from offer_engine.read_repository import OfferReadRepository
+        except ModuleNotFoundError:
+            from backend.offer_engine.runtime import connect_offer_engine_db
+            from backend.offer_engine.read_repository import OfferReadRepository
+
+        # User searches are strictly read-only. Retailer ingestion belongs to
+        # an independent refresh process, never to the foreground request.
+        connection = connect_offer_engine_db()
+        try:
+            current_rows = OfferReadRepository(connection).search(query, limit=200)
+        finally:
+            connection.close()
+    except Exception as exc:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=503,
+            detail="offer_engine_search_unavailable",
+        ) from exc
+
+    all_offers = []
+    for row in current_rows:
+        price = row.get("price")
+        size_ml = row.get("size_ml")
+        availability = str(row.get("availability") or "unknown")
+        price_num = float(price) if price is not None else None
+        store = str(row.get("retailer_id") or "")
+        all_offers.append({
+            "_match_status": "matched",
+            "catalog_id": row.get("product_id"),
+            "canonical_brand": row.get("brand"),
+            "brand": row.get("brand"),
+            "canonical_name": row.get("canonical_name"),
+            "name": row.get("canonical_name"),
+            "family": row.get("concentration"),
+            "variant": f"{size_ml} ml" if size_ml is not None else None,
+            "store": store,
+            "shop": row.get("retailer_name") or store,
+            "price": f"{price_num:.2f}" if price_num is not None else None,
+            "price_num": price_num,
+            "format": f"{size_ml} ml" if size_ml is not None else None,
+            "size_ml": size_ml,
+            "variant_id": row.get("variant_id"),
+            "url": row.get("product_url"),
+            "available": availability == "in_stock",
+            "availability": availability,
+            "stock": availability,
+            "stock_status": availability,
+            "availability_status": availability,
+            "in_stock": availability == "in_stock",
+            "status": availability,
+            "_raw_name": row.get("canonical_name"),
+            "_raw_brand": row.get("brand"),
+        })
+
+    # OfferReadRepository has already selected one current row per exact
+    # retailer/product/variant/market. Do not apply the legacy heuristic here:
+    # its Easycosmetic price-only fingerprint can collapse different perfumes
+    # that happen to cost the same amount.
+    dedupe_diagnostics = []
+    grouped, unresolved = _aggregate_identity_results(all_offers)
+    store_reports = {}
+    for row in current_rows:
+        retailer = str(row.get("retailer_id") or "")
+        if not retailer:
+            continue
+        report = store_reports.setdefault(retailer, {
+            "status": "success",
+            "verified": True,
+            "count": 0,
+            "elapsed": 0.0,
+            "details": {"source": "cached_verified_current_offers"},
+        })
+        report["count"] += 1
+    errors = {}
+
+    return {
+        "query": query,
+        "count": len(grouped),
+        "offer_count": len(all_offers),
+        "results": grouped,
+        "offers": all_offers,
+        "unresolved_offers": unresolved,
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "identity_scope": _identity_scope(query),
+        "errors": errors,
+        "stores": store_reports,
+    }
+
+
 @app.get("/search")
 def search_perfume(q: str):
     query = str(q or "").strip()
@@ -4979,6 +5154,9 @@ def search_perfume(q: str):
             "stores": {},
             "dedupe_diagnostics": [],
         }
+
+    if _offer_engine_search_enabled():
+        return _search_with_offer_engine(query)
 
     reports = collect_store_reports_isolated(
         query,

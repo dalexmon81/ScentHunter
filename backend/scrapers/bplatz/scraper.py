@@ -361,7 +361,9 @@ def product_from_page(session, url, query):
 
     brand = data.get("brand")
     brand = clean(brand.get("name")) if isinstance(brand, dict) else clean(brand)
-    size = size_ml(name, soup.get_text(" ", strip=True))
+    # Do not infer the selected bottle size from the whole page: recommendation
+    # cards often list other formats. If the product title lacks size, keep it unknown.
+    size = size_ml(name)
     offers = offer_list(data)
     price = None
     availability = None
@@ -380,18 +382,7 @@ def product_from_page(session, url, query):
     if availability is None:
         availability = availability_from_text(page_text)
 
-    if price is None:
-        price_patterns = [
-            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-        ]
-        for pattern in price_patterns:
-            m = re.search(pattern, page_text, re.I)
-            if m:
-                price = parse_price(m.group(1))
-                if price is not None:
-                    break
+    # Fail closed when structured product pricing is absent; never scan the whole page.
 
     image = data.get("image")
     if isinstance(image, list):

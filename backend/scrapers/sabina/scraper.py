@@ -396,17 +396,14 @@ def extract_price_from_html(soup):
     Only product-bound metadata/current-price nodes are accepted. This avoids
     accidentally taking a price belonging to a related/recommended product.
     """
+    # Metadata is a fallback: Sabina can leave a stale meta price after
+    # the visible price changes with the selected bottle variant.
     direct = meta_content(
         soup,
         'meta[itemprop="price"]',
         'meta[property="product:price:amount"]',
         'meta[name="product:price:amount"]',
     )
-
-    if direct:
-        value = money_to_float(direct)
-        if value is not None:
-            return value, "sabina_html_price"
 
     selectors = (
         '[itemprop="price"]',
@@ -418,7 +415,11 @@ def extract_price_from_html(soup):
     )
 
     for selector in selectors:
+        candidates = []
+        preferred = []
         for node in soup.select(selector):
+            if node.name == "meta":
+                continue
             classes = " ".join(node.get("class", []))
             marker_text = norm(
                 f"{classes} {node.get_text(' ', strip=True)}"
@@ -449,7 +450,13 @@ def extract_price_from_html(soup):
 
             value = money_to_float(raw)
             if value is not None:
-                return value, "sabina_html_price"
+                candidates.append(value)
+                if any(word in marker_text for word in ("current", "sale", "final", "selling", "actual")):
+                    preferred.append(value)
+
+        selected = set(preferred) if preferred else set(candidates)
+        if selected:
+            return (next(iter(selected)), "sabina_html_price") if len(selected) == 1 else (None, None)
 
     # Last fallback: inspect only a product container and only labelled
     # customer-facing prices. Never scan arbitrary EUR amounts on the page.
@@ -488,6 +495,11 @@ def extract_price_from_html(soup):
         value = money_to_float(raw)
         if value is not None:
             return value, "sabina_html_price"
+
+    if direct:
+        value = money_to_float(direct)
+        if value is not None:
+            return value, "sabina_html_price_metadata_fallback"
 
     return None, None
 
@@ -1235,7 +1247,9 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
     def add_variant(raw_size, raw_price, currency="EUR", availability=None, sku=None, variant_url=None, gtin=None, mpn=None, variant_id=None):
         variant_size = extract_size_ml(raw_size)
         variant_price = money_to_float(raw_price)
-        if variant_size is None or variant_price is None or variant_price <= 0:
+        if variant_size is None or (
+            variant_price is None and availability != "out_of_stock"
+        ) or (variant_price is not None and variant_price <= 0):
             return
         # A variant is not identified by size and price alone. Retailers can
         # legitimately expose separate combinations with the same price/SKU,
@@ -1243,7 +1257,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
         # distinct retailer combination IDs and direct variant URLs.
         key = (
             round(float(variant_size), 2),
-            round(float(variant_price), 2),
+            round(float(variant_price), 2) if variant_price is not None else None,
             clean(sku),
             str(variant_id or "").strip(),
             clean(gtin),
@@ -1272,7 +1286,8 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     # Never emit a guessed size-only fragment as a variant URL.
                     target_url = target_url.split("#", 1)[0]
         variants.append({
-            "size_ml": float(variant_size), "price_num": float(variant_price),
+            "size_ml": float(variant_size),
+            "price_num": float(variant_price) if variant_price is not None else None,
             "currency": clean(currency) or "EUR",
             "availability": availability or "unknown", "sku": clean(sku) or None,
             "gtin": clean(gtin) or None, "mpn": clean(mpn) or None,
@@ -1347,7 +1362,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             effective_size = local_size if local_size is not None else (current_variant or {}).get("size")
-            if effective_size is not None and price is not None:
+            if effective_size is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
                 raw_availability = clean(
                     obj.get("availability") or obj.get("stock_status")
@@ -1359,15 +1374,19 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "in_stock"
                 else:
                     availability = "unknown"
-                variant_context = current_variant or {}
-                add_variant(
-                    effective_size, price, currency, availability,
-                    effective_sku or variant_context.get("sku"),
-                    obj.get("url") or variant_context.get("url"),
-                    local_gtin or variant_context.get("gtin"),
-                    local_mpn or variant_context.get("mpn"),
-                    local_variant_id or variant_context.get("variant_id"),
-                )
+                # Keep a sold-out variant even when its retailer page omits
+                # price; it must clear an older purchasable offer. Never carry
+                # a parent or sibling variant's price into this record.
+                if price is not None or availability == "out_of_stock":
+                    variant_context = current_variant or {}
+                    add_variant(
+                        effective_size, price, currency, availability,
+                        effective_sku or variant_context.get("sku"),
+                        obj.get("url") or variant_context.get("url"),
+                        local_gtin or variant_context.get("gtin"),
+                        local_mpn or variant_context.get("mpn"),
+                        local_variant_id or variant_context.get("variant_id"),
+                    )
 
             for value in obj.values():
                 walk_variant_data(value, effective_sku, current_variant)

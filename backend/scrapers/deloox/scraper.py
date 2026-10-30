@@ -72,6 +72,16 @@ def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
 
+def _is_client_challenge_html(value):
+    """Recognize Cloudflare challenge documents, including HTTP-200 interstitials."""
+    sample = str(value or "")[:20000].lower()
+    return bool(
+        re.search(r"<title[^>]*>\s*client challenge\s*</title>", sample)
+        or "cf-chl-" in sample
+        or "challenge-platform" in sample
+    )
+
+
 def norm(v):
     # Normalize accented product names (e.g. Giò -> Gio) before token matching.
     text = unicodedata.normalize("NFKD", clean(v).lower())
@@ -146,6 +156,61 @@ def parse_price(v):
     except ValueError:
         return None
 
+
+
+_PRICE_SELECTORS = (
+    'meta[itemprop="price"][content]',
+    '[itemprop="price"]',
+    '[data-testid*="price" i]',
+    '[data-test*="price" i]',
+    '[data-price]',
+    '[class*="price" i]',
+    '[id*="price" i]',
+)
+
+
+def visible_price(soup):
+    """Extract only explicitly price-scoped markup; never scan whole-page text."""
+    candidates = []
+    for selector in _PRICE_SELECTORS:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes[:100]:
+            marker = " ".join(str(node.get(k) or "") for k in (
+                "itemprop", "data-testid", "data-test", "class", "id", "aria-label"
+            )).casefold()
+            if re.search(r"old|was|regular|rrp|list.price|strike|compare|original", marker):
+                continue
+            if any(
+                "price" in " ".join(str(child.get(k) or "") for k in (
+                    "itemprop", "data-testid", "data-test", "class", "id"
+                )).casefold()
+                for child in node.find_all(True)
+            ):
+                continue
+            raw = node.get("content") or node.get("data-price") or node.get("aria-label") or node.get_text(" ", strip=True)
+            value = parse_price(raw)
+            if value is not None and value > 0:
+                candidates.append((round(float(value), 2), marker))
+    if not candidates:
+        return None
+    preferred = {value for value, marker in candidates if re.search(r"current|sale|special|selling|final|actual", marker)}
+    if len(preferred) == 1:
+        return next(iter(preferred))
+    values = {value for value, _marker in candidates}
+    return next(iter(values)) if len(values) == 1 else None
+
+
+def page_offer_price(offer, soup):
+    """Prefer current visible price; reject conflicting scoped price markup."""
+    visible = visible_price(soup)
+    if visible is not None:
+        return visible
+    if any(soup.select(selector) for selector in _PRICE_SELECTORS):
+        return None
+    return parse_price(offer.get("price") if isinstance(offer, dict) else None)
 
 def availability(text, offer=None, soup=None):
     """Prefer explicit storefront stock signals over possibly stale JSON-LD."""
@@ -412,10 +477,14 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
         return None
 
     product_line = ""
-    # Cache the normalized full-page text once; several downstream checks use it.
-    # Bound the fallback text extraction: product JSON-LD is authoritative
-    # for name/offer, and scanning multi-megabyte HTML adds cost without helping
-    # identity. Keep enough leading page text for generic line/category signals.
+    # Keep the JSON-LD fast path, but inspect the current storefront controls
+    # even when the caller supplied already-parsed structured data. Deloox can
+    # leave a stale Schema.org InStock value after the visible buy panel changes.
+    # The full HTML is already bounded by extract_product_page (4 MiB).
+    stock_soup = soup if soup is not None else BeautifulSoup(html or "", "lxml")
+
+    # Cache normalized page text once for the downstream identity/category
+    # checks. Keep the bounded text fallback when the caller used JSON-LD mode.
     text = soup.get_text(" ", strip=True) if soup is not None else clean(re.sub(r"<[^>]+>", " ", (html or "")[:524288]))
 
     # Deloox also has haircare, skincare and makeup pages under the same
@@ -466,27 +535,15 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # Reuse the offer already matched against the requested variant above.
     offer = selected_offer or {}
 
-    price = parse_price(offer.get("price"))
-    if price is None:
-        # Only consider visible text outside the product title when falling
-        # back to page-price extraction. Otherwise a title such as "125 ml"
-        # can be misread as a 125.00 price when JSON-LD omits its offer.
-        price_text = text
-        if h1 is not None:
-            title_text = clean(h1.get_text(" ", strip=True))
-            if title_text:
-                price_text = price_text.replace(title_text, " ", 1)
-        price = parse_price(price_text)
+    # Prefer the current visible storefront price over potentially stale JSON-LD.
+    # If scoped price markup exists but is ambiguous, fail closed.
+    price = page_offer_price(offer, stock_soup)
 
     # An out-of-stock product remains a useful catalog result even when the
     # retailer removes its price. Preserve its exact product/variant identity,
     # but never infer or fabricate a price. In-stock/unknown-price products
     # still fail closed as before.
-    avail = availability(text, offer=offer, soup=soup) if soup is not None else (
-        "out_of_stock" if any(x in clean(offer.get("availability")).lower() for x in ("outofstock", "out_of_stock", "soldout", "sold_out", "unavailable", "discontinued")) else (
-            "in_stock" if any(x in clean(offer.get("availability")).lower() for x in ("instock", "in_stock", "limitedavailability", "preorder")) else "unknown"
-        )
-    )
+    avail = availability(text, offer=offer, soup=stock_soup)
     # Do not publish a stale structured price when current storefront controls
     # explicitly say the product is out of stock.
     if avail == "out_of_stock":
@@ -1066,6 +1123,10 @@ def _discover_from_search(session, query, deadline=None):
                 failed_pages += 1
                 note_failure("empty_body")
                 continue
+            if _is_client_challenge_html(r.text):
+                failed_pages += 1
+                note_failure("client_challenge")
+                continue
 
             successful_pages += 1
             base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
@@ -1181,11 +1242,70 @@ def _discover_from_search(session, query, deadline=None):
             if len(candidates) == before:
                 break
 
+    browser_diagnostic = {"attempted": False}
+    if not candidates:
+        # The storefront sometimes returns a tiny anti-bot/interstitial HTML
+        # document to plain requests while its browser-rendered search works.
+        # Reuse the same conservative URL extractor after a real browser load;
+        # product-page parsing remains the authority for product identity.
+        browser_diagnostic["attempted"] = True
+        try:
+            from playwright.sync_api import sync_playwright
+            browser_endpoint = f"{BASE_URL}/chercher.html?q={quote_plus(query)}"
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                try:
+                    page = browser.new_page(
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+                        ),
+                        locale="fr-BE",
+                    )
+                    page.goto(browser_endpoint, wait_until="domcontentloaded", timeout=18000)
+                    page.wait_for_timeout(12000)
+                    browser_html = page.content() or ""
+                    browser_url = clean(page.url or browser_endpoint)
+                    browser_title = clean(page.title() or "")
+                    browser_found = _candidate_product_urls(
+                        browser_html,
+                        query,
+                        discovery_query=query,
+                        accept_all_products=False,
+                        base_url=f"{urlparse(browser_url).scheme}://{urlparse(browser_url).netloc}",
+                    )
+                    browser_diagnostic.update({
+                        "final_url": browser_url,
+                        "title": browser_title,
+                        "html_bytes": len(browser_html.encode("utf-8", errors="replace")),
+                        "candidate_count": len(browser_found),
+                    })
+                    for url in browser_found:
+                        candidates[url] = True
+                finally:
+                    browser.close()
+        except Exception as exc:
+            browser_diagnostic["error"] = f"{type(exc).__name__}: {exc}"
+
     global _LAST_DISCOVERY_STATE
+    _LAST_DISCOVERY_STATE["browser_search"] = browser_diagnostic
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
     _LAST_DISCOVERY_STATE["search_failure_reasons"] = dict(sorted(failure_reasons.items()))
-    _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
+    _LAST_DISCOVERY_STATE["search_surfaces"] = [
+        {
+            "requested": item["requested"],
+            "final": item["final"],
+            "bytes": len(item["response"].content or b""),
+            "candidate_count": len(item["found"]),
+            "page_title": clean(re.search(r"<title[^>]*>(.*?)</title>", item["response"].text or "", re.I | re.S).group(1))[:160] if re.search(r"<title[^>]*>(.*?)</title>", item["response"].text or "", re.I | re.S) else None,
+            "page_sample": clean(re.sub(r"<[^>]+>", " ", (item["response"].text or "")[:600]))[:240],
+        }
+        for item in successful
+    ]
+    _LAST_DISCOVERY_STATE["search_candidates"] = len(candidates)
+    _LAST_DISCOVERY_STATE["selected_search_surface"] = selected_endpoint
+    _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0 or bool(candidates)
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
 
@@ -1726,7 +1846,7 @@ def extract_product_page(session, url, query=None, html=None):
                             locale="nl-BE",
                         )
                         page.goto(target, wait_until="domcontentloaded", timeout=12000)
-                        page.wait_for_timeout(1200)
+                        page.wait_for_timeout(2500)
                         browser_html = page.content() or ""
                         browser_url = clean(page.url or target)
                     finally:
@@ -1851,21 +1971,16 @@ def search(query):
 
         def fetch(url):
             try:
-                r = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-                if r.status_code >= 400:
-                    return None
-                return _product(r.url or url, r.text, query)
+                # Use the same bounded browser fallback as direct product-page
+                # hydration. Plain requests can receive a Cloudflare Client
+                # Challenge (HTTP 200, but only a few KB of interstitial HTML).
+                return extract_product_page(session, url, query=query)
             except requests.RequestException:
                 return None
             except Exception:
                 return None
 
-        with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
+        with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as pool:
             futures = {pool.submit(fetch, url): url for url in candidates}
             for future in as_completed(futures):
                 item = future.result()

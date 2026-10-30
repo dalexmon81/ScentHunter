@@ -565,7 +565,8 @@ def _candidate_from_evidence(
     structured_stock: Optional[bool] = None,
 ) -> Optional[Dict[str, Any]]:
     url = normaliseurl(url)
-    name = _clean_name(name)
+    raw_name = _clean(name)
+    name = _clean_name(raw_name)
     card = _clean(card)
     if not lookslikeproducturl(url):
         return None
@@ -576,7 +577,9 @@ def _candidate_from_evidence(
     if _has_non_perfume_marker(name) or _has_non_perfume_marker(url):
         return None
 
-    combined = " ".join(filter(None, [name, card]))
+    # Preserve size evidence from the raw title before _clean_name strips
+    # commercial attributes such as bottle volume from the display name.
+    combined = " ".join(filter(None, [raw_name, card]))
     size = structured_size or _extract_size(combined)
     # Only reject when an explicit discovered size conflicts with the request.
     # Missing size is unknown, not a mismatch.
