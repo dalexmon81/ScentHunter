@@ -187,5 +187,38 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
 
 
 
+    def test_in_stock_jsonld_is_not_trusted_without_live_stock_controls(self):
+        parsed = page(
+            URL_150,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            150, "in_stock", 42.89, "6298042001831",
+        )
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {},
+        }), patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed), \
+             patch("backend.offer_engine.connectors.deloox._live_page_availability", return_value=Availability.OUT_OF_STOCK):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            observation = connector.observe(listing)
+        self.assertEqual(observation.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(observation.price)
+
+    def test_unavailable_live_stock_evidence_fails_closed(self):
+        parsed = page(
+            URL_150,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            150, "in_stock", 42.89, "6298042001831",
+        )
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {},
+        }), patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed), \
+             patch("backend.offer_engine.connectors.deloox._live_page_availability", return_value=Availability.UNKNOWN):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            observation = connector.observe(listing)
+        self.assertEqual(observation.availability, Availability.UNKNOWN)
+        self.assertIsNone(observation.price)
+
+
 if __name__ == "__main__":
     unittest.main()
