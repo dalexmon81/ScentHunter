@@ -153,11 +153,46 @@ jobs:
                       raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
                   ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
                   if not isinstance(ui_search, dict):
-                      raise RuntimeError("User search endpoint returned a non-object response.")
+                      raise RuntimeError("Synchronous user search endpoint returned a non-object response.")
+
+                  # The browser uses /search-start + /search-status. Test that
+                  # exact path too: /search alone can pass while the UI still
+                  # runs the legacy catalog collector.
+                  started = get("/search-start?q=" + urllib.parse.quote("Liquid Brun"))
+                  if not isinstance(started, dict):
+                      raise RuntimeError("User search-start endpoint returned a non-object response.")
+                  job_id = started.get("job_id")
+                  ui_result = started
+                  for poll in range(40):
+                      if ui_result.get("completed"):
+                          break
+                      if not job_id:
+                          raise RuntimeError("User search did not return a job_id: " + json.dumps(ui_result))
+                      time.sleep(1.5)
+                      ui_result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
+                  if not ui_result.get("completed"):
+                      raise RuntimeError("User search job did not complete: " + json.dumps(ui_result))
+                  stores = ui_result.get("stores") or {}
+                  legacy_catalog_failures = {
+                      store: report for store, report in stores.items()
+                      if str(report.get("status") or "").lower() == "catalog_not_indexed"
+                      or str(report.get("error") or "").lower() == "catalog_not_indexed"
+                  }
+                  if legacy_catalog_failures:
+                      raise RuntimeError(
+                          "Browser search is still using the legacy catalog collector: "
+                          + json.dumps(legacy_catalog_failures)
+                      )
+                  if ui_result.get("status") not in {"completed", "completed_with_store_issues"}:
+                      raise RuntimeError("Unexpected browser search status: " + json.dumps(ui_result))
+
                   print("PILOT_HEALTH=PASS")
                   print("PILOT_OFFER_ENGINE_READ_API=PASS")
-                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
-                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
+                  print("PILOT_SYNC_SEARCH_ENDPOINT=PASS")
+                  print("PILOT_BROWSER_SEARCH_START_STATUS=PASS")
+                  print("PILOT_BROWSER_SEARCH_STATUS=" + str(ui_result.get("status")))
+                  print("PILOT_BROWSER_OFFER_COUNT=" + str(ui_result.get("offer_count", 0)))
+                  print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)))
                   print("PILOT_URL=" + base)
                   break
               except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
