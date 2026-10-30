@@ -74,6 +74,8 @@ jobs:
           set -euo pipefail
           flyctl auth whoami
           flyctl orgs list
+          echo "Checking token scope metadata (no token values are printed)..."
+          flyctl tokens list --scope org
 
       - name: Create or verify isolated Fly app
         shell: bash
