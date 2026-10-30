@@ -1910,15 +1910,10 @@ def search(query):
 
         def fetch(url):
             try:
-                r = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-                if r.status_code >= 400:
-                    return None
-                return _product(r.url or url, r.text, query)
+                # Use the same bounded browser fallback as direct product-page
+                # hydration. Plain requests can receive a Cloudflare Client
+                # Challenge (HTTP 200, but only a few KB of interstitial HTML).
+                return extract_product_page(session, url, query=query)
             except requests.RequestException:
                 return None
             except Exception:
