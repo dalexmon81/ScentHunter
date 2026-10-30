@@ -49,7 +49,7 @@ jobs:
           from scenthunter_next_engine.next_engine_service import NextEngineService
 
           BASE = "https://scenthunter.fly.dev"
-          QUERIES = ("Hawas", "Born in Roma", "Hawas Ice", "Dior Sauvage")
+          QUERIES = ("Hawas", "Born in Roma", "Hawas Ice", "Dior Sauvage", "Liquid Brun 100 ml", "Liquid Brun Limited Edition 150 ml")
           USER_AGENT = "ScentHunter-next-engine-production-shadow/1.0"
 
           def get_json(path, timeout=25):
