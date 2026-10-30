@@ -17,6 +17,12 @@ class FakeConnection:
 
 
 class OfferEngineApiTests(unittest.TestCase):
+    def test_blank_query_is_rejected_as_client_error(self):
+        with self.assertRaises(HTTPException) as caught:
+            api.search_offer_engine("   ")
+        self.assertEqual(caught.exception.status_code, 422)
+        self.assertEqual(caught.exception.detail, "query_must_not_be_empty")
+
     def test_missing_dsn_returns_service_unavailable(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(HTTPException) as caught:
