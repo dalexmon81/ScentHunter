@@ -42,6 +42,39 @@ class OfferEngineRuntimeTests(unittest.TestCase):
                 runtime._dsn()
         self.assertEqual(runtime._dsn("postgresql://test"), "postgresql://test")
 
+    def test_default_connection_factory_uses_isolated_sqlite_file(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "offer_engine.sqlite3"
+            connection = runtime.connect_offer_engine_db(db_path=path)
+            try:
+                self.assertIsInstance(connection, sqlite3.Connection)
+                self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
+                self.assertTrue(path.exists())
+            finally:
+                connection.close()
+
+    def test_sqlite_migration_creates_isolated_offer_tables(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "offer_engine.sqlite3"
+            runtime.apply_migration(db_path=path)
+            connection = runtime.connect_offer_engine_db(db_path=path)
+            try:
+                tables = {
+                    row[0] for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+                self.assertIn("sh_products", tables)
+                self.assertIn("sh_current_offers", tables)
+                self.assertNotIn("store_products", tables)
+            finally:
+                connection.close()
+
     def test_migration_commits_and_closes_dedicated_connection(self):
         connection = FakeConnection()
         with patch.object(runtime.psycopg, "connect", return_value=connection) as connect:
