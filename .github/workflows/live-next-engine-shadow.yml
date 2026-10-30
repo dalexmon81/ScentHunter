@@ -12,14 +12,13 @@ on:
           - "yes"
         default: "no"
 
-
 permissions:
   contents: read
 
-
 jobs:
   live-shadow:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.confirm_live_read_only == 'yes' }}
+    # Fail closed: this job may run only from an explicitly confirmed manual dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm_live_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
