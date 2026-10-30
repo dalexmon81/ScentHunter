@@ -1,0 +1,143 @@
+name: Deploy isolated Offer Engine pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: Type deploy to create/update the isolated Fly.io pilot
+        required: true
+        type: choice
+        options:
+          - deploy
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-offer-engine-pilot
+  cancel-in-progress: false
+
+jobs:
+  deploy-pilot:
+    name: Deploy isolated pilot (not production)
+    if: ${{ github.event.inputs.confirm_deploy == 'deploy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: scenthunter-pilot-20261030
+      FLY_VOLUME: scenthunter_pilot_data
+      PILOT_URL: https://scenthunter-pilot-20261030.fly.dev
+    steps:
+      - name: Checkout the architecture branch only
+        uses: actions/checkout@v4
+        with:
+          ref: architecture/offer-engine-v1
+
+      - name: Validate isolated target and Fly token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "architecture/offer-engine-v1" || {
+            echo "Run this workflow from architecture/offer-engine-v1 only." >&2
+            exit 1
+          }
+          test -n "$FLY_API_TOKEN" || {
+            echo "Repository secret FLY_API_TOKEN is missing." >&2
+            exit 1
+          }
+          grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
+          grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
+          echo "Production fly.toml is not used by this workflow."
+
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create or verify isolated Fly app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if flyctl apps show "$FLY_APP" >/dev/null 2>&1; then
+            echo "Isolated pilot app already exists."
+          else
+            flyctl apps create "$FLY_APP"
+          fi
+
+      - name: Create or verify dedicated persistent volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          if flyctl volumes list --app "$FLY_APP" | grep -Fq "$FLY_VOLUME"; then
+            echo "Dedicated pilot volume already exists."
+          else
+            flyctl volumes create "$FLY_VOLUME" \
+              --app "$FLY_APP" \
+              --region ams \
+              --size 1 \
+              --count 1 \
+              --yes
+          fi
+
+      - name: Deploy pilot app
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl deploy --remote-only --config fly.staging.toml --app "$FLY_APP" --yes
+
+      - name: Verify pilot health, read API and user search path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          base = "https://scenthunter-pilot-20261030.fly.dev"
+          query = urllib.parse.urlencode({"query": "Liquid Brun 100 ml", "market": "LU"})
+          last_error = None
+
+          for attempt in range(1, 25):
+              try:
+                  def get(path):
+                      request = urllib.request.Request(
+                          base + path,
+                          headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
+                      )
+                      with urllib.request.urlopen(request, timeout=15) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"{path}: HTTP {response.status}")
+                          return json.loads(response.read().decode("utf-8"))
+
+                  health = get("/health")
+                  if health.get("status") != "healthy":
+                      raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
+                  offer_api = get("/offer-engine/search?" + query)
+                  if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
+                      raise RuntimeError("Read API did not return the expected contract: " + json.dumps(offer_api))
+                  ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
+                  if not isinstance(ui_search, dict):
+                      raise RuntimeError("User search endpoint returned a non-object response.")
+                  print("PILOT_HEALTH=PASS")
+                  print("PILOT_OFFER_ENGINE_READ_API=PASS")
+                  print("PILOT_USER_SEARCH_ENDPOINT=PASS")
+                  print("PILOT_OFFER_COUNT=" + str(offer_api.get("count", 0)))
+                  print("PILOT_URL=" + base)
+                  break
+              except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+                  last_error = f"{type(exc).__name__}: {exc}"
+                  print(f"Attempt {attempt}/24: {last_error}", flush=True)
+                  if attempt < 24:
+                      time.sleep(5)
+          else:
+              raise SystemExit("Pilot smoke test failed: " + str(last_error))
+          PY
+
+      - name: Print pilot URL
+        if: success()
+        run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
