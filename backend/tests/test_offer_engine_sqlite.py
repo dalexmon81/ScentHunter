@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+from decimal import Decimal
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -55,6 +56,42 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(offers[0]["size_ml"], 150)
         self.assertEqual(offers[0]["availability"], "out_of_stock")
         self.assertIsNone(offers[0]["price"])
+
+    def test_read_model_deduplicates_same_retailer_variant_market_by_best_price(self):
+        product = self.catalog.get("SH-0030")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+        listings = [
+            RetailerListing(
+                retailer="parfumzentrum", external_id="duplicate-a",
+                product_url="https://www.parfumzentrum.de/liquid-brun-a.html",
+                raw_title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+                raw_brand="French Avenue", raw_size_ml=100, market="DE",
+            ),
+            RetailerListing(
+                retailer="parfumzentrum", external_id="duplicate-b",
+                product_url="https://www.parfumzentrum.de/liquid-brun-b.html",
+                raw_title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+                raw_brand="French Avenue", raw_size_ml=100, market="DE",
+            ),
+        ]
+        for index, (listing, price) in enumerate(zip(listings, (Decimal("45.00"), Decimal("39.99")))):
+            repository.record(
+                listing,
+                OfferObservation.now(
+                    listing_key=f"parfumzentrum:{listing.external_id}",
+                    price=price, currency="EUR", availability=Availability.IN_STOCK,
+                    source="product_page", verification=Verification.VERIFIED,
+                    product_id=product.product_id, variant_id=variant.variant_id,
+                    evidence_url=listing.product_url, evidence_hash=f"sha256:duplicate-{index}",
+                ),
+            )
+
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(offers[0]["variant_id"], variant.variant_id)
+        self.assertEqual(str(offers[0]["price"]), "39.99")
+        self.assertEqual(offers[0]["product_url"], listings[1].product_url)
 
     def test_unresolved_rematch_clears_old_identity_and_current_price(self):
         product = self.catalog.get("SH-0031")
