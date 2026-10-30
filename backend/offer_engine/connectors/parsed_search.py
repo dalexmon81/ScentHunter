@@ -373,9 +373,6 @@ class ParsedSearchConnector:
             ):
                 continue
             canonical_url = _canonical_listing_url(url, self.retailer)
-            if canonical_url in seen_urls:
-                continue
-            seen_urls.add(canonical_url)
 
             attrs = _mapping(row.get("attributes"))
             identity = _mapping(row.get("identity"))
@@ -385,6 +382,19 @@ class ParsedSearchConnector:
             sku = _field_value(identity.get("sku", row.get("sku")))
             gtin = _field_value(identity.get("gtin", row.get("gtin") or row.get("ean")))
             store_variant_id = _field_value(identity.get("store_variant_id"))
+            # One Shopify product URL may expose several purchasable sizes.
+            # Deduplicate tracking/locale aliases only within the same exact
+            # variant identity; URL-only dedupe silently loses sibling sizes.
+            variant_dedupe_id = str(
+                store_variant_id or gtin
+                or (f"{sku}:{size_ml}" if sku and size_ml is not None else sku)
+                or size_ml
+                or hashlib.sha256(title.encode("utf-8")).hexdigest()[:12]
+            )
+            dedupe_key = (canonical_url, variant_dedupe_id)
+            if dedupe_key in seen_urls:
+                continue
+            seen_urls.add(dedupe_key)
             base_external_id = str(store_variant_id or sku or gtin or hashlib.sha256(
                 f"{url}|{size_ml or ''}|{title}".encode("utf-8")
             ).hexdigest()[:24]).strip()
