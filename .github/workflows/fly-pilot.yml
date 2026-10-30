@@ -50,7 +50,13 @@ jobs:
           # Fly dashboard/org tokens use the FlyV1 macaroon scheme.
           # Some copy surfaces expose only the fm2_ payload; normalize it
           # before flyctl reads FLY_API_TOKEN. Never print the token.
-          normalized_token="${FLY_API_TOKEN//          grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          printf 'FLY_API_TOKEN=%s\\n' "$normalized_token" >> "$GITHUB_ENV"
+          grep -Fq 'app = "scenthunter-pilot-20261030"' fly.staging.toml
           grep -Fq 'source = "scenthunter_pilot_data"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "1"' fly.staging.toml
