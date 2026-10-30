@@ -102,7 +102,10 @@ def resolve_observation(
     verified = OfferObservation(
         listing_key=observation.listing_key,
         observed_at=observation.observed_at,
-        price=observation.price,
+        # Retailer pages sometimes expose a crossed-out/stale price while the
+        # product is explicitly sold out. Preserve it in raw_payload, never as
+        # a usable observation price.
+        price=None if observation.availability is Availability.OUT_OF_STOCK else observation.price,
         currency=observation.currency,
         availability=observation.availability,
         source=observation.source,
