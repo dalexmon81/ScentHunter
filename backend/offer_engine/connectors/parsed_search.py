@@ -120,16 +120,16 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
                 candidates.append(parsed)
         wanted_sku = str(listing.external_id or "")
         wanted_size = listing.raw_size_ml
-        exact = [
+        id_matches = [
             item for item in candidates
-            if (
-                str(_field_value(_mapping(item.get("identity")).get("sku")) or "") == wanted_sku
-                or (
-                    wanted_size is not None
-                    and _positive_size(_mapping(item.get("attributes")).get("size_ml")) == wanted_size
-                )
-            )
+            if str(_field_value(_mapping(item.get("identity")).get("sku")) or "") == wanted_sku
         ]
+        size_matches = [
+            item for item in candidates
+            if wanted_size is not None
+            and _positive_size(_mapping(item.get("attributes")).get("size_ml")) == wanted_size
+        ]
+        exact = id_matches or size_matches
         if len(exact) != 1:
             raise RuntimeError("parfumcity_product_variant_not_uniquely_verified")
         return exact[0]
@@ -158,19 +158,23 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
     if isinstance(result, list):
         expected_size = listing.raw_size_ml
         expected_id = str(listing.external_id or "")
-        matches = []
+        id_matches = []
+        size_matches = []
         for item in result:
             if not isinstance(item, Mapping):
                 continue
             attrs = _mapping(item.get("attributes"))
             identity = _mapping(item.get("identity"))
-            size = _positive_size(attrs.get("size_ml", item.get("size_ml")))
+            size = _positive_size(attrs.get("size_ml")) or _positive_size(item.get("size_ml"))
             ids = {
                 str(_field_value(identity.get(key)) or "")
                 for key in ("sku", "gtin", "store_variant_id", "store_product_id")
             }
-            if (expected_size is None or size == expected_size) and (expected_id in ids or (expected_size is not None and size == expected_size)):
-                matches.append(item)
+            if expected_id in ids:
+                id_matches.append(item)
+            if expected_size is not None and size == expected_size:
+                size_matches.append(item)
+        matches = id_matches or size_matches
         if len(matches) != 1:
             raise RuntimeError(f"{retailer}_product_variant_not_uniquely_verified")
         result = matches[0]
@@ -194,6 +198,21 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
                 if _positive_size(item.get("size_ml")) == listing.raw_size_ml
             ]
             candidates = size_matches
+        if not candidates and len(variants) == 1:
+            candidates = variants
+        if not candidates:
+            page_attributes = _mapping(result.get("attributes"))
+            page_size = (
+                _positive_size(page_attributes.get("size_ml"))
+                or _positive_size(result.get("size_ml"))
+                or _size_from_product_title(result.get("name") or result.get("title"))
+            )
+            if page_size is not None and (
+                listing.raw_size_ml is None or page_size == listing.raw_size_ml
+            ):
+                # The fetched detail page itself exposes one exact size and
+                # its own offer; no sibling variant was returned by the parser.
+                return result
         if len(candidates) != 1:
             raise RuntimeError("sabina_product_variant_not_uniquely_verified")
         variant = candidates[0]
