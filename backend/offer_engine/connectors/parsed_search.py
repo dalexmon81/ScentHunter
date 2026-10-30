@@ -209,7 +209,7 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
                 or _positive_size(result.get("size_ml"))
                 or _size_from_product_title(result.get("name") or result.get("title"))
             )
-            if page_size is not None and (
+            if not variants and page_size is not None and (
                 listing.raw_size_ml is None or page_size == listing.raw_size_ml
             ):
                 # The fetched detail page itself exposes one exact size and
