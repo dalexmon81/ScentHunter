@@ -14,12 +14,18 @@ class ProductionShadowWorkflowTests(unittest.TestCase):
         self.assertIn('get_json("/search-status?job_id="', source)
         self.assertNotIn('get_json("/search?q="', source)
 
-    def test_production_comparison_remains_read_only_and_manual(self) -> None:
+    def test_production_comparison_is_manual_and_discloses_possible_side_effects(self) -> None:
         source = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", source)
-        self.assertIn('"catalog_modified": False', source)
-        self.assertIn('"database_mutated": False', source)
-        self.assertIn("Production Next Engine shadow comparison: PASS", source)
+        self.assertIn("confirm_production_shadow == 'yes'", source)
+        self.assertIn("reprioritize hydration", source)
+        self.assertIn('"workflow_direct_catalog_writes": False', source)
+        self.assertIn('"production_search_may_reprioritize_hydration_queue": True', source)
+        self.assertIn('"background_hydration_may_update_catalog": True', source)
+        self.assertIn('"configured_live_retailer_fallbacks_may_run": True', source)
+        self.assertNotIn('"catalog_modified": False', source)
+        self.assertNotIn('"database_mutated": False', source)
+        self.assertIn("hydration/fallback side effects were possible", source)
 
 
 if __name__ == "__main__":
