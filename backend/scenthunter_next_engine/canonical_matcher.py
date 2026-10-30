@@ -73,6 +73,16 @@ def _retailer_title_core(value: str) -> str:
     distinguish a different sellable product.
     """
     core = normalize_identity_text(value)
+    # Concentration is a separate canonical attribute, not part of the
+    # product name. Remove explicit concentration markers wherever retailers
+    # place them; _explicit_concentration() still preserves this evidence for
+    # disambiguating products that share a name.
+    core = re.sub(
+        r"\\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|edp|edt|edc)\\b",
+        " ",
+        core,
+    )
+    core = _SPACE_RE.sub(" ", core).strip()
     changed = True
     while core and changed:
         changed = False
