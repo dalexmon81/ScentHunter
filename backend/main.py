@@ -5078,7 +5078,6 @@ def _search_with_offer_engine(query: str):
                 "offers_published": item.offers_published,
                 "unresolved": item.unresolved,
                 "errors": item.errors,
-                "unresolved_samples": item.unresolved_samples,
             },
         }
         if item.errors:
