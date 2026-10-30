@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 try:
-    from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries
+    from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, prioritize_product_queries
 except ModuleNotFoundError:
     from backend.offer_engine.refresh_worker import _next_query, _record_result, build_product_queries
 
@@ -34,6 +34,17 @@ class RefreshWorkerQueryTests(unittest.TestCase):
                 "Afnan 9PM 100 ml",
                 "Dior Sauvage Elixir 60 ml",
             ],
+        )
+
+    def test_priority_queries_move_pilot_variants_to_front_stably(self):
+        self.assertEqual(
+            prioritize_product_queries(
+                ["Afnan 9PM 100 ml", "Lattafa Liquid Brun 100 ml", "Dior Sauvage Elixir 60 ml",
+                 "Lattafa Liquid Brun Limited Edition 150 ml"],
+                ["Lattafa Liquid Brun 100 ml", "Lattafa Liquid Brun Limited Edition 150 ml"],
+            ),
+            ["Lattafa Liquid Brun 100 ml", "Lattafa Liquid Brun Limited Edition 150 ml",
+             "Afnan 9PM 100 ml", "Dior Sauvage Elixir 60 ml"],
         )
 
     def test_empty_catalog_returns_no_queries(self):
