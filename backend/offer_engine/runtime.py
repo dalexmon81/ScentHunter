@@ -14,6 +14,7 @@ import psycopg
 
 from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
+from .connectors.notino import NotinoFeedConnector
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
@@ -72,7 +73,13 @@ def run_offer_engine(
 
     try:
         runner = OfferEngineRunner(matcher, repository_factory)
-        return runner.run(connectors or [DelooxConnector()], query)
+        active_connectors = list(connectors) if connectors is not None else [DelooxConnector()]
+        # Notino's approved CJ/VIV feed is an authenticated, structured source.
+        # Add it only when all credentials are configured; never make the
+        # entire run fail just because this optional feed is not provisioned.
+        if connectors is None and NotinoFeedConnector.configured():
+            active_connectors.append(NotinoFeedConnector())
+        return runner.run(active_connectors, query)
     finally:
         for connection in connections:
             try:
