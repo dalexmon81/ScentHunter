@@ -126,7 +126,7 @@ class OfferReadRepository:
                 search_params = [f"%{token}%" for token in tokens for _ in range(5)]
                 if requested_size is not None:
                     search_params.append(requested_size)
-                params = tuple(search_params + [normalized_market, normalized_market, int(limit)])
+                params = tuple(search_params + [normalized_market, normalized_market])
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             columns = [
