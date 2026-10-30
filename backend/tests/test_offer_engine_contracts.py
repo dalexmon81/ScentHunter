@@ -25,5 +25,10 @@ class OfferEngineContractTests(unittest.TestCase):
   o=OfferObservation("deloox:1",now,None,"EUR",Availability.OUT_OF_STOCK,"product_page",Verification.VERIFIED,"p","v","https://example.com/p","sha256:abc")
   decision=OfferPolicy().evaluate(o,now=now)
   self.assertTrue(decision.publish); self.assertEqual(decision.reason,"verified_out_of_stock")
+ def test_zero_price_is_not_published_as_a_purchasable_offer(self):
+  now=datetime.now(timezone.utc)
+  o=OfferObservation("deloox:1",now,Decimal("0"),"EUR",Availability.IN_STOCK,"product_page",Verification.VERIFIED,"p","v","https://example.com/p","sha256:abc")
+  decision=OfferPolicy().evaluate(o,now=now)
+  self.assertFalse(decision.publish); self.assertEqual(decision.reason,"price_not_positive")
 
 if __name__ == "__main__": unittest.main()
