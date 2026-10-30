@@ -73,7 +73,7 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
     def test_market_and_evidence_url_follow_actual_storefront_locale(self):
         url = "https://www.deloox.nl/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
         parsed = page(url, "French Avenue Liquid Brun Eau de Parfum 100 ml", 100, "in_stock", 49.95)
-        with patch("backend.offer_engine.connectors.deloox.scraper.search", return_value=[parsed]), \\
+        with patch("backend.offer_engine.connectors.deloox.scraper.search", return_value=[parsed]), \
              patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed):
             connector = DelooxConnector(session=object())
             listing = next(iter(connector.discover("Liquid Brun")))
