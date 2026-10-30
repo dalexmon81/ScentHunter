@@ -124,7 +124,7 @@ class OfferRepository:
                      observation.variant_id, observation.observed_at),
                 )
                 published = cursor.rowcount == 1
-            elif observation.verification is Verification.VERIFIED and decision.reason in {"out_of_stock", "price_missing"}:
+            elif observation.verification is Verification.VERIFIED and decision.reason in {"out_of_stock_price_present", "price_missing"}:
                 # A newer, verified non-purchasable observation must retire an
                 # older current offer; otherwise stale prices remain visible.
                 cursor.execute(
