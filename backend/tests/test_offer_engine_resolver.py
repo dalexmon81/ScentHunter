@@ -47,10 +47,11 @@ def fixture(availability=Availability.OUT_OF_STOCK, size=150):
         "brand": "French Avenue",
         "attributes": {"size_ml": {"value": size}},
         "raw_data": {"jsonld": {"gtin13": "6298042001831"}},
+        "offer": {"price": "49.95", "availability": availability.value},
     }
     observation = OfferObservation.now(
         listing_key="deloox:1385920",
-        price=None if availability is Availability.OUT_OF_STOCK else Decimal("49.95"),
+        price=Decimal("49.95"),
         currency="EUR",
         availability=availability,
         source="product_page",
@@ -73,6 +74,7 @@ class OfferEngineResolverTests(unittest.TestCase):
         self.assertEqual(result.observation.variant_id, "VAR-f5aff76b4bb5de8a")
         self.assertEqual(result.observation.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(result.observation.price)
+        self.assertEqual(result.observation.raw_payload["parsed_page"]["offer"]["price"], "49.95")
         from backend.offer_engine.policy import OfferPolicy
         self.assertTrue(OfferPolicy().evaluate(result.observation).publish)
         self.assertEqual(result.observation.verification, Verification.VERIFIED)
