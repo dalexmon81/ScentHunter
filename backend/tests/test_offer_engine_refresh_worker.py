@@ -8,14 +8,25 @@ from offer_engine.refresh_worker import _next_query, _record_result, build_produ
 class RefreshWorkerQueryTests(unittest.TestCase):
     def test_builds_one_brand_qualified_query_per_product_with_variants(self):
         catalog = SimpleNamespace(all_products=lambda: [
-            SimpleNamespace(brand="Lattafa", name="Liquid Brun", variants=[object(), object()]),
-            SimpleNamespace(brand="Lattafa", name="Liquid Brun", variants=[object()]),
+            SimpleNamespace(brand="Lattafa", name="Liquid Brun", variants=[
+                SimpleNamespace(size_ml=100, label=None),
+                SimpleNamespace(size_ml=150, label="Liquid Brun Limited Edition"),
+            ]),
+            SimpleNamespace(brand="Lattafa", name="Liquid Brun", variants=[
+                SimpleNamespace(size_ml=100, label=None),
+            ]),
             SimpleNamespace(brand="Rasasi", name="Hawas", variants=[]),
-            SimpleNamespace(brand="Afnan", name="9PM", variants=[object()]),
+            SimpleNamespace(brand="Afnan", name="9PM", variants=[
+                SimpleNamespace(size_ml=100, label=None),
+            ]),
         ])
         self.assertEqual(
             build_product_queries(catalog),
-            ["Lattafa Liquid Brun", "Afnan 9PM"],
+            [
+                "Lattafa Liquid Brun 100 ml",
+                "Lattafa Liquid Brun Liquid Brun Limited Edition 150 ml",
+                "Afnan 9PM 100 ml",
+            ],
         )
 
     def test_empty_catalog_returns_no_queries(self):
