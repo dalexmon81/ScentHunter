@@ -199,7 +199,9 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
             ]
             candidates = size_matches
         if not candidates and len(variants) == 1:
-            candidates = variants
+            only_variant_size = _positive_size(variants[0].get("size_ml"))
+            if listing.raw_size_ml is None or only_variant_size == listing.raw_size_ml:
+                candidates = variants
         if not candidates:
             page_attributes = _mapping(result.get("attributes"))
             page_size = (
