@@ -29,10 +29,13 @@ def build_product_queries(catalog: Any) -> list[str]:
             if variant.size_ml is None:
                 continue
             parts = [product.brand, product.name]
-            if variant.label and variant.label.casefold() not in {
-                product.name.casefold(), product.brand.casefold()
-            }:
-                parts.append(variant.label)
+            if variant.label:
+                label = variant.label.strip()
+                folded_label = label.casefold()
+                if "limited edition" in folded_label:
+                    parts.append("Limited Edition")
+                elif folded_label not in {product.name.casefold(), product.brand.casefold()}:
+                    parts.append(label)
             parts.append(f"{int(variant.size_ml)} ml")
             query = " ".join(part.strip() for part in parts if part and part.strip())
             key = query.casefold()
