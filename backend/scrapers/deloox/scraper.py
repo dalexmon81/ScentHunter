@@ -1066,6 +1066,15 @@ def _discover_from_search(session, query, deadline=None):
                 failed_pages += 1
                 note_failure("empty_body")
                 continue
+            challenge_html = r.text[:20000].lower()
+            if (
+                re.search(r"<title[^>]*>\\s*client challenge\\s*</title>", challenge_html)
+                or "cf-chl-" in challenge_html
+                or "challenge-platform" in challenge_html
+            ):
+                failed_pages += 1
+                note_failure("client_challenge")
+                continue
 
             successful_pages += 1
             base = f"{urlparse(r.url).scheme}://{urlparse(r.url).netloc}"
@@ -1244,7 +1253,7 @@ def _discover_from_search(session, query, deadline=None):
     ]
     _LAST_DISCOVERY_STATE["search_candidates"] = len(candidates)
     _LAST_DISCOVERY_STATE["selected_search_surface"] = selected_endpoint
-    _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
+    _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0 or bool(candidates)
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
 
