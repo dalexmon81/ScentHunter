@@ -67,12 +67,12 @@ jobs:
             echo "App creation returned non-zero; checking whether it already exists."
           fi
           app_names="$(flyctl apps list --org "$FLY_ORG" --quiet 2>&1)" || {
-            printf '%s\\n' "$app_names" >&2
+            printf '%s\n' "$app_names" >&2
             echo "Cannot list apps in the target organization; refusing volume/deploy." >&2
             exit 1
           }
-          printf '%s\\n' "$app_names"
-          printf '%s\\n' "$app_names" | grep -Fxq "$FLY_APP" || {
+          printf '%s\n' "$app_names"
+          printf '%s\n' "$app_names" | grep -Fxq "$FLY_APP" || {
             echo "Fly app is not present in organization $FLY_ORG; refusing volume/deploy." >&2
             exit 1
           }
