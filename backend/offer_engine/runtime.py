@@ -16,7 +16,6 @@ from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
 from .connectors.parsed_search import ParsedSearchConnector
-from .connectors.notino import NotinoFeedConnector
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
