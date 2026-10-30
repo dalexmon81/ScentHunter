@@ -124,6 +124,14 @@ class OfferRepository:
                      observation.variant_id, observation.observed_at),
                 )
                 published = cursor.rowcount == 1
+            elif observation.verification is Verification.VERIFIED and decision.reason in {"out_of_stock", "price_missing"}:
+                # A newer, verified non-purchasable observation must retire an
+                # older current offer; otherwise stale prices remain visible.
+                cursor.execute(
+                    """DELETE FROM sh_current_offers
+                       WHERE listing_id=%s AND verified_at <= %s""",
+                    (listing_id, observation.observed_at),
+                )
             self.connection.commit()
             return {
                 "listing_id": listing_id,
