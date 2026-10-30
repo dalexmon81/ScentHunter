@@ -67,6 +67,17 @@ def _identity_name(value: Any, brand: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _unsupported_storefront_locale(url: Any) -> bool:
+    """Detect Deloox Spanish routes accidentally attached to another market host."""
+    try:
+        parsed = urlparse(str(url or ""))
+    except ValueError:
+        return True
+    host = (parsed.hostname or "").casefold().removeprefix("www.")
+    first_segment = next((part.casefold() for part in parsed.path.split("/") if part), "")
+    return host.startswith("deloox.") and first_segment == "producto" and host != "deloox.es"
+
+
 def _retailer_domain(url: Any) -> str | None:
     try:
         parsed = urlparse(str(url or ""))
@@ -233,6 +244,9 @@ def learn_variants(
         size = _explicit_size(item.get("size_ml"))
         url = str(item.get("product_url") or item.get("url") or "")
         domain = _retailer_domain(url)
+        if _unsupported_storefront_locale(url):
+            rejected["storefront_locale_conflict"] += 1
+            continue
         title_concentration = _concentration(name)
         url_concentration = _concentration(url.replace("-", " ").replace("_", " "))
         concentration = title_concentration or url_concentration
@@ -344,6 +358,9 @@ def learn_variants(
         retailer = str(item.get("retailer") or "").strip()
         url = str(item.get("product_url") or item.get("url") or "").strip()
         domain = _retailer_domain(url)
+        if _unsupported_storefront_locale(url):
+            rejected["storefront_locale_conflict"] += 1
+            continue
         brand = str(item.get("brand") or "").strip()
         name = str(item.get("name") or item.get("raw_name") or "").strip()
         product_brand = str(product.get("brand_name") or "").strip()
