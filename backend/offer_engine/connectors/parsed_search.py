@@ -384,7 +384,7 @@ class ParsedSearchConnector:
             brand = str(row.get("brand") or row.get("product_brand") or "").strip()
             # A multi-item set is not a single sellable perfume variant and
             # must not be compared against a bottle-only canonical product.
-            if re.search(r"\\b(?:gift set|gift box|mystery box|discovery set|coffret)\\b", title, re.I):
+            if re.search(r"\b(?:gift set|gift box|mystery box|discovery set|coffret)\b", title, re.I):
                 continue
             base_url = str(getattr(scraper, "BASE_URL", "") or "").strip()
             raw_url = str(row.get("url") or row.get("product_url") or row.get("link") or "").strip()
