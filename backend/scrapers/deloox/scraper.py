@@ -72,6 +72,16 @@ def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
 
+def _is_client_challenge_html(value):
+    """Recognize Cloudflare challenge documents, including HTTP-200 interstitials."""
+    sample = str(value or "")[:20000].lower()
+    return bool(
+        re.search(r"<title[^>]*>\\s*client challenge\\s*</title>", sample)
+        or "cf-chl-" in sample
+        or "challenge-platform" in sample
+    )
+
+
 def norm(v):
     # Normalize accented product names (e.g. Giò -> Gio) before token matching.
     text = unicodedata.normalize("NFKD", clean(v).lower())
@@ -1066,12 +1076,7 @@ def _discover_from_search(session, query, deadline=None):
                 failed_pages += 1
                 note_failure("empty_body")
                 continue
-            challenge_html = r.text[:20000].lower()
-            if (
-                re.search(r"<title[^>]*>\s*client challenge\s*</title>", challenge_html)
-                or "cf-chl-" in challenge_html
-                or "challenge-platform" in challenge_html
-            ):
+            if _is_client_challenge_html(r.text):
                 failed_pages += 1
                 note_failure("client_challenge")
                 continue
