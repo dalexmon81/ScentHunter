@@ -1,8 +1,9 @@
-"""Adapter for existing retailer-specific search-stream parsers.
+"""Adapter for retailer discovery plus independent product-detail verification.
 
-Each retailer keeps its own discovery and product-page parsing logic. This
-adapter only translates the already-parsed row into Offer Engine contracts;
-it never assigns canonical IDs or upgrades unknown stock to in-stock.
+Search results identify candidate URLs only. Every offer fact persisted by this
+adapter is fetched again from the exact retailer product page (or authorized
+store product JSON endpoint); search snippets are retained for diagnostics
+but never used as price, stock, or variant evidence.
 """
 from __future__ import annotations
 
@@ -122,6 +123,12 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
             raise RuntimeError(f"{retailer}_product_page_parser_unavailable")
         if retailer == "easycosmetic":
             result = parser(session, listing.product_url)
+        elif retailer == "sabina":
+            result = parser(session, listing.product_url, listing.raw_title, authoritative_search=True)
+        elif retailer == "orioudh":
+            # The Shopify product JSON endpoint is already tied to this exact
+            # discovered URL; derive its identity from the URL, not search text.
+            result = parser(session, listing.product_url, "")
         else:
             result = parser(session, listing.product_url, listing.raw_title)
 
