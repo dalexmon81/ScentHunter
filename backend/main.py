@@ -43,6 +43,23 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+# An explicit one-time migration switch for the isolated Offer Engine file.
+# It is off by default; when enabled, startup fails rather than serving a
+# partially migrated Offer Engine database.
+_OFFER_ENGINE_MIGRATION_APPLIED = False
+if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    try:
+        try:
+            from offer_engine.runtime import apply_migration as apply_offer_engine_migration
+        except ModuleNotFoundError:
+            from backend.offer_engine.runtime import apply_migration as apply_offer_engine_migration
+        apply_offer_engine_migration()
+        _OFFER_ENGINE_MIGRATION_APPLIED = True
+        print('OFFER_ENGINE_MIGRATION_APPLIED', flush=True)
+    except Exception as exc:
+        raise RuntimeError(f'OFFER_ENGINE_MIGRATION_FAILED: {type(exc).__name__}: {exc}') from exc
+
+
 # Optional read-only Offer Engine API. Disabled by default: it uses a separate
 # Offer Engine SQLite file (or optional PostgreSQL DSN), never the legacy catalog DB.
 _OFFER_ENGINE_API_MOUNTED = False
