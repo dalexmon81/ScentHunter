@@ -92,6 +92,17 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(listing.market, "NL")
         self.assertEqual(observation.evidence_url, url)
 
+    def test_spain_storefront_is_recorded_as_es_market(self):
+        url = "https://www.deloox.es/produit/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html"
+        parsed = page(url, "French Avenue Liquid Brun Eau de Parfum 100 ml", 100, "in_stock", 49.95)
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={"status": "success", "verified": True, "results": [parsed], "details": {}}), \\
+             patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            observation = connector.observe(listing)
+        self.assertEqual(listing.market, "ES")
+        self.assertEqual(observation.evidence_url, url)
+
     def test_cross_market_redirect_is_rejected(self):
         be_url = URL_100
         nl_url = URL_100.replace(".deloox.be", ".deloox.nl")
