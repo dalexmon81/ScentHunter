@@ -13,7 +13,7 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Mapping
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urljoin, urlparse
 
 import requests
 
@@ -216,6 +216,23 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
     return result
 
 
+
+def _canonical_listing_url(url: str, retailer: str) -> tuple[str, str, tuple[tuple[str, str], ...]]:
+    """Ignore storefront tracking and locale aliases for duplicate detection only."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    path = parsed.path.rstrip("/") or "/"
+    if retailer == "perfumemarket" and path.lower().startswith("/nl/products/"):
+        path = path[3:]
+    tracking = {"_pos", "_psq", "_psid", "_ss", "fbclid", "gclid", "ref", "source"}
+    query = tuple(sorted(
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=False)
+        if key.casefold() not in tracking and not key.casefold().startswith("utm_")
+    ))
+    return host, path, query
+
+
 def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session, query: str) -> dict[str, Any]:
     page = _normalise_product_page(scraper, retailer, listing, session, query)
     source = _mapping(page.get("source"))
@@ -337,6 +354,7 @@ class ParsedSearchConnector:
         listings = []
         self._rows = {}
         seen = set()
+        seen_urls = set()
         for raw in result.get("results") or []:
             if not isinstance(raw, Mapping):
                 continue
@@ -354,6 +372,10 @@ class ParsedSearchConnector:
                 or not host or (base_host and host != base_host and not host.endswith("." + base_host))
             ):
                 continue
+            canonical_url = _canonical_listing_url(url, self.retailer)
+            if canonical_url in seen_urls:
+                continue
+            seen_urls.add(canonical_url)
 
             attrs = _mapping(row.get("attributes"))
             identity = _mapping(row.get("identity"))
