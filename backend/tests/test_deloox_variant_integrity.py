@@ -94,6 +94,53 @@ class DelooxVariantIntegrityTests(unittest.TestCase):
         self.assertEqual(result["offer"]["price"], 32.99)
 
 
+    def test_multiple_jsonld_offers_select_the_exact_requested_size(self):
+        html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Valentino Born in Roma Donna Eau de Parfum",
+          "brand": {"@type": "Brand", "name": "Valentino"},
+          "offers": [
+            {"@type": "Offer", "size": {"@type": "QuantitativeValue", "value": 30, "unitText": "ml"}, "price": "60.99", "priceCurrency": "EUR"},
+            {"@type": "Offer", "size": {"@type": "QuantitativeValue", "value": 50, "unitText": "ml"}, "price": "82.59", "priceCurrency": "EUR"},
+            {"@type": "Offer", "size": {"@type": "QuantitativeValue", "value": 100, "unitText": "ml"}, "price": "109.99", "priceCurrency": "EUR"}
+          ]
+        }
+        </script></head><body><h1>Valentino Born in Roma Donna Eau de Parfum</h1></body></html>
+        """
+        result = scraper._product(
+            "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html",
+            html,
+            "Valentino Born in Roma Donna Eau de Parfum 50 ml",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["offer"]["price"], 82.59)
+
+    def test_multiple_jsonld_offers_without_offer_level_size_fail_closed(self):
+        html = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Valentino Born in Roma Donna Eau de Parfum",
+          "brand": {"@type": "Brand", "name": "Valentino"},
+          "size": {"@type": "QuantitativeValue", "value": 50, "unitText": "ml"},
+          "offers": [
+            {"@type": "Offer", "price": "80.79", "priceCurrency": "EUR"},
+            {"@type": "Offer", "price": "82.59", "priceCurrency": "EUR"}
+          ]
+        }
+        </script></head><body><h1>Valentino Born in Roma Donna Eau de Parfum</h1></body></html>
+        """
+        result = scraper._product(
+            "https://www.deloox.lu/produit/1215287/valentino-born-in-roma-donna-eau-de-parfum-50-ml.html",
+            html,
+            "Valentino Born in Roma Donna Eau de Parfum 50 ml",
+        )
+        self.assertIsNone(result)
+
     def test_out_of_stock_deloox_offer_remains_visible_without_price(self):
         # Confirmed stock status should be visible, but it must not invent a price.
         self.assertFalse(catalog._should_hide_deloox_offer("deloox", "out_of_stock", None))
