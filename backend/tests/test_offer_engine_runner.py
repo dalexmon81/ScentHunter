@@ -70,7 +70,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
         with patch(
             "backend.offer_engine.runner.resolve_observation",
             side_effect=lambda listing, observation, matcher: type(
-                "Resolution", (), {"status": "unresolved", "observation": observation}
+                "Resolution", (), {"status": "unresolved", "reason": "test_unresolved", "observation": observation}
             )(),
         ):
             result = runner.run([broken, healthy], "perfume")
@@ -79,6 +79,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
         self.assertEqual(result.listings_seen, 1)
         self.assertEqual(result.observations_written, 1)
         self.assertEqual(len(repositories["healthy"].records), 1)
+        self.assertEqual(result.connectors[1].unresolved_samples[0]["reason"], "test_unresolved")
         self.assertIn("blocked", result.connectors[0].errors[0])
 
     def test_one_listing_failure_marks_connector_partial_and_keeps_going(self):
