@@ -177,7 +177,7 @@ def result_exit_code(result: dict) -> int:
 def main() -> None:
     result = run()
     output = json.dumps(result, ensure_ascii=False, indent=2)
-    Path("next-engine-live-offer-engine-smoke.json").write_text(output + "\\n", encoding="utf-8")
+    Path("next-engine-live-offer-engine-smoke.json").write_text(output + "\n", encoding="utf-8")
     print(output)
     if result_exit_code(result):
         raise SystemExit(
