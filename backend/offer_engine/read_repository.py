@@ -35,7 +35,7 @@ class OfferReadRepository:
                 requested_size = int(size_parts[index - 1])
                 break
         if requested_size is not None:
-            tokens = [token for token in tokens if token != str(requested_size) and token != "ml"]
+            tokens = [token for token in tokens if token not in {str(requested_size), f"{requested_size}ml", "ml"}]
         else:
             tokens = [token for token in tokens if token != "ml"]
         if not tokens and requested_size is None:
