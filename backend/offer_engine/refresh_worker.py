@@ -150,6 +150,23 @@ def refresh_once() -> dict[str, Any]:
 
     try:
         result = run_offer_engine(query)
+        # Keep per-retailer diagnostics in the worker log. A retailer can
+        # return partial (some listings rejected) without being classified as
+        # failed; hiding those errors made an empty storefront impossible to
+        # diagnose from the aggregate counters alone.
+        connector_reports = [
+            {
+                "retailer": item.retailer,
+                "status": item.status,
+                "listings_seen": item.listings_seen,
+                "observations_written": item.observations_written,
+                "offers_published": item.offers_published,
+                "unresolved": item.unresolved,
+                "errors": item.errors[:8],
+                "unresolved_samples": item.unresolved_samples[:5],
+            }
+            for item in result.connectors
+        ]
         summary = {
             "query": query,
             "connectors": len(result.connectors),
@@ -157,6 +174,8 @@ def refresh_once() -> dict[str, Any]:
             "observations_written": result.observations_written,
             "offers_published": result.offers_published,
             "failed_connectors": [item.retailer for item in result.connectors if item.status == "failed"],
+            "partial_connectors": [item.retailer for item in result.connectors if item.status == "partial"],
+            "connector_reports": connector_reports,
         }
         connection = connect_offer_engine_db()
         try:
