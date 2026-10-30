@@ -85,6 +85,8 @@ class DelooxConnector:
         evidence_url = str(row.get("url") or listing.product_url).strip()
         if not evidence_url.startswith(("https://", "http://")) or _deloox_market(evidence_url, "") == "":
             raise ValueError("deloox_final_url_invalid_or_wrong_market")
+        if _deloox_market(evidence_url) != listing.market:
+            raise ValueError("deloox_market_changed_since_discovery")
         raw_availability = str(offer.get("availability") or "unknown").lower()
         availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
         raw_price = offer.get("price")
