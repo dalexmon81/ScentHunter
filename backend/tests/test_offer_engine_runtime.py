@@ -10,13 +10,13 @@ from backend.offer_engine.runner import EngineRunResult
 
 class FakeCursor:
     def __init__(self):
-        self.sql = None
+        self.sql = []
     def __enter__(self):
         return self
     def __exit__(self, *_args):
         return False
     def execute(self, sql):
-        self.sql = sql
+        self.sql.append(sql)
 
 
 class FakeConnection:
@@ -47,7 +47,8 @@ class OfferEngineRuntimeTests(unittest.TestCase):
         with patch.object(runtime.psycopg, "connect", return_value=connection) as connect:
             runtime.apply_migration("postgresql://test")
         connect.assert_called_once_with("postgresql://test")
-        self.assertIn("CREATE TABLE IF NOT EXISTS sh_products", connection.cursor_instance.sql)
+        self.assertTrue(any("CREATE TABLE IF NOT EXISTS sh_products" in sql for sql in connection.cursor_instance.sql))
+        self.assertTrue(any("DROP CONSTRAINT IF EXISTS sh_retailer_listings_retailer_id_product_url_key" in sql for sql in connection.cursor_instance.sql))
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
         self.assertTrue(connection.closed)
