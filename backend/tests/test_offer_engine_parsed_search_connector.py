@@ -89,6 +89,24 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 100)
         self.assertEqual(observation.raw_payload["parsed_page"]["identity"]["gtin"]["value"], "6298042001008")
 
+    def test_product_page_variant_size_mismatch_is_rejected(self):
+        scraper = FakeScraper(
+            {
+                "status": "success", "verified": True,
+                "results": [self._row(size_ml=100)],
+            },
+            page_overrides={"size_ml": 150},
+        )
+        connector = ParsedSearchConnector(
+            "parfumzentrum",
+            "scrapers.parfumzentrum.scraper",
+            "DE",
+            scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        with self.assertRaisesRegex(RuntimeError, "product_variant_size_mismatch"):
+            connector.observe(listing)
+
     def test_search_snippet_price_is_ignored_in_favor_of_product_page_price(self):
         scraper = FakeScraper(
             {
