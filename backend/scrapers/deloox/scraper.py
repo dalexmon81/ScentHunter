@@ -1068,7 +1068,7 @@ def _discover_from_search(session, query, deadline=None):
                 continue
             challenge_html = r.text[:20000].lower()
             if (
-                re.search(r"<title[^>]*>\\s*client challenge\\s*</title>", challenge_html)
+                re.search(r"<title[^>]*>\s*client challenge\s*</title>", challenge_html)
                 or "cf-chl-" in challenge_html
                 or "challenge-platform" in challenge_html
             ):
