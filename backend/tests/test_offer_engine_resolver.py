@@ -205,5 +205,49 @@ class OfferEngineResolverTests(unittest.TestCase):
         self.assertEqual(result.observation.verification, Verification.UNVERIFIED)
 
 
+    def test_duplicate_profondo_identity_requires_verified_gtin_for_exact_variant(self):
+        root = Path(__file__).resolve().parents[2]
+        catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
+        matcher = CanonicalMatcher(catalog)
+
+        ambiguous_offer = RetailerOffer(
+            retailer="retailer-without-gtin",
+            raw_name="Giorgio Armani Acqua di Gio Profondo Eau de Parfum 100 ml",
+            product_url="https://example.com/profondo-100",
+            retailer_product_id="profondo-100",
+            brand_raw="Armani",
+            size_ml=100,
+            price=Decimal("83.95"),
+            currency="EUR",
+            availability="in_stock",
+            raw_payload={},
+        )
+        ambiguous = matcher.match(ambiguous_offer)
+        self.assertEqual(ambiguous.status, MatchStatus.AMBIGUOUS)
+        self.assertEqual(
+            set(ambiguous.candidate_product_ids),
+            {"SH-0043", "SH-AUTO-0019"},
+        )
+
+        verified_offer = RetailerOffer(
+            retailer="parfumzentrum",
+            raw_name="Giorgio Armani Acqua di Gio Profondo Eau de Parfum 100 ml",
+            product_url="https://www.parfum-zentrum.de/giorgio-armani-acqua-di-gio-profondo-eau-de-parfum-nachfullbar-100-ml-man_z947818/",
+            retailer_product_id="947818",
+            brand_raw="Armani",
+            size_ml=100,
+            gtin="3614273953849",
+            price=Decimal("83.95"),
+            currency="EUR",
+            availability="in_stock",
+            raw_payload={"gtin": "3614273953849"},
+        )
+        verified = matcher.match(verified_offer)
+        self.assertEqual(verified.status, MatchStatus.MATCHED)
+        self.assertEqual(verified.canonical_product_id, "SH-AUTO-0019")
+        self.assertEqual(verified.canonical_variant_id, "VAR-46b03c1f1cff0a6e")
+        self.assertEqual(verified.reason, "verified_gtin_exact_variant")
+
+
 if __name__ == "__main__":
     unittest.main()
