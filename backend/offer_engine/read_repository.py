@@ -28,8 +28,12 @@ class OfferReadRepository:
             raise ValueError("limit must be between 1 and 200")
         normalized_market = str(market).strip().upper() if market else None
         tokens = re.findall(r"[a-z0-9]+", term.casefold())
-        size_match = re.search(r"(?<!\\d)(\\d{1,4})\\s*ml\\b", term, flags=re.I)
-        requested_size = int(size_match.group(1)) if size_match else None
+        size_parts = term.casefold().replace("ml", " ml").split()
+        requested_size = None
+        for index, part in enumerate(size_parts):
+            if part == "ml" and index > 0 and size_parts[index - 1].isdigit():
+                requested_size = int(size_parts[index - 1])
+                break
         if requested_size is not None:
             tokens = [token for token in tokens if token != size_match.group(1) and token != "ml"]
         else:
