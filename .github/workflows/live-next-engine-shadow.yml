@@ -51,6 +51,9 @@ jobs:
       - name: Run live Offer Engine end-to-end smoke in temporary SQLite
         env:
           PYTHONUNBUFFERED: "1"
+          NOTINO_CJ_FEED_URL: ${{ secrets.NOTINO_CJ_FEED_URL }}
+          NOTINO_CJ_FEED_USERNAME: ${{ secrets.NOTINO_CJ_FEED_USERNAME }}
+          NOTINO_CJ_FEED_PASSWORD: ${{ secrets.NOTINO_CJ_FEED_PASSWORD }}
         run: python -m backend.offer_engine.live_offer_engine_smoke
 
       - name: Upload live comparison report
