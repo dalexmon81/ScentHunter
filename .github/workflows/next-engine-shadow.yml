@@ -79,6 +79,7 @@ jobs:
           backend/tests/test_offer_engine_main_search.py
           backend/tests/test_offer_engine_sqlite.py
           backend/tests/test_deloox_search_challenge.py
+          tests/test_next_engine_production_shadow_workflow.py
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
