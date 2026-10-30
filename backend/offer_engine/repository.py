@@ -168,6 +168,7 @@ class OfferRepository:
                     canonical_variant_id, match_status)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    {conflict_target}
+                   {conflict_update}
                    RETURNING listing_id"""
             self._execute(cursor, listing_sql,
                 (listing.retailer, external_id, listing.product_url, listing.market,
