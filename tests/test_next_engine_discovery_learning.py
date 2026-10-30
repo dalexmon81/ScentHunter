@@ -475,3 +475,34 @@ def test_nonstandard_catalog_concentration_label_does_not_block_explicit_variant
     assert result["report"]["variants_added"] == 1
     assert result["report"]["added_variants"][0]["size_ml"] == 100
 
+def test_url_identity_allows_reordered_brand_and_gender_tokens():
+    catalog = {
+        "products": [{
+            "product_id": "SH-VALENTINO-1",
+            "brand_name": "Valentino",
+            "canonical_name": "Born in Roma Donna",
+            "concentration": "",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "product_id": "SH-VALENTINO-1",
+            "name": "Born in Roma Donna Eau de Parfum",
+            "brand": "Valentino",
+            "size_ml": 50,
+            "retailer": "Store A",
+            "product_url": "https://a.example/valentino-donna-born-in-roma-eau-de-parfum-50ml",
+        },
+        {
+            "product_id": "SH-VALENTINO-1",
+            "name": "Born in Roma Donna Eau de Parfum",
+            "brand": "Valentino",
+            "size_ml": 50,
+            "retailer": "Store B",
+            "product_url": "https://b.example/valentino-born-in-roma-donna-edp-vapo-50ml",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+
