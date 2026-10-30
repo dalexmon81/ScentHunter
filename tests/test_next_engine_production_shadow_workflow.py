@@ -26,6 +26,8 @@ class ProductionShadowWorkflowTests(unittest.TestCase):
         self.assertNotIn('"catalog_modified": False', source)
         self.assertNotIn('"database_mutated": False', source)
         self.assertIn("hydration/fallback side effects were possible", source)
+        self.assertNotIn("without changing production", source)
+        self.assertNotIn("read-only report artifact", source)
 
 
 if __name__ == "__main__":
