@@ -5104,8 +5104,11 @@ def _search_with_offer_engine(query: str):
             "_raw_brand": row.get("brand"),
         })
 
+    # OfferReadRepository has already selected one current row per exact
+    # retailer/product/variant/market. Do not apply the legacy heuristic here:
+    # its Easycosmetic price-only fingerprint can collapse different perfumes
+    # that happen to cost the same amount.
     dedupe_diagnostics = []
-    all_offers = dedupe_results(all_offers, dedupe_diagnostics)
     grouped, unresolved = _aggregate_identity_results(all_offers)
     store_reports = {}
     errors = {}
