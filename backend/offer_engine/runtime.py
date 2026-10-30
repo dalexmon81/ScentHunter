@@ -27,7 +27,7 @@ except ModuleNotFoundError:
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "backend" / "product_catalog.json"
-MIGRATION_PATH = ROOT / "backend" / "offer_engine" / "migrations" / "001_offer_engine.sql"
+MIGRATIONS_DIR = ROOT / "backend" / "offer_engine" / "migrations"
 
 
 def _dsn(value: str | None = None) -> str:
@@ -41,9 +41,12 @@ def apply_migration(dsn: str | None = None) -> None:
     """Apply the additive sh_* schema to the dedicated PostgreSQL database."""
     connection = psycopg.connect(_dsn(dsn))
     try:
-        migration = MIGRATION_PATH.read_text(encoding="utf-8")
+        migration_files = sorted(MIGRATIONS_DIR.glob("*.sql"))
+        if not migration_files:
+            raise RuntimeError("offer_engine_migrations_missing")
         with connection.cursor() as cursor:
-            cursor.execute(migration)
+            for migration_path in migration_files:
+                cursor.execute(migration_path.read_text(encoding="utf-8"))
         connection.commit()
     except Exception:
         connection.rollback()
