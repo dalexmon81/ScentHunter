@@ -90,6 +90,7 @@ class OfferRepository:
         if (status == "matched") != (observation.verification is Verification.VERIFIED):
             raise ValueError("matched listing status must agree with verified observation")
         decision = self.policy.evaluate(observation)
+        allow_current_publication = decision.publish
         cursor = self.connection.cursor()
         try:
             if observation.verification is Verification.VERIFIED:
@@ -130,6 +131,7 @@ class OfferRepository:
                     # A delayed/unordered observation must not retire a newer
                     # verified offer or overwrite its canonical identity.
                     incoming_product_id, incoming_variant_id, status = existing[1], existing[2], existing[3]
+                    allow_current_publication = False
             self._execute(cursor,
                 """INSERT INTO sh_retailers(retailer_id, display_name, market)
                    VALUES (%s, %s, %s)
@@ -181,7 +183,7 @@ class OfferRepository:
             observation_id = cursor.fetchone()[0]
 
             published = False
-            if decision.publish:
+            if allow_current_publication:
                 self._execute(cursor,
                     """INSERT INTO sh_current_offers
                        (listing_id, observation_id, product_id, variant_id, verified_at)
