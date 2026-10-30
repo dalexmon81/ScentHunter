@@ -42,6 +42,22 @@ class OfferEngineApiTests(unittest.TestCase):
         self.assertIsNone(result["offers"][0]["price"])
         self.assertTrue(connection.closed)
 
+    def test_post_refreshes_query_then_reads_verified_current_state(self):
+        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+        connection = FakeConnection()
+        run_result = EngineRunResult([ConnectorRunResult("deloox", "success", listings_seen=2)])
+        with (
+            patch.object(api, "run_offer_engine", return_value=run_result) as run,
+            patch.object(api, "connect_offer_engine_db", return_value=connection),
+            patch.object(api.OfferReadRepository, "search", return_value=[{"availability": "out_of_stock", "price": None}]) as search,
+        ):
+            result = api.refresh_and_search_offer_engine("Liquid Brun", market="BE")
+        run.assert_called_once_with("Liquid Brun")
+        search.assert_called_once_with("Liquid Brun", market="BE", limit=50)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["count"], 1)
+        self.assertTrue(connection.closed)
+
     def test_database_failure_is_not_exposed_to_client(self):
         with (
             patch.object(api, "connect_offer_engine_db", side_effect=RuntimeError("secret host/password")),
