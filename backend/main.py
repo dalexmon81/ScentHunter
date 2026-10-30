@@ -2915,46 +2915,73 @@ def _snapshot(job_id):
         # These are identity-only cards (empty offers), never fabricated prices.
         family = None
         requested_variant = None
+        families_to_publish = []
         if PRODUCT_MATCHER is not None:
             try:
                 family = PRODUCT_MATCHER._family_for_query(query)
                 if family is not None:
                     requested_variant = PRODUCT_MATCHER._requested_variant(query, family)
+                    families_to_publish = [family]
+                    # A broad alias can also be the prefix of a separately
+                    # registered, more-specific product family. Publish those
+                    # sibling identities as separate cards (never merge them).
+                    # Example: "Liquid Brun" must show both the regular bottle
+                    # and "Liquid Brun Limited Edition".
+                    query_key = catalog_variant_key(query)
+                    query_tokens = query_key.split()
+                    family_brand = catalog_norm(family.get("brand", ""))
+                    if requested_variant is None and query_tokens:
+                        for candidate in getattr(PRODUCT_MATCHER, "family_registry", ()):
+                            if candidate is family:
+                                continue
+                            if catalog_norm(candidate.get("brand", "")) != family_brand:
+                                continue
+                            aliases = candidate.get("normalized_query_aliases", ())
+                            if any(
+                                len(alias.split()) > len(query_tokens)
+                                and any(
+                                    alias.split()[index:index + len(query_tokens)] == query_tokens
+                                    for index in range(len(alias.split()) - len(query_tokens) + 1)
+                                )
+                                for alias in aliases
+                            ):
+                                families_to_publish.append(candidate)
             except Exception as exc:
                 print(f"FAMILY IDENTITY PUBLICATION ERROR: {type(exc).__name__}: {exc}", flush=True)
         # Atomic searches must not synthesize family cards on every status
         # poll. They are added once, when the complete result set is published.
         # This keeps the hot polling path cheap for broad family queries.
         if (
-            family is not None
+            families_to_publish
             and requested_variant is None
             and (completed or not job.get("atomic_results"))
         ):
             existing_ids = {str(group.get("catalog_id") or "") for group in results}
-            for variant in family.get("variants") or []:
-                canonical = str(variant.get("canonical_name") or "").strip()
-                if not canonical:
-                    continue
-                try:
-                    identity = PRODUCT_MATCHER._build_family_result({}, family, variant)
-                except Exception:
-                    continue
-                catalog_id = str(identity.get("catalog_id") or "")
-                if not catalog_id or catalog_id in existing_ids:
-                    continue
-                results.append({
-                    "catalog_id": catalog_id,
-                    "brand": identity.get("canonical_brand") or family.get("brand") or "",
-                    "canonical_brand": identity.get("canonical_brand") or family.get("brand") or "",
-                    "name": canonical,
-                    "canonical_name": canonical,
-                    "family": identity.get("family_name") or (family.get("query_aliases") or [canonical])[0],
-                    "variant": canonical,
-                    "image": identity.get("canonical_image") or identity.get("image") or "",
-                    "offers": [],
-                    "identity_only": True,
-                })
-                existing_ids.add(catalog_id)
+            for publish_family in families_to_publish:
+                for variant in publish_family.get("variants") or []:
+                    canonical = str(variant.get("canonical_name") or "").strip()
+                    if not canonical:
+                        continue
+                    try:
+                        identity = PRODUCT_MATCHER._build_family_result({}, publish_family, variant)
+                    except Exception:
+                        continue
+                    catalog_id = str(identity.get("catalog_id") or "")
+                    if not catalog_id or catalog_id in existing_ids:
+                        continue
+                    results.append({
+                        "catalog_id": catalog_id,
+                        "brand": identity.get("canonical_brand") or publish_family.get("brand") or "",
+                        "canonical_brand": identity.get("canonical_brand") or publish_family.get("brand") or "",
+                        "name": canonical,
+                        "canonical_name": canonical,
+                        "family": identity.get("family_name") or (publish_family.get("query_aliases") or [canonical])[0],
+                        "variant": canonical,
+                        "image": identity.get("canonical_image") or identity.get("image") or "",
+                        "offers": [],
+                        "identity_only": True,
+                    })
+                    existing_ids.add(catalog_id)
         offers = list(job.get("offers", []))
         unresolved_offers = list(job.get("unresolved_offers", []))
         errors = dict(job.get("errors", {}))
