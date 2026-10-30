@@ -67,7 +67,7 @@ class OfferReadRepository:
                            p.product_id, p.brand, p.canonical_name, p.concentration,
                            v.variant_id, v.size_ml, v.package_type,
                            r.retailer_id, r.display_name AS retailer_name,
-                           l.market, l.product_url, o.price, o.currency,
+                           l.market, l.product_url, l.external_id, o.price, o.currency,
                            o.availability, o.observed_at, o.evidence_url
                        FROM sh_current_offers AS current
                        JOIN sh_offer_observations AS o
