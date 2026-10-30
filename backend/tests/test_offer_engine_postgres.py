@@ -250,7 +250,7 @@ class OfferEnginePostgresTests(unittest.TestCase):
                 (result["observation_id"],),
             )
         offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
-        self.assertFalse(any(row["listing_id"] == result["listing_id"] for row in offers))
+        self.assertFalse(any(row["external_id"] == external_id for row in offers))
         self.connection.rollback()
 
 
