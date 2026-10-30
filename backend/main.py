@@ -5013,6 +5013,8 @@ def _search_with_offer_engine(query: str):
             from backend.offer_engine.read_repository import OfferReadRepository
 
         run_result = run_offer_engine(query)
+        if not run_result.connectors or all(item.status == "failed" for item in run_result.connectors):
+            raise RuntimeError("all_offer_engine_retailers_failed")
         connection = connect_offer_engine_db()
         try:
             current_rows = OfferReadRepository(connection).search(query, limit=200)
@@ -5076,6 +5078,7 @@ def _search_with_offer_engine(query: str):
                 "offers_published": item.offers_published,
                 "unresolved": item.unresolved,
                 "errors": item.errors,
+                "unresolved_samples": item.unresolved_samples,
             },
         }
         if item.errors:
