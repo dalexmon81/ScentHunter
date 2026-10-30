@@ -276,6 +276,7 @@ def learn_variants(
             continue
         if (
             not name or not brand or not size or not domain or not concentration
+            or not str(item.get("retailer") or "").strip()
             or not canonical_name
             or _UNSAFE_PACKAGING.search(name)
             or _UNSAFE_PACKAGING.search(url)
