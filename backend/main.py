@@ -3099,7 +3099,10 @@ def _run_job(job_id, query):
             _publish_result(job_id, row)
 
         collect_started = time.monotonic()
-        reports = collect_store_reports_isolated(
+        if _offer_engine_search_enabled():
+        return _search_with_offer_engine(query)
+
+    reports = collect_store_reports_isolated(
             query,
             STORES,
             on_report=on_report,
@@ -4981,6 +4984,101 @@ def search_start(q: str):
 def search_status_path(job_id:str): return _snapshot(job_id)
 @app.get('/search-status')
 def search_status_query(job_id:str): return _snapshot(job_id)
+
+def _offer_engine_search_enabled():
+    return str(os.environ.get("SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _search_with_offer_engine(query: str):
+    try:
+        try:
+            from offer_engine.runtime import connect_offer_engine_db, run_offer_engine
+            from offer_engine.read_repository import OfferReadRepository
+        except ModuleNotFoundError:
+            from backend.offer_engine.runtime import connect_offer_engine_db, run_offer_engine
+            from backend.offer_engine.read_repository import OfferReadRepository
+
+        run_result = run_offer_engine(query)
+        connection = connect_offer_engine_db()
+        try:
+            current_rows = OfferReadRepository(connection).search(query, limit=200)
+        finally:
+            connection.close()
+    except Exception as exc:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=503,
+            detail="offer_engine_search_unavailable",
+        ) from exc
+
+    all_offers = []
+    for row in current_rows:
+        price = row.get("price")
+        size_ml = row.get("size_ml")
+        availability = str(row.get("availability") or "unknown")
+        price_num = float(price) if price is not None else None
+        store = str(row.get("retailer_id") or "")
+        all_offers.append({
+            "_match_status": "matched",
+            "catalog_id": row.get("product_id"),
+            "canonical_brand": row.get("brand"),
+            "brand": row.get("brand"),
+            "canonical_name": row.get("canonical_name"),
+            "name": row.get("canonical_name"),
+            "family": row.get("concentration"),
+            "variant": f"{size_ml} ml" if size_ml is not None else None,
+            "store": store,
+            "shop": row.get("retailer_name") or store,
+            "price": f"{price_num:.2f}" if price_num is not None else None,
+            "price_num": price_num,
+            "format": f"{size_ml} ml" if size_ml is not None else None,
+            "size_ml": size_ml,
+            "variant_id": row.get("variant_id"),
+            "url": row.get("product_url"),
+            "available": availability == "in_stock",
+            "availability": availability,
+            "stock": availability,
+            "stock_status": availability,
+            "availability_status": availability,
+            "in_stock": availability == "in_stock",
+            "status": availability,
+            "_raw_name": row.get("canonical_name"),
+            "_raw_brand": row.get("brand"),
+        })
+
+    dedupe_diagnostics = []
+    all_offers = dedupe_results(all_offers, dedupe_diagnostics)
+    grouped, unresolved = _aggregate_identity_results(all_offers)
+    store_reports = {}
+    errors = {}
+    for item in run_result.connectors:
+        store_reports[item.retailer] = {
+            "status": item.status,
+            "verified": item.status == "success",
+            "count": item.listings_seen,
+            "elapsed": 0.0,
+            "details": {
+                "observations_written": item.observations_written,
+                "offers_published": item.offers_published,
+                "unresolved": item.unresolved,
+                "errors": item.errors,
+            },
+        }
+        if item.errors:
+            errors[item.retailer] = "; ".join(item.errors)
+
+    return {
+        "query": query,
+        "count": len(grouped),
+        "offer_count": len(all_offers),
+        "results": grouped,
+        "unresolved_offers": unresolved,
+        "dedupe_diagnostics": dedupe_diagnostics,
+        "identity_scope": _identity_scope(query),
+        "errors": errors,
+        "stores": store_reports,
+    }
+
 
 @app.get("/search")
 def search_perfume(q: str):
