@@ -11,8 +11,6 @@ CREATE TABLE IF NOT EXISTS sh_variants (
     size_ml INTEGER NOT NULL CHECK(size_ml > 0), concentration TEXT, gtin TEXT,
     package_type TEXT NOT NULL DEFAULT 'standard', UNIQUE(variant_id, product_id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS sh_variant_identity_idx
-    ON sh_variants(product_id, size_ml, COALESCE(concentration, ''), package_type);
 CREATE TABLE IF NOT EXISTS sh_retailers (
     retailer_id TEXT PRIMARY KEY, display_name TEXT NOT NULL, market TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
