@@ -24,9 +24,10 @@ class OfferEnginePostgresTests(unittest.TestCase):
     def setUpClass(cls):
         root = Path(__file__).resolve().parents[2]
         cls.connection = psycopg.connect(os.environ["SCENTHUNTER_TEST_POSTGRES_DSN"])
-        migration = (root / "backend" / "offer_engine" / "migrations" / "001_offer_engine.sql").read_text()
+        migration_dir = root / "backend" / "offer_engine" / "migrations"
         with cls.connection.cursor() as cursor:
-            cursor.execute(migration)
+            for migration_path in sorted(migration_dir.glob("*.sql")):
+                cursor.execute(migration_path.read_text(encoding="utf-8"))
         cls.connection.commit()
         cls.catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
 
@@ -34,6 +35,32 @@ class OfferEnginePostgresTests(unittest.TestCase):
     def tearDownClass(cls):
         if getattr(cls, "connection", None):
             cls.connection.close()
+
+    def test_distinct_feed_variants_can_share_one_product_url(self):
+        url = "https://www.notino.fr/french-avenue/liquid-brun/"
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+        listing_ids = []
+        for external_id, size in (("LB100", 100), ("LB150", 150)):
+            listing = RetailerListing(
+                retailer="notino", external_id=external_id, product_url=url,
+                raw_title=f"French Avenue Liquid Brun {size} ml",
+                raw_brand="French Avenue", raw_size_ml=size, market="FR",
+            )
+            observation = OfferObservation.now(
+                listing_key=f"notino:{external_id}", price=None, currency="EUR",
+                availability=Availability.UNKNOWN, source="feed",
+                verification=Verification.UNVERIFIED,
+                evidence_url=url, evidence_hash=f"sha256:{external_id}",
+            )
+            result = repository.record(listing, observation)
+            listing_ids.append(result["listing_id"])
+        self.assertEqual(len(set(listing_ids)), 2)
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT count(*) FROM sh_retailer_listings WHERE retailer_id=%s AND product_url=%s",
+                ("notino", url),
+            )
+            self.assertEqual(cursor.fetchone()[0], 2)
 
     def test_verified_listing_and_current_offer_obey_real_foreign_keys(self):
         product = self.catalog.get("SH-0031")
