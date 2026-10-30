@@ -83,6 +83,34 @@ jobs:
               while time.monotonic() < deadline:
                   payload = get_json("/search-status?job_id=" + urllib.parse.quote(job_id))
                   if payload.get("completed"):
+                      groups = payload.get("results") if isinstance(payload.get("results"), list) else []
+                      has_offers = any(
+                          isinstance(group, dict)
+                          and isinstance(group.get("offers"), list)
+                          and any(isinstance(offer, dict) for offer in group["offers"])
+                          for group in groups
+                      )
+                      if not has_offers:
+                          # The async search queue can occasionally complete
+                          # with an empty snapshot while the synchronous public
+                          # endpoint still returns its full result payload.
+                          try:
+                              direct = get_json(
+                                  "/search?q=" + urllib.parse.quote(query),
+                                  timeout=45,
+                              )
+                              direct_groups = direct.get("results") if isinstance(direct.get("results"), list) else []
+                              direct_has_offers = any(
+                                  isinstance(group, dict)
+                                  and isinstance(group.get("offers"), list)
+                                  and any(isinstance(offer, dict) for offer in group["offers"])
+                                  for group in direct_groups
+                              )
+                              if direct_has_offers:
+                                  direct["shadow_source"] = "synchronous_search_fallback"
+                                  return direct
+                          except Exception as exc:
+                              print(f"NEXT_ENGINE_SHADOW_DIRECT_FALLBACK_FAILED {query}: {type(exc).__name__}: {exc}", flush=True)
                       return payload
                   time.sleep(0.15)
               raise RuntimeError(f"Production search timed out for {query}")
