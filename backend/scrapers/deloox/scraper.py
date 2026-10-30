@@ -1185,6 +1185,17 @@ def _discover_from_search(session, query, deadline=None):
     _LAST_DISCOVERY_STATE["search_pages_ok"] = successful_pages
     _LAST_DISCOVERY_STATE["search_pages_failed"] = failed_pages
     _LAST_DISCOVERY_STATE["search_failure_reasons"] = dict(sorted(failure_reasons.items()))
+    _LAST_DISCOVERY_STATE["search_surfaces"] = [
+        {
+            "requested": item["requested"],
+            "final": item["final"],
+            "bytes": len(item["response"].content or b""),
+            "candidate_count": len(item["found"]),
+        }
+        for item in successful
+    ]
+    _LAST_DISCOVERY_STATE["search_candidates"] = len(candidates)
+    _LAST_DISCOVERY_STATE["selected_search_surface"] = selected_endpoint
     _LAST_DISCOVERY_STATE["search_verified"] = successful_pages > 0
 
     return list(candidates.keys())[:MAX_SEARCH_CANDIDATES]
