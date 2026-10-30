@@ -255,7 +255,7 @@ def learn_variants(
         if url_concentration and title_concentration and url_concentration != title_concentration:
             rejected["url_concentration_conflict"] += 1
             continue
-        if url_identity and url_identity != _identity_name(name, brand):
+        if url_identity and set(url_identity.split()) != set(_identity_name(name, brand).split()):
             rejected["url_identity_conflict"] += 1
             continue
         if (
@@ -394,7 +394,7 @@ def learn_variants(
         ):
             rejected["concentration_unverified_or_conflict"] += 1
             continue
-        if url_identity and url_identity != _identity_name(name, brand or product_brand):
+        if url_identity and set(url_identity.split()) != set(_identity_name(name, brand or product_brand).split()):
             rejected["url_identity_conflict"] += 1
             continue
         url_concentration = _concentration(url)
