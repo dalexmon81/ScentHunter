@@ -503,19 +503,22 @@ class CanonicalMatcher:
             ] = []
 
             name_forms = _strict_name_forms if strict else _name_forms
-            offer_forms = _offer_name_forms(
-                offer.raw_name,
-                offer.brand_raw,
-            )
+            normalized_offer_title = normalize_identity_text(offer.raw_name)
 
             for product in products:
+                product_brand = normalize_brand_text(product.brand)
                 if (
                     offer_brand
-                    and offer_brand
-                    != normalize_brand_text(product.brand)
+                    and offer_brand != product_brand
+                    and product_brand not in normalized_offer_title
                 ):
+                    # Some marketplaces put their own store name in the
+                    # vendor field. Accept a different catalog brand only
+                    # when that exact canonical brand is explicitly present
+                    # in the product title; otherwise keep the mismatch fatal.
                     continue
 
+                offer_forms = _offer_name_forms(offer.raw_name, product.brand)
                 product_forms: set[str] = set()
 
                 for value in [product.name, *product.aliases]:
@@ -536,11 +539,11 @@ class CanonicalMatcher:
                         normalize_identity_text(offer.raw_name)
                         == normalize_identity_text(value)
                         or (
-                            offer_brand
-                            and normalize_identity_text(offer.raw_name).startswith(
+                            product_brand
+                            and normalized_offer_title.startswith(
                                 normalize_identity_text(product.brand) + " "
                             )
-                            and normalize_identity_text(offer.raw_name)[
+                            and normalized_offer_title[
                                 len(normalize_identity_text(product.brand)) + 1:
                             ] == normalize_identity_text(value)
                         )
