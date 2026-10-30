@@ -22,6 +22,7 @@ class ConnectorRunResult:
     offers_published: int = 0
     unresolved: int = 0
     errors: list[str] = field(default_factory=list)
+    unresolved_samples: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -71,6 +72,13 @@ class OfferEngineRunner:
                     resolution = resolve_observation(listing, observation, self.matcher)
                     if resolution.status != "matched":
                         result.unresolved += 1
+                        if len(result.unresolved_samples) < 12:
+                            result.unresolved_samples.append({
+                                "title": listing.raw_title,
+                                "url": listing.product_url,
+                                "status": resolution.status,
+                                "reason": resolution.reason,
+                            })
                     persisted = repository.record(listing, resolution.observation, match_status=resolution.status)
                     result.observations_written += 1
                     if persisted.get("published"):
