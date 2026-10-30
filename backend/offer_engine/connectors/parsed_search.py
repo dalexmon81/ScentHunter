@@ -153,6 +153,43 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
         result = matches[0]
     if not isinstance(result, Mapping):
         raise RuntimeError(f"{retailer}_product_page_unavailable")
+
+    if retailer == "sabina":
+        # Sabina's variant selector is client-side: the HTTP request does not
+        # transmit the URL fragment. Never trust the parent page's selected
+        # offer for every size. Bind this listing to its exact variant record.
+        variants = [item for item in result.get("variants") or [] if isinstance(item, Mapping)]
+        requested_url = listing.product_url
+        url_matches = [
+            item for item in variants
+            if str(item.get("url") or "").strip() == requested_url
+        ]
+        candidates = url_matches
+        if not candidates and listing.raw_size_ml is not None:
+            size_matches = [
+                item for item in variants
+                if _positive_size(item.get("size_ml")) == listing.raw_size_ml
+            ]
+            candidates = size_matches
+        if len(candidates) != 1:
+            raise RuntimeError("sabina_product_variant_not_uniquely_verified")
+        variant = candidates[0]
+        selected = dict(result)
+        selected["url"] = str(variant.get("url") or requested_url)
+        selected["attributes"] = dict(_mapping(result.get("attributes")))
+        selected["attributes"]["size_ml"] = {"value": variant.get("size_ml")}
+        selected["offer"] = {
+            "price": variant.get("price_num"),
+            "currency": variant.get("currency") or "EUR",
+            "availability": variant.get("availability") or "unknown",
+        }
+        selected["identity"] = dict(_mapping(result.get("identity")))
+        if variant.get("sku"):
+            selected["identity"]["sku"] = {"value": variant.get("sku")}
+        if variant.get("gtin"):
+            selected["identity"]["gtin"] = {"value": variant.get("gtin")}
+        return selected
+
     return result
 
 
