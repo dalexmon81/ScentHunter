@@ -42,6 +42,7 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         }
         with (
             patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1"}),
+            patch.object(main, "PRODUCT_MATCHER", None),
             patch.object(main, "_search_with_offer_engine", return_value=payload) as search,
         ):
             job_id = main._new_job("Liquid Brun")
