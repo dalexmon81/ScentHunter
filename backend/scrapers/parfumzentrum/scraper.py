@@ -600,7 +600,11 @@ def _semantic_price(soup):
         )
     )
 
-    return candidates[0][1]
+    # Do not select the lowest of two equally relevant prices: they may be
+    # the public selling price and a coupon-only price shown together.
+    best_score = candidates[0][0]
+    best_prices = set(price for score, price in candidates if score == best_score)
+    return next(iter(best_prices)) if len(best_prices) == 1 else None
 
 
 def _node_price(node):
