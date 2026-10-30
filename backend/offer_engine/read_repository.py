@@ -51,6 +51,7 @@ class OfferReadRepository:
                        )
                          AND o.verification='verified'
                          AND o.availability IN ('in_stock','out_of_stock')
+                         AND (o.availability='out_of_stock' OR o.price > 0)
                          AND (
                              lower(p.canonical_name) LIKE lower(?)
                              OR lower(p.brand) LIKE lower(?)
@@ -81,6 +82,7 @@ class OfferReadRepository:
                        WHERE current.verified_at >= now() - (r.max_offer_age_seconds * interval '1 second')
                          AND o.verification='verified'
                          AND o.availability IN ('in_stock','out_of_stock')
+                         AND (o.availability='out_of_stock' OR o.price > 0)
                          AND (
                              p.canonical_name ILIKE %s
                              OR p.brand ILIKE %s
