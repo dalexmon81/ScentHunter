@@ -19,7 +19,10 @@ Additive replacement architecture boundary. It is not mounted into production.
 - One retailer failure cannot stop other connectors.
 - Ambiguous matches are never auto-published.
 
-## Execution\nThe `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected. The runner does not create database connections or enable production traffic.\n\n## Storage
+## Execution
+The `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected. The runner does not create database connections or enable production traffic.
+
+## Storage
 The PostgreSQL migration creates a separate sh_* data model and does not alter legacy tables. Production cutover waits for repository/worker implementation, reviewed backfill, live connector tests and parity gates.
 
 ## First vertical slice
