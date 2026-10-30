@@ -208,6 +208,54 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "redirected_to_different_product"):
             connector.observe(listing)
 
+    def test_tracking_query_duplicates_are_removed_but_other_sizes_are_kept(self):
+        first = self._row(
+            url="https://www.parfum-zentrum.de/products/liquid-brun-100.html",
+            sku="SHARED-SKU",
+        )
+        duplicate = self._row(
+            url="https://www.parfum-zentrum.de/products/liquid-brun-100.html?_pos=1&_psq=Liquid+Brun&_ss=e",
+            sku="SHARED-SKU",
+        )
+        sibling = self._row(
+            name="French Avenue Liquid Brun Limited Edition 150 ml",
+            url="https://www.parfum-zentrum.de/products/liquid-brun-150.html?_pos=2",
+            sku="SHARED-SKU",
+            gtin="6298042001831",
+            size_ml=150,
+        )
+        connector = ParsedSearchConnector(
+            "bplatz", "scrapers.bplatz.scraper", "DE",
+            scraper=FakeScraper({
+                "status": "success", "verified": True,
+                "results": [first, duplicate, sibling],
+            }),
+        )
+        listings = list(connector.discover("Liquid Brun"))
+        self.assertEqual(len(listings), 2)
+        self.assertEqual({item.raw_size_ml for item in listings}, {100, 150})
+
+    def test_perfumemarket_locale_and_www_aliases_are_deduplicated(self):
+        first = self._row(
+            url="https://perfumemarket.nl/products/french-avenue-liquid-brun-men100ml-edp",
+            sku="PM-LB100",
+        )
+        alias = self._row(
+            url="https://www.perfumemarket.nl/nl/products/french-avenue-liquid-brun-men100ml-edp",
+            sku="PM-LB100",
+        )
+        scraper = FakeScraper({
+            "status": "success", "verified": True,
+            "results": [first, alias],
+        })
+        scraper.BASE_URL = "https://perfumemarket.nl"
+        connector = ParsedSearchConnector(
+            "perfumemarket", "scrapers.perfumemarket.scraper", "NL",
+            scraper=scraper,
+        )
+        listings = list(connector.discover("Liquid Brun"))
+        self.assertEqual(len(listings), 1)
+
     def test_verified_partial_discovery_keeps_page_verified_candidates(self):
         connector = ParsedSearchConnector(
             "bplatz",
