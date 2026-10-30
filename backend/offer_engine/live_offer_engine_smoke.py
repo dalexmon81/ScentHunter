@@ -73,11 +73,11 @@ def run() -> dict:
                     "retailer": item.retailer,
                     "status": item.status,
                     "errors": item.errors,
+                    "unresolved_samples": item.unresolved_samples,
                 })
                 continue
             if item.listings_seen and (
                 item.observations_written != item.listings_seen
-                or item.unresolved
                 or item.offers_published == 0
             ):
                 connector_failures.append({
@@ -85,6 +85,7 @@ def run() -> dict:
                     "listings_seen": item.listings_seen,
                     "observations_written": item.observations_written,
                     "unresolved": item.unresolved,
+                    "unresolved_samples": item.unresolved_samples,
                     "offers_published": item.offers_published,
                 })
         if connector_failures:
