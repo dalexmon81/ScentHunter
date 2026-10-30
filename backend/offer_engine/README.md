@@ -3,7 +3,7 @@
 Additive replacement architecture boundary. It remains disabled in production by default.
 
 ## Data flow
-1. An independent retailer connector discovers retailer-owned listings (feed/API first; sitemap/site search second).
+1. An independent retailer connector discovers retailer-owned listings (authorized feed/API first; sitemap/site search second).
 2. Persist the listing and raw attributes. Connectors never invent canonical IDs.
 3. Resolve each listing to one explicit product and variant. Unresolved or ambiguous listings stay out of comparison.
 4. Record immutable price/stock observations with source, timestamp, evidence URL and content hash.
@@ -19,21 +19,23 @@ Additive replacement architecture boundary. It remains disabled in production by
 - Stale observations remain history, never current offers.
 - One retailer failure cannot stop other connectors.
 - Ambiguous matches are never auto-published.
-- Out-of-stock observations cannot carry a price; PostgreSQL enforces this invariant too.
+- Out-of-stock observations cannot carry a price; both supported database schemas enforce this invariant.
 
 ## Execution
 The `OfferEngineRunner` executes connectors independently, records each observation through the transactional repository, and reports per-retailer success/partial/failed outcomes. It does not create database connections or enable production traffic. A retailer discovery failure or a single bad listing does not stop the remaining retailers/listings. Cross-retailer listings are rejected.
 
-The opt-in worker is executable with `SCENTHUNTER_OFFER_ENGINE_DSN=postgresql://... python -m backend.offer_engine.cli --query "Liquid Brun"`. Apply the isolated schema explicitly with `--apply-migration`; migrations are never run automatically. The worker opens and closes its own dedicated PostgreSQL connections and never touches the legacy SQLite catalog. The default connector set now includes independent adapters for Bplatz, Easycosmetic, Orioudh, ParfumCity, ParfumZentrum, PerfumeMarket and Sabina; each delegates discovery/page parsing to that retailer's existing parser, then runs the result through the same canonical resolver and publication policy. When `NOTINO_CJ_FEED_URL`, `NOTINO_CJ_FEED_USERNAME` and `NOTINO_CJ_FEED_PASSWORD` are configured, the worker also reads the authorized Notino.fr CJ/VIV XML feed; the connector preserves each GTIN/size as a separate listing, and the feed row is still passed through canonical identity resolution before publication. The listing schema permits multiple variant-specific external IDs to share one parent product URL.
+On Fly, the worker uses the dedicated SQLite file `/data/offer_engine.sqlite3` on the existing persistent volume. Locally, the default is a sibling `offer_engine.sqlite3` next to `SCENTHUNTER_CATALOG_DB`. Run `python -m backend.offer_engine.cli --apply-migration --query "Liquid Brun"` to create the isolated schema and execute one query. Migrations are explicit and never run automatically. If `SCENTHUNTER_OFFER_ENGINE_DSN` is configured, the worker instead uses the separate PostgreSQL schema and migration.
 
-The read-only API mounts only when `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=1` and `SCENTHUNTER_OFFER_ENGINE_DSN` is configured. It exposes `GET /offer-engine/search?query=Liquid+Brun&market=BE`. The current-state read model includes sold-out variants with `availability=out_of_stock` and `price=null`, and excludes states older than each retailer’s `max_offer_age_seconds`. It does not replace the legacy `/search` endpoint yet.
+The runtime always registers the Deloox connector. It adds the Notino authorized CJ/VIV XML feed connector only when `NOTINO_CJ_FEED_URL`, `NOTINO_CJ_FEED_USERNAME` and `NOTINO_CJ_FEED_PASSWORD` are configured. Notino feed variants sharing one product URL remain separate listings by size/GTIN. Both connectors use the same canonical resolver and publication policy.
 
-The `live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data. Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront.
+The read-only API mounts only when `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=1`. It exposes `GET /offer-engine/search?query=Liquid+Brun&market=BE` and uses the dedicated Offer Engine database. The current-state read model includes sold-out variants with `availability=out_of_stock` and `price=null`, and excludes states older than each retailer’s `max_offer_age_seconds`. It does not replace the legacy `/search` endpoint yet.
+
+The `python -m backend.offer_engine.live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data. Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront.
 
 ## Storage and cutover
-The PostgreSQL migration creates a separate `sh_*` data model and does not alter legacy tables. Production cutover waits for dedicated PostgreSQL provisioning, read API/application integration, reviewed backfill, live connector tests and parity gates.
+The SQLite migration creates a separate `sh_*` data model in its own file on the Fly volume; it does not alter the legacy catalog database. A separate PostgreSQL database is also supported when `SCENTHUNTER_OFFER_ENGINE_DSN` is configured. Production cutover waits for live connector validation, read API/application integration, reviewed backfill and parity gates.
 
 ## First vertical slice
 - Deloox uses the existing parser through a browser-aware search/product-page connector. Its live source smoke test must prove Liquid Brun 100 ml and Limited Edition 150 ml, including the sold-out state, before cutover.
 - Notino uses the authorized CJ/VIV XML feed when credentials are configured. Feed variants remain separate by size/GTIN and pass through the same canonical resolver and publication policy.
-- Then add the remaining retailers one at a time with their own source-specific tests. Do not enable the new API until live Deloox validation, Notino feed validation, backfill and parity gates pass.
+- The other retailer connectors are not yet implemented in this isolated engine. Add them one at a time with source-specific tests; do not enable the new API until live Deloox validation, Notino feed validation, backfill and parity gates pass.
