@@ -122,9 +122,14 @@ class OfferRepository:
             if existing is not None:
                 identity_changed = (existing[1], existing[2]) != (incoming_product_id, incoming_variant_id)
                 current_verified_at = self._as_utc(existing[4])
+                # A future-dated observation is rejected by policy and must
+                # never retire a valid current offer or rewrite its identity.
                 incoming_is_current = (
-                    current_verified_at is None
-                    or self._as_utc(observation.observed_at) >= current_verified_at
+                    decision.reason != "observation_from_future"
+                    and (
+                        current_verified_at is None
+                        or self._as_utc(observation.observed_at) >= current_verified_at
+                    )
                 )
                 if not incoming_is_current:
                     preserve_existing_listing = True
