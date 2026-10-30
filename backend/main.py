@@ -43,6 +43,25 @@ except Exception as exc:
 APP_VERSION = '5.8-progressive-catalog-publication'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 
+# Optional read-only Offer Engine API. Disabled by default: it uses only the
+# dedicated PostgreSQL DSN and does not alter the legacy SQLite search path.
+_OFFER_ENGINE_API_MOUNTED = False
+if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_API_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
+    try:
+        try:
+            from offer_engine.api import router as offer_engine_router
+        except ModuleNotFoundError:
+            from backend.offer_engine.api import router as offer_engine_router
+        app.include_router(offer_engine_router)
+        _OFFER_ENGINE_API_MOUNTED = True
+    except Exception as exc:
+        print(
+            f'OFFER_ENGINE_API_UNAVAILABLE: {type(exc).__name__}: {exc}; '
+            'starting without the isolated Offer Engine API',
+            flush=True,
+        )
+
+
 # Optional isolated next engine. It is deliberately opt-in and uses a database
 # that must be separate from the legacy catalog. If the optional package is not
 # present in this deployment, keep the legacy application available instead of
