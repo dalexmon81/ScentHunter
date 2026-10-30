@@ -151,6 +151,11 @@ def main() -> None:
     output = json.dumps(result, ensure_ascii=False, indent=2)
     Path("next-engine-live-offer-engine-smoke.json").write_text(output + "\\n", encoding="utf-8")
     print(output)
+    if result.get("status") != "success":
+        raise SystemExit(
+            "Live Offer Engine smoke is incomplete; inspect "
+            "next-engine-live-offer-engine-smoke.json for retailer warnings."
+        )
 
 
 if __name__ == "__main__":
