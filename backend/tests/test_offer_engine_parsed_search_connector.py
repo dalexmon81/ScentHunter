@@ -108,6 +108,27 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(str(observation.price), "37.4")
         self.assertEqual(scraper.page_fetches, [listing.product_url])
 
+    def test_discovery_excludes_gift_bundles_containing_the_searched_perfume(self):
+        product = self._row()
+        bundle = self._row(
+            name="Mystery Box Liquid Brun 2 by French Avenue Men Perfume Gift Set 300 ml",
+            url="https://www.parfum-zentrum.de/mystery-box-liquid-brun-gift-set.html",
+            size_ml=300,
+            sku="BUNDLE-300",
+        )
+        connector = ParsedSearchConnector(
+            "parfumzentrum",
+            "scrapers.parfumzentrum.scraper",
+            "DE",
+            scraper=FakeScraper({
+                "status": "success", "verified": True,
+                "results": [product, bundle],
+            }),
+        )
+        listings = list(connector.discover("Liquid Brun"))
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0].external_id, "LB100")
+
     def test_product_page_title_can_supply_missing_exact_size(self):
         scraper = FakeScraper({
             "status": "success", "verified": True,
