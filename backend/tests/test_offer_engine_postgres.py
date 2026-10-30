@@ -47,18 +47,23 @@ class OfferEnginePostgresTests(unittest.TestCase):
         )
         observation = OfferObservation(
             listing_key="deloox:1385920", observed_at=datetime.now(timezone.utc),
-            price=Decimal("49.95"), currency="EUR", availability=Availability.IN_STOCK,
+            price=None, currency="EUR", availability=Availability.OUT_OF_STOCK,
             source="product_page", verification=Verification.VERIFIED,
             product_id=product.product_id, variant_id=variant.variant_id,
             evidence_url=url, evidence_hash="sha256:postgres-integration",
         )
         result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(listing, observation)
-        self.assertTrue(result["published"])
+        self.assertFalse(result["published"])
+        self.assertEqual(result["policy_reason"], "not_in_stock")
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT product_id, variant_id FROM sh_current_offers WHERE listing_id=%s", (result["listing_id"],))
-            self.assertEqual(cursor.fetchone(), (product.product_id, variant.variant_id))
+            self.assertIsNone(cursor.fetchone())
+            cursor.execute("SELECT canonical_product_id, canonical_variant_id, match_status FROM sh_retailer_listings WHERE listing_id=%s", (result["listing_id"],))
+            self.assertEqual(cursor.fetchone(), (product.product_id, variant.variant_id, "matched"))
             cursor.execute("SELECT count(*) FROM sh_offer_observations WHERE listing_id=%s", (result["listing_id"],))
             self.assertEqual(cursor.fetchone()[0], 1)
+            cursor.execute("SELECT availability, price, verification FROM sh_offer_observations WHERE listing_id=%s", (result["listing_id"],))
+            self.assertEqual(cursor.fetchone(), ("out_of_stock", None, "verified"))
 
 
 if __name__ == "__main__":
