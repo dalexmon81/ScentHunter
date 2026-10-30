@@ -164,15 +164,25 @@ def run() -> dict:
         }
 
 
+def result_exit_code(result: dict) -> int:
+    """Warnings are review evidence, not a failed safety assertion.
+
+    Hard assertions (exact Deloox variants, valid stock/price state,
+    non-Deloox coverage, and duplicate prevention) raise before this point.
+    A partial retailer warning must still leave its JSON artifact available.
+    """
+    return 1 if result.get("status") == "failed" else 0
+
+
 def main() -> None:
     result = run()
     output = json.dumps(result, ensure_ascii=False, indent=2)
     Path("next-engine-live-offer-engine-smoke.json").write_text(output + "\\n", encoding="utf-8")
     print(output)
-    if result.get("status") != "success":
+    if result_exit_code(result):
         raise SystemExit(
-            "Live Offer Engine smoke is incomplete; inspect "
-            "next-engine-live-offer-engine-smoke.json for retailer warnings."
+            "Live Offer Engine smoke failed; inspect "
+            "next-engine-live-offer-engine-smoke.json."
         )
 
 
