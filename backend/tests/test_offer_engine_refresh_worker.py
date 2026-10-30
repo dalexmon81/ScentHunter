@@ -19,6 +19,9 @@ class RefreshWorkerQueryTests(unittest.TestCase):
             SimpleNamespace(brand="Afnan", name="9PM", variants=[
                 SimpleNamespace(size_ml=100, label=None),
             ]),
+            SimpleNamespace(brand="Dior", name="Sauvage", variants=[
+                SimpleNamespace(size_ml=60, label="Elixir"),
+            ]),
         ])
         self.assertEqual(
             build_product_queries(catalog),
@@ -26,6 +29,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
                 "Lattafa Liquid Brun 100 ml",
                 "Lattafa Liquid Brun Limited Edition 150 ml",
                 "Afnan 9PM 100 ml",
+                "Dior Sauvage Elixir 60 ml",
             ],
         )
 
