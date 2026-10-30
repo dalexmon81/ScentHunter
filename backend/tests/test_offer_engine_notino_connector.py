@@ -1,4 +1,6 @@
+import os
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from backend.offer_engine.resolver import resolve_observation
@@ -30,6 +32,12 @@ FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
 class NotinoFeedConnectorTests(unittest.TestCase):
     def setUp(self):
         self.connector = NotinoFeedConnector(fetch_feed=lambda: FEED)
+
+    def test_missing_feed_credentials_are_reported_explicitly(self):
+        with patch.dict(os.environ, {}, clear=True):
+            connector = NotinoFeedConnector()
+            with self.assertRaisesRegex(RuntimeError, "notino_feed_credentials_missing"):
+                list(connector.discover("Liquid Brun"))
 
     def test_discovery_keeps_size_variants_separate(self):
         rows = list(self.connector.discover("Liquid Brun"))
