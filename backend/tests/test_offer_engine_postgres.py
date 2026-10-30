@@ -83,6 +83,13 @@ class OfferEnginePostgresTests(unittest.TestCase):
         self.assertEqual(sold_out["availability"], "out_of_stock")
         self.assertIsNone(sold_out["price"])
         self.assertEqual(sold_out["size_ml"], 150)
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE sh_current_offers SET verified_at=now() - interval '3 days' WHERE listing_id=%s",
+                (result["listing_id"],),
+            )
+        self.connection.commit()
+        self.assertEqual(OfferReadRepository(self.connection).search("Liquid Brun", market="BE"), [])
 
 
 if __name__ == "__main__":
