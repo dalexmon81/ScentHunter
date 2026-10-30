@@ -6,6 +6,7 @@ production database or canonical catalog.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -52,6 +53,45 @@ def run() -> dict:
                     raise AssertionError("Deloox in-stock offer has no valid price")
             else:
                 raise AssertionError(f"Unknown Deloox availability: {row['availability']}")
+
+        # A retailer that actually discovered candidates must have fetched
+        # and parsed every exact product page, resolved every identity, and
+        # persisted at least one verified current state. A connector with no
+        # matching product is not treated as a failure. Notino is optional
+        # until the authorized affiliate feed credentials are configured.
+        configured_notino = all(os.environ.get(name, "").strip() for name in (
+            "NOTINO_CJ_FEED_URL",
+            "NOTINO_CJ_FEED_USERNAME",
+            "NOTINO_CJ_FEED_PASSWORD",
+        ))
+        connector_failures = []
+        for item in engine_result.connectors:
+            if item.retailer == "notino" and not configured_notino:
+                continue
+            if item.status != "success" or item.errors:
+                connector_failures.append({
+                    "retailer": item.retailer,
+                    "status": item.status,
+                    "errors": item.errors,
+                })
+                continue
+            if item.listings_seen and (
+                item.observations_written != item.listings_seen
+                or item.unresolved
+                or item.offers_published == 0
+            ):
+                connector_failures.append({
+                    "retailer": item.retailer,
+                    "listings_seen": item.listings_seen,
+                    "observations_written": item.observations_written,
+                    "unresolved": item.unresolved,
+                    "offers_published": item.offers_published,
+                })
+        if connector_failures:
+            raise AssertionError(
+                "Live retailer product-page or canonical verification failed: "
+                + json.dumps(connector_failures, ensure_ascii=False)
+            )
 
         return {
             "status": "success",
