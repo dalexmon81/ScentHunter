@@ -20,10 +20,13 @@ class FakeSession:
 
 class DelooxChallengeDiscoveryTests(unittest.TestCase):
     def test_client_challenge_is_not_counted_as_verified_search(self):
-        with patch.object(
-            scraper,
-            "_search_endpoints",
-            return_value=["https://www.deloox.be/chercher.html?q=Liquid+Brun"],
+        with (
+            patch.object(
+                scraper,
+                "_search_endpoints",
+                return_value=["https://www.deloox.be/chercher.html?q=Liquid+Brun"],
+            ),
+            patch.dict("sys.modules", {"playwright.sync_api": None}),
         ):
             candidates = scraper._discover_from_search(FakeSession(), "Liquid Brun")
 
