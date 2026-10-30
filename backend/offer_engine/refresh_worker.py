@@ -144,8 +144,8 @@ def main() -> None:
         return
     if os.environ.get("SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE", "0").strip() == "1":
         raise RuntimeError("worker_refuses_automatic_schema_migration")
-    if os.environ.get("SCENTHUNTER_OFFER_ENGINE_API_ENABLED", "0").strip() != "1":
-        raise RuntimeError("worker_requires_offer_engine_api_enablement_gate")
+    # Refreshing is independent of the HTTP API. Keep the API and user-search
+    # switches off during the pilot; this worker only writes the isolated DB.
     seed_canonical_catalog()
     interval = max(30, int(os.environ.get("SCENTHUNTER_OFFER_ENGINE_REFRESH_INTERVAL_SECONDS", "60")))
     print(f"Offer Engine refresh worker enabled; interval={interval}s", flush=True)
