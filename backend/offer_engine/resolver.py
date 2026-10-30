@@ -10,8 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
-from backend.scenthunter_next_engine.models import MatchStatus, RetailerOffer
+try:
+    from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from scenthunter_next_engine.models import MatchStatus, RetailerOffer
+except ModuleNotFoundError:
+    from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from backend.scenthunter_next_engine.models import MatchStatus, RetailerOffer
 
 from .contracts import Availability, OfferObservation, RetailerListing, Verification
 
