@@ -76,14 +76,19 @@ def run() -> dict:
                 "status": "missing_connector",
                 "reason": "required_live_smoke_retailer_not_executed",
             })
+        if not configured_notino:
+            retailer_warnings.append({
+                "retailer": "notino",
+                "status": "not_configured",
+                "reason": "notino_feed_credentials_missing",
+            })
+        elif "notino" not in observed_retailers:
+            retailer_warnings.append({
+                "retailer": "notino",
+                "status": "missing_connector",
+                "reason": "configured_notino_feed_connector_not_executed",
+            })
         for item in engine_result.connectors:
-            if item.retailer == "notino" and not configured_notino:
-                retailer_warnings.append({
-                    "retailer": item.retailer,
-                    "status": "not_configured",
-                    "reason": "notino_feed_credentials_missing",
-                })
-                continue
             if (
                 item.status != "success"
                 or item.errors
