@@ -19,6 +19,40 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         self.assertEqual(result, expected)
         new_search.assert_called_once_with("Liquid Brun")
 
+    def test_offer_engine_rows_keep_sold_out_variant_in_legacy_ui_contract(self):
+        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+        row = {
+            "product_id": "SH-0031",
+            "brand": "French Avenue",
+            "canonical_name": "Liquid Brun Limited Edition",
+            "concentration": "Extrait de Parfum",
+            "variant_id": "VAR-f5aff76b4bb5de8a",
+            "size_ml": 150,
+            "retailer_id": "deloox",
+            "retailer_name": "Deloox",
+            "market": "BE",
+            "product_url": "https://www.deloox.be/produit/1385920/liquid-brun.html",
+            "price": None,
+            "currency": "EUR",
+            "availability": "out_of_stock",
+        }
+        connection = type("FakeConnection", (), {"close": lambda self: None})()
+        run_result = EngineRunResult([ConnectorRunResult("deloox", "success", listings_seen=1)])
+        with (
+            patch("backend.offer_engine.runtime.run_offer_engine", return_value=run_result),
+            patch("backend.offer_engine.runtime.connect_offer_engine_db", return_value=connection),
+            patch("backend.offer_engine.read_repository.OfferReadRepository.search", return_value=[row]),
+        ):
+            result = main._search_with_offer_engine("Liquid Brun")
+
+        self.assertEqual(result["count"], 1)
+        offer = result["results"][0]["offers"][0]
+        self.assertEqual(offer["variant_id"], "VAR-f5aff76b4bb5de8a")
+        self.assertEqual(offer["availability"], "out_of_stock")
+        self.assertIsNone(offer["price"])
+        self.assertIsNone(offer["price_num"])
+        self.assertTrue(offer["url"].startswith("https://www.deloox.be/"))
+
     def test_search_flag_defaults_off(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertFalse(main._offer_engine_search_enabled())
