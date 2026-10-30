@@ -6,6 +6,7 @@ listing/observation facts. Canonical IDs are deliberately not assigned here.
 from __future__ import annotations
 import hashlib
 import json
+import re
 from decimal import Decimal
 from typing import Iterable
 from urllib.parse import urlparse
@@ -56,6 +57,10 @@ class DelooxConnector:
         self._session = session
 
     def discover(self, query: str) -> Iterable[RetailerListing]:
+        query_tokens = [
+            token for token in re.sub(r"[^a-z0-9]+", " ", str(query or "").casefold()).split()
+            if len(token) > 1 and token not in {"ml", "edp", "edt"}
+        ]
         result = scraper.search_stream(query)
         if not isinstance(result, dict) or result.get("status") != "success" or not result.get("verified"):
             status = result.get("status", "invalid_result") if isinstance(result, dict) else "invalid_result"
@@ -68,6 +73,9 @@ class DelooxConnector:
             url = str(row.get("url") or "").strip()
             name = str(row.get("name") or "").strip()
             if not url or not name or not _supported_storefront_url(url):
+                continue
+            searchable = re.sub(r"[^a-z0-9]+", " ", f"{name} {row.get('brand') or ''}".casefold())
+            if query_tokens and not all(token in searchable.split() for token in query_tokens):
                 continue
             attrs = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
             size = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else {}
