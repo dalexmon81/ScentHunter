@@ -86,7 +86,7 @@ class OfferEngineMainSearchTests(unittest.TestCase):
             from backend.offer_engine import read_repository as read_module
 
         with (
-            patch.object(runtime_module, "run_offer_engine", return_value=run_result),
+            patch.object(runtime_module, "run_offer_engine", side_effect=AssertionError("foreground search must not scrape retailers")),
             patch.object(runtime_module, "connect_offer_engine_db", return_value=connection),
             patch.object(read_module.OfferReadRepository, "search", return_value=[row]),
         ):
@@ -159,18 +159,13 @@ class OfferEngineMainSearchTests(unittest.TestCase):
             {"SH-ALPHA", "SH-BETA"},
         )
 
-    def test_offer_engine_fails_closed_when_all_retailers_fail(self):
-        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+    def test_offer_engine_fails_closed_when_read_database_is_unavailable(self):
         try:
             from offer_engine import runtime as runtime_module
         except ModuleNotFoundError:
             from backend.offer_engine import runtime as runtime_module
 
-        failed = EngineRunResult([
-            ConnectorRunResult("deloox", "failed", errors=["blocked"]),
-            ConnectorRunResult("sabina", "failed", errors=["timeout"]),
-        ])
-        with patch.object(runtime_module, "run_offer_engine", return_value=failed):
+        with patch.object(runtime_module, "connect_offer_engine_db", side_effect=RuntimeError("database unavailable")):
             with self.assertRaises(Exception) as raised:
                 main._search_with_offer_engine("Liquid Brun")
         self.assertEqual(getattr(raised.exception, "status_code", None), 503)
