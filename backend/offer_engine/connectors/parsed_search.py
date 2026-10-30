@@ -131,7 +131,7 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
             # product page, where localized or shortened titles can differ.
             result = parser(session, listing.product_url, "")
         else:
-            result = parser(session, listing.product_url, listing.raw_title)
+            result = parser(session, listing.product_url, query)
 
     if isinstance(result, list):
         expected_size = listing.raw_size_ml
