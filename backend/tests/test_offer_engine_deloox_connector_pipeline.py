@@ -129,5 +129,28 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertNotEqual(resolved.observation.variant_id, "VAR-f5aff76b4bb5de8a")
 
 
+    def test_spanish_product_route_is_rejected_on_belgian_storefront(self):
+        spanish_route = "https://www.deloox.be/producto/1205999/dior-sauvage-parfum-perfume-60-ml.html"
+        parsed = page(spanish_route, "Dior Sauvage Parfum 60 ml", 60, "in_stock", 69.95)
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {}
+        }):
+            listings = list(DelooxConnector(session=object()).discover("Sauvage"))
+        self.assertEqual(listings, [])
+
+    def test_spanish_product_route_is_allowed_on_spanish_storefront(self):
+        spanish_route = "https://www.deloox.es/producto/1205999/dior-sauvage-parfum-perfume-60-ml.html"
+        parsed = page(spanish_route, "Dior Sauvage Parfum 60 ml", 60, "in_stock", 69.95)
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {}
+        }), patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed):
+            connector = DelooxConnector(session=object())
+            listings = list(connector.discover("Sauvage"))
+            observation = connector.observe(listings[0])
+        self.assertEqual(listings[0].market, "ES")
+        self.assertEqual(observation.evidence_url, spanish_route)
+
+
+
 if __name__ == "__main__":
     unittest.main()
