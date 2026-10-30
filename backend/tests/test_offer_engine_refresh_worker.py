@@ -36,6 +36,28 @@ class RefreshWorkerQueryTests(unittest.TestCase):
             ],
         )
 
+    def test_real_catalog_liquid_brun_queries_match_pilot_priority_queries(self):
+        from pathlib import Path
+
+        try:
+            from scenthunter_next_engine.catalog_repository import CatalogRepository
+        except ModuleNotFoundError:
+            from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+
+        root = Path(__file__).resolve().parents[2]
+        catalog = CatalogRepository.from_file(root / "product_catalog.json")
+        queries = build_product_queries(catalog)
+        self.assertIn("French Avenue Liquid Brun 100 ml", queries)
+        self.assertIn("French Avenue Liquid Brun Limited Edition 150 ml", queries)
+        self.assertNotIn(
+            "French Avenue Liquid Brun French Avenue Liquid Brun 100 ml",
+            queries,
+        )
+        self.assertNotIn(
+            "French Avenue Liquid Brun Limited Edition French Avenue Liquid Brun Limited Edition 150 ml",
+            queries,
+        )
+
     def test_priority_queries_move_pilot_variants_to_front_stably(self):
         self.assertEqual(
             prioritize_product_queries(
