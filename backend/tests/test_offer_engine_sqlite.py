@@ -57,6 +57,31 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(offers[0]["availability"], "out_of_stock")
         self.assertIsNone(offers[0]["price"])
 
+    def test_size_qualified_search_uses_canonical_variant_size_when_title_omits_it(self):
+        product = self.catalog.get("SH-0031")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+        url = "https://www.deloox.be/produit/1385920/liquid-brun-limited-edition.html"
+        listing = RetailerListing(
+            retailer="deloox", external_id="1385920", product_url=url,
+            raw_title="French Avenue Liquid Brun Limited Edition",
+            raw_brand="French Avenue", raw_size_ml=150,
+            raw_gtin="6298042001831", market="BE",
+        )
+        observation = OfferObservation.now(
+            listing_key="deloox:1385920", price=Decimal("42.89"),
+            currency="EUR", availability=Availability.IN_STOCK,
+            source="product_page", verification=Verification.VERIFIED,
+            product_id=product.product_id, variant_id=variant.variant_id,
+            evidence_url=url, evidence_hash="sha256:size-qualified-read",
+        )
+        OfferRepository(self.connection, canonical_catalog=self.catalog).record(listing, observation)
+        offers = OfferReadRepository(self.connection).search(
+            "Liquid Brun Limited Edition 150 ml", market="BE",
+        )
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(offers[0]["variant_id"], variant.variant_id)
+        self.assertEqual(offers[0]["size_ml"], 150)
+
     def test_read_model_deduplicates_same_retailer_variant_market_by_best_price(self):
         product = self.catalog.get("SH-0030")
         variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
