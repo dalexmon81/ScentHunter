@@ -382,10 +382,15 @@ def learn_variants(
         url_identity = _url_identity_name(url, brand or product_brand)
         if (
             not offer_concentration
-            or not canonical_concentration
-            or offer_concentration != canonical_concentration
-            or (title_concentration is not None and title_concentration != canonical_concentration)
-            or (url_concentration is not None and url_concentration != canonical_concentration)
+            or (
+                canonical_concentration is not None
+                and offer_concentration != canonical_concentration
+            )
+            or (
+                title_concentration is not None
+                and url_concentration is not None
+                and title_concentration != url_concentration
+            )
         ):
             rejected["concentration_unverified_or_conflict"] += 1
             continue
