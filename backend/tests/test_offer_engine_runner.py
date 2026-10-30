@@ -45,9 +45,9 @@ class FakeRepository:
         return {"published": False}
 
 
-def listing(sku):
+def listing(sku, retailer="deloox"):
     return RetailerListing(
-        retailer="deloox",
+        retailer=retailer,
         external_id=sku,
         product_url=f"https://www.deloox.be/p/{sku}",
         raw_title=f"Perfume {sku}",
