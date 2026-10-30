@@ -1191,6 +1191,8 @@ def _discover_from_search(session, query, deadline=None):
             "final": item["final"],
             "bytes": len(item["response"].content or b""),
             "candidate_count": len(item["found"]),
+            "page_title": clean(re.search(r"<title[^>]*>(.*?)</title>", item["response"].text or "", re.I | re.S).group(1))[:160] if re.search(r"<title[^>]*>(.*?)</title>", item["response"].text or "", re.I | re.S) else None,
+            "page_sample": clean(re.sub(r"<[^>]+>", " ", (item["response"].text or "")[:600]))[:240],
         }
         for item in successful
     ]
