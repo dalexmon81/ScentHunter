@@ -79,7 +79,7 @@ def _availability(value: Any) -> Availability:
 
 
 
-def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session) -> Mapping[str, Any]:
+def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session, query: str) -> Mapping[str, Any]:
     """Fetch and parse the exact retailer product URL; search snippets are never offer evidence."""
     if retailer == "parfumcity":
         product_json = getattr(scraper, "product_json", None)
@@ -93,7 +93,7 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
         for variant in product.get("variants") or []:
             if not isinstance(variant, Mapping):
                 continue
-            parsed = make_item(product, variant, listing.product_url, listing.raw_title)
+            parsed = make_item(product, variant, listing.product_url, query)
             if isinstance(parsed, Mapping):
                 candidates.append(parsed)
         wanted_sku = str(listing.external_id or "")
@@ -116,7 +116,7 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
         parser = getattr(scraper, "product_from_page", None)
         if not callable(parser):
             raise RuntimeError("bplatz_product_page_parser_unavailable")
-        result = parser(session, listing.product_url, listing.raw_title)
+        result = parser(session, listing.product_url, query)
     else:
         parser = getattr(scraper, "extract_product_page", None)
         if not callable(parser):
@@ -124,7 +124,7 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
         if retailer == "easycosmetic":
             result = parser(session, listing.product_url)
         elif retailer == "sabina":
-            result = parser(session, listing.product_url, listing.raw_title, authoritative_search=True)
+            result = parser(session, listing.product_url, query, authoritative_search=True)
         elif retailer in {"orioudh", "perfumemarket"}:
             # These product parsers are URL-bound. The discovered exact URL is
             # authoritative; do not reapply search-snippet title tokens to the
@@ -194,8 +194,8 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
     return result
 
 
-def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session) -> dict[str, Any]:
-    page = _normalise_product_page(scraper, retailer, listing, session)
+def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: requests.Session, query: str) -> dict[str, Any]:
+    page = _normalise_product_page(scraper, retailer, listing, session, query)
     source = _mapping(page.get("source"))
     provenance = _mapping(page.get("provenance"))
     attributes = _mapping(page.get("attributes"))
@@ -270,6 +270,7 @@ class ParsedSearchConnector:
         self.market = market.strip().upper()
         self._scraper = scraper
         self._rows: dict[str, Mapping[str, Any]] = {}
+        self._query = ""
         if not self.retailer or not self.market:
             raise ValueError("retailer and market are required")
 
@@ -293,6 +294,7 @@ class ParsedSearchConnector:
         if not query:
             return []
         scraper = self._module()
+        self._query = query
         search_stream = getattr(scraper, "search_stream", None)
         if not callable(search_stream):
             raise RuntimeError(f"{self.retailer}_search_stream_unavailable")
@@ -373,7 +375,7 @@ class ParsedSearchConnector:
 
         scraper = self._module()
         with requests.Session() as session:
-            page = _page_facts(scraper, self.retailer, listing, session)
+            page = _page_facts(scraper, self.retailer, listing, session, self._query)
 
         availability = _availability(_mapping(page.get("offer")).get("availability"))
         price = _price(_mapping(page.get("offer")).get("price"))
