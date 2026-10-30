@@ -28,7 +28,7 @@ On Fly, the worker uses the dedicated SQLite file `/data/offer_engine.sqlite3` o
 
 The runtime always registers the Deloox connector. It adds the Notino authorized CJ/VIV XML feed connector only when `NOTINO_CJ_FEED_URL`, `NOTINO_CJ_FEED_USERNAME` and `NOTINO_CJ_FEED_PASSWORD` are configured. Notino feed variants sharing one product URL remain separate listings by size/GTIN. Both connectors use the same canonical resolver and publication policy.
 
-The read-only API mounts only when `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=1`. It exposes `GET /offer-engine/search?query=Liquid+Brun&market=BE` and uses the dedicated Offer Engine database. The current-state read model includes sold-out variants with `availability=out_of_stock` and `price=null`, and excludes states older than each retailer’s `max_offer_age_seconds`. It does not replace the legacy `/search` endpoint yet.
+The API mounts only when `SCENTHUNTER_OFFER_ENGINE_API_ENABLED=1`. `GET /offer-engine/search?query=Liquid+Brun&market=BE` reads the dedicated current-state model; `POST` to the same path runs the configured connectors for that query, persists observations, then returns the current state. Sold-out variants are returned with `availability=out_of_stock` and `price=null`; states older than each retailer’s `max_offer_age_seconds` are excluded. This API does not replace the legacy `/search` endpoint yet.
 
 The `python -m backend.offer_engine.live_deloox_smoke` command exercises the real Deloox search and product pages without opening a database or writing catalog data. Run it manually from an environment allowed by Deloox; automated CI runners may receive a Cloudflare Client Challenge instead of the storefront.
 
