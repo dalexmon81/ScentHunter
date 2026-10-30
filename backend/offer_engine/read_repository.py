@@ -57,7 +57,8 @@ class OfferReadRepository:
                          )
                          AND (? IS NULL OR l.market=?)
                        ORDER BY (o.price IS NULL) ASC, o.price ASC,
-                                r.display_name ASC, l.product_url ASC
+                                r.display_name ASC, l.market ASC, p.product_id ASC,
+                                v.variant_id ASC, o.observed_at DESC, l.product_url ASC
                        LIMIT ?"""
                 params = (pattern, pattern, pattern, normalized_market, normalized_market, int(limit))
             else:
@@ -86,7 +87,8 @@ class OfferReadRepository:
                          )
                          AND (%s::text IS NULL OR l.market=%s)
                        ORDER BY (o.price IS NULL) ASC, o.price ASC NULLS LAST,
-                                r.display_name ASC, l.product_url ASC
+                                r.display_name ASC, l.market ASC, p.product_id ASC,
+                                v.variant_id ASC, o.observed_at DESC, l.product_url ASC
                        LIMIT %s"""
                 params = (pattern, pattern, pattern, normalized_market, normalized_market, int(limit))
             cursor.execute(sql, params)
@@ -95,6 +97,20 @@ class OfferReadRepository:
                 column.name if hasattr(column, "name") else column[0]
                 for column in cursor.description
             ]
-            return [dict(zip(columns, row)) for row in rows]
+            # A retailer can expose duplicate product pages for the same
+            # sellable variant. Keep the best current offer once per retailer,
+            # canonical variant and market: in-stock/lowest price wins because
+            # the SQL order ranks those rows first; latest observation breaks ties.
+            deduplicated: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+            for raw_row in rows:
+                item = dict(zip(columns, raw_row))
+                key = (
+                    str(item["retailer_id"]),
+                    str(item["product_id"]),
+                    str(item["variant_id"]),
+                    str(item["market"]),
+                )
+                deduplicated.setdefault(key, item)
+            return list(deduplicated.values())
         finally:
             cursor.close()
