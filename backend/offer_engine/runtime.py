@@ -127,6 +127,7 @@ def run_offer_engine(
         if connectors is None:
             configured_connectors = [
                 DelooxConnector(),
+                NotinoFeedConnector(),
                 ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
                 ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
                 ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
@@ -135,8 +136,6 @@ def run_offer_engine(
                 ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
                 ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
             ]
-            if NotinoFeedConnector.configured():
-                configured_connectors.insert(1, NotinoFeedConnector())
         else:
             configured_connectors = list(connectors)
         return runner.run(configured_connectors, query)
