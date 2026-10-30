@@ -220,5 +220,36 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertIsNone(observation.price)
 
 
+    def test_connector_records_explicit_sold_out_when_page_parser_reports_it(self):
+        parsed = page(
+            URL_150,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            150, "out_of_stock", None, "6298042001831",
+        )
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {},
+        }), patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            observation = connector.observe(listing)
+        self.assertEqual(observation.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(observation.price)
+
+    def test_connector_preserves_in_stock_price_from_verified_parser_contract(self):
+        parsed = page(
+            URL_100,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 49.95,
+        )
+        with patch("backend.offer_engine.connectors.deloox.scraper.search_stream", return_value={
+            "status": "success", "verified": True, "results": [parsed], "details": {},
+        }), patch("backend.offer_engine.connectors.deloox.scraper.extract_product_page", return_value=parsed):
+            connector = DelooxConnector(session=object())
+            listing = next(iter(connector.discover("Liquid Brun")))
+            observation = connector.observe(listing)
+        self.assertEqual(observation.availability, Availability.IN_STOCK)
+        self.assertEqual(observation.price, Decimal("49.95"))
+
+
 if __name__ == "__main__":
     unittest.main()
