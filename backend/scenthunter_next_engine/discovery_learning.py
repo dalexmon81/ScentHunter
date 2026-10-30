@@ -295,13 +295,24 @@ def learn_variants(
     rewritten_observations = [dict(item) for item in observation_rows]
     for (brand_key, name_key, concentration), rows in new_product_groups.items():
         by_size: dict[int, set[str]] = defaultdict(set)
+        by_size_domains: dict[int, set[str]] = defaultdict(set)
         all_retailers: set[str] = set()
+        all_domains: set[str] = set()
         for row in rows:
             retailer_key = _norm(row["retailer"])
+            domain = str(row["domain"])
             by_size[int(row["size_ml"])].add(retailer_key)
+            by_size_domains[int(row["size_ml"])].add(domain)
             all_retailers.add(retailer_key)
-        if len(all_retailers) < min_retailers or not any(
-            len(retailers) >= min_retailers for retailers in by_size.values()
+            all_domains.add(domain)
+        if (
+            len(all_retailers) < min_retailers
+            or len(all_domains) < min_retailers
+            or not any(
+                len(retailers) >= min_retailers
+                and len(by_size_domains[size]) >= min_retailers
+                for size, retailers in by_size.items()
+            )
         ):
             rejected["new_product_insufficient_independent_evidence"] += 1
             continue
@@ -447,7 +458,8 @@ def learn_variants(
     added = []
     for key, bucket in sorted(evidence.items()):
         retailer_evidence = list(bucket["retailers"].values())
-        if len(retailer_evidence) < min_retailers:
+        independent_domains = {str(item.get("domain") or "") for item in retailer_evidence}
+        if len(retailer_evidence) < min_retailers or len(independent_domains) < min_retailers:
             rejected["insufficient_independent_retailers"] += 1
             continue
         product_id, size, concentration = key
