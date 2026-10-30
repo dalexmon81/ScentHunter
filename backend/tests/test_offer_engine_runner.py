@@ -1,4 +1,5 @@
 import unittest
+from threading import Barrier
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -103,6 +104,25 @@ class OfferEngineRunnerTests(unittest.TestCase):
         self.assertEqual(result.connectors[0].listings_seen, 2)
         self.assertEqual(result.connectors[0].observations_written, 1)
         self.assertEqual(len(repository.records), 1)
+
+    def test_retailer_discovery_runs_concurrently_and_keeps_registry_order(self):
+        barrier = Barrier(2)
+
+        class ConcurrentConnector(FakeConnector):
+            def discover(self, query):
+                barrier.wait(timeout=3)
+                return []
+
+        first = ConcurrentConnector("first")
+        second = ConcurrentConnector("second")
+        runner = OfferEngineRunner(
+            matcher=object(),
+            repository_factory=lambda _: FakeRepository(),
+            max_workers=2,
+        )
+        result = runner.run([first, second], "perfume")
+        self.assertEqual([item.retailer for item in result.connectors], ["first", "second"])
+        self.assertEqual([item.status for item in result.connectors], ["success", "success"])
 
     def test_all_listing_failures_mark_connector_failed(self):
         connector = FakeConnector("deloox", [listing("one")], observe_error=RuntimeError("timeout"))
