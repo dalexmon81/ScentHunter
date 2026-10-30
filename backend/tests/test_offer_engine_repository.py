@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 import unittest
+from pathlib import Path
+from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
 from backend.offer_engine.contracts import Availability, OfferObservation, RetailerListing, Verification
 from backend.offer_engine.repository import OfferRepository
@@ -55,6 +57,11 @@ def fixtures(verified=False):
 
 
 class OfferRepositoryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parents[2]
+        cls.catalog = CatalogRepository.from_file(root / 'backend' / 'product_catalog.json')
+
     def test_unverified_observation_is_saved_but_not_published(self):
         conn = Connection()
         listing, observation = fixtures()
@@ -68,11 +75,13 @@ class OfferRepositoryTests(unittest.TestCase):
     def test_verified_fresh_offer_is_published_atomically(self):
         conn = Connection()
         listing, observation = fixtures(verified=True)
-        result = OfferRepository(conn).record(listing, observation)
+        result = OfferRepository(conn, canonical_catalog=self.catalog).record(listing, observation)
         self.assertTrue(result["published"])
         self.assertEqual(result["listing_id"], 41)
         self.assertEqual(result["observation_id"], 72)
         self.assertEqual(conn.commits, 1)
+        self.assertTrue(any("INSERT INTO sh_products" in sql for sql, _ in conn.cur.calls))
+        self.assertTrue(any("INSERT INTO sh_variants" in sql for sql, _ in conn.cur.calls))
         self.assertTrue(any("INSERT INTO sh_current_offers" in sql for sql, _ in conn.cur.calls))
 
     def test_any_write_failure_rolls_back_the_unit_of_work(self):
