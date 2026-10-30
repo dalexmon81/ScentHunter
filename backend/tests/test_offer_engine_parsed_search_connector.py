@@ -212,6 +212,16 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual({item.raw_size_ml for item in listings}, {100, 150})
         self.assertEqual(len({item.external_id for item in listings}), 2)
 
+    def test_reused_sku_ids_are_stable_when_search_order_changes(self):
+        rows = [
+            self._row(url="https://www.parfum-zentrum.de/liquid-brun-100.html", sku="SHARED-SKU", gtin="6298042001008", size_ml=100),
+            self._row(name="French Avenue Liquid Brun Limited Edition 150 ml", url="https://www.parfum-zentrum.de/liquid-brun-150.html", sku="SHARED-SKU", gtin="6298042001831", size_ml=150),
+        ]
+        def get_ids(items):
+            connector = ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE", scraper=FakeScraper({"status": "success", "verified": True, "results": items}))
+            return {item.raw_size_ml: item.external_id for item in connector.discover("Liquid Brun")}
+        self.assertEqual(get_ids(rows), get_ids(rows[::-1]))
+        self.assertEqual(set(get_ids(rows)), {100, 150})
     def test_product_page_redirect_to_another_path_is_rejected(self):
         scraper = FakeScraper(
             {
