@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -27,6 +28,21 @@ class OfferRepository:
             sql = sql.replace("%s", "?").replace("now()", "CURRENT_TIMESTAMP").replace("::jsonb", "")
             params = tuple(str(value) if isinstance(value, Decimal) else value for value in params)
         cursor.execute(sql, params)
+
+    @staticmethod
+    def _as_utc(value: Any) -> datetime | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            try:
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                return None
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
 
     def _ensure_canonical_identity(self, cursor: Any, product_id: str, variant_id: str) -> None:
         """Persist the exact reviewed catalog records required by current-offer FKs."""
@@ -82,24 +98,38 @@ class OfferRepository:
             incoming_variant_id = observation.variant_id if status == "matched" else None
             if external_id is not None:
                 self._execute(cursor,
-                    """SELECT listing_id, canonical_product_id, canonical_variant_id, match_status
-                       FROM sh_retailer_listings
-                       WHERE retailer_id=%s AND external_id=%s
-                       ORDER BY listing_id DESC LIMIT 1""",
+                    """SELECT l.listing_id, l.canonical_product_id, l.canonical_variant_id,
+                              l.match_status, current.verified_at
+                       FROM sh_retailer_listings AS l
+                       LEFT JOIN sh_current_offers AS current ON current.listing_id=l.listing_id
+                       WHERE l.retailer_id=%s AND l.external_id=%s
+                       ORDER BY l.listing_id DESC LIMIT 1""",
                     (listing.retailer, external_id),
                 )
             else:
                 self._execute(cursor,
-                    """SELECT listing_id, canonical_product_id, canonical_variant_id, match_status
-                       FROM sh_retailer_listings
-                       WHERE retailer_id=%s AND external_id IS NULL AND product_url=%s
-                       ORDER BY listing_id DESC LIMIT 1""",
+                    """SELECT l.listing_id, l.canonical_product_id, l.canonical_variant_id,
+                              l.match_status, current.verified_at
+                       FROM sh_retailer_listings AS l
+                       LEFT JOIN sh_current_offers AS current ON current.listing_id=l.listing_id
+                       WHERE l.retailer_id=%s AND l.external_id IS NULL AND l.product_url=%s
+                       ORDER BY l.listing_id DESC LIMIT 1""",
                     (listing.retailer, listing.product_url),
                 )
             existing = cursor.fetchone()
             if existing is not None:
-                if (existing[1], existing[2]) != (incoming_product_id, incoming_variant_id):
+                identity_changed = (existing[1], existing[2]) != (incoming_product_id, incoming_variant_id)
+                current_verified_at = self._as_utc(existing[4])
+                incoming_is_current = (
+                    current_verified_at is None
+                    or self._as_utc(observation.observed_at) >= current_verified_at
+                )
+                if identity_changed and incoming_is_current:
                     self._execute(cursor, "DELETE FROM sh_current_offers WHERE listing_id=%s", (existing[0],))
+                elif identity_changed and not incoming_is_current:
+                    # A delayed/unordered observation must not retire a newer
+                    # verified offer or overwrite its canonical identity.
+                    incoming_product_id, incoming_variant_id, status = existing[1], existing[2], existing[3]
             self._execute(cursor,
                 """INSERT INTO sh_retailers(retailer_id, display_name, market)
                    VALUES (%s, %s, %s)
