@@ -86,12 +86,23 @@ class DelooxConnector:
             name = str(row.get("name") or "").strip()
             if not url or not name or not _supported_storefront_url(url):
                 continue
-            searchable = re.sub(r"[^a-z0-9]+", " ", f"{name} {row.get('brand') or ''}".casefold())
-            if query_tokens and not all(token in searchable.split() for token in query_tokens):
-                continue
             attrs = row.get("attributes") if isinstance(row.get("attributes"), dict) else {}
             size = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else {}
             concentration = attrs.get("concentration") if isinstance(attrs.get("concentration"), dict) else {}
+            # Search-result titles can omit the bottle size even when the
+            # parsed product facts and canonical URL expose it. Include those
+            # independent page facts so a size-qualified query (e.g. 150 ml)
+            # does not discard the exact variant before observation.
+            searchable_text = " ".join((
+                name,
+                str(row.get("brand") or ""),
+                url,
+                str(size.get("value") or ""),
+                str(concentration.get("value") or ""),
+            ))
+            searchable = re.sub(r"[^a-z0-9]+", " ", searchable_text.casefold())
+            if query_tokens and not all(token in searchable.split() for token in query_tokens):
+                continue
             identity = row.get("identity") if isinstance(row.get("identity"), dict) else {}
             sku = identity.get("sku") if isinstance(identity.get("sku"), dict) else {}
             gtin = identity.get("gtin") if isinstance(identity.get("gtin"), dict) else {}
