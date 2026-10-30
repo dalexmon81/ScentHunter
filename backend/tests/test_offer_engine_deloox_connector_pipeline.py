@@ -100,6 +100,24 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0].product_url, URL_100)
 
+    def test_size_qualified_search_uses_parsed_size_when_title_omits_it(self):
+        url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-limited-edition.html"
+        parsed = page(
+            url,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition",
+            150, "out_of_stock", None, "6298042001831",
+        )
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={"status": "success", "verified": True, "results": [parsed], "details": {}},
+        ):
+            listings = list(DelooxConnector(session=object()).discover(
+                "Liquid Brun Limited Edition 150 ml"
+            ))
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0].raw_size_ml, 150)
+        self.assertEqual(listings[0].product_url, url)
+
     def test_150ml_limited_edition_keeps_out_of_stock_and_no_price(self):
         listing, raw, resolved = self._run(
             URL_150,
