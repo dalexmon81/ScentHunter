@@ -78,7 +78,7 @@ def _retailer_title_core(value: str) -> str:
     # place them; _explicit_concentration() still preserves this evidence for
     # disambiguating products that share a name.
     core = re.sub(
-        r"\\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|edp|edt|edc)\\b",
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|edp|edt|edc)\b",
         " ",
         core,
     )
