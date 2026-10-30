@@ -1,4 +1,4 @@
-"""Publication gate: only fresh, verified, purchasable observations become current offers."""
+"""Publication gate for fresh verified offer states and positive purchasable prices."""
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -37,7 +37,11 @@ class OfferPolicy:
         if observation.availability is Availability.OUT_OF_STOCK:
             if observation.price is not None:
                 return PolicyDecision(False, "out_of_stock_price_present")
+            # A verified sold-out state is useful current availability data,
+            # but it is never represented as a purchasable priced offer.
             return PolicyDecision(True, "verified_out_of_stock")
         if observation.price is None:
             return PolicyDecision(False, "price_missing")
+        if observation.price <= 0:
+            return PolicyDecision(False, "price_not_positive")
         return PolicyDecision(True, "verified_and_fresh")
