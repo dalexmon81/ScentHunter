@@ -14,11 +14,16 @@ class Cursor:
         self.rowcount = 1
         self.fail = fail
         self._fetch = [41, 72]
+        self._selected = None
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
+        if sql.lstrip().startswith("SELECT listing_id, canonical_product_id"):
+            self._selected = None
         if self.fail and "INSERT INTO sh_offer_observations" in sql:
             raise RuntimeError("write failed")
     def fetchone(self):
+        if self._selected is None and self.calls and self.calls[-1][0].lstrip().startswith("SELECT listing_id, canonical_product_id"):
+            return None
         return (self._fetch.pop(0),)
     def close(self):
         pass
