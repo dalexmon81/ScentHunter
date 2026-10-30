@@ -59,8 +59,10 @@ def _identity_name(value: Any, brand: Any) -> str:
     )
     for pattern, _ in _CONCENTRATION_PATTERNS:
         text = pattern.sub(" ", text)
+    text = re.sub(r"\bfor her\b", "women", text)
+    text = re.sub(r"\bfor him\b", "men", text)
     text = re.sub(
-        r"\b(?:for men|for women|men|man|women|woman|herren|damen|unisex)\b",
+        r"\b(?:for men|for women|men|man|women|woman|herren|damen|unisex|male|female)\b",
         " ",
         text,
     )
@@ -106,8 +108,15 @@ def _url_identity_name(url: Any, brand: Any) -> str | None:
     slug = _norm(slug)
     if not slug:
         return None
+    # Product IDs, brand repeats and retailer SEO suffixes are not perfume
+    # identity. Remove them while retaining meaningful flankers such as
+    # "Eau Forte", "Elixir", "Malibu", or "Limited Edition".
+    slug = re.sub(r"\b\d+\b", " ", slug)
+    brand_tokens = set(_norm(brand).split())
+    tokens = [token for token in slug.split() if token not in brand_tokens]
+    slug = " ".join(tokens)
     slug = re.sub(
-        r"\b(?:perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
+        r"\b(?:by|copy|perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
         r"vaporisateur|vaporizador|atomizer|aerosol)\b",
         " ",
         slug,
