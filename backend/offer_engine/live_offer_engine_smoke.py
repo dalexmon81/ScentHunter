@@ -81,6 +81,7 @@ def run() -> dict:
                     "offers_published": item.offers_published,
                     "unresolved": item.unresolved,
                     "errors": item.errors,
+                    "unresolved_samples": item.unresolved_samples,
                 }
                 for item in engine_result.connectors
             ],
