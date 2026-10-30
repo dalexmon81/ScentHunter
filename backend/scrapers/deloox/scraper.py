@@ -1202,7 +1202,7 @@ def _discover_from_search(session, query, deadline=None):
                         locale="fr-BE",
                     )
                     page.goto(browser_endpoint, wait_until="domcontentloaded", timeout=18000)
-                    page.wait_for_timeout(3500)
+                    page.wait_for_timeout(12000)
                     browser_html = page.content() or ""
                     browser_url = clean(page.url or browser_endpoint)
                     browser_title = clean(page.title() or "")
