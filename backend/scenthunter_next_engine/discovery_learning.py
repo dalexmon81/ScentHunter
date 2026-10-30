@@ -108,9 +108,16 @@ def _url_identity_name(url: Any, brand: Any) -> str | None:
     slug = _norm(slug)
     if not slug:
         return None
-    # Product IDs, brand repeats and retailer SEO suffixes are not perfume
-    # identity. Remove them while retaining meaningful flankers such as
-    # "Eau Forte", "Elixir", "Malibu", or "Limited Edition".
+    # Remove size + unit as one token sequence before stripping standalone
+    # numeric product IDs. Otherwise "100 ml" becomes a dangling "ml" token
+    # and makes otherwise identical retailer URLs disagree.
+    slug = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl oz)\b",
+        " ",
+        slug,
+    )
+    # Product IDs and retailer SEO suffixes are not perfume identity. Retain
+    # meaningful flankers such as "Eau Forte", "Elixir", or "Limited Edition".
     slug = re.sub(r"\b\d+\b", " ", slug)
     brand_tokens = set(_norm(brand).split())
     tokens = [token for token in slug.split() if token not in brand_tokens]
