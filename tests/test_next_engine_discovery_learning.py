@@ -528,3 +528,38 @@ def test_url_identity_ignores_retailer_product_ids_and_brand_suffixes():
     result = learn_variants(_catalog(), observations)
     assert result["report"]["variants_added"] == 1
 
+def test_learns_missing_variant_from_two_retailers_when_title_omits_url_verified_concentration():
+    catalog = {
+        "products": [{
+            "product_id": "SH-FAMILY-HAWAS-CHROME",
+            "brand_name": "Rasasi",
+            "canonical_name": "Hawas Chrome",
+            "concentration": "Eau de Parfum",
+        }],
+        "variants": [],
+    }
+    observations = [
+        {
+            "candidate_product_ids": ["SH-FAMILY-HAWAS-CHROME"],
+            "name": "Hawas Chrome",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Bplatz",
+            "product_url": "https://en.bplatz.de/products/rasasi-hawas-chrome-eau-de-parfum-100ml",
+        },
+        {
+            "candidate_product_ids": ["SH-FAMILY-HAWAS-CHROME"],
+            "name": "Hawas Chrome",
+            "brand": "Rasasi",
+            "size_ml": 100,
+            "retailer": "Deloox",
+            "product_url": "https://www.deloox.be/product/1398772/rasasi-hawas-chrome-eau-de-parfum-100-ml.html",
+        },
+    ]
+    result = learn_variants(catalog, observations)
+    assert result["report"]["variants_added"] == 1
+    learned = result["report"]["added_variants"][0]
+    assert learned["product_id"] == "SH-FAMILY-HAWAS-CHROME"
+    assert learned["size_ml"] == 100
+    assert learned["independent_retailer_count"] == 2
+
