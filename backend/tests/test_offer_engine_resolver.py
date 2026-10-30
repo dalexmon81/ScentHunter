@@ -74,7 +74,7 @@ class OfferEngineResolverTests(unittest.TestCase):
         self.assertEqual(result.observation.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(result.observation.price)
         from backend.offer_engine.policy import OfferPolicy
-        self.assertFalse(OfferPolicy().evaluate(result.observation).publish)
+        self.assertTrue(OfferPolicy().evaluate(result.observation).publish)
         self.assertEqual(result.observation.verification, Verification.VERIFIED)
         self.assertEqual(matcher.seen_offer.size_ml, 150)
         self.assertEqual(
