@@ -286,5 +286,28 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         self.assertEqual(len({item.product_url for item in listings}), 2)
 
 
+    def test_discovery_preserves_two_distinct_deloox_urls_with_shared_sku(self):
+        first = page(
+            URL_100,
+            "French Avenue Liquid Brun Eau de Parfum 100 ml",
+            100, "in_stock", 49.95,
+        )
+        second_url = "https://www.deloox.be/produit/1385920/french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+        second = page(
+            second_url,
+            "French Avenue Liquid Brun Extrait de Parfum Limited Edition 150 ml",
+            150, "out_of_stock", None, "6298042001831",
+        )
+        second["sku"] = first["sku"]
+        second["identity"]["sku"] = first["identity"]["sku"]
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={"status": "success", "verified": True, "results": [first, second], "details": {}},
+        ):
+            listings = list(DelooxConnector(session=object()).discover("Liquid Brun"))
+        self.assertEqual({item.raw_size_ml for item in listings}, {100, 150})
+        self.assertEqual(len({item.external_id for item in listings}), 2)
+        self.assertEqual(len({item.product_url for item in listings}), 2)
+
 if __name__ == "__main__":
     unittest.main()
