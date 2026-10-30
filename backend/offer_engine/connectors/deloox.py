@@ -49,6 +49,16 @@ def _supported_storefront_url(url: str) -> bool:
     return first_segment != "producto" or host in {"deloox.es", "www.deloox.es"}
 
 
+def _same_product_path(discovered_url: str, evidence_url: str) -> bool:
+    """A same-storefront redirect is still unsafe if it lands on another product."""
+    discovered = urlparse(discovered_url)
+    evidence = urlparse(evidence_url)
+    return (
+        discovered.scheme in {"http", "https"}
+        and evidence.scheme in {"http", "https"}
+        and (discovered.hostname or "").lower() == (evidence.hostname or "").lower()
+        and (discovered.path.rstrip("/") or "/") == (evidence.path.rstrip("/") or "/")
+    )
 
 
 class DelooxConnector:
@@ -119,6 +129,8 @@ class DelooxConnector:
             raise ValueError("deloox_final_url_invalid_or_wrong_market")
         if _deloox_market(evidence_url) != listing.market:
             raise ValueError("deloox_market_changed_since_discovery")
+        if not _same_product_path(listing.product_url, evidence_url):
+            raise ValueError("deloox_product_page_redirected_to_different_product")
         raw_availability = str(offer.get("availability") or "unknown").lower()
         availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
         raw_price = offer.get("price")
