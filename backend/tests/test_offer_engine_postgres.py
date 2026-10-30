@@ -220,5 +220,39 @@ class OfferEnginePostgresTests(unittest.TestCase):
         self.connection.commit()
 
 
+    def test_read_model_never_exposes_zero_price_even_if_current_row_is_corrupted(self):
+        product = self.catalog.get("SH-0030")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+        external_id = f"zero-price-corruption-{suffix}"
+        url = f"https://www.parfumzentrum.de/french-avenue-liquid-brun-{suffix}.html"
+        listing = RetailerListing(
+            retailer="parfumzentrum", external_id=external_id,
+            product_url=url,
+            raw_title="French Avenue Liquid Brun Eau de Parfum 100 ml",
+            raw_brand="French Avenue", raw_size_ml=100, market="DE",
+        )
+        result = OfferRepository(self.connection, canonical_catalog=self.catalog).record(
+            listing,
+            OfferObservation.now(
+                listing_key=f"parfumzentrum:{external_id}",
+                price=Decimal("39.99"), currency="EUR",
+                availability=Availability.IN_STOCK, source="product_page",
+                verification=Verification.VERIFIED,
+                product_id=product.product_id, variant_id=variant.variant_id,
+                evidence_url=url, evidence_hash=f"sha256:{external_id}",
+            ),
+        )
+        self.assertTrue(result["published"])
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE sh_offer_observations SET price=0 WHERE observation_id=%s",
+                (result["observation_id"],),
+            )
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="DE")
+        self.assertFalse(any(row["listing_id"] == result["listing_id"] for row in offers))
+        self.connection.rollback()
+
+
 if __name__ == "__main__":
     unittest.main()
