@@ -108,6 +108,25 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(str(observation.price), "37.4")
         self.assertEqual(scraper.page_fetches, [listing.product_url])
 
+    def test_product_page_title_can_supply_missing_exact_size(self):
+        scraper = FakeScraper({
+            "status": "success", "verified": True,
+            "results": [self._row(size_ml=None)],
+        })
+        connector = ParsedSearchConnector(
+            "perfumemarket",
+            "scrapers.perfumemarket.scraper",
+            "NL",
+            scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun")))
+        observation = connector.observe(listing)
+        self.assertIsNone(listing.raw_size_ml)
+        self.assertEqual(
+            observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"],
+            100,
+        )
+
     def test_sabina_selects_the_exact_variant_offer_not_parent_page_price(self):
         variant_url = "https://www.sabina.com/liquid-brun.html#/25-tama_o-100_ml"
         row = self._row(
