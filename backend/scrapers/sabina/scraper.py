@@ -1350,7 +1350,7 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
             price_values = [obj.get(k) for k in price_keys if obj.get(k) not in (None, "")]
             price = next((v for v in price_values if money_to_float(v) is not None), None)
             effective_size = local_size if local_size is not None else (current_variant or {}).get("size")
-            if effective_size is not None and price is not None:
+            if effective_size is not None:
                 currency = obj.get("priceCurrency") or obj.get("currency") or "EUR"
                 raw_availability = clean(
                     obj.get("availability") or obj.get("stock_status")
@@ -1362,15 +1362,19 @@ def extract_product_page(session, url, query, authoritative_search=False, html=N
                     availability = "in_stock"
                 else:
                     availability = "unknown"
-                variant_context = current_variant or {}
-                add_variant(
-                    effective_size, price, currency, availability,
-                    effective_sku or variant_context.get("sku"),
-                    obj.get("url") or variant_context.get("url"),
-                    local_gtin or variant_context.get("gtin"),
-                    local_mpn or variant_context.get("mpn"),
-                    local_variant_id or variant_context.get("variant_id"),
-                )
+                # Keep a sold-out variant even when its retailer page omits
+                # price; it must clear an older purchasable offer. Never carry
+                # a parent or sibling variant's price into this record.
+                if price is not None or availability == "out_of_stock":
+                    variant_context = current_variant or {}
+                    add_variant(
+                        effective_size, price, currency, availability,
+                        effective_sku or variant_context.get("sku"),
+                        obj.get("url") or variant_context.get("url"),
+                        local_gtin or variant_context.get("gtin"),
+                        local_mpn or variant_context.get("mpn"),
+                        local_variant_id or variant_context.get("variant_id"),
+                    )
 
             for value in obj.values():
                 walk_variant_data(value, effective_sku, current_variant)
