@@ -132,6 +132,11 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(len(current), 1)
         self.assertEqual(current[0]["variant_id"], variant_150.variant_id)
         self.assertEqual(str(current[0]["price"]), "42.89")
+        stored_listing = self.connection.execute(
+            "SELECT raw_size_ml, raw_title FROM sh_retailer_listings WHERE retailer_id='deloox' AND external_id='1385920'"
+        ).fetchone()
+        self.assertEqual(stored_listing["raw_size_ml"], 150)
+        self.assertIn("150 ml", stored_listing["raw_title"])
 
     def test_two_variant_ids_can_share_one_parent_product_url(self):
         url = "https://www.notino.fr/french-avenue/liquid-brun/"
