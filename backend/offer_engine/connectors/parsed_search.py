@@ -386,7 +386,8 @@ class ParsedSearchConnector:
             # Deduplicate tracking/locale aliases only within the same exact
             # variant identity; URL-only dedupe silently loses sibling sizes.
             variant_dedupe_id = str(
-                store_variant_id or gtin
+                store_variant_id
+                or (f"{gtin}:{size_ml}" if gtin and size_ml is not None else gtin)
                 or (f"{sku}:{size_ml}" if sku and size_ml is not None else sku)
                 or size_ml
                 or hashlib.sha256(title.encode("utf-8")).hexdigest()[:12]
@@ -402,7 +403,12 @@ class ParsedSearchConnector:
             if external_id in seen:
                 # Product-level SKUs are sometimes reused across bottle sizes.
                 # Keep sibling sellable variants as independent retailer listings.
-                suffix = str(gtin or size_ml or hashlib.sha256(url.encode("utf-8")).hexdigest()[:10])
+                suffix = str(
+                    store_variant_id
+                    or (f"{gtin}:{size_ml}" if gtin and size_ml is not None else gtin)
+                    or size_ml
+                    or hashlib.sha256(url.encode("utf-8")).hexdigest()[:10]
+                )
                 external_id = f"{base_external_id}:{suffix}"
             if external_id in seen:
                 external_id = f"{base_external_id}:{hashlib.sha256(url.encode('utf-8')).hexdigest()[:12]}"
