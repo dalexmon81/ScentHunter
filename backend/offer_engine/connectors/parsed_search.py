@@ -71,7 +71,7 @@ def _availability(value: Any) -> Availability:
         return Availability.OUT_OF_STOCK
     if raw in {
         "in_stock", "instock", "available", "in_stock_available",
-        "op_voorraad", "add_to_cart", "preorder",
+        "op_voorraad", "add_to_cart",
     }:
         return Availability.IN_STOCK
     return Availability.UNKNOWN
@@ -142,8 +142,8 @@ class ParsedSearchConnector:
             raw_url = str(row.get("url") or row.get("product_url") or row.get("link") or "").strip()
             url = urljoin(base_url.rstrip("/") + "/", raw_url) if raw_url else ""
             parsed = urlparse(url)
-            base_host = (urlparse(base_url).hostname or "").lower()
-            host = (parsed.hostname or "").lower()
+            base_host = (urlparse(base_url).hostname or "").lower().removeprefix("www.")
+            host = (parsed.hostname or "").lower().removeprefix("www.")
             if (
                 not title or not url or parsed.scheme not in {"http", "https"}
                 or not host or (base_host and host != base_host and not host.endswith("." + base_host))
@@ -197,10 +197,15 @@ class ParsedSearchConnector:
         availability = _availability(
             offer.get("availability", row.get("availability"))
         )
-        price = _price(offer.get("price", row.get("price_num", row.get("price"))))
+        raw_price = offer.get("price")
+        if raw_price is None:
+            raw_price = row.get("price_num", row.get("price"))
+        price = _price(raw_price)
         if availability is Availability.OUT_OF_STOCK:
             price = None
         currency = str(offer.get("currency") or row.get("currency") or "EUR").upper()
+        if not re.fullmatch(r"[A-Z]{3}", currency):
+            currency = "EUR"
         evidence = json.dumps(row, ensure_ascii=False, sort_keys=True, default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
 
