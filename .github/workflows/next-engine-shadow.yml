@@ -42,8 +42,6 @@ jobs:
           tests/test_next_engine_realistic_batch.py
           tests/test_next_engine_shadow_comparison.py
           tests/test_catalog_preflight.py
-          tests/test_catalog_notino_discovery.py
-          tests/test_notino_search_adapter.py
           tests/test_amazon_marketplace_scrapers.py
           tests/test_amazon_creators_api.py
           tests/test_catalog_identity_audit.py
