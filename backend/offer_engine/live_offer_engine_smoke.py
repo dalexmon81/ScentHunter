@@ -54,11 +54,9 @@ def run() -> dict:
             else:
                 raise AssertionError(f"Unknown Deloox availability: {row['availability']}")
 
-        # Deloox's two exact canonical variants are the hard live acceptance
-        # gate. Other retailers may legitimately return unresolved or rejected
-        # candidates (gift sets, ambiguous variants, blocked pages); those must
-        # remain unpublished and be reported as warnings, not turn a safe
-        # partial result into a false empty/failure signal.
+        # Every configured retailer must be clean before this live smoke can
+        # serve as a readiness gate. Warnings remain in the JSON artifact for
+        # diagnosis, but must not produce a green workflow.
         configured_notino = all(os.environ.get(name, "").strip() for name in (
             "NOTINO_CJ_FEED_URL",
             "NOTINO_CJ_FEED_USERNAME",
@@ -175,13 +173,13 @@ def run() -> dict:
 
 
 def result_exit_code(result: dict) -> int:
-    """Warnings are review evidence, not a failed safety assertion.
+    """Only a completely clean live retailer run is a green readiness check.
 
-    Hard assertions (exact Deloox variants, valid stock/price state,
-    non-Deloox coverage, and duplicate prevention) raise before this point.
-    A partial retailer warning must still leave its JSON artifact available.
+    Hard assertions raise before this point. A partial or warning-bearing
+    result still writes its JSON artifact, but exits non-zero so CI cannot
+    mistake a Deloox-only success for full retailer readiness.
     """
-    return 1 if result.get("status") == "failed" else 0
+    return 0 if result.get("status") == "success" and not result.get("retailer_warnings") else 1
 
 
 def main() -> None:
@@ -191,8 +189,8 @@ def main() -> None:
     print(output)
     if result_exit_code(result):
         raise SystemExit(
-            "Live Offer Engine smoke failed; inspect "
-            "next-engine-live-offer-engine-smoke.json."
+            "Live Offer Engine smoke has retailer warnings or failed; inspect "
+            "next-engine-live-offer-engine-smoke.json before declaring readiness."
         )
 
 
