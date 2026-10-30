@@ -30,6 +30,16 @@ def _norm(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.casefold()).strip()
 
 
+def _exact_size_ml(value) -> int | None:
+    try:
+        size = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if not size.is_finite() or size <= 0 or size != size.to_integral_value():
+        return None
+    return int(size)
+
+
 def _listing_id(offer) -> str:
     # One parent URL may carry several sizes/GTINs. Keep each sellable variant
     # as a distinct retailer listing so prices cannot overwrite sibling sizes.
@@ -77,7 +87,10 @@ class NotinoFeedConnector:
             haystack = set(_norm(f"{offer.brand} {offer.title} {offer.size_ml:g} ml").split())
             if not all(token in haystack for token in wanted):
                 continue
-            if requested_size is not None and abs(float(offer.size_ml) - requested_size) > 0.01:
+            offer_size_ml = _exact_size_ml(offer.size_ml)
+            if offer_size_ml is None:
+                continue
+            if requested_size is not None and abs(offer_size_ml - requested_size) > 0.01:
                 continue
             external_id = _listing_id(offer)
             if external_id in seen:
@@ -89,7 +102,7 @@ class NotinoFeedConnector:
                 product_url=offer.url,
                 raw_title=offer.title,
                 raw_brand=offer.brand,
-                raw_size_ml=int(offer.size_ml),
+                raw_size_ml=offer_size_ml,
                 raw_concentration=offer.concentration,
                 raw_gtin=offer.gtin,
                 market=self.market,
@@ -104,7 +117,8 @@ class NotinoFeedConnector:
         offer = self._offers.get(str(listing.external_id or ""))
         if offer is None:
             raise RuntimeError("notino_feed_listing_not_in_current_discovery")
-        if listing.product_url != offer.url or listing.raw_size_ml != int(offer.size_ml):
+        offer_size_ml = _exact_size_ml(offer.size_ml)
+        if listing.product_url != offer.url or offer_size_ml is None or listing.raw_size_ml != offer_size_ml:
             raise ValueError("notino_feed_listing_identity_changed")
         if listing.raw_gtin and offer.gtin != listing.raw_gtin:
             raise ValueError("notino_feed_gtin_changed")
