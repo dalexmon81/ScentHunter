@@ -340,7 +340,24 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
             return None
         return size_ml(value)
 
-    for candidate in [data, *[x for x in offers_for_identity if isinstance(x, dict)]]:
+    def _offer_size_values(candidate):
+        values = []
+        for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
+            found_size = _volume_from_structured(candidate.get(key))
+            if found_size is not None:
+                values.append(found_size)
+        specification = candidate.get("sizeSpecification")
+        specifications = specification if isinstance(specification, list) else [specification]
+        for item in specifications:
+            if isinstance(item, dict):
+                found_size = _volume_from_structured(item)
+                if found_size is not None:
+                    values.append(found_size)
+        return values
+
+    # Product-level size describes the page; offer-level size describes each
+    # purchasable variant. Do not treat sibling offer sizes as contradictions.
+    for candidate in (data,):
         for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
             found_size = _volume_from_structured(candidate.get(key))
             if found_size is not None:
@@ -353,13 +370,27 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
                 if found_size is not None:
                     structured_size_values.append(found_size)
 
+    offer_candidates = [x for x in offers_for_identity if isinstance(x, dict)]
+    selected_offer = None
+    if requested_size is not None and len(offer_candidates) > 1:
+        matching_offers = [
+            candidate for candidate in offer_candidates
+            if any(abs(value - requested_size) <= 0.01
+                   for value in _offer_size_values(candidate))
+        ]
+        if len(matching_offers) != 1:
+            return None
+        selected_offer = matching_offers[0]
+    elif offer_candidates:
+        selected_offer = offer_candidates[0]
+
     textual_size = size_ml(name, url)
     observed_sizes = [*structured_size_values]
+    if selected_offer is not None:
+        observed_sizes.extend(_offer_size_values(selected_offer))
     if textual_size is not None:
         observed_sizes.append(textual_size)
-    # If any authoritative size signal contradicts the request, reject the
-    # entire candidate. If none exists, fail closed for explicit-size searches:
-    # a family/title match cannot establish which bottle size is being sold.
+    # Only the selected offer may contribute offer-level size evidence.
     if requested_size is not None:
         if any(abs(value - requested_size) > 0.01 for value in observed_sizes):
             return None
@@ -432,39 +463,8 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     if isinstance(brand, dict):
         brand = brand.get("name")
 
-    offers = data.get("offers")
-    offers = offers if isinstance(offers, list) else [offers]
-    offer_candidates = [x for x in offers if isinstance(x, dict)]
-
-    def _offer_size_values(candidate):
-        values = []
-        for key in ("size", "sizeValue", "volume", "volumeValue", "contentSize"):
-            found_size = _volume_from_structured(candidate.get(key))
-            if found_size is not None:
-                values.append(found_size)
-        specification = candidate.get("sizeSpecification")
-        specifications = specification if isinstance(specification, list) else [specification]
-        for item in specifications:
-            if isinstance(item, dict):
-                found_size = _volume_from_structured(item)
-                if found_size is not None:
-                    values.append(found_size)
-        return values
-
-    # Never take the first JSON-LD offer blindly: a product page can expose
-    # several bottle sizes with different prices. For explicit-size requests,
-    # select only the unique offer whose own structured size matches.
-    if requested_size is not None and len(offer_candidates) > 1:
-        matching_offers = [
-            candidate for candidate in offer_candidates
-            if any(abs(value - requested_size) <= 0.01
-                   for value in _offer_size_values(candidate))
-        ]
-        if len(matching_offers) != 1:
-            return None
-        offer = matching_offers[0]
-    else:
-        offer = offer_candidates[0] if offer_candidates else {}
+    # Reuse the offer already matched against the requested variant above.
+    offer = selected_offer or {}
 
     price = parse_price(offer.get("price"))
     if price is None:
