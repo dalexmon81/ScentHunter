@@ -5,7 +5,7 @@ from backend.offer_engine.contracts import Availability, Verification
 
 
 FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0"><channel>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>
   <item>
     <g:id>LB100</g:id><g:title>French Avenue Liquid Brun Eau de Parfum 100 ml</g:title>
     <g:brand>French Avenue</g:brand><g:gtin>6298042001008</g:gtin>
