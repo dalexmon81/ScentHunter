@@ -92,6 +92,47 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         )
         self.assertEqual(OfferReadRepository(self.connection).search("Liquid Brun", market="BE"), [])
 
+    def test_stale_verified_identity_change_cannot_replace_newer_current_offer(self):
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+        product_150 = self.catalog.get("SH-0031")
+        variant_150 = next(item for item in product_150.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+        product_100 = self.catalog.get("SH-0030")
+        variant_100 = next(item for item in product_100.variants if item.variant_id == "VAR-f87146c82d167f4c")
+        url = "https://www.deloox.be/produit/1385920/liquid-brun.html"
+        listing_150 = RetailerListing(
+            retailer="deloox", external_id="1385920", product_url=url,
+            raw_title="French Avenue Liquid Brun Limited Edition 150 ml",
+            raw_brand="French Avenue", raw_size_ml=150, market="BE",
+        )
+        newer = OfferObservation.now(
+            listing_key="deloox:1385920", price=__import__("decimal").Decimal("42.89"),
+            currency="EUR", availability=Availability.IN_STOCK, source="product_page",
+            verification=Verification.VERIFIED, product_id=product_150.product_id,
+            variant_id=variant_150.variant_id, evidence_url=url, evidence_hash="sha256:newer",
+        )
+        first = repository.record(listing_150, newer)
+        self.assertTrue(first["published"])
+
+        older_listing = RetailerListing(
+            retailer="deloox", external_id="1385920", product_url=url,
+            raw_title="French Avenue Liquid Brun 100 ml",
+            raw_brand="French Avenue", raw_size_ml=100, market="BE",
+        )
+        older = OfferObservation(
+            listing_key="deloox:1385920",
+            observed_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
+            price=__import__("decimal").Decimal("39.99"),
+            currency="EUR", availability=Availability.IN_STOCK, source="product_page",
+            verification=Verification.VERIFIED, product_id=product_100.product_id,
+            variant_id=variant_100.variant_id, evidence_url=url, evidence_hash="sha256:older",
+        )
+        result = repository.record(older_listing, older)
+        self.assertFalse(result["published"])
+        current = OfferReadRepository(self.connection).search("Liquid Brun", market="BE")
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0]["variant_id"], variant_150.variant_id)
+        self.assertEqual(str(current[0]["price"]), "42.89")
+
     def test_two_variant_ids_can_share_one_parent_product_url(self):
         url = "https://www.notino.fr/french-avenue/liquid-brun/"
         repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
