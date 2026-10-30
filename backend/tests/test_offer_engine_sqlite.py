@@ -93,6 +93,32 @@ class OfferEngineSQLiteTests(unittest.TestCase):
         self.assertEqual(str(offers[0]["price"]), "39.99")
         self.assertEqual(offers[0]["product_url"], listings[1].product_url)
 
+    def test_shopify_offer_link_targets_the_exact_variant(self):
+        product = self.catalog.get("SH-0031")
+        variant = next(item for item in product.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
+        base_url = "https://www.parfumcity.nl/products/liquid-brun-limited-edition-french-avenue-100-ml"
+        listing = RetailerListing(
+            retailer="parfumcity", external_id="1234567890123",
+            product_url=base_url, raw_title="French Avenue Liquid Brun Limited Edition 150 ml",
+            raw_brand="French Avenue", raw_size_ml=150, market="NL",
+        )
+        OfferRepository(self.connection, canonical_catalog=self.catalog).record(
+            listing,
+            OfferObservation.now(
+                listing_key="parfumcity:1234567890123",
+                price=Decimal("39.99"), currency="EUR", availability=Availability.IN_STOCK,
+                source="product_page", verification=Verification.VERIFIED,
+                product_id=product.product_id, variant_id=variant.variant_id,
+                evidence_url=base_url, evidence_hash="sha256:shopify-variant-link",
+            ),
+        )
+        offers = OfferReadRepository(self.connection).search("Liquid Brun", market="NL")
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(
+            offers[0]["product_url"],
+            base_url + "?variant=1234567890123",
+        )
+
     def test_unresolved_rematch_clears_old_identity_and_current_price(self):
         product = self.catalog.get("SH-0031")
         variant = next(item for item in product.variants if item.variant_id == "VAR-f5aff76b4bb5de8a")
