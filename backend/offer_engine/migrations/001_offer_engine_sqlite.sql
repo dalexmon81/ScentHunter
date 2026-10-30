@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS sh_retailer_listings (
 );
 CREATE INDEX IF NOT EXISTS sh_listing_match_idx ON sh_retailer_listings(canonical_variant_id, retailer_id);
 CREATE INDEX IF NOT EXISTS sh_listing_url_idx ON sh_retailer_listings(retailer_id, product_url);
+CREATE UNIQUE INDEX IF NOT EXISTS sh_listing_url_without_external_id_idx
+    ON sh_retailer_listings(retailer_id, product_url) WHERE external_id IS NULL;
 CREATE TABLE IF NOT EXISTS sh_offer_observations (
     observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     listing_id INTEGER NOT NULL REFERENCES sh_retailer_listings(listing_id),
