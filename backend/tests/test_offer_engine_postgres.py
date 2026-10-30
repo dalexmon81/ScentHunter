@@ -50,7 +50,7 @@ class OfferEnginePostgresTests(unittest.TestCase):
                 raw_brand="French Avenue", raw_size_ml=size, market="FR",
             )
             observation = OfferObservation.now(
-                listing_key=f"notino:{external_id}", price=None, currency="EUR",
+                listing_key=f"notino:{external_id}", price=Decimal("89.90"), currency="EUR",
                 availability=Availability.UNKNOWN, source="feed",
                 verification=Verification.UNVERIFIED,
                 evidence_url=url, evidence_hash=f"sha256:{external_id}",
@@ -64,25 +64,44 @@ class OfferEnginePostgresTests(unittest.TestCase):
                 ("notino", url),
             )
             self.assertEqual(cursor.fetchone()[0], 2)
-
-    def test_multiple_feed_variants_can_share_one_product_url(self):
-        url = "https://www.notino.fr/example-product.html"
-        with self.connection.cursor() as cursor:
             cursor.execute(
-                "INSERT INTO sh_retailers(retailer_id, display_name, market) VALUES ('notino', 'Notino', 'FR') ON CONFLICT DO NOTHING"
-            )
-            for external_id, size in (("notino-100", 100), ("notino-150", 150)):
-                cursor.execute(
-                    """INSERT INTO sh_retailer_listings
-                       (retailer_id, external_id, product_url, market, raw_title, raw_size_ml, match_status)
-                       VALUES ('notino', %s, %s, 'FR', 'French Avenue Liquid Brun', %s, 'unresolved')""",
-                    (external_id, url, size),
-                )
-            cursor.execute(
-                "SELECT count(*) FROM sh_retailer_listings WHERE retailer_id='notino' AND product_url=%s",
-                (url,),
+                "SELECT count(*) FROM sh_offer_observations WHERE listing_id = ANY(%s)",
+                (listing_ids,),
             )
             self.assertEqual(cursor.fetchone()[0], 2)
+        self.connection.commit()
+
+    def test_unverified_out_of_stock_price_is_rejected_but_unknown_feed_fact_is_retained(self):
+        url = "https://www.notino.fr/example-product.html"
+        repository = OfferRepository(self.connection, canonical_catalog=self.catalog)
+        listing = RetailerListing(
+            retailer="notino", external_id="unverified-stock-check", product_url=url,
+            raw_title="Example fragrance 100 ml", raw_brand="Example",
+            raw_size_ml=100, market="FR",
+        )
+        with self.assertRaises(psycopg.errors.CheckViolation):
+            invalid = OfferObservation.now(
+                listing_key="notino:unverified-stock-check", price=Decimal("10.00"),
+                currency="EUR", availability=Availability.OUT_OF_STOCK,
+                source="feed", verification=Verification.UNVERIFIED,
+            )
+            repository.record(listing, invalid)
+        self.connection.rollback()
+
+        unknown = OfferObservation.now(
+            listing_key="notino:unverified-stock-check", price=Decimal("10.00"),
+            currency="EUR", availability=Availability.UNKNOWN,
+            source="feed", verification=Verification.UNVERIFIED,
+            evidence_url=url, evidence_hash="sha256:feed-evidence",
+        )
+        result = repository.record(listing, unknown)
+        self.assertFalse(result["published"])
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT availability, price, verification FROM sh_offer_observations WHERE listing_id=%s",
+                (result["listing_id"],),
+            )
+            self.assertEqual(cursor.fetchone(), ("unknown", Decimal("10.00"), "unverified"))
         self.connection.commit()
 
     def test_verified_listing_and_current_offer_obey_real_foreign_keys(self):
@@ -115,15 +134,6 @@ class OfferEnginePostgresTests(unittest.TestCase):
             self.assertEqual(cursor.fetchone()[0], 1)
             cursor.execute("SELECT availability, price, verification FROM sh_offer_observations WHERE listing_id=%s", (result["listing_id"],))
             self.assertEqual(cursor.fetchone(), ("out_of_stock", None, "verified"))
-        with self.assertRaises(psycopg.errors.CheckViolation):
-            with self.connection.cursor() as cursor:
-                cursor.execute(
-                    """INSERT INTO sh_offer_observations
-                       (listing_id, observed_at, price, currency, availability, source, verification, raw_payload)
-                       VALUES (%s,%s,%s,%s,'out_of_stock','product_page','unverified','{}'::jsonb)""",
-                    (result["listing_id"], datetime.now(timezone.utc), Decimal("10.00"), "EUR"),
-                )
-        self.connection.rollback()
         current = OfferReadRepository(self.connection).search("Liquid Brun", market="BE")
         sold_out = next(
             row for row in current
