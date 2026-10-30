@@ -380,18 +380,7 @@ def product_from_page(session, url, query):
     if availability is None:
         availability = availability_from_text(page_text)
 
-    if price is None:
-        price_patterns = [
-            r"retail\s+price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"price\s*€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-            r"€\s*([0-9]+(?:[.,][0-9]{1,2})?)",
-        ]
-        for pattern in price_patterns:
-            m = re.search(pattern, page_text, re.I)
-            if m:
-                price = parse_price(m.group(1))
-                if price is not None:
-                    break
+    # Fail closed when structured product pricing is absent; never scan the whole page.
 
     image = data.get("image")
     if isinstance(image, list):
