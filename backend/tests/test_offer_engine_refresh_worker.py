@@ -2,7 +2,10 @@ import sqlite3
 import unittest
 from types import SimpleNamespace
 
-from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries
+try:
+    from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries
+except ModuleNotFoundError:
+    from backend.offer_engine.refresh_worker import _next_query, _record_result, build_product_queries
 
 
 class RefreshWorkerQueryTests(unittest.TestCase):
