@@ -119,7 +119,10 @@ def seed_canonical_catalog(
     malformed variants, missing brand/name) blocks the whole transaction.
     This routine never creates IDs, sizes, aliases, GTINs, or offer observations.
     """
-    from ..scenthunter_next_engine.catalog_preflight import audit_catalog_data
+    try:
+        from scenthunter_next_engine.catalog_preflight import audit_catalog_data
+    except ModuleNotFoundError:
+        from backend.scenthunter_next_engine.catalog_preflight import audit_catalog_data
 
     source = Path(catalog_path).expanduser().resolve()
     with source.open("r", encoding="utf-8") as handle:
