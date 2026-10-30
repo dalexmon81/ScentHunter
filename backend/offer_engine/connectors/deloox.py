@@ -123,9 +123,6 @@ class DelooxConnector:
         availability = Availability(raw_availability) if raw_availability in Availability._value2member_map_ else Availability.UNKNOWN
         raw_price = offer.get("price")
         price = Decimal(str(raw_price)) if raw_price is not None else None
-        # A structured Offer can remain stale after the storefront stock panel
-        # changes. Independently inspect the live purchase controls before
-        # trusting an InStock value. If this evidence is unavailable, fail closed.
         evidence = json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
         # Matching is a separate, reviewed step; a connector never assigns canonical IDs.
