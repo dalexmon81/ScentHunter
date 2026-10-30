@@ -69,6 +69,7 @@ jobs:
           backend/tests/test_offer_engine_resolver.py
           backend/tests/test_offer_engine_deloox_liquid_brun.py
           backend/tests/test_offer_engine_deloox_connector_pipeline.py
+          backend/tests/test_offer_engine_notino_connector.py
           backend/tests/test_offer_engine_repository.py
           backend/tests/test_offer_engine_postgres.py
           backend/tests/test_offer_engine_runner.py
