@@ -66,15 +66,20 @@ def run() -> dict[str, object]:
         if resolved.observation.evidence_url is None or "deloox.be" not in resolved.observation.evidence_url:
             raise AssertionError(f"Deloox listing {external_id} has an invalid evidence URL")
 
-        if external_id == "1385920":
-            if resolved.observation.availability is not Availability.OUT_OF_STOCK:
-                raise AssertionError(
-                    "Deloox Liquid Brun Limited Edition 150 ml is no longer explicitly sold out"
-                )
+        if resolved.observation.availability is Availability.OUT_OF_STOCK:
             if resolved.observation.price is not None:
-                raise AssertionError("Sold-out Deloox 150 ml listing must not carry a price")
-        elif resolved.observation.availability is Availability.IN_STOCK and resolved.observation.price is None:
-            raise AssertionError("In-stock Deloox 100 ml listing has no verified price")
+                raise AssertionError(
+                    f"Deloox sold-out {size_ml} ml listing must not carry a price"
+                )
+        elif resolved.observation.availability is Availability.IN_STOCK:
+            if resolved.observation.price is None or resolved.observation.price <= 0:
+                raise AssertionError(
+                    f"Deloox in-stock {size_ml} ml listing has no valid verified price"
+                )
+        else:
+            raise AssertionError(
+                f"Deloox {size_ml} ml listing has unknown stock; refusing to publish an unverified state"
+            )
 
         verified[external_id] = {
             "size_ml": size_ml,
