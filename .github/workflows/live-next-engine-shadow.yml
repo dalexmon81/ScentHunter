@@ -11,16 +11,7 @@ on:
           - "no"
           - "yes"
         default: "no"
-  workflow_dispatch:
-    inputs:
-      confirm_live_read_only:
-        description: "Confirm live retailer requests only; no production search, database, or catalog writes"
-        required: true
-        type: choice
-        options:
-          - "no"
-          - "yes"
-        default: "no"
+
 
 permissions:
   contents: read
