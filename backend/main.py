@@ -3116,10 +3116,7 @@ def _run_job(job_id, query):
             _publish_result(job_id, row)
 
         collect_started = time.monotonic()
-        if _offer_engine_search_enabled():
-        return _search_with_offer_engine(query)
-
-    reports = collect_store_reports_isolated(
+        reports = collect_store_reports_isolated(
             query,
             STORES,
             on_report=on_report,
@@ -5113,6 +5110,9 @@ def search_perfume(q: str):
             "stores": {},
             "dedupe_diagnostics": [],
         }
+
+    if _offer_engine_search_enabled():
+        return _search_with_offer_engine(query)
 
     reports = collect_store_reports_isolated(
         query,
