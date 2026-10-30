@@ -12,12 +12,16 @@ from typing import Iterable
 
 import psycopg
 
-from backend.offer_engine.adapters import RetailerConnector
-from backend.offer_engine.connectors.deloox import DelooxConnector
-from backend.offer_engine.repository import OfferRepository
-from backend.offer_engine.runner import EngineRunResult, OfferEngineRunner
-from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
-from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+from .adapters import RetailerConnector
+from .connectors.deloox import DelooxConnector
+from .repository import OfferRepository
+from .runner import EngineRunResult, OfferEngineRunner
+try:
+    from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from scenthunter_next_engine.catalog_repository import CatalogRepository
+except ModuleNotFoundError:
+    from backend.scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+    from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
 
 ROOT = Path(__file__).resolve().parents[2]
