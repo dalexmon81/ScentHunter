@@ -62,7 +62,7 @@ def normalize_identity_text(value: str | None) -> str:
 
 
 _SIZE_SUFFIX_RE = re.compile(r"\s+\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|l|oz|fl\s*oz)\s*[)\]]*$")
-_RETAILER_GENDER_SUFFIXES = {"man", "men", "herren", "male", "woman", "women", "damen", "female", "unisex"}
+_RETAILER_GENDER_SUFFIXES = {"man", "men", "herren", "heren", "male", "woman", "women", "damen", "dames", "female", "homme", "femme", "unisex"}
 
 
 def _retailer_title_core(value: str) -> str:
@@ -175,11 +175,11 @@ def _offer_name_forms(value: str, brand: str | None) -> set[str]:
         # forms above so a brand token that is genuinely part of a product name
         # remains available for exact matching.
         without_brand = re.sub(
-            rf"\\b{re.escape(brand_norm)}\\b",
+            rf"\b{re.escape(brand_norm)}\b",
             " ",
             normalize_identity_text(value),
         )
-        without_brand = re.sub(r"\\bby\\b", " ", without_brand)
+        without_brand = re.sub(r"\bby\b", " ", without_brand)
         normalized_core = _retailer_title_core(without_brand)
         if normalized_core:
             forms.add(normalized_core)
