@@ -50,7 +50,7 @@ jobs:
           tests/test_migration_plan_validator.py
           tests/test_audit_migration.py
           tests/test_runtime_identity_reference_audit.py
-          tests/test_live_retailer_identity_resolution.py\n          backend/tests/test_offer_engine_contracts.py\n          backend/tests/test_offer_engine_resolver.py
+          tests/test_live_retailer_identity_resolution.py\n          backend/tests/test_offer_engine_contracts.py\n          backend/tests/test_offer_engine_resolver.py\n          backend/tests/test_offer_engine_deloox_liquid_brun.py
       - name: Read-only real-catalog smoke test
         run: python -m backend.scenthunter_next_engine.smoke_entrypoint
       - name: Read-only catalog preflight
