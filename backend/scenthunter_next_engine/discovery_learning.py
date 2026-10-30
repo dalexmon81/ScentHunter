@@ -97,7 +97,7 @@ def _url_identity_name(url: Any, brand: Any) -> str | None:
         return None
     slug = re.sub(
         r"\b(?:perfume|perfumes|spray|vapo|vaporizer|vaporiser|"
-        r"vaporisateur|vaporizador|atomizer|aerosol)\\b",
+        r"vaporisateur|vaporizador|atomizer|aerosol)\b",
         " ",
         slug,
     )
