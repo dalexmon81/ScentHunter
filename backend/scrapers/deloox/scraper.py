@@ -158,15 +158,21 @@ def parse_price(v):
 
 
 
+_PRICE_SELECTORS = (
+    'meta[itemprop="price"][content]',
+    '[itemprop="price"]',
+    '[data-testid*="price" i]',
+    '[data-test*="price" i]',
+    '[data-price]',
+    '[class*="price" i]',
+    '[id*="price" i]',
+)
+
+
 def visible_price(soup):
     """Extract only explicitly price-scoped markup; never scan whole-page text."""
-    selectors = (
-        'meta[itemprop="price"][content]', '[itemprop="price"]',
-        '[data-testid*="price" i]', '[data-test*="price" i]', '[data-price]',
-        '[class*="price" i]', '[id*="price" i]',
-    )
     candidates = []
-    for selector in selectors:
+    for selector in _PRICE_SELECTORS:
         try:
             nodes = soup.select(selector)
         except Exception:
@@ -195,6 +201,16 @@ def visible_price(soup):
         return next(iter(preferred))
     values = {value for value, _marker in candidates}
     return next(iter(values)) if len(values) == 1 else None
+
+
+def page_offer_price(offer, soup):
+    """Prefer current visible price; reject conflicting scoped price markup."""
+    visible = visible_price(soup)
+    if visible is not None:
+        return visible
+    if any(soup.select(selector) for selector in _PRICE_SELECTORS):
+        return None
+    return parse_price(offer.get("price") if isinstance(offer, dict) else None)
 
 def availability(text, offer=None, soup=None):
     """Prefer explicit storefront stock signals over possibly stale JSON-LD."""
@@ -519,10 +535,9 @@ def _product(url, html, query, *, soup=None, jsonld_data=None, h1_override=None)
     # Reuse the offer already matched against the requested variant above.
     offer = selected_offer or {}
 
-    price = parse_price(offer.get("price"))
-    if price is None:
-        # Whole-page text includes unrelated prices, shipping thresholds and sizes.
-        price = visible_price(stock_soup)
+    # Prefer the current visible storefront price over potentially stale JSON-LD.
+    # If scoped price markup exists but is ambiguous, fail closed.
+    price = page_offer_price(offer, stock_soup)
 
     # An out-of-stock product remains a useful catalog result even when the
     # retailer removes its price. Preserve its exact product/variant identity,
