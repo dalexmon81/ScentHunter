@@ -32,9 +32,18 @@ def build_product_queries(catalog: Any) -> list[str]:
             if variant.label:
                 label = variant.label.strip()
                 folded_label = label.casefold()
-                if "limited edition" in folded_label:
+                folded_brand = product.brand.strip().casefold()
+                folded_name = product.name.strip().casefold()
+                # Catalog variant aliases often repeat the full canonical
+                # brand + product name. Repeating them in the search query
+                # breaks exact priority matching and can make retailer
+                # discovery miss an otherwise valid product query.
+                alias_already_contains_identity = (
+                    folded_brand in folded_label and folded_name in folded_label
+                )
+                if "limited edition" in folded_label and "limited edition" not in product.name.casefold():
                     parts.append("Limited Edition")
-                elif folded_label not in {product.name.casefold(), product.brand.casefold()}:
+                elif not alias_already_contains_identity and folded_label not in {folded_name, folded_brand}:
                     parts.append(label)
             parts.append(f"{int(variant.size_ml)} ml")
             query = " ".join(part.strip() for part in parts if part and part.strip())
