@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sh_retailer_listings (
  CHECK((match_status='matched')=(canonical_product_id IS NOT NULL AND canonical_variant_id IS NOT NULL))
 );
 CREATE INDEX IF NOT EXISTS sh_listing_match_idx ON sh_retailer_listings(canonical_variant_id,retailer_id);
+CREATE INDEX IF NOT EXISTS sh_listing_url_idx ON sh_retailer_listings(retailer_id,product_url);
 CREATE TABLE IF NOT EXISTS sh_offer_observations (
  observation_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  listing_id BIGINT NOT NULL REFERENCES sh_retailer_listings(listing_id),
