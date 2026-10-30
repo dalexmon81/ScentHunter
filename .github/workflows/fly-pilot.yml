@@ -228,6 +228,20 @@ jobs:
           print("PILOT_BROWSER_SEARCH_STATUS=" + str(ui_result.get("status")))
           print("PILOT_BROWSER_OFFER_COUNT=" + str(ui_result.get("offer_count", 0)))
           print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)))
+          # Print a compact retailer/variant breakdown so a green smoke test
+          # cannot hide a connector coverage regression behind one successful
+          # offer. Keep exact URL evidence in the log for market/locale checks.
+          for item in offer_api.get("offers", []):
+              print("PILOT_OFFER=" + json.dumps({
+                  "retailer": item.get("retailer_name") or item.get("retailer_id"),
+                  "product_id": item.get("product_id"),
+                  "size_ml": item.get("size_ml"),
+                  "price": item.get("price"),
+                  "currency": item.get("currency"),
+                  "availability": item.get("availability"),
+                  "market": item.get("market"),
+                  "url": item.get("product_url"),
+              }, ensure_ascii=False, sort_keys=True), flush=True)
           print("PILOT_URL=" + base)
           PY
 
