@@ -122,7 +122,7 @@ class ParsedSearchConnector:
         result = search_stream(query)
         if (
             not isinstance(result, Mapping)
-            or result.get("status") != "success"
+            or result.get("status") not in {"success", "partial"}
             or result.get("verified") is not True
         ):
             status = result.get("status", "invalid_result") if isinstance(result, Mapping) else "invalid_result"
