@@ -45,7 +45,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
             from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
 
         root = Path(__file__).resolve().parents[2]
-        catalog = CatalogRepository.from_file(root / "product_catalog.json")
+        catalog = CatalogRepository.from_file(root / "backend" / "product_catalog.json")
         queries = build_product_queries(catalog)
         self.assertIn("French Avenue Liquid Brun 100 ml", queries)
         self.assertIn("French Avenue Liquid Brun Limited Edition 150 ml", queries)
