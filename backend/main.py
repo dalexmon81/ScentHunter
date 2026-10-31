@@ -5181,7 +5181,7 @@ def _search_with_offer_engine(query: str):
     canonical_images = {}
     try:
         try:
-            from scent hunter_next_engine.catalog_repository import CatalogRepository
+            from scenthunter_next_engine.catalog_repository import CatalogRepository
         except ModuleNotFoundError:
             from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
         catalog = CatalogRepository.from_file(Path(__file__).resolve().parent / "product_catalog.json")
