@@ -1601,7 +1601,7 @@ def _discover(session, q, deadline=None, *, max_candidates=MAX_CANDIDATES, inclu
     # result; fallback discovery may nevertheless recover products omitted by
     # the retailer search surface.
     if deadline is not None and time.time() >= float(deadline):
-        return candidates[:MAX_CANDIDATES]
+        return candidates[:max_candidates]
     category_candidates = _discover_from_categories(session, q, max_candidates)
     if category_candidates:
         _LAST_DISCOVERY_STATE["category_verified"] = True
