@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 try:
-    from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, prioritize_product_queries
+    from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, build_product_query_fallbacks, prioritize_product_queries
 except ModuleNotFoundError:
     from backend.offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, prioritize_product_queries
 
@@ -56,6 +56,31 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         self.assertNotIn(
             "French Avenue Liquid Brun Limited Edition French Avenue Liquid Brun Limited Edition 150 ml",
             queries,
+        )
+
+    def test_broader_queries_are_discovery_only_fallbacks_for_exact_variant(self):
+        catalog = SimpleNamespace(all_products=lambda: [
+            SimpleNamespace(brand="French Avenue", name="Liquid Brun Limited Edition", variants=[
+                SimpleNamespace(size_ml=150, label="Liquid Brun Limited Edition"),
+            ]),
+            SimpleNamespace(brand="Lattafa", name="Liquid Brun", variants=[
+                SimpleNamespace(size_ml=100, label=None),
+            ]),
+        ])
+        self.assertEqual(
+            build_product_query_fallbacks(
+                catalog,
+                "French Avenue Liquid Brun Limited Edition 150 ml",
+            ),
+            [
+                "Liquid Brun Limited Edition 150 ml",
+                "French Avenue Liquid Brun Limited Edition",
+                "Liquid Brun Limited Edition",
+            ],
+        )
+        self.assertEqual(
+            build_product_query_fallbacks(catalog, "unknown product"),
+            [],
         )
 
     def test_priority_queries_move_pilot_variants_to_front_stably(self):
