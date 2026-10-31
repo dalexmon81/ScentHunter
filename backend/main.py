@@ -3393,6 +3393,60 @@ def _run_job(job_id, query):
         print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}', flush=True)
 
 
+@app.get('/diagnostic/bplatz-funnel')
+def diagnostic_bplatz_funnel(q: str, url: str = ''):
+    """Bounded, read-only Bplatz discovery -> product-page diagnostic."""
+    import time as _time
+    import requests as _requests
+    query = str(q or '').strip()
+    if not query:
+        return {'ok': False, 'error': 'missing_query'}
+    try:
+        module = importlib.import_module('scrapers.bplatz.scraper')
+        session = _requests.Session()
+        started = _time.monotonic()
+        candidates, errors, verified = module.discover(session, query)
+        discovery_seconds = round(_time.monotonic() - started, 2)
+        targets = list(candidates)
+        if url and url not in targets:
+            targets.insert(0, url)
+        inspected = []
+        for target in targets[:12]:
+            page_started = _time.monotonic()
+            try:
+                item = module.product_from_page(session, target, query)
+                inspected.append({
+                    'url': target, 'elapsed_sec': round(_time.monotonic() - page_started, 2),
+                    'accepted': isinstance(item, dict),
+                    'product': ({
+                        'name': item.get('name'), 'brand': item.get('brand'),
+                        'size_ml': item.get('size_ml'), 'price': item.get('price_num'),
+                        'availability': item.get('availability'), 'url': item.get('url')
+                    } if isinstance(item, dict) else None),
+                    'rejection': None if isinstance(item, dict) else 'product_from_page_returned_none'
+                })
+            except Exception as exc:
+                inspected.append({'url': target,
+                    'elapsed_sec': round(_time.monotonic() - page_started, 2),
+                    'accepted': False, 'error': f'{type(exc).__name__}: {exc}'})
+        return {
+            'ok': True, 'diagnostic': 'Bplatz discovery -> exact product page parser',
+            'query': query, 'discovery_verified': verified,
+            'candidate_count': len(candidates), 'candidates': candidates,
+            'discovery_errors': errors, 'discovery_elapsed_sec': discovery_seconds,
+            'inspected_count': len(inspected), 'product_pages': inspected,
+            'read_only': True
+        }
+    except Exception as exc:
+        return {'ok': False, 'diagnostic': 'Bplatz discovery -> exact product page parser',
+                'error': f'{type(exc).__name__}: {exc}', 'query': query}
+    finally:
+        try:
+            session.close()
+        except Exception:
+            pass
+
+
 @app.get('/diagnostic/matcher')
 def diagnostic_matcher(store: str, q: str):
     """Targeted diagnostic: raw scraper -> clean_result -> ProductMatcher.
