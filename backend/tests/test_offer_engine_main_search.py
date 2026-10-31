@@ -40,10 +40,19 @@ class OfferEngineMainSearchTests(unittest.TestCase):
                 }
             },
         }
+        from backend.offer_engine.runner import EngineRunResult
+        refresh_order = []
         with (
             patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1"}),
             patch.object(main, "PRODUCT_MATCHER", None),
-            patch.object(main, "_search_with_offer_engine", return_value=payload) as search,
+            patch.object(
+                main, "_run_offer_engine_query_refresh",
+                side_effect=lambda query: (refresh_order.append(("refresh", query)), EngineRunResult([]))[1],
+            ) as refresh,
+            patch.object(
+                main, "_search_with_offer_engine",
+                side_effect=lambda query: (refresh_order.append(("read", query)), payload)[1],
+            ) as search,
         ):
             job_id = main._new_job("Liquid Brun")
             try:
@@ -53,11 +62,62 @@ class OfferEngineMainSearchTests(unittest.TestCase):
                 with main.JOBS_LOCK:
                     main.JOBS.pop(job_id, None)
 
+        refresh.assert_called_once_with("Liquid Brun")
         search.assert_called_once_with("Liquid Brun")
+        self.assertEqual(refresh_order, [("refresh", "Liquid Brun"), ("read", "Liquid Brun")])
         self.assertTrue(snapshot["completed"])
         self.assertEqual(snapshot["status"], "completed")
         self.assertEqual(snapshot["results"], payload["results"])
         self.assertEqual(snapshot["offer_count"], 1)
+
+    def test_async_search_exposes_each_retailer_refresh_outcome_even_when_no_offer_is_published(self):
+        from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
+        payload = {
+            "query": "French Avenue Atlantis",
+            "count": 0,
+            "offer_count": 0,
+            "results": [],
+            "offers": [],
+            "unresolved_offers": [],
+            "identity_scope": [],
+            "dedupe_diagnostics": [],
+            "errors": {},
+            "stores": {},
+        }
+        refresh_result = EngineRunResult([
+            ConnectorRunResult("bplatz", "success", listings_seen=1, observations_written=1, offers_published=1),
+            ConnectorRunResult("sabina", "failed", errors=["discovery: RuntimeError: blocked"]),
+        ])
+        with (
+            patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1"}),
+            patch.object(main, "PRODUCT_MATCHER", None),
+            patch.object(main, "_run_offer_engine_query_refresh", return_value=refresh_result),
+            patch.object(main, "_search_with_offer_engine", return_value=payload),
+        ):
+            job_id = main._new_job("French Avenue Atlantis")
+            try:
+                main._run_job(job_id, "French Avenue Atlantis")
+                snapshot = main._snapshot(job_id)
+            finally:
+                with main.JOBS_LOCK:
+                    main.JOBS.pop(job_id, None)
+
+        self.assertEqual(snapshot["stores"]["bplatz"]["status"], "success")
+        self.assertEqual(snapshot["stores"]["bplatz"]["details"]["listings_seen"], 1)
+        self.assertEqual(snapshot["stores"]["sabina"]["status"], "error")
+        self.assertIn("sabina", snapshot["errors"])
+        self.assertEqual(snapshot["status"], "completed_with_store_issues")
+
+    def test_on_demand_refresh_defaults_to_enabled_only_with_offer_engine_search(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(main._offer_engine_on_demand_refresh_enabled())
+        with patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1"}, clear=True):
+            self.assertTrue(main._offer_engine_on_demand_refresh_enabled())
+        with patch.dict(os.environ, {
+            "SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED": "1",
+            "SCENTHUNTER_OFFER_ENGINE_ON_DEMAND_REFRESH_ENABLED": "0",
+        }, clear=True):
+            self.assertFalse(main._offer_engine_on_demand_refresh_enabled())
 
     def test_offer_engine_rows_keep_sold_out_variant_in_legacy_ui_contract(self):
         from backend.offer_engine.runner import ConnectorRunResult, EngineRunResult
