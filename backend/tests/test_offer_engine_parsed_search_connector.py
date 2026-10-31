@@ -107,6 +107,43 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "product_variant_size_mismatch"):
             connector.observe(listing)
 
+    def test_parfumcity_url_size_conflict_is_rejected_even_when_shopify_variant_says_150ml(self):
+        class ParfumCityScraper(FakeScraper):
+            BASE_URL = "https://www.parfumcity.nl"
+
+            def product_json(self, session, url):
+                return {"title": "Liquid Brun Limited Edition", "vendor": "French Avenue", "variants": [
+                    {"id": 57687820403075, "sku": "PC-LB-150", "title": "150 ml", "price": "39.99", "available": True}
+                ]}
+
+            def make_item(self, product, variant, url, query):
+                return {
+                    "name": "Liquid Brun Limited Edition",
+                    "brand": "French Avenue",
+                    "url": url,
+                    "attributes": {"size_ml": {"value": 150}, "concentration": {"value": "Extrait de Parfum"}},
+                    "identity": {"sku": {"value": "PC-LB-150"}},
+                    "offer": {"price": "39.99", "currency": "EUR", "availability": "in_stock"},
+                }
+
+        row = self._row(
+            name="French Avenue Liquid Brun Limited Edition 150 ml",
+            url="https://www.parfumcity.nl/products/liquid-brun-limited-edition-french-avenue-100-ml?variant=57687820403075",
+            sku="PC-LB-150",
+            gtin="",
+            size_ml=150,
+            price_num=39.99,
+        )
+        scraper = ParfumCityScraper({
+            "status": "success", "verified": True, "results": [row],
+        })
+        connector = ParsedSearchConnector(
+            "parfumcity", "scrapers.parfumcity.scraper", "NL", scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun Limited Edition 150 ml")))
+        with self.assertRaisesRegex(RuntimeError, "parfumcity_product_url_size_mismatch"):
+            connector.observe(listing)
+
     def test_search_snippet_price_is_ignored_in_favor_of_product_page_price(self):
         scraper = FakeScraper(
             {
