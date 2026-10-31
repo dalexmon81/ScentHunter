@@ -3316,6 +3316,8 @@ def _run_job(job_id, query):
                 if not report.get("verified")
                 or str(report.get("status") or "").lower() != "success"
             ]
+            if refresh_errors and not store_issues:
+                store_issues = [{"status": "error", "verified": False}]
             with JOBS_LOCK:
                 current_job = JOBS.get(job_id)
                 if current_job is not None:
