@@ -5,7 +5,7 @@ from types import SimpleNamespace
 try:
     from offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, build_product_query_fallbacks, prioritize_product_queries
 except ModuleNotFoundError:
-    from backend.offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, prioritize_product_queries
+    from backend.offer_engine.refresh_worker import _next_query, _record_result, build_product_queries, build_product_query_fallbacks, prioritize_product_queries
 
 
 class RefreshWorkerQueryTests(unittest.TestCase):
