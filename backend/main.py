@@ -3258,9 +3258,11 @@ def _run_job(job_id, query):
                             "status": visible_status,
                             "verified": not issue,
                             "count": int(getattr(connector, "offers_published", 0) or 0),
-                            "elapsed": refresh_elapsed,
+                            "elapsed": float(getattr(connector, "elapsed", 0.0) or 0.0),
                             "details": {
                                 "source": "on_demand_verified_query_refresh",
+                                "connector_elapsed": float(getattr(connector, "elapsed", 0.0) or 0.0),
+                                "refresh_total_elapsed": refresh_elapsed,
                                 "listings_seen": int(getattr(connector, "listings_seen", 0) or 0),
                                 "observations_written": int(getattr(connector, "observations_written", 0) or 0),
                                 "offers_published": int(getattr(connector, "offers_published", 0) or 0),
