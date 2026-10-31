@@ -1,5 +1,6 @@
 import unittest
-from threading import Barrier
+import time
+from threading import Barrier, Event
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -123,6 +124,41 @@ class OfferEngineRunnerTests(unittest.TestCase):
         result = runner.run([first, second], "perfume")
         self.assertEqual([item.retailer for item in result.connectors], ["first", "second"])
         self.assertEqual([item.status for item in result.connectors], ["success", "success"])
+
+    def test_slow_retailer_does_not_block_fast_results_and_deferred_store_still_runs(self):
+        second_started = Event()
+
+        class SlowConnector(FakeConnector):
+            def discover(self, query):
+                time.sleep(0.12)
+                return []
+
+        class DeferredConnector(FakeConnector):
+            def discover(self, query):
+                second_started.set()
+                return []
+
+        runner = OfferEngineRunner(
+            matcher=object(),
+            repository_factory=lambda _: FakeRepository(),
+            max_workers=1,
+            connector_timeout_seconds=0.02,
+        )
+        started = time.monotonic()
+        result = runner.run(
+            [SlowConnector("slow"), DeferredConnector("deferred")],
+            "perfume",
+        )
+        elapsed = time.monotonic() - started
+
+        self.assertLess(elapsed, 0.10)
+        self.assertEqual(
+            [item.status for item in result.connectors],
+            ["timeout", "deferred"],
+        )
+        self.assertIn("connector_timeout_after_0.02s", result.connectors[0].errors[0])
+        self.assertIn("connector_deferred_after_0.02s", result.connectors[1].errors[0])
+        self.assertTrue(second_started.wait(timeout=1.0))
 
     def test_all_listing_failures_mark_connector_failed(self):
         connector = FakeConnector("deloox", [listing("one")], observe_error=RuntimeError("timeout"))
