@@ -41,10 +41,14 @@ class FakeConnector:
 class FakeRepository:
     def __init__(self):
         self.records = []
+        self.closed = False
 
     def record(self, listing, observation, *, match_status=None):
         self.records.append((listing, observation))
         return {"published": False}
+
+    def close(self):
+        self.closed = True
 
 
 def listing(sku, retailer="deloox"):
@@ -83,6 +87,8 @@ class OfferEngineRunnerTests(unittest.TestCase):
         self.assertEqual(len(repositories["healthy"].records), 1)
         self.assertEqual(result.connectors[1].unresolved_samples[0]["reason"], "test_unresolved")
         self.assertIn("blocked", result.connectors[0].errors[0])
+        self.assertTrue(repositories["broken"].closed)
+        self.assertTrue(repositories["healthy"].closed)
 
     def test_one_listing_failure_marks_connector_partial_and_keeps_going(self):
         first = listing("one")
