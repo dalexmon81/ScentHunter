@@ -167,29 +167,19 @@ jobs:
           # Pilot diagnostics must identify the exact first endpoint failure;
           # never emit a bare HTTPError without its route and response body.
 
-          # Wait for health/read API and for the independent worker to publish
-          # a real offer. No POST is issued here, so the smoke test cannot
-          # trigger duplicate full retailer crawls.
+          # The read API must be healthy, but it is no longer required to
+          # have a pre-warmed product. The actual user-search flow below
+          # performs query-scoped retailer discovery before reading offers.
+          health = get("/health")
+          if health.get("status") != "healthy":
+              raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
           query = urllib.parse.urlencode({"query": "Liquid Brun"})
-          # The browser search flow below starts the refresh asynchronously.
-          # Do not call the synchronous refresh endpoint here: a full retailer
-          # crawl can exceed Fly's HTTP gateway timeout even while workers run.
-          offer_api = None
-          for attempt in range(1, 61):
-              health = get("/health")
-              if health.get("status") != "healthy":
-                  raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
-              offer_api = get("/offer-engine/search?" + query)
-              if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
-                  raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
-              product_ids = {str(item.get("product_id") or "") for item in offer_api.get("offers", [])}
-              print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)), flush=True)
-              print("PILOT_OFFER_PRODUCT_IDS=" + json.dumps(sorted(product_ids)), flush=True)
-              if "SH-0030" in product_ids:
-                  break
-              if attempt == 60:
-                  raise RuntimeError("Background worker did not publish a verified Liquid Brun 100 ml offer within 10 minutes: " + json.dumps(offer_api))
-              time.sleep(10)
+          offer_api = get("/offer-engine/search?" + query)
+          if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
+              raise RuntimeError("Read API contract mismatch: " + json.dumps(offer_api))
+          product_ids = {str(item.get("product_id") or "") for item in offer_api.get("offers", [])}
+          print("PILOT_OFFER_API_COUNT=" + str(offer_api.get("count", 0)), flush=True)
+          print("PILOT_OFFER_PRODUCT_IDS=" + json.dumps(sorted(product_ids)), flush=True)
 
           ui_search = get("/search?q=" + urllib.parse.quote("Liquid Brun"))
           if not isinstance(ui_search, dict):
