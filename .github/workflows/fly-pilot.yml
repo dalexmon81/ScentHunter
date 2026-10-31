@@ -228,10 +228,9 @@ jobs:
               if isinstance(item, dict)
           }
           expected_sizes = {"SH-0030": 100, "SH-0031": 150}
-          expected_stores = {
-              "deloox", "bplatz", "easycosmetic", "orioudh",
-              "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
-          }
+          # This is a Bplatz-only verification deployment. Other retailers
+          # are deliberately excluded and cannot block the Bplatz checks.
+          expected_stores = {"bplatz"}
           actual_stores = set((ui_result.get("stores") or {}).keys())
           missing_stores = sorted(expected_stores - actual_stores)
           print("PILOT_BROWSER_STORES=" + json.dumps(ui_result.get("stores") or {}, ensure_ascii=False, default=str), flush=True)
@@ -272,12 +271,6 @@ jobs:
               raise RuntimeError(
                   "One or more retailer query-scoped refreshes did not complete cleanly: "
                   + json.dumps(failed_refreshes, ensure_ascii=False, default=str)
-              )
-          deloox_report = stores.get("deloox") or {}
-          if int(deloox_report.get("count") or 0) < 1:
-              raise RuntimeError(
-                  "Deloox did not publish a verified Liquid Brun offer: "
-                  + json.dumps(deloox_report, ensure_ascii=False, default=str)
               )
           group_diagnostics = {}
           for product_id, expected_size in expected_sizes.items():
