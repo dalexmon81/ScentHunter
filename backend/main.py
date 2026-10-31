@@ -3234,9 +3234,67 @@ def _run_job(job_id, query):
         # same verified Offer Engine when the feature flag is enabled.
         if _offer_engine_search_enabled():
             engine_started = time.monotonic()
+            refresh_reports = {}
+            refresh_errors = {}
+            if _offer_engine_on_demand_refresh_enabled():
+                refresh_started = time.monotonic()
+                try:
+                    refresh_result = _run_offer_engine_query_refresh(query)
+                    refresh_elapsed = round(time.monotonic() - refresh_started, 3)
+                    for connector in getattr(refresh_result, "connectors", []):
+                        retailer = str(getattr(connector, "retailer", "") or "").strip().lower()
+                        if not retailer:
+                            continue
+                        connector_status = str(getattr(connector, "status", "failed") or "failed").lower()
+                        connector_errors = list(getattr(connector, "errors", []) or [])
+                        unresolved = int(getattr(connector, "unresolved", 0) or 0)
+                        issue = connector_status != "success" or bool(connector_errors) or unresolved > 0
+                        visible_status = (
+                            "error" if connector_status == "failed"
+                            else "partial" if issue
+                            else "success"
+                        )
+                        refresh_reports[retailer] = {
+                            "status": visible_status,
+                            "verified": not issue,
+                            "count": int(getattr(connector, "offers_published", 0) or 0),
+                            "elapsed": refresh_elapsed,
+                            "details": {
+                                "source": "on_demand_verified_query_refresh",
+                                "listings_seen": int(getattr(connector, "listings_seen", 0) or 0),
+                                "observations_written": int(getattr(connector, "observations_written", 0) or 0),
+                                "offers_published": int(getattr(connector, "offers_published", 0) or 0),
+                                "unresolved": unresolved,
+                                "errors": connector_errors[:8],
+                                "unresolved_samples": list(getattr(connector, "unresolved_samples", []) or [])[:5],
+                            },
+                        }
+                        if issue:
+                            refresh_errors[retailer] = {
+                                "status": visible_status,
+                                "errors": connector_errors[:8],
+                                "unresolved": unresolved,
+                            }
+                except Exception as exc:
+                    refresh_elapsed = round(time.monotonic() - refresh_started, 3)
+                    refresh_errors["offer_engine_refresh"] = (
+                        f"{type(exc).__name__}: {str(exc)[:500]}"
+                    )
             engine_payload = _search_with_offer_engine(query)
             engine_elapsed = round(time.monotonic() - engine_started, 3)
-            store_reports = engine_payload.get("stores") or {}
+            store_reports = dict(refresh_reports)
+            for retailer, read_report in (engine_payload.get("stores") or {}).items():
+                existing = store_reports.get(retailer)
+                if existing is None:
+                    store_reports[retailer] = dict(read_report)
+                else:
+                    existing["count"] = int(read_report.get("count", 0) or 0)
+                    existing["details"]["visible_offer_count"] = existing["count"]
+            engine_payload["stores"] = store_reports
+            engine_payload["errors"] = {
+                **dict(engine_payload.get("errors") or {}),
+                **refresh_errors,
+            }
             store_issues = [
                 report for report in store_reports.values()
                 if not report.get("verified")
@@ -5676,6 +5734,27 @@ def search_status_query(job_id:str): return _snapshot(job_id)
 
 def _offer_engine_search_enabled():
     return str(os.environ.get("SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _offer_engine_on_demand_refresh_enabled():
+    configured = os.environ.get("SCENTHUNTER_OFFER_ENGINE_ON_DEMAND_REFRESH_ENABLED")
+    if configured is None:
+        return _offer_engine_search_enabled()
+    return str(configured).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _run_offer_engine_query_refresh(query: str):
+    """Refresh every configured retailer for this exact user query.
+
+    This runs inside the asynchronous search job, never inside the HTTP
+    /search-start request. It closes the gap between a slow rotating catalog
+    crawler and a user searching for a product that has not been crawled yet.
+    """
+    try:
+        from offer_engine.runtime import run_offer_engine
+    except ModuleNotFoundError:
+        from backend.offer_engine.runtime import run_offer_engine
+    return run_offer_engine(query)
 
 
 def _search_with_offer_engine(query: str):
