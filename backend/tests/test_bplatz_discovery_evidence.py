@@ -29,3 +29,19 @@ def test_bplatz_still_rejects_candidate_without_matching_title_or_handle():
     )
 
     assert candidates == []
+
+
+def test_bplatz_discovers_limited_edition_when_shopify_handle_omits_brand():
+    candidates = []
+    seen = set()
+
+    scraper.add_candidate(
+        "/products/liquid-brun-limited-edition-eau-de-parfum-150-ml",
+        "French Avenue Liquid Brun Limited Edition 150 ml",
+        candidates,
+        seen,
+    )
+
+    assert candidates == [
+        "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+    ]
