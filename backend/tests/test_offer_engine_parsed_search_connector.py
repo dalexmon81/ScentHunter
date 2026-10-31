@@ -298,6 +298,30 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "redirected_to_different_product"):
             connector.observe(listing)
 
+    def test_bplatz_product_page_redirect_to_foreign_host_is_rejected(self):
+        class BplatzFakeScraper(FakeScraper):
+            BASE_URL = "https://en.bplatz.de"
+
+        scraper = BplatzFakeScraper(
+            {
+                "status": "success",
+                "verified": True,
+                "results": [self._row(
+                    url="https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
+                    size_ml=100,
+                    gtin="",
+                )],
+            },
+            page_overrides={"url": "https://example.com/products/wrong-perfume-100ml"},
+        )
+        connector = ParsedSearchConnector(
+            "bplatz", "scrapers.bplatz.scraper", "DE", scraper=scraper,
+        )
+        listing = next(iter(connector.discover("Liquid Brun 100 ml")))
+        with self.assertRaisesRegex(RuntimeError, "redirected_outside_storefront"):
+            connector.observe(listing)
+
+
     def test_multi_item_gift_sets_are_not_treated_as_single_perfume_listings(self):
         row = self._row(
             name="French Avenue Liquid Brun Mystery Box Gift Set 300 ml",
