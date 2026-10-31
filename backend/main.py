@@ -5174,6 +5174,25 @@ def _search_with_offer_engine(query: str):
             detail="offer_engine_search_unavailable",
         ) from exc
 
+    # The Offer Engine DB stores commercial observations separately from
+    # canonical product identity. Resolve the canonical image from the same
+    # read-only catalog used to seed product IDs; never infer an image from a
+    # retailer URL or substitute a placeholder.
+    canonical_images = {}
+    try:
+        try:
+            from scent hunter_next_engine.catalog_repository import CatalogRepository
+        except ModuleNotFoundError:
+            from backend.scenthunter_next_engine.catalog_repository import CatalogRepository
+        catalog = CatalogRepository.from_file(Path(__file__).resolve().parent / "product_catalog.json")
+        canonical_images = {
+            product.product_id: product.canonical_image_url
+            for product in catalog.all_products()
+            if product.canonical_image_url
+        }
+    except Exception as exc:
+        print(f"OFFER_ENGINE_CANONICAL_IMAGES_UNAVAILABLE: {type(exc).__name__}: {exc}", flush=True)
+
     all_offers = []
     for row in current_rows:
         price = row.get("price")
@@ -5187,6 +5206,7 @@ def _search_with_offer_engine(query: str):
             "canonical_brand": row.get("brand"),
             "brand": row.get("brand"),
             "canonical_name": row.get("canonical_name"),
+            "canonical_image": canonical_images.get(str(row.get("product_id") or "")),
             "name": row.get("canonical_name"),
             "family": row.get("concentration"),
             "variant": f"{size_ml} ml" if size_ml is not None else None,
@@ -5215,19 +5235,24 @@ def _search_with_offer_engine(query: str):
     # that happen to cost the same amount.
     dedupe_diagnostics = []
     grouped, unresolved = _aggregate_identity_results(all_offers)
+    # A retailer is successful in the public search only when at least one of
+    # its offers survives the same price/stock/identity guards as the cards.
+    # Cached sold-out or otherwise rejected rows must not masquerade as visible
+    # comparisons in the store summary.
     store_reports = {}
-    for row in current_rows:
-        retailer = str(row.get("retailer_id") or "")
-        if not retailer:
-            continue
-        report = store_reports.setdefault(retailer, {
-            "status": "success",
-            "verified": True,
-            "count": 0,
-            "elapsed": 0.0,
-            "details": {"source": "cached_verified_current_offers"},
-        })
-        report["count"] += 1
+    for group in grouped:
+        for offer in group.get("offers", []):
+            retailer = str(offer.get("store") or "")
+            if not retailer:
+                continue
+            report = store_reports.setdefault(retailer, {
+                "status": "success",
+                "verified": True,
+                "count": 0,
+                "elapsed": 0.0,
+                "details": {"source": "cached_verified_current_offers"},
+            })
+            report["count"] += 1
     errors = {}
 
     return {
