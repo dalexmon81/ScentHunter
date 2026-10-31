@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import requests
@@ -28,7 +29,8 @@ def clean(value):
 
 
 def norm(value):
-    text = clean(value).lower()
+    text = unicodedata.normalize("NFKD", clean(value).casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
     text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
