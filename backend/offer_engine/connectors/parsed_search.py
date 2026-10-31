@@ -294,7 +294,13 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
         raise RuntimeError(f"{retailer}_product_page_missing_product_title")
     brand = str(page.get("brand") or source.get("source_brand") or "").strip() or None
     url_size = _size_from_product_url(listing.product_url)
-    if listing.raw_size_ml is not None and url_size is not None and url_size != listing.raw_size_ml:
+    # ParfumCity uses Shopify product handles as SEO URLs. A handle can retain
+    # the default bottle size (for example "100-ml") even when the selected
+    # Shopify variant is another size. Its product JSON parser has already
+    # selected and verified the exact variant by SKU/size; the fetched variant
+    # attributes below remain authoritative. Keep the URL-size guard for every
+    # other retailer, where the path represents the sellable product itself.
+    if retailer != "parfumcity" and listing.raw_size_ml is not None and url_size is not None and url_size != listing.raw_size_ml:
         raise RuntimeError(
             f"{retailer}_product_url_size_mismatch:"
             f"expected={listing.raw_size_ml}:url={url_size}"
