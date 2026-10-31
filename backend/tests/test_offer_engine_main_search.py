@@ -156,8 +156,12 @@ class OfferEngineMainSearchTests(unittest.TestCase):
         ):
             result = main._search_with_offer_engine("Liquid Brun")
 
-        self.assertEqual(result["count"], 1)
-        offer = result["results"][0]["offers"][0]
+        # Sold-out observations remain in the raw offer evidence, but are
+        # not emitted as purchasable comparison cards.
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(result["results"], [])
+        self.assertEqual(result["offer_count"], 1)
+        offer = result["offers"][0]
         self.assertEqual(offer["variant_id"], "VAR-f5aff76b4bb5de8a")
         self.assertEqual(offer["availability"], "out_of_stock")
         self.assertIsNone(offer["price"])
