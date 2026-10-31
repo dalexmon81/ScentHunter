@@ -9,6 +9,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Iterable
+import time
 
 from .adapters import RetailerConnector
 from .resolver import resolve_observation
@@ -23,6 +24,7 @@ class ConnectorRunResult:
     offers_published: int = 0
     unresolved: int = 0
     errors: list[str] = field(default_factory=list)
+    elapsed: float = 0.0
     unresolved_samples: list[dict[str, str]] = field(default_factory=list)
 
 
@@ -52,6 +54,7 @@ class OfferEngineRunner:
         self.max_workers = max(1, int(max_workers))
 
     def _run_connector(self, connector: RetailerConnector, query: str) -> ConnectorRunResult:
+        started = time.monotonic()
         result = ConnectorRunResult(retailer=str(connector.retailer), status="running")
         try:
             repository = self.repository_factory(connector)
@@ -59,6 +62,7 @@ class OfferEngineRunner:
         except Exception as exc:
             result.status = "failed"
             result.errors.append(f"discovery: {type(exc).__name__}: {exc}")
+            result.elapsed = round(time.monotonic() - started, 3)
             return result
 
         for listing in listings:
@@ -113,6 +117,7 @@ class OfferEngineRunner:
             result.status = "failed"
         else:
             result.status = "success"
+        result.elapsed = round(time.monotonic() - started, 3)
         return result
 
     def run(self, connectors: Iterable[RetailerConnector], query: str) -> EngineRunResult:
