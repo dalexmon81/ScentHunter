@@ -498,6 +498,71 @@ jobs:
                   raise SystemExit(label + " failed or was not read-only: " + json.dumps(result, ensure_ascii=False))
           PY
 
+      - name: Verify Bplatz Atlantis parser regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest backend.tests.test_bplatz_product_page_parser
+
+      - name: Refresh and verify the exact Bplatz Atlantis 100 ml URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          product_url = "https://bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"
+          query = urllib.parse.urlencode({"url": product_url})
+
+          def get(path, timeout=90):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Atlantis-Refresh/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=timeout) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          # Verify the live parser first; do not persist a page that has no
+          # exact product identity, bottle size and positive explicit price.
+          parsed_response = get("/diagnostic/bplatz-page-check?" + query)
+          parsed = parsed_response.get("parser_result") or {}
+          print("BPLATZ_ATLANTIS_LIVE_PARSE=" + json.dumps(parsed_response, ensure_ascii=False), flush=True)
+          if not parsed_response.get("ok") or parsed.get("size_ml") != 100 or float(parsed.get("price_num") or parsed.get("price") or 0) <= 0:
+              raise SystemExit("Atlantis live parser did not return a priced 100 ml product: " + json.dumps(parsed_response, ensure_ascii=False))
+
+          # This mutation is restricted to the one exact Bplatz URL supplied
+          # by the user. Retry transient SQLite lock responses, then read back.
+          last = None
+          for attempt in range(1, 7):
+              try:
+                  refreshed = get("/diagnostic/bplatz-refresh?" + query)
+                  print("BPLATZ_ATLANTIS_REFRESH=" + json.dumps(refreshed, ensure_ascii=False), flush=True)
+                  if refreshed.get("ok"):
+                      last = refreshed
+                      break
+                  last = refreshed
+              except Exception as exc:
+                  last = {"error": type(exc).__name__ + ": " + str(exc)}
+              if attempt < 6:
+                  time.sleep(min(attempt * 3, 15))
+          if not last or not last.get("ok"):
+              raise SystemExit("Exact Bplatz Atlantis refresh failed: " + json.dumps(last, ensure_ascii=False))
+          persisted = last.get("persisted_row") or {}
+          if persisted.get("size_ml") != 100 or float(persisted.get("price") or 0) <= 0:
+              raise SystemExit("Atlantis refresh did not persist a priced 100 ml row: " + json.dumps(last, ensure_ascii=False))
+          catalog = get("/diagnostic/bplatz-catalog?" + query)
+          rows = catalog.get("store_product_row") or []
+          exact = next((row for row in rows if row.get("url", "").split("?")[0].rstrip("/") == product_url.rstrip("/")), None)
+          print("BPLATZ_ATLANTIS_PERSISTED_ROW=" + json.dumps(exact, ensure_ascii=False), flush=True)
+          if not catalog.get("ok") or not exact or exact.get("size_ml") != 100 or float(exact.get("price") or 0) <= 0 or exact.get("fetch_status") != "OK":
+              raise SystemExit("Atlantis exact URL failed persisted catalog readback: " + json.dumps(catalog, ensure_ascii=False))
+          print("BPLATZ_ATLANTIS_PERSISTENCE=PASS", flush=True)
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
