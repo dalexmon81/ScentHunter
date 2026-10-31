@@ -107,7 +107,7 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "product_variant_size_mismatch"):
             connector.observe(listing)
 
-    def test_parfumcity_url_size_conflict_is_rejected_even_when_shopify_variant_says_150ml(self):
+    def test_parfumcity_shopify_variant_size_overrides_default_size_in_product_handle(self):
         class ParfumCityScraper(FakeScraper):
             BASE_URL = "https://www.parfumcity.nl"
 
@@ -141,8 +141,11 @@ class ParsedSearchConnectorTests(unittest.TestCase):
             "parfumcity", "scrapers.parfumcity.scraper", "NL", scraper=scraper,
         )
         listing = next(iter(connector.discover("Liquid Brun Limited Edition 150 ml")))
-        with self.assertRaisesRegex(RuntimeError, "parfumcity_product_url_size_mismatch"):
-            connector.observe(listing)
+        observation = connector.observe(listing)
+        self.assertEqual(listing.raw_size_ml, 150)
+        self.assertEqual(observation.raw_payload["parsed_page"]["attributes"]["size_ml"]["value"], 150)
+        self.assertEqual(str(observation.price), "39.99")
+        self.assertEqual(observation.availability, Availability.IN_STOCK)
 
     def test_search_snippet_price_is_ignored_in_favor_of_product_page_price(self):
         scraper = FakeScraper(
