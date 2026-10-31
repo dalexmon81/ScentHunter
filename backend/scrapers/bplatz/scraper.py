@@ -468,8 +468,15 @@ def product_from_page(session, url, query, html=None):
 
 
 def extract_product_page(session, url, slug, html=None):
-    """Catalog hydration adapter: reuse the Bplatz product-page parser."""
-    return product_from_page(session, url, slug, html=html)
+    """Catalog hydration adapter: reuse the Bplatz product-page parser.
+
+    catalog_engine's generic url_slug() includes the leading "products"
+    path segment. That is not part of Shopify's product handle and shifts
+    the legacy-brand fallback by one token. Use only the actual handle here.
+    """
+    path = urlsplit(str(url or "")).path.rstrip("/")
+    handle = path.rsplit("/", 1)[-1]
+    return product_from_page(session, url, handle or slug, html=html)
 
 
 def _search_report(query):
