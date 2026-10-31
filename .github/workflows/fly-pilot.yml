@@ -532,8 +532,12 @@ jobs:
               raise SystemExit("Limited Edition persisted without its explicit price: " + json.dumps(last, ensure_ascii=False))
           search = get("/diagnose-search-final?" + urllib.parse.urlencode({"store":"bplatz","q":"Liquid Brun Limited Edition 150 ml"}))
           print("BPLATZ_LIMITED_FINAL_SEARCH=" + json.dumps(search, ensure_ascii=False), flush=True)
-          if not search.get("ok") or not any(x.get("catalog_id") == "SH-0031" and x.get("price") is not None for x in search.get("final_groups", [])):
-              raise SystemExit("Limited Edition does not appear as a priced final search group")
+          priced = [
+              x for x in search.get("deduped_offers", [])
+              if x.get("catalog_id") == "SH-0031" and float(x.get("price") or 0) > 0
+          ]
+          if not search.get("ok") or not priced or not search.get("final_groups"):
+              raise SystemExit("Limited Edition does not appear as a priced final search offer: " + json.dumps(search, ensure_ascii=False))
           PY
 
       - name: Verify Bplatz Atlantis parser regression tests
