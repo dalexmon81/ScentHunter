@@ -140,6 +140,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         # Keep the catalog rotation worker off to avoid duplicate concurrent crawls.
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"', pilot_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"', pilot_config)
+        self.assertIn('SCENTHUNTER_OFFER_ENGINE_ON_DEMAND_REFRESH_ENABLED = "1"', pilot_config)
         self.assertIn('SCENTHUNTER_CATALOG_FAMILY_COVERAGE_ENABLED = "0"', pilot_config)
 
 
