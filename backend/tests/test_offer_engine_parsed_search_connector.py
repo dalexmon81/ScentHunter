@@ -448,16 +448,19 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
 
     def test_verified_partial_discovery_keeps_page_verified_candidates(self):
-        connector = ParsedSearchConnector(
-            "bplatz",
-            "scrapers.bplatz.scraper",
-            "DE",
-            scraper=FakeScraper({
+        bplatz_url = "https://en.bplatz.de/products/french-avenue-liquid-brun-100-ml"
+        scraper = FakeScraper(
+            {
                 "status": "partial",
                 "verified": True,
-                "results": [self._row()],
+                "results": [self._row(url=bplatz_url)],
                 "details": {"discovery_errors": [{"source": "search_json", "status": "error"}]},
-            }),
+            },
+            page_overrides={"url": bplatz_url},
+        )
+        scraper.BASE_URL = "https://en.bplatz.de"
+        connector = ParsedSearchConnector(
+            "bplatz", "scrapers.bplatz.scraper", "DE", scraper=scraper,
         )
         listing = next(iter(connector.discover("Liquid Brun 100 ml")))
         observation = connector.observe(listing)
