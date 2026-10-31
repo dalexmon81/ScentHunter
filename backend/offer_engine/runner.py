@@ -60,7 +60,7 @@ class OfferEngineRunner:
         self.matcher = matcher
         self.repository_factory = repository_factory
         self.max_workers = max(1, int(max_workers))
-        self.connector_timeout_seconds = max(0.1, float(connector_timeout_seconds))
+        self.connector_timeout_seconds = max(0.01, float(connector_timeout_seconds))
 
     @staticmethod
     def _close_repository(repository: Any) -> None:
