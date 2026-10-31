@@ -102,8 +102,12 @@ class OfferEngineMainSearchTests(unittest.TestCase):
                 with main.JOBS_LOCK:
                     main.JOBS.pop(job_id, None)
 
-        self.assertEqual(snapshot["stores"]["bplatz"]["status"], "success")
+        self.assertEqual(snapshot["stores"]["bplatz"]["status"], "partial")
         self.assertEqual(snapshot["stores"]["bplatz"]["details"]["listings_seen"], 1)
+        self.assertEqual(
+            snapshot["stores"]["bplatz"]["details"]["visibility_error"],
+            "published_offer_not_visible_in_search_read",
+        )
         self.assertEqual(snapshot["stores"]["sabina"]["status"], "error")
         self.assertIn("sabina", snapshot["errors"])
         self.assertEqual(snapshot["status"], "completed_with_store_issues")
