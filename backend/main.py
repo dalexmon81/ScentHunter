@@ -658,8 +658,6 @@ def _catalog_bootstrap_worker():
         if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_sync_all):
             raise RuntimeError('catalog_engine_unavailable')
         result = catalog_sync_all()
-        _start_catalog_hydration()
-        _start_catalog_discovery()
         ready = _catalog_is_ready()
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_DONE = ready
@@ -673,6 +671,19 @@ def _catalog_bootstrap_worker():
             _CATALOG_BOOTSTRAP_ERROR = f'{type(exc).__name__}:{exc}'
         print(f'CATALOG BOOTSTRAP ERROR: {type(exc).__name__}: {exc}', flush=True)
     finally:
+        # Start the durable workers even if one retailer makes the initial
+        # all-store bootstrap fail. Discovery/hydration are store-isolated and
+        # must not be disabled for every retailer by one bootstrap exception.
+        try:
+            if CATALOG_ENGINE_AVAILABLE:
+                _start_catalog_hydration()
+                _start_catalog_discovery()
+        except Exception as worker_exc:
+            detail = f'{type(worker_exc).__name__}:{worker_exc}'
+            print(f'CATALOG BACKGROUND WORKERS START ERROR: {detail}', flush=True)
+            with _CATALOG_BOOTSTRAP_LOCK:
+                if not _CATALOG_BOOTSTRAP_ERROR:
+                    _CATALOG_BOOTSTRAP_ERROR = detail
         with _CATALOG_BOOTSTRAP_LOCK:
             _CATALOG_BOOTSTRAP_RUNNING = False
 
