@@ -67,6 +67,7 @@ class DelooxConnector:
 
     def __init__(self, session=None):
         self._session = session
+        self.discovery_details: dict = {}
 
     @staticmethod
     def _searchable_tokens(value: str) -> set[str]:
@@ -94,6 +95,8 @@ class DelooxConnector:
             max_results=8,
             include_fallback=False,
         )
+        details = result.get("details") if isinstance(result, dict) else {}
+        self.discovery_details = dict(details) if isinstance(details, dict) else {}
         if not isinstance(result, dict) or result.get("status") != "success" or not result.get("verified"):
             status = result.get("status", "invalid_result") if isinstance(result, dict) else "invalid_result"
             details = result.get("details", {}) if isinstance(result, dict) else {}
