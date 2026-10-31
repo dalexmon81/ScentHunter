@@ -1546,7 +1546,7 @@ def _discover_from_categories(session, query, max_urls=MAX_CANDIDATES):
 
     return urls
 
-def _discover(session, q, deadline=None):
+def _discover(session, q, deadline=None, *, max_candidates=MAX_CANDIDATES, include_fallback=True):
     """Generic deterministic discovery with search as the primary surface.
 
     Order is deliberate:
@@ -1574,8 +1574,9 @@ def _discover(session, q, deadline=None):
     candidates = []
     seen = set()
 
+    max_candidates = max(1, int(max_candidates))
     search_candidates = _discover_from_search(session, q, deadline=deadline)
-    for url in search_candidates:
+    for url in search_candidates[:max_candidates]:
         if url not in seen:
             seen.add(url)
             candidates.append(url)
@@ -1585,7 +1586,15 @@ def _discover(session, q, deadline=None):
     # additional work that every successful search must perform. This keeps
     # discovery fast and preserves the proven Deloox search mechanism.
     if candidates:
-        return candidates[:MAX_CANDIDATES]
+        return candidates[:max_candidates]
+
+    # Query-driven Offer Engine discovery can disable broad category/sitemap
+    # crawling. A verified empty search should not hold every user search open
+    # while the scraper scans dozens of generic category and sitemap pages.
+    if not include_fallback:
+        if not _LAST_DISCOVERY_STATE.get("search_verified"):
+            _LAST_DISCOVERY_STATE["technical_failure"] = True
+        return candidates[:max_candidates]
 
     # Only when search produced no candidates do we use the generic fallback
     # surfaces. A successful search with no matches is still a verified search
@@ -1593,22 +1602,22 @@ def _discover(session, q, deadline=None):
     # the retailer search surface.
     if deadline is not None and time.time() >= float(deadline):
         return candidates[:MAX_CANDIDATES]
-    category_candidates = _discover_from_categories(session, q, MAX_CANDIDATES)
+    category_candidates = _discover_from_categories(session, q, max_candidates)
     if category_candidates:
         _LAST_DISCOVERY_STATE["category_verified"] = True
     for url in category_candidates:
         if url not in seen:
             seen.add(url)
             candidates.append(url)
-            if len(candidates) >= MAX_CANDIDATES:
+            if len(candidates) >= max_candidates:
                 break
 
-    if len(candidates) < MAX_CANDIDATES and (deadline is None or time.time() < float(deadline)):
+    if len(candidates) < max_candidates and (deadline is None or time.time() < float(deadline)):
         sitemap_candidates = _sitemap_product_urls(
             session,
             q,
             max_sitemaps=48,
-            max_urls=MAX_CANDIDATES - len(candidates),
+            max_urls=max_candidates - len(candidates),
         )
         if sitemap_candidates:
             _LAST_DISCOVERY_STATE["sitemap_verified"] = True
@@ -1616,7 +1625,7 @@ def _discover(session, q, deadline=None):
             if url not in seen:
                 seen.add(url)
                 candidates.append(url)
-                if len(candidates) >= MAX_CANDIDATES:
+                if len(candidates) >= max_candidates:
                     break
 
     if not candidates and not any(
@@ -1628,7 +1637,7 @@ def _discover(session, q, deadline=None):
     ):
         _LAST_DISCOVERY_STATE["technical_failure"] = True
 
-    return candidates[:MAX_CANDIDATES]
+    return candidates[:max_candidates]
 
 def diagnose_search(session, query):
     """Deep Deloox discovery diagnostic; does not change normal search."""
@@ -1950,7 +1959,14 @@ def _is_deloox_url(url):
     return host in DELOOX_HOSTS
 
 
-def search(query):
+def search(
+    query,
+    *,
+    deadline_seconds=None,
+    max_candidates=MAX_CANDIDATES,
+    max_results=MAX_RESULTS,
+    include_fallback=True,
+):
     query = clean(query)
     if not query:
         return []
@@ -1961,7 +1977,14 @@ def search(query):
     seen = set()
 
     try:
-        candidates = _discover(session, query)[:MAX_CANDIDATES]
+        deadline = time.time() + max(0.1, float(deadline_seconds)) if deadline_seconds is not None else None
+        candidates = _discover(
+            session,
+            query,
+            deadline=deadline,
+            max_candidates=max_candidates,
+            include_fallback=include_fallback,
+        )[:max_candidates]
         if not candidates:
             return []
 
@@ -1993,15 +2016,23 @@ def search(query):
                     continue
                 seen.add(key)
                 results.append(item)
-                if len(results) >= MAX_RESULTS:
+                if len(results) >= max_results:
                     break
 
-        return results[:MAX_RESULTS]
+        return results[:max_results]
     finally:
         session.close()
 
 
-def search_stream(query, emit=None):
+def search_stream(
+    query,
+    emit=None,
+    *,
+    deadline_seconds=None,
+    max_candidates=MAX_CANDIDATES,
+    max_results=MAX_RESULTS,
+    include_fallback=True,
+):
     """ScentHunter scraper contract with explicit discovery state."""
     query = clean(query)
     if not query:
@@ -2014,7 +2045,13 @@ def search_stream(query, emit=None):
         }
 
     try:
-        results = search(query)
+        results = search(
+            query,
+            deadline_seconds=deadline_seconds,
+            max_candidates=max_candidates,
+            max_results=max_results,
+            include_fallback=include_fallback,
+        )
     except requests.Timeout as exc:
         return {"status": "timeout", "verified": False, "results": [],
                 "error": str(exc), "details": {}}
