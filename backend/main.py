@@ -1840,6 +1840,31 @@ def _aggregate_identity_results(offers):
             if not math.isfinite(numeric_price) or numeric_price <= 0:
                 continue
 
+            # A displayed comparison is a buyable offer, not merely a page
+            # carrying a price. Require an affirmative live stock signal.
+            # Explicit booleans take precedence; otherwise accept only known
+            # in-stock status strings. Unknown and sold-out rows stay hidden.
+            stock_flags = [
+                offer.get("available"),
+                offer.get("in_stock"),
+                offer.get("inStock"),
+            ]
+            boolean_stock = [value for value in stock_flags if isinstance(value, bool)]
+            stock_text = " ".join(
+                str(offer.get(key) or "").strip().lower().replace("-", "_")
+                for key in ("availability", "stock", "stock_status", "availability_status", "status")
+            )
+            affirmative_stock = any(value is True for value in boolean_stock) or any(
+                token in stock_text
+                for token in ("in_stock", "instock", "in stock", "available")
+            )
+            negative_stock = any(value is False for value in boolean_stock) or any(
+                token in stock_text
+                for token in ("out_of_stock", "sold_out", "sold out", "unavailable", "not available")
+            )
+            if negative_stock or not affirmative_stock:
+                continue
+
             catalog_id = str(
                 offer.get("catalog_id")
             ).strip()
