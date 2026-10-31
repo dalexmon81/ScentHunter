@@ -83,7 +83,7 @@ def _size_from_product_url(value: Any) -> int | None:
     """Read an explicit bottle volume from the product URL path, not tracking parameters."""
     path = urlparse(str(value or "")).path
     match = re.search(
-        r"(?<![0-9])(30|50|75|100|125|150|200|250|300)\\s*[-_]?\\s*(?:ml|millilit(?:er|re)s?)\\b",
+        r"(?<![0-9])(30|50|75|100|125|150|200|250|300)\s*[-_]?\s*(?:ml|millilit(?:er|re)s?)\\b",
         path,
         flags=re.I,
     )
