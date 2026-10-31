@@ -3937,6 +3937,7 @@ def diagnostic_bplatz_refresh(url: str):
     """Explicit Bplatz-only rehydrate for one already-known product URL."""
     from urllib.parse import urlparse as _urlparse
     parsed = _urlparse(str(url or '').strip())
+    product_url = str(url or '').strip()
     if (
         parsed.scheme != 'https'
         or (parsed.hostname or '').lower() not in {'bplatz.de', 'www.bplatz.de', 'en.bplatz.de'}
@@ -3945,25 +3946,29 @@ def diagnostic_bplatz_refresh(url: str):
         return {'ok': False, 'error': 'url_not_allowed_for_bplatz_product', 'read_only': False}
     if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_refresh_url) or not callable(catalog_db):
         return {'ok': False, 'error': 'catalog_engine_unavailable', 'read_only': False}
-    item = catalog_refresh_url('bplatz', str(url).strip())
+    item = catalog_refresh_url('bplatz', product_url)
+    engine = importlib.import_module('catalog_engine')
+    refresh_error = getattr(engine, '_LAST_REFRESH_ERRORS', {}).get(('bplatz', product_url))
     conn = catalog_db()
     try:
         row = conn.execute(
             """SELECT name,brand,size_ml,price,currency,availability,fetched_at,fetch_status
                  FROM store_products WHERE store='bplatz' AND url=?""",
-            (str(url).strip(),)
+            (product_url,)
         ).fetchone()
         return {
             'ok': bool(item and item.get('name')),
-            'diagnostic': 'Bplatz retailer parser -> persistent catalog rehydrate',
+            'diagnostic': 'Bplatz retailer parser -> persistent catalog rehydrate with failure cause',
             'store': 'bplatz',
-            'url': str(url).strip(),
+            'url': product_url,
             'parser_result': {
                 'name': item.get('name') if item else None,
+                'brand': item.get('brand') if item else None,
                 'size_ml': item.get('size_ml') if item else None,
                 'price_num': item.get('price_num') if item else None,
                 'availability': item.get('availability') if item else None,
             },
+            'refresh_error': refresh_error,
             'persisted_row': dict(row) if row else None,
             'read_only': False,
         }
