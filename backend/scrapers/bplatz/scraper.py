@@ -66,8 +66,15 @@ def candidate_url_matches(url, query):
 
 
 def size_ml(*values):
+    # Product titles can contain non-breaking spaces; Shopify handles often
+    # encode the same explicit size with hyphens (for example, 100-ml).
     text = " ".join(clean(v) for v in values)
-    m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", text, re.I)
+    text = text.replace("\\u00a0", " ").replace("\\u202f", " ")
+    m = re.search(
+        r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*[-_ ]*\\s*(ml|cl|dl|l)(?![a-z])",
+        text,
+        re.I,
+    )
     if not m:
         return None
     n = float(m.group(1).replace(",", "."))
@@ -392,7 +399,7 @@ def product_from_page(session, url, query, html=None):
     brand = clean(brand.get("name")) if isinstance(brand, dict) else clean(brand)
     # Do not infer the selected bottle size from the whole page: recommendation
     # cards often list other formats. If the product title lacks size, keep it unknown.
-    size = size_ml(name)
+    size = size_ml(name, final_url)
     offers = offer_list(data)
     price = None
     availability = None
