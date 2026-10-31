@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
+import importlib, json, math, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher, catalog_norm, catalog_variant_key
 except Exception as exc:
