@@ -389,6 +389,7 @@ class ParsedSearchConnector:
         self.module_name = module_name
         self.market = market.strip().upper()
         self._scraper = scraper
+        self.discovery_details: dict[str, Any] = {}
         self._rows: dict[str, Mapping[str, Any]] = {}
         self._query = ""
         if not self.retailer or not self.market:
@@ -419,6 +420,8 @@ class ParsedSearchConnector:
         if not callable(search_stream):
             raise RuntimeError(f"{self.retailer}_search_stream_unavailable")
         result = search_stream(query)
+        details = result.get("details") if isinstance(result, Mapping) else {}
+        self.discovery_details = dict(details) if isinstance(details, Mapping) else {}
         if (
             not isinstance(result, Mapping)
             or result.get("status") not in {"success", "partial"}
