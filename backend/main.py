@@ -3282,14 +3282,30 @@ def _run_job(job_id, query):
                     )
             engine_payload = _search_with_offer_engine(query)
             engine_elapsed = round(time.monotonic() - engine_started, 3)
+            visible_counts = {}
+            for offer in (engine_payload.get("offers") or []):
+                retailer = str(offer.get("store") or offer.get("retailer_id") or "").strip().lower()
+                if retailer:
+                    visible_counts[retailer] = visible_counts.get(retailer, 0) + 1
             store_reports = dict(refresh_reports)
             for retailer, read_report in (engine_payload.get("stores") or {}).items():
                 existing = store_reports.get(retailer)
                 if existing is None:
                     store_reports[retailer] = dict(read_report)
-                else:
-                    existing["count"] = int(read_report.get("count", 0) or 0)
-                    existing["details"]["visible_offer_count"] = existing["count"]
+            for retailer, existing in store_reports.items():
+                visible_count = visible_counts.get(str(retailer).lower(), 0)
+                existing["count"] = visible_count
+                existing.setdefault("details", {})["visible_offer_count"] = visible_count
+                published_count = int(existing.get("details", {}).get("offers_published", 0) or 0)
+                if published_count > 0 and visible_count == 0:
+                    existing["status"] = "partial"
+                    existing["verified"] = False
+                    existing["details"]["visibility_error"] = "published_offer_not_visible_in_search_read"
+                    refresh_errors[retailer] = {
+                        "status": "partial",
+                        "errors": ["published_offer_not_visible_in_search_read"],
+                        "offers_published": published_count,
+                    }
             engine_payload["stores"] = store_reports
             engine_payload["errors"] = {
                 **dict(engine_payload.get("errors") or {}),
