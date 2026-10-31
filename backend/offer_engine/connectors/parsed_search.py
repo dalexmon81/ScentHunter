@@ -79,6 +79,22 @@ def _availability(value: Any) -> Availability:
 
 
 
+def _size_from_product_url(value: Any) -> int | None:
+    """Read an explicit bottle volume from the product URL path, not tracking parameters."""
+    path = urlparse(str(value or "")).path
+    match = re.search(
+        r"(?<![0-9])(30|50|75|100|125|150|200|250|300)\\s*[-_]?\\s*(?:ml|millilit(?:er|re)s?)\\b",
+        path,
+        flags=re.I,
+    )
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
 def _size_from_product_title(value: Any) -> int | None:
     """Extract an exact volume only from the fetched product-page title."""
     text = str(value or "")
@@ -277,6 +293,12 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
     if not name:
         raise RuntimeError(f"{retailer}_product_page_missing_product_title")
     brand = str(page.get("brand") or source.get("source_brand") or "").strip() or None
+    url_size = _size_from_product_url(listing.product_url)
+    if listing.raw_size_ml is not None and url_size is not None and url_size != listing.raw_size_ml:
+        raise RuntimeError(
+            f"{retailer}_product_url_size_mismatch:"
+            f"expected={listing.raw_size_ml}:url={url_size}"
+        )
     size = (
         _positive_size(attributes.get("size_ml"))
         or _positive_size(page.get("size_ml"))
