@@ -389,6 +389,14 @@ class ParsedSearchConnectorTests(unittest.TestCase):
             size_ml=100,
             price_num=27.50,
         )
+        apex_alias = self._row(
+            name="French Avenue Liquid Brun Eau de Parfum 100 ml",
+            url="https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
+            sku="BPLATZ-LB",
+            gtin="",
+            size_ml=100,
+            price_num=27.50,
+        )
         sibling = self._row(
             name="French Avenue Liquid Brun Limited Edition Extrait de Parfum 150 ml",
             url="https://en.bplatz.de/products/liquid-brun-limited-edition-150ml",
@@ -401,7 +409,7 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         scraper = BplatzFakeScraper({
             "status": "success",
             "verified": True,
-            "results": [first, duplicate, sibling],
+            "results": [first, duplicate, apex_alias, sibling],
         })
         connector = ParsedSearchConnector(
             "bplatz", "scrapers.bplatz.scraper", "DE", scraper=scraper,
