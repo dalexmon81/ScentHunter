@@ -271,6 +271,12 @@ jobs:
                   "One or more retailer query-scoped refreshes did not complete cleanly: "
                   + json.dumps(failed_refreshes, ensure_ascii=False, default=str)
               )
+          deloox_report = stores.get("deloox") or {}
+          if int(deloox_report.get("count") or 0) < 1:
+              raise RuntimeError(
+                  "Deloox did not publish a verified Liquid Brun offer: "
+                  + json.dumps(deloox_report, ensure_ascii=False, default=str)
+              )
           group_diagnostics = {}
           for product_id, expected_size in expected_sizes.items():
               group = ui_groups.get(product_id) or {}
