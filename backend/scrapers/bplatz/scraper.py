@@ -250,7 +250,7 @@ def discover(session, query):
                 vendor = product.get("vendor") or ""
                 url = product.get("url") or product.get("product_url")
                 if matches(f"{title} {vendor}", query):
-                    add_candidate(url, query, candidates, seen)
+                    add_candidate(url, query, candidates, seen, evidence=f"{title} {vendor}")
         except Exception as exc:
             record("shopify_predictive_search", exc)
 
@@ -266,8 +266,9 @@ def discover(session, query):
                 url = "/products/" + str(product["handle"])
             elif url and not str(url).startswith("/products/") and product.get("handle"):
                 url = "/products/" + str(product["handle"])
-            if matches(f"{product.get('title','')} {product.get('vendor','')} {url or ''}", query):
-                add_candidate(url, query, candidates, seen)
+            evidence = f"{product.get('title','')} {product.get('vendor','')}"
+            if matches(f"{evidence} {url or ''}", query):
+                add_candidate(url, query, candidates, seen, evidence=evidence)
     except Exception as exc:
         record("shopify_search_json", exc)
 
