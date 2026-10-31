@@ -333,6 +333,52 @@ jobs:
           if ui_result.get("status") not in {"completed", "completed_with_store_issues"}:
               raise RuntimeError("Unexpected browser search status: " + json.dumps(ui_result))
 
+          # Verify the exact Bplatz Atlantis product through the same
+          # asynchronous user-search path, not the legacy catalog diagnostic.
+          atlantis_query = "French Avenue Atlantis"
+          atlantis_started = get("/search-start?q=" + urllib.parse.quote(atlantis_query))
+          if not isinstance(atlantis_started, dict):
+              raise RuntimeError("Atlantis user search returned a non-object response.")
+          atlantis_job_id = atlantis_started.get("job_id")
+          atlantis_result = atlantis_started
+          for poll in range(120):
+              if atlantis_result.get("completed"):
+                  break
+              if not atlantis_job_id:
+                  raise RuntimeError("Atlantis user search did not return a job_id: " + json.dumps(atlantis_result))
+              time.sleep(1.5)
+              atlantis_result = get("/search-status?" + urllib.parse.urlencode({"job_id": atlantis_job_id}))
+          if not atlantis_result.get("completed"):
+              raise RuntimeError("Atlantis user search did not complete: " + json.dumps(atlantis_result))
+          atlantis_stores = atlantis_result.get("stores") or {}
+          missing_atlantis_stores = sorted(expected_stores - set(atlantis_stores))
+          failed_atlantis_stores = {
+              store: report for store, report in atlantis_stores.items()
+              if report.get("status") != "success" or report.get("verified") is not True
+          }
+          if missing_atlantis_stores or failed_atlantis_stores:
+              raise RuntimeError(
+                  "Atlantis query did not complete cleanly across all retailers: "
+                  + json.dumps({"missing": missing_atlantis_stores, "failed": failed_atlantis_stores}, ensure_ascii=False, default=str)
+              )
+          atlantis_bplatz_offers = [
+              offer
+              for group in (atlantis_result.get("results") or [])
+              if isinstance(group, dict)
+              for offer in (group.get("offers") or [])
+              if isinstance(offer, dict)
+              and str(offer.get("store") or offer.get("shop") or "").strip().lower() == "bplatz"
+              and int(offer.get("size_ml") or 0) == 100
+              and float(offer.get("price_num") or offer.get("price") or 0) > 0
+          ]
+          if len(atlantis_bplatz_offers) != 1:
+              raise RuntimeError(
+                  "Atlantis user search must return exactly one verified Bplatz 100 ml offer: "
+                  + json.dumps(atlantis_bplatz_offers, ensure_ascii=False, default=str)
+              )
+          print("PILOT_ATLANTIS_BPLATZ_OFFERS=" + json.dumps(atlantis_bplatz_offers, ensure_ascii=False, default=str), flush=True)
+          print("PILOT_ATLANTIS_STORES=" + json.dumps(atlantis_stores, ensure_ascii=False, default=str), flush=True)
+
           print("PILOT_HEALTH=PASS")
           print("PILOT_OFFER_ENGINE_READ_API=PASS")
           print("PILOT_SYNC_SEARCH_ENDPOINT=PASS")
