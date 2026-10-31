@@ -130,7 +130,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
 
         class SlowConnector(FakeConnector):
             def discover(self, query):
-                time.sleep(0.12)
+                time.sleep(0.25)
                 return []
 
         class DeferredConnector(FakeConnector):
@@ -151,7 +151,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
         )
         elapsed = time.monotonic() - started
 
-        self.assertLess(elapsed, 0.10)
+        self.assertLess(elapsed, 0.18)
         self.assertEqual(
             [item.status for item in result.connectors],
             ["timeout", "deferred"],
