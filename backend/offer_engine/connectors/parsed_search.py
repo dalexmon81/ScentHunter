@@ -272,6 +272,8 @@ def _canonical_listing_url(url: str, retailer: str) -> tuple[str, str, tuple[tup
     """Ignore storefront tracking and locale aliases for duplicate detection only."""
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower().removeprefix("www.")
+    if retailer == "bplatz" and host in {"bplatz.de", "en.bplatz.de"}:
+        host = "bplatz.de"
     path = parsed.path.rstrip("/") or "/"
     if retailer == "perfumemarket" and path.lower().startswith("/nl/products/"):
         path = path[3:]
