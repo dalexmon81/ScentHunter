@@ -3402,8 +3402,112 @@ def _run_job(job_id, query):
         print(f'SEARCH END job={job_id} elapsed={elapsed} total={total}', flush=True)
 
 
+# Async Bplatz diagnostic jobs: return a small JSON response immediately so
+# mobile browsers never sit on a long synchronous scraper request.
+_BPLATZ_DIAG_LOCK = threading.Lock()
+_BPLATZ_DIAG_JOBS = {}
+_BPLATZ_DIAG_TTL_SECONDS = 900
+
+
+def _run_bplatz_diagnostic_job(job_id, query, explicit_url=''):
+    import time as _time
+    import requests as _requests
+    session = None
+    started = _time.monotonic()
+    try:
+        module = importlib.import_module('scrapers.bplatz.scraper')
+        session = _requests.Session()
+        candidates, errors, verified = module.discover(session, query)
+        inspected = []
+        targets = list(candidates)
+        if explicit_url and explicit_url not in targets:
+            targets.insert(0, explicit_url)
+        for target in targets[:12]:
+            page_started = _time.monotonic()
+            try:
+                item = module.product_from_page(session, target, query)
+                inspected.append({
+                    'url': target,
+                    'elapsed_sec': round(_time.monotonic() - page_started, 2),
+                    'accepted': isinstance(item, dict),
+                    'product': ({
+                        'name': item.get('name'), 'brand': item.get('brand'),
+                        'size_ml': item.get('size_ml'), 'price': item.get('price_num'),
+                        'availability': item.get('availability'), 'url': item.get('url')
+                    } if isinstance(item, dict) else None),
+                    'rejection': None if isinstance(item, dict) else 'product_from_page_returned_none'
+                })
+            except Exception as exc:
+                inspected.append({
+                    'url': target,
+                    'elapsed_sec': round(_time.monotonic() - page_started, 2),
+                    'accepted': False,
+                    'error': f'{type(exc).__name__}: {exc}'
+                })
+        result = {
+            'ok': True, 'diagnostic': 'Bplatz discovery -> exact product page parser',
+            'query': query, 'discovery_verified': verified,
+            'candidate_count': len(candidates), 'candidates': candidates,
+            'discovery_errors': errors,
+            'discovery_elapsed_sec': round(_time.monotonic() - started, 2),
+            'inspected_count': len(inspected), 'product_pages': inspected,
+            'read_only': True
+        }
+        with _BPLATZ_DIAG_LOCK:
+            _BPLATZ_DIAG_JOBS[job_id] = {
+                'status': 'completed', 'created_at': _time.time(),
+                'finished_at': _time.time(), 'result': result
+            }
+    except Exception as exc:
+        with _BPLATZ_DIAG_LOCK:
+            _BPLATZ_DIAG_JOBS[job_id] = {
+                'status': 'failed', 'created_at': _time.time(),
+                'finished_at': _time.time(),
+                'error': f'{type(exc).__name__}: {exc}', 'query': query
+            }
+    finally:
+        if session is not None:
+            session.close()
+
+
 @app.get('/diagnostic/bplatz-funnel')
-def diagnostic_bplatz_funnel(q: str, url: str = ''):
+def diagnostic_bplatz_funnel(q: str = '', url: str = '', job_id: str = ''):
+    """Async, read-only Bplatz diagnostic; start with q, poll with job_id."""
+    import time as _time
+    now = _time.time()
+    with _BPLATZ_DIAG_LOCK:
+        expired = [
+            key for key, value in _BPLATZ_DIAG_JOBS.items()
+            if now - float(value.get('created_at') or now) > _BPLATZ_DIAG_TTL_SECONDS
+        ]
+        for key in expired:
+            _BPLATZ_DIAG_JOBS.pop(key, None)
+        if job_id:
+            job = _BPLATZ_DIAG_JOBS.get(job_id)
+            if job is None:
+                return {'ok': False, 'status': 'not_found', 'job_id': job_id}
+            return {'ok': True, 'job_id': job_id, **job}
+        query = str(q or '').strip()
+        if not query:
+            return {'ok': False, 'error': 'missing_query'}
+        new_job_id = uuid.uuid4().hex[:12]
+        _BPLATZ_DIAG_JOBS[new_job_id] = {
+            'status': 'running', 'created_at': now, 'query': query
+        }
+    worker = threading.Thread(
+        target=_run_bplatz_diagnostic_job,
+        args=(new_job_id, query, str(url or '').strip()),
+        name='bplatz-diagnostic', daemon=True
+    )
+    worker.start()
+    return {
+        'ok': True, 'status': 'running', 'job_id': new_job_id,
+        'query': query,
+        'poll_url': f'/diagnostic/bplatz-funnel?job_id={new_job_id}',
+        'read_only': True
+    }
+
+
     """Bounded, read-only Bplatz discovery -> product-page diagnostic."""
     import time as _time
     import requests as _requests
