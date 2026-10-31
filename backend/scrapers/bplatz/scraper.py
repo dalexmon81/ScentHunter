@@ -69,9 +69,9 @@ def size_ml(*values):
     # Product titles can contain non-breaking spaces; Shopify handles often
     # encode the same explicit size with hyphens (for example, 100-ml).
     text = " ".join(clean(v) for v in values)
-    text = text.replace("\\u00a0", " ").replace("\\u202f", " ")
+    text = text.replace("\u00a0", " ").replace("\u202f", " ")
     m = re.search(
-        r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*[-_ ]*\\s*(ml|cl|dl|l)(?![a-z])",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_ ]*\s*(ml|cl|dl|l)(?![a-z])",
         text,
         re.I,
     )
