@@ -301,3 +301,4 @@ jobs:
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
+# Catalog discovery scheduler deployment trigger
