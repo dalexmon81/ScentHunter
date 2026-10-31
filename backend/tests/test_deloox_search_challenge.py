@@ -38,6 +38,36 @@ class DelooxChallengeDiscoveryTests(unittest.TestCase):
         self.assertEqual(state["search_pages_failed"], 1)
         self.assertEqual(state["search_failure_reasons"], {"client_challenge": 1})
 
+    def test_offer_engine_verified_empty_search_skips_full_category_and_sitemap_fallbacks(self):
+        def verified_empty(_session, _query, deadline=None):
+            scraper._LAST_DISCOVERY_STATE = {
+                "search_pages_ok": 1,
+                "search_pages_failed": 0,
+                "search_failure_reasons": {},
+                "search_verified": True,
+                "category_verified": False,
+                "sitemap_verified": False,
+                "technical_failure": False,
+            }
+            return []
+
+        with (
+            patch.object(scraper, "_discover_from_search", side_effect=verified_empty),
+            patch.object(scraper, "_discover_from_categories", side_effect=AssertionError("category crawl must be skipped")),
+            patch.object(scraper, "_sitemap_product_urls", side_effect=AssertionError("sitemap crawl must be skipped")),
+        ):
+            candidates = scraper._discover(
+                FakeSession(),
+                "Liquid Brun",
+                deadline=None,
+                max_candidates=8,
+                include_fallback=False,
+            )
+
+        self.assertEqual(candidates, [])
+        self.assertTrue(scraper._LAST_DISCOVERY_STATE["search_verified"])
+        self.assertFalse(scraper._LAST_DISCOVERY_STATE["technical_failure"])
+
     def test_healthcheck_does_not_report_http_200_challenge_as_healthy(self):
         with patch(
             "backend.offer_engine.connectors.deloox.requests.get",
