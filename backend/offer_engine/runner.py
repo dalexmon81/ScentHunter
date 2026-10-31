@@ -1,8 +1,9 @@
 """Orchestrate independent retailer connectors without cross-retailer failure coupling.
 
 Each retailer runs in its own worker with its own repository/DB connection.
-The runner deliberately owns no connection lifecycle; callers create and close
-those connections after all workers have completed.
+The runner closes each connection when that connector finishes. Search waits
+for a bounded interval; slower connector tasks may finish in the background
+without holding back verified results from faster retailers.
 """
 from __future__ import annotations
 
