@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -155,6 +155,11 @@ def add_candidate(url, query, candidates, seen, evidence=""):
     absolute = urljoin(BASE_URL, str(url)).split("#", 1)[0].rstrip("/")
     if "/products/" not in absolute.lower():
         return
+    parsed = urlsplit(absolute)
+    tracking = {"_pos", "_psq", "_psid", "_ss", "fbclid", "gclid", "ref", "source"}
+    query_items = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=False)
+                   if key.casefold() not in tracking and not key.casefold().startswith("utm_")]
+    absolute = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query_items), ""))
     # Shopify product handles often omit the brand and variant words that are
     # present in the product title/vendor. Match against the verified search
     # evidence plus URL; checking the URL alone silently discarded valid hits.
@@ -230,7 +235,9 @@ def _discover_from_sitemap(session, query, candidates, seen):
                 if url not in visited:
                     pending.append(url)
                 continue
-            add_candidate(url, query, candidates, seen, evidence=f"{title} {vendor} {handle}")
+            # The sitemap URL is the only evidence available in this scope.
+            # The previous undefined variables disabled this discovery channel.
+            add_candidate(url, query, candidates, seen, evidence=url)
             if len(candidates) >= MAX_CANDIDATES:
                 return
 
