@@ -3740,6 +3740,99 @@ def diagnostic_bplatz_size_check():
     }
 
 
+@app.get('/diagnostic/bplatz-page-check')
+def diagnostic_bplatz_page_check(url: str = 'https://en.bplatz.de/products/royal-blend-sequoia-eau-de-parfum-100-ml'):
+    """Bounded, read-only check of the real Bplatz product HTML and parser."""
+    from urllib.parse import urlparse as _urlparse
+    import requests as _requests
+
+    raw_url = str(url or '').strip()
+    parsed_url = _urlparse(raw_url)
+    allowed_hosts = {'bplatz.de', 'www.bplatz.de', 'en.bplatz.de'}
+    if (
+        parsed_url.scheme != 'https'
+        or (parsed_url.hostname or '').lower() not in allowed_hosts
+        or not parsed_url.path.startswith('/products/')
+    ):
+        return {'ok': False, 'error': 'url_not_allowed_for_bplatz_product', 'read_only': True}
+
+    started = time.monotonic()
+    response = None
+    try:
+        module = importlib.import_module('scrapers.bplatz.scraper')
+        response = _requests.get(
+            raw_url,
+            headers=getattr(module, 'HEADERS', {}),
+            timeout=(3.0, 6.0),
+            allow_redirects=True,
+        )
+        final = _urlparse(response.url)
+        if (final.hostname or '').lower() not in allowed_hosts:
+            return {
+                'ok': False, 'error': 'redirected_outside_bplatz_domain',
+                'http_status': response.status_code, 'final_url': response.url,
+                'read_only': True,
+            }
+        if response.status_code >= 400:
+            return {
+                'ok': False, 'error': 'bplatz_http_error',
+                'http_status': response.status_code, 'final_url': response.url,
+                'read_only': True,
+            }
+
+        html = response.text or ''
+        slug = final.path.rstrip('/').split('/')[-1]
+        session = _requests.Session()
+        try:
+            parsed = module.product_from_page(session, response.url, slug, html=html)
+        finally:
+            session.close()
+
+        if not isinstance(parsed, dict):
+            parsed = {}
+        name = parsed.get('name')
+        return {
+            'ok': bool(name),
+            'diagnostic': 'Bplatz live product HTML -> deployed page parser',
+            'store': 'bplatz',
+            'http_status': response.status_code,
+            'final_url': response.url,
+            'content_type': response.headers.get('content-type'),
+            'html_bytes': len(response.content or b''),
+            'parser_result': {
+                'name': name,
+                'brand': parsed.get('brand'),
+                'size_ml': parsed.get('size_ml'),
+                'price_num': parsed.get('price_num'),
+                'availability': parsed.get('availability'),
+                'url': parsed.get('url'),
+            },
+            'size_checks': {
+                'from_title': module.size_ml(name),
+                'from_url': module.size_ml(response.url),
+                'combined': module.size_ml(name, response.url),
+            },
+            'expected_size_ml': 100,
+            'elapsed_sec': round(time.monotonic() - started, 3),
+            'read_only': True,
+        }
+    except _requests.Timeout:
+        return {
+            'ok': False, 'error': 'bplatz_page_fetch_timeout',
+            'elapsed_sec': round(time.monotonic() - started, 3),
+            'read_only': True,
+        }
+    except Exception as exc:
+        return {
+            'ok': False, 'error': f'{type(exc).__name__}: {str(exc)[:300]}',
+            'elapsed_sec': round(time.monotonic() - started, 3),
+            'read_only': True,
+        }
+    finally:
+        if response is not None:
+            response.close()
+
+
 @app.get('/diagnostic/bplatz-refresh')
 def diagnostic_bplatz_refresh(url: str):
     """Explicit Bplatz-only rehydrate for one already-known product URL."""
