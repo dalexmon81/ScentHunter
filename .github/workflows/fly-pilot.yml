@@ -65,6 +65,7 @@ jobs:
           grep -Fq 'app = "sh-pilot-20261030"' fly.staging.toml
           grep -Fq 'source = "scenthunter_data"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "1"' fly.staging.toml
+          grep -Fq 'SCENTHUNTER_OFFER_ENGINE_ON_DEMAND_REFRESH_ENABLED = "1"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"' fly.staging.toml
           grep -Fq 'SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"' fly.staging.toml
           echo "Production fly.toml is not used by this workflow."
