@@ -144,6 +144,46 @@ class OfferEngineRuntimeTests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_runtime_retailer_filter_limits_pilot_to_bplatz(self):
+        from types import SimpleNamespace
+
+        captured = {}
+        class FakeRunner:
+            def __init__(self, matcher, repository_factory, **_kwargs):
+                pass
+            def run(self, connectors, query):
+                captured["retailers"] = [item.retailer for item in connectors]
+                captured["query"] = query
+                return EngineRunResult([])
+
+        configured = [
+            SimpleNamespace(retailer="deloox"),
+            SimpleNamespace(retailer="bplatz"),
+            SimpleNamespace(retailer="sabina"),
+        ]
+        with (
+            patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_RETAILERS": "bplatz"}, clear=True),
+            patch.object(runtime.CatalogRepository, "from_file", return_value=object()),
+            patch.object(runtime, "CanonicalMatcher", return_value=object()),
+            patch.object(runtime, "OfferEngineRunner", FakeRunner),
+        ):
+            result = runtime.run_offer_engine("Liquid Brun", connectors=configured, db_path=":memory:")
+        self.assertEqual(result.connectors, [])
+        self.assertEqual(captured["retailers"], ["bplatz"])
+        self.assertEqual(captured["query"], "Liquid Brun")
+
+    def test_runtime_retailer_filter_rejects_unknown_store(self):
+        from types import SimpleNamespace
+
+        configured = [SimpleNamespace(retailer="bplatz")]
+        with (
+            patch.dict(os.environ, {"SCENTHUNTER_OFFER_ENGINE_RETAILERS": "not-a-store"}, clear=True),
+            patch.object(runtime.CatalogRepository, "from_file", return_value=object()),
+            patch.object(runtime, "CanonicalMatcher", return_value=object()),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "unknown_offer_engine_retailers"):
+                runtime.run_offer_engine("Liquid Brun", connectors=configured, db_path=":memory:")
+
     def test_runner_connection_is_closed_after_execution(self):
         connection = FakeConnection()
         class FakeRunner:
