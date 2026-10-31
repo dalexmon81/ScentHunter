@@ -8,6 +8,7 @@ on:
       - '.github/workflows/fly-pilot.yml'
       - 'fly.staging.toml'
       - 'backend/**'
+      - 'frontend/**'
   workflow_dispatch:
     inputs:
       confirm_deploy:
