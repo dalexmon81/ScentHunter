@@ -305,3 +305,4 @@ jobs:
 # Catalog discovery scheduler deployment trigger
 # Trigger pilot deploy for valid-price publication guard
 # Trigger pilot deploy for math import fix
+# Trigger pilot deploy for confirmed-stock publication guard
