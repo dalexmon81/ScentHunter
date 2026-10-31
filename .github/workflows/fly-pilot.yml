@@ -236,6 +236,38 @@ jobs:
           print("PILOT_BROWSER_ELAPSED=" + str(ui_result.get("elapsed")), flush=True)
           if missing_stores:
               raise RuntimeError("The user search did not report every configured retailer: " + json.dumps(missing_stores))
+
+          # A retailer key alone is not proof that its connector ran: the
+          # read-only repository can add cached store summaries after refresh.
+          # Require every configured retailer to carry the on-demand source
+          # marker emitted only by the query-scoped connector runner.
+          wrong_refresh_sources = {
+              store: (stores.get(store) or {}).get("details", {}).get("source")
+              for store in sorted(expected_stores)
+              if (stores.get(store) or {}).get("details", {}).get("source")
+                 != "on_demand_verified_query_refresh"
+          }
+          if wrong_refresh_sources:
+              raise RuntimeError(
+                  "Some retailers were represented by cached/read-only summaries instead "
+                  "of a confirmed query-scoped refresh: "
+                  + json.dumps(wrong_refresh_sources, ensure_ascii=False)
+              )
+          failed_refreshes = {
+              store: {
+                  "status": (stores.get(store) or {}).get("status"),
+                  "verified": (stores.get(store) or {}).get("verified"),
+                  "details": (stores.get(store) or {}).get("details"),
+              }
+              for store in sorted(expected_stores)
+              if (stores.get(store) or {}).get("status") != "success"
+                 or (stores.get(store) or {}).get("verified") is not True
+          }
+          if failed_refreshes:
+              raise RuntimeError(
+                  "One or more retailer query-scoped refreshes did not complete cleanly: "
+                  + json.dumps(failed_refreshes, ensure_ascii=False, default=str)
+              )
           group_diagnostics = {}
           for product_id, expected_size in expected_sizes.items():
               group = ui_groups.get(product_id) or {}
