@@ -320,6 +320,32 @@ jobs:
           print("PILOT_URL=" + base)
           PY
 
+      - name: Verify live Bplatz Liquid Brun page parser (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          product_url = "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
+          path = "/diagnostic/bplatz-page-check?" + urllib.parse.urlencode({"url": product_url})
+          request = urllib.request.Request(
+              base + path,
+              headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Parser-Check/1.0"},
+          )
+          with urllib.request.urlopen(request, timeout=45) as response:
+              result = json.loads(response.read().decode("utf-8"))
+          print("PILOT_BPLATZ_LIVE_PAGE_CHECK=" + json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+          parsed = result.get("parser_result") or {}
+          name = str(parsed.get("name") or "").casefold()
+          if not result.get("ok") or "liquid brun" not in name or parsed.get("size_ml") != 100:
+              raise SystemExit("Bplatz live page parser failed to identify Liquid Brun 100 ml: " + json.dumps(result, ensure_ascii=False))
+          print("PILOT_BPLATZ_LIVE_PAGE_PARSER=PASS", flush=True)
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
