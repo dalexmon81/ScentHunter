@@ -1824,46 +1824,55 @@ def _aggregate_identity_results(offers):
             if _is_non_fragrance_offer(offer) or _is_concentration_mismatch_offer(offer):
                 continue
 
-            # Never publish a retailer row as a price comparison unless it has
-            # a finite, positive numeric price. Empty-price catalog placeholders
-            # were rendered as repeated "price unavailable" shops and inflated
-            # the comparison count without representing a purchasable offer.
+            # Bplatz sold-out listings are still useful search results: the
+            # retailer page exposes the exact product, bottle size and displayed
+            # reference price, even though the item cannot currently be bought.
+            # Keep this exception retailer-scoped; unknown stock and empty-price
+            # placeholders from every other retailer remain excluded.
+            store_key = str(offer.get("store_key") or offer.get("store") or offer.get("shop") or "").strip().lower()
+            is_bplatz = store_key in {"bplatz", "bplatz.de"}
+            stock_text = " ".join(
+                str(offer.get(key) or "").strip().lower().replace("-", "_")
+                for key in ("availability", "stock", "stock_status", "availability_status", "status")
+            )
+            explicit_out_of_stock = any(
+                token in stock_text
+                for token in ("out_of_stock", "outofstock", "sold_out", "soldout", "sold out")
+            )
+
             raw_price = offer.get("price_num")
             if raw_price in (None, ""):
                 raw_price = offer.get("price")
+            numeric_price = None
             try:
                 numeric_price = float(
                     str(raw_price).replace(",", ".").replace("€", "").strip()
                 )
             except (TypeError, ValueError):
-                continue
-            if not math.isfinite(numeric_price) or numeric_price <= 0:
-                continue
+                pass
 
-            # A displayed comparison is a buyable offer, not merely a page
-            # carrying a price. Require an affirmative live stock signal.
-            # Explicit booleans take precedence; otherwise accept only known
-            # in-stock status strings. Unknown and sold-out rows stay hidden.
-            stock_flags = [
-                offer.get("available"),
-                offer.get("in_stock"),
-                offer.get("inStock"),
-            ]
-            boolean_stock = [value for value in stock_flags if isinstance(value, bool)]
-            stock_text = " ".join(
-                str(offer.get(key) or "").strip().lower().replace("-", "_")
-                for key in ("availability", "stock", "stock_status", "availability_status", "status")
-            )
-            affirmative_stock = any(value is True for value in boolean_stock) or any(
-                token in stock_text
-                for token in ("in_stock", "instock", "in stock", "available")
-            )
-            negative_stock = any(value is False for value in boolean_stock) or any(
-                token in stock_text
-                for token in ("out_of_stock", "sold_out", "sold out", "unavailable", "not available")
-            )
-            if negative_stock or not affirmative_stock:
-                continue
+            # Ordinary retailer offers must have a positive price and explicit
+            # in-stock evidence. Bplatz is also allowed through when its exact
+            # product page explicitly says sold out; its price, when supplied,
+            # remains a reference price and availability is preserved publicly.
+            if is_bplatz and explicit_out_of_stock:
+                if numeric_price is not None and (not math.isfinite(numeric_price) or numeric_price <= 0):
+                    continue
+            else:
+                if numeric_price is None or not math.isfinite(numeric_price) or numeric_price <= 0:
+                    continue
+                stock_flags = [
+                    offer.get("available"),
+                    offer.get("in_stock"),
+                    offer.get("inStock"),
+                ]
+                boolean_stock = [value for value in stock_flags if isinstance(value, bool)]
+                affirmative_stock = any(value is True for value in boolean_stock) or any(
+                    token in stock_text
+                    for token in ("in_stock", "instock", "in stock", "available")
+                )
+                if not affirmative_stock:
+                    continue
 
             catalog_id = str(
                 offer.get("catalog_id")
