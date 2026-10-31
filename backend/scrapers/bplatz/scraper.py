@@ -301,41 +301,47 @@ def discover(session, query):
     except Exception as exc:
         record("shopify_search_json", exc)
 
-    try:
-        _discover_products_json(session, query, candidates, seen)
-        discovery_verified = True
-    except Exception as exc:
-        record("shopify_products_json", exc)
-
-    try:
-        _discover_from_sitemap(session, query, candidates, seen)
-        discovery_verified = True
-    except Exception as exc:
-        record("shopify_sitemap", exc)
-
-    try:
-        response = session.get(
-            BASE_URL + "/search",
-            params={"q": query, "type": "product"},
-            headers=HEADERS, timeout=TIMEOUT,
-        )
-        if response.status_code >= 400:
-            status = ("blocked" if response.status_code in (401, 403, 429)
-                      else "unavailable" if response.status_code >= 500 else "error")
-            raise RuntimeError(f"{status}: HTTP {response.status_code}: {BASE_URL}/search")
-        discovery_verified = True
-        soup = BeautifulSoup(response.text, "html.parser")
-        for anchor in soup.select('a[href*="/products/"]'):
-            text = clean(f"{anchor.get('title','')} {anchor.get_text(' ', strip=True)} {anchor.get('href','')}")
-            if matches(text, query):
-                add_candidate(anchor.get("href"), query, candidates, seen, evidence=text)
-        response.close()
-    except Exception as exc:
+    # The two Shopify search APIs are the fast, query-scoped discovery path.
+    # Do not crawl the entire product catalog and sitemap when they already
+    # produced verified candidates; that made ordinary searches needlessly
+    # slow and could keep the user-facing search job open for minutes.
+    if not candidates:
         try:
-            response.close()
-        except Exception:
-            pass
-        record("html_search", exc)
+            _discover_products_json(session, query, candidates, seen)
+            discovery_verified = True
+        except Exception as exc:
+            record("shopify_products_json", exc)
+
+    if not candidates:
+        try:
+            _discover_from_sitemap(session, query, candidates, seen)
+            discovery_verified = True
+        except Exception as exc:
+            record("shopify_sitemap", exc)
+
+    if not candidates:
+        response = None
+        try:
+            response = session.get(
+                BASE_URL + "/search",
+                params={"q": query, "type": "product"},
+                headers=HEADERS, timeout=TIMEOUT,
+            )
+            if response.status_code >= 400:
+                status = ("blocked" if response.status_code in (401, 403, 429)
+                          else "unavailable" if response.status_code >= 500 else "error")
+                raise RuntimeError(f"{status}: HTTP {response.status_code}: {BASE_URL}/search")
+            discovery_verified = True
+            soup = BeautifulSoup(response.text, "html.parser")
+            for anchor in soup.select('a[href*="/products/"]'):
+                text = clean(f"{anchor.get('title','')} {anchor.get_text(' ', strip=True)} {anchor.get('href','')}")
+                if matches(text, query):
+                    add_candidate(anchor.get("href"), query, candidates, seen, evidence=text)
+        except Exception as exc:
+            record("html_search", exc)
+        finally:
+            if response is not None:
+                response.close()
 
     return candidates[:MAX_CANDIDATES], errors, discovery_verified
 
