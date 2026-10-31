@@ -643,7 +643,7 @@ def _start_catalog_discovery():
         _CATALOG_DISCOVERY_STARTED = True
     threading.Thread(
         target=catalog_discovery_loop,
-        kwargs={'stop_event': _CATALOG_DISCOVERY_STOP, 'interval_seconds': 300.0},
+        kwargs={'stop_event': _CATALOG_DISCOVERY_STOP, 'interval_seconds': 60.0},
         daemon=True,
         name='sh-catalog-discovery',
     ).start()
