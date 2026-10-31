@@ -240,6 +240,8 @@ jobs:
           if missing_stores:
               raise RuntimeError("The user search did not report every configured retailer: " + json.dumps(missing_stores))
 
+          stores = ui_result.get("stores") or {}
+
           # A retailer key alone is not proof that its connector ran: the
           # read-only repository can add cached store summaries after refresh.
           # Require every configured retailer to carry the on-demand source
@@ -328,7 +330,6 @@ jobs:
                       )
           print("PILOT_BROWSER_GROUP_OFFERS=" + json.dumps(group_diagnostics, ensure_ascii=False), flush=True)
 
-          stores = ui_result.get("stores") or {}
           legacy_catalog_failures = {
               store: report for store, report in stores.items()
               if str(report.get("status") or "").lower() == "catalog_not_indexed"
