@@ -1,7 +1,9 @@
 import unittest
+from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 
+from backend.scrapers.bplatz import scraper
 from backend.scrapers.bplatz.scraper import product_from_page
 
 
@@ -77,6 +79,36 @@ class BplatzProductPageParserTests(unittest.TestCase):
         )
         self.assertIsNone(parsed)
 
+
+    def test_query_scoped_shopify_results_skip_full_catalog_and_sitemap_crawls(self):
+        product = {
+            "title": "French Avenue Atlantis Extrait Extrait de Parfum 100 ml",
+            "vendor": "French Avenue",
+            "url": "/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml",
+        }
+
+        def request_json(_session, url, _params):
+            if url.endswith("/search/suggest.json"):
+                return {"resources": {"results": {"products": [product]}}}
+            if url.endswith("/search.json"):
+                return {"products": []}
+            raise AssertionError(f"unexpected discovery URL: {url}")
+
+        with (
+            patch.object(scraper, "request_json", side_effect=request_json),
+            patch.object(scraper, "_discover_products_json", side_effect=AssertionError("full catalog crawl should be skipped")),
+            patch.object(scraper, "_discover_from_sitemap", side_effect=AssertionError("sitemap crawl should be skipped")),
+        ):
+            candidates, errors, verified = scraper.discover(
+                object(), "French Avenue Atlantis 100 ml"
+            )
+
+        self.assertTrue(verified)
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            candidates,
+            ["https://en.bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"],
+        )
 
     def test_shopify_product_price_metadata_fills_missing_jsonld_price(self):
         html = """
