@@ -471,6 +471,50 @@ jobs:
                       raise SystemExit("Bplatz Limited Edition live parser failed size/name validation: " + json.dumps(result, ensure_ascii=False))
           PY
 
+      - name: Refresh only the approved Bplatz Limited Edition 150 ml URL and verify persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          product_url = "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          query = urllib.parse.urlencode({"url": product_url})
+
+          def get(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Limited-Edition-Refresh/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=90) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          initial = get("/diagnostic/bplatz-catalog?" + query)
+          print("BPLATZ_LIMITED_EDITION_INITIAL=" + json.dumps(initial, ensure_ascii=False, sort_keys=True), flush=True)
+          rows = initial.get("store_product_row") or []
+          exact = next((x for x in rows if x.get("url", "").split("?")[0] == product_url), None)
+          valid = bool(initial.get("ok") and exact and exact.get("size_ml") == 150
+                       and exact.get("price") is not None and exact.get("fetch_status") == "OK")
+          if not valid:
+              refreshed = get("/diagnostic/bplatz-refresh?" + query)
+              print("BPLATZ_LIMITED_EDITION_REFRESH=" + json.dumps(refreshed, ensure_ascii=False, sort_keys=True), flush=True)
+              if not refreshed.get("ok"):
+                  raise SystemExit("Limited Edition targeted refresh failed: " + json.dumps(refreshed, ensure_ascii=False))
+              persisted = refreshed.get("persisted_row") or {}
+              if persisted.get("size_ml") != 150 or persisted.get("price") is None or persisted.get("fetch_status") != "OK":
+                  raise SystemExit("Limited Edition refresh persisted invalid data: " + json.dumps(refreshed, ensure_ascii=False))
+              final = get("/diagnostic/bplatz-catalog?" + query)
+              print("BPLATZ_LIMITED_EDITION_READBACK=" + json.dumps(final, ensure_ascii=False, sort_keys=True), flush=True)
+              rows = final.get("store_product_row") or []
+              exact = next((x for x in rows if x.get("url", "").split("?")[0] == product_url), None)
+          if not exact or exact.get("size_ml") != 150 or exact.get("price") is None or exact.get("fetch_status") != "OK":
+              raise SystemExit("Limited Edition catalog persistence validation failed: " + json.dumps(exact, ensure_ascii=False))
+          print("BPLATZ_LIMITED_EDITION_PERSISTENCE=PASS " + json.dumps(exact, ensure_ascii=False, sort_keys=True), flush=True)
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
