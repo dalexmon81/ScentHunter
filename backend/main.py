@@ -2539,6 +2539,33 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
             prepared = clean_result(raw, store)
             if prepared is None or _is_non_fragrance_offer(prepared):
                 continue
+
+            # Reject a catalog row when the retailer's own product URL explicitly
+            # names a different bottle volume from the resolved offer. This is
+            # retailer-agnostic: a 100 ml URL must never be published as 150 ml.
+            source_url = str(
+                prepared.get("variant_url")
+                or prepared.get("product_url")
+                or prepared.get("url")
+                or ""
+            )
+            url_size_match = re.search(
+                r"(?<![0-9])(30|50|75|100|150|200)[\\s_-]*ml(?![a-z])",
+                urllib.parse.unquote(source_url),
+                re.I,
+            )
+            resolved_size = _safe_float(prepared.get("size_ml"))
+            if url_size_match and resolved_size is not None:
+                url_size = float(url_size_match.group(1))
+                if abs(url_size - resolved_size) >= 0.01:
+                    print(
+                        "OFFER_REJECTED_URL_SIZE_CONFLICT "
+                        f"store={store} url_size_ml={int(url_size)} "
+                        f"offer_size_ml={resolved_size:g} url={source_url}",
+                        flush=True,
+                    )
+                    continue
+
             resolved = _resolve_offer_identity(prepared, query)
             if not isinstance(resolved, dict):
                 continue
