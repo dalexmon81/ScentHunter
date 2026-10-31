@@ -53,6 +53,53 @@ def build_product_queries(catalog: Any) -> list[str]:
                 queries.append(query)
     return queries
 
+
+def build_product_query_fallbacks(catalog: Any, primary_query: str) -> list[str]:
+    """Build broader discovery queries for the exact catalog variant.
+
+    Retailer search engines often fail on brand-qualified or size-qualified
+    phrases even when the exact product page is indexed. Broader queries are
+    discovery only: fetched product-page facts and CanonicalMatcher still
+    decide product identity, exact bottle size, price and stock.
+    """
+    target = str(primary_query or "").strip().casefold()
+    for product in catalog.all_products():
+        for variant in product.variants:
+            if variant.size_ml is None:
+                continue
+            parts = [product.brand, product.name]
+            if variant.label:
+                label = variant.label.strip()
+                folded_label = label.casefold()
+                folded_brand = product.brand.strip().casefold()
+                folded_name = product.name.strip().casefold()
+                alias_already_contains_identity = (
+                    folded_brand in folded_label and folded_name in folded_label
+                )
+                if "limited edition" in folded_label and "limited edition" not in product.name.casefold():
+                    parts.append("Limited Edition")
+                elif not alias_already_contains_identity and folded_label not in {folded_name, folded_brand}:
+                    parts.append(label)
+            parts.append(f"{int(variant.size_ml)} ml")
+            exact = " ".join(part.strip() for part in parts if part and part.strip())
+            if exact.casefold() != target:
+                continue
+            candidates = [
+                f"{product.name} {int(variant.size_ml)} ml",
+                f"{product.brand} {product.name}",
+                product.name,
+            ]
+            output = []
+            seen = {target}
+            for item in candidates:
+                normalized = " ".join(str(item or "").split())
+                key = normalized.casefold()
+                if normalized and key not in seen:
+                    seen.add(key)
+                    output.append(normalized)
+            return output
+    return []
+
 def prioritize_product_queries(queries: list[str], priority_queries: list[str]) -> list[str]:
     """Move explicitly requested pilot queries to the front without losing catalog coverage."""
     priority = {value.strip().casefold(): index for index, value in enumerate(priority_queries) if value.strip()}
@@ -149,32 +196,48 @@ def refresh_once() -> dict[str, Any]:
         connection.close()
 
     try:
-        result = run_offer_engine(query)
-        # Keep per-retailer diagnostics in the worker log. A retailer can
-        # return partial (some listings rejected) without being classified as
-        # failed; hiding those errors made an empty storefront impossible to
-        # diagnose from the aggregate counters alone.
+        fallback_queries = build_product_query_fallbacks(catalog, query)
+        discovery_queries = [query, *fallback_queries]
+        results = [(item_query, run_offer_engine(item_query)) for item_query in discovery_queries]
+        # Keep each retailer/query outcome visible. A broader search phrase is
+        # only a discovery aid; the product-page verifier and canonical matcher
+        # still reject wrong products, wrong sizes, unknown stock and bad prices.
         connector_reports = [
             {
-                "retailer": item.retailer,
-                "status": item.status,
-                "listings_seen": item.listings_seen,
-                "observations_written": item.observations_written,
-                "offers_published": item.offers_published,
-                "unresolved": item.unresolved,
-                "errors": item.errors[:8],
-                "unresolved_samples": item.unresolved_samples[:5],
+                "query": item_query,
+                "retailer": connector.retailer,
+                "status": connector.status,
+                "listings_seen": connector.listings_seen,
+                "observations_written": connector.observations_written,
+                "offers_published": connector.offers_published,
+                "unresolved": connector.unresolved,
+                "errors": connector.errors[:8],
+                "unresolved_samples": connector.unresolved_samples[:5],
             }
-            for item in result.connectors
+            for item_query, result in results
+            for connector in result.connectors
         ]
+        per_retailer = {}
+        for report in connector_reports:
+            per_retailer.setdefault(report["retailer"], []).append(report["status"])
+        failed_connectors = sorted(
+            retailer for retailer, statuses in per_retailer.items()
+            if statuses and all(status == "failed" for status in statuses)
+        )
+        partial_connectors = sorted(
+            retailer for retailer, statuses in per_retailer.items()
+            if any(status in {"failed", "partial"} for status in statuses)
+            and retailer not in failed_connectors
+        )
         summary = {
             "query": query,
-            "connectors": len(result.connectors),
-            "listings_seen": result.listings_seen,
-            "observations_written": result.observations_written,
-            "offers_published": result.offers_published,
-            "failed_connectors": [item.retailer for item in result.connectors if item.status == "failed"],
-            "partial_connectors": [item.retailer for item in result.connectors if item.status == "partial"],
+            "discovery_queries": discovery_queries,
+            "connectors": len(per_retailer),
+            "listings_seen": sum(result.listings_seen for _, result in results),
+            "observations_written": sum(result.observations_written for _, result in results),
+            "offers_published": sum(result.offers_published for _, result in results),
+            "failed_connectors": failed_connectors,
+            "partial_connectors": partial_connectors,
             "connector_reports": connector_reports,
         }
         connection = connect_offer_engine_db()
