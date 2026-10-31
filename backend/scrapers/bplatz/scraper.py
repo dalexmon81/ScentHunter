@@ -134,13 +134,16 @@ def request_json(session, url, params=None):
         response.close()
 
 
-def add_candidate(url, query, candidates, seen):
+def add_candidate(url, query, candidates, seen, evidence=""):
     if not url:
         return
     absolute = urljoin(BASE_URL, str(url)).split("#", 1)[0].rstrip("/")
     if "/products/" not in absolute.lower():
         return
-    if not matches(absolute, query):
+    # Shopify product handles often omit the brand and variant words that are
+    # present in the product title/vendor. Match against the verified search
+    # evidence plus URL; checking the URL alone silently discarded valid hits.
+    if not matches(f"{evidence} {absolute}", query):
         return
     if absolute in seen:
         return
@@ -174,7 +177,7 @@ def _discover_products_json(session, query, candidates, seen):
             handle = clean(product.get("handle"))
             url = product.get("url") or ("/products/" + handle if handle else "")
             if matches(f"{title} {vendor} {handle} {url}", query):
-                add_candidate(url, query, candidates, seen)
+                add_candidate(url, query, candidates, seen, evidence=f"{title} {vendor} {handle}")
                 if len(candidates) >= MAX_CANDIDATES:
                     return
 
@@ -212,7 +215,7 @@ def _discover_from_sitemap(session, query, candidates, seen):
                 if url not in visited:
                     pending.append(url)
                 continue
-            add_candidate(url, query, candidates, seen)
+            add_candidate(url, query, candidates, seen, evidence=f"{title} {vendor} {handle}")
             if len(candidates) >= MAX_CANDIDATES:
                 return
 
@@ -295,7 +298,7 @@ def discover(session, query):
         for anchor in soup.select('a[href*="/products/"]'):
             text = clean(f"{anchor.get('title','')} {anchor.get_text(' ', strip=True)} {anchor.get('href','')}")
             if matches(text, query):
-                add_candidate(anchor.get("href"), query, candidates, seen)
+                add_candidate(anchor.get("href"), query, candidates, seen, evidence=text)
         response.close()
     except Exception as exc:
         try:
