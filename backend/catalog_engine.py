@@ -4175,6 +4175,33 @@ def refresh_url(store, url):
                     f'invalid_placeholder_price;store={store};price={raw_price!r}'
                 )
 
+        if store == 'bplatz':
+            try:
+                bplatz_soup = BeautifulSoup(data or b'', 'html.parser')
+                bplatz_h1 = bplatz_soup.find('h1')
+                bplatz_products = _jsonld(bplatz_soup)
+                bplatz_names = [
+                    str(x.get('name') or '')[:160]
+                    for x in (bplatz_products or [])[:5]
+                    if isinstance(x, dict)
+                ]
+                print(
+                    'CATALOG BPLATZ FETCH DIAG: '
+                    f'url={url!r} final={final!r} status={status} '
+                    f'bytes={len(data or b'')} '
+                    f'h1={(bplatz_h1.get_text(" ", strip=True) if bplatz_h1 else "")[:180]!r} '
+                    f'jsonld_products={len(bplatz_products or [])} '
+                    f'jsonld_names={bplatz_names!r} '
+                    f'parser_error={parser_error!r} '
+                    f'item_name={(item or {}).get("name")!r}',
+                    flush=True,
+                )
+            except Exception as diag_exc:
+                print(
+                    f'CATALOG BPLATZ FETCH DIAG ERROR: {type(diag_exc).__name__}:{diag_exc}',
+                    flush=True,
+                )
+
         if not item or not item.get('name'):
             h1_text = ''
             jsonld_count = 0
