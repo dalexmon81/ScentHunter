@@ -302,23 +302,26 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         class BplatzFakeScraper(FakeScraper):
             BASE_URL = "https://en.bplatz.de"
 
+        english_url = "https://en.bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"
         apex_url = "https://bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"
+        row = self._row(
+            name="French Avenue Atlantis Extrait Extrait de Parfum 100 ml",
+            brand="French Avenue",
+            url=english_url,
+            size_ml=100,
+            gtin="",
+            sku="",
+            price_num=38.99,
+        )
+        apex_alias = dict(row, url=apex_url)
         scraper = BplatzFakeScraper(
             {
                 "status": "success",
                 "verified": True,
-                "results": [self._row(
-                    name="French Avenue Atlantis Extrait Extrait de Parfum 100 ml",
-                    brand="French Avenue",
-                    url=apex_url,
-                    size_ml=100,
-                    gtin="",
-                    sku="",
-                    price_num=38.99,
-                )],
+                "results": [row, apex_alias],
             },
-            # The product request may be made through en.bplatz.de and
-            # canonically redirect to bplatz.de without changing the product.
+            # The request starts on the English storefront and redirects to
+            # Bplatz's apex canonical host without changing the product path.
             page_overrides={"url": apex_url},
         )
         connector = ParsedSearchConnector(
@@ -326,6 +329,7 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         )
         listings = list(connector.discover("French Avenue Atlantis 100 ml"))
         self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0].product_url, english_url)
         observation = connector.observe(listings[0])
         self.assertEqual(str(observation.price), "38.99")
         self.assertEqual(observation.evidence_url, apex_url)
