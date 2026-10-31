@@ -4188,7 +4188,7 @@ def refresh_url(store, url):
                 print(
                     'CATALOG BPLATZ FETCH DIAG: '
                     f'url={url!r} final={final!r} status={status} '
-                    f'bytes={len(data or b'')} '
+                    f'bytes={len(data or b"")} '
                     f'h1={(bplatz_h1.get_text(" ", strip=True) if bplatz_h1 else "")[:180]!r} '
                     f'jsonld_products={len(bplatz_products or [])} '
                     f'jsonld_names={bplatz_names!r} '
