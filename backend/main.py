@@ -5784,8 +5784,9 @@ def _search_with_offer_engine(query: str):
             from backend.offer_engine.runtime import connect_offer_engine_db
             from backend.offer_engine.read_repository import OfferReadRepository
 
-        # User searches are strictly read-only. Retailer ingestion belongs to
-        # an independent refresh process, never to the foreground request.
+        # This adapter is read-only: the asynchronous /search-start job may
+        # perform a query-scoped retailer refresh before calling this reader.
+        # The synchronous /search route never triggers retailer ingestion.
         connection = connect_offer_engine_db()
         try:
             current_rows = OfferReadRepository(connection).search(query, limit=200)
