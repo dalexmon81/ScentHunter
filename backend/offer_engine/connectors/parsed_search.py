@@ -254,6 +254,20 @@ def _normalise_product_page(scraper: Any, retailer: str, listing: RetailerListin
 
 
 
+def _storefront_host_allowed(host: str, base_host: str, retailer: str) -> bool:
+    """Accept only known host aliases for a retailer's own storefront."""
+    normalized_host = str(host or "").lower().removeprefix("www.")
+    normalized_base = str(base_host or "").lower().removeprefix("www.")
+    if retailer == "bplatz":
+        # Bplatz's English storefront canonicalizes some product pages to the
+        # apex domain. Both hosts serve the same store and product paths.
+        return normalized_host in {"bplatz.de", "en.bplatz.de"}
+    return not normalized_base or (
+        normalized_host == normalized_base
+        or normalized_host.endswith("." + normalized_base)
+    )
+
+
 def _canonical_listing_url(url: str, retailer: str) -> tuple[str, str, tuple[tuple[str, str], ...]]:
     """Ignore storefront tracking and locale aliases for duplicate detection only."""
     parsed = urlparse(url)
@@ -281,10 +295,14 @@ def _page_facts(scraper: Any, retailer: str, listing: RetailerListing, session: 
     page_url = str(
         page.get("url") or source.get("url") or provenance.get("source_page") or listing.product_url
     ).strip()
-    expected_host = (urlparse(listing.product_url).hostname or "").lower().removeprefix("www.")
+    base_url = str(getattr(scraper, "BASE_URL", "") or "").strip()
+    base_host = (urlparse(base_url).hostname or "").lower().removeprefix("www.")
     actual = urlparse(page_url)
     actual_host = (actual.hostname or "").lower().removeprefix("www.")
-    if actual.scheme not in {"http", "https"} or actual_host != expected_host:
+    if (
+        actual.scheme not in {"http", "https"}
+        or not _storefront_host_allowed(actual_host, base_host, retailer)
+    ):
         raise RuntimeError(f"{retailer}_product_page_redirected_outside_storefront")
     if actual.path.rstrip("/") != urlparse(listing.product_url).path.rstrip("/"):
         raise RuntimeError(f"{retailer}_product_page_redirected_to_different_product")
@@ -456,7 +474,7 @@ class ParsedSearchConnector:
             host = (parsed.hostname or "").lower().removeprefix("www.")
             if (
                 not title or not url or parsed.scheme not in {"http", "https"}
-                or not host or (base_host and host != base_host and not host.endswith("." + base_host))
+                or not host or not _storefront_host_allowed(host, base_host, self.retailer)
             ):
                 continue
             normalized_title = re.sub(r"[^a-z0-9]+", " ", title.casefold()).strip()
