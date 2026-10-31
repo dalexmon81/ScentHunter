@@ -252,4 +252,22 @@ def run_offer_engine(
         ])
     else:
         configured_connectors = list(connectors)
+
+    # A deployment may deliberately isolate one retailer while diagnosing its
+    # end-to-end search path. This is used only by the dedicated Pilot config;
+    # unset means the normal full retailer set.
+    retailer_filter = {
+        item.strip().lower()
+        for item in os.environ.get("SCENTHUNTER_OFFER_ENGINE_RETAILERS", "").split(",")
+        if item.strip()
+    }
+    if retailer_filter:
+        available = {str(item.retailer).strip().lower() for item in configured_connectors}
+        unknown = sorted(retailer_filter - available)
+        if unknown:
+            raise RuntimeError("unknown_offer_engine_retailers: " + ",".join(unknown))
+        configured_connectors = [
+            item for item in configured_connectors
+            if str(item.retailer).strip().lower() in retailer_filter
+        ]
     return runner.run(configured_connectors, query)
