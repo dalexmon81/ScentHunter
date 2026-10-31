@@ -23,6 +23,10 @@ class OfferRepository:
         self.canonical_catalog = canonical_catalog
         self._sqlite = isinstance(connection, sqlite3.Connection)
 
+    def close(self) -> None:
+        """Close this repository's dedicated connection."""
+        self.connection.close()
+
     def _execute(self, cursor: Any, sql: str, params: tuple = ()) -> None:
         if self._sqlite:
             sql = sql.replace("%s", "?").replace("now()", "CURRENT_TIMESTAMP").replace("::jsonb", "")
