@@ -298,6 +298,38 @@ class ParsedSearchConnectorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "redirected_to_different_product"):
             connector.observe(listing)
 
+    def test_bplatz_apex_and_english_storefront_hosts_are_both_accepted(self):
+        class BplatzFakeScraper(FakeScraper):
+            BASE_URL = "https://en.bplatz.de"
+
+        apex_url = "https://bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"
+        scraper = BplatzFakeScraper(
+            {
+                "status": "success",
+                "verified": True,
+                "results": [self._row(
+                    name="French Avenue Atlantis Extrait Extrait de Parfum 100 ml",
+                    brand="French Avenue",
+                    url=apex_url,
+                    size_ml=100,
+                    gtin="",
+                    sku="",
+                    price_num=38.99,
+                )],
+            },
+            # The product request may be made through en.bplatz.de and
+            # canonically redirect to bplatz.de without changing the product.
+            page_overrides={"url": apex_url},
+        )
+        connector = ParsedSearchConnector(
+            "bplatz", "scrapers.bplatz.scraper", "DE", scraper=scraper,
+        )
+        listings = list(connector.discover("French Avenue Atlantis 100 ml"))
+        self.assertEqual(len(listings), 1)
+        observation = connector.observe(listings[0])
+        self.assertEqual(str(observation.price), "38.99")
+        self.assertEqual(observation.evidence_url, apex_url)
+
     def test_bplatz_product_page_redirect_to_foreign_host_is_rejected(self):
         class BplatzFakeScraper(FakeScraper):
             BASE_URL = "https://en.bplatz.de"
