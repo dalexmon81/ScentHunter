@@ -6042,27 +6042,20 @@ def _set_catalog_discovery_os_thread_name(thread, name):
         )
 
 
-def catalog_discovery_loop(stop_event, interval_seconds=300.0):
-    """Incrementally advance discovery for every retailer in the background.
+def catalog_discovery_loop(stop_event, interval_seconds=60.0):
+    """Advance retailer discovery with strict, equal round-robin scheduling.
 
-    Only one retailer is crawled per interval, in round-robin order. The loop
-    yields while foreground searches are active or in their idle grace period.
-    This does not add network work to the user-facing search request; the
-    existing local index remains the only search-time catalog source.
+    No retailer receives startup or frequency priority. A slow Deloox crawl
+    therefore cannot repeatedly jump ahead of Parfumzentrum or other stores.
+    Foreground searches retain priority, while the shorter inter-store pause
+    reduces the time before each retailer gets its next discovery turn.
     """
-    pause = max(60.0, float(interval_seconds))
+    pause = max(15.0, float(interval_seconds))
     stores = tuple(STORES.keys())
     if not stores:
         print('CATALOG DISCOVERY STOP: no configured stores', flush=True)
         return
     next_index = 0
-    non_deloox_stores = tuple(store for store in stores if store != 'deloox')
-    next_non_deloox_index = 0
-    non_deloox_since_deloox = 0
-    # After a process restart, repair Deloox's persisted discovery state on the
-    # first eligible background turn instead of making it wait behind two
-    # unrelated retailers. Foreground searches still take precedence.
-    prioritize_deloox_on_start = 'deloox' in stores
     try:
         _recover_stale_discovery_states()
     except Exception as exc:
@@ -6090,24 +6083,11 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
                 time.sleep(0.5)
             continue
 
-        # Deloox has the largest outstanding frontier. Visit it after every two
-        # other retailers instead of once per full seven-store round-robin.
-        # Other retailers retain their own round-robin progress, and foreground
-        # searches still take precedence over every background crawl.
-        if prioritize_deloox_on_start:
-            store = 'deloox'
-            prioritize_deloox_on_start = False
-            non_deloox_since_deloox = 0
-        elif non_deloox_stores and 'deloox' in stores and non_deloox_since_deloox >= 2:
-            store = 'deloox'
-            non_deloox_since_deloox = 0
-        elif non_deloox_stores:
-            store = non_deloox_stores[next_non_deloox_index % len(non_deloox_stores)]
-            next_non_deloox_index = (next_non_deloox_index + 1) % len(non_deloox_stores)
-            non_deloox_since_deloox += 1
-        else:
-            store = stores[next_index % len(stores)]
-            next_index = (next_index + 1) % len(stores)
+        # Strict round-robin: every configured retailer gets one turn before
+        # any retailer is visited again. In particular, Deloox cannot jump the
+        # queue after restart or consume extra turns between other stores.
+        store = stores[next_index % len(stores)]
+        next_index = (next_index + 1) % len(stores)
         started = time.time()
         _set_catalog_discovery_os_thread_name(discovery_thread, 'sh-catalog-discovery')
         try:
