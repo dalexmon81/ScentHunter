@@ -74,8 +74,9 @@ if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_API_ENABLED', '0')).strip().lowe
         app.include_router(offer_engine_router)
         _OFFER_ENGINE_API_MOUNTED = True
     except Exception as exc:
+        _OFFER_ENGINE_API_IMPORT_ERROR = f"{type(exc).__name__}: {str(exc)[:500]}"
         print(
-            f'OFFER_ENGINE_API_UNAVAILABLE: {type(exc).__name__}: {exc}; '
+            f'OFFER_ENGINE_API_UNAVAILABLE: {_OFFER_ENGINE_API_IMPORT_ERROR}; '
             'starting without the isolated Offer Engine API',
             flush=True,
         )
@@ -5019,7 +5020,7 @@ def diagnostic_deloox_pipeline(
 
 @app.get('/health')
 def health():
-    return {'status':'healthy','architecture':APP_VERSION,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
+    return {'status':'healthy','architecture':APP_VERSION,'offer_engine_api_mounted':_OFFER_ENGINE_API_MOUNTED,'offer_engine_api_import_error':_OFFER_ENGINE_API_IMPORT_ERROR,'stores':STORES,'lightweight_stores':LIGHTWEIGHT_STORES,'network_heavy_stores':NETWORK_HEAVY_STORES,'browser_stores':BROWSER_STORES,'light_workers':LIGHT_WORKERS,'network_workers':NETWORK_WORKERS,'browser_workers':BROWSER_WORKERS,'store_timeouts':STORE_TIMEOUTS,'job_timeout':JOB_TIMEOUT_SECONDS}
 
 @app.get('/diagnose-deloox-generic-search-coverage')
 def diagnose_deloox_generic_search_coverage():
