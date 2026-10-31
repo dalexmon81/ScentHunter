@@ -218,38 +218,38 @@ def run_offer_engine(
         raise ValueError("query must not be empty")
     catalog = CatalogRepository.from_file(CATALOG_PATH)
     matcher = CanonicalMatcher(catalog)
-    connections: list[Any] = []
-
     def repository_factory(_connector: RetailerConnector) -> OfferRepository:
+        # Each connector owns and closes its own connection. This lets the
+        # runner return fast-store results on time while a slow store finishes
+        # its isolated task in the background.
         connection = connect_offer_engine_db(dsn=dsn, db_path=db_path)
-        connections.append(connection)
         return OfferRepository(connection, canonical_catalog=catalog)
 
-    try:
-        runner = OfferEngineRunner(matcher, repository_factory)
-        if connectors is None:
-            configured_connectors = [DelooxConnector()]
-            if all(os.environ.get(name, "").strip() for name in (
-                "NOTINO_CJ_FEED_URL",
-                "NOTINO_CJ_FEED_USERNAME",
-                "NOTINO_CJ_FEED_PASSWORD",
-            )):
-                configured_connectors.append(NotinoFeedConnector())
-            configured_connectors.extend([
-                ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
-                ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
-                ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
-                ParsedSearchConnector("parfumcity", "scrapers.parfumcity.scraper", "NL"),
-                ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE"),
-                ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
-                ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
-            ])
-        else:
-            configured_connectors = list(connectors)
-        return runner.run(configured_connectors, query)
-    finally:
-        for connection in connections:
-            try:
-                connection.close()
-            except Exception:
-                pass
+    runner = OfferEngineRunner(
+        matcher,
+        repository_factory,
+        max_workers=8,
+        connector_timeout_seconds=float(
+            os.environ.get("SCENTHUNTER_OFFER_ENGINE_CONNECTOR_TIMEOUT_SECONDS", "60")
+        ),
+    )
+    if connectors is None:
+        configured_connectors = [DelooxConnector()]
+        if all(os.environ.get(name, "").strip() for name in (
+            "NOTINO_CJ_FEED_URL",
+            "NOTINO_CJ_FEED_USERNAME",
+            "NOTINO_CJ_FEED_PASSWORD",
+        )):
+            configured_connectors.append(NotinoFeedConnector())
+        configured_connectors.extend([
+            ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
+            ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
+            ParsedSearchConnector("orioudh", "scrapers.orioudh.scraper", "EU"),
+            ParsedSearchConnector("parfumcity", "scrapers.parfumcity.scraper", "NL"),
+            ParsedSearchConnector("parfumzentrum", "scrapers.parfumzentrum.scraper", "DE"),
+            ParsedSearchConnector("perfumemarket", "scrapers.perfumemarket.scraper", "NL"),
+            ParsedSearchConnector("sabina", "scrapers.sabina.scraper", "ES"),
+        ])
+    else:
+        configured_connectors = list(connectors)
+    return runner.run(configured_connectors, query)
