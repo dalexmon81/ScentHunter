@@ -449,9 +449,9 @@ jobs:
           import urllib.request
 
           base = "https://sh-pilot-20261030.fly.dev"
-          product_url = "https://bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          product_url = "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
           checks = [
-              ("BPLATZ_LIMITED_EDITION_LIVE_PARSE", "/diagnose-catalog-live-parse?" + urllib.parse.urlencode({"store": "bplatz", "url": product_url})),
+              ("BPLATZ_LIMITED_EDITION_LIVE_PARSE", "/diagnostic/bplatz-page-check?" + urllib.parse.urlencode({"url": product_url})),
               ("BPLATZ_LIMITED_EDITION_FINAL_SEARCH", "/diagnose-search-final?" + urllib.parse.urlencode({"store": "bplatz", "q": "Liquid Brun Limited Edition 150 ml"})),
           ]
           for label, path in checks:
@@ -464,6 +464,11 @@ jobs:
               print(label + "=" + json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
               if not result.get("ok"):
                   raise SystemExit(label + " failed: " + json.dumps(result, ensure_ascii=False))
+              if label == "BPLATZ_LIMITED_EDITION_LIVE_PARSE":
+                  parsed = result.get("parser_result") or {}
+                  name = str(parsed.get("name") or "").casefold()
+                  if "liquid brun" not in name or "limited edition" not in name or parsed.get("size_ml") != 150:
+                      raise SystemExit("Bplatz Limited Edition live parser failed size/name validation: " + json.dumps(result, ensure_ascii=False))
           PY
 
       - name: Print pilot URL
