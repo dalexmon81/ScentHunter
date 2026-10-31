@@ -87,7 +87,7 @@ class OfferEngineRunnerTests(unittest.TestCase):
         self.assertEqual(len(repositories["healthy"].records), 1)
         self.assertEqual(result.connectors[1].unresolved_samples[0]["reason"], "test_unresolved")
         self.assertIn("blocked", result.connectors[0].errors[0])
-        self.assertTrue(repositories["broken"].closed)
+        self.assertNotIn("broken", repositories)
         self.assertTrue(repositories["healthy"].closed)
 
     def test_one_listing_failure_marks_connector_partial_and_keeps_going(self):
