@@ -636,6 +636,72 @@ jobs:
           print("BPLATZ_ATLANTIS_FINAL_SEARCH=PASS", flush=True)
           PY
 
+      - name: Verify Atlantis through the exact browser search flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          query_text = "French Avenue Atlantis"
+          def get(path, timeout=45):
+              req = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Real-UI-Search/1.0"},
+              )
+              with urllib.request.urlopen(req, timeout=timeout) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          started = get("/search-start?" + urllib.parse.urlencode({"q": query_text}))
+          print("ATLANTIS_BROWSER_SEARCH_STARTED=" + json.dumps(started, ensure_ascii=False), flush=True)
+          job_id = str(started.get("job_id") or "")
+          result = started
+          if not job_id and started.get("completed") is not True:
+              raise SystemExit("Actual browser search did not return job_id: " + json.dumps(started, ensure_ascii=False))
+
+          deadline = time.monotonic() + 180
+          while result.get("completed") is not True and time.monotonic() < deadline:
+              time.sleep(1.5)
+              result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
+          print("ATLANTIS_BROWSER_SEARCH_RESULT=" + json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+
+          groups = [x for x in (result.get("results") or []) if isinstance(x, dict)]
+          matching_groups = [
+              g for g in groups
+              if "atlantis" in str(g.get("name") or "").casefold()
+              or "atlantis" in str(g.get("canonical_name") or "").casefold()
+          ]
+          matching_offers = []
+          for group in matching_groups:
+              for offer in (group.get("offers") or []):
+                  if not isinstance(offer, dict):
+                      continue
+                  store = str(offer.get("store") or offer.get("shop") or "").casefold()
+                  size = float(offer.get("size_ml") or 0)
+                  price = float(offer.get("price_num") or offer.get("price") or 0)
+                  if "bplatz" in store and size == 100 and price > 0:
+                      matching_offers.append({
+                          "group_name": group.get("name") or group.get("canonical_name"),
+                          "catalog_id": group.get("catalog_id"),
+                          "store": offer.get("store") or offer.get("shop"),
+                          "size_ml": size,
+                          "price": price,
+                          "url": offer.get("url"),
+                      })
+          print("ATLANTIS_BROWSER_SEARCH_MATCHES=" + json.dumps(matching_offers, ensure_ascii=False), flush=True)
+          if result.get("completed") is not True:
+              raise SystemExit("Actual browser search did not complete within 180 seconds.")
+          if result.get("status") not in {"completed", "completed_with_store_issues"}:
+              raise SystemExit("Actual browser search returned failure status: " + json.dumps(result, ensure_ascii=False))
+          if not matching_offers:
+              raise SystemExit("Atlantis is absent from the actual /search-start + /search-status payload consumed by the UI.")
+          print("ATLANTIS_ACTUAL_BROWSER_SEARCH=PASS", flush=True)
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
