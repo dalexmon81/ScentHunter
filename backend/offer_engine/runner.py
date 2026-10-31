@@ -76,11 +76,11 @@ class OfferEngineRunner:
         result = ConnectorRunResult(retailer=str(connector.retailer), status="running")
         repository = None
         try:
-            repository = self.repository_factory(connector)
             listings = list(connector.discover(query) or [])
+            repository = self.repository_factory(connector)
         except Exception as exc:
             result.status = "failed"
-            result.errors.append(f"discovery: {type(exc).__name__}: {exc}")
+            result.errors.append(f"discovery/setup: {type(exc).__name__}: {exc}")
             result.elapsed = round(time.monotonic() - started, 3)
             self._close_repository(repository)
             return result
