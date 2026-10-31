@@ -54,6 +54,23 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         resolved = resolve_observation(listing, observation, self.matcher)
         return listing, observation, resolved
 
+    def test_offer_engine_uses_bounded_query_only_deloox_search(self):
+        with patch(
+            "backend.offer_engine.connectors.deloox.scraper.search_stream",
+            return_value={"status": "success", "verified": True, "results": [], "details": {}},
+        ) as search_stream:
+            self.assertEqual(
+                list(DelooxConnector(session=object()).discover("Liquid Brun")),
+                [],
+            )
+        search_stream.assert_called_once_with(
+            "Liquid Brun",
+            deadline_seconds=45,
+            max_candidates=8,
+            max_results=8,
+            include_fallback=False,
+        )
+
     def test_discovery_challenge_is_reported_as_failure_not_empty_success(self):
         blocked = {
             "status": "unavailable",
