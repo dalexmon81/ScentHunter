@@ -229,6 +229,7 @@ jobs:
               if isinstance(item, dict)
           }
           expected_sizes = {"SH-0030": 100, "SH-0031": 150}
+          print("PILOT_BROWSER_STORES=" + json.dumps(ui_result.get("stores") or {}, ensure_ascii=False, default=str), flush=True)
           group_diagnostics = {}
           for product_id, expected_size in expected_sizes.items():
               group = ui_groups.get(product_id) or {}
@@ -254,6 +255,7 @@ jobs:
                       for offer in group_offers
                   ],
               }
+              print("PILOT_BROWSER_GROUP_DIAGNOSTIC=" + json.dumps(group_diagnostics[product_id], ensure_ascii=False), flush=True)
               if not matching_size:
                   raise RuntimeError(
                       "Browser search returned a product card without a verified offer "
