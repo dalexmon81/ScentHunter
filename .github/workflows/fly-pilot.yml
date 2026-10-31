@@ -133,6 +133,19 @@ jobs:
 
           base = "https://sh-pilot-20261030.fly.dev"
 
+          def post(path):
+              request = urllib.request.Request(
+                  base + path,
+                  data=b"",
+                  method="POST",
+                  headers={"Accept": "application/json", "Content-Type": "application/json",
+                           "User-Agent": "ScentHunter-Pilot-Smoke/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=240) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path}: HTTP {response.status}")
+                  return json.loads(response.read().decode("utf-8"))
+
           def get(path):
               request = urllib.request.Request(
                   base + path,
@@ -170,6 +183,13 @@ jobs:
           # a real offer. No POST is issued here, so the smoke test cannot
           # trigger duplicate full retailer crawls.
           query = urllib.parse.urlencode({"query": "Liquid Brun"})
+          # Run one explicit isolated refresh and expose every retailer's real
+          # discovery/verification result. Cached UI counts alone hide failures.
+          connector_refresh = post("/offer-engine/search?" + query)
+          print("PILOT_CONNECTOR_REFRESH=" + json.dumps(
+              connector_refresh.get("refresh") or {}, ensure_ascii=False, default=str
+          ), flush=True)
+          print("PILOT_CONNECTOR_REFRESH_STATUS=" + str(connector_refresh.get("status")), flush=True)
           offer_api = None
           for attempt in range(1, 61):
               health = get("/health")
