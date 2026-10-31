@@ -134,7 +134,7 @@ class RefreshWorkerQueryTests(unittest.TestCase):
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_REFRESH_WORKER_ENABLED = "0"', fly_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_API_ENABLED = "0"', fly_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_SEARCH_ENABLED = "0"', fly_config)
-        self.assertIn('app = "scenthunter-pilot-20261030"', pilot_config)
+        self.assertIn('app = "sh-pilot-20261030"', pilot_config)
         self.assertIn('SCENTHUNTER_OFFER_ENGINE_BOOTSTRAP_MIGRATION = "1"', pilot_config)
         # The Pilot now refreshes all retailers on the asynchronous user query.
         # Keep the catalog rotation worker off to avoid duplicate concurrent crawls.
