@@ -3265,6 +3265,7 @@ def _run_job(job_id, query):
                                 "source": "on_demand_verified_query_refresh",
                                 "connector_elapsed": float(getattr(connector, "elapsed", 0.0) or 0.0),
                                 "refresh_total_elapsed": refresh_elapsed,
+                                "discovery_details": dict(getattr(connector, "discovery_details", {}) or {}),
                                 "listings_seen": int(getattr(connector, "listings_seen", 0) or 0),
                                 "observations_written": int(getattr(connector, "observations_written", 0) or 0),
                                 "offers_published": int(getattr(connector, "offers_published", 0) or 0),
