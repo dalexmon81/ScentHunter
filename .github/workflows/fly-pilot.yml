@@ -202,7 +202,7 @@ jobs:
               raise RuntimeError("User search-start endpoint returned a non-object response.")
           job_id = started.get("job_id")
           ui_result = started
-          for poll in range(40):
+          for poll in range(120):
               if ui_result.get("completed"):
                   break
               if not job_id:
@@ -233,7 +233,15 @@ jobs:
               if isinstance(item, dict)
           }
           expected_sizes = {"SH-0030": 100, "SH-0031": 150}
+          expected_stores = {
+              "deloox", "bplatz", "easycosmetic", "orioudh",
+              "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+          }
+          actual_stores = set((ui_result.get("stores") or {}).keys())
+          missing_stores = sorted(expected_stores - actual_stores)
           print("PILOT_BROWSER_STORES=" + json.dumps(ui_result.get("stores") or {}, ensure_ascii=False, default=str), flush=True)
+          if missing_stores:
+              raise RuntimeError("The user search did not report every configured retailer: " + json.dumps(missing_stores))
           group_diagnostics = {}
           for product_id, expected_size in expected_sizes.items():
               group = ui_groups.get(product_id) or {}
