@@ -27,6 +27,7 @@ class ConnectorRunResult:
     errors: list[str] = field(default_factory=list)
     elapsed: float = 0.0
     unresolved_samples: list[dict[str, str]] = field(default_factory=list)
+    discovery_details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
