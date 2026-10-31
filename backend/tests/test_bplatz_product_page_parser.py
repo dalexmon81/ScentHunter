@@ -39,6 +39,26 @@ class BplatzProductPageParserTests(unittest.TestCase):
         self.assertEqual(parsed["price_num"], 29.0)
         self.assertEqual(parsed["availability"], "in_stock")
 
+    def test_catalog_hydration_slug_with_products_prefix_uses_handle_only(self):
+        html = """
+        <html><head>
+          <script type="application/ld+json">
+          {"@type":"Product","name":"French Avenue Liquid Brun Eau de Parfum 100 ml",
+           "brand":{"@type":"Brand","name":"French Avenue"},
+           "offers":{"@type":"Offer","price":"29.00","availability":"https://schema.org/InStock"}}
+          </script>
+        </head><body><h1>French Avenue Liquid Brun Eau de Parfum 100 ml</h1></body></html>
+        """
+        from backend.scrapers.bplatz.scraper import extract_product_page
+
+        url = "https://en.bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
+        # This is the exact shape produced by catalog_engine.url_slug(url).
+        catalog_slug = "products fragrance world liquid brun eau de parfum 100ml"
+        parsed = extract_product_page(None, url, catalog_slug, html=html)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["size_ml"], 100)
+        self.assertEqual(parsed["price_num"], 29.0)
+
     def test_long_handle_still_rejects_unrelated_product_page(self):
         html = """
         <html><head>
