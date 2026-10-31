@@ -66,6 +66,7 @@ if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_AUTO_MIGRATE', '0')).strip().low
 # Offer Engine SQLite file (or optional PostgreSQL DSN), never the legacy catalog DB.
 _OFFER_ENGINE_API_MOUNTED = False
 _OFFER_ENGINE_API_IMPORT_ERROR = None
+_OFFER_ENGINE_API_IMPORT_ERROR = None
 if str(os.environ.get('SCENTHUNTER_OFFER_ENGINE_API_ENABLED', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}:
     try:
         try:
