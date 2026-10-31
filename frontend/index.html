@@ -951,6 +951,15 @@ function openProduct(i){
   const unknownSizeGroup=groups.find(x=>!x.size)||null;
   const saved=getWishlist();
 
+  // A catalog identity can be returned even when the current search has no
+  // verified offers for it. Never render an empty "compare formats" panel:
+  // explain that there is no purchasable offer instead of showing a blank card.
+  if(groups.length===0){
+    const img=g.image||g.fallback_image||"";
+    resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">Nessuna offerta verificata al momento</div><p class="offer-meta">Il prodotto è presente nel catalogo, ma non abbiamo ancora un prezzo e una disponibilità confermati dai negozi.</p></article>`;
+    return;
+  }
+
   /*
    * IMPORTANT DISPLAY RULE:
    * An offer without size_ml is still a valid offer for the already-resolved
