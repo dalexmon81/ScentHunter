@@ -366,17 +366,20 @@ def offer_list(product):
     return []
 
 
-def product_from_page(session, url, query):
-    try:
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if response.status_code >= 400:
+def product_from_page(session, url, query, html=None):
+    if html is None:
+        try:
+            response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+            if response.status_code >= 400:
+                response.close()
+                return None
+            html = response.text
+            final_url = response.url
             response.close()
+        except requests.RequestException:
             return None
-        html = response.text
-        final_url = response.url
-        response.close()
-    except requests.RequestException:
-        return None
+    else:
+        final_url = url
 
     soup = BeautifulSoup(html, "html.parser")
     data = jsonld_product(soup)
@@ -441,6 +444,12 @@ def product_from_page(session, url, query):
         "concentration": concentration(name),
         "image": image,
     }
+
+
+
+def extract_product_page(session, url, slug, html=None):
+    """Catalog hydration adapter: reuse the Bplatz product-page parser."""
+    return product_from_page(session, url, slug, html=html)
 
 
 def _search_report(query):
