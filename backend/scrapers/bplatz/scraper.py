@@ -373,6 +373,25 @@ def offer_list(product):
     return []
 
 
+def product_metadata_price(soup):
+    """Read only explicit product-price metadata, never arbitrary page amounts."""
+    selectors = (
+        'meta[property="product:price:amount"]',
+        'meta[property="og:price:amount"]',
+        'meta[itemprop="price"]',
+        '[itemprop="price"][content]',
+    )
+    for selector in selectors:
+        node = soup.select_one(selector)
+        if not node:
+            continue
+        value = node.get("content") or node.get("value")
+        price = parse_price(value)
+        if price is not None:
+            return price
+    return None
+
+
 def product_from_page(session, url, query, html=None):
     if html is None:
         try:
@@ -421,6 +440,11 @@ def product_from_page(session, url, query, html=None):
         if p is not None:
             price = p
             break
+    # Some Shopify storefronts omit price from Product JSON-LD while exposing
+    # the selected product's exact price in product-specific metadata. This is
+    # safe to use; do not fall back to arbitrary currency amounts in page text.
+    if price is None:
+        price = product_metadata_price(soup)
     for offer in offers:
         a = norm(offer.get("availability") or "")
         if "outofstock" in a or "soldout" in a:
