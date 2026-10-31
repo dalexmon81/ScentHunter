@@ -606,6 +606,36 @@ jobs:
           print("BPLATZ_ATLANTIS_PERSISTENCE=PASS", flush=True)
           PY
 
+      - name: Verify Bplatz Atlantis in final search results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          query = urllib.parse.urlencode({"store": "bplatz", "q": "French Avenue Atlantis 100 ml"})
+          request = urllib.request.Request(
+              base + "/diagnose-search-final?" + query,
+              headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Atlantis-Final-Search/1.0"},
+          )
+          with urllib.request.urlopen(request, timeout=90) as response:
+              result = json.loads(response.read().decode("utf-8"))
+          print("BPLATZ_ATLANTIS_FINAL_SEARCH=" + json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+          offers = [
+              item for item in result.get("deduped_offers", [])
+              if str(item.get("store") or "").casefold() == "bplatz"
+              and int(float(item.get("size_ml") or 0)) == 100
+              and float(item.get("price") or 0) > 0
+              and "atlantis" in str(item.get("name") or "").casefold()
+          ]
+          if not result.get("ok") or not offers or not result.get("final_groups"):
+              raise SystemExit("Bplatz Atlantis is persisted but missing from the priced final search: " + json.dumps(result, ensure_ascii=False))
+          print("BPLATZ_ATLANTIS_FINAL_SEARCH=PASS", flush=True)
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
