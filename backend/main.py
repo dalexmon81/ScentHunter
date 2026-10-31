@@ -3717,6 +3717,29 @@ def diagnostic_matcher(store: str, q: str):
     }
 
 
+@app.get('/diagnostic/bplatz-size-check')
+def diagnostic_bplatz_size_check():
+    """Fast, read-only runtime check of the deployed Bplatz size parser."""
+    import importlib
+    from urllib.parse import urlparse as _urlparse
+    module = importlib.import_module('scrapers.bplatz.scraper')
+    title = 'French Avenue Royal Blend Sequoia Eau de Parfum 100 ml'
+    url = 'https://en.bplatz.de/products/royal-blend-sequoia-eau-de-parfum-100-ml'
+    parser = getattr(module, 'size_ml', None)
+    if not callable(parser):
+        return {'ok': False, 'error': 'bplatz_size_parser_missing'}
+    return {
+        'ok': parser(title, url) == 100,
+        'diagnostic': 'Bplatz deployed parser runtime self-check',
+        'module_file': getattr(module, '__file__', None),
+        'parser_result_title': parser(title),
+        'parser_result_url': parser(url),
+        'parser_result_combined': parser(title, url),
+        'expected_size_ml': 100,
+        'read_only': True,
+    }
+
+
 @app.get('/diagnostic/bplatz-refresh')
 def diagnostic_bplatz_refresh(url: str):
     """Explicit Bplatz-only rehydrate for one already-known product URL."""
