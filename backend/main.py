@@ -3833,6 +3833,105 @@ def diagnostic_bplatz_page_check(url: str = 'https://en.bplatz.de/products/royal
             response.close()
 
 
+@app.get('/diagnostic/bplatz-refresh-trace')
+def diagnostic_bplatz_refresh_trace(url: str):
+    """Read-only, same-response trace of every Bplatz catalog parsing layer."""
+    from urllib.parse import urlparse as _urlparse
+    import hashlib as _hashlib
+    parsed_url = _urlparse(str(url or '').strip())
+    allowed_hosts = {'bplatz.de', 'www.bplatz.de', 'en.bplatz.de'}
+    if (
+        parsed_url.scheme != 'https'
+        or (parsed_url.hostname or '').lower() not in allowed_hosts
+        or not parsed_url.path.startswith('/products/')
+    ):
+        return {'ok': False, 'error': 'url_not_allowed_for_bplatz_product', 'read_only': True}
+    if not CATALOG_ENGINE_AVAILABLE:
+        return {'ok': False, 'error': 'catalog_engine_unavailable', 'read_only': True}
+
+    started = time.monotonic()
+    trace = {'diagnostic': 'bplatz-same-response-parser-trace-v1',
+             'store': 'bplatz', 'requested_url': str(url).strip(),
+             'read_only': True, 'stages': {}}
+    try:
+        engine = importlib.import_module('catalog_engine')
+        response = engine._http_fetch(str(url).strip(), timeout=engine._refresh_timeout_for_store('bplatz'))
+        data = response.get('data') or b''
+        final_url = response.get('url') or str(url).strip()
+        trace['fetch'] = {
+            'status': response.get('status'), 'final_url': final_url,
+            'content_type': response.get('content_type'),
+            'content_encoding': response.get('content_encoding'),
+            'bytes': len(data), 'sha256': _hashlib.sha256(data).hexdigest(),
+        }
+        if int(response.get('status') or 0) >= 400 or not data:
+            trace['ok'] = False
+            trace['error'] = 'fetch_failed_or_empty'
+            return trace
+
+        module = importlib.import_module('scrapers.bplatz.scraper')
+        html_text = data.decode('utf-8', errors='replace') if isinstance(data, bytes) else str(data)
+        slug = _urlparse(str(url).strip()).path.rstrip('/').split('/')[-1]
+        session = __import__('requests').Session()
+        try:
+            direct = module.product_from_page(session, final_url, slug, html=html_text)
+            trace['stages']['product_from_page_same_html'] = {
+                'ok': isinstance(direct, dict) and bool(direct.get('name')),
+                'result': {
+                    key: (direct or {}).get(key)
+                    for key in ('name', 'brand', 'size_ml', 'price_num', 'availability', 'url')
+                } if isinstance(direct, dict) else None,
+            }
+            adapter = module.extract_product_page(session, str(url).strip(), engine.url_slug(str(url).strip()), html=html_text)
+            trace['stages']['extract_product_page_same_html'] = {
+                'ok': isinstance(adapter, dict) and bool(adapter.get('name')),
+                'result': {
+                    key: (adapter or {}).get(key)
+                    for key in ('name', 'brand', 'size_ml', 'price_num', 'availability', 'url')
+                } if isinstance(adapter, dict) else None,
+            }
+        finally:
+            session.close()
+
+        try:
+            secondary = engine._secondary_store_parser('bplatz', final_url, str(url).strip(), html_data=data)
+            trace['stages']['catalog_secondary_adapter'] = {
+                'ok': isinstance(secondary, dict) and bool(secondary.get('name')),
+                'result': {
+                    key: (secondary or {}).get(key)
+                    for key in ('name', 'brand', 'size_ml', 'price_num', 'availability', 'url')
+                } if isinstance(secondary, dict) else None,
+            }
+        except Exception as exc:
+            trace['stages']['catalog_secondary_adapter'] = {
+                'ok': False, 'error': f'{type(exc).__name__}: {str(exc)[:500]}'
+            }
+
+        try:
+            generic = engine.parse_product('bplatz', final_url, data)
+            trace['stages']['generic_fallback'] = {
+                'ok': isinstance(generic, dict) and bool(generic.get('name')),
+                'result': {
+                    key: (generic or {}).get(key)
+                    for key in ('name', 'brand', 'size_ml', 'price_num', 'availability', 'url')
+                } if isinstance(generic, dict) else None,
+            }
+        except Exception as exc:
+            trace['stages']['generic_fallback'] = {
+                'ok': False, 'error': f'{type(exc).__name__}: {str(exc)[:500]}'
+            }
+
+        trace['ok'] = bool(trace['stages'].get('catalog_secondary_adapter', {}).get('ok')
+                           or trace['stages'].get('generic_fallback', {}).get('ok'))
+        trace['elapsed_sec'] = round(time.monotonic() - started, 3)
+        return trace
+    except Exception as exc:
+        trace['ok'] = False
+        trace['error'] = f'{type(exc).__name__}: {str(exc)[:500]}'
+        trace['elapsed_sec'] = round(time.monotonic() - started, 3)
+        return trace
+
+
 @app.get('/diagnostic/bplatz-refresh')
 def diagnostic_bplatz_refresh(url: str):
     """Explicit Bplatz-only rehydrate for one already-known product URL."""
