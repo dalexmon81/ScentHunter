@@ -88,11 +88,16 @@ class DelooxConnector:
         # Offer Engine user searches use a bounded query-only path: do not
         # let a no-match search trigger the legacy full category/sitemap crawl.
         # The deep discovery fallback remains available to the legacy scraper.
+        # Product-page verification is performed sequentially by the runner.
+        # Eight candidates can therefore consume the entire global connector
+        # budget when Deloox serves challenge/interstitial pages. Keep the
+        # query-only discovery small; exact size/identity checks still happen
+        # below and in observe(), and no unverified offer is published.
         result = scraper.search_stream(
             query,
             deadline_seconds=45,
-            max_candidates=8,
-            max_results=8,
+            max_candidates=2,
+            max_results=2,
             include_fallback=False,
         )
         details = result.get("details") if isinstance(result, dict) else {}
