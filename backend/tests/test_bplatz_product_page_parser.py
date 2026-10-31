@@ -78,5 +78,30 @@ class BplatzProductPageParserTests(unittest.TestCase):
         self.assertIsNone(parsed)
 
 
+    def test_shopify_product_price_metadata_fills_missing_jsonld_price(self):
+        html = """
+        <html><head>
+          <meta property="product:price:amount" content="38.99">
+          <meta property="product:price:currency" content="EUR">
+          <script type="application/ld+json">
+          {"@type":"Product","name":"French Avenue Atlantis Extrait Extrait de Parfum 100 ml",
+           "brand":{"@type":"Brand","name":"French Avenue"},
+           "offers":{"@type":"Offer","availability":"https://schema.org/InStock"}}
+          </script>
+        </head><body><h1>French Avenue Atlantis Extrait Extrait de Parfum 100 ml</h1></body></html>
+        """
+        parsed = product_from_page(
+            session=None,
+            url="https://bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml",
+            query="french avenue atlantis extrait extrait de parfum 100 ml",
+            html=html,
+        )
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["brand"], "French Avenue")
+        self.assertEqual(parsed["size_ml"], 100)
+        self.assertEqual(parsed["price_num"], 38.99)
+        self.assertEqual(parsed["availability"], "in_stock")
+
+
 if __name__ == "__main__":
     unittest.main()
