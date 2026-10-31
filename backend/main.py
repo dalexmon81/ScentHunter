@@ -3715,6 +3715,105 @@ def diagnostic_matcher(store: str, q: str):
     }
 
 
+@app.get('/diagnostic/bplatz-catalog')
+def diagnostic_bplatz_catalog(q: str = '', url: str = '', catalog_id: str = ''):
+    """Read-only check of Bplatz persistence and FTS visibility for a known product."""
+    import re as _re
+    query = str(q or '').strip()
+    product_url = str(url or '').strip()
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        return {'ok': False, 'error': 'catalog_engine_unavailable', 'read_only': True}
+    if not query and not product_url and not catalog_id:
+        return {'ok': False, 'error': 'provide_q_url_or_catalog_id', 'read_only': True}
+
+    conn = None
+    try:
+        conn = catalog_db()
+        result = {
+            'ok': True,
+            'diagnostic': 'Bplatz matcher -> persistent catalog -> FTS candidate index',
+            'store': 'bplatz',
+            'query': query,
+            'url': product_url,
+            'catalog_id': str(catalog_id or ''),
+            'read_only': True,
+        }
+        if product_url:
+            result['store_url_row'] = [
+                dict(row) for row in conn.execute(
+                    """SELECT store,url,slug,active,discovered_at,lastmod
+                         FROM store_urls WHERE store='bplatz' AND url=?""",
+                    (product_url,)
+                ).fetchall()
+            ]
+            result['store_product_row'] = [
+                dict(row) for row in conn.execute(
+                    """SELECT store,url,name,brand,size_ml,price,currency,availability,
+                              fetched_at,fetch_status
+                         FROM store_products WHERE store='bplatz' AND url=?""",
+                    (product_url,)
+                ).fetchall()
+            ]
+            result['hydration_queue_row'] = [
+                dict(row) for row in conn.execute(
+                    """SELECT store,url,state,priority,attempts,available_at,last_error,
+                              last_http_status
+                         FROM hydration_queue WHERE store='bplatz' AND url=?""",
+                    (product_url,)
+                ).fetchall()
+            ]
+            result['fts_exact_url_row'] = [
+                dict(row) for row in conn.execute(
+                    """SELECT store,url,search_text FROM catalog_search_fts
+                         WHERE store='bplatz' AND url=?""",
+                    (product_url,)
+                ).fetchall()
+            ]
+        if query:
+            words = _re.findall(r'[\\w]+', query, flags=_re.UNICODE)
+            match_expr = ' AND '.join('"' + word.replace('"', '""') + '"' for word in words)
+            if match_expr:
+                result['fts_query_rows'] = [
+                    dict(row) for row in conn.execute(
+                        """SELECT f.store,f.url,f.search_text,u.active,
+                                  p.name,p.brand,p.size_ml,p.price,p.currency,
+                                  p.availability,p.fetch_status
+                             FROM catalog_search_fts f
+                             LEFT JOIN store_urls u ON u.store=f.store AND u.url=f.url
+                             LEFT JOIN store_products p ON p.store=f.store AND p.url=f.url
+                            WHERE catalog_search_fts MATCH ? AND f.store='bplatz'
+                            ORDER BY rank LIMIT 20""",
+                        (match_expr,)
+                    ).fetchall()
+                ]
+                result['fts_match_expression'] = match_expr
+        result['store_sync_state'] = [
+            dict(row) for row in conn.execute(
+                "SELECT store,status,started_at,finished_at,discovered_count,fetched_count,error FROM sync_state WHERE store='bplatz'"
+            ).fetchall()
+        ]
+        result['bplatz_catalog_counts'] = dict(conn.execute(
+            """SELECT
+                 (SELECT COUNT(*) FROM store_urls WHERE store='bplatz') AS url_rows,
+                 (SELECT COUNT(*) FROM store_urls WHERE store='bplatz' AND active=1) AS active_url_rows,
+                 (SELECT COUNT(*) FROM store_products WHERE store='bplatz') AS product_rows,
+                 (SELECT COUNT(*) FROM store_products WHERE store='bplatz' AND fetch_status='OK') AS fetched_ok_rows,
+                 (SELECT COUNT(*) FROM hydration_queue WHERE store='bplatz') AS hydration_rows,
+                 (SELECT COUNT(*) FROM catalog_search_fts WHERE store='bplatz') AS fts_rows"""
+        ).fetchone())
+        return result
+    except Exception as exc:
+        return {
+            'ok': False,
+            'diagnostic': 'Bplatz matcher -> persistent catalog -> FTS candidate index',
+            'error': f'{type(exc).__name__}: {exc}',
+            'read_only': True,
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @app.get('/diagnostic/store-pipeline')
 def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
     """Fast read-only catalog diagnostic; opt into slower live probe with probe=true."""
