@@ -392,7 +392,20 @@ def product_from_page(session, url, query, html=None):
     data = jsonld_product(soup)
     h1 = soup.find("h1")
     name = clean((data or {}).get("name") or (h1.get_text(" ", strip=True) if h1 else ""))
-    if not name or not matches(f"{name} {(data.get('brand') or {}).get('name','') if isinstance(data.get('brand'),dict) else data.get('brand','')}", query):
+    brand_value = (data.get("brand") or {}).get("name", "") if isinstance(data.get("brand"), dict) else data.get("brand", "")
+    searchable_name = f"{name} {brand_value}"
+    query_tokens = tokens(query)
+
+    # Catalog hydration passes the complete Shopify handle as its query. The
+    # handle can contain an old/different brand prefix (e.g. fragrance-world)
+    # while the live product title uses the current brand (French Avenue).
+    # Keep strict matching for ordinary search queries; for long handle-like
+    # queries, allow the distinctive product words after the first two tokens.
+    query_matches = matches(searchable_name, query)
+    if not query_matches and len(query_tokens) >= 4:
+        query_matches = matches(searchable_name, " ".join(query_tokens[2:]))
+
+    if not name or not query_matches:
         return None
 
     brand = data.get("brand")
