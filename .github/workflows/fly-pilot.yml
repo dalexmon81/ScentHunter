@@ -231,6 +231,8 @@ jobs:
           actual_stores = set((ui_result.get("stores") or {}).keys())
           missing_stores = sorted(expected_stores - actual_stores)
           print("PILOT_BROWSER_STORES=" + json.dumps(ui_result.get("stores") or {}, ensure_ascii=False, default=str), flush=True)
+          print("PILOT_BROWSER_ERRORS=" + json.dumps(ui_result.get("errors") or {}, ensure_ascii=False, default=str), flush=True)
+          print("PILOT_BROWSER_ELAPSED=" + str(ui_result.get("elapsed")), flush=True)
           if missing_stores:
               raise RuntimeError("The user search did not report every configured retailer: " + json.dumps(missing_stores))
           group_diagnostics = {}
