@@ -50,6 +50,21 @@ def matches(text, query):
     return bool(compact_query and compact_query in compact_text)
 
 
+def candidate_url_matches(url, query):
+    """Allow Shopify handles to omit the first two brand words.
+
+    This only broadens sitemap candidate discovery. product_from_page still
+    checks the complete requested query against the fetched product title
+    before an observation can be emitted.
+    """
+    if matches(url, query):
+        return True
+    query_tokens = tokens(query)
+    if len(query_tokens) >= 5:
+        return matches(url, " ".join(query_tokens[2:]))
+    return False
+
+
 def size_ml(*values):
     text = " ".join(clean(v) for v in values)
     m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", text, re.I)
@@ -143,7 +158,7 @@ def add_candidate(url, query, candidates, seen, evidence=""):
     # Shopify product handles often omit the brand and variant words that are
     # present in the product title/vendor. Match against the verified search
     # evidence plus URL; checking the URL alone silently discarded valid hits.
-    if not matches(f"{evidence} {absolute}", query):
+    if not (matches(evidence, query) or candidate_url_matches(absolute, query)):
         return
     if absolute in seen:
         return
