@@ -45,3 +45,9 @@ def test_bplatz_discovers_limited_edition_when_shopify_handle_omits_brand():
     assert candidates == [
         "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
     ]
+
+
+def test_bplatz_search_normalization_matches_accented_query_terms():
+    assert scraper.tokens("Rayhaan élixir") == ["rayhaan", "elixir"]
+    assert scraper.matches("Rayhaan Elixir Eau de Parfum 100 ml", "Rayhaan élixir")
+    assert scraper.matches("Rayhaan Élixir Eau de Parfum 100 ml", "Rayhaan Elixir")
