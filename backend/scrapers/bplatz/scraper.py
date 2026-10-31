@@ -192,7 +192,7 @@ def _discover_products_json(session, query, candidates, seen):
             handle = clean(product.get("handle"))
             url = product.get("url") or ("/products/" + handle if handle else "")
             if matches(f"{title} {vendor} {handle} {url}", query):
-                add_candidate(url, query, candidates, seen, evidence=f"{title} {vendor} {handle}")
+                add_candidate(url, query, candidates, seen, evidence=url)
                 if len(candidates) >= MAX_CANDIDATES:
                     return
 
