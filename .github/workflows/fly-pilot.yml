@@ -633,7 +633,9 @@ jobs:
             backend.tests.test_offer_engine_parsed_search_connector \
             backend.tests.test_offer_engine_main_search \
             backend.tests.test_offer_engine_refresh_worker \
-            backend.tests.test_offer_engine_runner
+            backend.tests.test_offer_engine_runner \
+            backend.tests.test_offer_engine_deloox_connector_pipeline \
+            backend.tests.test_offer_engine_deloox_liquid_brun
 
       - name: Refresh and verify the exact Bplatz Atlantis 100 ml URL
         shell: bash
