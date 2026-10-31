@@ -439,6 +439,33 @@ jobs:
                   raise SystemExit("Bplatz read-only search trace failed: " + json.dumps(result, ensure_ascii=False))
           PY
 
+      - name: Diagnose Bplatz Liquid Brun Limited Edition 150 ml (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = "https://sh-pilot-20261030.fly.dev"
+          product_url = "https://bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
+          checks = [
+              ("BPLATZ_LIMITED_EDITION_LIVE_PARSE", "/diagnose-catalog-live-parse?" + urllib.parse.urlencode({"store": "bplatz", "url": product_url})),
+              ("BPLATZ_LIMITED_EDITION_FINAL_SEARCH", "/diagnose-search-final?" + urllib.parse.urlencode({"store": "bplatz", "q": "Liquid Brun Limited Edition 150 ml"})),
+          ]
+          for label, path in checks:
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"Accept": "application/json", "User-Agent": "ScentHunter-Bplatz-Limited-Edition-Diagnostic/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  result = json.loads(response.read().decode("utf-8"))
+              print(label + "=" + json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+              if not result.get("ok"):
+                  raise SystemExit(label + " failed: " + json.dumps(result, ensure_ascii=False))
+          PY
+
       - name: Print pilot URL
         if: success()
         run: echo "ScentHunter isolated Offer Engine pilot is available at $PILOT_URL"
