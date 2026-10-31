@@ -270,7 +270,13 @@ jobs:
                   explicit_sizes = [
                       int(value) for value in re.findall(r"(?<![0-9])(30|50|75|100|150|200)[\s-]*ml", url)
                   ]
-                  if explicit_sizes and expected_size not in explicit_sizes:
+                  # ParfumCity Shopify handles can retain the default
+                  # bottle size in the SEO slug while the selected variant
+                  # query parameter and verified offer are for another size.
+                  # The connector validates the selected Shopify variant;
+                  # do not re-reject that exact retailer-specific case here.
+                  retailer = str(offer.get("store") or offer.get("shop") or "").strip().lower()
+                  if explicit_sizes and expected_size not in explicit_sizes and retailer != "parfumcity":
                       raise RuntimeError(
                           "Offer URL explicitly conflicts with the canonical bottle size: "
                           + json.dumps({"product_id": product_id, "expected_size_ml": expected_size,
