@@ -4369,11 +4369,10 @@ def refresh_url(store, url):
                         size_ml=COALESCE(excluded.size_ml,store_products.size_ml),
                         concentration=COALESCE(excluded.concentration,store_products.concentration),
                         gender=COALESCE(excluded.gender,store_products.gender),
-                        -- A transient/incomplete parse must not erase a previously
-                        -- verified product price. Replace it only when the new parse
-                        -- supplies an explicit price; never infer one from other fields.
+                        -- Stock status and observed price are independent facts:
+                        -- an out-of-stock product may still display a valid listed price.
+                        -- Replace the stored price only when this fetch explicitly parsed one.
                         price=CASE
-                           WHEN excluded.availability='out_of_stock' THEN NULL
                            WHEN excluded.price IS NOT NULL THEN excluded.price
                            ELSE store_products.price
                          END,
