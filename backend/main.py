@@ -1824,6 +1824,22 @@ def _aggregate_identity_results(offers):
             if _is_non_fragrance_offer(offer) or _is_concentration_mismatch_offer(offer):
                 continue
 
+            # Never publish a retailer row as a price comparison unless it has
+            # a finite, positive numeric price. Empty-price catalog placeholders
+            # were rendered as repeated "price unavailable" shops and inflated
+            # the comparison count without representing a purchasable offer.
+            raw_price = offer.get("price_num")
+            if raw_price in (None, ""):
+                raw_price = offer.get("price")
+            try:
+                numeric_price = float(
+                    str(raw_price).replace(",", ".").replace("€", "").strip()
+                )
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(numeric_price) or numeric_price <= 0:
+                continue
+
             catalog_id = str(
                 offer.get("catalog_id")
             ).strip()
