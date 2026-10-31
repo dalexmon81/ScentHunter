@@ -173,8 +173,11 @@ jobs:
           # have a pre-warmed product. The actual user-search flow below
           # performs query-scoped retailer discovery before reading offers.
           health = get("/health")
+          print("PILOT_HEALTH=" + json.dumps(health, ensure_ascii=False), flush=True)
           if health.get("status") != "healthy":
               raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
+          if not health.get("offer_engine_api_mounted"):
+              raise RuntimeError("Offer Engine API did not mount: " + json.dumps(health))
           query = urllib.parse.urlencode({"query": "Liquid Brun"})
           offer_api = get("/offer-engine/search?" + query)
           if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
