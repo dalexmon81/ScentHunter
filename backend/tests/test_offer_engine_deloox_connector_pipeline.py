@@ -66,8 +66,8 @@ class DelooxConnectorPipelineTests(unittest.TestCase):
         search_stream.assert_called_once_with(
             "Liquid Brun",
             deadline_seconds=45,
-            max_candidates=8,
-            max_results=8,
+            max_candidates=2,
+            max_results=2,
             include_fallback=False,
         )
 
