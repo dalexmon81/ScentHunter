@@ -84,6 +84,29 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(claimed["worker_id"], "worker-a")
         self.assertIsNone(claim_next_job("worker-b"))
 
+    def test_legacy_running_eleven_store_job_is_retired(self):
+        created = create_job()
+        conn = connect()
+        try:
+            conn.execute(
+                """UPDATE phase0_baseline_jobs
+                      SET status='running', total_stores=11,
+                          started_at='2026-11-01T00:00:00+00:00'
+                    WHERE id=?""",
+                (created["job_id"],),
+            )
+            conn.commit()
+            ensure_schema(conn)
+            row = conn.execute(
+                "SELECT status,total_stores,error_message FROM phase0_baseline_jobs WHERE id=?",
+                (created["job_id"],),
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(row["status"], "failed")
+        self.assertEqual(row["total_stores"], 11)
+        self.assertIn("scope changed", row["error_message"])
+
     def test_stale_running_job_is_marked_failed_but_queued_job_survives(self):
         queued = create_job()
         running = create_job()
