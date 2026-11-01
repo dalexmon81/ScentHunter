@@ -79,10 +79,18 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(phase0_baseline_jobs)")}
     if "current_store" not in columns:
         conn.execute("ALTER TABLE phase0_baseline_jobs ADD COLUMN current_store TEXT")
-    # SQLite cannot change a column default in place. New jobs always write
-    # the current len(STORES), and queued legacy jobs are normalized below.
-    # Existing durable queues were created with the former 11-store scope.
-    # Queued work has not started, so safely normalize its expected total.
+    # Upgrade legacy queued jobs and retire legacy in-flight jobs that were
+    # created with the old 11-retailer contract. They must not resume against
+    # a nine-retailer worker or be mistaken for a current-scope CSV.
+    now = utc_now()
+    conn.execute(
+        """UPDATE phase0_baseline_jobs
+              SET status='failed', finished_at=?,
+                  error_message='Phase 0 store scope changed from 11 to 9; restart the baseline',
+                  error_traceback=COALESCE(error_traceback, '')
+            WHERE status='running' AND total_stores<>?""",
+        (now, len(STORES)),
+    )
     conn.execute(
         "UPDATE phase0_baseline_jobs SET total_stores=? WHERE status='queued'",
         (len(STORES),),
