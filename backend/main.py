@@ -5488,5 +5488,5 @@ def phase0_smoke_download(job_id: str = '', authorization: str = _Phase0Header(d
         headers={'Cache-Control': 'no-store'},
     )
 
-\n# Phase 0 baseline endpoints are deployed with the production backend.
+# Phase 0 baseline endpoints are deployed with the production backend.
 
