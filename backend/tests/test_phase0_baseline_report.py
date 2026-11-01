@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scenthunter_next_engine.baseline_report import (
     BaselineIncompleteError,
@@ -133,8 +134,12 @@ class Phase0BaselineReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             catalog_path, db_path = self._fixture(directory, include_all=False)
             output = Path(directory) / "baseline.csv"
-            with self.assertRaises(BaselineIncompleteError) as raised:
-                generate(catalog_path, db_path, output)
+            with patch(
+                "scenthunter_next_engine.baseline_report._match",
+                side_effect=AssertionError("matching must not run for an incomplete baseline"),
+            ):
+                with self.assertRaises(BaselineIncompleteError) as raised:
+                    generate(catalog_path, db_path, output)
             self.assertIn("notino", str(raised.exception))
             self.assertFalse(output.exists())
 
