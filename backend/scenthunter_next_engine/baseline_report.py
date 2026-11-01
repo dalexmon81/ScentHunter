@@ -120,6 +120,7 @@ def _catalog_matcher(catalog):
             products_by_key[brand][form] = product
         for variant in product.variants:
             for form in _variant_forms(variant, product.brand):
+                products_by_key[brand][form] = product
                 variants_by_key[(brand, form)].append((product, variant))
     return products_by_key, variants_by_key
 
