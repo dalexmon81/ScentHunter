@@ -124,7 +124,6 @@ class AmazonCreatorsConnector:
             parsed.scheme != "https"
             or parsed.hostname != expected_host
             or self._asin(evidence_url) != asin
-            or evidence_url != listing.product_url
         ):
             raise ValueError("amazon_product_url_changed_since_discovery")
 
