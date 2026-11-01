@@ -143,6 +143,22 @@ class Phase0BaselineReportTests(unittest.TestCase):
             self.assertIn("notino", str(raised.exception))
             self.assertFalse(output.exists())
 
+    def test_refuses_baseline_when_active_store_has_no_fully_valid_offer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path, db_path = self._fixture(directory)
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                "UPDATE store_products SET availability='unknown' WHERE store='notino'"
+            )
+            conn.commit()
+            conn.close()
+            output = Path(directory) / "baseline.csv"
+            with self.assertRaises(BaselineIncompleteError) as raised:
+                generate(catalog_path, db_path, output)
+            self.assertIn("fully valid offer", str(raised.exception))
+            self.assertIn("notino", str(raised.exception))
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
