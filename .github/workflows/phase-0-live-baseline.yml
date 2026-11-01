@@ -142,7 +142,7 @@ jobs:
 
           result_b64=""
           for attempt in $(seq 1 36); do
-            poll_cmd='if test -s /tmp/phase0-baseline-result.txt; then cat /tmp/phase0-baseline-result.txt; elif test -s /tmp/phase0-baseline-worker.pid && kill -0 "$(cat /tmp/phase0-baseline-worker.pid)" 2>/dev/null; then echo BASELINE_STILL_RUNNING; else cat /tmp/phase0-baseline-worker.log; exit 1; fi'
+            poll_cmd="sh -c 'if test -s /tmp/phase0-baseline-result.txt; then cat /tmp/phase0-baseline-result.txt; elif test -s /tmp/phase0-baseline-worker.pid && kill -0 \"\$(cat /tmp/phase0-baseline-worker.pid)\" 2>/dev/null; then echo BASELINE_STILL_RUNNING; else cat /tmp/phase0-baseline-worker.log; exit 1; fi'"
             poll_output="$(timeout 30s flyctl ssh console --app scenthunter --machine "$machine_id" --command "$poll_cmd")"
             if grep -q '^BASELINE_CSV_B64=' <<<"$poll_output"; then
               printf '%s\n' "$poll_output" > /tmp/phase0-baseline.log
