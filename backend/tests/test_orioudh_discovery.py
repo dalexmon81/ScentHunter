@@ -28,7 +28,7 @@ class FakeSession:
             query = params.get("q", "")
             self.suggest_queries.append(query)
             products = []
-            if query == "Liquid Brun":
+            if query == "liquid brun":
                 products = [{
                     "title": "Liquid Brun Eau de Parfum 100 ml",
                     "vendor": "French Avenue",
