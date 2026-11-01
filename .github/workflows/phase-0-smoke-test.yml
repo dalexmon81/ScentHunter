@@ -21,7 +21,12 @@ jobs:
           set -euo pipefail
           test -n "$SCENTHUNTER_BASELINE_URL"
           test -n "$SCENTHUNTER_BASELINE_TOKEN"
-          base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          suffix="/admin/phase0/baseline-report.csv"
+          if [[ "$SCENTHUNTER_BASELINE_URL" == *"$suffix" ]]; then
+            base_url="${SCENTHUNTER_BASELINE_URL%"$suffix"}"
+          else
+            base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          fi
           auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
           http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
             -H "$auth_header" -H "Accept: application/json" \
