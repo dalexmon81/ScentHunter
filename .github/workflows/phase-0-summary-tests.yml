@@ -1,0 +1,29 @@
+name: Phase 0 summary report tests
+
+on:
+  push:
+    branches:
+      - phase-0/summary-baseline-runtime
+    paths:
+      - backend/scenthunter_next_engine/baseline_summary_report.py
+      - backend/tests/test_phase0_summary_report.py
+      - .github/workflows/phase-0-summary-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  summary-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-0/summary-baseline-runtime
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run Phase 0 summary regression tests
+        working-directory: backend
+        run: python -m unittest discover -s tests -p "test_phase0_summary_report.py" -v
