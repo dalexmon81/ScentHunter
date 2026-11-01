@@ -41,6 +41,8 @@ jobs:
             exit 1
           fi
           test -s phase-0-retailer-baseline.csv
+          echo "CSV header received:"
+          head -n 1 phase-0-retailer-baseline.csv
           head -n 1 phase-0-retailer-baseline.csv | grep -Fx 'store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
