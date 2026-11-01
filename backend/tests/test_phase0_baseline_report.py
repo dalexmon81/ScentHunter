@@ -53,6 +53,32 @@ class Phase0BaselineReportTests(unittest.TestCase):
             self.assertEqual(indexed_urls["notino"], 2)
         self.assertNotIn("amazon_de", indexed_urls)
 
+    def test_zero_offer_database_still_reports_notino_indexed_urls(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.executescript(
+            """
+            CREATE TABLE store_products (
+                store TEXT, url TEXT, name TEXT, brand TEXT, sku TEXT, gtin TEXT,
+                size_ml REAL, concentration TEXT, price REAL, currency TEXT,
+                availability TEXT
+            );
+            CREATE TABLE store_urls (
+                store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+                discovered_at INTEGER, active INTEGER
+            );
+            INSERT INTO store_urls VALUES (
+                'notino', 'https://www.notino.fr/product/one', 'one', NULL, 1800000000, 1
+            );
+            """
+        )
+
+        rows, source, indexed_urls = _rows(conn)
+        conn.close()
+
+        self.assertEqual(rows, [])
+        self.assertEqual(indexed_urls["notino"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
