@@ -35,9 +35,11 @@ def database_path() -> Path:
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(path or database_path(), timeout=2)
+    conn = sqlite3.connect(path or database_path(), timeout=30)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=2000")
+    # The production catalog is concurrently written by hydration/discovery.
+    # Give short-lived queue operations time to pass SQLite writer contention.
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
 
 
