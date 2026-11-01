@@ -1,3 +1,3 @@
-# Debug tools
+# README
 
-This directory is reserved for interactive/local debugging helpers. Nothing in this directory is imported by the production application.
+Reserved for the ScentHunter catalog-first migration. This structural scaffold does not alter production behavior.

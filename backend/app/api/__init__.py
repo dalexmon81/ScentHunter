@@ -1,1 +1,1 @@
-"""ScentHunter refactor package marker; legacy runtime remains unchanged."""
+"""Package boundary for the catalog-first refactor."""

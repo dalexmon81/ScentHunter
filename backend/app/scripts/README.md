@@ -1,3 +1,3 @@
-# scripts
+# README
 
-Reserved for the ScentHunter catalog-first migration. No production behavior is changed by this scaffold.
+Reserved for the ScentHunter catalog-first migration. This structural scaffold does not alter production behavior.
