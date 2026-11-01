@@ -1,6 +1,7 @@
 name: Phase 0 - live retailer baseline (read-only)
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
