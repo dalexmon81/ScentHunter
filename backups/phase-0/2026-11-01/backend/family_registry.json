@@ -1,0 +1,888 @@
+{
+  "schema_version": "1.0",
+  "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic.",
+  "families": [
+    {
+      "family_id": "rasasi_hawas",
+      "brand": "Rasasi",
+      "query_aliases": [
+        "Hawas",
+        "Rasasi Hawas"
+      ],
+      "products": [
+        {
+          "canonical_name": "Hawas for Him",
+          "aliases": [
+            "Hawas for Him",
+            "Hawas Men",
+            "Hawas For Him"
+          ]
+        },
+        {
+          "canonical_name": "Hawas for Her",
+          "aliases": [
+            "Hawas for Her",
+            "Hawas For Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Ice",
+          "aliases": [
+            "Hawas Ice"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Black",
+          "aliases": [
+            "Hawas Black"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Kobra",
+          "aliases": [
+            "Hawas Kobra",
+            "Hawas Cobra",
+            "Kobra For Him"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Fire",
+          "aliases": [
+            "Hawas Fire"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Viper",
+          "aliases": [
+            "Hawas Viper"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Addiction",
+          "aliases": [
+            "Hawas Addiction"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Atlantis",
+          "aliases": [
+            "Hawas Atlantis"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Pink",
+          "aliases": [
+            "Hawas Pink",
+            "Hawas Pink for Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Sapphire",
+          "aliases": [
+            "Hawas Sapphire"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Elixir",
+          "aliases": [
+            "Hawas Elixir"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Malibu",
+          "aliases": [
+            "Hawas Malibu"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Tropical",
+          "aliases": [
+            "Hawas Tropical",
+            "Hawas for Him Tropical"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Verde",
+          "aliases": [
+            "Hawas Verde"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Diva",
+          "aliases": [
+            "Hawas Diva",
+            "Hawas Diva for Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas London",
+          "aliases": [
+            "Hawas London"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Highness",
+          "aliases": [
+            "Hawas Highness"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Reina",
+          "aliases": [
+            "Hawas Reina"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Chrome",
+          "aliases": [
+            "Hawas Chrome"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Gold Digger",
+          "aliases": [
+            "Hawas Gold Digger"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Thunder",
+          "aliases": [
+            "Hawas Thunder"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Lava Gold",
+          "aliases": [
+            "Hawas Lava Gold"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Éclat",
+          "aliases": [
+            "Hawas Éclat",
+            "Hawas For Her Éclat",
+            "Hawas Eclat",
+            "Hawas E'clat",
+            "Hawas For Her Eclat"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Nautilus",
+          "aliases": [
+            "Hawas Nautilus"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Rouge",
+          "aliases": [
+            "Hawas Rouge",
+            "Hawas Rouge For Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Majestic",
+          "aliases": [
+            "Hawas Majestic"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Exotic",
+          "aliases": [
+            "Hawas Exotic"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Overdose",
+          "aliases": [
+            "Hawas Overdose"
+          ]
+        },
+        {
+          "canonical_name": "Hawas La Mer",
+          "aliases": [
+            "Hawas La Mer",
+            "Rasasi Hawas La Mer"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [
+        "Hawas Al Wisam",
+        "Al Wisam",
+        "Daarej",
+        "Daarej Passion"
+      ],
+      "excluded_aliases": [
+        "Hawas Al Wisam",
+        "Hawas Al Wisam Absolute",
+        "Hawas Al Wisam Day",
+        "Daarej",
+        "Daarej Passion",
+        "Rasasi Daarej"
+      ]
+    },
+    {
+      "family_id": "valentino_born_in_roma",
+      "brand": "Valentino",
+      "query_aliases": [
+        "Born in Roma",
+        "Valentino Born in Roma"
+      ],
+      "products": [
+        {
+          "canonical_name": "Born in Roma Uomo",
+          "aliases": [
+            "Born in Roma Uomo",
+            "Born In Roma For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Intense Uomo",
+          "aliases": [
+            "Born in Roma Uomo Intense",
+            "Born in Roma Intense Uomo",
+            "Born in Roma Uomo Eau de Parfum Intense",
+            "Born In Roma Intense For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Extradose Uomo",
+          "aliases": [
+            "Born in Roma Uomo Extradose",
+            "Born in Roma Extradose Uomo",
+            "Born In Roma Extradose For Him",
+            "Born In Roma Extradose"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Green Stravaganza Uomo",
+          "aliases": [
+            "Born in Roma Uomo Green Stravaganza",
+            "Born in Roma Green Stravaganza Uomo",
+            "Born In Roma Green Stravaganza For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Coral Fantasy Uomo",
+          "aliases": [
+            "Born in Roma Uomo Coral Fantasy",
+            "Born in Roma Coral Fantasy Uomo",
+            "Born In Roma Coral Fantasy For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Yellow Dream Uomo",
+          "aliases": [
+            "Born in Roma Uomo Yellow Dream",
+            "Born in Roma Yellow Dream Uomo",
+            "Born In Roma Yellow Dream For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Purple Melancholia Uomo",
+          "aliases": [
+            "Born in Roma Uomo Purple Melancholia"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma The Gold Uomo",
+          "aliases": [
+            "Born in Roma Uomo The Gold",
+            "Born In Roma The Gold Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Ivory Uomo",
+          "aliases": [
+            "Born in Roma Uomo Ivory",
+            "Born In Roma Ivory Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna",
+          "aliases": [
+            "Born in Roma Donna",
+            "Born In Roma For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Intense Donna",
+          "aliases": [
+            "Born in Roma Donna Intense",
+            "Born in Roma Intense Donna",
+            "Born in Roma Donna Eau de Parfum Intense",
+            "Born In Roma Intense For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Extradose Donna",
+          "aliases": [
+            "Born in Roma Donna Extradose",
+            "Born in Roma Extradose Donna",
+            "Born In Roma Extradose For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Green Stravaganza Donna",
+          "aliases": [
+            "Born in Roma Donna Green Stravaganza",
+            "Born in Roma Green Stravaganza Donna",
+            "Born In Roma Green Stravaganza For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Coral Fantasy Donna",
+          "aliases": [
+            "Born in Roma Donna Coral Fantasy",
+            "Born in Roma Coral Fantasy Donna",
+            "Born In Roma Coral Fantasy For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Yellow Dream Donna",
+          "aliases": [
+            "Born in Roma Donna Yellow Dream",
+            "Born in Roma Yellow Dream Donna",
+            "Born In Roma Yellow Dream For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Purple Melancholia Donna",
+          "aliases": [
+            "Born in Roma Donna Purple Melancholia"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma The Gold Donna",
+          "aliases": [
+            "Born in Roma Donna The Gold",
+            "Born In Roma The Gold Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Ivory Donna",
+          "aliases": [
+            "Donna Born in Roma Ivory",
+            "Born in Roma Donna Ivory",
+            "Born In Roma Ivory Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Rendez-Vous Ruby Uomo",
+          "aliases": [
+            "Born in Roma Rendez Vous Ruby Uomo",
+            "Valentino Born in Roma Rendez-Vous Ruby Uomo",
+            "Born in Roma Rendezvous Ruby Uomo",
+            "Born In Roma Rendez-Vous Ruby For Him"
+          ],
+          "canonical_image": "https://www.valentino-beauty.us/dw/image/v2/AAFM_PRD/on/demandware.static/-/Sites-valentino-master-catalog/default/dwb7d09114/images/pdp/MPL02470-3/3614274899047.webp?q=70&sfrm=jpeg&sh=320&sm=cut&sw=320",
+          "image_source": "https://www.valentino-beauty.us/fragrances/fragrances-men/born-in-roma-ruby-uomo-eau-de-toilette-MPL024703.html"
+        },
+        {
+          "canonical_name": "Born in Roma Rendez-Vous Ruby Donna",
+          "aliases": [
+            "Born in Roma Rendez Vous Ruby Donna",
+            "Valentino Born in Roma Rendez-Vous Ruby Donna",
+            "Born in Roma Rendezvous Ruby Donna",
+            "Born In Roma Rendez-Vous Ruby For Her"
+          ],
+          "canonical_image": "https://www.valentino-beauty.us/dw/image/v2/AAFM_PRD/on/demandware.static/-/Sites-valentino-master-catalog/default/dwe9607b6d/images/pdp/MPL02469-3/3614274899900.webp?q=70&sfrm=jpeg&sh=320&sm=cut&sw=320",
+          "image_source": "https://www.valentino-beauty.us/fragrances/fragrances-women/born-in-roma-ruby-donna-eau-de-parfum-MPL024693.html"
+        }
+      ]
+    },
+    {
+      "family_id": "versace_eros",
+      "brand": "Versace",
+      "query_aliases": [
+        "Eros",
+        "Versace Eros"
+      ],
+      "products": [
+        {
+          "canonical_name": "Eros",
+          "aliases": [
+            "Eros",
+            "Versace Eros",
+            "Eros Pour Homme",
+            "Eros Eau de Toilette",
+            "Eros EDT"
+          ]
+        },
+        {
+          "canonical_name": "Eros Eau de Parfum",
+          "aliases": [
+            "Eros Eau de Parfum",
+            "Eros EDP"
+          ]
+        },
+        {
+          "canonical_name": "Eros Parfum",
+          "aliases": [
+            "Eros Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Flame",
+          "aliases": [
+            "Eros Flame",
+            "Eros Flame EDP",
+            "Eros Flame Eau de Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Energy",
+          "aliases": [
+            "Eros Energy",
+            "Eros Energy EDP"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Toilette",
+          "aliases": [
+            "Eros pour Femme Eau de Toilette",
+            "Eros pour Femme EDT",
+            "Eros Pour Femme EDT"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Parfum",
+          "aliases": [
+            "Eros pour Femme Eau de Parfum",
+            "Eros pour Femme EDP",
+            "Eros Pour Femme EDP"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "lattafa_asad",
+      "brand": "Lattafa",
+      "query_aliases": [
+        "Asad",
+        "Lattafa Asad"
+      ],
+      "products": [
+        {
+          "canonical_name": "Asad",
+          "aliases": [
+            "Asad",
+            "Lattafa Asad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Zanzibar",
+          "aliases": [
+            "Asad Zanzibar",
+            "Lattafa Asad Zanzibar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Bourbon",
+          "aliases": [
+            "Asad Bourbon",
+            "Lattafa Asad Bourbon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Elixir",
+          "aliases": [
+            "Asad Elixir",
+            "Lattafa Asad Elixir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "french_avenue_liquid_brun_limited_edition",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "products": [
+        {
+          "canonical_name": "Liquid Brun Limited Edition",
+          "aliases": [
+            "Liquid Brun Limited Edition",
+            "French Avenue Liquid Brun Limited Edition",
+            "French Avenue - Liquid Brun Limited Edition",
+            "Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue - Liquid Brun Limited Edition Extrait de Parfum",
+            "Liquid Brun Limited Edition Men",
+            "French Avenue Liquid Brun Limited Edition Men",
+            "French Avenue - Liquid Brun Limited Edition Men"
+          ],
+          "formats_ml": [
+            150
+          ],
+          "gtins": [
+            "6298042001831"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "french_avenue_liquid_brun",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Liquid Brun",
+        "French Avenue Liquid Brun"
+      ],
+      "excluded_products": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue - Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "excluded_aliases": [
+        "Liquid Brun Limited Edition",
+        "French Avenue Liquid Brun Limited Edition",
+        "French Avenue - Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+        "French Avenue - Liquid Brun Limited Edition Extrait de Parfum",
+        "Liquid Brun Limited Edition Men",
+        "French Avenue Liquid Brun Limited Edition Men",
+        "French Avenue - Liquid Brun Limited Edition Men"
+      ],
+      "products": [
+        {
+          "canonical_name": "Liquid Brun",
+          "aliases": [
+            "Liquid Brun",
+            "French Avenue Liquid Brun",
+            "French Avenue - Liquid Brun",
+            "Liquid Brun Eau de Parfum",
+            "French Avenue Liquid Brun Eau de Parfum",
+            "Liquid Brun Men",
+            "French Avenue Liquid Brun Men",
+            "French Avenue - Liquid Brun Men"
+          ],
+          "formats_ml": [
+            100
+          ],
+          "gtins": [
+            "6290360375694"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "aromatix_french_avenue",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Aromatix",
+        "Aromatix X French Avenue",
+        "French Avenue Aromatix"
+      ],
+      "products": [
+        {
+          "canonical_name": "Carnal Desire",
+          "aliases": [
+            "Carnal Desire",
+            "Aromatix Carnal Desire",
+            "Aromatix X French Avenue Carnal Desire",
+            "French Avenue Carnal Desire"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Forbidden Fruit",
+          "aliases": [
+            "Forbidden Fruit",
+            "Aromatix Forbidden Fruit",
+            "Aromatix X French Avenue Forbidden Fruit",
+            "French Avenue Forbidden Fruit"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Frostbite",
+          "aliases": [
+            "Frostbite",
+            "Aromatix Frostbite",
+            "Aromatix X French Avenue Frostbite",
+            "French Avenue Frostbite"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Magnetiq",
+          "aliases": [
+            "Magnetiq",
+            "Aromatix Magnetiq",
+            "Aromatix X French Avenue Magnetiq",
+            "French Avenue Magnetiq"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Naughty Dates",
+          "aliases": [
+            "Naughty Dates",
+            "Aromatix Naughty Dates",
+            "Aromatix X French Avenue Naughty Dates",
+            "French Avenue Naughty Dates"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Ora",
+          "aliases": [
+            "Ora",
+            "Aromatix Ora",
+            "Aromatix X French Avenue Ora",
+            "French Avenue Ora"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Platine Blanc",
+          "aliases": [
+            "Platine Blanc",
+            "Aromatix Platine Blanc",
+            "Aromatix X French Avenue Platine Blanc",
+            "French Avenue Platine Blanc"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Royal Taboo",
+          "aliases": [
+            "Royal Taboo",
+            "Aromatix Royal Taboo",
+            "Aromatix X French Avenue Royal Taboo",
+            "French Avenue Royal Taboo"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Roza",
+          "aliases": [
+            "Roza",
+            "Aromatix Roza",
+            "Aromatix X French Avenue Roza",
+            "French Avenue Roza"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Sun Kissed",
+          "aliases": [
+            "Sun Kissed",
+            "Aromatix Sun Kissed",
+            "Aromatix X French Avenue Sun Kissed",
+            "French Avenue Sun Kissed"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Teas Me",
+          "aliases": [
+            "Teas Me",
+            "Aromatix Teas Me",
+            "Aromatix X French Avenue Teas Me",
+            "French Avenue Teas Me"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "X Xandal",
+          "aliases": [
+            "X Xandal",
+            "Aromatix X Xandal",
+            "Aromatix X French Avenue X Xandal",
+            "French Avenue X Xandal"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
+    },
+    {
+      "family_id": "rasasi_kobra",
+      "brand": "Rasasi",
+      "query_aliases": [
+        "Kobra",
+        "Kobra For Him",
+        "Rasasi Kobra",
+        "Rasasi Kobra For Him"
+      ],
+      "products": [
+        {
+          "canonical_name": "Kobra For Him",
+          "aliases": [
+            "Kobra For Him",
+            "Kobra",
+            "Rasasi Kobra",
+            "Rasasi Kobra For Him",
+            "Kobra For Him Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
+    },
+    {
+      "family_id": "khadlaj_shiyaaka",
+      "brand": "Khadlaj",
+      "query_aliases": [
+        "Shiyaaka",
+        "Khadlaj Shiyaaka",
+        "Shiyaaka line",
+        "Shiyaaka collection"
+      ],
+      "products": [
+        {
+          "canonical_name": "Shiyaaka Blue",
+          "aliases": [
+            "Shiyaaka Blue",
+            "Khadlaj Shiyaaka Blue",
+            "Shiyaaka Blue EDP",
+            "Shiyaaka Blue Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Gold",
+          "aliases": [
+            "Shiyaaka Gold",
+            "Khadlaj Shiyaaka Gold",
+            "Shiyaaka Gold EDP",
+            "Shiyaaka Gold Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka For Men",
+          "aliases": [
+            "Shiyaaka For Men",
+            "Khadlaj Shiyaaka For Men",
+            "Shiyaaka Men",
+            "Shiyaaka Silver",
+            "Khadlaj Shiyaaka Silver",
+            "Shiyaaka For Men EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka White",
+          "aliases": [
+            "Shiyaaka White",
+            "Shiyaaka White For Women",
+            "Shiyaaka Women",
+            "Khadlaj Shiyaaka White",
+            "Shiyaaka White EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Rose Gold",
+          "aliases": [
+            "Shiyaaka Rose Gold",
+            "Khadlaj Shiyaaka Rose Gold",
+            "Shiyaaka Rose Gold EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Sky",
+          "aliases": [
+            "Shiyaaka Sky",
+            "Khadlaj Shiyaaka Sky",
+            "Special Edition Shiyaaka Sky",
+            "Shiyaaka Sky EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Shadow",
+          "aliases": [
+            "Shiyaaka Shadow",
+            "Khadlaj Shiyaaka Shadow",
+            "Special Edition Shiyaaka Shadow",
+            "Shiyaaka Shadow EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Shiyaaka Snow",
+          "aliases": [
+            "Shiyaaka Snow",
+            "Khadlaj Shiyaaka Snow",
+            "Special Edition Shiyaaka Snow",
+            "Shiyaaka Snow EDP"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ],
+      "excluded_products": [],
+      "excluded_aliases": []
+    }
+  ]
+}

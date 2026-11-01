@@ -1,0 +1,983 @@
+import json
+import re
+import unicodedata
+import time
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import quote, quote_plus, urljoin
+
+STORE = "PerfumeMarket"
+BASE_URL = "https://www.perfumemarket.nl"
+PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
+
+
+def _extract_price(text):
+    match = PRICE_RE.search(text or "")
+    if not match:
+        return None
+    value = match.group(1) or match.group(2)
+    return value.replace(".", ",") + " €"
+
+
+def _normalize_text(text):
+    text = unicodedata.normalize("NFKD", str(text or "").lower())
+    return "".join(c for c in text if not unicodedata.combining(c))
+
+
+def _tokens(text):
+    normalized = _normalize_text(text)
+    tokens = re.findall(r"[0-9\w]+", normalized, flags=re.UNICODE)
+    return [t.lower().replace("_", "") for t in tokens if t.strip() and set(t) != {"_"}]
+
+
+def _normalize_for_match(text):
+    normalized = _normalize_text(text)
+    return re.sub(r"[^0-9a-z]+", "", normalized, flags=re.UNICODE)
+
+
+def _query_matches(text, query):
+    """Generic Unicode-safe product matching tolerant of spaces, hyphens and apostrophes."""
+    query_tokens = _tokens(query)
+    text_tokens = set(_tokens(text))
+    if not query_tokens:
+        return False
+
+    if all(token in text_tokens for token in query_tokens):
+        return True
+
+    compact_query = _normalize_for_match(query)
+    compact_text = _normalize_for_match(text)
+    return bool(compact_query) and compact_query in compact_text
+
+
+def _product_name(container, fallback):
+    if container is None:
+        return fallback
+
+    selectors = (
+        "h1", "h2", "h3", "h4",
+        ".product-title", ".product__title",
+        ".product-name", ".product-card__title",
+        "[class*='product-title']", "[class*='product-name']",
+    )
+
+    for selector in selectors:
+        try:
+            element = container.select_one(selector)
+        except Exception:
+            element = None
+        if element:
+            name = element.get_text(" ", strip=True)
+            if name and len(name) <= 300:
+                return name
+
+    # Shopify product cards often expose the complete product title in
+    # an aria-label/title even when the visible anchor only contains the brand.
+    for element in container.find_all(["a", "img"], limit=20):
+        value = (
+            element.get("title")
+            or element.get("aria-label")
+            or element.get("alt")
+            or ""
+        ).strip()
+        if value and _query_matches(value, fallback):
+            return value
+
+    return fallback
+
+
+def _card_has_price(card):
+    if card is None:
+        return None
+
+    text_price = _extract_price(card.get_text(" ", strip=True))
+    if text_price:
+        return text_price
+
+    for element in card.find_all(True):
+        for attr in ("data-price", "data-product-price", "data-final-price", "data-price-amount"):
+            raw = element.get(attr)
+            if raw:
+                price = _extract_price(str(raw))
+                if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", str(raw).strip()):
+                    price = str(raw).strip().replace(".", ",") + " €"
+                if price:
+                    return price
+
+    for script in card.find_all("script", type="application/json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if raw and re.search(r"(?:price|amount)", raw, re.I):
+            price = _extract_price(raw)
+            if price:
+                return price
+
+    return None
+
+
+def _find_card(anchor):
+    node = anchor
+
+    for _ in range(10):
+        if node is None:
+            break
+
+        text = node.get_text(" ", strip=True)
+        price = _card_has_price(node)
+        has_product_data = any(
+            element.has_attr(attr)
+            for element in node.find_all(True)
+            for attr in ("data-product-id", "data-product-handle", "data-product-price")
+        )
+        if len(text) >= 10 and (price or has_product_data):
+            if len(text) <= 2200:
+                return node
+
+        node = getattr(node, "parent", None)
+
+    return anchor.parent
+
+
+def _parse_search_html(html, query):
+    soup = BeautifulSoup(html or "", "html.parser")
+    results = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        href = link.get("href", "")
+        product_url = urljoin(BASE_URL, href).split("?")[0].rstrip("/")
+
+        if "/products/" not in product_url.lower():
+            continue
+        if product_url in seen:
+            continue
+
+        card = _find_card(link)
+        if card is None:
+            continue
+
+        card_text = card.get_text(" ", strip=True)
+        name = _product_name(card, link.get_text(" ", strip=True))
+
+        # IMPORTANT: match the query against the complete product card/name,
+        # not only the text of the clicked anchor. On Shopify the anchor can
+        # contain only the brand or an image.
+        if not _query_matches(f"{name} {card_text} {product_url}", query):
+            continue
+
+        price = _card_has_price(card)
+        if not price:
+            continue
+
+        key = product_url.lower()
+        seen.add(key)
+
+        results.append({
+            "store": "PerfumeMarket",
+            "name": name,
+            "price": price,
+            "url": product_url,
+        })
+
+    return results
+
+
+def _parse_search_suggest(payload, query):
+    results = []
+    seen = set()
+
+    resources = payload.get("resources", {}) if isinstance(payload, dict) else {}
+    nested = resources.get("results", {}) if isinstance(resources, dict) else {}
+    products = nested.get("products", []) if isinstance(nested, dict) else []
+
+    if not isinstance(products, list):
+        return results
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        name = str(product.get("title") or product.get("name") or "").strip()
+        url = str(product.get("url") or "").strip()
+
+        if not name or not url or not _query_matches(name, query):
+            continue
+
+        product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
+        if "/products/" not in product_url.lower():
+            continue
+
+        price = None
+
+        variants = product.get("variants")
+        if isinstance(variants, list):
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                raw_variant_price = str(variant.get("price") or "").strip()
+                price = _extract_price(raw_variant_price)
+                if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_variant_price):
+                    price = raw_variant_price.replace(".", ",") + " €"
+                if price:
+                    break
+
+        if not price:
+            raw_product_price = str(
+                product.get("price")
+                or product.get("price_min")
+                or ""
+            ).strip()
+            price = _extract_price(raw_product_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_product_price):
+                price = raw_product_price.replace(".", ",") + " €"
+
+        if not price:
+            continue
+
+        key = product_url.lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": name,
+            "price": price,
+            "url": product_url,
+        })
+
+    return results
+
+
+
+
+
+def _parse_catalog_json(payload, query):
+    """Parse Shopify's public product catalog JSON without relying on search ranking."""
+    if not isinstance(payload, dict):
+        return []
+
+    products = payload.get("products")
+    if not isinstance(products, list):
+        return []
+
+    results = []
+    seen = set()
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        title = str(product.get("title") or product.get("name") or "").strip()
+        handle = str(product.get("handle") or "").strip()
+        if not title or not _query_matches(title + " " + handle.replace("-", " "), query):
+            continue
+
+        product_id = str(product.get("id") or handle or title).strip().lower()
+        if product_id in seen:
+            continue
+
+        variants = product.get("variants")
+        if not isinstance(variants, list):
+            variants = []
+
+        # Keep the first variant price, preferring an available variant when
+        # Shopify exposes availability. We still return sold-out products,
+        # because ScentHunter must be able to report stock state downstream.
+        price = None
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            raw_price = str(variant.get("price") or "").strip()
+            if not raw_price:
+                continue
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+            if price:
+                if variant.get("available") is True:
+                    break
+
+        if not price:
+            raw_price = str(product.get("price") or "").strip()
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+
+        if not price:
+            continue
+
+        if handle:
+            product_url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
+        else:
+            continue
+
+        seen.add(product_id)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": title,
+            "price": price,
+            "url": product_url,
+        })
+
+    return results
+
+
+def _find_candidates_from_catalog_json(session, query):
+    """Search the public Shopify catalog, bypassing Shopify search relevance."""
+    endpoints = (
+        BASE_URL + "/products.json?limit=250",
+        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
+    )
+
+    matches = []
+    seen = set()
+
+    for base_endpoint in endpoints:
+        for page in range(1, 21):
+            separator = "&" if "?" in base_endpoint else "?"
+            url = base_endpoint + separator + "page=" + str(page)
+            try:
+                response = session.get(url, timeout=12)
+            except requests.RequestException:
+                break
+
+            if response.status_code != 200 or not response.text:
+                break
+
+            try:
+                payload = response.json()
+            except (ValueError, TypeError, json.JSONDecodeError):
+                break
+
+            products = payload.get("products") if isinstance(payload, dict) else None
+            if not isinstance(products, list) or not products:
+                break
+
+            for item in _parse_catalog_json(payload, query):
+                key = item["url"].rstrip("/").lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                matches.append(item)
+
+            # Shopify normally returns fewer than the requested limit on the
+            # last page. This also prevents needless requests.
+            if len(products) < 250:
+                break
+
+            if len(matches) >= 50:
+                return matches
+
+    return matches
+
+def _parse_product_sitemap_locs(xml_text, query):
+    """Return product URLs whose Shopify handle contains every query token."""
+    if not xml_text:
+        return []
+
+    query_tokens = set(_tokens(query))
+    if not query_tokens:
+        return []
+
+    soup = BeautifulSoup(xml_text, "xml")
+    urls = []
+    seen = set()
+
+    for loc in soup.find_all("loc"):
+        url = str(loc.get_text(strip=True) or "")
+        if "/products/" not in url.lower():
+            continue
+        handle = url.lower().split("/products/", 1)[-1]
+        # Use the same generic matcher as the normal search so Shopify URL
+        # normalization (hyphens/apostrophes/spaces) cannot hide products.
+        if not _query_matches(handle.replace("-", " "), query):
+            continue
+        clean = url.split("?", 1)[0].rstrip("/")
+        if clean and clean not in seen:
+            seen.add(clean)
+            urls.append(clean)
+
+    return urls
+
+
+def _find_candidates_from_sitemap(session, query):
+    """Generic Shopify sitemap fallback; no perfume-specific exceptions."""
+    try:
+        response = session.get(
+            BASE_URL + "/sitemap.xml",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if response.status_code != 200 or not response.text:
+            return []
+    except requests.RequestException:
+        return []
+
+    soup = BeautifulSoup(response.text, "xml")
+    sitemap_urls = []
+    for loc in soup.find_all("loc"):
+        url = str(loc.get_text(strip=True) or "")
+        if "sitemap_products_" in url.lower():
+            sitemap_urls.append(url)
+
+    # Scan every product sitemap. A product can live in any sitemap chunk,
+    # so finding matches in one chunk must not hide additional matches in
+    # later chunks. No product or brand is hard-coded.
+    matches = []
+    seen = set()
+
+    for sitemap_url in sitemap_urls:
+        try:
+            response = session.get(
+                sitemap_url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=10,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200 or not response.text:
+            continue
+
+        for url in _parse_product_sitemap_locs(response.text, query):
+            key = url.rstrip("/").lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            matches.append(url)
+            if len(matches) >= 50:
+                return matches
+
+    return matches
+
+
+def _parse_product_page(html, query, product_url):
+    """Extract a product name and price from a direct Shopify product page."""
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    title = ""
+    for selector in ("h1", "meta[property='og:title']", "title"):
+        element = soup.select_one(selector)
+        if not element:
+            continue
+        title = (
+            element.get("content", "")
+            if element.name == "meta"
+            else element.get_text(" ", strip=True)
+        ).strip()
+        if title:
+            break
+
+    if not title:
+        return None
+
+    # Product pages can contain several prices. Prefer JSON-LD/product data,
+    # then fall back to visible page text.
+    price = None
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            continue
+
+        objects = data if isinstance(data, list) else [data]
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+            offers = obj.get("offers")
+            if isinstance(offers, dict):
+                offers = [offers]
+            if not isinstance(offers, list):
+                continue
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+                price = _extract_price(str(offer.get("price") or ""))
+                if not price:
+                    raw_price = str(offer.get("price") or "").strip()
+                    if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                        price = raw_price.replace(".", ",") + " €"
+                if price:
+                    break
+            if price:
+                break
+        if price:
+            break
+
+    if not price:
+        price = _extract_price(soup.get_text(" ", strip=True))
+
+    if not price or not _query_matches(title + " " + product_url, query):
+        return None
+
+    return {
+        "store": "PerfumeMarket",
+        "name": title,
+        "price": price,
+        "url": product_url,
+    }
+
+def search(query):
+    query = str(query or "").strip()
+    if not query:
+        return []
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+            "Version/18.0 Mobile/15E148 Safari/604.1"
+        ),
+        "Accept-Language": "en-US,en;q=0.8",
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+    results = []
+    seen = set()
+
+    def add_items(items, source):
+        added = 0
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            url = str(item.get("url") or "").split("?", 1)[0].rstrip("/").lower()
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            results.append(item)
+            added += 1
+            print(f"PERFUMEMARKET FOUND via {source}: {item.get('name')} | {item.get('url')}")
+        return added
+
+    # 1) Shopify predictive search. Always run it, but never stop the search
+    # here: a partial predictive response must not hide a valid product found
+    # by another generic Shopify search method.
+    suggest_urls = (
+        BASE_URL
+        + "/search/suggest.json?q="
+        + quote(query)
+        + "&resources[type]=product&resources[limit]=20",
+        BASE_URL
+        + "/search/suggest.json?q="
+        + quote(query)
+        + "&resources[type]=product&resources[limit]=20"
+        + "&resources[options][unavailable_products]=last",
+    )
+
+    for suggest_url in suggest_urls:
+        try:
+            response = session.get(suggest_url, timeout=10)
+            if response.ok:
+                try:
+                    add_items(_parse_search_suggest(response.json(), query), "suggest")
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    pass
+        except requests.RequestException as error:
+            print(f"PERFUMEMARKET SUGGEST ERROR: {error}")
+
+    # 2) Normal Shopify search. Always run both forms, even if predictive
+    # search already found something. Results are deduplicated by URL.
+    search_urls = (
+        BASE_URL + "/search?q=" + quote(query) + "&type=product",
+        BASE_URL + "/search?q=" + quote(query),
+    )
+
+    for url in search_urls:
+        try:
+            response = session.get(url, timeout=12)
+            response.raise_for_status()
+        except requests.RequestException as error:
+            print(f"PERFUMEMARKET ERROR: {error}")
+            continue
+
+        add_items(_parse_search_html(response.text, query), "search-html")
+
+    # 3) Public Shopify product catalog discovery. This is the important
+    # fallback for products that Shopify's search/predictive-search endpoints
+    # omit because of relevance, indexing or query normalization.
+    add_items(_find_candidates_from_catalog_json(session, query), "catalog-json")
+
+    # 4) Sitemap is a supplementary source, not a fallback that only runs
+    # when results are empty. Catalog/search endpoints can be partial, so scan
+    # sitemap chunks whenever the result set is still reasonably small.
+    if len(results) < 100:
+        candidate_urls = _find_candidates_from_sitemap(session, query)
+        for product_url in candidate_urls:
+            if product_url.rstrip("/").lower() in seen:
+                continue
+            try:
+                response = session.get(product_url, timeout=12)
+                response.raise_for_status()
+            except requests.RequestException:
+                continue
+
+            item = _parse_product_page(response.text, query, product_url)
+            if item:
+                add_items([item], "sitemap")
+                if len(results) >= 200:
+                    break
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# ScentHunter common scraper contract
+# ---------------------------------------------------------------------------
+
+def search_stream(query, emit=None):
+    """
+    Common ScentHunter entry point.
+
+    The legacy `search()` function remains available for compatibility and
+    returns the discovered rows as a list.
+
+    This entry point ALWAYS returns a report dictionary. In particular it
+    never returns None, because None cannot safely distinguish an empty,
+    verified search from a technical failure.
+
+    An empty result set is deliberately reported as `partial`/unverified
+    rather than as a verified NOT_FOUND state. A caller may only promote an
+    empty result to NOT_FOUND after an authoritative discovery channel has
+    explicitly verified absence.
+    """
+    query = str(query or "").strip()
+    if not query:
+        return {
+            "status": "success",
+            "verified": True,
+            "results": [],
+            "error": None,
+            "details": {"reason": "empty_query"},
+        }
+
+    try:
+        rows = search(query)
+    except requests.Timeout as exc:
+        return {
+            "status": "timeout",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.ConnectionError as exc:
+        return {
+            "status": "unavailable",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except requests.RequestException as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "verified": False,
+            "results": [],
+            "error": str(exc),
+            "details": {"exception": type(exc).__name__},
+        }
+
+    rows = rows if isinstance(rows, list) else []
+
+    if emit is not None:
+        for row in rows:
+            try:
+                emit(row)
+            except Exception:
+                # The scraper result itself is valid; callback failures belong
+                # to the orchestrator and must not corrupt the store report.
+                pass
+
+    if rows:
+        return {
+            "status": "success",
+            "verified": True,
+            "results": rows,
+            "error": None,
+            "details": {"count": len(rows)},
+        }
+
+    # IMPORTANT:
+    # `search()` intentionally has compatibility-oriented fallbacks that
+    # suppress individual transport errors. Therefore an empty list from
+    # that legacy function is not enough evidence to claim NOT_FOUND.
+    return {
+        "status": "partial",
+        "verified": False,
+        "results": [],
+        "error": None,
+        "details": {
+            "count": 0,
+            "reason": "no_results_without_authoritative_empty_verification",
+        },
+    }
+
+
+def scrape(query):
+    """Compatibility alias returning the common ScentHunter report."""
+    return search_stream(query)
+
+
+def search_perfumemarket(query):
+    """Compatibility alias for callers using the store-specific name."""
+    return search(query)
+
+
+def _pm_money_to_float(value):
+    if value in (None, ""):
+        return None
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+
+    text = re.sub(r"[^\d,.\-]", "", str(value))
+
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(",", ".")
+
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _pm_jsonld_objects(soup):
+    objects = []
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+
+            objects.append(item)
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    return objects
+
+
+def _pm_find_product_jsonld(objects):
+    for obj in objects:
+        raw_type = obj.get("@type")
+        types = raw_type if isinstance(raw_type, list) else [raw_type]
+        normalized = {str(value or "").strip().lower() for value in types}
+        if "product" in normalized:
+            return obj
+    return {}
+
+
+def _pm_extract_offer(product):
+    offers = product.get("offers")
+    if isinstance(offers, dict):
+        return offers
+
+    if isinstance(offers, list):
+        for offer in offers:
+            if isinstance(offer, dict) and _pm_money_to_float(offer.get("price")) is not None:
+                return offer
+        for offer in offers:
+            if isinstance(offer, dict):
+                return offer
+
+    return {}
+
+
+def _pm_extract_brand(product, title):
+    brand = product.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+
+    brand = str(brand or "").strip()
+    if brand:
+        return brand
+
+    words = str(title or "").split()
+    return words[0].strip() if words else ""
+
+
+def _pm_extract_image(product, response_url):
+    image = product.get("image")
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get("url") or image.get("contentUrl")
+    if not image:
+        return None
+    return urljoin(response_url, str(image))
+
+
+def _pm_extract_availability(product, offer, soup):
+    values = []
+    for source in (offer.get("availability"), product.get("availability")):
+        if source:
+            values.append(str(source))
+
+    text = " ".join(values).lower()
+    if any(marker in text for marker in ("outofstock", "out of stock", "sold out", "soldout", "unavailable")):
+        return "out_of_stock"
+    if any(marker in text for marker in ("preorder", "pre-order", "pre order")):
+        return "preorder"
+    if any(marker in text for marker in ("instock", "in stock")):
+        return "in_stock"
+
+    # Do not treat the generic word "available" in arbitrary page text as
+    # proof of stock; it can occur in unrelated content.
+    page_text = soup.get_text(" ", strip=True).lower()
+    if re.search(r"\bavailable\b", page_text) and not re.search(r"\bunavailable\b", page_text):
+        return "in_stock"
+
+    return "unknown"
+
+
+def extract_product_page(session, url, query):
+    """Parse a PerfumeMarket product page generically.
+
+    This is intentionally independent of any perfume, brand, product URL,
+    price or other product-specific exception. It uses Shopify/JSON-LD data
+    first and product-bound HTML fields as fallbacks.
+    """
+    try:
+        response = session.get(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            timeout=15,
+            allow_redirects=True,
+        )
+    except requests.RequestException as exc:
+        print(f"PERFUMEMARKET PRODUCT FETCH ERROR: {type(exc).__name__}: {exc} | {url}")
+        return None
+
+    if response.status_code >= 400:
+        print(f"PERFUMEMARKET PRODUCT HTTP ERROR: {response.status_code} | {url}")
+        return None
+
+    final_url = (response.url or url).split("?", 1)[0].rstrip("/")
+    if "/products/" not in final_url.lower():
+        return None
+
+    soup = BeautifulSoup(response.text or "", "html.parser")
+    product = _pm_find_product_jsonld(_pm_jsonld_objects(soup))
+
+    h1 = soup.select_one("h1")
+    h1_text = h1.get_text(" ", strip=True) if h1 else ""
+    title = str(product.get("name") or h1_text or "").strip()
+    if not title:
+        return None
+
+    brand = _pm_extract_brand(product, title)
+
+    if query and not _query_matches(f"{title} {brand} {final_url}", query):
+        return None
+
+    offer = _pm_extract_offer(product)
+    price = _pm_money_to_float(offer.get("price"))
+    if price is None:
+        price = _pm_money_to_float(product.get("price"))
+
+    if price is None:
+        for selector in (
+            '[itemprop="price"]',
+            'meta[property="product:price:amount"]',
+            'meta[itemprop="price"]',
+            '.price',
+            '.product-price',
+            '.current-price',
+            '[class*="price"]',
+        ):
+            node = soup.select_one(selector)
+            if not node:
+                continue
+            raw = node.get("content") or node.get("value") or node.get_text(" ", strip=True)
+            price = _pm_money_to_float(raw)
+            if price is not None:
+                break
+
+    if price is None:
+        return None
+
+    currency = str(offer.get("priceCurrency") or product.get("priceCurrency") or "EUR").strip().upper()
+    availability = _pm_extract_availability(product, offer, soup)
+    image = _pm_extract_image(product, response.url)
+
+    sku = str(product.get("sku") or "").strip()
+    gtin = str(
+        product.get("gtin13")
+        or product.get("gtin12")
+        or product.get("gtin14")
+        or product.get("gtin")
+        or ""
+    ).strip()
+    mpn = str(product.get("mpn") or "").strip()
+
+    return {
+        "store": "PerfumeMarket",
+        "name": title,
+        "brand": brand,
+        "url": final_url,
+        "image": image,
+        "sku": sku,
+        "gtin": gtin,
+        "mpn": mpn,
+        "price_num": price,
+        "price": price,
+        "currency": currency,
+        "availability": availability,
+        "available": True if availability == "in_stock" else False if availability == "out_of_stock" else None,
+        "source": {
+            "url": final_url,
+            "name": title,
+            "brand": brand,
+            "image": image,
+        },
+        "identity": {
+            "sku": {"value": sku, "source": "shopify_jsonld"} if sku else None,
+            "gtin": {"value": gtin, "source": "shopify_jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "shopify_jsonld"} if mpn else None,
+        },
+        "offer": {
+            "price": price,
+            "currency": currency,
+            "availability": availability,
+        },
+        "fetched_at": time.time(),
+    }
