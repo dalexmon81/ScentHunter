@@ -492,3 +492,125 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         "duration_seconds": elapsed,
         "output_path": str(output_path),
     }
+
+
+# Lightweight worker smoke jobs share the existing durable Phase 0 queue database.
+SMOKE_STORES = (
+    "amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic",
+    "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+)
+
+
+def ensure_smoke_schema(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS phase0_smoke_jobs (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK(status IN ('queued','running','completed','failed')),
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            finished_at TEXT,
+            heartbeat_at TEXT,
+            worker_id TEXT,
+            output_path TEXT NOT NULL,
+            error_message TEXT
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phase0_smoke_queue "
+        "ON phase0_smoke_jobs(status, created_at)"
+    )
+    conn.commit()
+
+
+def create_smoke_job() -> dict[str, Any]:
+    job_id = uuid.uuid4().hex
+    output_dir = Path("/data/phase0/smoke")
+    output_path = output_dir / f"{job_id}.csv"
+    conn = connect()
+    try:
+        ensure_smoke_schema(conn)
+        conn.execute(
+            """INSERT INTO phase0_smoke_jobs
+               (id,status,created_at,output_path) VALUES(?, 'queued', ?, ?)""",
+            (job_id, utc_now(), str(output_path)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {"job_id": job_id, "status": "queued"}
+
+
+def get_smoke_job(job_id: str) -> dict[str, Any] | None:
+    conn = connect()
+    try:
+        ensure_smoke_schema(conn)
+        row = conn.execute(
+            "SELECT * FROM phase0_smoke_jobs WHERE id=?", (job_id,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def claim_next_smoke_job(worker_id: str) -> dict[str, Any] | None:
+    conn = connect()
+    try:
+        ensure_smoke_schema(conn)
+        row = conn.execute(
+            """SELECT id FROM phase0_smoke_jobs WHERE status='queued'
+               ORDER BY created_at, id LIMIT 1"""
+        ).fetchone()
+        if not row:
+            return None
+        job_id = str(row["id"])
+        conn.execute("BEGIN IMMEDIATE")
+        now = utc_now()
+        cur = conn.execute(
+            """UPDATE phase0_smoke_jobs SET status='running', worker_id=?,
+               started_at=?, heartbeat_at=? WHERE id=? AND status='queued'""",
+            (worker_id, now, now, job_id),
+        )
+        conn.commit()
+        if cur.rowcount != 1:
+            return None
+        return get_smoke_job(job_id)
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def finish_smoke_job(job_id: str, **values: Any) -> None:
+    allowed = {"status", "finished_at", "heartbeat_at", "error_message"}
+    if not set(values).issubset(allowed):
+        raise ValueError("Unsupported smoke job update field")
+    assignments = ", ".join(f"{key}=?" for key in values)
+    conn = connect()
+    try:
+        conn.execute(
+            f"UPDATE phase0_smoke_jobs SET {assignments} WHERE id=?",
+            (*values.values(), job_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def generate_smoke_csv(job: dict[str, Any]) -> dict[str, Any]:
+    output_path = Path(job["output_path"])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = output_path.with_suffix(".csv.tmp")
+    with temp_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, lineterminator="\\n")
+        writer.writerow(("store", "status"))
+        writer.writerows((store, "ok") for store in SMOKE_STORES)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp_path, output_path)
+    directory_fd = os.open(output_path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    return {"output_path": str(output_path), "rows_written": len(SMOKE_STORES)}
