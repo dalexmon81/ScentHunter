@@ -3980,7 +3980,7 @@ def refresh_url(store, url):
         # succeeds. HTTP 403/429 and challenge pages remain failures; no bypass
         # or browser fingerprint evasion is attempted.
 
-                    # Keep retailer fetches bounded; Requests' (connect, read) timeout
+        # Keep retailer fetches bounded; Requests' (connect, read) timeout
             # is still not a hard wall-clock deadline if a server dribbles bytes.
             # Deloox response headers can stall, so run this fetch in the existing
             # batch worker with a short socket timeout and let the batch deadline
