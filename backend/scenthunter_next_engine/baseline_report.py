@@ -26,7 +26,6 @@ ACTIVE_STORES = (
     "bplatz", "deloox", "parfumcity", "parfumzentrum", "perfumemarket",
     "sabina", "orioudh", "easycosmetic", "notino",
 )
-EXCLUDED_STORES = {"amazon_de", "amazon_fr"}
 
 
 def _valid_price(value, currency):
