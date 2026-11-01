@@ -5222,10 +5222,10 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                     raise RuntimeError('Unexpected store_product_variants schema')
                 url_expr = "COALESCE(variant_url,url)" if 'variant_url' in variant_columns else 'url'
                 variant_rows = conn.execute(
-                    f"SELECT store,{url_expr} AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_product_variants"
+                    f"SELECT store,url AS canonical_product_url,{url_expr} AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_product_variants"
                 ).fetchall()
                 rows.extend(variant_rows)
-                variant_product_keys = {(str(r['store'] or 'unknown'), str(r['url'] or '')) for r in variant_rows}
+                variant_product_keys = {(str(r['store'] or 'unknown'), str(r['canonical_product_url'] or '')) for r in variant_rows}
 
             if 'store_products' in tables:
                 product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
