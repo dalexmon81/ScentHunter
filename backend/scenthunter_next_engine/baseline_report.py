@@ -188,7 +188,6 @@ def _match(row, catalog_indexes):
 
 def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     catalog = CatalogRepository.from_file(catalog_path)
-    catalog_indexes = _catalog_matcher(catalog)
     if not db_path.is_file():
         raise FileNotFoundError(f"Retailer SQLite database not found: {db_path}")
 
@@ -208,6 +207,28 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     finally:
         conn.close()
 
+    raw_counts = defaultdict(int)
+    for row in records:
+        store = str(row["store"] or "").strip().lower()
+        if store in SUPPORTED_STORES:
+            raw_counts[store] += 1
+    missing_before_matching = [
+        store for store in SUPPORTED_STORES if raw_counts.get(store, 0) == 0
+    ]
+    if missing_before_matching:
+        details = {
+            store: {
+                "persisted_offers": raw_counts.get(store, 0),
+                "indexed_urls": indexed_urls.get(store, 0),
+            }
+            for store in missing_before_matching
+        }
+        raise BaselineIncompleteError(
+            "No persisted offer rows for required active retailers; refusing partial baseline: "
+            + str(details)
+        )
+
+    catalog_indexes = _catalog_matcher(catalog)
     seen = set()
     rows_out = []
     counts = defaultdict(int)
@@ -288,6 +309,27 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         }
         raise BaselineIncompleteError(
             "No persisted offer rows for required retailers; refusing partial baseline: "
+            + str(details)
+        )
+
+    valid_counts = defaultdict(int)
+    for item in rows_out:
+        if item["is_valid_offer"] == "true":
+            valid_counts[item["store"]] += 1
+    missing_valid = [
+        store for store in SUPPORTED_STORES if valid_counts.get(store, 0) == 0
+    ]
+    if missing_valid:
+        details = {
+            store: {
+                "offers": counts.get(store, 0),
+                "valid_offers": valid_counts.get(store, 0),
+                "indexed_urls": indexed_urls.get(store, 0),
+            }
+            for store in missing_valid
+        }
+        raise BaselineIncompleteError(
+            "No fully valid offer for required active retailers; refusing incomplete baseline: "
             + str(details)
         )
 
