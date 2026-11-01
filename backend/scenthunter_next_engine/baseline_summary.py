@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 from collections import defaultdict
 from pathlib import Path
+from urllib.parse import urlparse
 
 from .baseline_report import (
     SUPPORTED_STORES,
@@ -51,7 +52,6 @@ def summarize_rows(rows, catalog_product_count: int) -> list[dict]:
         except (TypeError, ValueError):
             price_ok = False
         url = str(row.get("offer_url") or "").strip()
-        from urllib.parse import urlparse
         try:
             parsed = urlparse(url)
             url_ok = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
