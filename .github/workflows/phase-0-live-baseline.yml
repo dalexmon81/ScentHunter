@@ -133,7 +133,11 @@ jobs:
 
           script_b64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
           remote_cmd="python -c 'import base64; exec(compile(base64.b64decode(\"$script_b64\"), \"phase0_baseline.py\", \"exec\"))'"
-          launch_cmd="rm -f /tmp/phase0-baseline-result.txt /tmp/phase0-baseline-worker.log /tmp/phase0-baseline-worker.pid; nohup $remote_cmd </dev/null >/tmp/phase0-baseline-worker.log 2>&1 & echo \$! >/tmp/phase0-baseline-worker.pid"
+          launch_script="rm -f /tmp/phase0-baseline-result.txt /tmp/phase0-baseline-worker.log /tmp/phase0-baseline-worker.pid
+          nohup $remote_cmd </dev/null >/tmp/phase0-baseline-worker.log 2>&1 &
+          echo \$! >/tmp/phase0-baseline-worker.pid"
+          launch_b64="$(printf '%s' "$launch_script" | base64 -w0)"
+          launch_cmd="sh -c 'echo $launch_b64 | base64 -d | sh'"
           timeout 20s flyctl machine exec --app scenthunter --timeout 15 "$machine_id" "$launch_cmd"
 
           result_b64=""
