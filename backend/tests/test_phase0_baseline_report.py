@@ -49,8 +49,8 @@ class Phase0BaselineReportTests(unittest.TestCase):
         conn.close()
 
         self.assertEqual(len(ACTIVE_STORES), 9)
-            self.assertEqual({row["store"] for row in rows}, {"bplatz"})
-            self.assertEqual(indexed_urls["notino"], 2)
+        self.assertEqual({row["store"] for row in rows}, {"bplatz"})
+        self.assertEqual(indexed_urls["notino"], 2)
         self.assertNotIn("amazon_de", indexed_urls)
 
     def test_zero_offer_database_still_reports_notino_indexed_urls(self):
