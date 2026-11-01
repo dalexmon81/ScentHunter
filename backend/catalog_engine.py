@@ -3961,8 +3961,6 @@ def _refresh_timeout_for_store(store):
 
 def refresh_url(store, url):
     try:
-        if store in DISABLED_STORES:
-            raise RuntimeError('store_temporarily_disabled_no_credentials')
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -3982,7 +3980,6 @@ def refresh_url(store, url):
         # succeeds. HTTP 403/429 and challenge pages remain failures; no bypass
         # or browser fingerprint evasion is attempted.
 
-        amazon_api_item = None
                     # Keep retailer fetches bounded; Requests' (connect, read) timeout
             # is still not a hard wall-clock deadline if a server dribbles bytes.
             # Deloox response headers can stall, so run this fetch in the existing
@@ -4058,10 +4055,10 @@ def refresh_url(store, url):
         # Initialize parser diagnostics before any branch that can fail.
         # A parser exception must never be replaced by NameError while building
         # the failure detail, otherwise hydration retries lose the real cause.
-        secondary_ok = bool(amazon_api_item and amazon_api_item.get('name'))
+        secondary_ok = False
         primary_ok = False
         parser_error = None
-        item = amazon_api_item
+        item = None
         parser_available = False
         if item is None:
             # The retailer scraper owns retailer-specific product-page semantics
