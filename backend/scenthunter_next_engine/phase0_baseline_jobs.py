@@ -118,7 +118,7 @@ def update_job(job_id: str, **values: Any) -> None:
     conn = connect()
     try:
         conn.execute(
-            f"UPDATE phase0_baseline_jobs SET {assignments} WHERE id=?,
+            f"UPDATE phase0_baseline_jobs SET {assignments} WHERE id=?"
             (*values.values(), job_id),
         )
         conn.commit()
