@@ -20,7 +20,7 @@ COLUMNS = (
     "store", "canonical_product_id", "brand", "fragrance", "concentration",
     "size_ml", "variant_type", "gtin", "external_product_id", "offer_url",
     "price", "currency", "availability", "captured_at", "source",
-    "match_confidence", "is_valid_offer", "store_status",
+    "match_status", "match_confidence", "is_valid_offer", "store_status",
 )
 HEARTBEAT_INTERVAL_SECONDS = 20
 STORE_TIMEOUT_SECONDS = 300
@@ -452,6 +452,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
         "availability": availability,
         "captured_at": _captured_at(row["fetched_at"]),
         "source": str(row["source"]),
+        "match_status": match.status.value,
         "match_confidence": str(match.confidence) if match.confidence is not None else "",
         "is_valid_offer": "true" if valid_price and valid_url and valid_stock else "false",
     }
