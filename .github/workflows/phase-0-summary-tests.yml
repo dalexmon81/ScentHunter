@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - phase-0/summary-baseline-runtime
-    paths:
-      - backend/scenthunter_next_engine/baseline_summary_report.py
-      - backend/tests/test_phase0_summary_report.py
-      - .github/workflows/phase-0-summary-tests.yml
   workflow_dispatch:
 
 permissions:
