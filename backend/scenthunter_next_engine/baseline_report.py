@@ -312,6 +312,27 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             + str(details)
         )
 
+    valid_counts = defaultdict(int)
+    for item in rows_out:
+        if item["is_valid_offer"] == "true":
+            valid_counts[item["store"]] += 1
+    missing_valid = [
+        store for store in SUPPORTED_STORES if valid_counts.get(store, 0) == 0
+    ]
+    if missing_valid:
+        details = {
+            store: {
+                "offers": counts.get(store, 0),
+                "valid_offers": valid_counts.get(store, 0),
+                "indexed_urls": indexed_urls.get(store, 0),
+            }
+            for store in missing_valid
+        }
+        raise BaselineIncompleteError(
+            "No fully valid offer for required active retailers; refusing incomplete baseline: "
+            + str(details)
+        )
+
     rows_out.sort(key=lambda item: (
         item["store"], item["offer_url"], item["external_product_id"],
         str(item["size_ml"]), str(item["price"]),
