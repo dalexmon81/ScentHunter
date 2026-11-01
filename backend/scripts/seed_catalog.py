@@ -134,8 +134,10 @@ def main() -> int:
         len(by_product.get(str(row["product_id"]).strip(), []))
         for row in products
     )
+    source_brands = raw.get("brands") if isinstance(raw.get("brands"), list) else []
     report = {
         "status": "validated",
+        "source_brand_records": len(source_brands),
         "brands": len(names),
         "fragrances": len(products),
         "variants": variant_count,
