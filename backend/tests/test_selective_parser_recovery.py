@@ -1,7 +1,13 @@
 """Tests for capped recovery of known, corrected parser-call failures."""
 import sqlite3
+import sys
 import unittest
+from pathlib import Path
 
+# The recovery utility is intentionally kept outside the production backend.
+# Add its repository-level diagnostics directory for this regression test.
+DIAGNOSTICS_DIR = Path(__file__).resolve().parents[2] / "tools" / "diagnostics"
+sys.path.insert(0, str(DIAGNOSTICS_DIR))
 import recover_stale_parser_errors as recovery
 
 
