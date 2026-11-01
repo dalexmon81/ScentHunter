@@ -91,6 +91,35 @@ class Phase0SummaryReportTests(unittest.TestCase):
         notino = next(row for row in rows if row["store"] == "notino")
         self.assertEqual(notino["indexed_url_count"], "2")
 
+    def test_variant_offer_deduplicates_base_row_by_parent_product_url(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.executescript("""
+            CREATE TABLE store_product_variants (
+                store TEXT, url TEXT, variant_url TEXT, variant_key TEXT,
+                name TEXT, brand TEXT, sku TEXT, gtin TEXT, size_ml REAL,
+                concentration TEXT, price REAL, currency TEXT, availability TEXT
+            );
+            CREATE TABLE store_products (
+                store TEXT, url TEXT, name TEXT, brand TEXT, sku TEXT, gtin TEXT,
+                size_ml REAL, concentration TEXT, price REAL, currency TEXT,
+                availability TEXT
+            );
+            INSERT INTO store_product_variants VALUES (
+                'bplatz', 'https://bplatz.example/item',
+                'https://bplatz.example/item/100ml', '100ml', 'Alpha 100 ml',
+                'Acme', 'sku-1', NULL, 100, 'edp', 25, 'EUR', 'in_stock'
+            );
+            INSERT INTO store_products VALUES (
+                'bplatz', 'https://bplatz.example/item', 'Alpha 100 ml',
+                'Acme', 'sku-1', NULL, 100, 'edp', 25, 'EUR', 'in_stock'
+            );
+        """)
+        rows, _, _ = _rows(conn)
+        conn.close()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["offer_url"], "https://bplatz.example/item/100ml")
+
 
 if __name__ == "__main__":
     unittest.main()
