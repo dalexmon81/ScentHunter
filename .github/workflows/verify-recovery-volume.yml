@@ -33,6 +33,23 @@ jobs:
           grep -q "$RECOVERY_VOLUME_ID" /tmp/volumes-before.txt
 
           echo "Starting a one-off Python machine attached ONLY to the recovery volume."
+          cat > /tmp/verify.py <<'PY'
+          import pathlib, sqlite3, json
+          root = pathlib.Path("/data")
+          print("FILES", json.dumps([{"name": p.name, "bytes": p.stat().st_size} for p in root.iterdir()]))
+          db = root / "store_catalog.sqlite3"
+          print("DB_EXISTS", db.exists())
+          print("DB_BYTES", db.stat().st_size if db.exists() else 0)
+          assert db.exists() and db.stat().st_size > 0, "Catalog database missing or empty"
+          con = sqlite3.connect("file:" + str(db) + "?mode=ro", uri=True, timeout=30)
+          print("INTEGRITY", con.execute("PRAGMA quick_check").fetchone()[0])
+          tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+          print("TABLES", json.dumps(tables))
+          assert tables, "No SQLite tables found"
+          con.close()
+          PY
+          VERIFY_B64="$(base64 -w0 /tmp/verify.py)"
+
           flyctl machine run \
             --app scenthunter \
             --region ams \
@@ -42,8 +59,9 @@ jobs:
             --vm-memory 256 \
             --restart no \
             --rm \
+            --file-literal "/verify.py=$VERIFY_B64" \
             python:3.12-alpine \
-            python -c 'import pathlib, sqlite3, json; root=pathlib.Path("/data"); print("FILES", json.dumps([{"name":p.name,"bytes":p.stat().st_size} for p in root.iterdir()])); db=root/"store_catalog.sqlite3"; print("DB_EXISTS", db.exists()); print("DB_BYTES", db.stat().st_size if db.exists() else 0); assert db.exists() and db.stat().st_size > 0, "Catalog database missing or empty"; con=sqlite3.connect("file:"+str(db)+"?mode=ro", uri=True, timeout=30); print("INTEGRITY", con.execute("PRAGMA quick_check").fetchone()[0]); tables=[r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type=\u0027table\u0027 ORDER BY name")]; print("TABLES", json.dumps(tables)); assert tables, "No SQLite tables found"; con.close()'
+            python /verify.py
 
           echo "Checking that the recovery volume has been released after the temporary machine exited."
           flyctl volumes list --app scenthunter | tee /tmp/volumes-after.txt
