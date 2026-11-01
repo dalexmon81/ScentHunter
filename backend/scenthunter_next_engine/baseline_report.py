@@ -71,10 +71,9 @@ def _rows(conn):
                  FROM store_products
                 ORDER BY store, url"""
         ).fetchall()
-    if not variant_rows and not product_rows:
+    if not ({"store_product_variants", "store_products"} & tables):
         raise RuntimeError(
-            "SQLite database has neither populated store_product_variants "
-            "nor store_products"
+            "SQLite database has neither store_product_variants nor store_products"
         )
 
     # A base product row is retained only when no variant row represents
