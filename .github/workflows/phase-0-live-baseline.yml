@@ -172,7 +172,6 @@ jobs:
           # second job while an existing queued/running job is present.
           deadline=$((SECONDS + 1800))
           completed=false
-          last_heartbeat=""
           heartbeat_missing_since=$SECONDS
           while true; do
             (( SECONDS < deadline )) || {
@@ -194,7 +193,17 @@ jobs:
             job_status=$(jq -er '.status' <<< "$status_payload")
             progress=$(jq -r '.progress // 0' <<< "$status_payload")
             heartbeat=$(jq -r '.heartbeat_at // "null"' <<< "$status_payload")
-            current_store=$(jq -r '.current_store // .store // "unknown"' <<< "$status_payload")
+            job_detail_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+              -H "$auth_header" -H "Accept: application/json" \
+              --output phase0-job-detail.json --write-out '%{http_code}' \
+              "$base_url/admin/phase0/baseline/jobs/$job_id")
+            [[ "$job_detail_http" == "200" ]] || {
+              echo "::error::Job detail endpoint returned HTTP $job_detail_http"
+              cat phase0-job-detail.json
+              exit 1
+            }
+            job_detail=$(cat phase0-job-detail.json)
+            current_store=$(jq -r '.current_store // .store // "unknown"' <<< "$job_detail")
             processed=$(jq -r '.processed_stores // 0' <<< "$status_payload")
             total=$(jq -r '.total_stores // 9' <<< "$status_payload")
             error_message=$(jq -r '.error_message // .error // ""' <<< "$status_payload")
