@@ -59,12 +59,20 @@ jobs:
           start_url="$base_url/admin/phase0/baseline/start"
 
           echo "Starting persistent Phase 0 baseline job..."
-          start_payload=$(curl --fail --silent --show-error \
+          start_http_status=$(curl --silent --show-error \
             --connect-timeout 10 --max-time 20 \
+            --output phase0-start-response.json \
+            --write-out '%{http_code}' \
             -X POST \
             -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
             -H "Accept: application/json" \
             "$start_url")
+          start_payload=$(cat phase0-start-response.json)
+          if [[ "$start_http_status" != "202" ]]; then
+            echo "::error::Baseline start returned HTTP $start_http_status:"
+            cat phase0-start-response.json
+            exit 1
+          fi
           echo "$start_payload" | jq .
           job_id=$(jq -er '.job_id | select(type == "string" and length > 0)' <<< "$start_payload")
           start_status=$(jq -er '.status' <<< "$start_payload")

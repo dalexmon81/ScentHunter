@@ -5170,6 +5170,7 @@ def _initialize_phase0_baseline_jobs():
 # enqueue/read/download; the dedicated phase0_baseline_worker process generates
 # the report outside the request lifecycle.
 import hmac as _phase0_hmac
+import traceback as _phase0_traceback
 from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
 from fastapi.responses import FileResponse as _Phase0FileResponse
 
@@ -5195,11 +5196,13 @@ def phase0_baseline_start(authorization: str = _Phase0Header(default='')):
         return job
     except Exception as exc:
         print(
-            f"PHASE0 BASELINE JOB ENQUEUE ERROR: {type(exc).__name__}: {exc}",
+            f"PHASE0 BASELINE JOB ENQUEUE ERROR: {type(exc).__name__}: {exc}\\n"
+            f"{_phase0_traceback.format_exc()}",
             flush=True,
         )
         raise _Phase0HTTPException(
-            status_code=500, detail='Could not enqueue Phase 0 baseline job'
+            status_code=500,
+            detail=f"Could not enqueue Phase 0 baseline job: {type(exc).__name__}: {exc}",
         ) from exc
 
 

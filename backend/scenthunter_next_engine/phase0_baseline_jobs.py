@@ -79,6 +79,7 @@ def create_job() -> dict[str, Any]:
     output_path = output_dir / f"{job_id}.csv"
     conn = connect()
     try:
+        ensure_schema(conn)
         conn.execute(
             """INSERT INTO phase0_baseline_jobs
                (id,status,created_at,total_stores,processed_stores,progress,output_path)
@@ -94,6 +95,7 @@ def create_job() -> dict[str, Any]:
 def get_job(job_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
+        ensure_schema(conn)
         row = conn.execute(
             "SELECT * FROM phase0_baseline_jobs WHERE id=?", (job_id,)
         ).fetchone()
