@@ -1581,7 +1581,13 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     offers = selected.get("offers") if isinstance(selected, dict) else None
     if isinstance(offers, list):
         offers = next((item for item in offers if isinstance(item, dict)), {})
-    stock = _stock(str(offers.get("availability") or "")) if isinstance(offers, dict) else None
+    schema_stock = str(offers.get("availability") or "").lower() if isinstance(offers, dict) else ""
+    if "instock" in schema_stock or "limitedavailability" in schema_stock or "onlineonly" in schema_stock:
+        stock = False
+    elif any(token in schema_stock for token in ("outofstock", "soldout", "discontinued")):
+        stock = True
+    else:
+        stock = _stock(schema_stock) if schema_stock else None
     if stock is None:
         stock = _stock(controls_text)
     availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
