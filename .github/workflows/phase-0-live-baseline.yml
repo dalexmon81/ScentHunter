@@ -125,8 +125,8 @@ jobs:
               output = pathlib.Path(tmp) / "phase-0-retailer-baseline.csv"
               result = module.generate(catalog, db, output)
               pathlib.Path("/tmp/phase0-baseline-result.txt").write_text(
-                  "BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True) + "\\n"
-                  + "BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii") + "\\n",
+                  "BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True) + "\n"
+                  + "BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii") + "\n",
                   encoding="utf-8",
               )
           PY
@@ -141,7 +141,7 @@ jobs:
             poll_cmd='if test -s /tmp/phase0-baseline-result.txt; then cat /tmp/phase0-baseline-result.txt; elif test -s /tmp/phase0-baseline-worker.pid && kill -0 "$(cat /tmp/phase0-baseline-worker.pid)" 2>/dev/null; then echo BASELINE_STILL_RUNNING; else cat /tmp/phase0-baseline-worker.log; exit 1; fi'
             poll_output="$(timeout 20s flyctl machine exec --app scenthunter --timeout 15 "$machine_id" "$poll_cmd")"
             if grep -q '^BASELINE_CSV_B64=' <<<"$poll_output"; then
-              printf '%s\\n' "$poll_output" > /tmp/phase0-baseline.log
+              printf '%s\n' "$poll_output" > /tmp/phase0-baseline.log
               break
             fi
             sleep 5
