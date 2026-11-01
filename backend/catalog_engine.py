@@ -3981,12 +3981,12 @@ def refresh_url(store, url):
         # or browser fingerprint evasion is attempted.
 
         # Keep retailer fetches bounded; Requests' (connect, read) timeout
-            # is still not a hard wall-clock deadline if a server dribbles bytes.
-            # Deloox response headers can stall, so run this fetch in the existing
-            # batch worker with a short socket timeout and let the batch deadline
-            # release the scheduler if the peer never responds.
-            store_timeout = _refresh_timeout_for_store(store)
-            status, final, data = http_get(url, timeout=store_timeout)
+        # is still not a hard wall-clock deadline if a server dribbles bytes.
+        # Deloox response headers can stall, so run this fetch in the existing
+        # batch worker with a short socket timeout and let the batch deadline
+        # release the scheduler if the peer never responds.
+        store_timeout = _refresh_timeout_for_store(store)
+        status, final, data = http_get(url, timeout=store_timeout)
 
             # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
             # document instead of the product page. Treat that response as a
