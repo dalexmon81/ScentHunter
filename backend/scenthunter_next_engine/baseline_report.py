@@ -151,7 +151,6 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "catalog_product_count": catalog.product_count(),
             "catalog_variant_count": catalog.variant_count(),
             "offer_source_table": source_table,
-            "catalog_variants": catalog.variant_count(),
         })
 
     all_offers = sum(x["offer_count"] for x in rows_out)
