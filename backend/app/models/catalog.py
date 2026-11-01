@@ -129,4 +129,4 @@ class IngestionRun(Base):
     offers_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    errors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    errors: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))
