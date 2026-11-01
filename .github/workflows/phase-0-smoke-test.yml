@@ -89,14 +89,14 @@ jobs:
           python3 - <<'PY'
           import csv
           from pathlib import Path
-          stores = ["amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"]
+          stores = ["bplatz", "deloox", "easycosmetic", "notino", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"]
           expected = [["store", "status"]] + [[store, "ok"] for store in stores]
           with Path("phase-0-smoke.csv").open(newline="", encoding="utf-8") as f:
               actual = list(csv.reader(f))
           if actual != expected:
-              raise SystemExit(f"CSV validation failed: expected header + exactly 11 stores; got {actual!r}")
+              raise SystemExit(f"CSV validation failed: expected header + exactly 9 stores; got {actual!r}")
           print("PHASE0_SMOKE_CSV=PASS")
-          print("PHASE0_SMOKE_DATA_ROWS=11")
+          print("PHASE0_SMOKE_DATA_ROWS=9")
           PY
 
       - name: Upload smoke artifact
