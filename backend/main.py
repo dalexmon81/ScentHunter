@@ -5213,13 +5213,14 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         db_path = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'))).expanduser().resolve()
         conn = _phase0_sqlite3.connect(f'file:{db_path}?mode=ro', uri=True, timeout=10)
         conn.row_factory = _phase0_sqlite3.Row
+        now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
+        totals = {}
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if 'store_products' not in tables and 'store_product_variants' not in tables:
                 raise RuntimeError('No retailer offers table found')
-            # Variant rows are the most precise offer records. Keep product
-            # rows for URLs not expanded into variants so partial variant
-            # coverage cannot silently omit entire retailers.
+            # Stream rows from SQLite instead of materializing the entire
+            # retailer catalog in memory before calculating the report.
             if 'store_product_variants' in tables and 'store_products' in tables:
                 rows = conn.execute("""
                     SELECT store, COALESCE(variant_url, url) AS offer_url,
@@ -5233,7 +5234,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                            SELECT 1 FROM store_product_variants AS v
                             WHERE v.store = p.store AND v.url = p.url
                      )
-                """).fetchall()
+                """)
             else:
                 source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
                 columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
@@ -5241,29 +5242,27 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                 if not required.issubset(columns):
                     raise RuntimeError(f'Unexpected {source} schema')
                 url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-                rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+                rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}")
+            for row in rows:
+                store = str(row['store'] or 'unknown')
+                item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
+                item['total_offers'] += 1
+                try: price_ok = float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
+                except (TypeError, ValueError): price_ok = False
+                url = str(row['offer_url'] or '').strip()
+                url_ok = url.startswith(('https://','http://')) and bool(url.split('/',3)[2] if '://' in url else '')
+                availability_ok = str(row['availability'] or '').strip().lower() in _PHASE0_VALID_AVAILABILITY
+                if price_ok: item['offers_with_valid_price'] += 1
+                if url_ok: item['offers_with_valid_url'] += 1
+                if availability_ok: item['offers_with_valid_availability'] += 1
+                if (str(row['brand'] or '').strip().casefold(), str(row['name'] or '').strip().casefold()) in canonical: item['offers_matched_to_canonical_product'] += 1
+                try: age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
+                except (TypeError, ValueError): age = None
+                if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
+                else: item['stale_offers'] += 1
+                if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
         finally:
             conn.close()
-        now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
-        totals = {}
-        for row in rows:
-            store = str(row['store'] or 'unknown')
-            item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
-            item['total_offers'] += 1
-            try: price_ok = float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
-            except (TypeError, ValueError): price_ok = False
-            url = str(row['offer_url'] or '').strip()
-            url_ok = url.startswith(('https://','http://')) and bool(url.split('/',3)[2] if '://' in url else '')
-            availability_ok = str(row['availability'] or '').strip().lower() in _PHASE0_VALID_AVAILABILITY
-            if price_ok: item['offers_with_valid_price'] += 1
-            if url_ok: item['offers_with_valid_url'] += 1
-            if availability_ok: item['offers_with_valid_availability'] += 1
-            if (str(row['brand'] or '').strip().casefold(), str(row['name'] or '').strip().casefold()) in canonical: item['offers_matched_to_canonical_product'] += 1
-            try: age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
-            except (TypeError, ValueError): age = None
-            if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
-            else: item['stale_offers'] += 1
-            if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
         output = _phase0_io.StringIO(newline="")
         writer = _phase0_csv.writer(output, lineterminator="\n")
         writer.writerow(CSV_HEADER.split(","))
