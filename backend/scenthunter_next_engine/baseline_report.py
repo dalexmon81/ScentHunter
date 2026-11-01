@@ -109,7 +109,7 @@ def _rows(conn):
 
 def _catalog_matcher(catalog):
     """Build conservative exact-name indexes; never invent fuzzy identities."""
-    products_by_key = defaultdict(dict)
+    products_by_key = defaultdict(lambda: defaultdict(dict))
     variants_by_key = defaultdict(list)
     for product in catalog.all_products():
         brand = normalize_brand_text(product.brand)
@@ -117,10 +117,10 @@ def _catalog_matcher(catalog):
         for value in (product.name, *product.aliases):
             product_forms.update(_offer_name_forms(value, product.brand))
         for form in product_forms:
-            products_by_key[brand][form] = product
+            products_by_key[brand][form][product.product_id] = product
         for variant in product.variants:
             for form in _variant_forms(variant, product.brand):
-                products_by_key[brand][form] = product
+                products_by_key[brand][form][product.product_id] = product
                 variants_by_key[(brand, form)].append((product, variant))
     return products_by_key, variants_by_key
 
@@ -133,11 +133,9 @@ def _match(row, catalog_indexes):
     forms = _offer_name_forms(raw_name, brand_raw or None)
     exact_title = normalize_identity_text(raw_name)
 
-    candidates = {
-        product.product_id: product
-        for form in forms
-        if (product := products_by_key.get(brand, {}).get(form)) is not None
-    }
+    candidates = {}
+    for form in forms:
+        candidates.update(products_by_key.get(brand, {}).get(form, {}))
     if not candidates:
         return None, None, "", "unresolved"
 
