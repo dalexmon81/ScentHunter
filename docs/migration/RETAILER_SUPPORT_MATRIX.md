@@ -178,6 +178,12 @@ Nel percorso `backend/scrapers/` sono presenti 11 connettori retailer, oltre al 
 6. **Credenziali/feed:** il codice del connettore non dimostra che il servizio sia autorizzato, configurato o raggiungibile. Non inserire segreti nel repository o nel documento.
 7. **Copertura live:** questa matrice è un audit statico. Per dichiarare uno store operativo servono test controllati con URL prodotto reali, varianti note, prezzo, stock, mercato e data/ora di verifica.
 
+## Perimetro baseline Fase 0
+
+La baseline quantitativa del punto 6 considera **9 store attivi**: Bplatz, Deloox, ParfumCity, ParfumZentrum, PerfumeMarket, Sabina, Orioudh, Easycosmetic e Notino. **Amazon.de e Amazon.fr sono esclusi dal CSV** e non concorrono ai conteggi della baseline; i rispettivi scraper restano documentati separatamente e non vengono cancellati.
+
+Notino deve sempre avere una riga nel CSV. Il numero di URL indicizzati è riportato separatamente dal numero di offerte persistite e verificate: un URL scoperto non equivale a un'offerta con prezzo, URL finale e disponibilità validi. Nell'ultima risposta runtime disponibile (1 novembre 2026), il servizio ha segnalato per Notino **9.000 URL indicizzati e 0 offerte persistite** e ha restituito HTTP 503 perché la vecchia logica runtime rifiuta una baseline parziale. Il nuovo generatore registra invece i due valori separatamente e non inventa offerte.
+
 ## Esito dell'audit statico
 
 - **11** directory/store scraper identificati.
