@@ -5157,10 +5157,11 @@ def frontend():
 @app.on_event('startup')
 def _initialize_phase0_baseline_jobs():
     """Prepare the durable queue before accepting API requests."""
-    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema
+    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema, ensure_smoke_schema
     conn = connect()
     try:
         ensure_schema(conn)
+        ensure_smoke_schema(conn)
     finally:
         conn.close()
     print("PHASE0 BASELINE JOB TABLE READY", flush=True)
