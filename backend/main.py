@@ -2325,9 +2325,8 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         indexed_total = sum(1 for store in stores if indexed_flags.get(store))
 
     # An empty persistent catalog must not disable direct store scrapers.
-    # The catalog is the fast path, not a hard prerequisite: Notino and Amazon
-    # still need their bounded live adapters while discovery is blocked or
-    # bootstrapping. Stores without a live adapter remain explicitly unindexed.
+    # The catalog is the fast path. Notino's explicitly bounded public adapter
+    # remains available while discovery is blocked or bootstrapping.
     identity_started = time.monotonic()
     identity_candidate_count = sum(len(grouped_raw.get(store, [])) for store in stores)
 
@@ -2407,7 +2406,7 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # Slow retailer fallbacks are only enabled in the asynchronous search job.
     # The legacy synchronous /search endpoint is used by health/smoke clients and
     # must stay fast; the user-facing /search-start job can stream other stores
-    # while Notino/Amazon finish their bounded attempts.
+    # while Notino finishes its bounded attempt.
     # Prefer authorized Notino feed offers, then use the restored September
     # external-discovery/browser scraper when no fresh offer matches the query.
     # Restore the September Notino external-search + rendered-card path.
@@ -3232,24 +3231,13 @@ def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
     def enabled(name, default='0'):
         return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
 
-    market = 'fr' if machine_store == 'amazon_fr' else 'de'
-    api_configured = (
-        enabled('AMAZON_CREATORS_API_COMPARISON_APPROVED')
-        and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_ID', '')).strip())
-        and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
-        and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
-    ) if machine_store.startswith('amazon_') else None
-    public_enabled = enabled(
-        'NOTINO_PUBLIC_FALLBACK_ENABLED' if machine_store == 'notino'
-        else 'AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1'
-    )
+    public_enabled = enabled('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
     started = _diag_time.monotonic()
     layers = {
         'configuration': {
             'catalog_engine_available': bool(CATALOG_ENGINE_AVAILABLE),
             'store': machine_store,
             'public_fallback_enabled': public_enabled,
-            'creators_api_configured': api_configured,
         },
     }
 
@@ -5100,7 +5088,7 @@ def phase0_baseline_status(
         'progress': float(job.get('progress') or 0),
         'started_at': job.get('started_at'),
         'finished_at': job.get('finished_at'),
-        'total_stores': int(job.get('total_stores') or 11),
+        'total_stores': int(job.get('total_stores') or 9),
         'processed_stores': int(job.get('processed_stores') or 0),
         'download_url': (
             f"/admin/phase0/baseline/download?job_id={job['id']}"
@@ -5139,7 +5127,7 @@ def _phase0_csv_completeness(path: Path) -> tuple[bool, str | None]:
     missing = [store for store, count in counts.items() if count == 0]
     if missing:
         return False, 'CSV has no offer rows for: ' + ', '.join(missing)
-    for store in ('amazon_de', 'amazon_fr', 'notino'):
+    for store in ('notino',):
         if counts[store] <= 0:
             return False, f'CSV has no real offer rows for {store}'
     return True, None
@@ -5218,7 +5206,7 @@ def phase0_baseline_job_detail(
         'heartbeat_at': job.get('heartbeat_at'),
         'worker_id': job.get('worker_id'),
         'progress': float(job.get('progress') or 0),
-        'total_stores': int(job.get('total_stores') or 11),
+        'total_stores': int(job.get('total_stores') or 9),
         'processed_stores': int(job.get('processed_stores') or 0),
         'current_store': current_store,
         'output_path': str(output_path),
