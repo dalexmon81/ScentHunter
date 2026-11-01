@@ -1,0 +1,48 @@
+name: ScentHunter - Safe volume recovery fork
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-volume-recovery-fork
+  cancel-in-progress: false
+
+jobs:
+  fork-volume:
+    name: Fork production volume without deploying
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Fork the existing production volume
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_ID="vol_458x10mgepmny5j4"
+          RECOVERY_NAME="scenthunter_data_recovery"
+
+          echo "Checking that the original volume is still present..."
+          flyctl volumes list --app scenthunter
+
+          echo "Creating an independent recovery copy. The source volume will not be modified."
+          flyctl volumes fork "$SOURCE_ID" \
+            --app scenthunter \
+            --name "$RECOVERY_NAME" \
+            --region ams \
+            --json | tee /tmp/fork-result.json
+
+          echo "Checking the resulting volumes..."
+          flyctl volumes list --app scenthunter | tee /tmp/volumes-after-fork.txt
+
+          grep -q "$SOURCE_ID" /tmp/volumes-after-fork.txt
+          grep -q "$RECOVERY_NAME" /tmp/volumes-after-fork.txt
+
+          echo "SUCCESS: original and recovery volumes are both listed."
+          echo "No machine was deployed and no application configuration was changed."
