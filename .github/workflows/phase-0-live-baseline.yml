@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: scent-hunter-phase-0-live-baseline-v2
+  group: scent-hunter-phase-0-live-baseline-v3
   cancel-in-progress: false
 
 jobs:
@@ -118,7 +118,13 @@ jobs:
 
           SCRIPT_B64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
           REMOTE_CMD="python -c 'import base64; exec(compile(base64.b64decode(\"$SCRIPT_B64\"), \"phase0_baseline.py\", \"exec\"))'"
-          timeout 120s flyctl ssh console --app scenthunter --quiet -C "$REMOTE_CMD" | tee /tmp/phase0-baseline.log
+          MACHINE_ID="$(flyctl machines list --app scenthunter --json | python -c 'import json,sys; machines=json.load(sys.stdin); started=[m for m in machines if m.get("state") == "started"]; print(started[0]["id"] if started else "")')"
+          test -n "$MACHINE_ID" || {
+            echo "No started production machine found for scenthunter." >&2
+            exit 1
+          }
+          echo "Using started production machine: $MACHINE_ID"
+          timeout 120s flyctl ssh console --app scenthunter --machine "$MACHINE_ID" --quiet -C "$REMOTE_CMD" | tee /tmp/phase0-baseline.log
 
           grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
           sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
