@@ -5265,7 +5265,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             else: item['stale_offers'] += 1
             if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
         output = _phase0_io.StringIO(newline="")
-        writer = _phase0_csv.writer(output, lineterminator="\\n")
+        writer = _phase0_csv.writer(output, lineterminator="\n")
         writer.writerow(CSV_HEADER.split(","))
         for store in sorted(totals):
             item = totals[store]
