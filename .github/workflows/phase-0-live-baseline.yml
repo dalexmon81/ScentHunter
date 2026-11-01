@@ -107,7 +107,6 @@ jobs:
           db = pathlib.Path("/data/store_catalog.sqlite3")
           if not db.is_file() or db.stat().st_size <= 0:
               raise SystemExit("Production database is missing or empty: /data/store_catalog.sqlite3")
-
           catalog_candidates = [
               pathlib.Path("/app/backend/product_catalog.json"),
               pathlib.Path("/app/product_catalog.json"),
@@ -115,57 +114,28 @@ jobs:
           catalog = next((p for p in catalog_candidates if p.is_file()), None)
           if catalog is None:
               raise SystemExit("Deployed product_catalog.json not found; refusing to estimate baseline")
-
           branch = "phase-0/live-baseline-only"
-          files = (
-              "baseline_report.py",
-              "catalog_repository.py",
-              "canonical_matcher.py",
-              "models.py",
-          )
+          files = ("baseline_report.py", "catalog_repository.py", "canonical_matcher.py", "models.py")
           with tempfile.TemporaryDirectory(prefix="scenthunter-phase0-") as tmp:
               package = pathlib.Path(tmp) / "scenthunter_next_engine"
               package.mkdir()
               (package / "__init__.py").write_text("", encoding="utf-8")
               for name in files:
-                  url = (
-                      "https://raw.githubusercontent.com/dalexmon81/ScentHunter/"
-                      + branch + "/backend/scenthunter_next_engine/" + name
-                  )
+                  url = "https://raw.githubusercontent.com/dalexmon81/ScentHunter/" + branch + "/backend/scenthunter_next_engine/" + name
                   request = urllib.request.Request(url, headers={"User-Agent": "ScentHunter-Phase0-Baseline/1.0"})
                   with urllib.request.urlopen(request, timeout=30) as response:
                       (package / name).write_bytes(response.read())
-
               sys.path.insert(0, tmp)
               module = importlib.import_module("scenthunter_next_engine.baseline_report")
               output = pathlib.Path(tmp) / "phase-0-retailer-baseline.csv"
               result = module.generate(catalog, db, output)
-              pathlib.Path("/tmp/phase0-baseline-result.txt").write_text(
-                  "BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True) + "\n"
-                  + "BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii") + "\n",
-                  encoding="utf-8",
-              )
+              print("BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True), flush=True)
+              print("BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii"), flush=True)
           PY
 
           script_b64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
-          remote_cmd="python -c 'import base64; exec(compile(base64.b64decode(\"$script_b64\"), \"phase0_baseline.py\", \"exec\"))'"
-          launch_script="rm -f /tmp/phase0-baseline-result.txt /tmp/phase0-baseline-worker.log /tmp/phase0-baseline-worker.pid
-          nohup $remote_cmd </dev/null >/tmp/phase0-baseline-worker.log 2>&1 &
-          echo \$! >/tmp/phase0-baseline-worker.pid"
-          launch_b64="$(printf '%s' "$launch_script" | base64 -w0)"
-          launch_cmd="sh -c 'echo $launch_b64 | base64 -d | sh'"
-          timeout 30s flyctl ssh console --app scenthunter --machine "$machine_id" --command "$launch_cmd"
-
-          result_b64=""
-          for attempt in $(seq 1 36); do
-            poll_cmd="sh -c 'if test -s /tmp/phase0-baseline-result.txt; then cat /tmp/phase0-baseline-result.txt; elif test -s /tmp/phase0-baseline-worker.pid && kill -0 \"\$(cat /tmp/phase0-baseline-worker.pid)\" 2>/dev/null; then echo BASELINE_STILL_RUNNING; else cat /tmp/phase0-baseline-worker.log; exit 1; fi'"
-            poll_output="$(timeout 30s flyctl ssh console --app scenthunter --machine "$machine_id" --command "$poll_cmd")"
-            if grep -q '^BASELINE_CSV_B64=' <<<"$poll_output"; then
-              printf '%s\n' "$poll_output" > /tmp/phase0-baseline.log
-              break
-            fi
-            sleep 5
-          done
+          remote_cmd="sh -c 'echo $script_b64 | base64 -d | python'"
+          timeout 300s flyctl ssh console --app scenthunter --machine "$machine_id" --command "$remote_cmd" | tee /tmp/phase0-baseline.log
 
           grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
           sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
