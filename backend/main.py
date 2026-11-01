@@ -866,7 +866,7 @@ LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0,'notino':45.0,'amazon_fr':20.0,'amazon_de':20.0}
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0,'notino':45.0}
 JOB_TIMEOUT_SECONDS = 30.0
 CATALOG_SEARCH_BUDGET_SECONDS = 12.0
 CATALOG_REFRESH_BUDGET_SECONDS = 0.25
@@ -3373,7 +3373,7 @@ def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
 
     machine_store = _normalise_store(store, store)
     query = str(q or '').strip()
-    allowed = {'notino', 'amazon_fr', 'amazon_de'}
+    allowed = {'notino'}
     if machine_store not in allowed:
         return {
             'ok': False,
