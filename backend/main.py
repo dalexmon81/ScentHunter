@@ -5189,7 +5189,10 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
     try:
-        from scenthunter_next_engine.baseline_report import (\n            BaselineIncompleteError as _Phase0BaselineIncompleteError,\n            generate as _generate_phase0_report,\n        )
+        from scenthunter_next_engine.baseline_report import (
+            BaselineIncompleteError as _Phase0BaselineIncompleteError,
+            generate as _generate_phase0_report,
+        )
 
         root = Path(__file__).resolve().parent
         catalog_path = root / 'product_catalog.json'
@@ -5213,6 +5216,8 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         )
     except _Phase0HTTPException:
         raise
+    except _Phase0BaselineIncompleteError as exc:
+        raise _Phase0HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}', flush=True)
         raise _Phase0HTTPException(
