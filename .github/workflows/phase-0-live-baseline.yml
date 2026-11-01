@@ -56,13 +56,9 @@ jobs:
             --output phase0-latest.json --write-out '%{http_code}' \
             "$base_url/admin/phase0/baseline/latest")
 
-          if [[ "$latest_http" == "200" ]]; then
-            latest_payload=$(cat phase0-latest.json)
-            job_id=$(jq -er '.job_id' <<< "$latest_payload")
-            job_status=$(jq -er '.status' <<< "$latest_payload")
-            echo "Reusing existing job_id=$job_id status=$job_status"
-          elif [[ "$latest_http" == "404" ]]; then
-            echo "No durable Phase 0 job exists; creating the first job."
+          start_new_job() {
+            local reason="$1"
+            echo "$reason"
             start_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
               -X POST -H "$auth_header" -H "Accept: application/json" \
               --output phase0-start.json --write-out '%{http_code}' \
@@ -79,6 +75,23 @@ jobs:
               echo "::error::Expected queued after POST /start, got $job_status"
               exit 1
             }
+          }
+
+          if [[ "$latest_http" == "200" ]]; then
+            latest_payload=$(cat phase0-latest.json)
+            previous_job_id=$(jq -er '.job_id' <<< "$latest_payload")
+            previous_status=$(jq -er '.status' <<< "$latest_payload")
+            if [[ "$previous_status" == "failed" ]]; then
+              echo "Previous job $previous_job_id failed; creating a fresh Phase 0 job."
+              jq '{job_id,status,error_message,error_traceback}' <<< "$latest_payload"
+              start_new_job "Starting a new Phase 0 baseline after the failed job."
+            else
+              job_id="$previous_job_id"
+              job_status="$previous_status"
+              echo "Reusing existing job_id=$job_id status=$job_status"
+            fi
+          elif [[ "$latest_http" == "404" ]]; then
+            start_new_job "No durable Phase 0 job exists; creating the first job."
           else
             echo "::error::GET latest returned unexpected HTTP $latest_http"
             cat phase0-latest.json
@@ -86,11 +99,6 @@ jobs:
           fi
 
           echo "PHASE0_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$job_status" == "failed" ]]; then
-            echo "::error::Latest Phase 0 job is already failed:"
-            jq '{job_id,status,error_message,error_traceback}' phase0-latest.json
-            exit 1
-          fi
           if [[ "$job_status" != "queued" && "$job_status" != "running" && "$job_status" != "completed" ]]; then
             echo "::error::Unexpected latest Phase 0 status: $job_status"
             jq . phase0-latest.json
