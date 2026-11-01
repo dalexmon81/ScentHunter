@@ -78,8 +78,17 @@ class OfferEngineRunner:
         repository = None
         try:
             listings = list(connector.discover(query) or [])
+            details = getattr(connector, "discovery_details", None)
+            if isinstance(details, dict):
+                result.discovery_details = dict(details)
             repository = self.repository_factory(connector)
         except Exception as exc:
+            # Preserve source diagnostics even when discovery raises after
+            # recording partial evidence (blocked endpoint, timeout, parser
+            # failure). Without this, the public search can only say failed.
+            details = getattr(connector, "discovery_details", None)
+            if isinstance(details, dict):
+                result.discovery_details = dict(details)
             result.status = "failed"
             result.errors.append(f"discovery/setup: {type(exc).__name__}: {exc}")
             result.elapsed = round(time.monotonic() - started, 3)

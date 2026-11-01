@@ -1,0 +1,43 @@
+name: Pilot Bplatz diagnostics
+
+on:
+  push:
+    branches:
+      - pilot/bplatz-diagnostics
+  pull_request:
+    branches:
+      - architecture/offer-engine-v1
+    paths:
+      - "backend/offer_engine/**"
+      - "backend/scrapers/bplatz/**"
+      - "backend/tests/test_offer_engine_runner.py"
+      - "backend/tests/test_bplatz_discovery_evidence.py"
+      - "backend/tests/test_bplatz_product_page_parser.py"
+      - ".github/workflows/pilot-bplatz-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bplatz-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Compile backend
+        run: python -m compileall -q backend
+      - name: Run focused Pilot diagnostics tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest -q \
+            backend/tests/test_bplatz_discovery_evidence.py \
+            backend/tests/test_bplatz_product_page_parser.py
+          python -m pytest -q backend/tests/test_offer_engine_runner.py
