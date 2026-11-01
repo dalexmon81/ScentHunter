@@ -581,47 +581,9 @@ jobs:
                   raise SystemExit(label + " failed or was not read-only: " + json.dumps(result, ensure_ascii=False))
           PY
 
-      - name: Refresh and verify Bplatz Liquid Brun Limited Edition 150 ml
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json, time, urllib.parse, urllib.request
-          base = "https://sh-pilot-20261030.fly.dev"
-          url = "https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml"
-          q = urllib.parse.urlencode({"url": url})
-          def get(path):
-              req = urllib.request.Request(base + path, headers={"Accept":"application/json","User-Agent":"ScentHunter-Bplatz-Limited-Edition-Repair/1.0"})
-              with urllib.request.urlopen(req, timeout=90) as response:
-                  return json.loads(response.read().decode("utf-8"))
-          live = get("/diagnostic/bplatz-page-check?" + q)
-          parsed = live.get("parser_result") or {}
-          print("BPLATZ_LIMITED_LIVE=" + json.dumps(live, ensure_ascii=False), flush=True)
-          if not live.get("ok") or parsed.get("size_ml") != 150 or float(parsed.get("price_num") or 0) <= 0:
-              raise SystemExit("Limited Edition live parser has no explicit price/150ml identity")
-          last = None
-          for attempt in range(1, 7):
-              try:
-                  last = get("/diagnostic/bplatz-refresh?" + q)
-                  if last.get("ok"): break
-              except Exception as exc:
-                  last = {"error": type(exc).__name__ + ":" + str(exc)}
-              time.sleep(min(attempt * 3, 15))
-          print("BPLATZ_LIMITED_REFRESH=" + json.dumps(last, ensure_ascii=False), flush=True)
-          if not last or not last.get("ok"):
-              raise SystemExit("Limited Edition targeted refresh failed: " + json.dumps(last, ensure_ascii=False))
-          row = last.get("persisted_row") or {}
-          if row.get("size_ml") != 150 or float(row.get("price") or 0) <= 0:
-              raise SystemExit("Limited Edition persisted without its explicit price: " + json.dumps(last, ensure_ascii=False))
-          search = get("/diagnose-search-final?" + urllib.parse.urlencode({"store":"bplatz","q":"Liquid Brun Limited Edition 150 ml"}))
-          print("BPLATZ_LIMITED_FINAL_SEARCH=" + json.dumps(search, ensure_ascii=False), flush=True)
-          priced = [
-              x for x in search.get("deduped_offers", [])
-              if x.get("catalog_id") == "SH-0031" and float(x.get("price") or 0) > 0
-          ]
-          if not search.get("ok") or not priced or not search.get("final_groups"):
-              raise SystemExit("Limited Edition does not appear as a priced final search offer: " + json.dumps(search, ensure_ascii=False))
-          PY
+      # The Bplatz Liquid Brun Limited Edition 150 ml is explicitly out of stock.
+      # Keep its read-only identity/size diagnostic above, but never require a price
+      # or run a refresh that would incorrectly turn a sold-out item into an offer.
 
       - name: Verify Bplatz Atlantis parser regression tests
         shell: bash
