@@ -44,7 +44,7 @@ jobs:
           fi
           test -s phase-0-retailer-baseline.csv
           header=$(head -n 1 phase-0-retailer-baseline.csv | tr -d '\r')
-          test "$header" = 'store,offer_count,valid_price_count,valid_price_pct,valid_url_count,valid_url_pct,valid_stock_count,valid_stock_pct,ambiguous_match_count,matched_count,unresolved_match_count,catalog_product_count,catalog_variant_count,offer_source_table'
+          test "$header" = 'store,indexed_url_count,offer_count,valid_price_count,valid_price_pct,valid_url_count,valid_url_pct,valid_stock_count,valid_stock_pct,ambiguous_match_count,matched_count,unresolved_match_count,catalog_product_count,catalog_variant_count,offer_source_table'
           python - <<'PY'
           import csv
           from pathlib import Path
@@ -53,7 +53,7 @@ jobs:
               rows = list(reader)
           fields = set(reader.fieldnames or [])
           required = {
-              "store", "offer_count", "valid_price_count", "valid_price_pct",
+              "store", "indexed_url_count", "offer_count", "valid_price_count", "valid_price_pct",
               "valid_url_count", "valid_url_pct", "valid_stock_count",
               "valid_stock_pct", "ambiguous_match_count", "matched_count",
               "unresolved_match_count", "catalog_product_count",
@@ -71,7 +71,7 @@ jobs:
           if set(stores) != expected:
               raise SystemExit(f"Expected exactly nine active retailers plus TOTAL; got {stores}")
           integer_fields = {
-              "offer_count", "valid_price_count", "valid_url_count",
+              "indexed_url_count", "offer_count", "valid_price_count", "valid_url_count",
               "valid_stock_count", "ambiguous_match_count", "matched_count",
               "unresolved_match_count", "catalog_product_count", "catalog_variant_count",
           }
