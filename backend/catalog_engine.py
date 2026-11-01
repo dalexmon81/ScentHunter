@@ -3729,7 +3729,7 @@ def parse_product(store, url, data):
     soup = BeautifulSoup(
         data,
         'html.parser',
-        parse_only=SoupStrainer(['h1', 'script']),
+        parse_only=SoupStrainer(['h1', 'script', 'option', 'button', 'meta']),
     )
     h1 = soup.find('h1')
     h1text = h1.get_text(' ', strip=True) if h1 else ''
@@ -3784,6 +3784,68 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
+
+    size_ml = None
+    concentration = ''
+    if store == 'notino':
+        # Notino's visible title often omits the bottle volume. Prefer explicit
+        # structured size fields, then the product's selector controls; do not
+        # infer a size from unrelated recommendation cards.
+        selector_text = ' '.join(
+            node.get_text(' ', strip=True)
+            for node in soup.find_all(['option', 'button'])
+        )
+        size_sources = (
+            p.get('size'), p.get('size_ml'), p.get('description'),
+            name, h1text, selector_text,
+        )
+        for source_value in size_sources:
+            match = re.search(
+                r'(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl|dl|l)\\b',
+                str(source_value or ''), re.I,
+            )
+            if not match:
+                continue
+            try:
+                amount = float(match.group(1).replace(',', '.'))
+            except ValueError:
+                continue
+            size_ml = amount * {
+                'ml': 1, 'cl': 10, 'dl': 100, 'l': 1000,
+            }[match.group(2).lower()]
+            if 0 < size_ml <= 10000:
+                break
+            size_ml = None
+        concentration_source = ' '.join(
+            str(value or '') for value in (name, h1text, p.get('description'))
+        )
+        concentration_match = re.search(
+            r'eau\\s+de\\s+(?:parfum|toilette|cologne)|extrait(?:\\s+de\\s+parfum)?|\\bedp\\b|\\bedt\\b|\\bedc\\b',
+            concentration_source, re.I,
+        )
+        if concentration_match:
+            concentration = concentration_match.group(0)
+        if price is None:
+            try:
+                notino_parser = importlib.import_module('scrapers.notino.scraper')
+                visible_price = notino_parser._extract_price(
+                    ' '.join(node.get_text(' ', strip=True) for node in soup.find_all(['option', 'button']))
+                )
+                price = float(re.sub(r'[^0-9,]', '', visible_price).replace(',', '.')) if visible_price else None
+            except Exception:
+                price = None
+        if availability == 'unknown':
+            try:
+                notino_parser = importlib.import_module('scrapers.notino.scraper')
+                stock = notino_parser._stock(
+                    ' '.join(node.get_text(' ', strip=True) for node in soup.find_all(['option', 'button']))
+                )
+                if stock is False:
+                    availability = 'in_stock'
+                elif stock is True:
+                    availability = 'out_of_stock'
+            except Exception:
+                pass
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
@@ -3799,6 +3861,8 @@ def parse_product(store, url, data):
         'currency': currency,
         'availability': availability,
         'available': True if availability == 'in_stock' else False if availability == 'out_of_stock' else None,
+        'size_ml': size_ml,
+        'concentration': concentration or None,
         'fetched_at': time.time(),
     }
 
