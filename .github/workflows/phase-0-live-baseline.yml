@@ -41,14 +41,38 @@ jobs:
           export FLY_API_TOKEN="$normalized_token"
 
           volumes_json="$(flyctl volumes list --app scenthunter --json)"
-          machine_id="$(printf '%s' "$volumes_json" | jq -er '
-            [.[] | select(.name == "scenthunter_data" and (.attached_machine_id // "") != "")]
-            | if length == 1 then .[0].attached_machine_id
-              else error("Expected exactly one attached scent hunter data volume")
+          volume_metadata="$(printf '%s' "$volumes_json" | jq -cs 'flatten | map({
+            id: (.id // .ID // ""),
+            name: (.name // .Name // ""),
+            attached_machine_id: (.attached_machine_id // .AttachedMachineID // .AttachedVM // ""),
+            state: (.state // .State // ""),
+            region: (.region // .Region // "")
+          })')"
+          echo "FLY_VOLUME_METADATA=$volume_metadata"
+
+          volume_id="$(printf '%s' "$volume_metadata" | jq -er '
+            [.[] | select(.name == "scenthunter_data")]
+            | if length == 1 then .[0].id
+              else error("Expected exactly one volume named scenthunter_data")
               end
           ')"
-          flyctl machine list --app scenthunter --json | jq -e --arg id "$machine_id" '
-            any(.[]; .id == $id and .state == "started")
+          machine_id="$(printf '%s' "$volume_metadata" | jq -r '
+            [.[] | select(.name == "scenthunter_data") | .attached_machine_id]
+            | if length == 1 and .[0] != "" then .[0] else "" end
+          ')"
+
+          machines_json="$(flyctl machine list --app scenthunter --json)"
+          if [[ -z "$machine_id" ]]; then
+            machine_id="$(printf '%s' "$machines_json" | jq -er --arg volume "$volume_id" '
+              [.[] | select(any((.config.mounts // .Config.Mounts // [])[]?;
+                (.volume // .Volume) == $volume))]
+              | if length == 1 then .[0].id
+                else error("Could not map scent hunter data volume to exactly one machine")
+                end
+            ')"
+          fi
+          printf '%s' "$machines_json" | jq -e --arg id "$machine_id" '
+            any(.[]; (.id // .ID) == $id and (.state // .State) == "started")
           ' >/dev/null || {
             echo "The machine attached to scenthunter_data is not started. No machine will be started automatically." >&2
             exit 1
