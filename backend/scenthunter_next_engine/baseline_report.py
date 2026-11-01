@@ -26,7 +26,6 @@ ACTIVE_STORES = (
     "bplatz", "deloox", "parfumcity", "parfumzentrum", "perfumemarket",
     "sabina", "orioudh", "easycosmetic", "notino",
 )
-EXCLUDED_STORES = {"amazon_de", "amazon_fr"}
 
 
 def _valid_price(value, currency):
@@ -100,7 +99,6 @@ def _rows(conn):
     merged = [
         row for row in merged
         if str(row["store"] or "").strip().lower() in active
-        and str(row["store"] or "").strip().lower() not in EXCLUDED_STORES
     ]
     source = (
         "store_product_variants + store_products fallback"
@@ -147,7 +145,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     })
 
     # Include all nine agreed active retailers even when a retailer currently
-    # has no verified offers. Amazon DE/FR are intentionally excluded.
+    # has no verified offers.
     for store in ACTIVE_STORES:
         totals[store]
 

@@ -48,9 +48,16 @@ class Phase0SummaryReportTests(unittest.TestCase):
                     "INSERT INTO store_products VALUES (?, ?, ?, ?, NULL, NULL, 100, 'edp', 25, 'EUR', 'in_stock')",
                     (store, url, "Alpha", "Acme"),
                 )
-        conn.execute(
-            "INSERT INTO store_urls VALUES ('amazon_de', 'https://amazon.example/x', 'x', NULL, 1800000000, 1)"
-        )
+        # Legacy rows from a previous store scope must not enter the nine-store report.
+        for store in ("amazon_de", "amazon_fr"):
+            conn.execute(
+                "INSERT INTO store_urls VALUES (?, ?, 'legacy', NULL, 1800000000, 1)",
+                (store, f"https://{store}.example/x"),
+            )
+            conn.execute(
+                "INSERT INTO store_products VALUES (?, ?, 'Legacy product', 'Acme', NULL, NULL, 100, 'edp', 25, 'EUR', 'in_stock')",
+                (store, f"https://{store}.example/x"),
+            )
         conn.commit()
         conn.close()
         return catalog, db

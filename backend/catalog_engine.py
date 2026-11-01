@@ -78,8 +78,6 @@ STORES = {
     'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
     'notino': 'https://www.notino.fr',
-    'amazon_fr': 'https://www.amazon.fr',
-    'amazon_de': 'https://www.amazon.de',
 }
 
 STORE_LABELS = {
@@ -96,14 +94,10 @@ STORE_LABELS.update({
     'notino': 'Notino',
     'sabina': 'Sabina',
     'orioudh': 'Orioudh',
-    'amazon_fr': 'Amazon.fr',
-    'amazon_de': 'Amazon.de',
 })
 
-# Amazon marketplaces remain configured for future reactivation, but are
-# inactive until the approved Creators API credentials and marketplace tags exist.
-DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
-ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
+# This registry is the single source of truth for active catalog stores.
+ACTIVE_STORES = tuple(STORES)
 
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
@@ -125,14 +119,6 @@ DISCOVERY_BASES = {
     'notino': (
         # France only: never index or return Notino Germany for this store.
         'https://www.notino.fr',
-    ),
-    'amazon_fr': (
-        # France marketplace only; do not mix Amazon.de catalog URLs.
-        'https://www.amazon.fr',
-    ),
-    'amazon_de': (
-        # Germany marketplace only; do not mix Amazon.fr catalog URLs.
-        'https://www.amazon.de',
     ),
 }
 
@@ -218,17 +204,6 @@ HTML_DISCOVERY_SEEDS = {
         # Keep discovery strictly on the French storefront.
         'https://www.notino.fr/',
         'https://www.notino.fr/parfums/',
-    ),
-    'amazon_fr': (
-        # Generic French fragrance search surfaces; product pages are validated
-        # separately and only canonical ASIN URLs are admitted below.
-        'https://www.amazon.fr/s?k=parfum',
-        'https://www.amazon.fr/s?k=eau+de+parfum',
-    ),
-    'amazon_de': (
-        # Generic German fragrance search surfaces; keep URLs on Amazon.de.
-        'https://www.amazon.de/s?k=parfum',
-        'https://www.amazon.de/s?k=eau+de+parfum',
     ),
 }
 
@@ -1625,23 +1600,6 @@ def _html_product_url(store, raw_url, base_url):
         if low.endswith('.html') and not re.search(r'/(?:category|categorie|categoria|catégorie|kategorie|categorias|categorías|chercher|search|zoeken|buscar|busqueda|búsqueda|sitemap|brand|marque|marca|login|account|cart|checkout)(?:/|$)', low, re.I):
             return canonical
         return None
-    if store in {'amazon_fr', 'amazon_de'}:
-        # Amazon product detail pages use a 10-character ASIN. Admit only
-        # canonical detail routes; exclude search results, reviews, seller,
-        # category, and navigation URLs. Each store's host boundary is enforced
-        # above, so French and German marketplace links cannot cross-contaminate.
-        match = re.fullmatch(
-            r'/(?:dp|gp/product)/([A-Z0-9]{10})/?',
-            p.path,
-            flags=re.I,
-        )
-        if not match:
-            return None
-        asin = match.group(1).upper()
-        market_host = 'www.amazon.fr' if store == 'amazon_fr' else 'www.amazon.de'
-        return urllib.parse.urlunparse((
-            'https', market_host, f'/dp/{asin}', '', '', ''
-        ))
     if store == 'notino':
         # Notino's canonical product URLs commonly use brand/product slugs
         # without a numeric ID. Exclude known navigation/utility routes and
@@ -3329,13 +3287,6 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 def discover_store(store):
     """Refresh active retailer discovery; disabled marketplaces are never crawled."""
     started_at = time.time()
-    if store in DISABLED_STORES:
-        _set_sync_state(
-            store, 'DISABLED_NO_CREDENTIALS', started_at=started_at,
-            finished_at=time.time(), discovered_count=0, fetched_count=0,
-            error='temporarily_disabled;approved_amazon_creators_api_credentials_missing',
-        )
-        return {'status': 'DISABLED_NO_CREDENTIALS', 'count': 0}
     notino_feed_error = None
     if store == 'notino':
         try:
@@ -3508,37 +3459,6 @@ def discover_store(store):
         )
         product_urls.update(fallback['product_urls'])
 
-    # Amazon catalog discovery uses the approved Creators API when configured.
-    # Only canonical ASIN URLs are persisted; current offer data is fetched
-    # separately by the background hydrator through GetItems.
-    amazon_api_discovery = None
-    if store in ('amazon_fr', 'amazon_de'):
-        try:
-            amazon_api = importlib.import_module('scrapers.amazon_creators_api')
-            market = 'fr' if store == 'amazon_fr' else 'de'
-            if amazon_api.is_configured(market):
-                amazon_api_discovery = amazon_api.discover_product_urls(market)
-                for product_url in amazon_api_discovery.get('urls', []):
-                    canonical = _html_product_url(store, product_url, STORES[store])
-                    if canonical:
-                        product_urls[canonical] = ''
-            else:
-                # Make missing production credentials explicit in catalog status.
-                # Previously this stayed None, hiding why the approved API path
-                # had not run and leaving operators to infer the cause from 503s.
-                amazon_api_discovery = {
-                    'status': 'unavailable',
-                    'urls': [],
-                    'queries': 0,
-                    'error': 'amazon_creators_api_not_configured',
-                }
-        except Exception as exc:
-            amazon_api_discovery = {
-                'status': 'unavailable',
-                'urls': [],
-                'error': f'{type(exc).__name__}:{exc}',
-            }
-
     diagnostics={
         'visited':len(visited),
         'successes':sitemap_successes,
@@ -3596,15 +3516,6 @@ def discover_store(store):
             f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
         )
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
-    if amazon_api_discovery is not None:
-        details.append(
-            'amazon_creators_api='
-            f"status:{amazon_api_discovery.get('status')};"
-            f"urls:{len(amazon_api_discovery.get('urls') or [])};"
-            f"queries:{amazon_api_discovery.get('queries', 0)}"
-        )
-        if amazon_api_discovery.get('error'):
-            details.append('amazon_creators_api_error=' + str(amazon_api_discovery['error'])[:500])
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
@@ -4053,8 +3964,6 @@ def _refresh_timeout_for_store(store):
 
 def refresh_url(store, url):
     try:
-        if store in DISABLED_STORES:
-            raise RuntimeError('store_temporarily_disabled_no_credentials')
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -4074,90 +3983,66 @@ def refresh_url(store, url):
         # succeeds. HTTP 403/429 and challenge pages remain failures; no bypass
         # or browser fingerprint evasion is attempted.
 
-        # For Amazon, approved Creators API access owns both discovery and
-        # hydration. Never scrape Amazon product pages when API credentials are
-        # configured; a missing/failed API offer is recorded as a failed refresh.
-        amazon_api_item = None
-        if store in ('amazon_fr', 'amazon_de'):
-            amazon_api = importlib.import_module('scrapers.amazon_creators_api')
-            market = 'fr' if store == 'amazon_fr' else 'de'
-            if amazon_api.is_configured(market):
-                match = re.fullmatch(r'/dp/([A-Z0-9]{10})/?', urllib.parse.urlparse(str(url)).path, re.I)
-                if not match:
-                    raise RuntimeError('amazon_creators_api_invalid_asin_url')
-                scraper_module = importlib.import_module(f'scrapers.{store}.scraper')
-                amazon_api_item = amazon_api.get_product(
-                    market, match.group(1), scraper_module._size_ml,
-                    scraper_module._concentration,
-                )
-                if not amazon_api_item:
-                    raise RuntimeError('amazon_creators_api_no_current_priced_offer')
-                status, final, data = 200, url, b''
-            else:
-                # Never scrape public Amazon HTML without explicit API approval
-                # and all credentials/marketplace tags.
-                raise RuntimeError(amazon_api._configuration_error(market))
-        else:
-            # Keep retailer fetches bounded; Requests' (connect, read) timeout
-            # is still not a hard wall-clock deadline if a server dribbles bytes.
-            # Deloox response headers can stall, so run this fetch in the existing
-            # batch worker with a short socket timeout and let the batch deadline
-            # release the scheduler if the peer never responds.
-            store_timeout = _refresh_timeout_for_store(store)
-            status, final, data = http_get(url, timeout=store_timeout)
+        # Keep retailer fetches bounded; Requests' (connect, read) timeout
+        # is still not a hard wall-clock deadline if a server dribbles bytes.
+        # Deloox response headers can stall, so run this fetch in the existing
+        # batch worker with a short socket timeout and let the batch deadline
+        # release the scheduler if the peer never responds.
+        store_timeout = _refresh_timeout_for_store(store)
+        status, final, data = http_get(url, timeout=store_timeout)
 
-            # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
-            # document instead of the product page. Treat that response as a
-            # transport failure candidate and retry once with the existing
-            # headless-browser fallback before parsing or persisting anything.
-            # This is generic page acquisition: it never supplies or guesses a
-            # product name, price, availability, or variant.
-            if store == 'deloox' and status < 400:
-                body = data or b''
-                lower_body = body[:200000].lower()
-                has_product_markup = (
-                    b'application/ld+json' in lower_body
-                    or b'<h1' in lower_body
-                    or b'itemprop="price"' in lower_body
-                    or b'property="product:price:amount"' in lower_body
+        # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
+        # document instead of the product page. Treat that response as a
+        # transport failure candidate and retry once with the existing
+        # headless-browser fallback before parsing or persisting anything.
+        # This is generic page acquisition: it never supplies or guesses a
+        # product name, price, availability, or variant.
+        if store == 'deloox' and status < 400:
+            body = data or b''
+            lower_body = body[:200000].lower()
+            has_product_markup = (
+                b'application/ld+json' in lower_body
+                or b'<h1' in lower_body
+                or b'itemprop="price"' in lower_body
+                or b'property="product:price:amount"' in lower_body
+            )
+            if len(body) < 8000 or not has_product_markup:
+                browser_result, browser_error = _browser_fetch_html(
+                    url, timeout_ms=12000, settle_ms=1200, locale='nl-BE'
                 )
-                if len(body) < 8000 or not has_product_markup:
-                    browser_result, browser_error = _browser_fetch_html(
-                        url, timeout_ms=12000, settle_ms=1200, locale='nl-BE'
+                if browser_result:
+                    browser_final, browser_data = browser_result
+                    browser_lower = browser_data[:200000].lower()
+                    browser_has_product_markup = (
+                        b'application/ld+json' in browser_lower
+                        or b'<h1' in browser_lower
+                        or b'itemprop="price"' in browser_lower
+                        or b'property="product:price:amount"' in browser_lower
                     )
-                    if browser_result:
-                        browser_final, browser_data = browser_result
-                        browser_lower = browser_data[:200000].lower()
-                        browser_has_product_markup = (
-                            b'application/ld+json' in browser_lower
-                            or b'<h1' in browser_lower
-                            or b'itemprop="price"' in browser_lower
-                            or b'property="product:price:amount"' in browser_lower
-                        )
-                        # A valid rendered product page can be compact. Do not
-                        # reject it solely for being under 8 KB; the retailer
-                        # parser below remains responsible for product identity
-                        # and an explicit current offer.
-                        if _deloox_browser_html_is_product_candidate(browser_data):
-                            final, data = browser_final, browser_data
-                            print(
-                                f'CATALOG BROWSER FALLBACK OK store=deloox '
-                                f'url={url!r} bytes={len(browser_data)}',
-                                flush=True,
-                            )
-                        else:
-                            print(
-                                f'CATALOG BROWSER FALLBACK UNUSABLE store=deloox '
-                                f'url={url!r} bytes={len(browser_data)} '
-                                f'product_markup={browser_has_product_markup}',
-                                flush=True,
-                            )
-                    else:
+                    # A valid rendered product page can be compact. Do not
+                    # reject it solely for being under 8 KB; the retailer
+                    # parser below remains responsible for product identity
+                    # and an explicit current offer.
+                    if _deloox_browser_html_is_product_candidate(browser_data):
+                        final, data = browser_final, browser_data
                         print(
-                            f'CATALOG BROWSER FALLBACK FAILED store=deloox '
-                            f'url={url!r} error={browser_error}',
+                            f'CATALOG BROWSER FALLBACK OK store=deloox '
+                            f'url={url!r} bytes={len(browser_data)}',
                             flush=True,
                         )
+                    else:
+                        print(
+                            f'CATALOG BROWSER FALLBACK UNUSABLE store=deloox '
+                            f'url={url!r} bytes={len(browser_data)} '
+                            f'product_markup={browser_has_product_markup}',
+                            flush=True,
+                        )
+                else:
+                    print(
+                        f'CATALOG BROWSER FALLBACK FAILED store=deloox '
+                        f'url={url!r} error={browser_error}',
+                        flush=True,
+                    )
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
@@ -4173,38 +4058,34 @@ def refresh_url(store, url):
         # Initialize parser diagnostics before any branch that can fail.
         # A parser exception must never be replaced by NameError while building
         # the failure detail, otherwise hydration retries lose the real cause.
-        secondary_ok = bool(amazon_api_item and amazon_api_item.get('name'))
+        secondary_ok = False
         primary_ok = False
         parser_error = None
-        item = amazon_api_item
+        item = None
         parser_available = False
-        if item is None:
-            # The retailer scraper owns retailer-specific product-page semantics
-            # such as public-vs-code pricing and product-vs-set identity.
-            # When a store exposes that parser, it is authoritative for price
-            # and identity; generic JSON-LD is only a fallback.
-            try:
-                module = importlib.import_module(f'scrapers.{store}.scraper')
-                parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
-            except Exception:
-                parser_available = False
+        # The retailer scraper owns retailer-specific product-page semantics
+        # such as public-vs-code pricing and product-vs-set identity.
+        # When a store exposes that parser, it is authoritative for price
+        # and identity; generic JSON-LD is only a fallback.
+        try:
+            module = importlib.import_module(f'scrapers.{store}.scraper')
+            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+        except Exception:
+            parser_available = False
 
-            parser_error = None
-            if parser_available:
-                try:
-                    item = _secondary_store_parser(store, final, url, html_data=data)
-                    secondary_ok = bool(item and item.get('name'))
-                except Exception as exc:
-                    parser_error = f'{type(exc).__name__}:{exc}'
-                    item = None
-                if not item or not item.get('name'):
-                    fallback_item = parse_product(store, final, data)
-                    if fallback_item and fallback_item.get('name'):
-                        item = fallback_item
-            else:
-                item = parse_product(store, final, data)
+        if parser_available:
+            try:
+                item = _secondary_store_parser(store, final, url, html_data=data)
+                secondary_ok = bool(item and item.get('name'))
+            except Exception as exc:
+                parser_error = f'{type(exc).__name__}:{exc}'
+                item = None
+            if not item or not item.get('name'):
+                fallback_item = parse_product(store, final, data)
+                if fallback_item and fallback_item.get('name'):
+                    item = fallback_item
         else:
-            parser_error = None
+            item = parse_product(store, final, data)
 
         # Keep the diagnostic flag defined on every parser path. A missing
         # product must report a parser miss, not raise NameError while building

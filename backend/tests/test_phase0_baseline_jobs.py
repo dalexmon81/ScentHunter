@@ -12,6 +12,8 @@ from scenthunter_next_engine.models import CanonicalProduct, CanonicalVariant
 from scenthunter_next_engine.phase0_baseline_jobs import (
     COLUMNS,
     STORES,
+    SMOKE_STORES,
+    generate_smoke_csv,
     claim_next_job,
     connect,
     create_job,
@@ -74,13 +76,36 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(created["status"], "queued")
         queued = get_job(created["job_id"])
         self.assertEqual(queued["status"], "queued")
-        self.assertEqual(queued["total_stores"], 11)
+        self.assertEqual(queued["total_stores"], 9)
 
         claimed = claim_next_job("worker-a")
         self.assertEqual(claimed["id"], created["job_id"])
         self.assertEqual(claimed["status"], "running")
         self.assertEqual(claimed["worker_id"], "worker-a")
         self.assertIsNone(claim_next_job("worker-b"))
+
+    def test_legacy_running_eleven_store_job_is_retired(self):
+        created = create_job()
+        conn = connect()
+        try:
+            conn.execute(
+                """UPDATE phase0_baseline_jobs
+                      SET status='running', total_stores=11,
+                          started_at='2026-11-01T00:00:00+00:00'
+                    WHERE id=?""",
+                (created["job_id"],),
+            )
+            conn.commit()
+            ensure_schema(conn)
+            row = conn.execute(
+                "SELECT status,total_stores,error_message FROM phase0_baseline_jobs WHERE id=?",
+                (created["job_id"],),
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(row["status"], "failed")
+        self.assertEqual(row["total_stores"], 11)
+        self.assertIn("scope changed", row["error_message"])
 
     def test_stale_running_job_is_marked_failed_but_queued_job_survives(self):
         queued = create_job()
@@ -138,6 +163,16 @@ class Phase0PersistentJobTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_smoke_csv_contains_exactly_nine_active_retailers(self):
+        output = self.root / "phase0" / "smoke" / "smoke.csv"
+        result = generate_smoke_csv({"output_path": str(output)})
+        with output.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual(SMOKE_STORES, STORES)
+        self.assertEqual(result["rows_written"], 9)
+        self.assertEqual([row["store"] for row in rows], list(STORES))
+        self.assertFalse({"amazon_de", "amazon_fr"} & {row["store"] for row in rows})
+
     def test_csv_is_written_to_volume_path_and_published_atomically(self):
         conn = connect()
         try:
@@ -186,7 +221,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(offer_rows[0]["store"], "bplatz")
         self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
         self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
-        self.assertEqual(len(STORES), 11)
+        self.assertEqual(len(STORES), 9)
         self.assertEqual(set(status_rows), set(STORES))
         self.assertTrue(all(status == "completed" for status in status_rows.values()))
 
