@@ -1,6 +1,13 @@
 name: Phase 0 - read-only production catalog baseline
 
 on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - backend/scenthunter_next_engine/baseline_report.py
+      - tests/test_phase0_baseline_report.py
+      - .github/workflows/phase-0-live-baseline.yml
   workflow_dispatch:
     inputs:
       confirm_read_only:
@@ -25,6 +32,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Checkout architecture branch for regression tests
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/catalog-first-architecture
+
+      - name: Run baseline report regression tests
+        run: python -m unittest tests.test_phase0_baseline_report
+
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
