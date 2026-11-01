@@ -208,6 +208,27 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     finally:
         conn.close()
 
+    raw_counts = defaultdict(int)
+    for row in records:
+        store = str(row["store"] or "").strip().lower()
+        if store in SUPPORTED_STORES:
+            raw_counts[store] += 1
+    missing_before_matching = [
+        store for store in SUPPORTED_STORES if raw_counts.get(store, 0) == 0
+    ]
+    if missing_before_matching:
+        details = {
+            store: {
+                "persisted_offers": raw_counts.get(store, 0),
+                "indexed_urls": indexed_urls.get(store, 0),
+            }
+            for store in missing_before_matching
+        }
+        raise BaselineIncompleteError(
+            "No persisted offer rows for required active retailers; refusing partial baseline: "
+            + str(details)
+        )
+
     seen = set()
     rows_out = []
     counts = defaultdict(int)
