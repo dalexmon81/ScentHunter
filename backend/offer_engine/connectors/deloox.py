@@ -85,20 +85,18 @@ class DelooxConnector:
             token for token in self._searchable_tokens(query)
             if len(token) > 1 and token not in {"ml", "edp", "edt"}
         }
-        # Offer Engine user searches use a bounded query-only path: do not
-        # let a no-match search trigger the legacy full category/sitemap crawl.
-        # The deep discovery fallback remains available to the legacy scraper.
-        # Product-page verification is performed sequentially by the runner.
-        # Eight candidates can therefore consume the entire global connector
-        # budget when Deloox serves challenge/interstitial pages. Keep the
-        # query-only discovery small; exact size/identity checks still happen
-        # below and in observe(), and no unverified offer is published.
+        # Keep discovery bounded, but do not truncate the retailer's search
+        # frontier to two URLs. Deloox often ranks unrelated family variants
+        # ahead of the exact requested bottle. The category/sitemap fallback
+        # runs only when the primary search returns no candidates and shares
+        # the same 45-second deadline. Every candidate is still independently
+        # fetched and identity/size/stock checked in observe()/resolve().
         result = scraper.search_stream(
             query,
             deadline_seconds=45,
-            max_candidates=2,
-            max_results=2,
-            include_fallback=False,
+            max_candidates=8,
+            max_results=8,
+            include_fallback=True,
         )
         details = result.get("details") if isinstance(result, dict) else {}
         self.discovery_details = dict(details) if isinstance(details, dict) else {}
@@ -108,8 +106,25 @@ class DelooxConnector:
             reasons = details.get("search_failure_reasons") or details.get("browser_search") or {}
             raise RuntimeError(f"deloox_discovery_{status}:{reasons}")
 
+        rows = [row for row in (result.get("results") or []) if isinstance(row, dict)]
+        identifier_sizes: dict[str, set[int]] = {}
+        for candidate in rows:
+            candidate_identity = candidate.get("identity") if isinstance(candidate.get("identity"), dict) else {}
+            candidate_attrs = candidate.get("attributes") if isinstance(candidate.get("attributes"), dict) else {}
+            candidate_size = candidate_attrs.get("size_ml") if isinstance(candidate_attrs.get("size_ml"), dict) else {}
+            candidate_id = (
+                (candidate_identity.get("sku") or {}).get("value")
+                or (candidate_identity.get("gtin") or {}).get("value")
+            )
+            candidate_size_value = (candidate_size or {}).get("value")
+            if candidate_id and candidate_size_value:
+                try:
+                    identifier_sizes.setdefault(str(candidate_id), set()).add(int(candidate_size_value))
+                except (TypeError, ValueError):
+                    pass
+
         seen: set[tuple[str, int | None, str | None]] = set()
-        for row in result.get("results") or []:
+        for row in rows:
             if not isinstance(row, dict):
                 continue
             url = str(row.get("url") or "").strip()
@@ -148,10 +163,16 @@ class DelooxConnector:
             if dedupe_key in seen:
                 continue
             seen.add(dedupe_key)
-            external_id = sku or gtin or hashlib.sha256(
+            base_identifier = sku or gtin
+            external_id = base_identifier or hashlib.sha256(
                 f"{url}|{size_ml or ''}|{name}".encode("utf-8")
             ).hexdigest()[:24]
-            if size_ml is not None and not (sku or gtin):
+            # Some Deloox pages reuse a product-family SKU across bottle sizes.
+            # Keep each sellable size as its own deterministic listing.
+            if size_ml is not None and (
+                not base_identifier
+                or len(identifier_sizes.get(str(base_identifier), set())) > 1
+            ):
                 external_id = f"{external_id}:{size_ml}ml"
 
             yield RetailerListing(

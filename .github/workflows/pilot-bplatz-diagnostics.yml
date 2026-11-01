@@ -13,6 +13,10 @@ on:
       - "backend/tests/test_offer_engine_runner.py"
       - "backend/tests/test_bplatz_discovery_evidence.py"
       - "backend/tests/test_bplatz_product_page_parser.py"
+      - "backend/tests/test_offer_engine_deloox_connector_pipeline.py"
+      - "backend/tests/test_offer_engine_parsed_search_connector.py"
+      - "backend/tests/test_offer_engine_amazon_creators_connector.py"
+      - "backend/tests/test_orioudh_discovery.py"
       - ".github/workflows/pilot-bplatz-diagnostics.yml"
 
 permissions:
@@ -40,4 +44,9 @@ jobs:
           python -m pytest -q \
             backend/tests/test_bplatz_discovery_evidence.py \
             backend/tests/test_bplatz_product_page_parser.py
-          python -m pytest -q backend/tests/test_offer_engine_runner.py
+          python -m pytest -q \
+            backend/tests/test_offer_engine_runner.py \
+            backend/tests/test_offer_engine_deloox_connector_pipeline.py \
+            backend/tests/test_offer_engine_parsed_search_connector.py \
+            backend/tests/test_offer_engine_amazon_creators_connector.py \
+            backend/tests/test_orioudh_discovery.py

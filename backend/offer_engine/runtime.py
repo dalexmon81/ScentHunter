@@ -18,6 +18,11 @@ from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
 from .connectors.parsed_search import ParsedSearchConnector
+from .connectors.amazon_creators import AmazonCreatorsConnector
+try:
+    from scrapers import amazon_creators_api
+except ModuleNotFoundError:
+    from backend.scrapers import amazon_creators_api
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
@@ -235,12 +240,16 @@ def run_offer_engine(
     )
     if connectors is None:
         configured_connectors = [DelooxConnector()]
-        if all(os.environ.get(name, "").strip() for name in (
-            "NOTINO_CJ_FEED_URL",
-            "NOTINO_CJ_FEED_USERNAME",
-            "NOTINO_CJ_FEED_PASSWORD",
-        )):
-            configured_connectors.append(NotinoFeedConnector())
+        # Keep all intended retailers visible in diagnostics even when an
+        # integration is not configured. The connector fails closed with an
+        # explicit reason and cannot publish an offer without its authorized
+        # source credentials.
+        configured_connectors.append(NotinoFeedConnector())
+        # Amazon is admitted only through the approved Creators API. These
+        # connectors report configuration failures when unavailable; legacy
+        # public-search/Bing-snippet scrapers are never admitted as offers.
+        for amazon_market in ("de", "fr"):
+            configured_connectors.append(AmazonCreatorsConnector(amazon_market))
         configured_connectors.extend([
             ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
             ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
