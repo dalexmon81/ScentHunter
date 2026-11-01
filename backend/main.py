@@ -5222,7 +5222,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                     raise RuntimeError('Unexpected store_product_variants schema')
                 url_expr = "COALESCE(variant_url,url)" if 'variant_url' in variant_columns else 'url'
                 variant_rows = conn.execute(
-                    f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM store_product_variants"
+                    f"SELECT store,{url_expr} AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_product_variants"
                 ).fetchall()
                 rows.extend(variant_rows)
                 variant_stores = {str(r['store'] or 'unknown') for r in variant_rows}
@@ -5233,7 +5233,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                 if not required.issubset(product_columns):
                     raise RuntimeError('Unexpected store_products schema')
                 product_rows = conn.execute(
-                    "SELECT store,url AS offer_url,name,brand,price,currency,availability,fetched_at FROM store_products"
+                    "SELECT store,url AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_products"
                 ).fetchall()
                 rows.extend(r for r in product_rows if str(r['store'] or 'unknown') not in variant_stores)
         finally:
