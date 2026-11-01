@@ -179,3 +179,42 @@ def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
     ]}
     assert _first_offer(product)["availability"] == "https://schema.org/OutOfStock"
 
+
+
+def test_notino_public_product_page_parser_extracts_real_offer_identity_and_variant():
+    html = b"""<!doctype html>
+    <html><head>
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "French Avenue Liquid Brun Eau de Parfum pour homme",
+        "brand": {"@type": "Brand", "name": "French Avenue"},
+        "sku": "FRV00011",
+        "gtin13": "6291108730001",
+        "offers": {
+          "@type": "Offer",
+          "price": "49.50",
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+      </script>
+    </head><body>
+      <h1>French Avenue Liquid Brun Eau de Parfum pour homme</h1>
+      <button>100 ml 49,50€ En stock</button>
+    </body></html>"""
+    item = catalog.parse_product(
+        "notino",
+        "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+        html,
+    )
+    assert item["name"] == "French Avenue Liquid Brun Eau de Parfum pour homme"
+    assert item["brand"] == "French Avenue"
+    assert item["sku"] == "FRV00011"
+    assert item["gtin"] == "6291108730001"
+    assert item["price_num"] == 49.5
+    assert item["currency"] == "EUR"
+    assert item["availability"] == "in_stock"
+    assert item["size_ml"] == 100
+    assert item["concentration"].casefold() == "eau de parfum"
