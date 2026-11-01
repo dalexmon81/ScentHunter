@@ -74,7 +74,8 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "Run this report in the environment containing the live catalog DB."
         )
 
-    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
+    # Immutable SQLite URI: this report must never create or mutate the production DB.
+    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro&immutable=1", uri=True)
     conn.row_factory = sqlite3.Row
     try:
         records, source_table = _rows(conn)
@@ -147,6 +148,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "unresolved_match_count": item["unresolved"],
             "catalog_product_count": catalog.product_count(),
             "offer_source_table": source_table,
+            "catalog_variants": catalog.variant_count(),
         })
 
     all_offers = sum(x["offer_count"] for x in rows_out)
