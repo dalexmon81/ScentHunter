@@ -1,6 +1,9 @@
 """Regression tests for the Phase 0 retailer baseline report."""
 import sqlite3
+import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scenthunter_next_engine.baseline_report import ACTIVE_STORES, _rows
 
 
@@ -46,4 +49,4 @@ def test_baseline_keeps_notino_indexed_urls_without_fabricating_offers():
     assert len(ACTIVE_STORES) == 9
     assert {row["store"] for row in rows} == {"bplatz"}
     assert indexed_urls["notino"] == 2
-    assert indexed_urls["amazon_de"] if "amazon_de" in indexed_urls else 0 == 0
+    assert "amazon_de" not in indexed_urls
