@@ -358,6 +358,9 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     read_conn.row_factory = sqlite3.Row
     read_conn.execute("PRAGMA query_only=ON")
     read_conn.execute("PRAGMA busy_timeout=45000")
+    # Hold one read snapshot for all stores so row counts and streamed rows
+    # cannot disagree while normal hydration continues writing in WAL mode.
+    read_conn.execute("BEGIN")
     table_names = {
         row[0] for row in read_conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
@@ -428,6 +431,11 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
             flush=True,
         )
         os.replace(temp_path, output_path)
+        directory_fd = os.open(output_path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
         print(
             f"PHASE0 WORKER FILE RENAMED job={job['id']} output={output_path}",
             flush=True,
