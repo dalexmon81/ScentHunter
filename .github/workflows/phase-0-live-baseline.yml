@@ -91,7 +91,7 @@ jobs:
           while lines and not lines[0].strip():
               lines.pop(0)
           normalized = "\\n".join(lines).rstrip() + "\\n"
-          path.write_text(normalized, encoding="utf-8", newline="\\n")
+          path.write_text(normalized, encoding="utf-8")
           expected = "store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers"
           actual = lines[0] if lines else ""
           if actual != expected:
