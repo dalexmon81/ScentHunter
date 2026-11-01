@@ -58,7 +58,7 @@ def _rows(conn):
     product_rows = []
     if "store_product_variants" in tables:
         variant_rows = conn.execute(
-            """SELECT store, COALESCE(variant_url, url) AS product_url,
+            """SELECT store, COALESCE(variant_url, url) AS offer_url, url AS product_url,
                       name, brand, sku, gtin, size_ml, concentration,
                       price, currency, availability
                  FROM store_product_variants
@@ -66,7 +66,7 @@ def _rows(conn):
         ).fetchall()
     if "store_products" in tables:
         product_rows = conn.execute(
-            """SELECT store, url AS product_url, name, brand, sku, gtin,
+            """SELECT store, url AS offer_url, url AS product_url, name, brand, sku, gtin,
                       size_ml, concentration, price, currency, availability
                  FROM store_products
                 ORDER BY store, url"""
@@ -154,7 +154,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
 
         if _valid_price(row["price"], str(row["currency"] or "").upper()):
             item["valid_price"] += 1
-        if _valid_url(row["product_url"]):
+        if _valid_url(row["offer_url"]):
             item["valid_url"] += 1
         if str(row["availability"] or "").strip().lower() in VALID_STOCK:
             item["valid_stock"] += 1
@@ -162,7 +162,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         offer = RetailerOffer(
             retailer=store,
             raw_name=str(row["name"] or "unknown product"),
-            product_url=str(row["product_url"]) if row["product_url"] else None,
+            product_url=str(row["offer_url"]) if row["offer_url"] else None,
             retailer_product_id=str(row["gtin"] or row["sku"]) if (row["gtin"] or row["sku"]) else None,
             brand_raw=str(row["brand"]) if row["brand"] else None,
             size_ml=int(row["size_ml"]) if row["size_ml"] not in (None, "") and float(row["size_ml"]).is_integer() and float(row["size_ml"]) > 0 else None,
