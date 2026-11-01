@@ -2,26 +2,18 @@ name: Phase 0 - live retailer baseline (read-only)
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Fly Deploy
-    types:
-      - completed
-    branches:
-      - main
-
 permissions:
   contents: read
   actions: read
 
 jobs:
   baseline:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Confirm production deploy and health checks succeeded
-        if: github.event_name == 'workflow_run'
+        if: false
         env:
           GH_TOKEN: ${{ github.token }}
           PARENT_RUN_ID: ${{ github.event.workflow_run.id }}

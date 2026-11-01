@@ -75,11 +75,69 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_phase0_baseline_jobs_queue "
         "ON phase0_baseline_jobs(status, created_at)"
     )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS phase0_baseline_job_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT NOT NULL,
+            at TEXT NOT NULL,
+            event TEXT NOT NULL,
+            store TEXT,
+            message TEXT,
+            details TEXT
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phase0_baseline_job_events_job "
+        "ON phase0_baseline_job_events(job_id, id)"
+    )
     conn.commit()
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def record_job_event(
+    job_id: str, event: str, *, store: str | None = None,
+    message: str | None = None, details: dict[str, Any] | None = None,
+) -> None:
+    import json
+    conn = connect()
+    try:
+        conn.execute(
+            """INSERT INTO phase0_baseline_job_events
+               (job_id, at, event, store, message, details)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (job_id, utc_now(), event, store, message,
+             json.dumps(details, ensure_ascii=False, default=str) if details else None),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_job_events(job_id: str) -> list[dict[str, Any]]:
+    import json
+    conn = connect()
+    try:
+        rows = conn.execute(
+            """SELECT id, job_id, at, event, store, message, details
+                 FROM phase0_baseline_job_events
+                WHERE job_id=? ORDER BY id""",
+            (job_id,),
+        ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            if item.get("details"):
+                try:
+                    item["details"] = json.loads(item["details"])
+                except (TypeError, ValueError):
+                    pass
+            result.append(item)
+        return result
+    finally:
+        conn.close()
 
 
 def create_job() -> dict[str, Any]:
@@ -99,6 +157,7 @@ def create_job() -> dict[str, Any]:
         conn.commit()
     finally:
         conn.close()
+    record_job_event(job_id, "job_created", message="Baseline job queued")
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -145,6 +204,15 @@ def update_job(job_id: str, **values: Any) -> None:
         conn.commit()
     finally:
         conn.close()
+    if "heartbeat_at" in values:
+        record_job_event(job_id, "heartbeat", message="Worker heartbeat")
+    if values.get("status") == "completed":
+        record_job_event(job_id, "job_completed", message="Baseline job completed")
+    elif values.get("status") == "failed":
+        record_job_event(
+            job_id, "job_failed",
+            message=str(values.get("error_message") or "Baseline job failed"),
+        )
 
 
 def recover_stale_jobs() -> int:
@@ -213,6 +281,8 @@ def claim_next_job(worker_id: str) -> dict[str, Any] | None:
         conn.commit()
         if cur.rowcount != 1:
             return None
+        record_job_event(job_id, "worker_claimed", message=f"Worker {worker_id} claimed job")
+        record_job_event(job_id, "job_started", message="Baseline processing started")
         return get_job(job_id)
     except Exception:
         conn.rollback()
@@ -425,6 +495,10 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
             for store_index, store in enumerate(STORES):
                 store_total = counts[store]
                 store_read = 0
+                record_job_event(
+                    job["id"], "store_started", store=store,
+                    message=f"Store export started; expected offers={store_total}",
+                )
                 print(
                     f"PHASE0 WORKER STORE START job={job['id']} "
                     f"store={store} offers_expected={store_total}",
@@ -454,6 +528,11 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     progress=processed_stores / len(STORES),
                     processed_stores=processed_stores,
                 )
+                record_job_event(
+                    job["id"], "store_completed", store=store,
+                    message=f"Store export completed; offers_read={store_read}",
+                    details={"offers_read": store_read, "csv_rows_written": rows_written},
+                )
                 print(
                     f"PHASE0 WORKER STORE DONE job={job['id']} store={store} "
                     f"offers_read={store_read} csv_rows_written={rows_written}",
@@ -472,6 +551,10 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
             flush=True,
         )
         os.replace(temp_path, output_path)
+        record_job_event(
+            job["id"], "csv_written", message="Baseline CSV atomically published",
+            details={"output_path": str(output_path), "size_bytes": output_path.stat().st_size},
+        )
         directory_fd = os.open(output_path.parent, os.O_RDONLY)
         try:
             os.fsync(directory_fd)

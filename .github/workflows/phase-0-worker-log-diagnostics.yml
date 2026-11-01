@@ -1,0 +1,47 @@
+name: Phase 0 - worker log diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Capture and filter recent worker logs
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+            echo "::error::FLY_API_TOKEN secret is missing."
+            exit 1
+          fi
+
+          # Read-only log retrieval. No SSH, deployment, or application mutation.
+          flyctl logs --app scenthunter --no-tail 2>&1 | tail -n 500 > phase0-worker-logs-last-500.txt
+
+          grep -Ein -i \
+            '5518639f139048b0b6af68b3ae595e79|easycosmetic|heartbeat|worker|Traceback|SQLite|locked|timeout|catalog|Permission denied|No such file or directory' \
+            phase0-worker-logs-last-500.txt > phase0-worker-logs-filtered.txt || true
+
+          echo "Captured lines: $(wc -l < phase0-worker-logs-last-500.txt)"
+          echo "Filtered lines: $(wc -l < phase0-worker-logs-filtered.txt)"
+          cat phase0-worker-logs-filtered.txt
+
+      - name: Upload worker diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-worker-diagnostics
+          path: |
+            phase0-worker-logs-last-500.txt
+            phase0-worker-logs-filtered.txt
+          if-no-files-found: error
+          retention-days: 30
