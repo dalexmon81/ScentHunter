@@ -5154,50 +5154,125 @@ def frontend():
     return {'error':'frontend/index.html not found'}
 
 
-# Authenticated, read-only Phase 0 baseline export.
-import hmac as _phase0_hmac
-import tempfile as _phase0_tempfile
-from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
-from fastapi.responses import Response as _Phase0Response
+@app.on_event('startup')
+def _initialize_phase0_baseline_jobs():
+    """Prepare the durable queue before accepting API requests."""
+    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema
+    conn = connect()
+    try:
+        ensure_schema(conn)
+    finally:
+        conn.close()
+    print("PHASE0 BASELINE JOB TABLE READY", flush=True)
 
-@app.get('/admin/phase0/baseline-report.csv')
-def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
-    """Export the nine-store catalog/offer quality summary, read-only."""
+
+# Persistent asynchronous Phase 0 baseline jobs. The HTTP handlers only
+# enqueue/read/download; the dedicated phase0_baseline_worker process generates
+# the report outside the request lifecycle.
+import hmac as _phase0_hmac
+from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
+from fastapi.responses import FileResponse as _Phase0FileResponse
+
+
+def _phase0_authorize(authorization: str) -> None:
     expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
     supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
-    try:
-        from scenthunter_next_engine.baseline_summary_report import (
-            generate as _generate_phase0_report,
-        )
 
-        root = Path(__file__).resolve().parent
-        catalog_path = root / 'product_catalog.json'
-        db_path = Path(os.environ.get(
-            'SCENTHUNTER_CATALOG_DB', str(root / 'store_catalog.sqlite3')
-        )).expanduser().resolve()
-        with _phase0_tempfile.TemporaryDirectory(prefix='scenthunter-phase0-') as temp_dir:
-            output_path = Path(temp_dir) / 'phase-0-retailer-baseline.csv'
-            summary = _generate_phase0_report(catalog_path, db_path, output_path)
-            csv_bytes = output_path.read_bytes()
-        if summary.get('stores') != 9:
-            raise RuntimeError(
-                f"Expected 9 active retailers, got {summary.get('stores')}"
-            )
-        return _Phase0Response(
-            content=csv_bytes,
-            media_type='text/csv; charset=utf-8',
-            headers={
-                'Content-Disposition': 'attachment; filename="phase-0-retailer-baseline.csv"'
-            },
+
+@app.post('/admin/phase0/baseline/start', status_code=202)
+def phase0_baseline_start(authorization: str = _Phase0Header(default='')):
+    """Create a durable queued job and return without generating any CSV data."""
+    _phase0_authorize(authorization)
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import create_job
+        job = create_job()
+        print(
+            f"PHASE0 BASELINE JOB QUEUED job={job['job_id']} status=queued",
+            flush=True,
         )
-    except _Phase0HTTPException:
-        raise
+        return job
     except Exception as exc:
-        print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}', flush=True)
+        print(
+            f"PHASE0 BASELINE JOB ENQUEUE ERROR: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
         raise _Phase0HTTPException(
-            status_code=500, detail='Baseline report generation failed'
+            status_code=500, detail='Could not enqueue Phase 0 baseline job'
         ) from exc
 
-# Phase 0 baseline endpoint is deployed with the production backend.
+
+@app.get('/admin/phase0/baseline/status')
+def phase0_baseline_status(
+    job_id: str = '',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Return durable job state; no worker or report generation runs here."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import get_job
+        job = get_job(job_id)
+    except Exception as exc:
+        print(
+            f"PHASE0 BASELINE JOB STATUS ERROR job={job_id}: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        raise _Phase0HTTPException(status_code=500, detail='Could not read job status') from exc
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Job not found')
+    completed = job['status'] == 'completed'
+    output_exists = bool(job.get('output_path') and Path(job['output_path']).is_file())
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'progress': float(job.get('progress') or 0),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'total_stores': int(job.get('total_stores') or 11),
+        'processed_stores': int(job.get('processed_stores') or 0),
+        'download_url': (
+            f"/admin/phase0/baseline/download?job_id={job['id']}"
+            if completed and output_exists else None
+        ),
+        'error': job.get('error_message') or (
+            'Completed job output file is missing' if completed and not output_exists else None
+        ),
+        'duration_seconds': job.get('duration_seconds'),
+        'heartbeat_at': job.get('heartbeat_at'),
+    }
+
+
+@app.get('/admin/phase0/baseline/download')
+def phase0_baseline_download(
+    job_id: str = '',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Serve only a completed, atomically published CSV from the Fly volume."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_job
+    job = get_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Job not found')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Baseline job is not completed')
+    output_path = Path(job['output_path']).resolve()
+    allowed_root = Path(os.environ.get(
+        'PHASE0_BASELINE_DIR', '/data/phase0/baseline'
+    )).expanduser().resolve()
+    if output_path.parent != allowed_root or not output_path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Completed CSV file not found')
+    return _Phase0FileResponse(
+        path=str(output_path),
+        media_type='text/csv; charset=utf-8',
+        filename=f"phase-0-retailer-baseline-{job_id}.csv",
+        headers={'Cache-Control': 'no-store'},
+    )
+
+# Phase 0 baseline endpoints are deployed with the production backend.
+
