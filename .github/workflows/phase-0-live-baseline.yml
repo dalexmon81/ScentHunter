@@ -92,11 +92,20 @@ jobs:
               archive = root / "source.tar.gz"
               urllib.request.urlretrieve(archive_url, archive)
               with tarfile.open(archive, "r:gz") as tar:
-                  member = next((m for m in tar.getmembers() if m.name.endswith("/backend/scenthunter_next_engine/baseline_report.py")), None)
-                  if member is None:
+                  suffixes = (
+                      "/backend/scenthunter_next_engine/baseline_report.py",
+                      "/backend/scenthunter_next_engine/catalog_repository.py",
+                      "/backend/scenthunter_next_engine/canonical_matcher.py",
+                      "/backend/scenthunter_next_engine/models.py",
+                      "/backend/scenthunter_next_engine/__init__.py",
+                  )
+                  members = [m for m in tar.getmembers() if m.name.endswith(suffixes)]
+                  report = next((m for m in members if m.name.endswith("/baseline_report.py")), None)
+                  if report is None:
                       raise SystemExit("Baseline report module not found in migration branch archive")
-                  prefix = member.name.split("/backend/")[0]
-                  tar.extractall(root, filter="data")
+                  prefix = report.name.split("/backend/")[0]
+                  for member in members:
+                      tar.extract(member, root, filter="data")
               backend = root / (prefix + "/backend")
               sys.path.insert(0, str(backend))
               module = importlib.import_module("scenthunter_next_engine.baseline_report")
@@ -108,7 +117,7 @@ jobs:
 
           SCRIPT_B64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
           REMOTE_CMD="python -c 'import base64; exec(compile(base64.b64decode(\"$SCRIPT_B64\"), \"phase0_baseline.py\", \"exec\"))'"
-          flyctl ssh console --app scenthunter --select=false -C "$REMOTE_CMD" | tee /tmp/phase0-baseline.log
+          timeout 180s flyctl ssh console --app scenthunter --select=false -C "$REMOTE_CMD" | tee /tmp/phase0-baseline.log
 
           grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
           sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
