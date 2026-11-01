@@ -178,6 +178,32 @@ jobs:
               raise RuntimeError("Pilot health is not healthy: " + json.dumps(health))
           if not health.get("offer_engine_api_mounted"):
               raise RuntimeError("Offer Engine API did not mount: " + json.dumps(health))
+          # Exercise the exact broad query from the user screenshot and capture
+          # per-retailer discovery, identity resolution and publication evidence.
+          born_query = urllib.parse.urlencode({"query": "Born in Roma", "limit": 200})
+          born_request = urllib.request.Request(
+              base + "/offer-engine/search?" + born_query,
+              headers={"Accept": "application/json", "User-Agent": "ScentHunter-Pilot-Diagnostic/1.0"},
+              method="POST",
+          )
+          with urllib.request.urlopen(born_request, timeout=180) as response:
+              born_refresh = json.loads(response.read().decode("utf-8"))
+          print("PILOT_BORN_IN_ROMA_REFRESH=" + json.dumps(born_refresh, ensure_ascii=False, default=str), flush=True)
+          born_connectors = (born_refresh.get("refresh") or {}).get("connectors") or []
+          print("PILOT_BORN_IN_ROMA_CONNECTOR_SUMMARY=" + json.dumps([
+              {
+                  "retailer": item.get("retailer"),
+                  "status": item.get("status"),
+                  "listings_seen": item.get("listings_seen"),
+                  "observations_written": item.get("observations_written"),
+                  "offers_published": item.get("offers_published"),
+                  "unresolved": item.get("unresolved"),
+                  "errors": item.get("errors"),
+                  "unresolved_samples": item.get("unresolved_samples"),
+                  "discovery_details": item.get("discovery_details"),
+              } for item in born_connectors
+          ], ensure_ascii=False, default=str), flush=True)
+
           query = urllib.parse.urlencode({"query": "Liquid Brun"})
           offer_api = get("/offer-engine/search?" + query)
           if offer_api.get("status") != "ok" or not isinstance(offer_api.get("offers"), list):
@@ -206,6 +232,7 @@ jobs:
               ui_result = get("/search-status?" + urllib.parse.urlencode({"job_id": job_id}))
           if not ui_result.get("completed"):
               raise RuntimeError("User search job did not complete: " + json.dumps(ui_result))
+          print("PILOT_LIQUID_BRUN_UI_RESULT=" + json.dumps(ui_result, ensure_ascii=False, default=str), flush=True)
 
           ui_product_ids = {
               str(item.get("catalog_id") or "")
