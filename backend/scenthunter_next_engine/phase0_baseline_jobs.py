@@ -591,7 +591,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                             reader = csv.DictReader(chunk)
                             for row in reader:
                                 writer.writerow(row)
-                                rows_written += 1
+                                if row.get("source"):
+                                    rows_written += 1
                         offers_read += int(result.get("offers_read", 0))
                     else:
                         chunk_path.unlink(missing_ok=True)
