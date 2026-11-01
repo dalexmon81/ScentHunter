@@ -182,7 +182,7 @@ def test_first_jsonld_offer_keeps_availability_fallback_without_any_price():
 
 
 def test_notino_public_product_page_parser_extracts_real_offer_identity_and_variant():
-    html = b"""<!doctype html>
+    html = """<!doctype html>
     <html><head>
       <script type="application/ld+json">
       {
@@ -203,7 +203,7 @@ def test_notino_public_product_page_parser_extracts_real_offer_identity_and_vari
     </head><body>
       <h1>French Avenue Liquid Brun Eau de Parfum pour homme</h1>
       <button>100 ml 49,50€ En stock</button>
-    </body></html>"""
+    </body></html>""".encode("utf-8")
     item = catalog.parse_product(
         "notino",
         "https://www.notino.fr/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
