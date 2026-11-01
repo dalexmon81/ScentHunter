@@ -494,8 +494,8 @@ def _export_store_chunk(store: str, db_path: str, catalog_path: str,
                 writer.writerow(data)
                 written += 1
             if written == 0:
-                writer.writerow({"store": store, "store_status": "completed",
-                                 "is_valid_offer": "false"})
+                writer.writerow({"store": store, "catalog_product_count": catalog.product_count(),
+                                 "store_status": "completed", "is_valid_offer": "false"})
         conn.close()
         if written != expected:
             raise RuntimeError(
@@ -512,6 +512,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     import threading
     backend = Path(__file__).resolve().parent.parent
     catalog_path = backend / "product_catalog.json"
+    from .catalog_repository import CatalogRepository
+    catalog_product_count = CatalogRepository.from_file(catalog_path).product_count()
     db_path = catalog_database_path()
     output_path = Path(job["output_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -617,8 +619,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     else:
                         chunk_path.unlink(missing_ok=True)
                 if store_status != "completed":
-                    writer.writerow({"store": store, "store_status": store_status,
-                                     "is_valid_offer": "false"})
+                    writer.writerow({"store": store, "catalog_product_count": catalog_product_count,
+                                     "store_status": store_status, "is_valid_offer": "false"})
                 else:
                     chunk_path.unlink(missing_ok=True)
                 processed_stores += 1
