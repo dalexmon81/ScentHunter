@@ -1,0 +1,38 @@
+name: Offer platform contract tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/offer_platform/**"
+      - "backend/tests/test_offer_platform_contracts.py"
+      - ".github/workflows/offer-platform-contracts.yml"
+  push:
+    branches:
+      - architecture/clean-offer-platform-v1
+    paths:
+      - "backend/offer_platform/**"
+      - "backend/tests/test_offer_platform_contracts.py"
+      - ".github/workflows/offer-platform-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Run isolated contract tests
+        working-directory: backend
+        run: python -m pytest -q tests/test_offer_platform_contracts.py
+      - name: Compile isolated package
+        working-directory: backend
+        run: python -m compileall -q offer_platform
