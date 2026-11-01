@@ -86,14 +86,27 @@ jobs:
             latest_payload=$(cat phase0-latest.json)
             previous_job_id=$(jq -er '.job_id' <<< "$latest_payload")
             previous_status=$(jq -er '.status' <<< "$latest_payload")
-            previous_total=$(jq -r '.total_stores // 0' <<< "$latest_payload")
-            if [[ "$previous_status" == "queued" || "$previous_status" == "running" ]] && [[ "$previous_total" == "9" ]]; then
-              job_id="$previous_job_id"
-              job_status="$previous_status"
-              echo "Reusing current-scope in-flight job_id=$job_id status=$job_status stores=$previous_total"
+            if [[ "$previous_status" == "queued" || "$previous_status" == "running" ]]; then
+              previous_status_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+                -H "$auth_header" -H "Accept: application/json" \
+                --output phase0-previous-status.json --write-out '%{http_code}' \
+                "$base_url/admin/phase0/baseline/status?job_id=$previous_job_id")
+              [[ "$previous_status_http" == "200" ]] || {
+                echo "::error::Could not safely inspect existing in-flight job (HTTP $previous_status_http); refusing to enqueue a duplicate."
+                cat phase0-previous-status.json
+                exit 1
+              }
+              previous_total=$(jq -r '.total_stores // 0' phase0-previous-status.json)
+              if [[ "$previous_total" == "9" ]]; then
+                job_id="$previous_job_id"
+                job_status="$previous_status"
+                echo "Reusing current-scope in-flight job_id=$job_id status=$job_status stores=$previous_total"
+              else
+                echo "Existing in-flight job has obsolete store scope ($previous_total); creating a fresh nine-store baseline."
+                start_new_job "Starting a fresh Phase 0 baseline for the nine active retailers."
+              fi
             else
-              echo "Latest job is terminal or belongs to an obsolete store scope (status=$previous_status stores=$previous_total); creating a fresh nine-store baseline."
-              jq '{job_id,status,total_stores,error_message,error_traceback}' <<< "$latest_payload"
+              echo "Latest job is terminal (status=$previous_status); creating a fresh nine-store baseline."
               start_new_job "Starting a fresh Phase 0 baseline for the nine active retailers."
             fi
           elif [[ "$latest_http" == "404" ]]; then
