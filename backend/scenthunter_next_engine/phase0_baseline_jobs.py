@@ -490,8 +490,6 @@ def _export_store_chunk(store: str, db_path: str, catalog_path: str,
 def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     import multiprocessing
     import threading
-    from .catalog_repository import CatalogRepository
-
     backend = Path(__file__).resolve().parent.parent
     catalog_path = backend / "product_catalog.json"
     db_path = catalog_database_path()
@@ -528,7 +526,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                 update_job(
                     job["id"], heartbeat_at=utc_now(),
                     progress=min(0.999, processed / len(STORES)),
-                    processed_stores=processed,
+                    processed_stores=processed, current_store=current,
                 )
                 record_job_event(
                     job["id"], "heartbeat", store=current,
@@ -610,7 +608,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                 update_job(
                     job["id"], heartbeat_at=utc_now(),
                     progress=processed_stores / len(STORES),
-                    processed_stores=processed_stores,
+                    processed_stores=processed_stores, current_store=store,
                 )
                 record_job_event(
                     job["id"], f"store_{store_status}", store=store,
