@@ -619,23 +619,14 @@ def generate_smoke_csv(job: dict[str, Any]) -> dict[str, Any]:
 def get_latest_smoke_job() -> dict[str, Any] | None:
     conn = connect()
     try:
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS phase0_smoke_jobs (
-                id TEXT PRIMARY KEY,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                started_at TEXT,
-                finished_at TEXT,
-                heartbeat_at TEXT,
-                worker_id TEXT,
-                output_path TEXT NOT NULL,
-                error_message TEXT
-            )"""
-        )
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM phase0_smoke_jobs ORDER BY created_at DESC, id DESC LIMIT 1"
-        ).fetchone()
+        try:
+            row = conn.execute(
+                "SELECT * FROM phase0_smoke_jobs ORDER BY created_at DESC, id DESC LIMIT 1"
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            if "no such table" in str(exc).lower():
+                return None
+            raise
         return dict(row) if row else None
     finally:
         conn.close()
