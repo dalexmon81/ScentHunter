@@ -192,7 +192,10 @@ class OfferEngineRuntimeTests(unittest.TestCase):
             def run(self, connectors, query):
                 repository = self.repository_factory(next(iter(connectors)))
                 self.assert_repository = repository
-                return EngineRunResult([])
+                try:
+                    return EngineRunResult([])
+                finally:
+                    repository.close()
         with (
             patch.object(runtime.psycopg, "connect", return_value=connection),
             patch.object(runtime.CatalogRepository, "from_file", return_value=object()),
