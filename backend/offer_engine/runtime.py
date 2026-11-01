@@ -18,6 +18,11 @@ from .adapters import RetailerConnector
 from .connectors.deloox import DelooxConnector
 from .connectors.notino import NotinoFeedConnector
 from .connectors.parsed_search import ParsedSearchConnector
+from .connectors.amazon_creators import AmazonCreatorsConnector
+try:
+    from scrapers import amazon_creators_api
+except ModuleNotFoundError:
+    from backend.scrapers import amazon_creators_api
 from .repository import OfferRepository
 from .runner import EngineRunResult, OfferEngineRunner
 try:
@@ -241,6 +246,12 @@ def run_offer_engine(
             "NOTINO_CJ_FEED_PASSWORD",
         )):
             configured_connectors.append(NotinoFeedConnector())
+        # Amazon is admitted only through the approved Creators API. The
+        # legacy public-search/Bing-snippet scrapers are never registered as
+        # Offer Engine connectors and cannot publish indexed snippet prices.
+        for amazon_market in ("de", "fr"):
+            if amazon_creators_api.is_configured(amazon_market):
+                configured_connectors.append(AmazonCreatorsConnector(amazon_market))
         configured_connectors.extend([
             ParsedSearchConnector("bplatz", "scrapers.bplatz.scraper", "DE"),
             ParsedSearchConnector("easycosmetic", "scrapers.easycosmetic.scraper", "DE"),
