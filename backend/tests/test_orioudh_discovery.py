@@ -50,8 +50,8 @@ class OrioudhDiscoveryTests(unittest.TestCase):
         )
         self.assertTrue(verified)
         self.assertEqual(errors, [])
-        self.assertIn("French Avenue", session.suggest_queries)
-        self.assertIn("Liquid Brun", session.suggest_queries)
+        self.assertIn("french avenue", session.suggest_queries)
+        self.assertIn("liquid brun", session.suggest_queries)
         self.assertEqual(urls, ["https://orioudh.com/products/liquid-brun"])
 
     def test_trailing_pair_does_not_weaken_full_query_admission(self):
