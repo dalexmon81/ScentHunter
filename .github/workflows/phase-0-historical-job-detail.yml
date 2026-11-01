@@ -1,0 +1,64 @@
+name: Phase 0 - historical job detail (read-only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-job-detail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Fetch historical Phase 0 job detail (read-only)
+        env:
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+          JOB_ID: "5518639f139048b0b6af68b3ae595e79"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SCENTHUNTER_BASELINE_URL" || -z "$SCENTHUNTER_BASELINE_TOKEN" ]]; then
+            echo "::error::Phase 0 URL or token secret is missing."
+            exit 1
+          fi
+
+          suffix="/admin/phase0/baseline-report.csv"
+          if [[ "$SCENTHUNTER_BASELINE_URL" == *"$suffix" ]]; then
+            base_url="${SCENTHUNTER_BASELINE_URL%"$suffix"}"
+          else
+            base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          fi
+
+          http_code=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+            -H "Accept: application/json" \
+            --output phase0-historical-job.json --write-out '%{http_code}' \
+            "$base_url/admin/phase0/baseline/jobs/$JOB_ID")
+
+          if [[ "$http_code" != "200" ]]; then
+            echo "::error::Historical job detail returned HTTP $http_code"
+            cat phase0-historical-job.json
+            exit 1
+          fi
+
+          jq -e --arg job_id "$JOB_ID" '.job_id == $job_id' phase0-historical-job.json >/dev/null
+          echo "Historical job detail retrieved successfully."
+          jq '{
+            job_id, status, created_at, started_at, finished_at, heartbeat_at,
+            worker_id, progress, total_stores, processed_stores, current_store,
+            output_file_exists, output_file_size, error_message, error_traceback,
+            events
+          }' phase0-historical-job.json | tee phase0-historical-job-summary.json
+          echo "Read-only diagnostic complete; no job was created or modified."
+
+      - name: Upload historical job diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-historical-job-detail
+          path: |
+            phase0-historical-job.json
+            phase0-historical-job-summary.json
+          if-no-files-found: error
+          retention-days: 14
