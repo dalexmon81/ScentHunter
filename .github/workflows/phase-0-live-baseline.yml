@@ -15,10 +15,27 @@ permissions:
 
 jobs:
   baseline:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Confirm production deploy and health checks succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jobs_json=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$PARENT_RUN_ID/jobs?per_page=100")
+          jq -e '
+            [.jobs[].steps[] | select(.name == "Deploy ScentHunter") | .conclusion] == ["success"]
+            and
+            [.jobs[].steps[] | select(.name == "Verify production health and catalog API") | .conclusion] == ["success"]
+          ' <<< "$jobs_json" >/dev/null
+
       - name: Download read-only baseline report
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
@@ -33,6 +50,7 @@ jobs:
           test -s phase-0-retailer-baseline.csv
           header=$(head -n 1 phase-0-retailer-baseline.csv | tr -d '\\r')
           test "$header" = 'store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
+
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
         with:
