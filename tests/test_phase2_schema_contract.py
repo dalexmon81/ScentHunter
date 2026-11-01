@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
 from sqlalchemy import ForeignKey
 from app.models import Base, Brand, Fragrance, ProductVariant, Store, Offer, PriceHistory, MatchAudit, IngestionRun
 
