@@ -3988,13 +3988,13 @@ def refresh_url(store, url):
         store_timeout = _refresh_timeout_for_store(store)
         status, final, data = http_get(url, timeout=store_timeout)
 
-            # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
-            # document instead of the product page. Treat that response as a
-            # transport failure candidate and retry once with the existing
-            # headless-browser fallback before parsing or persisting anything.
-            # This is generic page acquisition: it never supplies or guesses a
-            # product name, price, availability, or variant.
-            if store == 'deloox' and status < 400:
+        # Deloox sometimes returns a tiny HTTP-200 anti-bot/interstitial
+        # document instead of the product page. Treat that response as a
+        # transport failure candidate and retry once with the existing
+        # headless-browser fallback before parsing or persisting anything.
+        # This is generic page acquisition: it never supplies or guesses a
+        # product name, price, availability, or variant.
+        if store == 'deloox' and status < 400:
                 body = data or b''
                 lower_body = body[:200000].lower()
                 has_product_markup = (
