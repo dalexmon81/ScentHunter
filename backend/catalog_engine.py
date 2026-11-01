@@ -100,6 +100,11 @@ STORE_LABELS.update({
     'amazon_de': 'Amazon.de',
 })
 
+# Amazon marketplaces remain configured for future reactivation, but are
+# inactive until the approved Creators API credentials and marketplace tags exist.
+DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
+ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
+
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
@@ -3322,31 +3327,41 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 
 
 def discover_store(store):
-    """Refresh retailer discovery; Notino is imported only from the authorized feed."""
+    """Refresh active retailer discovery; disabled marketplaces are never crawled."""
     started_at = time.time()
+    if store in DISABLED_STORES:
+        _set_sync_state(
+            store, 'DISABLED_NO_CREDENTIALS', started_at=started_at,
+            finished_at=time.time(), discovered_count=0, fetched_count=0,
+            error='temporarily_disabled;approved_amazon_creators_api_credentials_missing',
+        )
+        return {'status': 'DISABLED_NO_CREDENTIALS', 'count': 0}
+    notino_feed_error = None
     if store == 'notino':
         try:
             feed = importlib.import_module('scrapers.notino.affiliate_feed')
             report = feed.import_configured_feed()
             count = int(report.get('imported_offers') or 0)
-            _set_sync_state(
-                store, 'FEED_IMPORTED', started_at=started_at,
-                finished_at=time.time(), discovered_count=count, fetched_count=count,
-                error='source=cj_viv_authorized_xml',
-            )
-            return {'status': 'FEED_IMPORTED' if count else 'FEED_EMPTY',
-                    'count': count, 'source': 'cj_viv_authorized_xml'}
+            if count:
+                _set_sync_state(
+                    store, 'FEED_IMPORTED', started_at=started_at,
+                    finished_at=time.time(), discovered_count=count, fetched_count=count,
+                    error='source=cj_viv_authorized_xml',
+                )
+                return {'status': 'FEED_IMPORTED', 'count': count,
+                        'source': 'cj_viv_authorized_xml'}
+            notino_feed_error = 'notino_feed_empty'
         except Exception as exc:
-            error = str(exc)
-            if not error.startswith('notino_feed_'):
-                error = f'notino_feed_import_error:{type(exc).__name__}'
-            _set_sync_state(
-                store, 'FEED_UNAVAILABLE', started_at=started_at,
-                finished_at=time.time(), discovered_count=0, fetched_count=0,
-                error=error[:180],
-            )
-            return {'status': 'FEED_UNAVAILABLE', 'count': 0,
-                    'error': error[:180], 'source': 'cj_viv_authorized_xml'}
+            notino_feed_error = str(exc)
+            if not notino_feed_error.startswith('notino_feed_'):
+                notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
+        # Do not invent prices or bypass access controls. If the authorized feed
+        # is not configured, continue with ordinary public catalog discovery;
+        # individual product refreshes must still return HTTP 200 and valid offers.
+        print(
+            f'NOTINO_FEED_UNAVAILABLE fallback=public_catalog reason={notino_feed_error}',
+            flush=True,
+        )
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
@@ -3367,7 +3382,7 @@ def discover_store(store):
     # Deloox's sitemap roots repeatedly return errors while its HTML catalog graph is usable.
     # Give sitemap discovery only a short probe window there so it cannot consume
     # most of the bounded run before the persistent HTML frontier gets time.
-    sitemap_budget = 5 if store == 'deloox' else SITEMAP_DISCOVERY_BUDGET
+    sitemap_budget = 5 if store in ('deloox', 'notino') else SITEMAP_DISCOVERY_BUDGET
     sitemap_deadline = min(
         started_at + DISCOVERY_HARD_TIMEOUT,
         started_at + sitemap_budget,
@@ -3554,6 +3569,8 @@ def discover_store(store):
 
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if notino_feed_error:
+        details.append('notino_feed=' + str(notino_feed_error)[:180])
     if deloox_graph is not None:
         details.append(
             f'deloox_category_graph=visited:{deloox_graph["visited"]};'
@@ -3724,7 +3741,7 @@ def parse_product(store, url, data):
     soup = BeautifulSoup(
         data,
         'html.parser',
-        parse_only=SoupStrainer(['h1', 'script']),
+        parse_only=SoupStrainer(['h1', 'script', 'option', 'button', 'meta']),
     )
     h1 = soup.find('h1')
     h1text = h1.get_text(' ', strip=True) if h1 else ''
@@ -3779,6 +3796,68 @@ def parse_product(store, url, data):
         image = image[0] if image else None
     if isinstance(image, dict):
         image = image.get('url') or image.get('contentUrl')
+
+    size_ml = None
+    concentration = ''
+    if store == 'notino':
+        # Notino's visible title often omits the bottle volume. Prefer explicit
+        # structured size fields, then the product's selector controls; do not
+        # infer a size from unrelated recommendation cards.
+        selector_text = ' '.join(
+            node.get_text(' ', strip=True)
+            for node in soup.find_all(['option', 'button'])
+        )
+        size_sources = (
+            p.get('size'), p.get('size_ml'), p.get('description'),
+            name, h1text, selector_text,
+        )
+        for source_value in size_sources:
+            match = re.search(
+                r'(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b',
+                str(source_value or ''), re.I,
+            )
+            if not match:
+                continue
+            try:
+                amount = float(match.group(1).replace(',', '.'))
+            except ValueError:
+                continue
+            size_ml = amount * {
+                'ml': 1, 'cl': 10, 'dl': 100, 'l': 1000,
+            }[match.group(2).lower()]
+            if 0 < size_ml <= 10000:
+                break
+            size_ml = None
+        concentration_source = ' '.join(
+            str(value or '') for value in (name, h1text, p.get('description'))
+        )
+        concentration_match = re.search(
+            r'eau\s+de\s+(?:parfum|toilette|cologne)|extrait(?:\s+de\s+parfum)?|\bedp\b|\bedt\b|\bedc\b',
+            concentration_source, re.I,
+        )
+        if concentration_match:
+            concentration = concentration_match.group(0)
+        if price is None:
+            try:
+                notino_parser = importlib.import_module('scrapers.notino.scraper')
+                visible_price = notino_parser._extract_price(
+                    ' '.join(node.get_text(' ', strip=True) for node in soup.find_all(['option', 'button']))
+                )
+                price = float(re.sub(r'[^0-9,]', '', visible_price).replace(',', '.')) if visible_price else None
+            except Exception:
+                price = None
+        if availability == 'unknown':
+            try:
+                notino_parser = importlib.import_module('scrapers.notino.scraper')
+                stock = notino_parser._stock(
+                    ' '.join(node.get_text(' ', strip=True) for node in soup.find_all(['option', 'button']))
+                )
+                if stock is False:
+                    availability = 'in_stock'
+                elif stock is True:
+                    availability = 'out_of_stock'
+            except Exception:
+                pass
     return {
         'store': STORE_LABELS[store],
         'store_key': store,
@@ -3794,6 +3873,8 @@ def parse_product(store, url, data):
         'currency': currency,
         'availability': availability,
         'available': True if availability == 'in_stock' else False if availability == 'out_of_stock' else None,
+        'size_ml': size_ml,
+        'concentration': concentration or None,
         'fetched_at': time.time(),
     }
 
@@ -3972,6 +4053,8 @@ def _refresh_timeout_for_store(store):
 
 def refresh_url(store, url):
     try:
+        if store in DISABLED_STORES:
+            raise RuntimeError('store_temporarily_disabled_no_credentials')
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -3987,10 +4070,9 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Notino is sourced from the authenticated CJ/VIV feed only.
-        # Public HTML is not a valid price source for this blocked storefront.
-        if store == 'notino':
-            raise RuntimeError('notino_requires_authorized_feed_import')
+        # Notino may use a public product page only when the normal HTTP request
+        # succeeds. HTTP 403/429 and challenge pages remain failures; no bypass
+        # or browser fingerprint evasion is attempted.
 
         # For Amazon, approved Creators API access owns both discovery and
         # hydration. Never scrape Amazon product pages when API credentials are
@@ -5045,9 +5127,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
 
         # Independent read-only retailer queries can run concurrently. Merge
         # in configured order to preserve deterministic output and full coverage.
-        with ThreadPoolExecutor(max_workers=min(8, len(STORES)), thread_name_prefix="catalog-search") as pool:
-            futures = {store: pool.submit(_search_one_store, store) for store in STORES}
-            for store in STORES:
+        with ThreadPoolExecutor(max_workers=min(8, len(ACTIVE_STORES)), thread_name_prefix="catalog-search") as pool:
+            futures = {store: pool.submit(_search_one_store, store) for store in ACTIVE_STORES}
+            for store in ACTIVE_STORES:
                 if cancel_event is not None and cancel_event.is_set():
                     break
                 rows.extend(futures[store].result())
@@ -5132,7 +5214,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, deadline=None):
     # Compatibility path for SQLite builds without FTS5.
-    for store in STORES:
+    for store in ACTIVE_STORES:
         if cancel_event is not None and cancel_event.is_set():
             break
         if deadline is not None and time.monotonic() >= float(deadline):
@@ -5416,7 +5498,7 @@ def hydration_pending_counts():
     conn = db()
     out = {}
     try:
-        for store in STORES:
+        for store in ACTIVE_STORES:
             row = conn.execute(
                 """SELECT COUNT(*) c
                    FROM store_urls u
@@ -5551,11 +5633,11 @@ def _hydration_store_order(conn):
         "SELECT last_store_index FROM hydration_scheduler WHERE id=1"
     ).fetchone()
     last_index = int(row['last_store_index'] if row else 0)
-    n = len(STORES)
+    n = len(ACTIVE_STORES)
     if not n:
         return [], 0
     start = (last_index + 1) % n
-    stores = list(STORES)
+    stores = list(ACTIVE_STORES)
     return stores[start:] + stores[:start], start
 
 
@@ -5611,7 +5693,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             ).fetchone()
             if row:
                 chosen = row
-                chosen_index = (start_index + offset) % len(STORES)
+                chosen_index = (start_index + offset) % len(ACTIVE_STORES)
                 break
 
         if not chosen:
@@ -6051,7 +6133,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     existing local index remains the only search-time catalog source.
     """
     pause = max(60.0, float(interval_seconds))
-    stores = tuple(STORES.keys())
+    stores = tuple(ACTIVE_STORES)
     if not stores:
         print('CATALOG DISCOVERY STOP: no configured stores', flush=True)
         return
@@ -6333,7 +6415,7 @@ def _coverage_seed_tasks(conn, products):
         if not product_id or not canonical or not queries:
             continue
         primary = queries[0]
-        for store in STORES:
+        for store in ACTIVE_STORES:
             rows.append((store, product_id, canonical, primary, now))
     if not rows:
         return
@@ -7017,7 +7099,7 @@ def hydration_status():
             'total': 0, 'pending': 0, 'processing': 0, 'done': 0,
             'error': 0, 'dead': 0, 'last_finished_at': None,
         }
-        for store in STORES
+        for store in ACTIVE_STORES
     }
     try:
         rows = conn.execute(
@@ -7056,7 +7138,7 @@ def sync_all():
     now = time.time()
     conn = db()
     with conn:
-        for store in STORES:
+        for store in ACTIVE_STORES:
             conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
@@ -7065,8 +7147,8 @@ def sync_all():
                error=excluded.error""",
                (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
     conn.close()
-    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
-        futures = {pool.submit(discover_store, store): store for store in STORES}
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
+        futures = {pool.submit(discover_store, store): store for store in ACTIVE_STORES}
         for future in as_completed(futures):
             store = futures[future]
             try:
@@ -7143,7 +7225,7 @@ def store_status():
                     GROUP BY q.store"""
             )
         }
-        for store in STORES:
+        for store in ACTIVE_STORES:
             sync = sync_rows.get(store)
             count = url_counts.get(store, 0)
             fetched = product_counts.get(store, 0)

@@ -866,7 +866,7 @@ LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
-STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0,'notino':45.0,'amazon_fr':20.0,'amazon_de':20.0}
+STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'easycosmetic':60.0,'notino':45.0}
 JOB_TIMEOUT_SECONDS = 30.0
 CATALOG_SEARCH_BUDGET_SECONDS = 12.0
 CATALOG_REFRESH_BUDGET_SECONDS = 0.25
@@ -3373,7 +3373,7 @@ def diagnostic_store_pipeline(store: str, q: str, probe: bool = False):
 
     machine_store = _normalise_store(store, store)
     query = str(q or '').strip()
-    allowed = {'notino', 'amazon_fr', 'amazon_de'}
+    allowed = {'notino'}
     if machine_store not in allowed:
         return {
             'ok': False,
@@ -5189,7 +5189,10 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
     try:
-        from scenthunter_next_engine.baseline_report import generate as _generate_phase0_report
+        from scenthunter_next_engine.baseline_report import (
+            BaselineIncompleteError as _Phase0BaselineIncompleteError,
+            generate as _generate_phase0_report,
+        )
 
         root = Path(__file__).resolve().parent
         catalog_path = root / 'product_catalog.json'
@@ -5200,9 +5203,9 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             output_path = Path(temp_dir) / 'phase-0-retailer-baseline.csv'
             summary = _generate_phase0_report(catalog_path, db_path, output_path)
             csv_bytes = output_path.read_bytes()
-        if summary.get('stores') != 11:
+        if summary.get('stores') != 9:
             raise RuntimeError(
-                f"Expected 11 supported stores, got {summary.get('stores')}"
+                f"Expected 9 active retailers, got {summary.get('stores')}"
             )
         return _Phase0Response(
             content=csv_bytes,
@@ -5213,6 +5216,8 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         )
     except _Phase0HTTPException:
         raise
+    except _Phase0BaselineIncompleteError as exc:
+        raise _Phase0HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}', flush=True)
         raise _Phase0HTTPException(

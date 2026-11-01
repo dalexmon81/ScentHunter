@@ -7,13 +7,14 @@ import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import quote_plus, unquote, urljoin, urlparse
+from urllib.parse import quote_plus, unquote, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
+MARKETS = ((BASE_URL, "fr-FR,fr;q=0.9,en;q=0.7"),)
 SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
@@ -1462,41 +1463,217 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
     return ordered, diagnostics
 
 
-def search(query: str) -> List[Dict[str, Any]]:
+def _price(value: Any) -> Optional[float]:
+    """Parse EUR prices with either comma or dot decimal separators."""
+    raw = _clean(value).replace("€", "").replace("EUR", "").replace("\u00a0", " ")
+    raw = re.sub(r"[^0-9,.]", "", raw)
+    if not raw:
+        return None
+    if "," in raw and "." in raw:
+        decimal = "," if raw.rfind(",") > raw.rfind(".") else "."
+        thousands = "." if decimal == "," else ","
+        raw = raw.replace(thousands, "").replace(decimal, ".")
+    elif "," in raw:
+        tail = raw.rsplit(",", 1)[1]
+        raw = raw.replace(",", ".") if len(tail) in (1, 2) else raw.replace(",", "")
+    elif "." in raw and len(raw.rsplit(".", 1)[1]) not in (1, 2):
+        raw = raw.replace(".", "")
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None
+    return amount if amount > 0 else None
+
+
+def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
+    """Admit only Notino.fr product-shaped URLs; reject navigation and foreign hosts."""
+    absolute = urljoin(str(base).rstrip("/") + "/", str(raw_url or "").strip())
+    normalized = normaliseurl(absolute)
+    parsed = urlparse(normalized)
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower().rstrip(".") not in {"www.notino.fr", "notino.fr"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        return None
+    path = re.sub(r"/{2,}", "/", parsed.path or "/")
+    lowered = path.lower()
+    if lowered in {"/", "/parfums/", "/parfums", "/search.asp"}:
+        return None
+    if lowered.startswith((
+        "/parfums/", "/marques/", "/login", "/account", "/cart",
+        "/checkout", "/customer-service", "/wishlist",
+    )):
+        return None
+    if len([part for part in path.split("/") if part]) < 2:
+        return None
+    return urlunparse(("https", "www.notino.fr", path, "", "", ""))
+
+
+def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
+    """Parse one Notino.fr product page using destination-page identity and offer evidence."""
+    safe_url = _allowed_url(url, BASE_URL)
+    if not safe_url:
+        return None
+    soup = BeautifulSoup(html or "", "html.parser")
+    heading = soup.find("h1")
+    heading_name = _clean(heading.get_text(" ", strip=True) if heading else "")
+    records = _structured_product_records(html or "")
+    selected = None
+    selected_evidence = None
+    for record in records:
+        evidence = _structured_record_to_evidence(record)
+        name, brand, _record_url, price, size = evidence
+        if not name:
+            continue
+        if not _query_matches_name(f"{brand} {name}".strip(), query):
+            continue
+        selected = record
+        selected_evidence = evidence
+        break
+    if selected is None and heading_name:
+        # A visible destination H1 can establish identity, but a price must
+        # still be present on this same page before an offer is emitted.
+        selected = {}
+        selected_evidence = (heading_name, "", safe_url, None, _extract_size(heading_name))
+    if selected is None or selected_evidence is None:
+        return None
+
+    name, brand, _record_url, structured_price, structured_size = selected_evidence
+    if heading_name and not _query_matches_name(f"{brand} {heading_name}".strip(), query):
+        return None
+    display_name = heading_name or name
+    meta_values = {}
+    for node in soup.find_all("meta"):
+        key = str(
+            node.get("property") or node.get("name") or node.get("itemprop") or ""
+        ).strip().lower()
+        value = str(node.get("content") or "").strip()
+        if key and value:
+            meta_values[key] = value
+
+    raw_price = structured_price or next((
+        meta_values[key] for key in (
+            "product:price:amount", "og:price:amount", "price", "itemprop:price",
+        ) if meta_values.get(key)
+    ), "")
+    price = _price(raw_price)
+    if price is None:
+        return None
+    raw_currency = next((
+        meta_values[key] for key in (
+            "product:price:currency", "og:price:currency", "pricecurrency",
+        ) if meta_values.get(key)
+    ), "EUR")
+    if str(raw_currency).upper() != "EUR":
+        return None
+
+    controls_text = " ".join(
+        node.get_text(" ", strip=True)
+        for node in soup.find_all(["option", "button", "label"], limit=120)
+    )
+    size_ml = structured_size or _extract_size(display_name) or _extract_size(controls_text)
+    if not _price_is_plausible(price, size_ml):
+        return None
+
+    offers = selected.get("offers") if isinstance(selected, dict) else None
+    if isinstance(offers, list):
+        offers = next((item for item in offers if isinstance(item, dict)), {})
+    schema_stock = str(offers.get("availability") or "").lower() if isinstance(offers, dict) else ""
+    if "instock" in schema_stock or "limitedavailability" in schema_stock or "onlineonly" in schema_stock:
+        stock = False
+    elif any(token in schema_stock for token in ("outofstock", "soldout", "discontinued")):
+        stock = True
+    else:
+        stock = _stock(schema_stock) if schema_stock else None
+    if stock is None:
+        stock = _stock(controls_text)
+    availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
+    image = selected.get("image") if isinstance(selected, dict) else None
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get("url") or image.get("contentUrl")
+    sku = str(selected.get("sku") or "").strip() if isinstance(selected, dict) else ""
+    gtin = str(
+        selected.get("gtin13") or selected.get("gtin12")
+        or selected.get("gtin14") or selected.get("gtin") or ""
+    ).strip() if isinstance(selected, dict) else ""
+    concentration = _extract_concentration(display_name)
+    return {
+        "shop": "Notino",
+        "store": "notino",
+        "name": display_name,
+        "brand": brand,
+        "price": f"{price:.2f} €",
+        "price_num": price,
+        "currency": "EUR",
+        "availability": availability,
+        "available": True if stock is False else False if stock is True else None,
+        "image": image,
+        "size_ml": size_ml,
+        "concentration": concentration,
+        "sku": sku,
+        "gtin": gtin,
+        "url": safe_url,
+    }
+
+
+def search(query: str) -> Dict[str, Any]:
+    """Return a verified feed-first Notino search report with public fallback."""
     query = _clean(query)
     if not query:
-        return []
+        return {
+            "status": "success", "verified": True, "results": [],
+            "error": None, "details": {"source": "notino", "empty_query": True},
+        }
 
-    session = _new_session()
+    from . import affiliate_feed, legacy_public
+
+    feed_report = affiliate_feed.search_feed(query)
+    if isinstance(feed_report, dict) and feed_report.get("results"):
+        return feed_report
+
     try:
-        candidates, _ = _discover(query, session)
-    finally:
-        session.close()
+        public_rows = legacy_public.search(query)
+    except Exception as exc:
+        public_rows = []
+        public_error = f"{type(exc).__name__}:{exc}"
+    else:
+        public_error = None
 
-    # Keep more candidates than the old 24-result cutoff, but put the exact
-    # query match first. This prevents broad families from hiding the requested
-    # variant behind unrelated results.
-    candidates = candidates[:MAX_CANDIDATES]
-    results: List[Dict[str, Any]] = []
-    if not candidates:
-        return []
+    if public_rows:
+        return {
+            "status": "success", "verified": True,
+            "results": [row for row in public_rows if isinstance(row, dict)],
+            "error": None,
+            "details": {"source": "notino_public_external_discovery"},
+        }
 
-    with ThreadPoolExecutor(max_workers=min(ENRICH_WORKERS, len(candidates))) as executor:
-        futures = [executor.submit(_enrich_one, candidate, query) for candidate in candidates]
-        for future in as_completed(futures):
-            try:
-                item = future.result()
-            except Exception:
-                item = None
-            if isinstance(item, list):
-                results.extend(item)
-            elif item:
-                results.append(item)
-    return _dedupe_results(results)[:MAX_CANDIDATES]
+    if isinstance(feed_report, dict):
+        report = dict(feed_report)
+        report.setdefault("status", "success")
+        report.setdefault("verified", True)
+        report.setdefault("results", [])
+        details = dict(report.get("details") or {})
+        details.setdefault("source", "cj_viv_authorized_xml")
+        report["details"] = details
+        if public_error:
+            report["details"]["public_fallback_error"] = public_error
+        return report
+
+    return {
+        "status": "unavailable", "verified": False, "results": [],
+        "error": public_error or "notino_search_unavailable",
+        "details": {"source": "notino_public_external_discovery"},
+    }
 
 
 def scrape(query: str) -> List[Dict[str, Any]]:
-    return search(query)
+    report = search(query)
+    return list(report.get("results") or []) if isinstance(report, dict) else []
 
 
 def diagnose(query: str) -> Dict[str, Any]:

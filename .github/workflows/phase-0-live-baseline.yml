@@ -62,7 +62,7 @@ jobs:
           fi
 
           set +e
-          response_meta=$(curl --silent --show-error --connect-timeout 15 --max-time 90 \
+          response_meta=$(curl --silent --show-error --connect-timeout 15 --max-time 240 \
             -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
             --output phase-0-retailer-baseline.csv \
             --write-out $'HTTP_STATUS=%{http_code}\\nFINAL_URL=%{url_effective}\\n' \
@@ -85,68 +85,90 @@ jobs:
           python3 - <<'PY'
           import csv
           import io
-          from pathlib import Path
           import sys
+          from collections import Counter
+          from pathlib import Path
 
           path = Path("phase-0-retailer-baseline.csv")
-          raw = path.read_bytes()
-          text = raw.decode("utf-8-sig")
-
-          reader = csv.reader(io.StringIO(text, newline=""))
-          try:
-              header = next(reader)
-          except StopIteration:
-              print("::error::CSV response is empty.")
-              sys.exit(1)
-
-          normalized_header = [field.strip().lower() for field in header]
-
-          expected = [
-              "store",
-              "offer_count",
-              "valid_price_count",
-              "valid_price_pct",
-              "valid_url_count",
-              "valid_url_pct",
-              "valid_stock_count",
-              "valid_stock_pct",
-              "ambiguous_match_count",
-              "matched_count",
-              "unresolved_match_count",
-              "catalog_product_count",
-              "offer_source_table"
+          text = path.read_bytes().decode("utf-8-sig")
+          reader = csv.DictReader(io.StringIO(text, newline=""))
+          expected_header = [
+              "store", "canonical_product_id", "canonical_variant_id", "brand",
+              "fragrance", "concentration", "size_ml", "variant_type", "gtin",
+              "external_product_id", "offer_url", "price", "currency",
+              "availability", "captured_at", "source", "match_confidence",
+              "match_status", "is_valid_offer", "baseline_scope", "excluded_stores",
           ]
-
-          if normalized_header != expected:
-              print("::error::CSV header fields mismatch.")
-              print("Expected fields:", expected)
-              print("Received fields:", normalized_header)
-              print("Received raw header:", repr(text.splitlines()[0] if text else ""))
+          if reader.fieldnames != expected_header:
+              print("::error::CSV is not the required offer-level schema.")
+              print("Expected:", expected_header)
+              print("Received:", reader.fieldnames)
               sys.exit(1)
 
-          rows = list(csv.DictReader(io.StringIO(text, newline="")))
+          rows = list(reader)
           expected_stores = {
-              "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
-              "notino", "orioudh", "parfumcity", "parfumzentrum",
-              "perfumemarket", "sabina"
+              "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+              "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
           }
-          actual_stores = {row["store"] for row in rows if row["store"] != "TOTAL"}
+          excluded_stores = {"amazon_de", "amazon_fr"}
+          actual_stores = {row["store"] for row in rows}
           if actual_stores != expected_stores:
-              print("::error::CSV must contain exactly the 11 supported stores.")
-              print("Expected stores:", sorted(expected_stores))
-              print("Received stores:", sorted(actual_stores))
+              print("::error::CSV must contain exactly the nine declared active retailers.")
+              print("Expected:", sorted(expected_stores))
+              print("Received:", sorted(actual_stores))
               sys.exit(1)
-          if len(rows) != 12 or rows[-1]["store"] != "TOTAL":
-              print("::error::CSV must contain 11 store rows plus one TOTAL row.")
+          if actual_stores & excluded_stores:
+              print("::error::Temporarily excluded Amazon marketplaces appeared in the baseline.")
               sys.exit(1)
-          for row in rows:
-              for field in ("valid_price_pct", "valid_url_pct", "valid_stock_pct"):
-                  value = float(row[field])
-                  if not 0 <= value <= 100:
-                      raise ValueError(f"Invalid percentage in {field}: {value}")
-          print("PHASE0_STORES=11")
-          print("PHASE0_CATALOG_PRODUCTS=" + rows[-1]["catalog_product_count"])
-          print("PHASE0_AMBIGUOUS_MATCHES=" + rows[-1]["ambiguous_match_count"])
+          if not rows:
+              print("::error::Offer-level CSV contains no offer rows.")
+              sys.exit(1)
+
+          counts = Counter(row["store"] for row in rows)
+          missing = sorted(store for store in expected_stores if counts[store] <= 0)
+          if missing:
+              print("::error::Active retailers must have real offer rows; zero-offer stores are not accepted.")
+              print("Missing offers:", missing)
+              sys.exit(1)
+
+          valid_counts = Counter(
+              row["store"] for row in rows if row["is_valid_offer"] == "true"
+          )
+          missing_valid = sorted(store for store in expected_stores if valid_counts[store] <= 0)
+          if missing_valid:
+              print("::error::Every active retailer must contribute at least one fully valid offer.")
+              print("Stores without a valid offer:", missing_valid)
+              sys.exit(1)
+
+          seen = set()
+          duplicates = []
+          for line_number, row in enumerate(rows, start=2):
+              if row["baseline_scope"] != "9_active_retailers":
+                  raise ValueError(f"Unexpected baseline scope on CSV line {line_number}")
+              if row["excluded_stores"] != "amazon_de;amazon_fr":
+                  raise ValueError(f"Amazon exclusions not declared on CSV line {line_number}")
+              if not row["offer_url"].startswith("https://"):
+                  raise ValueError(f"Missing HTTPS offer URL on CSV line {line_number}")
+              if row["is_valid_offer"] not in {"true", "false"}:
+                  raise ValueError(f"Invalid is_valid_offer value on CSV line {line_number}")
+              key = (
+                  row["store"], row["offer_url"], row["external_product_id"],
+                  row["gtin"], row["size_ml"], row["concentration"],
+              )
+              if key in seen:
+                  duplicates.append((line_number, key))
+              seen.add(key)
+          if duplicates:
+              print("::error::Duplicate retailer offers found.")
+              print(duplicates[:10])
+              sys.exit(1)
+
+          print("PHASE0_ACTIVE_STORES=9")
+          print("PHASE0_EXCLUDED_STORES=amazon_de,amazon_fr")
+          print("PHASE0_OFFER_ROWS=" + str(len(rows)))
+          print("PHASE0_OFFERS_BY_STORE=" + str(dict(sorted(counts.items()))))
+          print("PHASE0_VALID_OFFERS=" + str(sum(row["is_valid_offer"] == "true" for row in rows)))
+          print("PHASE0_VALID_OFFERS_BY_STORE=" + str(dict(sorted(valid_counts.items()))))
           PY
 
       - name: Upload CSV report

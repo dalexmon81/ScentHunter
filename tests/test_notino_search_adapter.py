@@ -237,3 +237,24 @@ def test_known_product_seed_requires_product_page_verification(monkeypatch):
     )
 
     assert scraper._enrich_one(candidate, "Liquid Brun") is sentinel
+
+
+def test_product_parser_does_not_borrow_related_product_price_or_size():
+    product = {
+        "@type": "Product",
+        "name": "Sauvage Eau de Parfum",
+        "brand": {"name": "Dior"},
+        "offers": {},
+    }
+    html = f"""
+    <script type="application/ld+json">{json.dumps(product)}</script>
+    <h1>Sauvage Eau de Parfum</h1>
+    <section class="related-products">
+      <div>Blue Jeans Eau de Toilette 75 ml 19,90 € En stock</div>
+    </section>
+    """
+    assert scraper._parse_product(
+        "https://www.notino.fr/dior/sauvage-eau-de-parfum/",
+        html,
+        "Dior Sauvage",
+    ) is None
