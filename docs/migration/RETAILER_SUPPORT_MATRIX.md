@@ -100,10 +100,11 @@ Nel percorso `backend/scrapers/` sono presenti 11 connettori retailer, oltre al 
 - **Ricerca pubblica:** `/search.asp?exps={query}` e `/search?query={query}`; il codice prova query normalizzate, parsing HTML/JSON-LD, reader esterno Jina e sitemap come fallback.
 - **URL prodotto:** URL Notino riconosciuti e validati sul mercato configurato; la pagina prodotto viene analizzata per titolo, prezzo EUR, disponibilità e taglia.
 - **Campi letti/esposti:** nome, marca, prezzo, valuta, stock, volume ml, concentrazione, URL e immagine quando disponibili. Il feed affiliato può fornire SKU, GTIN/EAN, prezzo, valuta, disponibilità, brand, titolo e link.
-- **API/feed:** esiste un parser di feed XML CJ/VIV in `affiliate_feed.py`. Il suo URL e i dettagli di accesso sono forniti esternamente: non sono hardcoded nel repository. Quindi la presenza del parser **non dimostra che il feed sia configurato o accessibile**. Esiste inoltre il percorso pubblico HTML legacy.
+- **API/feed:** esiste un parser di feed XML CJ/VIV in `affiliate_feed.py`. La candidatura publisher per Notino.fr è stata inviata correttamente e risulta **Pending Application / Application submitted for review**: Notino approva manualmente i publisher. Fino all'approvazione, URL del feed e credenziali non sono disponibili/verificabili; la presenza del parser **non dimostra che il feed sia configurato o accessibile**. Esiste inoltre il percorso pubblico HTML legacy.
 - **Varianti:** il parser pubblico estrae taglia e concentrazione da titolo/dati pagina e valida la pagina prodotto. Il feed richiede un volume identificabile per accettare un record. Non confondere prodotti di mercati Notino differenti.
 - **Disponibilità:** feed normalizza `in_stock`, `out_of_stock`, `preorder` e `unknown`; il parser pubblico usa segnali di stock/Offer JSON-LD e pagina.
-- **Problemi/rischi da verificare:** le ricerche pubbliche e le sitemap possono essere bloccate o instabili; il reader esterno è un fallback, non fonte primaria di prezzo live. Il feed richiede credenziali/URL esterni e va verificato senza esporre segreti. Il mercato attuale nel codice è FR: non va presentato come prezzo di un altro paese senza una fonte locale.
+- **Stato affiliazione:** candidatura Notino.fr inviata, in attesa di approvazione manuale. Nessuna credenziale/feed XML va simulata o sostituita con dati inventati. I 114 URL già individuati sono candidati URL prodotto, non 114 offerte validate.
+- **Problemi/rischi da verificare:** le ricerche pubbliche e le sitemap possono essere bloccate o instabili; il reader esterno è un fallback, non fonte primaria di prezzo live. Dopo l'approvazione si recuperano URL feed e credenziali, che vanno verificati senza esporre segreti. Il mercato attuale nel codice è FR: non va presentato come prezzo di un altro paese senza una fonte locale.
 
 ### 7. Orioudh
 
@@ -181,7 +182,7 @@ Nel percorso `backend/scrapers/` sono presenti 11 connettori retailer, oltre al 
 
 - **11** directory/store scraper identificati.
 - **1** client condiviso Amazon Creators API.
-- **Notino:** parser per feed affiliato XML presente, ma URL/credenziali esterni non sono documentati nel repository.
+- **Notino:** candidatura publisher Notino.fr inviata e Pending Application; parser XML già presente, feed e credenziali in attesa dell'approvazione.
 - **Amazon DE/FR:** integrazione Creators API condizionata a credenziali e approvazione; fallback HTML/snippet con limiti espliciti.
 - **Shopify JSON pubblici:** presenti per Bplatz, Orioudh, ParfumCity e PerfumeMarket.
 - **Nessuna conclusione di disponibilità live** viene dedotta dalla sola presenza del codice.
