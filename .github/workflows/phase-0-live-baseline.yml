@@ -43,7 +43,7 @@ jobs:
           fi
           test -s phase-0-retailer-baseline.csv
           header=$(head -n 1 phase-0-retailer-baseline.csv | tr -d '\r')
-          test "$header" = 'store,catalog_product_count,catalog_variant_count,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
+          test "$header" = 'store,offer_count,valid_price_count,valid_price_pct,valid_url_count,valid_url_pct,valid_stock_count,valid_stock_pct,ambiguous_match_count,matched_count,unresolved_match_count,catalog_product_count,catalog_variant_count,offer_source_table'
           python - <<'PY'
           import csv
           from pathlib import Path
