@@ -16,9 +16,12 @@ from ..contracts import Availability, OfferObservation, RetailerListing, Verific
 
 try:
     from scrapers import amazon_creators_api
-    from scrapers import amazon_de, amazon_fr
+    from scrapers.amazon_de import scraper as amazon_de_scraper
+    from scrapers.amazon_fr import scraper as amazon_fr_scraper
 except ModuleNotFoundError:
-    from backend.scrapers import amazon_creators_api, amazon_de, amazon_fr
+    from backend.scrapers import amazon_creators_api
+    from backend.scrapers.amazon_de import scraper as amazon_de_scraper
+    from backend.scrapers.amazon_fr import scraper as amazon_fr_scraper
 
 
 class AmazonCreatorsConnector:
@@ -31,14 +34,14 @@ class AmazonCreatorsConnector:
         self.market = market
         self.retailer = f"amazon_{market}"
         self.country = market.upper()
-        self._scraper = amazon_de.scraper if market == "de" else amazon_fr.scraper
+        self._scraper = amazon_de_scraper if market == "de" else amazon_fr_scraper
         self.discovery_details: dict = {}
         self._listings: dict[str, RetailerListing] = {}
 
     @staticmethod
     def _asin(url: str) -> str | None:
         parsed = urlparse(str(url or ""))
-        match = re.fullmatch(r"/dp/([A-Z0-9]{10})/?", parsed.path, re.I)
+        match = re.fullmatch(r"/(?:dp/|gp/product/)([A-Z0-9]{10})/?", parsed.path, re.I)
         return match.group(1).upper() if match else None
 
     def discover(self, query: str):
@@ -144,11 +147,15 @@ class AmazonCreatorsConnector:
 
         evidence = json.dumps(row, sort_keys=True, ensure_ascii=False, default=str)
         digest = "sha256:" + hashlib.sha256(evidence.encode("utf-8")).hexdigest()
+        availability = (
+            Availability.IN_STOCK if row.get("available") is True
+            else Availability.UNKNOWN
+        )
         return OfferObservation.now(
             listing_key=f"{self.retailer}:{asin}",
             price=price,
             currency="EUR",
-            availability=Availability.IN_STOCK,
+            availability=availability,
             source=self.source,
             verification=Verification.UNVERIFIED,
             evidence_url=evidence_url,
