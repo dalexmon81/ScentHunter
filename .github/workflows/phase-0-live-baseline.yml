@@ -26,9 +26,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jobs_json=$(curl --fail --silent --show-error \\
-            -H "Authorization: Bearer $GH_TOKEN" \\
-            -H "Accept: application/vnd.github+json" \\
+          jobs_json=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$PARENT_RUN_ID/jobs?per_page=100")
           jq -e '
             [.jobs[].steps[] | select(.name == "Deploy ScentHunter") | .conclusion] == ["success"]
@@ -60,10 +60,10 @@ jobs:
           fi
 
           set +e
-          response_meta=$(curl --silent --show-error --connect-timeout 15 --max-time 90 \\
-            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \\
-            --output phase-0-retailer-baseline.csv \\
-            --write-out $'HTTP_STATUS=%{http_code}\\nFINAL_URL=%{url_effective}\\n' \\
+          response_meta=$(curl --silent --show-error --connect-timeout 15 --max-time 90 \
+            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+            --output phase-0-retailer-baseline.csv \
+            --write-out $'HTTP_STATUS=%{http_code}\\nFINAL_URL=%{url_effective}\\n' \
             "$SCENTHUNTER_BASELINE_URL")
           curl_exit=$?
           set -e
