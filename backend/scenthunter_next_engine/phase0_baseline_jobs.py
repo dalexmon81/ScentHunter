@@ -117,9 +117,8 @@ def update_job(job_id: str, **values: Any) -> None:
     assignments = ", ".join(f"{key}=?" for key in values)
     conn = connect()
     try:
-        ensure_schema(conn)
         conn.execute(
-            f"UPDATE phase0_baseline_jobs SET {assignments} WHERE id=?",
+            f"UPDATE phase0_baseline_jobs SET {assignments} WHERE id=?,
             (*values.values(), job_id),
         )
         conn.commit()
@@ -134,7 +133,6 @@ def recover_stale_jobs() -> int:
     now = utc_now()
     conn = connect()
     try:
-        ensure_schema(conn)
         cur = conn.execute(
             """UPDATE phase0_baseline_jobs
                   SET status='failed', finished_at=?,
@@ -157,7 +155,6 @@ def recover_stale_jobs() -> int:
 def claim_next_job(worker_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        ensure_schema(conn)
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
             """SELECT id FROM phase0_baseline_jobs
