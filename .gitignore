@@ -22,6 +22,5 @@ htmlcov/
 # Generated artefacts
 *.log
 *.tmp
-*.csv
 *.zip
 .DS_Store
