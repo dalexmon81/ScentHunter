@@ -48,10 +48,10 @@ class Phase0BaselineReportTests(unittest.TestCase):
         rows, source, indexed_urls = _rows(conn)
         conn.close()
 
-            self.assertEqual(len(ACTIVE_STORES), 9)
+        self.assertEqual(len(ACTIVE_STORES), 9)
             self.assertEqual({row["store"] for row in rows}, {"bplatz"})
             self.assertEqual(indexed_urls["notino"], 2)
-            self.assertNotIn("amazon_de", indexed_urls)
+        self.assertNotIn("amazon_de", indexed_urls)
 
 
 if __name__ == "__main__":
