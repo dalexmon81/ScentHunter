@@ -15,7 +15,7 @@ jobs:
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
           SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
-          JOB_ID: "5518639f139048b0b6af68b3ae595e79"
+          JOB_ID: "4f9dd9a26adc4d05ab587b1a24124f9d"
         shell: bash
         run: |
           set -euo pipefail
@@ -31,7 +31,7 @@ jobs:
             base_url="${SCENTHUNTER_BASELINE_URL%/}"
           fi
 
-          http_code=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+          http_code=$(curl --silent --show-error --connect-timeout 5 --max-time 15 \
             -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
             -H "Accept: application/json" \
             --output phase0-historical-job.json --write-out '%{http_code}' \
