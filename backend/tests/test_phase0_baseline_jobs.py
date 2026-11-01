@@ -12,6 +12,8 @@ from scenthunter_next_engine.models import CanonicalProduct, CanonicalVariant
 from scenthunter_next_engine.phase0_baseline_jobs import (
     COLUMNS,
     STORES,
+    SMOKE_STORES,
+    generate_smoke_csv,
     claim_next_job,
     connect,
     create_job,
@@ -137,6 +139,16 @@ class Phase0PersistentJobTests(unittest.TestCase):
             self.assertEqual(deloox_rows[0]["source"], "store_products")
         finally:
             conn.close()
+
+    def test_smoke_csv_contains_exactly_nine_active_retailers(self):
+        output = self.root / "phase0" / "smoke" / "smoke.csv"
+        result = generate_smoke_csv({"output_path": str(output)})
+        with output.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual(SMOKE_STORES, STORES)
+        self.assertEqual(result["rows_written"], 9)
+        self.assertEqual([row["store"] for row in rows], list(STORES))
+        self.assertFalse({"amazon_de", "amazon_fr"} & {row["store"] for row in rows})
 
     def test_csv_is_written_to_volume_path_and_published_atomically(self):
         conn = connect()
