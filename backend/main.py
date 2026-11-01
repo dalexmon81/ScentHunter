@@ -5207,13 +5207,34 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         conn.row_factory = _phase0_sqlite3.Row
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
-            if source not in tables: raise RuntimeError('No retailer offers table found')
-            columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
             required = {'store','url','name','brand','price','availability','fetched_at'}
-            if not required.issubset(columns): raise RuntimeError(f'Unexpected {source} schema')
-            url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-            rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+            selects = []
+            if 'store_product_variants' in tables:
+                variant_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_product_variants)')}
+                if not required.issubset(variant_columns):
+                    raise RuntimeError('Unexpected store_product_variants schema')
+                variant_url_expr = "COALESCE(variant_url,url)" if 'variant_url' in variant_columns else 'url'
+                selects.append(
+                    f"SELECT store,{variant_url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at "
+                    "FROM store_product_variants"
+                )
+            if 'store_products' in tables:
+                product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
+                if not required.issubset(product_columns):
+                    raise RuntimeError('Unexpected store_products schema')
+                product_sql = (
+                    "SELECT p.store,p.url AS offer_url,p.name,p.brand,p.price,p.currency,p.availability,p.fetched_at "
+                    "FROM store_products p"
+                )
+                if 'store_product_variants' in tables:
+                    product_sql += (
+                        " WHERE NOT EXISTS (SELECT 1 FROM store_product_variants v "
+                        "WHERE v.store=p.store AND v.url=p.url)"
+                    )
+                selects.append(product_sql)
+            if not selects:
+                raise RuntimeError('No retailer offers table found')
+            rows = conn.execute(" UNION ALL ".join(selects)).fetchall()
         finally:
             conn.close()
         now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
