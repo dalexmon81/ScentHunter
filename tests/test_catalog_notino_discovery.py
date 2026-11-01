@@ -218,3 +218,21 @@ def test_notino_public_product_page_parser_extracts_real_offer_identity_and_vari
     assert item["availability"] == "in_stock"
     assert item["size_ml"] == 100
     assert item["concentration"].casefold() == "eau de parfum"
+
+
+def test_amazon_marketplaces_are_inactive_until_credentials_are_available(monkeypatch):
+    assert set(catalog.DISABLED_STORES) == {"amazon_de", "amazon_fr"}
+    assert set(catalog.ACTIVE_STORES) == {
+        "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+        "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+    }
+    states = []
+    monkeypatch.setattr(
+        catalog,
+        "_set_sync_state",
+        lambda store, status, **kwargs: states.append((store, status, kwargs)),
+    )
+    result = catalog.discover_store("amazon_de")
+    assert result["status"] == "DISABLED_NO_CREDENTIALS"
+    assert result["count"] == 0
+    assert states[0][0:2] == ("amazon_de", "DISABLED_NO_CREDENTIALS")
