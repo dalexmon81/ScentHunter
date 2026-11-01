@@ -10,15 +10,18 @@ credentials. From the repository root:
 ```bash
 cd backend
 alembic upgrade head
-python scripts/seed_catalog.py --dry-run
 python scripts/seed_catalog.py
+# Inspect the dry-run report; only after review:
+python scripts/seed_catalog.py --apply
 ```
 
 The seed imports brands, fragrances and explicitly declared variants only.
 It does not import retailer offers, invent missing variants, or modify either
 the source JSON or legacy SQLite database. It stops if any product lacks
 explicit variant records. Missing tester/refill/gift-set flags and GTINs are
-not inferred. Review the catalog migration report before running the seed.
+not inferred; unknown flags stay NULL. The default command is dry-run only.
+Use `--apply` only after reviewing the catalog migration report and approving
+the source identities.
 
 Do not repoint `SCENTHUNTER_CATALOG_DB`, remove the Fly volume, enable the
 new database in normal search, or cut over production as part of Phase 2.
