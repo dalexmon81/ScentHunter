@@ -48,6 +48,19 @@ jobs:
               --yes
           fi
 
+      - name: Inspect Fly machines and volume attachments before deployment
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== FLY STATUS ==="
+          flyctl status --app scenthunter --json
+          echo "=== FLY MACHINES ==="
+          flyctl machines list --app scenthunter --json
+          echo "=== FLY VOLUMES ==="
+          flyctl volumes list --app scenthunter --json
+
       - name: Deploy ScentHunter
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
