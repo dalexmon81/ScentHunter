@@ -69,7 +69,7 @@ class Offer(Base):
         CheckConstraint("price >= 0", name="price_nonnegative"),
         CheckConstraint("shipping_cost IS NULL OR shipping_cost >= 0", name="shipping_cost_nonnegative"),
         CheckConstraint("confidence IS NULL OR (confidence >= 0 AND confidence <= 1)", name="confidence_range"),
-        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"),
+        CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
         Index("ix_offers_store_external_product", "store_id", "external_product_id", unique=True, sqlite_where=text("external_product_id IS NOT NULL"), postgresql_where=text("external_product_id IS NOT NULL")),
         Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"), Index("ix_offers_store_id", "store_id"), Index("ix_offers_product_variant_id", "product_variant_id"), CheckConstraint("status <> 'active' OR (length(trim(url)) > 0 AND availability IS NOT NULL)", name="active_offer_required_fields"),
     )
@@ -95,7 +95,7 @@ class Offer(Base):
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
-    __table_args__ = (CheckConstraint("price >= 0", name="price_nonnegative"), CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"), Index("ix_price_history_offer_captured_at", "offer_id", "captured_at"))
+    __table_args__ = (CheckConstraint("price >= 0", name="price_nonnegative"), CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"), Index("ix_price_history_offer_captured_at", "offer_id", "captured_at"))
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     offer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("offers.id", ondelete="CASCADE"), nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
