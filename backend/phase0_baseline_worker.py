@@ -76,20 +76,18 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
-    conn = connect()
-    try:
-        ensure_schema(conn)
-    finally:
-        conn.close()
-
-    recovered = recover_stale_jobs()
-    print(
-        f"PHASE0 WORKER START worker={worker_id} stale_jobs_failed={recovered}",
-        flush=True,
-    )
-    last_recovery = time.monotonic()
+    last_recovery = 0.0
+    print(f"PHASE0 WORKER START worker={worker_id}", flush=True)
     while not _STOP:
         try:
+            # Re-open and initialize after transient SQLite/startup failures.
+            # Queued rows remain durable on the mounted Fly volume.
+            conn = connect()
+            try:
+                ensure_schema(conn)
+            finally:
+                conn.close()
+
             if time.monotonic() - last_recovery >= 30:
                 recovered = recover_stale_jobs()
                 if recovered:
@@ -106,7 +104,7 @@ def main() -> None:
                 time.sleep(5)
         except Exception:
             print(
-                "PHASE0 WORKER LOOP ERROR\n" + traceback.format_exc(),
+                "PHASE0 WORKER LOOP ERROR\\n" + traceback.format_exc(),
                 flush=True,
             )
             time.sleep(5)
