@@ -1,0 +1,109 @@
+name: Phase 0 - read-only production catalog baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only:
+        description: Confirm read-only inspection of the production SQLite catalog
+        required: true
+        type: choice
+        options:
+          - no
+          - yes
+        default: no
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scent-hunter-phase-0-live-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    if: ${{ inputs.confirm_read_only == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run read-only baseline on the production machine
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "Repository secret FLY_API_TOKEN is missing." >&2
+            exit 1
+          }
+          normalized_token="$FLY_API_TOKEN"
+          case "$normalized_token" in
+            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
+          esac
+          echo "::add-mask::$normalized_token"
+          export FLY_API_TOKEN="$normalized_token"
+
+          cat > /tmp/run_phase0_baseline.py <<'PY'
+          import base64
+          import importlib
+          import json
+          import pathlib
+          import shutil
+          import subprocess
+          import sys
+          import tarfile
+          import tempfile
+          import urllib.request
+
+          db = pathlib.Path("/data/store_catalog.sqlite3")
+          if not db.is_file() or db.stat().st_size <= 0:
+              raise SystemExit("Production SQLite database is missing or empty at /data/store_catalog.sqlite3")
+
+          catalog_candidates = [
+              pathlib.Path("/app/product_catalog.json"),
+              pathlib.Path("/app/backend/product_catalog.json"),
+              pathlib.Path("/workspace/backend/product_catalog.json"),
+              pathlib.Path.cwd() / "product_catalog.json",
+          ]
+          catalog = next((p for p in catalog_candidates if p.is_file()), None)
+          if catalog is None:
+              raise SystemExit("Cannot locate the deployed product_catalog.json; refusing to estimate baseline")
+
+          archive_url = "https://codeload.github.com/dalexmon81/ScentHunter/tar.gz/refs/heads/refactor/catalog-first-architecture"
+          with tempfile.TemporaryDirectory(prefix="scenthunter-phase0-") as tmp:
+              root = pathlib.Path(tmp)
+              archive = root / "source.tar.gz"
+              urllib.request.urlretrieve(archive_url, archive)
+              with tarfile.open(archive, "r:gz") as tar:
+                  member = next((m for m in tar.getmembers() if m.name.endswith("/backend/scenthunter_next_engine/baseline_report.py")), None)
+                  if member is None:
+                      raise SystemExit("Baseline report module not found in migration branch archive")
+                  prefix = member.name.split("/backend/")[0]
+                  tar.extractall(root, filter="data")
+              backend = root / (prefix + "/backend")
+              sys.path.insert(0, str(backend))
+              module = importlib.import_module("scenthunter_next_engine.baseline_report")
+              output = root / "phase-0-retailer-baseline.csv"
+              result = module.generate(catalog, db, output)
+              print("BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True))
+              print("BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii"))
+          PY
+
+          SCRIPT_B64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
+          REMOTE_CMD="python -c 'import base64; exec(compile(base64.b64decode(\"$SCRIPT_B64\"), \"phase0_baseline.py\", \"exec\"))'"
+          flyctl ssh console --app scenthunter --select=false -C "$REMOTE_CMD" | tee /tmp/phase0-baseline.log
+
+          grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
+          sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
+          test -s phase-0-retailer-baseline.csv
+          echo "BASELINE_CSV_CREATED=phase-0-retailer-baseline.csv"
+
+      - name: Upload baseline CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-phase-0-live-baseline
+          path: phase-0-retailer-baseline.csv
+          if-no-files-found: error
+          retention-days: 30
