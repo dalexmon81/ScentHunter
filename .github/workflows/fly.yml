@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - .github/workflows/phase-0-live-baseline.yml
+      - backend/scenthunter_next_engine/baseline_report.py
 
 jobs:
   deploy:
