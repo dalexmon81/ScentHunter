@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -17,7 +17,7 @@ class Brand(Base):
 
 class Fragrance(Base):
     __tablename__ = "fragrances"
-    __table_args__ = (UniqueConstraint("brand_id", "slug", name="uq_fragrances_brand_slug"),)
+    __table_args__ = (UniqueConstraint("brand_id", "slug", name="uq_fragrances_brand_slug"), Index("ix_fragrances_name", "name"))
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     brand_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(240), nullable=False)
@@ -34,7 +34,7 @@ class ProductVariant(Base):
     __table_args__ = (
         CheckConstraint("size_ml IS NULL OR size_ml > 0", name="size_ml_positive"),
         CheckConstraint("NOT (is_tester AND is_gift_set)", name="tester_not_gift_set"),
-        Index("ix_product_variants_gtin", "gtin"),
+        Index("ix_product_variants_gtin", "gtin"), Index("ix_product_variants_size_ml", "size_ml"), Index("ix_product_variants_concentration", "concentration"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fragrance_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, index=True)
@@ -52,7 +52,7 @@ class Store(Base):
     __tablename__ = "stores"
     __table_args__ = (
         CheckConstraint("reliability_score IS NULL OR (reliability_score >= 0 AND reliability_score <= 1)", name="reliability_score_range"),
-        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"),
+        CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -69,9 +69,9 @@ class Offer(Base):
         CheckConstraint("price >= 0", name="price_nonnegative"),
         CheckConstraint("shipping_cost IS NULL OR shipping_cost >= 0", name="shipping_cost_nonnegative"),
         CheckConstraint("confidence IS NULL OR (confidence >= 0 AND confidence <= 1)", name="confidence_range"),
-        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"),
-        Index("ix_offers_store_external_product", "store_id", "external_product_id", unique=True, postgresql_where=text("external_product_id IS NOT NULL")),
-        Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"),
+        CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
+        Index("ix_offers_store_external_product", "store_id", "external_product_id", unique=True, sqlite_where=text("external_product_id IS NOT NULL"), postgresql_where=text("external_product_id IS NOT NULL")),
+        Index("ix_offers_status", "status"), Index("ix_offers_captured_at", "captured_at"), Index("ix_offers_price", "price"), Index("ix_offers_store_id", "store_id"), Index("ix_offers_product_variant_id", "product_variant_id"), CheckConstraint("status <> 'active' OR (length(trim(url)) > 0 AND availability IS NOT NULL)", name="active_offer_required_fields"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     store_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False)
@@ -95,7 +95,7 @@ class Offer(Base):
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
-    __table_args__ = (CheckConstraint("price >= 0", name="price_nonnegative"), CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"), Index("ix_price_history_offer_captured_at", "offer_id", "captured_at"))
+    __table_args__ = (CheckConstraint("price >= 0", name="price_nonnegative"), CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"), Index("ix_price_history_offer_captured_at", "offer_id", "captured_at"))
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     offer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("offers.id", ondelete="CASCADE"), nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -129,4 +129,4 @@ class IngestionRun(Base):
     offers_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     offers_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    errors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    errors: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default=text("'[]'"))

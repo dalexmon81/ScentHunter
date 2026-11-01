@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse, json, re, sys, unicodedata, uuid
 from pathlib import Path
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,7 +24,7 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
-    parser.add_argument("--apply", action="store_true", help="write to PostgreSQL after reviewing the dry-run report")
+    parser.add_argument("--apply", action="store_true", help="write to the isolated SQLite catalog after reviewing the dry-run report")
     args = parser.parse_args()
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
@@ -85,7 +85,23 @@ def main() -> int:
                     variant_id = stable_id("variant", source_id)
                     if session.get(ProductVariant, variant_id) is None:
                         session.add(ProductVariant(id=variant_id, fragrance_id=fragrance.id, concentration=concentration, size_ml=int(size) if size not in (None, "") else None, is_tester=variant.get("is_tester"), is_refill=variant.get("is_refill"), is_gift_set=variant.get("is_gift_set"), gtin=variant.get("gtin"), canonical_key=key[:320]))
-        print(json.dumps({"status":"seeded","brands":len(names),"fragrances":len(products),"variants":variant_count,"source_file_modified":False}, indent=2))
+        inspector = inspect(engine)
+        expected_tables = {"brands", "fragrances", "product_variants", "stores", "offers", "price_history", "match_audit", "ingestion_runs"}
+        actual_tables = set(inspector.get_table_names())
+        if not expected_tables.issubset(actual_tables):
+            raise RuntimeError(f"Catalog schema incomplete: missing {sorted(expected_tables - actual_tables)}")
+        with engine.connect() as connection:
+            invalid_active_offers = connection.execute(text(
+                "SELECT COUNT(*) FROM offers WHERE status = 'active' AND "
+                "(price IS NULL OR url IS NULL OR length(trim(url)) = 0 OR availability IS NULL)"
+            )).scalar_one()
+            counts = {table: connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+                      for table in sorted(expected_tables)}
+        if invalid_active_offers:
+            raise RuntimeError(f"Found {invalid_active_offers} active offers with missing price/url/availability")
+        print(json.dumps({"status":"seeded","brands":len(names),"fragrances":len(products),
+            "variants":variant_count,"tables":sorted(expected_tables),"database_counts":counts,
+            "invalid_active_offers":invalid_active_offers,"source_file_modified":False}, indent=2))
         return 0
     finally:
         engine.dispose()
