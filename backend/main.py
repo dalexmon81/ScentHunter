@@ -5185,6 +5185,12 @@ from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPExcepti
 from fastapi.responses import Response as _Phase0Response
 
 _PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability', 'available', 'unavailable'}
+CSV_HEADER = (
+    "store,total_offers,offers_with_valid_price,"
+    "offers_with_valid_url,offers_with_valid_availability,"
+    "offers_matched_to_canonical_product,"
+    "offers_with_recent_capture,stale_offers,invalid_offers"
+)
 
 @app.get('/admin/phase0/baseline-report.csv')
 def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
@@ -5258,12 +5264,30 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
             else: item['stale_offers'] += 1
             if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
-        output = _phase0_io.StringIO()
-        fields = ['store','total_offers','offers_with_valid_price','offers_with_valid_url','offers_with_valid_availability','offers_matched_to_canonical_product','offers_with_recent_capture','stale_offers','invalid_offers']
-        writer = _phase0_csv.DictWriter(output, fieldnames=fields)
-        writer.writeheader()
-        for store in sorted(totals): writer.writerow({'store':store,**totals[store]})
-        return _Phase0Response(content=output.getvalue(),media_type='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename="phase-0-retailer-baseline.csv"'})
+        output = _phase0_io.StringIO(newline="")
+        writer = _phase0_csv.writer(output, lineterminator="\\n")
+        writer.writerow(CSV_HEADER.split(","))
+        for store in sorted(totals):
+            item = totals[store]
+            writer.writerow([
+                store,
+                item['total_offers'],
+                item['offers_with_valid_price'],
+                item['offers_with_valid_url'],
+                item['offers_with_valid_availability'],
+                item['offers_matched_to_canonical_product'],
+                item['offers_with_recent_capture'],
+                item['stale_offers'],
+                item['invalid_offers'],
+            ])
+        csv_bytes = output.getvalue().encode("utf-8")
+        return _Phase0Response(
+            content=csv_bytes,
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="phase-0-retailer-baseline.csv"'
+            },
+        )
     except _Phase0HTTPException: raise
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}',flush=True)
