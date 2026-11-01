@@ -1,0 +1,39 @@
+name: Phase 2 PostgreSQL schema checks
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/models/**"
+      - "backend/app/db.py"
+      - "backend/alembic/**"
+      - "backend/alembic.ini"
+      - "backend/scripts/seed_catalog.py"
+      - "requirements.txt"
+      - "tests/test_phase2_schema_contract.py"
+      - ".github/workflows/phase2-postgresql.yml"
+  push:
+    branches:
+      - "feature/phase-2-postgresql-data-model"
+
+permissions:
+  contents: read
+
+jobs:
+  schema-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install database tooling
+        run: python -m pip install "SQLAlchemy==2.0.44" "alembic==1.17.1" "psycopg[binary]==3.2.12" pytest
+      - name: Run schema contract tests
+        run: pytest -q tests/test_phase2_schema_contract.py
+      - name: Compile initial migration offline
+        working-directory: backend
+        env:
+          SCENTHUNTER_DATABASE_URL: postgresql://schema-check:unused@localhost/schema_check
+        run: alembic upgrade head --sql
