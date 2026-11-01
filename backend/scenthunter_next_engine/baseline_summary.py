@@ -118,7 +118,7 @@ def generate_summary(catalog_path: Path, db_path: Path, output_path: Path) -> di
     summary_rows = summarize_rows(rows, int(baseline["catalog_products"]))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=SUMMARY_COLUMNS, lineterminator="\\n")
+        writer = csv.DictWriter(handle, fieldnames=SUMMARY_COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(summary_rows)
 
