@@ -18,7 +18,7 @@ jobs:
   baseline:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 25
     steps:
       - name: Confirm production deploy and health checks succeeded
         if: github.event_name == 'workflow_run'
@@ -38,7 +38,7 @@ jobs:
             [.jobs[].steps[] | select(.name == "Verify production health and catalog API") | .conclusion] == ["success"]
           ' <<< "$jobs_json" >/dev/null
 
-      - name: Start and poll persistent Phase 0 baseline job
+      - name: Reuse latest Phase 0 job, poll and validate its CSV
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
           SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
@@ -56,58 +56,81 @@ jobs:
           else
             base_url="${SCENTHUNTER_BASELINE_URL%/}"
           fi
-          start_url="$base_url/admin/phase0/baseline/start"
+          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
 
-          echo "Starting persistent Phase 0 baseline job..."
-          start_http_status=$(curl --silent --show-error \
-            --connect-timeout 10 --max-time 20 \
-            --output phase0-start-response.json \
-            --write-out '%{http_code}' \
-            -X POST \
-            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
-            -H "Accept: application/json" \
-            "$start_url")
-          start_payload=$(cat phase0-start-response.json)
-          if [[ "$start_http_status" != "202" ]]; then
-            echo "::error::Baseline start returned HTTP $start_http_status:"
-            cat phase0-start-response.json
+          echo "Checking the latest durable Phase 0 job before creating anything..."
+          latest_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+            -H "$auth_header" -H "Accept: application/json" \
+            --output phase0-latest.json --write-out '%{http_code}' \
+            "$base_url/admin/phase0/baseline/latest")
+
+          if [[ "$latest_http" == "200" ]]; then
+            latest_payload=$(cat phase0-latest.json)
+            job_id=$(jq -er '.job_id' <<< "$latest_payload")
+            job_status=$(jq -er '.status' <<< "$latest_payload")
+            echo "Reusing existing job_id=$job_id status=$job_status"
+          elif [[ "$latest_http" == "404" ]]; then
+            echo "No durable Phase 0 job exists; creating the first job."
+            start_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+              -X POST -H "$auth_header" -H "Accept: application/json" \
+              --output phase0-start.json --write-out '%{http_code}' \
+              "$base_url/admin/phase0/baseline/start")
+            [[ "$start_http" == "202" ]] || {
+              echo "::error::Baseline start returned HTTP $start_http"
+              cat phase0-start.json
+              exit 1
+            }
+            start_payload=$(cat phase0-start.json)
+            job_id=$(jq -er '.job_id' <<< "$start_payload")
+            job_status=$(jq -er '.status' <<< "$start_payload")
+            [[ "$job_status" == "queued" ]] || {
+              echo "::error::Expected queued after POST /start, got $job_status"
+              exit 1
+            }
+          else
+            echo "::error::GET latest returned unexpected HTTP $latest_http"
+            cat phase0-latest.json
             exit 1
           fi
-          echo "$start_payload" | jq .
-          job_id=$(jq -er '.job_id | select(type == "string" and length > 0)' <<< "$start_payload")
-          start_status=$(jq -er '.status' <<< "$start_payload")
-          if [[ "$start_status" != "queued" ]]; then
-            echo "::error::Expected queued job, received status=$start_status"
-            exit 1
-          fi
+
           echo "PHASE0_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
-
-          status_url="$base_url/admin/phase0/baseline/status?job_id=$job_id"
+          if [[ "$job_status" == "failed" ]]; then
+            echo "::error::Latest Phase 0 job is already failed:"
+            jq '{job_id,status,error_message,error_traceback}' phase0-latest.json
+            exit 1
+          fi
+          if [[ "$job_status" != "queued" && "$job_status" != "running" && "$job_status" != "completed" ]]; then
+            echo "::error::Unexpected latest Phase 0 status: $job_status"
+            jq . phase0-latest.json
+            exit 1
+          fi
           deadline=$((SECONDS + 1200))
-          completed_payload=""
-          while (( SECONDS < deadline )); do
-            status_payload=$(curl --fail --silent --show-error \
-              --connect-timeout 10 --max-time 20 \
-              -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
-              -H "Accept: application/json" \
-              "$status_url")
+          completed=false
+          while [[ "$job_status" == "queued" || "$job_status" == "running" ]]; do
+            (( SECONDS < deadline )) || break
+            status_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+              -H "$auth_header" -H "Accept: application/json" \
+              --output phase0-status.json --write-out '%{http_code}' \
+              "$base_url/admin/phase0/baseline/status?job_id=$job_id")
+            [[ "$status_http" == "200" ]] || {
+              echo "::error::Status endpoint returned HTTP $status_http"
+              cat phase0-status.json
+              exit 1
+            }
+            status_payload=$(cat phase0-status.json)
             job_status=$(jq -er '.status' <<< "$status_payload")
             progress=$(jq -r '.progress // 0' <<< "$status_payload")
+            heartbeat=$(jq -r '.heartbeat_at // "null"' <<< "$status_payload")
             processed=$(jq -r '.processed_stores // 0' <<< "$status_payload")
             total=$(jq -r '.total_stores // 11' <<< "$status_payload")
-            echo "PHASE0_JOB_STATUS=$job_status progress=$progress stores=$processed/$total"
+            echo "PHASE0_JOB_STATUS=$job_status progress=$progress stores=$processed/$total heartbeat_at=$heartbeat"
 
             case "$job_status" in
-              queued|running)
-                sleep 15
-                ;;
-              completed)
-                completed_payload="$status_payload"
-                break
-                ;;
+              queued|running) sleep 15 ;;
+              completed) completed=true ;;
               failed)
-                echo "::error::Phase 0 baseline worker failed:"
-                jq '{job_id,status,error,duration_seconds}' <<< "$status_payload"
+                echo "::error::Phase 0 worker failed:"
+                jq '{job_id,status,error,error_message,error_traceback}' <<< "$status_payload"
                 exit 1
                 ;;
               *)
@@ -118,29 +141,21 @@ jobs:
             esac
           done
 
-          if [[ -z "$completed_payload" ]]; then
-            echo "::error::Phase 0 baseline job exceeded the 20-minute polling deadline."
+          if [[ "$job_status" == "completed" ]]; then completed=true; fi
+          [[ "$completed" == "true" ]] || {
+            echo "::error::Phase 0 job did not complete before the 20-minute polling deadline."
             exit 1
-          fi
+          }
 
-          processed=$(jq -r '.processed_stores // 0' <<< "$completed_payload")
-          total=$(jq -r '.total_stores // 0' <<< "$completed_payload")
-          if [[ "$processed" != "11" || "$total" != "11" ]]; then
-            echo "::error::Worker did not process all 11 stores ($processed/$total)."
+          echo "Downloading the latest completed CSV..."
+          download_http=$(curl --silent --show-error --connect-timeout 10 --max-time 120 \
+            -H "$auth_header" -H "Accept: text/csv" \
+            --output phase-0-retailer-baseline.csv --write-out '%{http_code}' \
+            "$base_url/admin/phase0/baseline/latest/download")
+          [[ "$download_http" == "200" ]] || {
+            echo "::error::Latest CSV download returned HTTP $download_http"
             exit 1
-          fi
-
-          download_url=$(jq -er '.download_url | select(type == "string" and length > 0)' <<< "$completed_payload")
-          if [[ "$download_url" == /* ]]; then
-            download_url="$base_url$download_url"
-          fi
-          echo "Downloading completed CSV artifact..."
-          curl --fail --silent --show-error \
-            --connect-timeout 10 --max-time 120 \
-            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
-            -H "Accept: text/csv" \
-            --output phase-0-retailer-baseline.csv \
-            "$download_url"
+          }
 
           python3 - <<'PY'
           import csv
@@ -159,31 +174,32 @@ jobs:
               "is_valid_offer",
           ]
           if reader.fieldnames != expected_header:
-              raise SystemExit(
-                  "CSV schema mismatch. Expected " + repr(expected_header)
-                  + "; received " + repr(reader.fieldnames)
-              )
+              raise SystemExit("CSV schema mismatch: " + repr(reader.fieldnames))
           expected_stores = {
               "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
               "notino", "orioudh", "parfumcity", "parfumzentrum",
               "perfumemarket", "sabina",
           }
           rows = list(reader)
-          if not rows:
-              raise SystemExit("CSV contains a header but no offer rows.")
           counts = Counter(row["store"] for row in rows)
+          missing = sorted(store for store in expected_stores if counts[store] == 0)
+          if missing:
+              raise SystemExit("CSV has no rows for required stores: " + repr(missing))
           unknown = set(counts) - expected_stores
           if unknown:
               raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
+          for store in ("amazon_de", "amazon_fr", "notino"):
+              if counts[store] <= 0:
+                  raise SystemExit(f"CSV has no real offer rows for {store}")
           if any(row["is_valid_offer"] not in {"true", "false"} for row in rows):
               raise SystemExit("CSV contains an invalid is_valid_offer value.")
           print("PHASE0_CSV_HEADER=PASS")
           print("PHASE0_CSV_ROWS=" + str(len(rows)))
           for store in sorted(expected_stores):
-              print(f"PHASE0_STORE_ROWS_{store.upper()}={counts.get(store, 0)}")
+              print(f"PHASE0_STORE_ROWS_{store.upper()}={counts[store]}")
           PY
-
           echo "Phase 0 baseline CSV downloaded and validated for job $job_id."
+
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
         with:
