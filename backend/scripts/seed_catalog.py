@@ -24,7 +24,7 @@ def stable_id(kind: str, source_id: str) -> uuid.UUID:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(ROOT / "backend" / "product_catalog.json"))
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--apply", action="store_true", help="write to PostgreSQL after reviewing the dry-run report")
     args = parser.parse_args()
     with Path(args.catalog).open(encoding="utf-8") as handle:
         raw = json.load(handle)
@@ -53,8 +53,8 @@ def main() -> int:
         seen.add(pid)
         names.setdefault(norm(str(row["brand_name"])), str(row["brand_name"]).strip())
     variant_count = sum(len(by_product[str(row["product_id"])]) for row in products)
-    if args.dry_run:
-        print(json.dumps({"status":"validated","brands":len(names),"fragrances":len(products),"variants":variant_count,"database_written":False}, indent=2))
+    if not args.apply:
+        print(json.dumps({"status":"validated","brands":len(names),"fragrances":len(products),"variants":variant_count,"database_written":False,"next_step":"review report, then rerun with --apply"}, indent=2))
         return 0
     engine = make_engine()
     try:
@@ -84,7 +84,7 @@ def main() -> int:
                     key = "|".join((norm(str(product["brand_name"])), norm(name), norm(str(concentration or "")), str(size or ""), str(bool(variant.get("is_tester", False))), str(bool(variant.get("is_refill", False))), str(bool(variant.get("is_gift_set", False))), source_id))
                     variant_id = stable_id("variant", source_id)
                     if session.get(ProductVariant, variant_id) is None:
-                        session.add(ProductVariant(id=variant_id, fragrance_id=fragrance.id, concentration=concentration, size_ml=int(size) if size not in (None, "") else None, is_tester=bool(variant.get("is_tester", False)), is_refill=bool(variant.get("is_refill", False)), is_gift_set=bool(variant.get("is_gift_set", False)), gtin=variant.get("gtin"), canonical_key=key[:320]))
+                        session.add(ProductVariant(id=variant_id, fragrance_id=fragrance.id, concentration=concentration, size_ml=int(size) if size not in (None, "") else None, is_tester=variant.get("is_tester"), is_refill=variant.get("is_refill"), is_gift_set=variant.get("is_gift_set"), gtin=variant.get("gtin"), canonical_key=key[:320]))
         print(json.dumps({"status":"seeded","brands":len(names),"fragrances":len(products),"variants":variant_count,"source_file_modified":False}, indent=2))
         return 0
     finally:
