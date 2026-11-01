@@ -27,7 +27,16 @@ VALID_STOCK = {
 STALE_AFTER_SECONDS = 180
 
 
-def database_path() -> Path:
+def jobs_database_path() -> Path:
+    # The queue shares the persistent Fly volume, not the catalog database.
+    # The catalog has long-running writers; keeping queue writes in a dedicated
+    # SQLite file guarantees that those writers cannot delay POST /start.
+    return Path(os.environ.get(
+        "PHASE0_JOBS_DB", "/data/phase0/phase0_jobs.sqlite3"
+    )).expanduser().resolve()
+
+
+def catalog_database_path() -> Path:
     backend = Path(__file__).resolve().parent
     return Path(os.environ.get(
         "SCENTHUNTER_CATALOG_DB", str(backend / "store_catalog.sqlite3")
@@ -35,11 +44,11 @@ def database_path() -> Path:
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(path or database_path(), timeout=30)
+    target = path or jobs_database_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(target, timeout=2)
     conn.row_factory = sqlite3.Row
-    # The production catalog is concurrently written by hydration/discovery.
-    # Give short-lived queue operations time to pass SQLite writer contention.
-    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA busy_timeout=2000")
     return conn
 
 
@@ -348,7 +357,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
 
     backend = Path(__file__).resolve().parent
     catalog_path = backend / "product_catalog.json"
-    db_path = database_path()
+    db_path = catalog_database_path()
     output_path = Path(job["output_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
