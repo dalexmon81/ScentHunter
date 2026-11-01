@@ -5186,10 +5186,11 @@ from fastapi.responses import Response as _Phase0Response
 
 _PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability', 'available', 'unavailable'}
 CSV_HEADER = (
-    "store,total_offers,offers_with_valid_price,"
-    "offers_with_valid_url,offers_with_valid_availability,"
-    "offers_matched_to_canonical_product,"
-    "offers_with_recent_capture,stale_offers,invalid_offers"
+    "store,catalog_products_count,total_offers,offers_with_valid_price,"
+    "valid_price_percent,offers_with_valid_url,valid_url_percent,"
+    "offers_with_valid_availability,valid_availability_percent,"
+    "offers_matched_to_canonical_product,offers_with_recent_capture,"
+    "stale_offers,invalid_offers,ambiguous_matches"
 )
 
 @app.get('/admin/phase0/baseline-report.csv')
@@ -5214,6 +5215,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         conn = _phase0_sqlite3.connect(f'file:{db_path}?mode=ro', uri=True, timeout=10)
         conn.row_factory = _phase0_sqlite3.Row
         now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
+        catalog_products_count = len(payload.get('products', [])) if isinstance(payload, dict) and isinstance(payload.get('products', []), list) else 0
         totals = {}
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -5268,16 +5270,23 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         writer.writerow(CSV_HEADER.split(","))
         for store in sorted(totals):
             item = totals[store]
+            total = item['total_offers']
+            pct = lambda count: round((count / total) * 100, 2) if total else 0.0
             writer.writerow([
                 store,
-                item['total_offers'],
+                catalog_products_count,
+                total,
                 item['offers_with_valid_price'],
+                pct(item['offers_with_valid_price']),
                 item['offers_with_valid_url'],
+                pct(item['offers_with_valid_url']),
                 item['offers_with_valid_availability'],
+                pct(item['offers_with_valid_availability']),
                 item['offers_matched_to_canonical_product'],
                 item['offers_with_recent_capture'],
                 item['stale_offers'],
                 item['invalid_offers'],
+                'NOT_TRACKED',
             ])
         csv_bytes = output.getvalue().encode("utf-8")
         return _Phase0Response(
