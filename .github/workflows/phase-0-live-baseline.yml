@@ -21,127 +21,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Install flyctl and jq
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Run baseline against the exact production volume machine
+      - name: Download read-only baseline report
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$FLY_API_TOKEN" || {
-            echo "Missing FLY_API_TOKEN repository secret." >&2
-            exit 1
-          }
-          normalized_token="$FLY_API_TOKEN"
-          case "$normalized_token" in
-            fm2_*) normalized_token="FlyV1 $normalized_token" ;;
-          esac
-          echo "::add-mask::$normalized_token"
-          export FLY_API_TOKEN="$normalized_token"
-
-          volumes_json="$(flyctl volumes list --app scenthunter --json)"
-          volume_metadata="$(printf '%s' "$volumes_json" | jq -cs 'flatten | map({
-            id: (.id // .ID // ""),
-            name: (.name // .Name // ""),
-            attached_machine_id: (.attached_machine_id // .AttachedMachineID // .AttachedVM // ""),
-            state: (.state // .State // ""),
-            region: (.region // .Region // "")
-          })')"
-          echo "FLY_VOLUME_METADATA=$volume_metadata"
-
-          volume_id="$(printf '%s' "$volume_metadata" | jq -er '
-            [.[] | select(.name == "scenthunter_data")]
-            | if length == 1 then .[0].id
-              else error("Expected exactly one volume named scenthunter_data")
-              end
-          ')"
-          machine_id="$(printf '%s' "$volume_metadata" | jq -r '
-            [.[] | select(.name == "scenthunter_data") | .attached_machine_id]
-            | if length == 1 and .[0] != "" then .[0] else "" end
-          ')"
-
-          machines_json="$(flyctl machine list --app scenthunter --json)"
-          if [[ -z "$machine_id" ]]; then
-            machine_id="$(printf '%s' "$machines_json" | jq -er --arg volume "$volume_id" '
-              [.[] | select(any((.config.mounts // .Config.Mounts // [])[]?;
-                (.volume // .Volume) == $volume))]
-              | if length == 1 then .[0].id
-                else error("Could not map scent hunter data volume to exactly one machine")
-                end
-            ')"
-          fi
-          machine_state="$(printf '%s' "$machines_json" | jq -r --arg id "$machine_id" '
-            [.[] | select((.id // .ID) == $id) | (.state // .State)] | .[0] // "missing"
-          ')"
-          if [[ "$machine_state" != "started" ]]; then
-            echo "Starting the already-authorized production machine $machine_id (no deploy or volume operation)."
-            flyctl machine start "$machine_id" --app scenthunter
-          fi
-          started=false
-          for attempt in $(seq 1 30); do
-            machines_json="$(flyctl machine list --app scenthunter --json)"
-            if printf '%s' "$machines_json" | jq -e --arg id "$machine_id" '
-              any(.[]; (.id // .ID) == $id and (.state // .State) == "started")
-            ' >/dev/null; then
-              started=true
-              break
-            fi
-            sleep 2
-          done
-          [[ "$started" == "true" ]] || {
-            echo "Machine $machine_id did not reach started state after start request." >&2
-            exit 1
-          }
-
-          cat > /tmp/run_phase0_baseline.py <<'PY'
-          import base64
-          import importlib
-          import json
-          import pathlib
-          import sys
-          import tempfile
-          import urllib.request
-
-          db = pathlib.Path("/data/store_catalog.sqlite3")
-          if not db.is_file() or db.stat().st_size <= 0:
-              raise SystemExit("Production database is missing or empty: /data/store_catalog.sqlite3")
-          catalog_candidates = [
-              pathlib.Path("/app/backend/product_catalog.json"),
-              pathlib.Path("/app/product_catalog.json"),
-          ]
-          catalog = next((p for p in catalog_candidates if p.is_file()), None)
-          if catalog is None:
-              raise SystemExit("Deployed product_catalog.json not found; refusing to estimate baseline")
-          branch = "phase-0/live-baseline-only"
-          files = ("baseline_report.py", "catalog_repository.py", "canonical_matcher.py", "models.py")
-          with tempfile.TemporaryDirectory(prefix="scenthunter-phase0-") as tmp:
-              package = pathlib.Path(tmp) / "scenthunter_next_engine"
-              package.mkdir()
-              (package / "__init__.py").write_text("", encoding="utf-8")
-              for name in files:
-                  url = "https://raw.githubusercontent.com/dalexmon81/ScentHunter/" + branch + "/backend/scenthunter_next_engine/" + name
-                  request = urllib.request.Request(url, headers={"User-Agent": "ScentHunter-Phase0-Baseline/1.0"})
-                  with urllib.request.urlopen(request, timeout=30) as response:
-                      (package / name).write_bytes(response.read())
-              sys.path.insert(0, tmp)
-              module = importlib.import_module("scenthunter_next_engine.baseline_report")
-              output = pathlib.Path(tmp) / "phase-0-retailer-baseline.csv"
-              result = module.generate(catalog, db, output)
-              print("BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True), flush=True)
-              print("BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii"), flush=True)
-          PY
-
-          script_b64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
-          remote_cmd="sh -c 'echo $script_b64 | base64 -d | python'"
-          timeout 300s flyctl ssh console --app scenthunter --machine "$machine_id" --command "$remote_cmd" | tee /tmp/phase0-baseline.log
-
-          grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
-          sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
+          test -n "$SCENTHUNTER_BASELINE_URL" || { echo "Missing SCENTHUNTER_BASELINE_URL secret" >&2; exit 1; }
+          test -n "$SCENTHUNTER_BASELINE_TOKEN" || { echo "Missing SCENTHUNTER_BASELINE_TOKEN secret" >&2; exit 1; }
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+            "$SCENTHUNTER_BASELINE_URL" \
+            -o phase-0-retailer-baseline.csv
           test -s phase-0-retailer-baseline.csv
-          echo "BASELINE_CSV_CREATED=phase-0-retailer-baseline.csv"
-
+          head -n 1 phase-0-retailer-baseline.csv | grep -Fx 'store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
         with:
