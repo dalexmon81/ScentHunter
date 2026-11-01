@@ -3322,31 +3322,34 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 
 
 def discover_store(store):
-    """Refresh retailer discovery; Notino is imported only from the authorized feed."""
+    """Refresh retailer discovery; prefer Notino's authorized feed, then public pages."""
     started_at = time.time()
+    notino_feed_error = None
     if store == 'notino':
         try:
             feed = importlib.import_module('scrapers.notino.affiliate_feed')
             report = feed.import_configured_feed()
             count = int(report.get('imported_offers') or 0)
-            _set_sync_state(
-                store, 'FEED_IMPORTED', started_at=started_at,
-                finished_at=time.time(), discovered_count=count, fetched_count=count,
-                error='source=cj_viv_authorized_xml',
-            )
-            return {'status': 'FEED_IMPORTED' if count else 'FEED_EMPTY',
-                    'count': count, 'source': 'cj_viv_authorized_xml'}
+            if count:
+                _set_sync_state(
+                    store, 'FEED_IMPORTED', started_at=started_at,
+                    finished_at=time.time(), discovered_count=count, fetched_count=count,
+                    error='source=cj_viv_authorized_xml',
+                )
+                return {'status': 'FEED_IMPORTED', 'count': count,
+                        'source': 'cj_viv_authorized_xml'}
+            notino_feed_error = 'notino_feed_empty'
         except Exception as exc:
-            error = str(exc)
-            if not error.startswith('notino_feed_'):
-                error = f'notino_feed_import_error:{type(exc).__name__}'
-            _set_sync_state(
-                store, 'FEED_UNAVAILABLE', started_at=started_at,
-                finished_at=time.time(), discovered_count=0, fetched_count=0,
-                error=error[:180],
-            )
-            return {'status': 'FEED_UNAVAILABLE', 'count': 0,
-                    'error': error[:180], 'source': 'cj_viv_authorized_xml'}
+            notino_feed_error = str(exc)
+            if not notino_feed_error.startswith('notino_feed_'):
+                notino_feed_error = f'notino_feed_import_error:{type(exc).__name__}'
+        # Do not invent prices or bypass access controls. If the authorized feed
+        # is not configured, continue with ordinary public catalog discovery;
+        # individual product refreshes must still return HTTP 200 and valid offers.
+        print(
+            f'NOTINO_FEED_UNAVAILABLE fallback=public_catalog reason={notino_feed_error}',
+            flush=True,
+        )
     # Persist state BEFORE network work so a slow/failing store is never falsely NOT_SYNCED.
     _set_sync_state(store, 'DISCOVERY_RUNNING', started_at=started_at, error='discovery_started')
     def _persist_seed_progress(detail):
@@ -3367,7 +3370,7 @@ def discover_store(store):
     # Deloox's sitemap roots repeatedly return errors while its HTML catalog graph is usable.
     # Give sitemap discovery only a short probe window there so it cannot consume
     # most of the bounded run before the persistent HTML frontier gets time.
-    sitemap_budget = 5 if store == 'deloox' else SITEMAP_DISCOVERY_BUDGET
+    sitemap_budget = 5 if store in ('deloox', 'notino') else SITEMAP_DISCOVERY_BUDGET
     sitemap_deadline = min(
         started_at + DISCOVERY_HARD_TIMEOUT,
         started_at + sitemap_budget,
@@ -3554,6 +3557,8 @@ def discover_store(store):
 
     details=[]
     if sitemap_errors: details.append('sitemap_warnings='+' | '.join(sitemap_errors[:8]))
+    if notino_feed_error:
+        details.append('notino_feed=' + str(notino_feed_error)[:180])
     if deloox_graph is not None:
         details.append(
             f'deloox_category_graph=visited:{deloox_graph["visited"]};'
@@ -3987,10 +3992,9 @@ def refresh_url(store, url):
                     f'non_german_easycosmetic_url;requested={url}'
                 )
 
-        # Notino is sourced from the authenticated CJ/VIV feed only.
-        # Public HTML is not a valid price source for this blocked storefront.
-        if store == 'notino':
-            raise RuntimeError('notino_requires_authorized_feed_import')
+        # Notino may use a public product page only when the normal HTTP request
+        # succeeds. HTTP 403/429 and challenge pages remain failures; no bypass
+        # or browser fingerprint evasion is attempted.
 
         # For Amazon, approved Creators API access owns both discovery and
         # hydration. Never scrape Amazon product pages when API credentials are
