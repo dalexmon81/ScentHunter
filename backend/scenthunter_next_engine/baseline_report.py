@@ -17,7 +17,7 @@ from .canonical_matcher import CanonicalMatcher
 from .models import MatchStatus, RetailerOffer
 
 
-VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
+VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability", "available", "unavailable"}
 SUPPORTED_STORES = (
     "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
     "notino", "orioudh", "parfumcity", "parfumzentrum",
@@ -42,13 +42,36 @@ def _valid_url(value):
 
 
 def _rows(conn):
+    """Read every live offer exactly once, preferring variant rows over base rows."""
     tables = {
         row[0]
         for row in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         )
     }
-    if "store_product_variants" in tables:
+    has_variants = "store_product_variants" in tables
+    has_products = "store_products" in tables
+    if has_variants and has_products:
+        rows = conn.execute(
+            """SELECT store, COALESCE(variant_url, url) AS product_url,
+                      name, brand, sku, gtin, size_ml, concentration,
+                      price, currency, availability
+                 FROM store_product_variants
+                UNION ALL
+               SELECT p.store, p.url AS product_url, p.name, p.brand,
+                      p.sku, p.gtin, p.size_ml, p.concentration,
+                      p.price, p.currency, p.availability
+                 FROM store_products AS p
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM store_product_variants AS v
+                     WHERE v.store = p.store AND v.url = p.url
+                )
+                ORDER BY store, product_url"""
+        ).fetchall()
+        if rows:
+            return rows, "store_product_variants+store_products"
+        return rows, "store_product_variants+store_products"
+    if has_variants:
         rows = conn.execute(
             """SELECT store, COALESCE(variant_url, url) AS product_url,
                       name, brand, sku, gtin, size_ml, concentration,
@@ -56,9 +79,8 @@ def _rows(conn):
                  FROM store_product_variants
                 ORDER BY store, url, variant_key"""
         ).fetchall()
-        if rows:
-            return rows, "store_product_variants"
-    if "store_products" in tables:
+        return rows, "store_product_variants"
+    if has_products:
         rows = conn.execute(
             """SELECT store, url AS product_url, name, brand, sku, gtin,
                       size_ml, concentration, price, currency, availability
@@ -66,8 +88,9 @@ def _rows(conn):
                 ORDER BY store, url"""
         ).fetchall()
         return rows, "store_products"
-    raise RuntimeError("SQLite database has neither store_product_variants nor store_products")
-
+    raise RuntimeError(
+        "SQLite database has neither store_product_variants nor store_products"
+    )
 
 def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     catalog = CatalogRepository.from_file(catalog_path)
