@@ -5,94 +5,135 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scenthunter_next_engine.baseline_report import SUPPORTED_STORES, generate
+from scenthunter_next_engine.baseline_report import (
+    BaselineIncompleteError,
+    COLUMNS,
+    SUPPORTED_STORES,
+    generate,
+)
 
 
 class Phase0BaselineReportTests(unittest.TestCase):
-    def test_reports_all_eleven_stores_and_complete_quality_metrics(self):
+    def _fixture(self, directory, include_all=True):
+        root = Path(directory)
+        catalog_path = root / "product_catalog.json"
+        catalog_path.write_text(json.dumps({
+            "products": [{
+                "product_id": "p1",
+                "brand_name": "Acme",
+                "canonical_name": "Alpha",
+                "aliases": [],
+                "concentration": "Eau de Parfum",
+            }],
+            "variants": [{
+                "variant_id": "v1",
+                "product_id": "p1",
+                "size_ml": 100,
+                "aliases": ["Alpha 100 ml"],
+            }],
+        }), encoding="utf-8")
+
+        db_path = root / "store_catalog.sqlite3"
+        conn = sqlite3.connect(db_path)
+        conn.executescript("""
+            CREATE TABLE store_urls (
+                store TEXT, url TEXT, slug TEXT, lastmod TEXT,
+                discovered_at REAL, active INTEGER DEFAULT 1
+            );
+            CREATE TABLE store_products (
+                store TEXT, url TEXT, name TEXT, brand TEXT, image TEXT,
+                sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL, concentration TEXT,
+                gender TEXT, price REAL, currency TEXT, availability TEXT,
+                fetched_at REAL, fetch_status TEXT
+            );
+            CREATE TABLE store_product_variants (
+                store TEXT, url TEXT, variant_key TEXT, name TEXT, brand TEXT,
+                image TEXT, sku TEXT, gtin TEXT, mpn TEXT, size_ml REAL,
+                concentration TEXT, gender TEXT, price REAL, currency TEXT,
+                availability TEXT, fetched_at REAL, variant_url TEXT
+            );
+        """)
+        stores = SUPPORTED_STORES if include_all else SUPPORTED_STORES[:-3]
+        for index, store in enumerate(stores):
+            url = f"https://{store}.test/alpha"
+            conn.execute(
+                "INSERT INTO store_urls VALUES (?, ?, ?, ?, ?, 1)",
+                (store, url, "alpha", None, 1_800_000_000),
+            )
+            if store == "bplatz":
+                conn.execute(
+                    """INSERT INTO store_products VALUES
+                       (?, ?, 'Alpha 100 ml', 'Acme', NULL, 'sku-1', NULL,
+                        NULL, 100, 'Eau de Parfum', NULL, 12.5, 'EUR',
+                        'in_stock', 1800000000, 'OK')""",
+                    (store, url),
+                )
+                conn.execute(
+                    """INSERT INTO store_product_variants VALUES
+                       (?, ?, 'v1', 'Alpha 100 ml', 'Acme', NULL, 'sku-1',
+                        NULL, NULL, 100, 'Eau de Parfum', NULL, 12.5, 'EUR',
+                        'in_stock', 1800000000, ?)""",
+                    (store, url, url + "/100ml"),
+                )
+                # Duplicate representation of the same offer must be removed.
+                conn.execute(
+                    """INSERT INTO store_product_variants VALUES
+                       (?, ?, 'v1-duplicate', 'Alpha 100 ml', 'Acme', NULL,
+                        'sku-1', NULL, NULL, 100, 'Eau de Parfum', NULL,
+                        12.5, 'EUR', 'in_stock', 1800000000, ?)""",
+                    (store, url, url + "/100ml"),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO store_products VALUES
+                       (?, ?, 'Alpha 100 ml', 'Acme', NULL, ?, NULL, NULL,
+                        100, 'Eau de Parfum', NULL, 12.5, 'EUR', 'in_stock',
+                        1800000000, 'OK')""",
+                    (store, url, f"sku-{index}"),
+                )
+        conn.commit()
+        conn.close()
+        return catalog_path, db_path
+
+    def test_exports_offer_level_rows_for_all_eleven_stores_and_deduplicates(self):
         with tempfile.TemporaryDirectory() as directory:
-            tmp_path = Path(directory)
-            catalog_path = tmp_path / "product_catalog.json"
-            catalog_path.write_text(
-                json.dumps({
-                    "products": [{
-                        "product_id": "p1",
-                        "brand_name": "Acme",
-                        "canonical_name": "Alpha",
-                        "aliases": [],
-                        "concentration": "eau de parfum",
-                    }],
-                    "variants": [{
-                        "variant_id": "v1",
-                        "product_id": "p1",
-                        "size_ml": 100,
-                        "aliases": ["Alpha 100 ml"],
-                    }],
-                }),
-                encoding="utf-8",
-            )
+            catalog_path, db_path = self._fixture(directory)
+            output = Path(directory) / "baseline.csv"
+            summary = generate(catalog_path, db_path, output)
+            with output.open(encoding="utf-8-sig", newline="") as handle:
+                reader = csv.DictReader(handle)
+                rows = list(reader)
 
-            db_path = tmp_path / "store_catalog.sqlite3"
-            conn = sqlite3.connect(db_path)
-            conn.executescript("""
-                CREATE TABLE store_products (
-                    store TEXT, url TEXT, name TEXT, brand TEXT, sku TEXT, gtin TEXT,
-                    size_ml REAL, concentration TEXT, price REAL, currency TEXT,
-                    availability TEXT
-                );
-                CREATE TABLE store_product_variants (
-                    store TEXT, url TEXT, variant_url TEXT, variant_key TEXT,
-                    name TEXT, brand TEXT, sku TEXT, gtin TEXT, size_ml REAL,
-                    concentration TEXT, price REAL, currency TEXT, availability TEXT
-                );
-            """)
-            conn.execute(
-                """INSERT INTO store_products VALUES
-                   ('bplatz', 'https://shop.test/alpha', 'Alpha 100 ml', 'Acme',
-                    'sku-1', NULL, 100, 'eau de parfum', 12.5, 'EUR', 'in_stock')"""
-            )
-            conn.execute(
-                """INSERT INTO store_product_variants VALUES
-                   ('bplatz', 'https://shop.test/alpha', 'https://shop.test/alpha-100',
-                    'v1', 'Alpha 100 ml', 'Acme', 'sku-1', NULL, 100,
-                    'eau de parfum', 12.5, 'EUR', 'in_stock')"""
-            )
-            conn.execute(
-                """INSERT INTO store_products VALUES
-                   ('notino', 'not-a-url', 'Unknown item', 'Acme',
-                    'sku-2', NULL, 50, 'eau de parfum', NULL, 'EUR', 'unknown')"""
-            )
-            conn.commit()
-            conn.close()
-
-            output_path = tmp_path / "baseline.csv"
-            summary = generate(catalog_path, db_path, output_path)
-
-            with output_path.open(encoding="utf-8-sig", newline="") as handle:
-                rows = list(csv.DictReader(handle))
-
-            self.assertEqual(len(SUPPORTED_STORES), 11)
-            self.assertEqual(
-                {row["store"] for row in rows if row["store"] != "TOTAL"},
-                set(SUPPORTED_STORES),
-            )
-            self.assertEqual(rows[-1]["store"], "TOTAL")
+            self.assertEqual(tuple(reader.fieldnames), COLUMNS)
+            self.assertTrue({
+                "store", "canonical_product_id", "brand", "fragrance",
+                "concentration", "size_ml", "variant_type", "gtin",
+                "external_product_id", "offer_url", "price", "currency",
+                "availability", "captured_at", "source", "match_confidence",
+                "is_valid_offer",
+            }.issubset(set(reader.fieldnames)))
+            self.assertEqual({row["store"] for row in rows}, set(SUPPORTED_STORES))
+            self.assertEqual(len(rows), 11)
             self.assertEqual(summary["stores"], 11)
-            self.assertEqual(summary["catalog_products"], 1)
-            self.assertEqual(summary["offers"], 2)
+            self.assertEqual(summary["offers"], 11)
+            self.assertEqual(summary["duplicate_rows_skipped"], 1)
+            bplatz = next(row for row in rows if row["store"] == "bplatz")
+            self.assertEqual(bplatz["canonical_product_id"], "p1")
+            self.assertEqual(bplatz["canonical_variant_id"], "v1")
+            self.assertEqual(bplatz["variant_type"], "retailer_variant")
+            self.assertEqual(bplatz["match_confidence"], "1.0")
+            self.assertEqual(bplatz["is_valid_offer"], "true")
 
-            by_store = {row["store"]: row for row in rows}
-            self.assertEqual(by_store["bplatz"]["offer_count"], "1")
-            self.assertEqual(by_store["bplatz"]["valid_price_pct"], "100.0")
-            self.assertEqual(by_store["bplatz"]["valid_url_pct"], "100.0")
-            self.assertEqual(by_store["bplatz"]["valid_stock_pct"], "100.0")
-            self.assertEqual(by_store["notino"]["offer_count"], "1")
-            self.assertEqual(by_store["notino"]["valid_price_pct"], "0.0")
-            self.assertEqual(by_store["notino"]["valid_url_pct"], "0.0")
-            self.assertEqual(by_store["notino"]["valid_stock_pct"], "0.0")
-            self.assertEqual(by_store["amazon_de"]["offer_count"], "0")
-            self.assertEqual(by_store["TOTAL"]["offer_count"], "2")
-            self.assertEqual(by_store["TOTAL"]["catalog_product_count"], "1")
+    def test_refuses_partial_baseline_when_any_required_store_has_no_offers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path, db_path = self._fixture(directory, include_all=False)
+            output = Path(directory) / "baseline.csv"
+            with self.assertRaises(BaselineIncompleteError) as raised:
+                generate(catalog_path, db_path, output)
+            self.assertIn("amazon_de", str(raised.exception))
+            self.assertIn("amazon_fr", str(raised.exception))
+            self.assertIn("notino", str(raised.exception))
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
