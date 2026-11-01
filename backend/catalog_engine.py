@@ -3995,51 +3995,51 @@ def refresh_url(store, url):
         # This is generic page acquisition: it never supplies or guesses a
         # product name, price, availability, or variant.
         if store == 'deloox' and status < 400:
-                body = data or b''
-                lower_body = body[:200000].lower()
-                has_product_markup = (
-                    b'application/ld+json' in lower_body
-                    or b'<h1' in lower_body
-                    or b'itemprop="price"' in lower_body
-                    or b'property="product:price:amount"' in lower_body
+            body = data or b''
+            lower_body = body[:200000].lower()
+            has_product_markup = (
+                b'application/ld+json' in lower_body
+                or b'<h1' in lower_body
+                or b'itemprop="price"' in lower_body
+                or b'property="product:price:amount"' in lower_body
+            )
+            if len(body) < 8000 or not has_product_markup:
+                browser_result, browser_error = _browser_fetch_html(
+                    url, timeout_ms=12000, settle_ms=1200, locale='nl-BE'
                 )
-                if len(body) < 8000 or not has_product_markup:
-                    browser_result, browser_error = _browser_fetch_html(
-                        url, timeout_ms=12000, settle_ms=1200, locale='nl-BE'
+                if browser_result:
+                    browser_final, browser_data = browser_result
+                    browser_lower = browser_data[:200000].lower()
+                    browser_has_product_markup = (
+                        b'application/ld+json' in browser_lower
+                        or b'<h1' in browser_lower
+                        or b'itemprop="price"' in browser_lower
+                        or b'property="product:price:amount"' in browser_lower
                     )
-                    if browser_result:
-                        browser_final, browser_data = browser_result
-                        browser_lower = browser_data[:200000].lower()
-                        browser_has_product_markup = (
-                            b'application/ld+json' in browser_lower
-                            or b'<h1' in browser_lower
-                            or b'itemprop="price"' in browser_lower
-                            or b'property="product:price:amount"' in browser_lower
-                        )
-                        # A valid rendered product page can be compact. Do not
-                        # reject it solely for being under 8 KB; the retailer
-                        # parser below remains responsible for product identity
-                        # and an explicit current offer.
-                        if _deloox_browser_html_is_product_candidate(browser_data):
-                            final, data = browser_final, browser_data
-                            print(
-                                f'CATALOG BROWSER FALLBACK OK store=deloox '
-                                f'url={url!r} bytes={len(browser_data)}',
-                                flush=True,
-                            )
-                        else:
-                            print(
-                                f'CATALOG BROWSER FALLBACK UNUSABLE store=deloox '
-                                f'url={url!r} bytes={len(browser_data)} '
-                                f'product_markup={browser_has_product_markup}',
-                                flush=True,
-                            )
-                    else:
+                    # A valid rendered product page can be compact. Do not
+                    # reject it solely for being under 8 KB; the retailer
+                    # parser below remains responsible for product identity
+                    # and an explicit current offer.
+                    if _deloox_browser_html_is_product_candidate(browser_data):
+                        final, data = browser_final, browser_data
                         print(
-                            f'CATALOG BROWSER FALLBACK FAILED store=deloox '
-                            f'url={url!r} error={browser_error}',
+                            f'CATALOG BROWSER FALLBACK OK store=deloox '
+                            f'url={url!r} bytes={len(browser_data)}',
                             flush=True,
                         )
+                    else:
+                        print(
+                            f'CATALOG BROWSER FALLBACK UNUSABLE store=deloox '
+                            f'url={url!r} bytes={len(browser_data)} '
+                            f'product_markup={browser_has_product_markup}',
+                            flush=True,
+                        )
+                else:
+                    print(
+                        f'CATALOG BROWSER FALLBACK FAILED store=deloox '
+                        f'url={url!r} error={browser_error}',
+                        flush=True,
+                    )
         if status >= 400:
             raise RuntimeError(f'HTTP {status}')
 
