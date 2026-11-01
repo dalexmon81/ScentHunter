@@ -130,7 +130,7 @@ jobs:
 
           script_b64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
           remote_cmd="import base64; exec(compile(base64.b64decode('$script_b64'), 'phase0_baseline.py', 'exec'))"
-          timeout 120s flyctl machine exec --app scenthunter --timeout 110 "$machine_id" python -c "$remote_cmd" | tee /tmp/phase0-baseline.log
+          timeout 120s flyctl machine exec --app scenthunter --timeout 110 "$machine_id" python -- -c "$remote_cmd" | tee /tmp/phase0-baseline.log
 
           grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
           sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
