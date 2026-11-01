@@ -1465,7 +1465,7 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
 
 def _price(value: Any) -> Optional[float]:
     """Parse EUR prices with either comma or dot decimal separators."""
-    raw = _clean(value).replace("€", "").replace("EUR", "").replace("\\u00a0", " ")
+    raw = _clean(value).replace("€", "").replace("EUR", "").replace("\u00a0", " ")
     raw = re.sub(r"[^0-9,.]", "", raw)
     if not raw:
         return None
@@ -1545,13 +1545,36 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
     if heading_name and not _query_matches_name(f"{brand} {heading_name}".strip(), query):
         return None
     display_name = heading_name or name
-    price = _price(structured_price) if structured_price else _price(_extract_price(html))
+    meta_values = {}
+    for node in soup.find_all("meta"):
+        key = str(
+            node.get("property") or node.get("name") or node.get("itemprop") or ""
+        ).strip().lower()
+        value = str(node.get("content") or "").strip()
+        if key and value:
+            meta_values[key] = value
+
+    raw_price = structured_price or next((
+        meta_values[key] for key in (
+            "product:price:amount", "og:price:amount", "price", "itemprop:price",
+        ) if meta_values.get(key)
+    ), "")
+    price = _price(raw_price)
     if price is None:
         return None
+    raw_currency = next((
+        meta_values[key] for key in (
+            "product:price:currency", "og:price:currency", "pricecurrency",
+        ) if meta_values.get(key)
+    ), "EUR")
+    if str(raw_currency).upper() != "EUR":
+        return None
 
-    size_ml = structured_size or _extract_size(display_name)
-    if size_ml is None:
-        size_ml = _extract_size(html)
+    controls_text = " ".join(
+        node.get_text(" ", strip=True)
+        for node in soup.find_all(["option", "button", "label"], limit=120)
+    )
+    size_ml = structured_size or _extract_size(display_name) or _extract_size(controls_text)
     if not _price_is_plausible(price, size_ml):
         return None
 
@@ -1560,7 +1583,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         offers = next((item for item in offers if isinstance(item, dict)), {})
     stock = _stock(str(offers.get("availability") or "")) if isinstance(offers, dict) else None
     if stock is None:
-        stock = _stock(html)
+        stock = _stock(controls_text)
     availability = "out of stock" if stock is True else "in stock" if stock is False else "unknown"
     image = selected.get("image") if isinstance(selected, dict) else None
     if isinstance(image, list):
@@ -1572,7 +1595,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         selected.get("gtin13") or selected.get("gtin12")
         or selected.get("gtin14") or selected.get("gtin") or ""
     ).strip() if isinstance(selected, dict) else ""
-    concentration = _extract_concentration(display_name) or _extract_concentration(html)
+    concentration = _extract_concentration(display_name)
     return {
         "shop": "Notino",
         "store": "notino",
