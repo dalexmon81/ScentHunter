@@ -400,17 +400,22 @@ def product_metadata_price(soup):
     return None
 
 
-def product_from_page(session, url, query, html=None):
+def product_from_page(session, url, query, html=None, diagnostics=None):
     if html is None:
         try:
             response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
             if response.status_code >= 400:
+                status_code = response.status_code
                 response.close()
+                if isinstance(diagnostics, list):
+                    diagnostics.append({"url": url, "reason": "product_page_http_error", "http_status": status_code})
                 return None
             html = response.text
             final_url = response.url
             response.close()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            if isinstance(diagnostics, list):
+                diagnostics.append({"url": url, "reason": "product_page_request_error", "error_type": type(exc).__name__})
             return None
     else:
         final_url = url
@@ -433,6 +438,12 @@ def product_from_page(session, url, query, html=None):
         query_matches = matches(searchable_name, " ".join(query_tokens[2:]))
 
     if not name or not query_matches:
+        if isinstance(diagnostics, list):
+            diagnostics.append({
+                "url": final_url,
+                "reason": "product_page_missing_title" if not name else "product_page_title_mismatch",
+                "page_title": name or None,
+            })
         return None
 
     brand = data.get("brand")
@@ -518,6 +529,7 @@ def _search_report(query):
 
     session = requests.Session()
     results, seen = [], set()
+    product_page_rejections = []
     try:
         try:
             candidates, discovery_errors, discovery_verified = discover(session, query)
@@ -528,8 +540,14 @@ def _search_report(query):
 
         for url in candidates:
             try:
-                item = product_from_page(session, url, query)
-            except Exception:
+                item = product_from_page(session, url, query, diagnostics=product_page_rejections)
+            except Exception as exc:
+                product_page_rejections.append({
+                    "url": url,
+                    "reason": "product_page_parser_exception",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc)[:300],
+                })
                 item = None
             if not item:
                 continue
@@ -544,15 +562,22 @@ def _search_report(query):
             return {"status": "partial" if discovery_errors else "success", "verified": True,
                     "results": results, "error": None,
                     "details": {"verified_empty": False, "candidate_count": len(candidates),
-                                "discovery_verified": discovery_verified, "discovery_errors": discovery_errors}}
+                                "discovery_verified": discovery_verified, "discovery_errors": discovery_errors,
+                                "product_page_rejection_count": len(product_page_rejections),
+                                "product_page_rejections": product_page_rejections[:20]}}
         if discovery_verified:
             return {"status": "success", "verified": True, "results": [], "error": None,
-                    "details": {"verified_empty": True, "candidate_count": len(candidates),
-                                "discovery_verified": True, "discovery_errors": discovery_errors}}
+                    "details": {"verified_empty": len(candidates) == 0 and not product_page_rejections,
+                                "candidate_count": len(candidates),
+                                "discovery_verified": True, "discovery_errors": discovery_errors,
+                                "product_page_rejection_count": len(product_page_rejections),
+                                "product_page_rejections": product_page_rejections[:20]}}
         first = discovery_errors[0] if discovery_errors else {"status": "unavailable", "error": "discovery_not_verified"}
         return {"status": first["status"], "verified": False, "results": [], "error": first["error"],
                 "details": {"verified_empty": False, "candidate_count": len(candidates),
-                            "discovery_verified": False, "discovery_errors": discovery_errors}}
+                            "discovery_verified": False, "discovery_errors": discovery_errors,
+                            "product_page_rejection_count": len(product_page_rejections),
+                            "product_page_rejections": product_page_rejections[:20]}}
     finally:
         session.close()
 
