@@ -5157,10 +5157,11 @@ def frontend():
 @app.on_event('startup')
 def _initialize_phase0_baseline_jobs():
     """Prepare the durable queue before accepting API requests."""
-    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema
+    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema, ensure_smoke_schema
     conn = connect()
     try:
         ensure_schema(conn)
+        ensure_smoke_schema(conn)
     finally:
         conn.close()
     print("PHASE0 BASELINE JOB TABLE READY", flush=True)
@@ -5363,5 +5364,129 @@ def phase0_baseline_download(
         headers={'Cache-Control': 'no-store'},
     )
 
-# Phase 0 baseline endpoints are deployed with the production backend.
+
+
+# Lightweight Phase 0 infrastructure smoke test. This path never loads the
+# product catalog contents, reads retailer offers, or invokes canonical matching.
+@app.get('/admin/phase0/health')
+def phase0_health(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import (
+        jobs_database_path, get_latest_job, get_latest_smoke_job,
+    )
+    catalog_path = Path(__file__).resolve().parent / 'product_catalog.json'
+    queue_path = jobs_database_path()
+    pid_path = Path('/data/phase0/worker.pid')
+    worker_running = False
+    try:
+        pid = int(pid_path.read_text(encoding='ascii').strip())
+        os.kill(pid, 0)
+        worker_running = True
+    except (OSError, ValueError, ProcessLookupError):
+        worker_running = False
+
+    volume_writable = False
+    probe = Path('/data/phase0') / f'.smoke-write-{uuid.uuid4().hex}'
+    try:
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        with probe.open('x', encoding='ascii') as handle:
+            handle.write('ok')
+            handle.flush()
+            os.fsync(handle.fileno())
+        volume_writable = probe.read_text(encoding='ascii') == 'ok'
+    except OSError:
+        volume_writable = False
+    finally:
+        try:
+            probe.unlink()
+        except OSError:
+            pass
+
+    latest = get_latest_job()
+    latest_smoke = get_latest_smoke_job()
+    if latest_smoke and (not latest or str(latest_smoke.get('created_at') or '') > str(latest.get('created_at') or '')):
+        latest = latest_smoke
+    latest_job = None
+    if latest:
+        latest_job = {
+            'job_id': latest.get('id'),
+            'status': latest.get('status'),
+            'heartbeat_at': latest.get('heartbeat_at'),
+            'error_message': latest.get('error_message'),
+        }
+    return {
+        'worker_running': worker_running,
+        'catalog_path': str(catalog_path),
+        'catalog_exists': catalog_path.is_file(),
+        'catalog_size_bytes': catalog_path.stat().st_size if catalog_path.is_file() else 0,
+        'queue_path': str(queue_path),
+        'queue_exists': queue_path.is_file(),
+        'volume_writable': volume_writable,
+        'latest_job': latest_job,
+    }
+
+
+@app.post('/admin/phase0/smoke/start', status_code=202)
+def phase0_smoke_start(authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import create_smoke_job
+        job = create_smoke_job()
+        print(f"PHASE0 SMOKE JOB QUEUED job={job['job_id']} status=queued", flush=True)
+        return job
+    except Exception as exc:
+        print(f"PHASE0 SMOKE ENQUEUE ERROR: {type(exc).__name__}: {exc}", flush=True)
+        raise _Phase0HTTPException(status_code=500, detail='Could not enqueue Phase 0 smoke job') from exc
+
+
+@app.get('/admin/phase0/smoke/status')
+def phase0_smoke_status(job_id: str = '', authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_smoke_job
+    job = get_smoke_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Smoke job not found')
+    path = Path(job['output_path'])
+    return {
+        'job_id': job['id'], 'status': job['status'],
+        'heartbeat_at': job.get('heartbeat_at'),
+        'error_message': job.get('error_message'),
+        'output_file_exists': path.is_file(),
+        'download_url': f"/admin/phase0/smoke/download?job_id={job['id']}"
+            if job['status'] == 'completed' and path.is_file() else None,
+    }
+
+
+@app.get('/admin/phase0/smoke/download')
+def phase0_smoke_download(job_id: str = '', authorization: str = _Phase0Header(default='')):
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    from scenthunter_next_engine.phase0_baseline_jobs import get_smoke_job, SMOKE_STORES
+    job = get_smoke_job(job_id)
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='Smoke job not found')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Smoke job is not completed')
+    path = Path(job['output_path']).resolve()
+    allowed_root = Path('/data/phase0/smoke').resolve()
+    if path.parent != allowed_root or path.name != f'{job_id}.csv' or not path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Smoke CSV file not found')
+    try:
+        with path.open('r', newline='', encoding='utf-8') as handle:
+            rows = list(csv.reader(handle))
+    except Exception as exc:
+        raise _Phase0HTTPException(status_code=409, detail='Smoke CSV is unreadable') from exc
+    expected = [['store', 'status']] + [[store, 'ok'] for store in SMOKE_STORES]
+    if rows != expected:
+        raise _Phase0HTTPException(status_code=409, detail='Smoke CSV content is invalid')
+    return _Phase0FileResponse(
+        path=str(path), media_type='text/csv; charset=utf-8',
+        filename=f'phase-0-smoke-{job_id}.csv',
+        headers={'Cache-Control': 'no-store'},
+    )
+
+\n# Phase 0 baseline endpoints are deployed with the production backend.
 
