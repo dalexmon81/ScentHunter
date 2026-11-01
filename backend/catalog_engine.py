@@ -3801,7 +3801,7 @@ def parse_product(store, url, data):
         )
         for source_value in size_sources:
             match = re.search(
-                r'(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl|dl|l)\\b',
+                r'(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b',
                 str(source_value or ''), re.I,
             )
             if not match:
@@ -3820,7 +3820,7 @@ def parse_product(store, url, data):
             str(value or '') for value in (name, h1text, p.get('description'))
         )
         concentration_match = re.search(
-            r'eau\\s+de\\s+(?:parfum|toilette|cologne)|extrait(?:\\s+de\\s+parfum)?|\\bedp\\b|\\bedt\\b|\\bedc\\b',
+            r'eau\s+de\s+(?:parfum|toilette|cologne)|extrait(?:\s+de\s+parfum)?|\bedp\b|\bedt\b|\bedc\b',
             concentration_source, re.I,
         )
         if concentration_match:
