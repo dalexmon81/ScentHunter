@@ -19,19 +19,15 @@ exporter and quality workflow fail closed if any active retailer is missing or
 has zero offers. A row with zero offers is never used to make coverage appear
 complete.
 
-## Temporarily excluded retailers
+## Store scope
 
-- amazon_de
-- amazon_fr
+Only the nine retailers listed above are part of Phase 0. Amazon DE and Amazon
+FR have been removed from the operational store registry, scraper adapters,
+catalog discovery, refresh and resynchronization jobs, baseline worker and
+smoke worker. They are not scheduled or checked as required retailers.
 
-Both Amazon marketplaces are temporarily excluded because the project does
-not have the required approved Creators API credentials and marketplace
-associate tags. Their scraper/configuration code is retained for possible
-future reactivation. They are not counted as active retailers and must not
-appear in the nine-retailer baseline CSV.
-
-The CSV declares this scope on every offer row through `baseline_scope` and
-`excluded_stores`.
+The baseline CSV must contain rows from exactly these nine retailers and no
+other store keys.
 
 ## Notino source policy
 
