@@ -188,7 +188,6 @@ def _match(row, catalog_indexes):
 
 def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     catalog = CatalogRepository.from_file(catalog_path)
-    catalog_indexes = _catalog_matcher(catalog)
     if not db_path.is_file():
         raise FileNotFoundError(f"Retailer SQLite database not found: {db_path}")
 
@@ -229,6 +228,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             + str(details)
         )
 
+    catalog_indexes = _catalog_matcher(catalog)
     seen = set()
     rows_out = []
     counts = defaultdict(int)
