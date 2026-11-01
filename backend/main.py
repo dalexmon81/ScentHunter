@@ -5309,6 +5309,63 @@ def phase0_baseline_latest(authorization: str = _Phase0Header(default='')):
     }
 
 
+@app.get('/admin/phase0/baseline/jobs/{job_id}')
+def phase0_baseline_job_detail(
+    job_id: str,
+    authorization: str = _Phase0Header(default=''),
+):
+    """Read-only full durable job record and its recorded lifecycle events."""
+    _phase0_authorize(authorization)
+    if not job_id or len(job_id) > 64:
+        raise _Phase0HTTPException(status_code=400, detail='A valid job_id is required')
+    try:
+        from scenthunter_next_engine.phase0_baseline_jobs import get_job, get_job_events
+        job = get_job(job_id)
+        if not job:
+            raise _Phase0HTTPException(status_code=404, detail='Job not found')
+        events = get_job_events(job_id)
+    except _Phase0HTTPException:
+        raise
+    except Exception as exc:
+        print(
+            f"PHASE0 BASELINE JOB DETAIL ERROR job={job_id}: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        raise _Phase0HTTPException(status_code=500, detail='Could not read job details') from exc
+
+    output_path = Path(job['output_path'])
+    output_exists = output_path.is_file()
+    output_size = output_path.stat().st_size if output_exists else 0
+    current_store = None
+    for event in events:
+        if event.get('event') == 'store_started':
+            current_store = event.get('store')
+        elif event.get('event') in {'store_completed', 'store_failed', 'store_timeout'}:
+            if event.get('store') == current_store:
+                current_store = None
+
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'created_at': job.get('created_at'),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'heartbeat_at': job.get('heartbeat_at'),
+        'worker_id': job.get('worker_id'),
+        'progress': float(job.get('progress') or 0),
+        'total_stores': int(job.get('total_stores') or 11),
+        'processed_stores': int(job.get('processed_stores') or 0),
+        'current_store': current_store,
+        'output_path': str(output_path),
+        'output_file_exists': output_exists,
+        'output_file_size': output_size,
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
+        'events': events,
+    }
+
+
 @app.get('/admin/phase0/baseline/latest/download')
 def phase0_baseline_latest_download(authorization: str = _Phase0Header(default='')):
     """Serve the newest job CSV only after durable completion and CSV validation."""
