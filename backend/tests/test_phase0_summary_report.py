@@ -77,7 +77,7 @@ class Phase0SummaryReportTests(unittest.TestCase):
             catalog, db = self._fixture(directory)
             conn = sqlite3.connect(db)
             conn.execute(
-                "INSERT INTO store_urls VALUES ('notino', 'https://notino.example/alpha', 'duplicate', NULL, 1800000000, 1)"
+                "INSERT INTO store_urls VALUES ('notino', 'https://notino.example/alpha-2', 'duplicate', NULL, 1800000000, 1)"
             )
             conn.execute(
                 "INSERT INTO store_urls VALUES ('notino', 'https://notino.example/inactive', 'inactive', NULL, 1800000000, 0)"
