@@ -35,9 +35,9 @@ def database_path() -> Path:
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(path or database_path(), timeout=45)
+    conn = sqlite3.connect(path or database_path(), timeout=2)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=45000")
+    conn.execute("PRAGMA busy_timeout=2000")
     return conn
 
 
@@ -79,7 +79,6 @@ def create_job() -> dict[str, Any]:
     output_path = output_dir / f"{job_id}.csv"
     conn = connect()
     try:
-        ensure_schema(conn)
         conn.execute(
             """INSERT INTO phase0_baseline_jobs
                (id,status,created_at,total_stores,processed_stores,progress,output_path)
@@ -95,7 +94,6 @@ def create_job() -> dict[str, Any]:
 def get_job(job_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        ensure_schema(conn)
         row = conn.execute(
             "SELECT * FROM phase0_baseline_jobs WHERE id=?", (job_id,)
         ).fetchone()
