@@ -5203,9 +5203,9 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             output_path = Path(temp_dir) / 'phase-0-retailer-baseline.csv'
             summary = _generate_phase0_report(catalog_path, db_path, output_path)
             csv_bytes = output_path.read_bytes()
-        if summary.get('stores') != 11:
+        if summary.get('stores') != 9:
             raise RuntimeError(
-                f"Expected 11 supported stores, got {summary.get('stores')}"
+                f"Expected 9 active retailers, got {summary.get('stores')}"
             )
         return _Phase0Response(
             content=csv_bytes,
