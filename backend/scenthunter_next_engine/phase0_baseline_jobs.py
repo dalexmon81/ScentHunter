@@ -22,7 +22,7 @@ COLUMNS = (
     "price", "currency", "availability", "captured_at", "source",
     "match_status", "match_confidence", "is_valid_offer", "store_status",
 )
-HEARTBEAT_INTERVAL_SECONDS = 20
+HEARTBEAT_INTERVAL_SECONDS = 15
 STORE_TIMEOUT_SECONDS = 300
 VALID_STOCK = {
     "in_stock", "out_of_stock", "preorder", "backorder",
@@ -460,7 +460,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
 
 
 def _export_store_chunk(store: str, db_path: str, catalog_path: str,
-                        chunk_path: str, result_queue: Any) -> None:
+                        chunk_path: str, result_queue: Any, job_id: str) -> None:
     """Export one retailer in an isolated child process so it can be terminated."""
     try:
         from .catalog_repository import CatalogRepository
@@ -485,10 +485,16 @@ def _export_store_chunk(store: str, db_path: str, catalog_path: str,
         has_variants = "store_product_variants" in tables
         expected = _store_count(conn, store, has_variants)
         written = 0
+        last_heartbeat = time.monotonic()
+        # Child-side heartbeat covers parsing/matching even when no rows are emitted.
+        update_job(job_id, heartbeat_at=utc_now())
         with Path(chunk_path).open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=COLUMNS)
             writer.writeheader()
             for row in iter_store_rows(conn, store, has_variants):
+                if time.monotonic() - last_heartbeat >= HEARTBEAT_INTERVAL_SECONDS:
+                    update_job(job_id, heartbeat_at=utc_now())
+                    last_heartbeat = time.monotonic()
                 data = _offer_row(row, matcher, catalog, variants_by_id)
                 data["store_status"] = "completed"
                 writer.writerow(data)
@@ -567,7 +573,9 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         target=heartbeat_loop, name=f"phase0-heartbeat-{job['id']}", daemon=True
     )
     heartbeat_thread.start()
-    ctx = multiprocessing.get_context("fork")
+    # Avoid forking after starting a heartbeat thread: inherited locks from
+    # vanished threads can leave child-side database/heartbeat activity wedged.
+    ctx = multiprocessing.get_context("spawn")
     rows_written = 0
     offers_read = 0
     processed_stores = 0
@@ -579,14 +587,21 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
             for store in STORES:
                 with progress_lock:
                     progress_state["store"] = store
+                update_job(
+                    job["id"], heartbeat_at=utc_now(),
+                    progress=min(0.999, processed_stores / len(STORES)),
+                    processed_stores=processed_stores, current_store=store,
+                )
                 record_job_event(job["id"], "store_started", store=store,
                                  message=f"Store export started; timeout={STORE_TIMEOUT_SECONDS}s")
                 chunk_path = output_path.parent / f".{job['id']}.{store}.csv.tmp"
                 result_queue = ctx.Queue()
                 process = ctx.Process(
                     target=_export_store_chunk,
-                    args=(store, str(db_path), str(catalog_path), str(chunk_path), result_queue),
+                    args=(store, str(db_path), str(catalog_path), str(chunk_path),
+                          result_queue, job["id"]),
                     name=f"phase0-{store}",
+                    daemon=True,
                 )
                 print(f"PHASE0 WORKER STORE START job={job['id']} store={store}", flush=True)
                 process.start()
@@ -596,7 +611,11 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     process.join(10)
                     if process.is_alive() and hasattr(process, "kill"):
                         process.kill()
-                        process.join(5)
+                        process.join(10)
+                    if process.is_alive():
+                        raise RuntimeError(
+                            f"Unable to terminate timed-out store process: {store}"
+                        )
                     store_status = "timeout"
                     error = f"Store exceeded {STORE_TIMEOUT_SECONDS}s timeout"
                 else:
