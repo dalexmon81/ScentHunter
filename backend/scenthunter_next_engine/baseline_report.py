@@ -25,7 +25,7 @@ def _valid_price(value, currency):
         amount = float(value)
     except (TypeError, ValueError):
         return False
-    return amount > 0 and currency == "EUR"
+    return amount > 0 and len(currency) == 3 and currency.isalpha() and currency.isupper()
 
 
 def _valid_url(value):
@@ -74,9 +74,11 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "Run this report in the environment containing the live catalog DB."
         )
 
-    # Immutable SQLite URI: this report must never create or mutate the production DB.
-    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro&immutable=1", uri=True)
+    # Read-only URI plus query_only: preserve committed WAL visibility while preventing writes.
+    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=5)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA query_only=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         records, source_table = _rows(conn)
     finally:
@@ -128,7 +130,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "store", "offer_count", "valid_price_count", "valid_price_pct",
         "valid_url_count", "valid_url_pct", "valid_stock_count",
         "valid_stock_pct", "ambiguous_match_count", "matched_count",
-        "unresolved_match_count", "catalog_product_count", "offer_source_table",
+        "unresolved_match_count", "catalog_product_count", "catalog_variant_count", "offer_source_table",
     ]
     rows_out = []
     for store in sorted(totals):
@@ -147,6 +149,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "matched_count": item["matched"],
             "unresolved_match_count": item["unresolved"],
             "catalog_product_count": catalog.product_count(),
+            "catalog_variant_count": catalog.variant_count(),
             "offer_source_table": source_table,
             "catalog_variants": catalog.variant_count(),
         })
@@ -168,6 +171,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "matched_count": aggregate["matched"],
         "unresolved_match_count": aggregate["unresolved"],
         "catalog_product_count": catalog.product_count(),
+        "catalog_variant_count": catalog.variant_count(),
         "offer_source_table": source_table,
     })
 
