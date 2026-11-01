@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import multiprocessing
 import sqlite3
 import tempfile
 import unittest
@@ -202,9 +203,14 @@ class Phase0PersistentJobTests(unittest.TestCase):
         )
         output = self.root / "phase0" / "baseline" / "job-1.csv"
         job = {"id": "job-1", "output_path": str(output)}
+        # Keep this unit test's patched temporary paths visible to its child.
+        # Production uses spawn so a live heartbeat thread is never forked.
         with patch(
             "scenthunter_next_engine.catalog_repository.CatalogRepository.from_file",
             return_value=catalog,
+        ), patch(
+            "multiprocessing.get_context",
+            return_value=multiprocessing.get_context("fork"),
         ):
             result = generate_csv(job, "test-worker")
 
