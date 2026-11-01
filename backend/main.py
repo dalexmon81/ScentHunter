@@ -5168,7 +5168,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
     try:
-        from scenthunter_next_engine.baseline_report import (
+        from scenthunter_next_engine.baseline_summary_report import (
             generate as _generate_phase0_report,
         )
 
