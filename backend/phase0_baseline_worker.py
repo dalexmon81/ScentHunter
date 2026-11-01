@@ -41,7 +41,7 @@ def _run_job(job: dict, worker_id: str) -> None:
             job["id"],
             status="completed",
             progress=1.0,
-            processed_stores=11,
+            processed_stores=result.get("stores_processed", 0),
             finished_at=utc_now(),
             heartbeat_at=utc_now(),
             duration_seconds=elapsed,
@@ -49,7 +49,7 @@ def _run_job(job: dict, worker_id: str) -> None:
         print(
             f"PHASE0 WORKER JOB COMPLETED job={job['id']} "
             f"rows_written={result['rows_written']} "
-            f"offers_read={result['offers_read']} duration_seconds={elapsed} "
+            f"offers_read={result['offers_read']} store_statuses={result.get('store_statuses', {})} duration_seconds={elapsed} "
             f"output={result['output_path']}",
             flush=True,
         )

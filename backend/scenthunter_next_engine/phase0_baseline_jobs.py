@@ -18,8 +18,10 @@ COLUMNS = (
     "store", "canonical_product_id", "brand", "fragrance", "concentration",
     "size_ml", "variant_type", "gtin", "external_product_id", "offer_url",
     "price", "currency", "availability", "captured_at", "source",
-    "match_confidence", "is_valid_offer",
+    "match_confidence", "is_valid_offer", "store_status",
 )
+HEARTBEAT_INTERVAL_SECONDS = 20
+STORE_TIMEOUT_SECONDS = 300
 VALID_STOCK = {
     "in_stock", "out_of_stock", "preorder", "backorder",
     "limited_availability",
@@ -67,10 +69,14 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             error_message TEXT,
             error_traceback TEXT,
             worker_id TEXT,
+            current_store TEXT,
             heartbeat_at TEXT,
             duration_seconds REAL
         )"""
     )
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(phase0_baseline_jobs)")}
+    if "current_store" not in columns:
+        conn.execute("ALTER TABLE phase0_baseline_jobs ADD COLUMN current_store TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_phase0_baseline_jobs_queue "
         "ON phase0_baseline_jobs(status, created_at)"
@@ -189,7 +195,7 @@ def update_job(job_id: str, **values: Any) -> None:
         return
     allowed = {
         "status", "started_at", "finished_at", "progress", "processed_stores",
-        "error_message", "error_traceback", "worker_id", "heartbeat_at",
+        "error_message", "error_traceback", "worker_id", "current_store", "heartbeat_at",
         "duration_seconds",
     }
     if not set(values).issubset(allowed):
@@ -433,10 +439,57 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
     }
 
 
-def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
-    from .catalog_repository import CatalogRepository
-    from .canonical_matcher import CanonicalMatcher
+def _export_store_chunk(store: str, db_path: str, catalog_path: str,
+                        chunk_path: str, result_queue: Any) -> None:
+    """Export one retailer in an isolated child process so it can be terminated."""
+    try:
+        from .catalog_repository import CatalogRepository
+        from .canonical_matcher import CanonicalMatcher
 
+        catalog = CatalogRepository.from_file(Path(catalog_path))
+        matcher = CanonicalMatcher(catalog)
+        variants_by_id = {
+            variant.variant_id: variant
+            for product in catalog.all_products()
+            for variant in product.variants
+        }
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=45)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only=ON")
+        conn.execute("PRAGMA busy_timeout=45000")
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        if "store_products" not in tables:
+            raise RuntimeError("SQLite catalog is missing store_products")
+        has_variants = "store_product_variants" in tables
+        expected = _store_count(conn, store, has_variants)
+        written = 0
+        with Path(chunk_path).open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=COLUMNS)
+            writer.writeheader()
+            for row in iter_store_rows(conn, store, has_variants):
+                data = _offer_row(row, matcher, catalog, variants_by_id)
+                data["store_status"] = "completed"
+                writer.writerow(data)
+                written += 1
+            if written == 0:
+                writer.writerow({"store": store, "store_status": "completed",
+                                 "is_valid_offer": "false"})
+        conn.close()
+        if written != expected:
+            raise RuntimeError(
+                f"Store row count mismatch for {store}: expected={expected}, read={written}"
+            )
+        result_queue.put({"ok": True, "offers_read": written})
+    except BaseException as exc:
+        result_queue.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
+        raise
+
+
+def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
+    import multiprocessing
+    import threading
     backend = Path(__file__).resolve().parent.parent
     catalog_path = backend / "product_catalog.json"
     db_path = catalog_database_path()
@@ -444,6 +497,10 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     started = time.monotonic()
+    heartbeat_stop = threading.Event()
+    heartbeat_errors: list[str] = []
+    progress_lock = threading.Lock()
+    progress_state = {"processed": 0, "store": None}
 
     print(
         f"PHASE0 WORKER JOB START job={job['id']} worker={worker_id} "
@@ -455,123 +512,140 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         f"exists={catalog_path.is_file()}",
         flush=True,
     )
-    catalog = CatalogRepository.from_file(catalog_path)
-    matcher = CanonicalMatcher(catalog)
-    variants_by_id = {
-        variant.variant_id: variant
-        for product in catalog.all_products()
-        for variant in product.variants
-    }
+    if not catalog_path.is_file():
+        raise FileNotFoundError(f"Phase 0 catalog file not found: {catalog_path}")
+    if not db_path.is_file():
+        raise FileNotFoundError(f"Phase 0 catalog database not found: {db_path}")
 
-    read_conn = sqlite3.connect(
-        f"file:{db_path}?mode=ro", uri=True, timeout=45
+    def heartbeat_loop() -> None:
+        while not heartbeat_stop.wait(HEARTBEAT_INTERVAL_SECONDS):
+            try:
+                with progress_lock:
+                    processed = progress_state["processed"]
+                    current = progress_state["store"]
+                update_job(
+                    job["id"], heartbeat_at=utc_now(),
+                    progress=min(0.999, processed / len(STORES)),
+                    processed_stores=processed, current_store=current,
+                )
+                record_job_event(
+                    job["id"], "heartbeat", store=current,
+                    message="Independent timed worker heartbeat",
+                )
+                print(
+                    f"PHASE0 WORKER HEARTBEAT job={job['id']} "
+                    f"processed_stores={processed} current_store={current}",
+                    flush=True,
+                )
+            except Exception as exc:
+                heartbeat_errors.append(f"{type(exc).__name__}: {exc}")
+                print(f"PHASE0 WORKER HEARTBEAT ERROR job={job['id']} error={exc}", flush=True)
+
+    heartbeat_thread = threading.Thread(
+        target=heartbeat_loop, name=f"phase0-heartbeat-{job['id']}", daemon=True
     )
-    read_conn.row_factory = sqlite3.Row
-    read_conn.execute("PRAGMA query_only=ON")
-    read_conn.execute("PRAGMA busy_timeout=45000")
-    # Hold one read snapshot for all stores so row counts and streamed rows
-    # cannot disagree while normal hydration continues writing in WAL mode.
-    read_conn.execute("BEGIN")
-    table_names = {
-        row[0] for row in read_conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )
-    }
-    if "store_products" not in table_names:
-        raise RuntimeError("SQLite catalog is missing store_products")
-    has_variants = "store_product_variants" in table_names
-    counts = {
-        store: _store_count(read_conn, store, has_variants)
-        for store in STORES
-    }
-    total_offers = sum(counts.values())
-    processed_stores = 0
+    heartbeat_thread.start()
+    ctx = multiprocessing.get_context("spawn")
     rows_written = 0
-
+    offers_read = 0
+    processed_stores = 0
+    store_statuses: dict[str, str] = {}
     try:
         with temp_path.open("w", newline="", encoding="utf-8-sig") as handle:
             writer = csv.DictWriter(handle, fieldnames=COLUMNS)
             writer.writeheader()
-            for store_index, store in enumerate(STORES):
-                store_total = counts[store]
-                store_read = 0
-                record_job_event(
-                    job["id"], "store_started", store=store,
-                    message=f"Store export started; expected offers={store_total}",
+            for store in STORES:
+                with progress_lock:
+                    progress_state["store"] = store
+                record_job_event(job["id"], "store_started", store=store,
+                                 message=f"Store export started; timeout={STORE_TIMEOUT_SECONDS}s")
+                chunk_path = output_path.parent / f".{job['id']}.{store}.csv.tmp"
+                result_queue = ctx.Queue()
+                process = ctx.Process(
+                    target=_export_store_chunk,
+                    args=(store, str(db_path), str(catalog_path), str(chunk_path), result_queue),
+                    name=f"phase0-{store}",
                 )
-                print(
-                    f"PHASE0 WORKER STORE START job={job['id']} "
-                    f"store={store} offers_expected={store_total}",
-                    flush=True,
-                )
-                for row in iter_store_rows(read_conn, store, has_variants):
-                    writer.writerow(_offer_row(row, matcher, catalog, variants_by_id))
-                    store_read += 1
-                    rows_written += 1
-                    if store_read % 100 == 0:
-                        within_store = (
-                            store_read / store_total if store_total else 1.0
-                        )
-                        progress = min(
-                            0.999,
-                            (processed_stores + within_store) / len(STORES),
-                        )
-                        update_job(
-                            job["id"], heartbeat_at=utc_now(),
-                            progress=progress, processed_stores=processed_stores,
-                        )
+                print(f"PHASE0 WORKER STORE START job={job['id']} store={store}", flush=True)
+                process.start()
+                process.join(STORE_TIMEOUT_SECONDS)
+                if process.is_alive():
+                    process.terminate()
+                    process.join(10)
+                    if process.is_alive() and hasattr(process, "kill"):
+                        process.kill()
+                        process.join(5)
+                    store_status = "timeout"
+                    error = f"Store exceeded {STORE_TIMEOUT_SECONDS}s timeout"
+                else:
+                    try:
+                        result = result_queue.get(timeout=2)
+                    except Exception:
+                        result = {"ok": False, "error": f"Store process exited {process.exitcode} without result"}
+                    store_status = "completed" if result.get("ok") and process.exitcode == 0 else "failed"
+                    error = result.get("error")
+                result_queue.close()
+                if chunk_path.is_file():
+                    if store_status == "completed":
+                        with chunk_path.open("r", newline="", encoding="utf-8") as chunk:
+                            reader = csv.DictReader(chunk)
+                            for row in reader:
+                                writer.writerow(row)
+                                if row.get("source"):
+                                    rows_written += 1
+                        offers_read += int(result.get("offers_read", 0))
+                    else:
+                        chunk_path.unlink(missing_ok=True)
+                if store_status != "completed":
+                    writer.writerow({"store": store, "store_status": store_status,
+                                     "is_valid_offer": "false"})
+                else:
+                    chunk_path.unlink(missing_ok=True)
                 processed_stores += 1
+                store_statuses[store] = store_status
                 handle.flush()
+                with progress_lock:
+                    progress_state["processed"] = processed_stores
                 update_job(
-                    job["id"],
-                    heartbeat_at=utc_now(),
+                    job["id"], heartbeat_at=utc_now(),
                     progress=processed_stores / len(STORES),
-                    processed_stores=processed_stores,
+                    processed_stores=processed_stores, current_store=store,
                 )
                 record_job_event(
-                    job["id"], "store_completed", store=store,
-                    message=f"Store export completed; offers_read={store_read}",
-                    details={"offers_read": store_read, "csv_rows_written": rows_written},
+                    job["id"], f"store_{store_status}", store=store,
+                    message=error or f"Store finished with status={store_status}",
+                    details={"status": store_status},
                 )
                 print(
                     f"PHASE0 WORKER STORE DONE job={job['id']} store={store} "
-                    f"offers_read={store_read} csv_rows_written={rows_written}",
+                    f"status={store_status} error={error or ''}",
                     flush=True,
                 )
-                if store_read != store_total:
-                    raise RuntimeError(
-                        f"Store row count changed during export for {store}: "
-                        f"expected={store_total}, read={store_read}"
-                    )
             handle.flush()
             os.fsync(handle.fileno())
-        print(
-            f"PHASE0 WORKER TEMP FILE CLOSED job={job['id']} "
-            f"rows_written={rows_written} bytes={temp_path.stat().st_size}",
-            flush=True,
-        )
         os.replace(temp_path, output_path)
         record_job_event(
             job["id"], "csv_written", message="Baseline CSV atomically published",
-            details={"output_path": str(output_path), "size_bytes": output_path.stat().st_size},
+            details={"output_path": str(output_path), "size_bytes": output_path.stat().st_size,
+                     "store_statuses": store_statuses},
         )
         directory_fd = os.open(output_path.parent, os.O_RDONLY)
         try:
             os.fsync(directory_fd)
         finally:
             os.close(directory_fd)
-        print(
-            f"PHASE0 WORKER FILE RENAMED job={job['id']} output={output_path}",
-            flush=True,
-        )
     finally:
-        read_conn.close()
+        heartbeat_stop.set()
+        heartbeat_thread.join(timeout=HEARTBEAT_INTERVAL_SECONDS + 2)
+        for leftover in output_path.parent.glob(f".{job['id']}.*.csv.tmp"):
+            leftover.unlink(missing_ok=True)
 
     elapsed = round(time.monotonic() - started, 3)
     return {
         "rows_written": rows_written,
-        "offers_read": total_offers,
+        "offers_read": offers_read,
         "stores_processed": processed_stores,
+        "store_statuses": store_statuses,
         "duration_seconds": elapsed,
         "output_path": str(output_path),
     }

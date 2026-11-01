@@ -180,11 +180,15 @@ class Phase0PersistentJobTests(unittest.TestCase):
             reader = csv.DictReader(handle)
             self.assertEqual(reader.fieldnames, list(COLUMNS))
             rows = list(reader)
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["store"], "bplatz")
-        self.assertEqual(rows[0]["canonical_product_id"], "product-1")
-        self.assertEqual(rows[0]["is_valid_offer"], "true")
+        offer_rows = [row for row in rows if row.get("source")]
+        status_rows = {row["store"]: row["store_status"] for row in rows}
+        self.assertEqual(len(offer_rows), 1)
+        self.assertEqual(offer_rows[0]["store"], "bplatz")
+        self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
+        self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
         self.assertEqual(len(STORES), 11)
+        self.assertEqual(set(status_rows), set(STORES))
+        self.assertTrue(all(status == "completed" for status in status_rows.values()))
 
 
 if __name__ == "__main__":
