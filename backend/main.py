@@ -5162,14 +5162,13 @@ from fastapi.responses import Response as _Phase0Response
 
 @app.get('/admin/phase0/baseline-report.csv')
 def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
-    """Export the complete 11-retailer catalog/offer quality baseline, read-only."""
+    """Export the nine-store catalog/offer quality summary, read-only."""
     expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
     supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
     try:
-        from scenthunter_next_engine.baseline_report import (
-            BaselineIncompleteError as _Phase0BaselineIncompleteError,
+        from scenthunter_next_engine.baseline_summary_report import (
             generate as _generate_phase0_report,
         )
 
@@ -5195,8 +5194,6 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         )
     except _Phase0HTTPException:
         raise
-    except _Phase0BaselineIncompleteError as exc:
-        raise _Phase0HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}', flush=True)
         raise _Phase0HTTPException(
