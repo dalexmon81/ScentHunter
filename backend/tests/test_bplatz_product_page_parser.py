@@ -110,6 +110,69 @@ class BplatzProductPageParserTests(unittest.TestCase):
             ["https://en.bplatz.de/products/french-avenue-atlantis-extrait-extrait-de-parfum-100-ml"],
         )
 
+    def test_visible_product_stock_overrides_stale_jsonld_out_of_stock(self):
+        html = """
+        <html><body>
+          <main>
+            <section class="product__info-container">
+              <h1>French Avenue Liquid Brun Limited Edition Extrait de Parfum 150 ml</h1>
+              <p>Available immediately from French Avenue</p>
+              <form action="/cart/add"><button>Add to cart</button></form>
+            </section>
+            <section id="shopify-section-reviews">
+              <p>Some older review says the item was out of stock.</p>
+            </section>
+          </main>
+          <script type="application/ld+json">
+          {"@type":"Product",
+           "name":"French Avenue Liquid Brun Limited Edition Extrait de Parfum 150 ml",
+           "brand":{"@type":"Brand","name":"French Avenue"},
+           "offers":{"@type":"Offer","price":"36.80",
+                     "availability":"https://schema.org/OutOfStock"}}
+          </script>
+        </body></html>
+        """
+        parsed = product_from_page(
+            session=None,
+            url="https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml",
+            query="French Avenue Liquid Brun Limited Edition 150 ml",
+            html=html,
+        )
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["size_ml"], 150)
+        self.assertEqual(parsed["price_num"], 36.80)
+        self.assertEqual(parsed["availability"], "in_stock")
+        self.assertTrue(parsed["available"])
+
+    def test_visible_sold_out_product_status_overrides_jsonld_in_stock(self):
+        html = """
+        <html><body>
+          <main>
+            <section class="product__info-container">
+              <h1>French Avenue Liquid Brun Limited Edition Extrait de Parfum 150 ml</h1>
+              <p>Out of stock</p>
+              <form action="/cart/add"><button>Sold out</button></form>
+            </section>
+          </main>
+          <script type="application/ld+json">
+          {"@type":"Product",
+           "name":"French Avenue Liquid Brun Limited Edition Extrait de Parfum 150 ml",
+           "brand":{"@type":"Brand","name":"French Avenue"},
+           "offers":{"@type":"Offer","price":"36.80",
+                     "availability":"https://schema.org/InStock"}}
+          </script>
+        </body></html>
+        """
+        parsed = product_from_page(
+            session=None,
+            url="https://en.bplatz.de/products/liquid-brun-limited-edition-eau-de-parfum-150-ml",
+            query="French Avenue Liquid Brun Limited Edition 150 ml",
+            html=html,
+        )
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["availability"], "out_of_stock")
+        self.assertFalse(parsed["available"])
+
     def test_shopify_product_price_metadata_fills_missing_jsonld_price(self):
         html = """
         <html><head>
