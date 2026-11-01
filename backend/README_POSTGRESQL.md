@@ -1,29 +1,45 @@
-# PostgreSQL catalog database — Phase 2
+# SQLite canonical catalog — Phase 2
 
-This is a separate canonical catalog/offer database. The current production
-SQLite catalog at `/data/store_catalog.sqlite3` remains untouched and remains
-the active source for existing search and ingestion during this phase.
+Phase 2 uses a dedicated SQLite database on the existing Fly volume:
 
-Set `SCENTHUNTER_DATABASE_URL` to a PostgreSQL connection URL; never commit
-credentials. From the repository root:
+- Canonical catalog: `/data/catalog/catalog.sqlite3`
+- Existing storefront catalog: `/data/store_catalog.sqlite3` (untouched)
+- Phase 0 queue: `/data/phase0/queue.sqlite3` (untouched)
+
+The canonical database is isolated from both existing files. It uses WAL mode,
+foreign-key enforcement, a 30-second busy timeout, and the same eight logical
+tables intended for the future PostgreSQL schema:
+`brands`, `fragrances`, `product_variants`, `stores`, `offers`,
+`price_history`, `match_audit`, and `ingestion_runs`.
+
+From the repository root:
 
 ```bash
 cd backend
 alembic upgrade head
 python scripts/seed_catalog.py
-# Inspect the dry-run report; only after review:
+# Review the dry-run report first. Import only with explicit approval:
 python scripts/seed_catalog.py --apply
 ```
 
-The seed imports brands, fragrances and explicitly declared variants only.
-It does not import retailer offers, invent missing variants, or modify either
-the source JSON or legacy SQLite database. It stops if any product lacks
-explicit variant records. Missing tester/refill/gift-set flags and GTINs are
-not inferred; unknown flags stay NULL. The default command is dry-run only.
-Use `--apply` only after reviewing the catalog migration report and approving
-the source identities.
+By default, `SCENTHUNTER_CATALOG_DATABASE_URL` or
+`SCENTHUNTER_DATABASE_URL` may override the location, but the current Phase 2
+engine rejects non-SQLite URLs. Without an override, it uses
+`sqlite:////data/catalog/catalog.sqlite3`.
 
-Do not repoint `SCENTHUNTER_CATALOG_DB`, remove the Fly volume, enable the
-new database in normal search, or cut over production as part of Phase 2.
-Unmatched offers may have a NULL variant reference until reviewed. Prices use
-fixed-precision NUMERIC and timestamps are timezone-aware.
+The seed imports brands, fragrances and explicitly declared variants only.
+It does not import retailer offers, invent missing variants, or modify source
+JSON, the storefront SQLite database, or the Phase 0 queue. It stops if any
+product lacks explicit variant records. Missing tester/refill/gift-set flags
+and GTINs are not inferred; unknown flags stay NULL. Dry-run is the default;
+`--apply` is required to write canonical rows.
+
+After an apply, the seed verifies all eight tables exist, reports row counts,
+and checks that no active offer has a NULL price, empty/NULL URL, or NULL
+availability. The initial seed intentionally imports no offers, so the
+expected offer count is zero until a separately reviewed offer-import phase.
+
+SQLite WAL is appropriate for the current single-writer/small-volume phase.
+When multiple machines need concurrent shared writes, plan a separately
+reviewed migration to Neon or Supabase PostgreSQL free tier. Do not enable a
+paid Fly Managed PostgreSQL service.
