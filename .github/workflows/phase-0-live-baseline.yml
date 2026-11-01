@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: scent-hunter-phase-0-live-baseline
+  group: scent-hunter-phase-0-live-baseline-v2
   cancel-in-progress: false
 
 jobs:
