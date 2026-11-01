@@ -97,7 +97,7 @@ class Phase0BaselineReportTests(unittest.TestCase):
         conn.close()
         return catalog_path, db_path
 
-    def test_exports_offer_level_rows_for_all_eleven_stores_and_deduplicates(self):
+    def test_exports_offer_level_rows_for_all_nine_active_stores_and_deduplicates(self):
         with tempfile.TemporaryDirectory() as directory:
             catalog_path, db_path = self._fixture(directory)
             output = Path(directory) / "baseline.csv"
@@ -115,12 +115,12 @@ class Phase0BaselineReportTests(unittest.TestCase):
                 "is_valid_offer",
             }.issubset(set(reader.fieldnames)))
             self.assertEqual({row["store"] for row in rows}, set(SUPPORTED_STORES))
-            self.assertEqual(len(rows), 11)
+            self.assertEqual(len(rows), 9)
             self.assertEqual(summary["stores"], 9)
             self.assertEqual(summary["excluded_stores"], ["amazon_de", "amazon_fr"])
             self.assertNotIn("amazon_de", {row["store"] for row in rows})
             self.assertNotIn("amazon_fr", {row["store"] for row in rows})
-            self.assertEqual(summary["offers"], 11)
+            self.assertEqual(summary["offers"], 9)
             self.assertEqual(summary["duplicate_rows_skipped"], 1)
             bplatz = next(row for row in rows if row["store"] == "bplatz")
             self.assertEqual(bplatz["canonical_product_id"], "p1")
