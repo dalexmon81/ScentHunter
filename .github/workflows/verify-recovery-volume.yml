@@ -50,6 +50,7 @@ jobs:
           PY
           VERIFY_B64="$(base64 -w0 /tmp/verify.py)"
 
+          set +e
           flyctl machine run \
             --app scenthunter \
             --region ams \
@@ -58,10 +59,30 @@ jobs:
             --vm-cpus 1 \
             --vm-memory 256 \
             --restart no \
-            --rm \
             --file-literal "/verify.py=$VERIFY_B64" \
             python:3.12-alpine \
-            python /verify.py
+            python /verify.py 2>&1 | tee /tmp/machine-run.log
+          RUN_STATUS=${PIPESTATUS[0]}
+          set -e
+
+          MACHINE_ID="$(awk '/Machine ID:/ {print $3; exit}' /tmp/machine-run.log)"
+          if [ -z "$MACHINE_ID" ]; then
+            echo "No temporary machine ID was returned; refusing any cleanup action."
+            exit "$RUN_STATUS"
+          fi
+
+          echo "Waiting for verification machine $MACHINE_ID to finish..."
+          flyctl machine wait "$MACHINE_ID" --app scenthunter --state stopped --timeout 180s || true
+          echo "Collecting verification output from $MACHINE_ID..."
+          flyctl logs --app scenthunter --machine "$MACHINE_ID" --no-tail || true
+
+          echo "Destroying only temporary verification machine $MACHINE_ID."
+          flyctl machine destroy "$MACHINE_ID" --app scenthunter --force --yes
+
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "The verification machine command failed."
+            exit "$RUN_STATUS"
+          fi
 
           echo "Checking that the recovery volume has been released after the temporary machine exited."
           flyctl volumes list --app scenthunter | tee /tmp/volumes-after.txt
