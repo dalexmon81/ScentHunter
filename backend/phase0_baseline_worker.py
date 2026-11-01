@@ -10,7 +10,6 @@ import traceback
 from scenthunter_next_engine.phase0_baseline_jobs import (
     claim_next_job,
     ensure_schema,
-    ensure_smoke_schema,
     connect,
     recover_stale_jobs,
     update_job,
@@ -118,7 +117,6 @@ def main() -> None:
                 conn = connect()
                 try:
                     ensure_schema(conn)
-                    ensure_smoke_schema(conn)
                 finally:
                     conn.close()
                 schema_ready = True
