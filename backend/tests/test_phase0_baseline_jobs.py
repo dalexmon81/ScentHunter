@@ -29,11 +29,16 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.db_path = self.root / "catalog.sqlite3"
-        self.patch_db = patch(
-            "scenthunter_next_engine.phase0_baseline_jobs.database_path",
+        self.patch_jobs_db = patch(
+            "scenthunter_next_engine.phase0_baseline_jobs.jobs_database_path",
             return_value=self.db_path,
         )
-        self.patch_db.start()
+        self.patch_catalog_db = patch(
+            "scenthunter_next_engine.phase0_baseline_jobs.catalog_database_path",
+            return_value=self.db_path,
+        )
+        self.patch_jobs_db.start()
+        self.patch_catalog_db.start()
         conn = connect()
         try:
             conn.execute("PRAGMA journal_mode=WAL")
@@ -60,7 +65,8 @@ class Phase0PersistentJobTests(unittest.TestCase):
             conn.close()
 
     def tearDown(self):
-        self.patch_db.stop()
+        self.patch_jobs_db.stop()
+        self.patch_catalog_db.stop()
         self.temp.cleanup()
 
     def test_job_is_durable_and_claim_is_atomic(self):
