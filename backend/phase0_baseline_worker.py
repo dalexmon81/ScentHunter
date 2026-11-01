@@ -15,6 +15,9 @@ from scenthunter_next_engine.phase0_baseline_jobs import (
     update_job,
     generate_csv,
     utc_now,
+    claim_next_smoke_job,
+    generate_smoke_csv,
+    finish_smoke_job,
 )
 
 _STOP = False
@@ -72,13 +75,40 @@ def _run_job(job: dict, worker_id: str) -> None:
             )
 
 
+
+def _run_smoke_job(job: dict, worker_id: str) -> None:
+    print(f"PHASE0 SMOKE WORKER CLAIMED job={job['id']} worker={worker_id}", flush=True)
+    try:
+        result = generate_smoke_csv(job)
+        finish_smoke_job(
+            job["id"], status="completed", finished_at=utc_now(),
+            heartbeat_at=utc_now(), error_message=None,
+        )
+        print(
+            f"PHASE0 SMOKE JOB COMPLETED job={job['id']} "
+            f"rows_written={result['rows_written']} output={result['output_path']}",
+            flush=True,
+        )
+    except Exception as exc:
+        finish_smoke_job(
+            job["id"], status="failed", finished_at=utc_now(),
+            heartbeat_at=utc_now(), error_message=f"{type(exc).__name__}: {exc}",
+        )
+        print(f"PHASE0 SMOKE JOB FAILED job={job['id']} error={type(exc).__name__}: {exc}", flush=True)
+
+
+
 def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     last_recovery = 0.0
     schema_ready = False
-    print(f"PHASE0 WORKER START worker={worker_id}", flush=True)
+    pid_path = "/data/phase0/worker.pid"
+    os.makedirs("/data/phase0", exist_ok=True)
+    with open(pid_path, "w", encoding="ascii") as marker_file:
+        marker_file.write(str(os.getpid()))
+    print(f"PHASE0 WORKER START worker={worker_id} pid_file={pid_path}", flush=True)
     while not _STOP:
         try:
             # Re-open and initialize after transient SQLite/startup failures.
@@ -100,6 +130,10 @@ def main() -> None:
                         flush=True,
                     )
                 last_recovery = time.monotonic()
+            smoke_job = claim_next_smoke_job(worker_id)
+            if smoke_job:
+                _run_smoke_job(smoke_job, worker_id)
+                continue
             job = claim_next_job(worker_id)
             if job:
                 _run_job(job, worker_id)
@@ -112,6 +146,10 @@ def main() -> None:
                 flush=True,
             )
             time.sleep(5)
+    try:
+        os.unlink(pid_path)
+    except FileNotFoundError:
+        pass
     print(f"PHASE0 WORKER STOP worker={worker_id}", flush=True)
 
 
