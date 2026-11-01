@@ -103,7 +103,7 @@ STORE_LABELS.update({
 # Amazon marketplaces remain configured for future reactivation, but are
 # inactive until the approved Creators API credentials and marketplace tags exist.
 DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
-ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
+ACTIVE_STORES = tuple(store for store in ACTIVE_STORES if store not in DISABLED_STORES)
 
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
@@ -5128,7 +5128,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
         # Independent read-only retailer queries can run concurrently. Merge
         # in configured order to preserve deterministic output and full coverage.
         with ThreadPoolExecutor(max_workers=min(8, len(ACTIVE_STORES)), thread_name_prefix="catalog-search") as pool:
-            futures = {store: pool.submit(_search_one_store, store) for store in STORES}
+            futures = {store: pool.submit(_search_one_store, store) for store in ACTIVE_STORES}
             for store in ACTIVE_STORES:
                 if cancel_event is not None and cancel_event.is_set():
                     break
@@ -5214,7 +5214,7 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
 
 def _search_local_legacy_sql(conn, token_sets, limit, rows, cancel_event=None, deadline=None):
     # Compatibility path for SQLite builds without FTS5.
-    for store in STORES:
+    for store in ACTIVE_STORES:
         if cancel_event is not None and cancel_event.is_set():
             break
         if deadline is not None and time.monotonic() >= float(deadline):
@@ -5498,7 +5498,7 @@ def hydration_pending_counts():
     conn = db()
     out = {}
     try:
-        for store in STORES:
+        for store in ACTIVE_STORES:
             row = conn.execute(
                 """SELECT COUNT(*) c
                    FROM store_urls u
@@ -5633,7 +5633,7 @@ def _hydration_store_order(conn):
         "SELECT last_store_index FROM hydration_scheduler WHERE id=1"
     ).fetchone()
     last_index = int(row['last_store_index'] if row else 0)
-    n = len(STORES)
+    n = len(ACTIVE_STORES)
     if not n:
         return [], 0
     start = (last_index + 1) % n
@@ -5693,7 +5693,7 @@ def _claim_one_hydration_task(lease_seconds=HYDRATION_LEASE_SECONDS):
             ).fetchone()
             if row:
                 chosen = row
-                chosen_index = (start_index + offset) % len(STORES)
+                chosen_index = (start_index + offset) % len(ACTIVE_STORES)
                 break
 
         if not chosen:
@@ -6415,7 +6415,7 @@ def _coverage_seed_tasks(conn, products):
         if not product_id or not canonical or not queries:
             continue
         primary = queries[0]
-        for store in STORES:
+        for store in ACTIVE_STORES:
             rows.append((store, product_id, canonical, primary, now))
     if not rows:
         return
@@ -7099,7 +7099,7 @@ def hydration_status():
             'total': 0, 'pending': 0, 'processing': 0, 'done': 0,
             'error': 0, 'dead': 0, 'last_finished_at': None,
         }
-        for store in STORES
+        for store in ACTIVE_STORES
     }
     try:
         rows = conn.execute(
@@ -7138,7 +7138,7 @@ def sync_all():
     now = time.time()
     conn = db()
     with conn:
-        for store in STORES:
+        for store in ACTIVE_STORES:
             conn.execute("""INSERT INTO sync_state(store,status,started_at,finished_at,discovered_count,fetched_count,error)
                VALUES(?,?,?,?,?,?,?)
                ON CONFLICT(store) DO UPDATE SET status=excluded.status,
@@ -7147,8 +7147,8 @@ def sync_all():
                error=excluded.error""",
                (store, 'DISCOVERY_QUEUED', now, None, 0, 0, 'waiting_for_discovery_worker'))
     conn.close()
-    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(STORES))) as pool:
-        futures = {pool.submit(discover_store, store): store for store in STORES}
+    with ThreadPoolExecutor(initializer=_set_catalog_pool_worker_os_name, max_workers=min(SYNC_WORKERS, len(ACTIVE_STORES))) as pool:
+        futures = {pool.submit(discover_store, store): store for store in ACTIVE_STORES}
         for future in as_completed(futures):
             store = futures[future]
             try:
@@ -7225,7 +7225,7 @@ def store_status():
                     GROUP BY q.store"""
             )
         }
-        for store in STORES:
+        for store in ACTIVE_STORES:
             sync = sync_rows.get(store)
             count = url_counts.get(store, 0)
             fetched = product_counts.get(store, 0)
