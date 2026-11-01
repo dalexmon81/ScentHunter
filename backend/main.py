@@ -5171,3 +5171,78 @@ def diagnose_search_final(store: str, q: str):
 def frontend():
     if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
     return {'error':'frontend/index.html not found'}
+
+
+# Authenticated, read-only Phase 0 baseline export.
+import csv as _phase0_csv
+import hmac as _phase0_hmac
+import io as _phase0_io
+import sqlite3 as _phase0_sqlite3
+from datetime import datetime as _phase0_datetime, timezone as _phase0_timezone
+from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
+from fastapi.responses import Response as _Phase0Response
+
+_PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability', 'available', 'unavailable'}
+
+@app.get('/admin/phase0/baseline-report.csv')
+def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
+    """Export aggregate store quality metrics without writes or scraping."""
+    expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
+    supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
+    if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
+        raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
+    try:
+        catalog_path = Path(__file__).resolve().parent / 'product_catalog.json'
+        with catalog_path.open('r', encoding='utf-8') as handle:
+            payload = json.load(handle)
+        canonical = set()
+        for product in (payload.get('products', []) if isinstance(payload, dict) else []):
+            if not isinstance(product, dict): continue
+            brand = str(product.get('brand_name') or '').strip().casefold()
+            for value in [product.get('canonical_name'), *(product.get('aliases') or [])]:
+                name = str(value or '').strip().casefold()
+                if name: canonical.add((brand, name))
+        db_path = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'))).expanduser().resolve()
+        conn = _phase0_sqlite3.connect(f'file:{db_path}?mode=ro', uri=True, timeout=10)
+        conn.row_factory = _phase0_sqlite3.Row
+        try:
+            tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
+            if source not in tables: raise RuntimeError('No retailer offers table found')
+            columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
+            required = {'store','url','name','brand','price','availability','fetched_at'}
+            if not required.issubset(columns): raise RuntimeError(f'Unexpected {source} schema')
+            url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
+            rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+        finally:
+            conn.close()
+        now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
+        totals = {}
+        for row in rows:
+            store = str(row['store'] or 'unknown')
+            item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
+            item['total_offers'] += 1
+            try: price_ok = float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
+            except (TypeError, ValueError): price_ok = False
+            url = str(row['offer_url'] or '').strip()
+            url_ok = url.startswith(('https://','http://')) and bool(url.split('/',3)[2] if '://' in url else '')
+            availability_ok = str(row['availability'] or '').strip().lower() in _PHASE0_VALID_AVAILABILITY
+            if price_ok: item['offers_with_valid_price'] += 1
+            if url_ok: item['offers_with_valid_url'] += 1
+            if availability_ok: item['offers_with_valid_availability'] += 1
+            if (str(row['brand'] or '').strip().casefold(), str(row['name'] or '').strip().casefold()) in canonical: item['offers_matched_to_canonical_product'] += 1
+            try: age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
+            except (TypeError, ValueError): age = None
+            if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
+            else: item['stale_offers'] += 1
+            if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
+        output = _phase0_io.StringIO()
+        fields = ['store','total_offers','offers_with_valid_price','offers_with_valid_url','offers_with_valid_availability','offers_matched_to_canonical_product','offers_with_recent_capture','stale_offers','invalid_offers']
+        writer = _phase0_csv.DictWriter(output, fieldnames=fields)
+        writer.writeheader()
+        for store in sorted(totals): writer.writerow({'store':store,**totals[store]})
+        return _Phase0Response(content=output.getvalue(),media_type='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename="phase-0-retailer-baseline.csv"'})
+    except _Phase0HTTPException: raise
+    except Exception as exc:
+        print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}',flush=True)
+        raise _Phase0HTTPException(status_code=500,detail='Baseline report generation failed')
