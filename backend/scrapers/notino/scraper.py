@@ -1519,7 +1519,7 @@ def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
         return None
     soup = BeautifulSoup(html or "", "html.parser")
     heading = soup.find("h1")
-    heading_name = _clean_name(heading.get_text(" ", strip=True) if heading else "")
+    heading_name = _clean(heading.get_text(" ", strip=True) if heading else "")
     records = _structured_product_records(html or "")
     selected = None
     selected_evidence = None
