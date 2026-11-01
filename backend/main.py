@@ -5267,3 +5267,5 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}',flush=True)
         raise _Phase0HTTPException(status_code=500,detail='Baseline report generation failed')
+
+# Phase 0 baseline endpoint is deployed with the production backend.
