@@ -3964,8 +3964,6 @@ def _refresh_timeout_for_store(store):
 
 def refresh_url(store, url):
     try:
-        if store in DISABLED_STORES:
-            raise RuntimeError('store_temporarily_disabled_no_credentials')
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
