@@ -1,16 +1,13 @@
 name: Phase 0 - live retailer baseline (read-only)
 
 on:
-  workflow_dispatch:
-    inputs:
-      confirm_read_only:
-        description: Confirm read-only inspection of the production catalog
-        required: true
-        type: choice
-        options:
-          - no
-          - yes
-        default: no
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: read
@@ -21,7 +18,7 @@ concurrency:
 
 jobs:
   baseline:
-    if: ${{ inputs.confirm_read_only == 'yes' }}
+    if: ${{ github.event.pull_request.head.ref == 'phase-0/live-baseline-only' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
