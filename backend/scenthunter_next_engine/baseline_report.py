@@ -17,7 +17,7 @@ from .canonical_matcher import CanonicalMatcher
 from .models import MatchStatus, RetailerOffer
 
 
-VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
+VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability", "available", "unavailable"}
 SUPPORTED_STORES = (
     "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
     "notino", "orioudh", "parfumcity", "parfumzentrum",
