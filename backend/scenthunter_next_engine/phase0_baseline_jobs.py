@@ -24,7 +24,7 @@ VALID_STOCK = {
     "in_stock", "out_of_stock", "preorder", "backorder",
     "limited_availability",
 }
-STALE_AFTER_SECONDS = 180
+STALE_AFTER_SECONDS = 600
 
 
 def jobs_database_path() -> Path:
@@ -107,6 +107,18 @@ def get_job(job_id: str) -> dict[str, Any] | None:
     try:
         row = conn.execute(
             "SELECT * FROM phase0_baseline_jobs WHERE id=?", (job_id,)
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_latest_job() -> dict[str, Any] | None:
+    """Read the newest durable job without acquiring a write lock."""
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM phase0_baseline_jobs ORDER BY created_at DESC, id DESC LIMIT 1"
         ).fetchone()
         return dict(row) if row else None
     finally:
@@ -366,6 +378,11 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     print(
         f"PHASE0 WORKER JOB START job={job['id']} worker={worker_id} "
         f"stores={len(STORES)} db={db_path} output={output_path}",
+        flush=True,
+    )
+    print(
+        f"PHASE0 WORKER CATALOG PATH job={job['id']} path={catalog_path} "
+        f"exists={catalog_path.is_file()}",
         flush=True,
     )
     catalog = CatalogRepository.from_file(catalog_path)
