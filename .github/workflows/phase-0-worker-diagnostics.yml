@@ -1,0 +1,33 @@
+name: Phase 0 - worker diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read and filter recent production worker logs (read-only)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN" || {
+            echo "::error::Repository secret FLY_API_TOKEN is missing."
+            exit 1
+          }
+          flyctl logs --app scenthunter --no-tail 2>&1 | tail -n 200 | tee phase0-worker-last-200.log
+          echo
+          echo "=== Matching diagnostic lines (from the last 200 log lines) ==="
+          grep -Ein 'catalog file|catalog not found|worker|job|heartbeat|Traceback|SQLite|permission denied|No such file or directory' \
+            phase0-worker-last-200.log || true
+          echo
+          echo "Read-only diagnostics complete. No jobs were started and no deploy was performed."
