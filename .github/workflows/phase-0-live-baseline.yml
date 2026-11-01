@@ -176,9 +176,8 @@ jobs:
           if reader.fieldnames != expected_header:
               raise SystemExit("CSV schema mismatch: " + repr(reader.fieldnames))
           expected_stores = {
-              "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
-              "notino", "orioudh", "parfumcity", "parfumzentrum",
-              "perfumemarket", "sabina",
+              "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+              "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
           }
           rows = list(reader)
           counts = Counter(row["store"] for row in rows)
@@ -190,7 +189,7 @@ jobs:
               raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
           offer_rows = [row for row in rows if row.get("source")]
           offer_counts = Counter(row["store"] for row in offer_rows)
-          for store in ("amazon_de", "amazon_fr", "notino"):
+          for store in sorted(expected_stores):
               if offer_counts[store] <= 0:
                   raise SystemExit(f"CSV has no real offer rows for {store}")
           allowed_statuses = {"completed", "timeout", "failed", "skipped"}

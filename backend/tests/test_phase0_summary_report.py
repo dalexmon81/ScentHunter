@@ -48,9 +48,6 @@ class Phase0SummaryReportTests(unittest.TestCase):
                     "INSERT INTO store_products VALUES (?, ?, ?, ?, NULL, NULL, 100, 'edp', 25, 'EUR', 'in_stock')",
                     (store, url, "Alpha", "Acme"),
                 )
-        conn.execute(
-            "INSERT INTO store_urls VALUES ('amazon_de', 'https://amazon.example/x', 'x', NULL, 1800000000, 1)"
-        )
         conn.commit()
         conn.close()
         return catalog, db
@@ -69,8 +66,6 @@ class Phase0SummaryReportTests(unittest.TestCase):
         self.assertEqual(by_store["notino"]["indexed_url_count"], "1")
         self.assertEqual(by_store["notino"]["offer_count"], "0")
         self.assertEqual(by_store["notino"]["valid_price_pct"], "0")
-        self.assertNotIn("amazon_de", by_store)
-        self.assertNotIn("amazon_fr", by_store)
 
     def test_indexed_url_count_is_distinct_and_active_only(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -89,7 +89,7 @@ jobs:
           python3 - <<'PY'
           import csv
           from pathlib import Path
-          stores = ["amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"]
+          stores = ["notino", "bplatz", "deloox", "easycosmetic", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"]
           expected = [["store", "status"]] + [[store, "ok"] for store in stores]
           with Path("phase-0-smoke.csv").open(newline="", encoding="utf-8") as f:
               actual = list(csv.reader(f))

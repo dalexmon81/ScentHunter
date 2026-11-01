@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any, Iterator
 
 STORES = (
-    "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic", "notino",
-    "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+    "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+    "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
 COLUMNS = (
     "store", "canonical_product_id", "brand", "fragrance", "concentration",
@@ -653,8 +653,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
 
 # Lightweight worker smoke jobs share the existing durable Phase 0 queue database.
 SMOKE_STORES = (
-    "amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic",
-    "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+    "notino", "bplatz", "deloox", "easycosmetic", "orioudh",
+    "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
 
 

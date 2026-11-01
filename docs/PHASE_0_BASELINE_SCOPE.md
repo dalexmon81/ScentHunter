@@ -19,17 +19,6 @@ exporter and quality workflow fail closed if any active retailer is missing or
 has zero offers. A row with zero offers is never used to make coverage appear
 complete.
 
-## Temporarily excluded retailers
-
-- amazon_de
-- amazon_fr
-
-Both Amazon marketplaces are temporarily excluded because the project does
-not have the required approved Creators API credentials and marketplace
-associate tags. Their scraper/configuration code is retained for possible
-future reactivation. They are not counted as active retailers and must not
-appear in the nine-retailer baseline CSV.
-
 The CSV declares this scope on every offer row through `baseline_scope` and
 `excluded_stores`.
 
