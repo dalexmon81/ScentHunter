@@ -187,12 +187,15 @@ class OfferEngineRuntimeTests(unittest.TestCase):
     def test_runner_connection_is_closed_after_execution(self):
         connection = FakeConnection()
         class FakeRunner:
-            def __init__(self, matcher, repository_factory):
+            def __init__(self, matcher, repository_factory, **kwargs):
                 self.repository_factory = repository_factory
             def run(self, connectors, query):
                 repository = self.repository_factory(next(iter(connectors)))
                 self.assert_repository = repository
-                return EngineRunResult([])
+                try:
+                    return EngineRunResult([])
+                finally:
+                    repository.close()
         with (
             patch.object(runtime.psycopg, "connect", return_value=connection),
             patch.object(runtime.CatalogRepository, "from_file", return_value=object()),

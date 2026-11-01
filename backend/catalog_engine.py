@@ -44,6 +44,31 @@ import requests
 from bs4 import BeautifulSoup, SoupStrainer
 
 
+
+def _retry_sqlite_busy(operation, stage, attempts=9):
+    """Retry an operation only for transient SQLite writer contention."""
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            return operation()
+        except sqlite3.OperationalError as exc:
+            message = str(exc).casefold()
+            if not any(token in message for token in ("database is locked", "database is busy", "database table is locked", "database table is busy")):
+                raise
+            if attempt >= max(1, int(attempts)):
+                print(
+                    f"CATALOG SQLITE BUSY RETRIES EXHAUSTED stage={stage} "
+                    f"attempts={attempt} error={exc}",
+                    flush=True,
+                )
+                raise
+            delay = min(0.10 * (2 ** (attempt - 1)), 4.0)
+            print(
+                f"CATALOG SQLITE BUSY RETRY stage={stage} "
+                f"attempt={attempt}/{attempts} delay={delay:.2f}s",
+                flush=True,
+            )
+            time.sleep(delay)
+
 def _set_catalog_pool_worker_os_name():
     """Prevent executor threads from inheriting the discovery-active Linux name.
 
@@ -6389,11 +6414,17 @@ def _coverage_seed_tasks(conn, products):
     # Keep each write transaction small. Coverage seeding runs alongside catalog
     # hydration, discovery and searches, so one large executemany can monopolize
     # SQLite's single-writer lock.
-    chunk_size = 100
+    # SQLite permits only one writer at a time. Discovery, hydration and
+    # coverage can briefly overlap even in WAL mode; use a bounded wait and
+    # retry the whole chunk after rolling back its transaction.
+    conn.execute("PRAGMA busy_timeout=10000")
+    chunk_size = 50
+    max_attempts = 9
     for offset in range(0, len(rows), chunk_size):
         chunk = rows[offset:offset + chunk_size]
-        for attempt in range(5):
+        for attempt in range(max_attempts):
             try:
+                conn.execute("BEGIN IMMEDIATE")
                 conn.executemany(statement, chunk)
                 conn.commit()
                 break
@@ -6405,9 +6436,9 @@ def _coverage_seed_tasks(conn, products):
                 message = str(exc).lower()
                 if "locked" not in message and "busy" not in message:
                     raise
-                if attempt >= 4:
+                if attempt >= max_attempts - 1:
                     raise
-                time.sleep(0.25 * (2 ** attempt))
+                time.sleep(min(0.25 * (2 ** attempt), 4.0))
 
 
 def _coverage_token_match(text, target):
@@ -6689,34 +6720,51 @@ def _coverage_claim_tasks(limit):
     now = time.time()
     conn = db()
     try:
+        conn.execute("PRAGMA busy_timeout=10000")
         _coverage_seed_tasks(conn, products)
-        rows = conn.execute(
-            """SELECT store,product_id,canonical_name,query,attempts
-                 FROM catalog_coverage
-                WHERE next_run_at <= ?
-                  AND state IN ('PENDING','NOT_FOUND','RETRY')
-                ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
-                         CASE store WHEN 'deloox' THEN 0 ELSE 1 END,
-                         next_run_at,rowid
-                LIMIT ?""",
-            (now, max(1, int(limit))),
-        ).fetchall()
         product_by_id = {str(p.get('product_id')): p for p in products if p.get('product_id')}
-        tasks = []
-        for row in rows:
-            product = product_by_id.get(str(row['product_id']))
-            if not product:
-                continue
-            attempts = int(row['attempts'] or 0) + 1
-            conn.execute(
-                """UPDATE catalog_coverage
-                      SET state='PROCESSING',attempts=?,last_started_at=?,last_error=NULL
-                    WHERE store=? AND product_id=?""",
-                (attempts, now, row['store'], row['product_id']),
-            )
-            tasks.append({'store': row['store'], 'product': product, 'attempts': attempts})
-        conn.commit()
-        return tasks
+        max_attempts = 9
+        for attempt in range(max_attempts):
+            try:
+                # Claim rows atomically. A competing catalog writer must not
+                # leave a partially claimed batch behind.
+                conn.execute("BEGIN IMMEDIATE")
+                rows = conn.execute(
+                    """SELECT store,product_id,canonical_name,query,attempts
+                         FROM catalog_coverage
+                        WHERE next_run_at <= ?
+                          AND state IN ('PENDING','NOT_FOUND','RETRY')
+                        ORDER BY CASE state WHEN 'PENDING' THEN 0 ELSE 1 END,
+                                 CASE store WHEN 'deloox' THEN 0 ELSE 1 END,
+                                 next_run_at,rowid
+                        LIMIT ?""",
+                    (now, max(1, int(limit))),
+                ).fetchall()
+                tasks = []
+                for row in rows:
+                    product = product_by_id.get(str(row['product_id']))
+                    if not product:
+                        continue
+                    attempts = int(row['attempts'] or 0) + 1
+                    conn.execute(
+                        """UPDATE catalog_coverage
+                              SET state='PROCESSING',attempts=?,last_started_at=?,last_error=NULL
+                            WHERE store=? AND product_id=?""",
+                        (attempts, now, row['store'], row['product_id']),
+                    )
+                    tasks.append({'store': row['store'], 'product': product, 'attempts': attempts})
+                conn.commit()
+                return tasks
+            except sqlite3.OperationalError as exc:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                message = str(exc).lower()
+                if ("locked" not in message and "busy" not in message) or attempt >= max_attempts - 1:
+                    raise
+                time.sleep(min(0.25 * (2 ** attempt), 4.0))
+        return []
     finally:
         conn.close()
 
@@ -6732,16 +6780,31 @@ def _coverage_finish_task(task, result):
         db_state = state
     conn = db()
     try:
-        conn.execute(
-            """UPDATE catalog_coverage
-                  SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
-                WHERE store=? AND product_id=?""",
-            (
-                db_state, int(result.get('found') or 0), now, next_run, result.get('error'),
-                task['store'], str(task['product'].get('product_id') or ''),
-            ),
-        )
-        conn.commit()
+        conn.execute("PRAGMA busy_timeout=10000")
+        max_attempts = 9
+        for attempt in range(max_attempts):
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute(
+                    """UPDATE catalog_coverage
+                          SET state=?,found_urls=?,last_finished_at=?,next_run_at=?,last_error=?
+                        WHERE store=? AND product_id=?""",
+                    (
+                        db_state, int(result.get('found') or 0), now, next_run, result.get('error'),
+                        task['store'], str(task['product'].get('product_id') or ''),
+                    ),
+                )
+                conn.commit()
+                break
+            except sqlite3.OperationalError as exc:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                message = str(exc).lower()
+                if ("locked" not in message and "busy" not in message) or attempt >= max_attempts - 1:
+                    raise
+                time.sleep(min(0.25 * (2 ** attempt), 4.0))
     finally:
         conn.close()
 
