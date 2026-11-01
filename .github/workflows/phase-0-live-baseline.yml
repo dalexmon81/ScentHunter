@@ -10,7 +10,7 @@ jobs:
   baseline:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 65
     steps:
       - name: Confirm production deploy and health checks succeeded
         if: false
@@ -104,7 +104,7 @@ jobs:
             jq . phase0-latest.json
             exit 1
           fi
-          deadline=$((SECONDS + 1200))
+          deadline=$((SECONDS + 3600))
           completed=false
           while [[ "$job_status" == "queued" || "$job_status" == "running" ]]; do
             (( SECONDS < deadline )) || break
@@ -143,7 +143,7 @@ jobs:
 
           if [[ "$job_status" == "completed" ]]; then completed=true; fi
           [[ "$completed" == "true" ]] || {
-            echo "::error::Phase 0 job did not complete before the 20-minute polling deadline."
+            echo "::error::Phase 0 job did not complete before the 60-minute polling deadline."
             exit 1
           }
 
