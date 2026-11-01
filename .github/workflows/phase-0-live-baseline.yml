@@ -94,6 +94,16 @@ jobs:
           fi
 
           echo "PHASE0_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$job_status" == "failed" ]]; then
+            echo "::error::Latest Phase 0 job is already failed:"
+            jq '{job_id,status,error_message,error_traceback}' phase0-latest.json
+            exit 1
+          fi
+          if [[ "$job_status" != "queued" && "$job_status" != "running" && "$job_status" != "completed" ]]; then
+            echo "::error::Unexpected latest Phase 0 status: $job_status"
+            jq . phase0-latest.json
+            exit 1
+          fi
           deadline=$((SECONDS + 1200))
           completed=false
           while [[ "$job_status" == "queued" || "$job_status" == "running" ]]; do
