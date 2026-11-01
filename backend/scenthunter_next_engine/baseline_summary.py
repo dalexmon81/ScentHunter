@@ -92,10 +92,16 @@ def _summary_row(store: str, item: dict, catalog_product_count: int) -> dict:
     return {
         "store": store,
         "catalog_product_count": catalog_product_count,
-        **item,
+        "total_offers": item["total_offers"],
+        "offers_with_valid_price": item["offers_with_valid_price"],
         "valid_price_pct": pct("offers_with_valid_price"),
+        "offers_with_valid_url": item["offers_with_valid_url"],
         "valid_url_pct": pct("offers_with_valid_url"),
+        "offers_with_valid_stock": item["offers_with_valid_stock"],
         "valid_stock_pct": pct("offers_with_valid_stock"),
+        "matched_match_count": item["matched_match_count"],
+        "ambiguous_match_count": item["ambiguous_match_count"],
+        "unresolved_match_count": item["unresolved_match_count"],
     }
 
 
