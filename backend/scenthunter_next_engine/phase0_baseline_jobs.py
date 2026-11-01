@@ -294,9 +294,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
                      "concentration": row["concentration"]},
     )
     match = matcher.match(offer)
-    product = catalog.get(match.canonical_product_id) if (
-        match.status is MatchStatus.MATCHED else None
-    )
+    product = catalog.get(match.canonical_product_id) if match.status is MatchStatus.MATCHED else None
     variant = variants_by_id.get(match.canonical_variant_id) if product else None
     valid_price = price is not None and len(currency) == 3 and currency.isalpha()
     valid_stock = availability.strip().lower() in VALID_STOCK
