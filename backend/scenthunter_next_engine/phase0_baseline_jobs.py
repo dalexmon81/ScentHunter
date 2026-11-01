@@ -37,7 +37,7 @@ def jobs_database_path() -> Path:
 
 
 def catalog_database_path() -> Path:
-    backend = Path(__file__).resolve().parent
+    backend = Path(__file__).resolve().parent.parent
     return Path(os.environ.get(
         "SCENTHUNTER_CATALOG_DB", str(backend / "store_catalog.sqlite3")
     )).expanduser().resolve()
@@ -355,7 +355,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     from .catalog_repository import CatalogRepository
     from .canonical_matcher import CanonicalMatcher
 
-    backend = Path(__file__).resolve().parent
+    backend = Path(__file__).resolve().parent.parent
     catalog_path = backend / "product_catalog.json"
     db_path = catalog_database_path()
     output_path = Path(job["output_path"])
