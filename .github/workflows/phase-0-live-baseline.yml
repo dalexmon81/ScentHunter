@@ -72,10 +72,26 @@ jobs:
                 end
             ')"
           fi
-          printf '%s' "$machines_json" | jq -e --arg id "$machine_id" '
-            any(.[]; (.id // .ID) == $id and (.state // .State) == "started")
-          ' >/dev/null || {
-            echo "The machine attached to scenthunter_data is not started. No machine will be started automatically." >&2
+          machine_state="$(printf '%s' "$machines_json" | jq -r --arg id "$machine_id" '
+            [.[] | select((.id // .ID) == $id) | (.state // .State)] | .[0] // "missing"
+          ')"
+          if [[ "$machine_state" != "started" ]]; then
+            echo "Starting the already-authorized production machine $machine_id (no deploy or volume operation)."
+            flyctl machine start "$machine_id" --app scenthunter
+          fi
+          started=false
+          for attempt in $(seq 1 30); do
+            machines_json="$(flyctl machine list --app scenthunter --json)"
+            if printf '%s' "$machines_json" | jq -e --arg id "$machine_id" '
+              any(.[]; (.id // .ID) == $id and (.state // .State) == "started")
+            ' >/dev/null; then
+              started=true
+              break
+            fi
+            sleep 2
+          done
+          [[ "$started" == "true" ]] || {
+            echo "Machine $machine_id did not reach started state after start request." >&2
             exit 1
           }
 
