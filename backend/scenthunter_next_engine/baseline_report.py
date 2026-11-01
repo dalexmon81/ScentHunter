@@ -18,6 +18,11 @@ from .models import MatchStatus, RetailerOffer
 
 
 VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
+SUPPORTED_STORES = (
+    "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
+    "notino", "orioudh", "parfumcity", "parfumzentrum",
+    "perfumemarket", "sabina",
+)
 
 
 def _valid_price(value, currency):
@@ -85,6 +90,10 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "offers": 0, "valid_price": 0, "valid_url": 0, "valid_stock": 0,
         "ambiguous": 0, "matched": 0, "unresolved": 0,
     })
+    # Include every supported retailer even when the live database currently
+    # contains zero offers for it. A missing row must not hide a coverage gap.
+    for store in SUPPORTED_STORES:
+        totals[store]
 
     for row in records:
         store = str(row["store"] or "unknown")
