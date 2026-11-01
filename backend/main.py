@@ -5207,13 +5207,33 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         conn.row_factory = _phase0_sqlite3.Row
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
-            if source not in tables: raise RuntimeError('No retailer offers table found')
-            columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
-            required = {'store','url','name','brand','price','availability','fetched_at'}
-            if not required.issubset(columns): raise RuntimeError(f'Unexpected {source} schema')
-            url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-            rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+            if 'store_products' not in tables and 'store_product_variants' not in tables:
+                raise RuntimeError('No retailer offers table found')
+            # Variant rows are the most precise offer records. Keep product
+            # rows for URLs not expanded into variants so partial variant
+            # coverage cannot silently omit entire retailers.
+            if 'store_product_variants' in tables and 'store_products' in tables:
+                rows = conn.execute("""
+                    SELECT store, COALESCE(variant_url, url) AS offer_url,
+                           name, brand, price, currency, availability, fetched_at
+                      FROM store_product_variants
+                    UNION ALL
+                    SELECT p.store, p.url AS offer_url, p.name, p.brand,
+                           p.price, p.currency, p.availability, p.fetched_at
+                      FROM store_products AS p
+                     WHERE NOT EXISTS (
+                           SELECT 1 FROM store_product_variants AS v
+                            WHERE v.store = p.store AND v.url = p.url
+                     )
+                """).fetchall()
+            else:
+                source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
+                columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
+                required = {'store','url','name','brand','price','availability','fetched_at'}
+                if not required.issubset(columns):
+                    raise RuntimeError(f'Unexpected {source} schema')
+                url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
+                rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
         finally:
             conn.close()
         now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
