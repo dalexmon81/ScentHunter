@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
+from fastapi.responses import FileResponse, StreamingResponse
+import csv, hmac, importlib, io, json, os, re, signal, sqlite3, subprocess, sys, tempfile, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -5171,3 +5171,47 @@ def diagnose_search_final(store: str, q: str):
 def frontend():
     if FRONTEND_INDEX.exists(): return FileResponse(FRONTEND_INDEX)
     return {'error':'frontend/index.html not found'}
+
+
+@app.get('/diagnostic/phase-0-baseline.csv')
+def phase_0_baseline_csv(x_report_token: str = Header(default='', alias='X-Report-Token')):
+    """Download a read-only Phase 0 CSV from the live persistent catalog.
+
+    Requires SCENTHUNTER_REPORT_TOKEN to be configured in the deployment
+    environment and supplied via the X-Report-Token request header.
+    """
+    expected = str(os.environ.get('SCENTHUNTER_REPORT_TOKEN', '')).strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail='report_endpoint_not_configured')
+    if not x_report_token or not hmac.compare_digest(x_report_token, expected):
+        raise HTTPException(status_code=401, detail='unauthorized')
+    if not CATALOG_ENGINE_AVAILABLE:
+        raise HTTPException(status_code=503, detail='catalog_engine_unavailable')
+
+    try:
+        import catalog_engine
+        from scenthunter_next_engine.baseline_report import generate
+        base_dir = Path(__file__).resolve().parent
+        catalog_path = base_dir / 'product_catalog.json'
+        db_path = Path(catalog_engine.DB_PATH).expanduser()
+        if not catalog_path.is_file() or not db_path.is_file():
+            raise HTTPException(status_code=503, detail='live_catalog_data_unavailable')
+        with tempfile.TemporaryDirectory(prefix='scenthunter-phase0-') as temp_dir:
+            output_path = Path(temp_dir) / 'phase-0-retailer-baseline.csv'
+            generate(catalog_path, db_path, output_path)
+            payload = output_path.read_bytes()
+    except HTTPException:
+        raise
+    except (sqlite3.Error, OSError, ValueError, RuntimeError) as exc:
+        print(f'PHASE 0 BASELINE REPORT ERROR: {type(exc).__name__}: {exc}', flush=True)
+        raise HTTPException(status_code=503, detail='baseline_report_unavailable') from exc
+    except Exception as exc:
+        print(f'PHASE 0 BASELINE REPORT ERROR: {type(exc).__name__}: {exc}', flush=True)
+        raise HTTPException(status_code=503, detail='baseline_report_unavailable') from exc
+
+    return StreamingResponse(
+        io.BytesIO(payload),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment; filename="phase-0-retailer-baseline.csv"',
+                 'Cache-Control': 'no-store'},
+    )
