@@ -39,15 +39,18 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_PATH: ${{ github.event_path }}
           COMMIT_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
+          commit_json=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$COMMIT_SHA")
           backend_changed=$(jq -r '
-            [(.head_commit.added // [])[], (.head_commit.modified // [])[], (.head_commit.removed // [])[]]
-            | any(startswith("backend/") or startswith("fly.toml") or startswith("Dockerfile"))
-          ' "$EVENT_PATH")
+            [.files[].filename]
+            | any(startswith("backend/") or . == "fly.toml" or . == "Dockerfile")
+          ' <<< "$commit_json")
           if [[ "$backend_changed" != "true" ]]; then
             echo "No backend/deployment files changed; production deploy wait is not required."
             exit 0
