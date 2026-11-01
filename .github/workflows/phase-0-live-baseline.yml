@@ -90,7 +90,8 @@ jobs:
           with tempfile.TemporaryDirectory(prefix="scenthunter-phase0-") as tmp:
               root = pathlib.Path(tmp)
               archive = root / "source.tar.gz"
-              with urllib.request.urlopen(archive_url, timeout=25) as response, archive.open("wb") as target:\n                  shutil.copyfileobj(response, target)
+              with urllib.request.urlopen(archive_url, timeout=25) as response, archive.open("wb") as target:
+                  shutil.copyfileobj(response, target)
               with tarfile.open(archive, "r:gz") as tar:
                   suffixes = (
                       "/backend/scenthunter_next_engine/baseline_report.py",
