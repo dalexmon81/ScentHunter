@@ -206,7 +206,7 @@ def _store_count(conn: sqlite3.Connection, store: str, has_variants: bool) -> in
     return int(row["n"] or 0)
 
 
-def _store_cursor(
+def iter_store_rows(
     conn: sqlite3.Connection, store: str, has_variants: bool
 ) -> Iterator[sqlite3.Row]:
     if has_variants:
@@ -389,7 +389,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     f"store={store} offers_expected={store_total}",
                     flush=True,
                 )
-                for row in _store_cursor(read_conn, store, has_variants):
+                for row in iter_store_rows(read_conn, store, has_variants):
                     writer.writerow(_offer_row(row, matcher, catalog, variants_by_id))
                     store_read += 1
                     rows_written += 1
