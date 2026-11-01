@@ -1,0 +1,129 @@
+name: Phase 2 - Apply isolated SQLite catalog seed
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-phase2-catalog-seed
+  cancel-in-progress: false
+
+jobs:
+  apply-phase2-catalog-seed:
+    name: Apply and verify Phase 2 catalog seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate seed, apply to isolated catalog, and verify exact SQL counts
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/phase2_catalog_seed_apply.py <<'PY'
+          import json
+          import os
+          import sqlite3
+          import subprocess
+          import sys
+
+          BACKEND = "/app/backend"
+          PYTHON = "/app/.venv/bin/python"
+          DB_URI = "file:/data/catalog/catalog.sqlite3?mode=ro"
+
+          def run_json(command, expected_status=None):
+              result = subprocess.run(
+                  command, cwd=BACKEND, text=True, capture_output=True, check=False
+              )
+              if result.stdout:
+                  print(result.stdout, end="", flush=True)
+              if result.stderr:
+                  print(result.stderr, file=sys.stderr, end="", flush=True)
+              if result.returncode:
+                  raise SystemExit(f"Command failed ({result.returncode}): {command}")
+              try:
+                  payload = json.loads(result.stdout)
+              except json.JSONDecodeError as exc:
+                  raise SystemExit(f"Command did not return valid JSON: {command}") from exc
+              if expected_status and payload.get("status") != expected_status:
+                  raise SystemExit(f"Unexpected command status: {payload}")
+              return payload
+
+          # Re-check the source and seed report immediately before any write.
+          dry = run_json([PYTHON, "scripts/seed_catalog.py"], "validated")
+          expected_source = {"brands": 60, "fragrances": 1389, "variants": 511}
+          actual_source = {key: dry.get(key) for key in expected_source}
+          if actual_source != expected_source or dry.get("database_written") is not False:
+              raise SystemExit(
+                  "Preflight differs from the reviewed dry-run; refusing to write: "
+                  + json.dumps(dry, ensure_ascii=False)
+              )
+
+          # This is the only write operation. The seed code targets the isolated
+          # /data/catalog/catalog.sqlite3 database and imports no retailer offers.
+          applied = run_json([PYTHON, "scripts/seed_catalog.py", "--apply"], "seeded")
+          if applied.get("database_written") is not True:
+              raise SystemExit("Seed did not confirm database_written=true")
+          if applied.get("offers_imported") != 0:
+              raise SystemExit("Unexpected offer import; refusing to report success")
+
+          # Run the repository's read-only integrity verifier.
+          verified = run_json([PYTHON, "scripts/verify_catalog.py"])
+          if (verified.get("journal_mode") != "wal"
+              or verified.get("foreign_keys") != 1
+              or verified.get("integrity_check") != "ok"
+              or verified.get("invalid_active_offers") != 0):
+              raise SystemExit("SQLite integrity verification failed: " + json.dumps(verified))
+
+          # Execute the five requested SQL counts against the DB in read-only mode.
+          con = sqlite3.connect(DB_URI, uri=True, timeout=30)
+          try:
+              counts = {
+                  "brands": con.execute("SELECT count(*) FROM brands;").fetchone()[0],
+                  "fragrances": con.execute("SELECT count(*) FROM fragrances;").fetchone()[0],
+                  "product_variants": con.execute("SELECT count(*) FROM product_variants;").fetchone()[0],
+                  "offers": con.execute("SELECT count(*) FROM offers;").fetchone()[0],
+                  "invalid_active_offers": con.execute(
+                      "SELECT count(*) FROM offers WHERE status='active' "
+                      "AND (price IS NULL OR url IS NULL OR availability IS NULL);"
+                  ).fetchone()[0],
+              }
+          finally:
+              con.close()
+
+          expected_counts = {
+              "brands": 60,
+              "fragrances": 1389,
+              "product_variants": 511,
+              "offers": 0,
+              "invalid_active_offers": 0,
+          }
+          if counts != expected_counts:
+              raise SystemExit(
+                  "Post-apply SQL counts do not match expected values: "
+                  + json.dumps({"actual": counts, "expected": expected_counts})
+              )
+
+          print("PHASE2_CATALOG_SEED_RESULT=" + json.dumps({
+              "status": "success",
+              "database": "/data/catalog/catalog.sqlite3",
+              "counts": counts,
+              "offers_imported": applied.get("offers_imported"),
+              "journal_mode": verified.get("journal_mode"),
+              "foreign_keys": verified.get("foreign_keys"),
+              "integrity_check": verified.get("integrity_check"),
+              "phase0_touched": False,
+              "legacy_databases_touched": False,
+              "postgresql_used": False
+          }, ensure_ascii=False), flush=True)
+          PY
+
+          REMOTE_SCRIPT_B64="$(base64 -w0 /tmp/phase2_catalog_seed_apply.py)"
+          remote_command="/bin/sh -lc 'echo ${REMOTE_SCRIPT_B64} | base64 -d > /tmp/phase2_catalog_seed_apply.py && /app/.venv/bin/python /tmp/phase2_catalog_seed_apply.py'"
+          timeout 480s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
