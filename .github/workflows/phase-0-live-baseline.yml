@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Confirm production deploy and health checks succeeded
+        if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           PARENT_RUN_ID: ${{ github.event.workflow_run.id }}
