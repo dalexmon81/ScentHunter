@@ -22,7 +22,7 @@ COLUMNS = (
     "price", "currency", "availability", "captured_at", "source",
     "match_status", "match_confidence", "is_valid_offer", "store_status",
 )
-HEARTBEAT_INTERVAL_SECONDS = 20
+HEARTBEAT_INTERVAL_SECONDS = 15
 STORE_TIMEOUT_SECONDS = 300
 VALID_STOCK = {
     "in_stock", "out_of_stock", "preorder", "backorder",
@@ -511,7 +511,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     import multiprocessing
     import threading
     backend = Path(__file__).resolve().parent.parent
-    catalog_path = backend / "product_catalog.json"
+    catalog_path = Path(os.environ.get("PHASE0_PRODUCT_CATALOG", str(backend / "product_catalog.json"))).expanduser().resolve()
     from .catalog_repository import CatalogRepository
     catalog_product_count = CatalogRepository.from_file(catalog_path).product_count()
     db_path = catalog_database_path()
@@ -567,7 +567,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         target=heartbeat_loop, name=f"phase0-heartbeat-{job['id']}", daemon=True
     )
     heartbeat_thread.start()
-    ctx = multiprocessing.get_context("fork")
+    # Avoid forking after the heartbeat thread starts: spawned children do not inherit locks held by vanished threads.
+    ctx = multiprocessing.get_context("spawn")
     rows_written = 0
     offers_read = 0
     processed_stores = 0
@@ -579,6 +580,13 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
             for store in STORES:
                 with progress_lock:
                     progress_state["store"] = store
+                    current_processed = progress_state["processed"]
+                # Refresh heartbeat before every store, including empty stores.
+                update_job(
+                    job["id"], heartbeat_at=utc_now(),
+                    progress=min(0.999, current_processed / len(STORES)),
+                    processed_stores=current_processed, current_store=store,
+                )
                 record_job_event(job["id"], "store_started", store=store,
                                  message=f"Store export started; timeout={STORE_TIMEOUT_SECONDS}s")
                 chunk_path = output_path.parent / f".{job['id']}.{store}.csv.tmp"
@@ -606,6 +614,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                         result = {"ok": False, "error": f"Store process exited {process.exitcode} without result"}
                     store_status = "completed" if result.get("ok") and process.exitcode == 0 else "failed"
                     error = result.get("error")
+                result_queue.cancel_join_thread()
                 result_queue.close()
                 if chunk_path.is_file():
                     if store_status == "completed":

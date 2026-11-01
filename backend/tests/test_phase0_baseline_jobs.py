@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -188,24 +190,24 @@ class Phase0PersistentJobTests(unittest.TestCase):
         finally:
             conn.close()
 
-        catalog = CatalogRepository(
-            [
-                CanonicalProduct(
-                    product_id="product-1",
-                    brand="Brand",
-                    name="Fragrance",
-                    variants=(CanonicalVariant("variant-1", 100, "100 ml"),),
-                    concentration="Eau de Parfum",
-                )
-            ],
-            self.root / "product_catalog.json",
-        )
+        catalog_path = self.root / "product_catalog.json"
+        catalog_path.write_text(json.dumps({
+            "products": [{
+                "product_id": "product-1",
+                "brand_name": "Brand",
+                "canonical_name": "Fragrance",
+                "concentration": "Eau de Parfum",
+            }],
+            "variants": [{
+                "variant_id": "variant-1",
+                "product_id": "product-1",
+                "size_ml": 100,
+                "aliases": ["100 ml"],
+            }],
+        }), encoding="utf-8")
         output = self.root / "phase0" / "baseline" / "job-1.csv"
         job = {"id": "job-1", "output_path": str(output)}
-        with patch(
-            "scenthunter_next_engine.catalog_repository.CatalogRepository.from_file",
-            return_value=catalog,
-        ):
+        with patch.dict(os.environ, {"PHASE0_PRODUCT_CATALOG": str(catalog_path)}):
             result = generate_csv(job, "test-worker")
 
         self.assertEqual(result["rows_written"], 1)
