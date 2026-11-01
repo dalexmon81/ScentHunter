@@ -124,13 +124,28 @@ jobs:
               module = importlib.import_module("scenthunter_next_engine.baseline_report")
               output = pathlib.Path(tmp) / "phase-0-retailer-baseline.csv"
               result = module.generate(catalog, db, output)
-              print("BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True))
-              print("BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii"))
+              pathlib.Path("/tmp/phase0-baseline-result.txt").write_text(
+                  "BASELINE_SUMMARY=" + json.dumps(result, sort_keys=True) + "\\n"
+                  + "BASELINE_CSV_B64=" + base64.b64encode(output.read_bytes()).decode("ascii") + "\\n",
+                  encoding="utf-8",
+              )
           PY
 
           script_b64="$(base64 -w0 /tmp/run_phase0_baseline.py)"
           remote_cmd="python -c 'import base64; exec(compile(base64.b64decode(\"$script_b64\"), \"phase0_baseline.py\", \"exec\"))'"
-          timeout 120s flyctl machine exec --app scenthunter --timeout 110 "$machine_id" "$remote_cmd" | tee /tmp/phase0-baseline.log
+          launch_cmd="nohup sh -c '$remote_cmd' </dev/null >/tmp/phase0-baseline-worker.log 2>&1 &"
+          timeout 20s flyctl machine exec --app scenthunter --timeout 15 "$machine_id" "$launch_cmd"
+
+          result_b64=""
+          for attempt in $(seq 1 36); do
+            poll_cmd="if test -s /tmp/phase0-baseline-result.txt; then cat /tmp/phase0-baseline-result.txt; elif pgrep -f '[p]hase0_baseline.py' >/dev/null; then echo BASELINE_STILL_RUNNING; else cat /tmp/phase0-baseline-worker.log; exit 1; fi"
+            poll_output="$(timeout 20s flyctl machine exec --app scenthunter --timeout 15 "$machine_id" "$poll_cmd")"
+            if grep -q '^BASELINE_CSV_B64=' <<<"$poll_output"; then
+              printf '%s\\n' "$poll_output" > /tmp/phase0-baseline.log
+              break
+            fi
+            sleep 5
+          done
 
           grep '^BASELINE_SUMMARY=' /tmp/phase0-baseline.log
           sed -n 's/^BASELINE_CSV_B64=//p' /tmp/phase0-baseline.log | tail -n 1 | base64 -d > phase-0-retailer-baseline.csv
