@@ -1,0 +1,95 @@
+name: Phase 0 - worker smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check worker, catalog and writable Fly volume
+        env:
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SCENTHUNTER_BASELINE_URL"
+          test -n "$SCENTHUNTER_BASELINE_TOKEN"
+          base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
+          http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+            -H "$auth_header" -H "Accept: application/json" \
+            --output phase0-health.json --write-out '%{http_code}' \
+            "$base_url/admin/phase0/health")
+          [[ "$http" == "200" ]] || { cat phase0-health.json; exit 1; }
+          jq -e '.worker_running == true and .catalog_exists == true and .catalog_size_bytes > 0 and .queue_exists == true and .volume_writable == true' phase0-health.json
+          cat phase0-health.json
+
+      - name: Enqueue smoke job, poll and download CSV
+        env:
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
+          http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+            -X POST -H "$auth_header" -H "Accept: application/json" \
+            --output smoke-start.json --write-out '%{http_code}' \
+            "$base_url/admin/phase0/smoke/start")
+          [[ "$http" == "202" ]] || { cat smoke-start.json; exit 1; }
+          job_id=$(jq -er '.job_id' smoke-start.json)
+          status=$(jq -er '.status' smoke-start.json)
+          [[ "$status" == "queued" ]]
+          echo "SMOKE_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
+          deadline=$((SECONDS + 240))
+          while [[ "$status" == "queued" || "$status" == "running" ]]; do
+            (( SECONDS < deadline )) || { echo "::error::Smoke job timed out"; exit 1; }
+            sleep 3
+            http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+              -H "$auth_header" -H "Accept: application/json" \
+              --output smoke-status.json --write-out '%{http_code}' \
+              "$base_url/admin/phase0/smoke/status?job_id=$job_id")
+            [[ "$http" == "200" ]] || { cat smoke-status.json; exit 1; }
+            status=$(jq -er '.status' smoke-status.json)
+            echo "SMOKE_STATUS=$status heartbeat=$(jq -r '.heartbeat_at // "null"' smoke-status.json)"
+            if [[ "$status" == "failed" ]]; then cat smoke-status.json; exit 1; fi
+          done
+          [[ "$status" == "completed" ]] || { cat smoke-status.json; exit 1; }
+          http=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+            -H "$auth_header" -H "Accept: text/csv" \
+            --output phase-0-smoke.csv --write-out '%{http_code}' \
+            "$base_url/admin/phase0/smoke/download?job_id=$job_id")
+          [[ "$http" == "200" ]]
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          expected = [
+              ["store", "status"],
+              ["amazon_de", "ok"], ["amazon_fr", "ok"], ["notino", "ok"],
+              ["bplatz", "ok"], ["deloox", "ok"], ["easycosmetic", "ok"],
+              ["orioudh", "ok"], ["parfumcity", "ok"], ["parfumzentrum", "ok"],
+              ["perfumemarket", "ok"], ["sabina", "ok"],
+          ]
+          with Path("phase-0-smoke.csv").open(newline="", encoding="utf-8") as f:
+              actual = list(csv.reader(f))
+          if actual != expected:
+              raise SystemExit(f"Smoke CSV mismatch: {actual!r}")
+          print("PHASE0_SMOKE_CSV=PASS")
+          print("PHASE0_SMOKE_DATA_ROWS=11")
+          PY
+
+      - name: Upload smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenthunter-phase-0-smoke
+          path: phase-0-smoke.csv
+          if-no-files-found: error
+          retention-days: 30
