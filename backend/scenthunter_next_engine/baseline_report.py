@@ -1,7 +1,7 @@
 """Export the complete offer-level Phase 0 baseline.
 
 The exporter is read-only and fails closed: it never emits a partial baseline
-when one of the eleven supported retailer catalogs has no persisted offers.
+when one of the nine active retailer catalogs has no persisted offers.
 """
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ from .canonical_matcher import (
 
 
 SUPPORTED_STORES = (
-    "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
-    "notino", "orioudh", "parfumcity", "parfumzentrum",
-    "perfumemarket", "sabina",
+    "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+    "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
+EXCLUDED_STORES = ("amazon_de", "amazon_fr")
 VALID_STOCK = {
     "in_stock", "out_of_stock", "preorder", "backorder",
     "limited_availability", "available", "unavailable",
@@ -36,7 +36,7 @@ COLUMNS = (
     "fragrance", "concentration", "size_ml", "variant_type", "gtin",
     "external_product_id", "offer_url", "price", "currency",
     "availability", "captured_at", "source", "match_confidence",
-    "match_status", "is_valid_offer",
+    "match_status", "is_valid_offer", "baseline_scope", "excluded_stores",
 )
 
 
@@ -273,6 +273,8 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
             "match_confidence": confidence,
             "match_status": match_status,
             "is_valid_offer": "true" if valid_offer else "false",
+            "baseline_scope": "9_active_retailers",
+            "excluded_stores": ";".join(EXCLUDED_STORES),
         })
 
     missing = [
@@ -304,6 +306,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "catalog_variants": catalog.variant_count(),
         "offers": len(rows_out),
         "stores": len({row["store"] for row in rows_out}),
+        "excluded_stores": list(EXCLUDED_STORES),
         "duplicate_rows_skipped": duplicates,
         "valid_offers": sum(row["is_valid_offer"] == "true" for row in rows_out),
         "matched_offers": sum(row["match_status"] == "matched" for row in rows_out),
