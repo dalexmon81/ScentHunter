@@ -53,7 +53,9 @@ class Phase0BaselineReportTests(unittest.TestCase):
                 availability TEXT, fetched_at REAL, variant_url TEXT
             );
         """)
-        stores = SUPPORTED_STORES if include_all else SUPPORTED_STORES[:-3]
+        stores = SUPPORTED_STORES if include_all else tuple(
+            store for store in SUPPORTED_STORES if store != "notino"
+        )
         for index, store in enumerate(stores):
             url = f"https://{store}.test/alpha"
             conn.execute(
@@ -114,7 +116,10 @@ class Phase0BaselineReportTests(unittest.TestCase):
             }.issubset(set(reader.fieldnames)))
             self.assertEqual({row["store"] for row in rows}, set(SUPPORTED_STORES))
             self.assertEqual(len(rows), 11)
-            self.assertEqual(summary["stores"], 11)
+            self.assertEqual(summary["stores"], 9)
+            self.assertEqual(summary["excluded_stores"], ["amazon_de", "amazon_fr"])
+            self.assertNotIn("amazon_de", {row["store"] for row in rows})
+            self.assertNotIn("amazon_fr", {row["store"] for row in rows})
             self.assertEqual(summary["offers"], 11)
             self.assertEqual(summary["duplicate_rows_skipped"], 1)
             bplatz = next(row for row in rows if row["store"] == "bplatz")
@@ -130,8 +135,6 @@ class Phase0BaselineReportTests(unittest.TestCase):
             output = Path(directory) / "baseline.csv"
             with self.assertRaises(BaselineIncompleteError) as raised:
                 generate(catalog_path, db_path, output)
-            self.assertIn("amazon_de", str(raised.exception))
-            self.assertIn("amazon_fr", str(raised.exception))
             self.assertIn("notino", str(raised.exception))
             self.assertFalse(output.exists())
 
