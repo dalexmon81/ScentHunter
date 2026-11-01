@@ -1,0 +1,29 @@
+name: Phase 0 baseline generator tests
+
+on:
+  push:
+    branches:
+      - refactor/catalog-first-architecture
+    paths:
+      - backend/scenthunter_next_engine/baseline_report.py
+      - backend/tests/test_phase0_baseline_report.py
+      - .github/workflows/phase-0-baseline-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/catalog-first-architecture
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run Phase 0 baseline regression tests
+        working-directory: backend
+        run: python -m unittest discover -s tests -p "test_phase0_baseline_report.py" -v
