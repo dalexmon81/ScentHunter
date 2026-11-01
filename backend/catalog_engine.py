@@ -4060,33 +4060,29 @@ def refresh_url(store, url):
         parser_error = None
         item = None
         parser_available = False
-        if item is None:
-            # The retailer scraper owns retailer-specific product-page semantics
-            # such as public-vs-code pricing and product-vs-set identity.
-            # When a store exposes that parser, it is authoritative for price
-            # and identity; generic JSON-LD is only a fallback.
-            try:
-                module = importlib.import_module(f'scrapers.{store}.scraper')
-                parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
-            except Exception:
-                parser_available = False
+        # The retailer scraper owns retailer-specific product-page semantics
+        # such as public-vs-code pricing and product-vs-set identity.
+        # When a store exposes that parser, it is authoritative for price
+        # and identity; generic JSON-LD is only a fallback.
+        try:
+            module = importlib.import_module(f'scrapers.{store}.scraper')
+            parser_available = callable(getattr(module, 'extract_product_page', None)) or callable(getattr(module, '_extract_product', None))
+        except Exception:
+            parser_available = False
 
-            parser_error = None
-            if parser_available:
-                try:
-                    item = _secondary_store_parser(store, final, url, html_data=data)
-                    secondary_ok = bool(item and item.get('name'))
-                except Exception as exc:
-                    parser_error = f'{type(exc).__name__}:{exc}'
-                    item = None
-                if not item or not item.get('name'):
-                    fallback_item = parse_product(store, final, data)
-                    if fallback_item and fallback_item.get('name'):
-                        item = fallback_item
-            else:
-                item = parse_product(store, final, data)
+        if parser_available:
+            try:
+                item = _secondary_store_parser(store, final, url, html_data=data)
+                secondary_ok = bool(item and item.get('name'))
+            except Exception as exc:
+                parser_error = f'{type(exc).__name__}:{exc}'
+                item = None
+            if not item or not item.get('name'):
+                fallback_item = parse_product(store, final, data)
+                if fallback_item and fallback_item.get('name'):
+                    item = fallback_item
         else:
-            parser_error = None
+            item = parse_product(store, final, data)
 
         # Keep the diagnostic flag defined on every parser path. A missing
         # product must report a parser miss, not raise NameError while building
