@@ -18,6 +18,11 @@ from .models import MatchStatus, RetailerOffer
 
 
 VALID_STOCK = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
+ACTIVE_STORES = (
+    "bplatz", "deloox", "parfumcity", "parfumzentrum", "perfumemarket",
+    "sabina", "orioudh", "easycosmetic", "notino",
+)
+EXCLUDED_STORES = {"amazon_de", "amazon_fr"}
 
 
 def _valid_price(value, currency):
@@ -37,31 +42,70 @@ def _valid_url(value):
 
 
 def _rows(conn):
+    """Read all store offers, preferring variant rows without hiding base rows.
+
+    Some retailers have expanded to variant-level records while others still
+    live only in store_products. A partially populated variants table must
+    never make those other retailers disappear from the baseline.
+    """
     tables = {
         row[0]
         for row in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         )
     }
+    variant_rows = []
+    product_rows = []
     if "store_product_variants" in tables:
-        rows = conn.execute(
+        variant_rows = conn.execute(
             """SELECT store, COALESCE(variant_url, url) AS product_url,
                       name, brand, sku, gtin, size_ml, concentration,
                       price, currency, availability
                  FROM store_product_variants
                 ORDER BY store, url, variant_key"""
         ).fetchall()
-        if rows:
-            return rows, "store_product_variants"
     if "store_products" in tables:
-        rows = conn.execute(
+        product_rows = conn.execute(
             """SELECT store, url AS product_url, name, brand, sku, gtin,
                       size_ml, concentration, price, currency, availability
                  FROM store_products
                 ORDER BY store, url"""
         ).fetchall()
-        return rows, "store_products"
-    raise RuntimeError("SQLite database has neither store_product_variants nor store_products")
+    if not variant_rows and not product_rows:
+        raise RuntimeError(
+            "SQLite database has neither populated store_product_variants "
+            "nor store_products"
+        )
+
+    # A base product row is retained only when no variant row represents
+    # the same retailer URL. This prevents duplicate offer counts.
+    variant_urls = {
+        (str(row["store"] or "").strip().lower(),
+         str(row["product_url"] or "").strip())
+        for row in variant_rows
+    }
+    merged = list(variant_rows)
+    for row in product_rows:
+        key = (
+            str(row["store"] or "").strip().lower(),
+            str(row["product_url"] or "").strip(),
+        )
+        if key not in variant_urls:
+            merged.append(row)
+
+    active = set(ACTIVE_STORES)
+    merged = [
+        row for row in merged
+        if str(row["store"] or "").strip().lower() in active
+        and str(row["store"] or "").strip().lower() not in EXCLUDED_STORES
+    ]
+    source = (
+        "store_product_variants + store_products fallback"
+        if variant_rows and product_rows
+        else "store_product_variants" if variant_rows
+        else "store_products"
+    )
+    return merged, source
 
 
 def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
@@ -88,6 +132,11 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "offers": 0, "valid_price": 0, "valid_url": 0, "valid_stock": 0,
         "ambiguous": 0, "matched": 0, "unresolved": 0,
     })
+
+    # Include all nine agreed active retailers even when a retailer currently
+    # has no verified offers. Amazon DE/FR are intentionally excluded.
+    for store in ACTIVE_STORES:
+        totals[store]
 
     for row in records:
         store = str(row["store"] or "unknown")
