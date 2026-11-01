@@ -85,20 +85,18 @@ class DelooxConnector:
             token for token in self._searchable_tokens(query)
             if len(token) > 1 and token not in {"ml", "edp", "edt"}
         }
-        # Offer Engine user searches use a bounded query-only path: do not
-        # let a no-match search trigger the legacy full category/sitemap crawl.
-        # The deep discovery fallback remains available to the legacy scraper.
-        # Product-page verification is performed sequentially by the runner.
-        # Eight candidates can therefore consume the entire global connector
-        # budget when Deloox serves challenge/interstitial pages. Keep the
-        # query-only discovery small; exact size/identity checks still happen
-        # below and in observe(), and no unverified offer is published.
+        # Keep discovery bounded, but do not truncate the retailer's search
+        # frontier to two URLs. Deloox often ranks unrelated family variants
+        # ahead of the exact requested bottle. The category/sitemap fallback
+        # runs only when the primary search returns no candidates and shares
+        # the same 45-second deadline. Every candidate is still independently
+        # fetched and identity/size/stock checked in observe()/resolve().
         result = scraper.search_stream(
             query,
             deadline_seconds=45,
-            max_candidates=2,
-            max_results=2,
-            include_fallback=False,
+            max_candidates=8,
+            max_results=8,
+            include_fallback=True,
         )
         details = result.get("details") if isinstance(result, dict) else {}
         self.discovery_details = dict(details) if isinstance(details, dict) else {}
