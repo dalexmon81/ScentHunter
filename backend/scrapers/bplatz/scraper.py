@@ -136,49 +136,6 @@ def availability_from_text(text):
         return "in_stock"
     return "unknown"
 
-def product_page_availability(soup):
-    """Prefer explicit stock text from the selected product area over JSON-LD.
-
-    Shopify themes sometimes expose stale or variant-aggregated availability
-    in JSON-LD while the actual product form shows the current stock state.
-    Avoid scanning the full page, where reviews and recommendations can
-    contain unrelated availability wording.
-    """
-    containers = []
-    for selector in (
-        "[id^='ProductInfo-']",
-        ".product__info-container",
-        ".product-info",
-        "[data-product-info]",
-    ):
-        containers.extend(soup.select(selector))
-
-    # Fall back to the smallest ancestor around the product form and title.
-    h1 = soup.find("h1")
-    if h1:
-        for ancestor in h1.parents:
-            if getattr(ancestor, "name", None) in {"main", "body", "html"}:
-                break
-            if ancestor.select_one('form[action*="/cart/add"]'):
-                containers.append(ancestor)
-                break
-
-    for form in soup.select('form[action*="/cart/add"]'):
-        parent = form.parent
-        if parent is not None:
-            containers.append(parent)
-
-    seen = set()
-    for container in containers:
-        marker = id(container)
-        if marker in seen:
-            continue
-        seen.add(marker)
-        status = availability_from_text(container.get_text(" ", strip=True))
-        if status in {"in_stock", "out_of_stock"}:
-            return status
-    return None
-
 
 def request_json(session, url, params=None):
     try:
@@ -507,27 +464,15 @@ def product_from_page(session, url, query, html=None, diagnostics=None):
     # safe to use; do not fall back to arbitrary currency amounts in page text.
     if price is None:
         price = product_metadata_price(soup)
-    structured_statuses = []
     for offer in offers:
         a = norm(offer.get("availability") or "")
         if "outofstock" in a or "soldout" in a:
-            structured_statuses.append("out_of_stock")
+            availability = "out_of_stock"
         elif "instock" in a or "available" in a:
-            structured_statuses.append("in_stock")
-    # If JSON-LD describes several variants with mixed stock states, do not
-    # let the last variant silently determine the selected product's status.
-    if structured_statuses and all(x == "out_of_stock" for x in structured_statuses):
-        availability = "out_of_stock"
-    elif structured_statuses and all(x == "in_stock" for x in structured_statuses):
-        availability = "in_stock"
-
-    # Visible stock text beside the product title/cart form is more relevant
-    # than stale or variant-aggregated JSON-LD.
-    visible_availability = product_page_availability(soup)
-    if visible_availability is not None:
-        availability = visible_availability
-    elif availability is None:
-        availability = availability_from_text(soup.get_text(" ", strip=True))
+            availability = "in_stock"
+    page_text = soup.get_text(" ", strip=True)
+    if availability is None:
+        availability = availability_from_text(page_text)
 
     # Fail closed when structured product pricing is absent; never scan the whole page.
 
