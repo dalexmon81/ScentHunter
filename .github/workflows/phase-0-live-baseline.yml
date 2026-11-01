@@ -52,26 +52,46 @@ jobs:
               rows = list(reader)
           fields = set(reader.fieldnames or [])
           required = {
-              "store", "catalog_product_count", "catalog_variant_count", "total_offers",
-              "offers_with_valid_price", "offers_with_valid_url",
-              "offers_with_valid_availability", "offers_matched_to_canonical_product",
-              "offers_with_recent_capture", "stale_offers", "invalid_offers",
+              "store", "offer_count", "valid_price_count", "valid_price_pct",
+              "valid_url_count", "valid_url_pct", "valid_stock_count",
+              "valid_stock_pct", "ambiguous_match_count", "matched_count",
+              "unresolved_match_count", "catalog_product_count",
+              "catalog_variant_count", "offer_source_table",
           }
           if not rows or not required.issubset(fields):
               raise SystemExit("CSV is empty or missing required fields")
+          expected = {
+              "bplatz", "deloox", "parfumcity", "parfumzentrum",
+              "perfumemarket", "sabina", "orioudh", "easycosmetic", "notino", "TOTAL",
+          }
           stores = [row["store"] for row in rows]
           if len(stores) != len(set(stores)):
               raise SystemExit("Duplicate store rows detected")
+          if set(stores) != expected:
+              raise SystemExit(f"Expected exactly nine active retailers plus TOTAL; got {stores}")
+          integer_fields = {
+              "offer_count", "valid_price_count", "valid_url_count",
+              "valid_stock_count", "ambiguous_match_count", "matched_count",
+              "unresolved_match_count", "catalog_product_count", "catalog_variant_count",
+          }
+          percentage_fields = {"valid_price_pct", "valid_url_pct", "valid_stock_pct"}
           for row in rows:
-              for key in required - {"store"}:
+              for key in integer_fields:
                   try:
                       value = int(row[key])
                   except (TypeError, ValueError):
                       raise SystemExit(f"Invalid integer in {key} for {row['store']}")
                   if value < 0:
                       raise SystemExit(f"Negative metric in {key} for {row['store']}")
-          print(f"Validated CSV rows: {len(rows)}")
-          print(f"Stores: {', '.join(stores)}")
+              for key in percentage_fields:
+                  try:
+                      value = float(row[key])
+                  except (TypeError, ValueError):
+                      raise SystemExit(f"Invalid percentage in {key} for {row['store']}")
+                  if not 0 <= value <= 100:
+                      raise SystemExit(f"Out-of-range percentage in {key} for {row['store']}")
+          print(f"Validated retailer rows: {len(rows) - 1}")
+          print(f"Stores: {', '.join(store for store in stores if store != 'TOTAL')}")
           PY
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
