@@ -140,10 +140,11 @@ class AdapterRunResult:
             raise ValueError("candidates_seen cannot be negative")
         if self.retry_after_seconds is not None and self.retry_after_seconds < 0:
             raise ValueError("retry_after_seconds cannot be negative")
-        if self.status is AdapterStatus.SUCCESS and not self.observations:
-            raise ValueError("success requires at least one observation")
-        if self.status is not AdapterStatus.SUCCESS and self.observations:
-            raise ValueError("non-success result cannot contain publicable observations")
+        observation_statuses = {AdapterStatus.SUCCESS, AdapterStatus.OUT_OF_STOCK}
+        if self.status in observation_statuses and not self.observations:
+            raise ValueError("success/out_of_stock requires at least one observation")
+        if self.status not in observation_statuses and self.observations:
+            raise ValueError("failed/empty result cannot contain observations")
         for observation in self.observations:
             if (observation.retailer_id, observation.market) != (
                 self.retailer_id, self.market
