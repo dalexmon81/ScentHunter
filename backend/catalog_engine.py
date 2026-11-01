@@ -96,6 +96,9 @@ STORE_LABELS.update({
     'orioudh': 'Orioudh',
 })
 
+# This registry is the single source of truth for active catalog stores.
+ACTIVE_STORES = tuple(STORES)
+
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
