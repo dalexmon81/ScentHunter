@@ -173,6 +173,35 @@ class OfferEngineRunnerTests(unittest.TestCase):
         self.assertEqual(result.connectors[0].status, "failed")
         self.assertEqual(result.connectors[0].observations_written, 0)
 
+    def test_discovery_details_are_preserved_in_connector_run_result(self):
+        class DiagnosticConnector(FakeConnector):
+            discovery_details = {
+                "verified_empty": True,
+                "candidate_count": 0,
+                "discovery_verified": True,
+                "channels": {"predictive_search": "empty", "sitemap": "not_needed"},
+            }
+
+        connector = DiagnosticConnector("bplatz", [])
+        runner = OfferEngineRunner(matcher=object(), repository_factory=lambda _: FakeRepository())
+        result = runner.run([connector], "Liquid Brun")
+        self.assertEqual(result.connectors[0].status, "success")
+        self.assertEqual(result.connectors[0].listings_seen, 0)
+        self.assertEqual(result.connectors[0].discovery_details["verified_empty"], True)
+        self.assertEqual(result.connectors[0].discovery_details["candidate_count"], 0)
+
+    def test_discovery_details_survive_a_discovery_exception(self):
+        class DiagnosticFailureConnector(FakeConnector):
+            discovery_details = {"failed_channel": "shopify_predictive_search", "http_status": 403}
+
+            def discover(self, query):
+                raise RuntimeError("blocked")
+
+        runner = OfferEngineRunner(matcher=object(), repository_factory=lambda _: FakeRepository())
+        result = runner.run([DiagnosticFailureConnector("bplatz")], "Liquid Brun")
+        self.assertEqual(result.connectors[0].status, "failed")
+        self.assertEqual(result.connectors[0].discovery_details["http_status"], 403)
+
 
 if __name__ == "__main__":
     unittest.main()
