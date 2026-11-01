@@ -614,3 +614,28 @@ def generate_smoke_csv(job: dict[str, Any]) -> dict[str, Any]:
     finally:
         os.close(directory_fd)
     return {"output_path": str(output_path), "rows_written": len(SMOKE_STORES)}
+
+
+def get_latest_smoke_job() -> dict[str, Any] | None:
+    conn = connect()
+    try:
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS phase0_smoke_jobs (
+                id TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                started_at TEXT,
+                finished_at TEXT,
+                heartbeat_at TEXT,
+                worker_id TEXT,
+                output_path TEXT NOT NULL,
+                error_message TEXT
+            )"""
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM phase0_smoke_jobs ORDER BY created_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
