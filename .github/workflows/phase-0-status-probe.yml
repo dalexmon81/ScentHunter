@@ -1,0 +1,49 @@
+name: Phase 0 - status probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe Phase 0 status
+        env:
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="${SCENTHUNTER_BASELINE_URL%/}"
+          STATUS_URL="${BASE_URL}/admin/phase0/baseline/latest"
+
+          echo "PROBING=$STATUS_URL"
+
+          set +e
+          curl --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 15 \
+            -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+            -H "Accept: application/json" \
+            -w '\nHTTP_STATUS=%{http_code}\n' \
+            "$STATUS_URL" \
+            -o phase0-status.json
+          curl_exit=$?
+          set -e
+
+          echo "CURL_EXIT=$curl_exit"
+          cat phase0-status.json || true
+
+          test -s phase0-status.json
+
+      - name: Upload status probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-status-probe
+          path: phase0-status.json
+          if-no-files-found: warn
+          retention-days: 7
