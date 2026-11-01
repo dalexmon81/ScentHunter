@@ -1,13 +1,12 @@
 name: Phase 0 - live retailer baseline (read-only)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types:
-      - opened
-      - synchronize
-      - reopened
+    paths:
+      - .github/workflows/phase-0-live-baseline.yml
+      - backend/scenthunter_next_engine/baseline_report.py
 
 permissions:
   contents: read
@@ -18,7 +17,6 @@ concurrency:
 
 jobs:
   baseline:
-    if: ${{ github.event.pull_request.head.ref == 'phase-0/live-baseline-only' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
