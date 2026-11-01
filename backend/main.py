@@ -1,3 +1,4 @@
+# Phase 0 baseline endpoint is read-only and reports the configured production catalog.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
