@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
+import csv, importlib, json, os, re, signal, subprocess, sys, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher
 except Exception as exc:
@@ -5244,9 +5244,95 @@ def phase0_baseline_status(
         'error': job.get('error_message') or (
             'Completed job output file is missing' if completed and not output_exists else None
         ),
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
         'duration_seconds': job.get('duration_seconds'),
         'heartbeat_at': job.get('heartbeat_at'),
     }
+
+
+def _phase0_csv_completeness(path: Path) -> tuple[bool, str | None]:
+    from scenthunter_next_engine.phase0_baseline_jobs import COLUMNS, STORES
+
+    if not path.is_file():
+        return False, 'CSV output file is missing'
+    if path.stat().st_size <= 0:
+        return False, 'CSV output file is empty'
+    counts = {store: 0 for store in STORES}
+    try:
+        with path.open('r', newline='', encoding='utf-8-sig') as handle:
+            reader = csv.DictReader(handle)
+            if reader.fieldnames != list(COLUMNS):
+                return False, 'CSV header does not match the Phase 0 schema'
+            for row in reader:
+                store = str(row.get('store') or '')
+                if store not in counts:
+                    return False, f'CSV contains unexpected store: {store}'
+                counts[store] += 1
+    except Exception as exc:
+        return False, f'CSV could not be parsed: {type(exc).__name__}: {exc}'
+    missing = [store for store, count in counts.items() if count == 0]
+    if missing:
+        return False, 'CSV has no offer rows for: ' + ', '.join(missing)
+    for store in ('amazon_de', 'amazon_fr', 'notino'):
+        if counts[store] <= 0:
+            return False, f'CSV has no real offer rows for {store}'
+    return True, None
+
+
+@app.get('/admin/phase0/baseline/latest')
+def phase0_baseline_latest(authorization: str = _Phase0Header(default='')):
+    """Return the newest durable Phase 0 job without creating or changing jobs."""
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import get_latest_job
+    job = get_latest_job()
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='No Phase 0 baseline job exists')
+    output_path = Path(job['output_path'])
+    output_exists = output_path.is_file()
+    output_size = output_path.stat().st_size if output_exists else 0
+    return {
+        'job_id': job['id'],
+        'status': job['status'],
+        'progress': float(job.get('progress') or 0),
+        'created_at': job.get('created_at'),
+        'started_at': job.get('started_at'),
+        'finished_at': job.get('finished_at'),
+        'heartbeat_at': job.get('heartbeat_at'),
+        'worker_id': job.get('worker_id'),
+        'output_path': str(output_path),
+        'output_file_exists': output_exists,
+        'output_file_size': output_size,
+        'error_message': job.get('error_message'),
+        'error_traceback': job.get('error_traceback'),
+    }
+
+
+@app.get('/admin/phase0/baseline/latest/download')
+def phase0_baseline_latest_download(authorization: str = _Phase0Header(default='')):
+    """Serve the newest job CSV only after durable completion and CSV validation."""
+    _phase0_authorize(authorization)
+    from scenthunter_next_engine.phase0_baseline_jobs import get_latest_job
+    job = get_latest_job()
+    if not job:
+        raise _Phase0HTTPException(status_code=404, detail='No Phase 0 baseline job exists')
+    if job['status'] != 'completed':
+        raise _Phase0HTTPException(status_code=409, detail='Latest Phase 0 job is not completed')
+    output_path = Path(job['output_path']).resolve()
+    allowed_root = Path(os.environ.get(
+        'PHASE0_BASELINE_DIR', '/data/phase0/baseline'
+    )).expanduser().resolve()
+    if output_path.parent != allowed_root or not output_path.is_file():
+        raise _Phase0HTTPException(status_code=404, detail='Completed CSV file not found')
+    complete, reason = _phase0_csv_completeness(output_path)
+    if not complete:
+        raise _Phase0HTTPException(status_code=409, detail=f'Completed CSV is incomplete: {reason}')
+    return _Phase0FileResponse(
+        path=str(output_path),
+        media_type='text/csv; charset=utf-8',
+        filename=f"phase-0-retailer-baseline-{job['id']}.csv",
+        headers={'Cache-Control': 'no-store'},
+    )
 
 
 @app.get('/admin/phase0/baseline/download')
