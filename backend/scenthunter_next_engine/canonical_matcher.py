@@ -283,6 +283,20 @@ class CanonicalMatcher:
 
     def __init__(self, catalog: CatalogRepository) -> None:
         self._catalog = catalog
+        # Cache immutable catalog records once per matcher. The baseline report
+        # matches many offers against the same catalog; reloading and
+        # renormalizing every product for every offer made that read-only
+        # operation scale as offers × catalog size.
+        self._products = tuple(catalog.all_products())
+        products_by_brand: dict[str, list[CanonicalProduct]] = {}
+        for product in self._products:
+            products_by_brand.setdefault(
+                normalize_brand_text(product.brand), []
+            ).append(product)
+        self._products_by_brand = {
+            brand: tuple(products)
+            for brand, products in products_by_brand.items()
+        }
         registry_path = (
             catalog.source.parent
             / "scenthunter_next_engine"
@@ -459,7 +473,14 @@ class CanonicalMatcher:
             if offer.brand_raw
             else None
         )
-        products = self._catalog.all_products()
+        # When an offer supplies a brand, only products from that exact
+        # normalized brand can possibly match. Preserve the full catalog
+        # fallback for brandless offers so matching decisions are unchanged.
+        products = (
+            self._products_by_brand.get(offer_brand, ())
+            if offer_brand
+            else self._products
+        )
 
         def collect_candidates(
             strict: bool,
