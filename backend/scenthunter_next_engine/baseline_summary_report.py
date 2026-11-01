@@ -141,7 +141,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     })
 
     # Include all nine agreed active retailers even when a retailer currently
-    # has no verified offers. Amazon DE/FR are intentionally excluded.
+    # has no verified offers.
     for store in ACTIVE_STORES:
         totals[store]
 
