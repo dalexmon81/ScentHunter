@@ -79,15 +79,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(phase0_baseline_jobs)")}
     if "current_store" not in columns:
         conn.execute("ALTER TABLE phase0_baseline_jobs ADD COLUMN current_store TEXT")
-    # Existing queue databases defaulted to 11. Normalize the schema default
-    # for newly inserted rows as well as queued jobs below.
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS phase0_baseline_jobs_scope_v9 (
-            scope_version INTEGER NOT NULL
-        )"""
-    )
-    # SQLite cannot alter a column default in place. create_job() always writes
-    # total_stores explicitly; this marker documents the upgraded queue scope.
+    # SQLite cannot change a column default in place. New jobs always write
+    # the current len(STORES), and queued legacy jobs are normalized below.
     # Existing durable queues were created with the former 11-store scope.
     # Queued work has not started, so safely normalize its expected total.
     conn.execute(
