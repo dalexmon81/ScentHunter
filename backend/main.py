@@ -5207,13 +5207,35 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         conn.row_factory = _phase0_sqlite3.Row
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
-            if source not in tables: raise RuntimeError('No retailer offers table found')
-            columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
-            required = {'store','url','name','brand','price','availability','fetched_at'}
-            if not required.issubset(columns): raise RuntimeError(f'Unexpected {source} schema')
-            url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-            rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+            if 'store_products' not in tables and 'store_product_variants' not in tables:
+                raise RuntimeError('No retailer offers table found')
+
+            # Variants replace the URL-level product row for that retailer,
+            # not for the entire database. Other retailers may still only have
+            # rows in store_products (the previous global preference hid them).
+            rows = []
+            variant_stores = set()
+            if 'store_product_variants' in tables:
+                variant_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_product_variants)')}
+                required = {'store','url','name','brand','price','currency','availability','fetched_at'}
+                if not required.issubset(variant_columns):
+                    raise RuntimeError('Unexpected store_product_variants schema')
+                url_expr = "COALESCE(variant_url,url)" if 'variant_url' in variant_columns else 'url'
+                variant_rows = conn.execute(
+                    f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM store_product_variants"
+                ).fetchall()
+                rows.extend(variant_rows)
+                variant_stores = {str(r['store'] or 'unknown') for r in variant_rows}
+
+            if 'store_products' in tables:
+                product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
+                required = {'store','url','name','brand','price','currency','availability','fetched_at'}
+                if not required.issubset(product_columns):
+                    raise RuntimeError('Unexpected store_products schema')
+                product_rows = conn.execute(
+                    "SELECT store,url AS offer_url,name,brand,price,currency,availability,fetched_at FROM store_products"
+                ).fetchall()
+                rows.extend(r for r in product_rows if str(r['store'] or 'unknown') not in variant_stores)
         finally:
             conn.close()
         now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
