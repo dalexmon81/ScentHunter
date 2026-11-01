@@ -105,7 +105,17 @@ def _rows(conn):
         else "store_product_variants" if variant_rows
         else "store_products"
     )
-    return merged, source
+    indexed_urls = {store: 0 for store in ACTIVE_STORES}
+    if "store_urls" in tables:
+        for store, count in conn.execute(
+            """SELECT lower(trim(store)), COUNT(DISTINCT url)
+                 FROM store_urls
+                WHERE active=1
+                GROUP BY lower(trim(store))"""
+        ).fetchall():
+            if store in indexed_urls:
+                indexed_urls[store] = int(count or 0)
+    return merged, source, indexed_urls
 
 
 def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
@@ -124,7 +134,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     conn.execute("PRAGMA query_only=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     try:
-        records, source_table = _rows(conn)
+        records, source_table, indexed_urls = _rows(conn)
     finally:
         conn.close()
 
@@ -176,7 +186,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     columns = [
-        "store", "offer_count", "valid_price_count", "valid_price_pct",
+        "store", "indexed_url_count", "offer_count", "valid_price_count", "valid_price_pct",
         "valid_url_count", "valid_url_pct", "valid_stock_count",
         "valid_stock_pct", "ambiguous_match_count", "matched_count",
         "unresolved_match_count", "catalog_product_count", "catalog_variant_count", "offer_source_table",
@@ -187,6 +197,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         count = item["offers"]
         rows_out.append({
             "store": store,
+            "indexed_url_count": indexed_urls.get(store, 0),
             "offer_count": count,
             "valid_price_count": item["valid_price"],
             "valid_price_pct": round(100 * item["valid_price"] / count, 2) if count else 0,
@@ -208,6 +219,7 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
     )}
     rows_out.append({
         "store": "TOTAL",
+        "indexed_url_count": sum(indexed_urls.values()),
         "offer_count": all_offers,
         "valid_price_count": aggregate["valid_price"],
         "valid_price_pct": round(100 * aggregate["valid_price"] / all_offers, 2) if all_offers else 0,
@@ -233,6 +245,8 @@ def generate(catalog_path: Path, db_path: Path, output_path: Path) -> dict:
         "catalog_variants": catalog.variant_count(),
         "offers": all_offers,
         "stores": len(totals),
+        "indexed_urls": sum(indexed_urls.values()),
+        "notino_indexed_urls": indexed_urls.get("notino", 0),
         "ambiguous_matches": aggregate["ambiguous"],
         "source_table": source_table,
         "output": str(output_path),
