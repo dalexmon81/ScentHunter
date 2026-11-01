@@ -131,6 +131,15 @@ jobs:
               print("Missing offers:", missing)
               sys.exit(1)
 
+          valid_counts = Counter(
+              row["store"] for row in rows if row["is_valid_offer"] == "true"
+          )
+          missing_valid = sorted(store for store in expected_stores if valid_counts[store] <= 0)
+          if missing_valid:
+              print("::error::Every active retailer must contribute at least one fully valid offer.")
+              print("Stores without a valid offer:", missing_valid)
+              sys.exit(1)
+
           seen = set()
           duplicates = []
           for line_number, row in enumerate(rows, start=2):
@@ -159,6 +168,7 @@ jobs:
           print("PHASE0_OFFER_ROWS=" + str(len(rows)))
           print("PHASE0_OFFERS_BY_STORE=" + str(dict(sorted(counts.items()))))
           print("PHASE0_VALID_OFFERS=" + str(sum(row["is_valid_offer"] == "true" for row in rows)))
+          print("PHASE0_VALID_OFFERS_BY_STORE=" + str(dict(sorted(valid_counts.items()))))
           PY
 
       - name: Upload CSV report
