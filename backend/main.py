@@ -5185,13 +5185,6 @@ from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPExcepti
 from fastapi.responses import Response as _Phase0Response
 
 _PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability', 'available', 'unavailable'}
-CSV_HEADER = (
-    "store,total_offers,offers_with_valid_price,"
-    "offers_with_valid_url,offers_with_valid_availability,"
-    "offers_matched_to_canonical_product,"
-    "offers_with_recent_capture,stale_offers,invalid_offers"
-)
-
 @app.get('/admin/phase0/baseline-report.csv')
 def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
     """Export aggregate store quality metrics without writes or scraping."""
@@ -5265,7 +5258,17 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             conn.close()
         output = _phase0_io.StringIO(newline="")
         writer = _phase0_csv.writer(output, lineterminator="\n")
-        writer.writerow(CSV_HEADER.split(","))
+        writer.writerow([
+            "store",
+            "total_offers",
+            "offers_with_valid_price",
+            "offers_with_valid_url",
+            "offers_with_valid_availability",
+            "offers_matched_to_canonical_product",
+            "offers_with_recent_capture",
+            "stale_offers",
+            "invalid_offers"
+        ])
         for store in sorted(totals):
             item = totals[store]
             writer.writerow([
