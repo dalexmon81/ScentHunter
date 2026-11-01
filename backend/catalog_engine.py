@@ -100,6 +100,11 @@ STORE_LABELS.update({
     'amazon_de': 'Amazon.de',
 })
 
+# Amazon marketplaces remain configured for future reactivation, but are
+# inactive until the approved Creators API credentials and marketplace tags exist.
+DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
+ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
+
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
 # catalog discovery, not product-specific logic.
@@ -3322,8 +3327,15 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 
 
 def discover_store(store):
-    """Refresh retailer discovery; prefer Notino's authorized feed, then public pages."""
+    """Refresh active retailer discovery; disabled marketplaces are never crawled."""
     started_at = time.time()
+    if store in DISABLED_STORES:
+        _set_sync_state(
+            store, 'DISABLED_NO_CREDENTIALS', started_at=started_at,
+            finished_at=time.time(), discovered_count=0, fetched_count=0,
+            error='temporarily_disabled;approved_amazon_creators_api_credentials_missing',
+        )
+        return {'status': 'DISABLED_NO_CREDENTIALS', 'count': 0}
     notino_feed_error = None
     if store == 'notino':
         try:
@@ -4041,6 +4053,8 @@ def _refresh_timeout_for_store(store):
 
 def refresh_url(store, url):
     try:
+        if store in DISABLED_STORES:
+            raise RuntimeError('store_temporarily_disabled_no_credentials')
         if store == 'easycosmetic':
             # Enforce the German storefront on the requested URL as well as
             # the final redirect URL. Checking only the final URL can otherwise
@@ -5113,9 +5127,9 @@ def _search_local_impl(query, per_store=32, search_terms=None, cancel_event=None
 
         # Independent read-only retailer queries can run concurrently. Merge
         # in configured order to preserve deterministic output and full coverage.
-        with ThreadPoolExecutor(max_workers=min(8, len(STORES)), thread_name_prefix="catalog-search") as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(ACTIVE_STORES)), thread_name_prefix="catalog-search") as pool:
             futures = {store: pool.submit(_search_one_store, store) for store in STORES}
-            for store in STORES:
+            for store in ACTIVE_STORES:
                 if cancel_event is not None and cancel_event.is_set():
                     break
                 rows.extend(futures[store].result())
@@ -5623,7 +5637,7 @@ def _hydration_store_order(conn):
     if not n:
         return [], 0
     start = (last_index + 1) % n
-    stores = list(STORES)
+    stores = list(ACTIVE_STORES)
     return stores[start:] + stores[:start], start
 
 
@@ -6119,7 +6133,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     existing local index remains the only search-time catalog source.
     """
     pause = max(60.0, float(interval_seconds))
-    stores = tuple(STORES.keys())
+    stores = tuple(ACTIVE_STORES)
     if not stores:
         print('CATALOG DISCOVERY STOP: no configured stores', flush=True)
         return
