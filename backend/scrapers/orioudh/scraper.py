@@ -197,9 +197,14 @@ def _discovery(session: requests.Session, query: str):
     queries = [query]
 
     if len(tokens) >= 2:
-        broader = " ".join(tokens[:2])
-        if broader and _norm(broader) != _norm(query):
-            queries.append(broader)
+        # Shopify predictive search can miss a long multi-token perfume query
+        # when the product is indexed under its trailing name. Probe every
+        # adjacent pair (not only the brand pair), then individual tokens.
+        # Final admission still requires all meaningful requested tokens.
+        for index in range(len(tokens) - 1):
+            pair = " ".join(tokens[index:index + 2])
+            if pair and _norm(pair) != _norm(query) and _norm(pair) not in {_norm(q) for q in queries}:
+                queries.append(pair)
         for token in reversed(tokens):
             if token and _norm(token) not in {_norm(q) for q in queries}:
                 queries.append(token)
@@ -208,6 +213,7 @@ def _discovery(session: requests.Session, query: str):
     seen = set()
     errors = []
     discovery_verified = False
+    query_diagnostics = []
 
     for search_query in queries:
         try:
@@ -231,6 +237,11 @@ def _discovery(session: requests.Session, query: str):
             .get("results", {})
             .get("products", [])
         )
+        query_diagnostics.append({
+            "query": search_query,
+            "status": "success",
+            "product_count": len(products) if isinstance(products, list) else 0,
+        })
 
         for product in products:
             if not isinstance(product, dict):
@@ -344,6 +355,15 @@ def _discovery(session: requests.Session, query: str):
     except requests.RequestException as exc:
         errors.append(StoreRequestError("error", str(exc)))
 
+    _discovery.last_diagnostics = {
+        "queries": query_diagnostics,
+        "candidate_url_count": len(urls),
+        "discovery_verified": discovery_verified,
+        "transport_errors": [
+            {"status": error.status, "http_status": error.http_status}
+            for error in errors[:8]
+        ],
+    }
     return urls, errors, discovery_verified
 
 def _raw_offer(
@@ -482,11 +502,18 @@ def search(query: str) -> List[Dict[str, Any]]:
         urls, discovery_errors, discovery_verified = _discovery(session, query)
         results = []
         seen = set()
+        product_page_errors = []
+        hydrated_url_count = 0
 
         for url in urls:
             try:
                 items = _extract_product(session, url, query)
-            except StoreRequestError:
+                hydrated_url_count += 1
+            except StoreRequestError as exc:
+                product_page_errors.append({
+                    "status": exc.status,
+                    "http_status": exc.http_status,
+                })
                 continue
 
             for item in items:
@@ -504,6 +531,13 @@ def search(query: str) -> List[Dict[str, Any]]:
         # changing the commercial offer rows themselves.
         search._last_discovery_errors = discovery_errors
         search._last_discovery_verified = discovery_verified
+        search._last_diagnostics = {
+            **getattr(_discovery, "last_diagnostics", {}),
+            "hydrated_url_count": hydrated_url_count,
+            "product_page_error_count": len(product_page_errors),
+            "product_page_errors": product_page_errors[:8],
+            "offer_count": len(results),
+        }
         return results
     finally:
         session.close()
@@ -550,7 +584,7 @@ def search_stream(query: str, emit=None):
     if rows:
         return {
             "status": "success", "verified": True, "results": rows,
-            "error": None, "details": {"count": len(rows)},
+            "error": None, "details": {"count": len(rows), **getattr(search, "_last_diagnostics", {})},
         }
 
     if errors:
@@ -563,6 +597,7 @@ def search_stream(query: str, emit=None):
             "details": {
                 "error_count": len(errors),
                 "http_status": first.http_status,
+                **getattr(search, "_last_diagnostics", {}),
             },
         }
 
@@ -574,6 +609,7 @@ def search_stream(query: str, emit=None):
         "details": {
             "count": 0,
             "reason": "no_results_without_authoritative_empty_verification",
+            **getattr(search, "_last_diagnostics", {}),
         },
     }
 
