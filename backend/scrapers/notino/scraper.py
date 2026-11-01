@@ -7,7 +7,7 @@ import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import quote_plus, unquote, urljoin, urlparse
+from urllib.parse import quote_plus, unquote, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -1509,7 +1509,7 @@ def _allowed_url(raw_url: str, base: str = BASE_URL) -> Optional[str]:
         return None
     if len([part for part in path.split("/") if part]) < 2:
         return None
-    return urllib.parse.urlunparse(("https", "www.notino.fr", path, "", "", ""))
+    return urlunparse(("https", "www.notino.fr", path, "", "", ""))
 
 
 def _parse_product(url: str, html: str, query: str) -> Optional[Dict[str, Any]]:
