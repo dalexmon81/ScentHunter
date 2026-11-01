@@ -5371,7 +5371,7 @@ def phase0_baseline_download(
 def phase0_health(authorization: str = _Phase0Header(default='')):
     _phase0_authorize(authorization)
     from scenthunter_next_engine.phase0_baseline_jobs import (
-        jobs_database_path, get_latest_job,
+        jobs_database_path, get_latest_job, get_latest_smoke_job,
     )
     catalog_path = Path(__file__).resolve().parent / 'product_catalog.json'
     queue_path = jobs_database_path()
@@ -5402,6 +5402,9 @@ def phase0_health(authorization: str = _Phase0Header(default='')):
             pass
 
     latest = get_latest_job()
+    latest_smoke = get_latest_smoke_job()
+    if latest_smoke and (not latest or str(latest_smoke.get('created_at') or '') > str(latest.get('created_at') or '')):
+        latest = latest_smoke
     latest_job = None
     if latest:
         latest_job = {
