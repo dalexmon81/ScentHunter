@@ -69,10 +69,14 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             error_message TEXT,
             error_traceback TEXT,
             worker_id TEXT,
+            current_store TEXT,
             heartbeat_at TEXT,
             duration_seconds REAL
         )"""
     )
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(phase0_baseline_jobs)")}
+    if "current_store" not in columns:
+        conn.execute("ALTER TABLE phase0_baseline_jobs ADD COLUMN current_store TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_phase0_baseline_jobs_queue "
         "ON phase0_baseline_jobs(status, created_at)"
@@ -191,7 +195,7 @@ def update_job(job_id: str, **values: Any) -> None:
         return
     allowed = {
         "status", "started_at", "finished_at", "progress", "processed_stores",
-        "error_message", "error_traceback", "worker_id", "heartbeat_at",
+        "error_message", "error_traceback", "worker_id", "current_store", "heartbeat_at",
         "duration_seconds",
     }
     if not set(values).issubset(allowed):
