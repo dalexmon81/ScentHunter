@@ -10,9 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+# Phase 0 is scoped to the nine agreed active retailers. Excluded retailers
+# are not scheduled, exported, counted, or validated by this worker.
 STORES = (
-    "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic", "notino",
-    "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
+    "bplatz", "deloox", "easycosmetic", "notino", "orioudh",
+    "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
 COLUMNS = (
     "store", "canonical_product_id", "brand", "fragrance", "concentration",
@@ -63,7 +65,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             started_at TEXT,
             finished_at TEXT,
             progress REAL NOT NULL DEFAULT 0,
-            total_stores INTEGER NOT NULL DEFAULT 11,
+            total_stores INTEGER NOT NULL DEFAULT 9,
             processed_stores INTEGER NOT NULL DEFAULT 0,
             output_path TEXT NOT NULL,
             error_message TEXT,
@@ -77,6 +79,12 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(phase0_baseline_jobs)")}
     if "current_store" not in columns:
         conn.execute("ALTER TABLE phase0_baseline_jobs ADD COLUMN current_store TEXT")
+    # Existing durable queues were created with the former 11-store scope.
+    # Queued work has not started, so safely normalize its expected total.
+    conn.execute(
+        "UPDATE phase0_baseline_jobs SET total_stores=? WHERE status='queued'",
+        (len(STORES),),
+    )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_phase0_baseline_jobs_queue "
         "ON phase0_baseline_jobs(status, created_at)"
@@ -652,10 +660,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
 
 
 # Lightweight worker smoke jobs share the existing durable Phase 0 queue database.
-SMOKE_STORES = (
-    "amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic",
-    "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
-)
+SMOKE_STORES = STORES
 
 
 def ensure_smoke_schema(conn: sqlite3.Connection) -> None:
