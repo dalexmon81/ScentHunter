@@ -5154,6 +5154,18 @@ def frontend():
     return {'error':'frontend/index.html not found'}
 
 
+@app.on_event('startup')
+def _initialize_phase0_baseline_jobs():
+    """Prepare the durable queue before accepting API requests."""
+    from scenthunter_next_engine.phase0_baseline_jobs import connect, ensure_schema
+    conn = connect()
+    try:
+        ensure_schema(conn)
+    finally:
+        conn.close()
+    print("PHASE0 BASELINE JOB TABLE READY", flush=True)
+
+
 # Persistent asynchronous Phase 0 baseline jobs. The HTTP handlers only
 # enqueue/read/download; the dedicated phase0_baseline_worker process generates
 # the report outside the request lifecycle.
