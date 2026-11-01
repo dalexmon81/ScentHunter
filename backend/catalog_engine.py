@@ -103,7 +103,7 @@ STORE_LABELS.update({
 # Amazon marketplaces remain configured for future reactivation, but are
 # inactive until the approved Creators API credentials and marketplace tags exist.
 DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
-ACTIVE_STORES = tuple(store for store in ACTIVE_STORES if store not in DISABLED_STORES)
+ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
 
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
