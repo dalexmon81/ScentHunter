@@ -36,6 +36,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.patch_db.start()
         conn = connect()
         try:
+            conn.execute("PRAGMA journal_mode=WAL")
             ensure_schema(conn)
             conn.executescript(
                 """
