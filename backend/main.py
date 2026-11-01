@@ -5214,7 +5214,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             # not for the entire database. Other retailers may still only have
             # rows in store_products (the previous global preference hid them).
             rows = []
-            variant_stores = set()
+            variant_product_keys = set()
             if 'store_product_variants' in tables:
                 variant_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_product_variants)')}
                 required = {'store','url','name','brand','price','currency','availability','fetched_at'}
@@ -5225,7 +5225,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                     f"SELECT store,{url_expr} AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_product_variants"
                 ).fetchall()
                 rows.extend(variant_rows)
-                variant_stores = {str(r['store'] or 'unknown') for r in variant_rows}
+                variant_product_keys = {(str(r['store'] or 'unknown'), str(r['url'] or '')) for r in variant_rows}
 
             if 'store_products' in tables:
                 product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
@@ -5235,7 +5235,7 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
                 product_rows = conn.execute(
                     "SELECT store,url AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_products"
                 ).fetchall()
-                rows.extend(r for r in product_rows if str(r['store'] or 'unknown') not in variant_stores)
+                rows.extend(r for r in product_rows if (str(r['store'] or 'unknown'), str(r['offer_url'] or '').split('#', 1)[0]) not in variant_product_keys)
         finally:
             conn.close()
         from scenthunter_next_engine.catalog_repository import CatalogRepository as _Phase0CatalogRepository
