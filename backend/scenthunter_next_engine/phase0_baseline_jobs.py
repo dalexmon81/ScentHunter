@@ -17,7 +17,7 @@ STORES = (
     "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
 COLUMNS = (
-    "store", "canonical_product_id", "brand", "fragrance", "concentration",
+    "store", "catalog_product_count", "canonical_product_id", "brand", "fragrance", "concentration",
     "size_ml", "variant_type", "gtin", "external_product_id", "offer_url",
     "price", "currency", "availability", "captured_at", "source",
     "match_status", "match_confidence", "is_valid_offer", "store_status",
@@ -431,6 +431,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
     valid_url = _valid_url(row["offer_url"])
     return {
         "store": str(row["store"]),
+        "catalog_product_count": catalog.product_count(),
         "canonical_product_id": match.canonical_product_id or "",
         "brand": product.brand if product else (brand_raw or ""),
         "fragrance": product.name if product else raw_name,
