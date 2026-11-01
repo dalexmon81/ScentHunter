@@ -100,3 +100,16 @@ def test_cross_market_observation_is_rejected():
             finished_at=NOW + timedelta(seconds=1),
             observations=(observation(),),
         )
+
+
+def test_out_of_stock_is_a_valid_observation_not_a_failure():
+    unavailable = observation(price=None, availability="out_of_stock")
+    result = AdapterRunResult(
+        status=AdapterStatus.OUT_OF_STOCK,
+        retailer_id="bplatz",
+        market="DE",
+        started_at=NOW,
+        finished_at=NOW + timedelta(seconds=1),
+        observations=(unavailable,),
+    )
+    assert result.observations[0].availability == "out_of_stock"
