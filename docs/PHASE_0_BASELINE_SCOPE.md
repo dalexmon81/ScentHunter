@@ -14,10 +14,11 @@ The operational Phase 0 baseline covers exactly these nine retailers:
 - perfumemarket
 - sabina
 
-Every active retailer must contribute at least one persisted offer row. The
-exporter and quality workflow fail closed if any active retailer is missing or
-has zero offers. A row with zero offers is never used to make coverage appear
-complete.
+The report includes one operational status row for every active retailer.
+Only rows with a populated source count as persisted offers; zero-offer status
+rows are never counted as offers. The report must show zero counts explicitly
+rather than hide retailers with no indexed data. Notino must contribute at
+least one real offer for the current feed/discovery acceptance gate.
 
 ## Store scope
 

@@ -17,10 +17,10 @@ STORES = (
     "parfumcity", "parfumzentrum", "perfumemarket", "sabina",
 )
 COLUMNS = (
-    "store", "canonical_product_id", "brand", "fragrance", "concentration",
+    "store", "catalog_product_count", "canonical_product_id", "brand", "fragrance", "concentration",
     "size_ml", "variant_type", "gtin", "external_product_id", "offer_url",
     "price", "currency", "availability", "captured_at", "source",
-    "match_confidence", "is_valid_offer", "store_status",
+    "match_status", "match_confidence", "is_valid_offer", "store_status",
 )
 HEARTBEAT_INTERVAL_SECONDS = 20
 STORE_TIMEOUT_SECONDS = 300
@@ -431,6 +431,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
     valid_url = _valid_url(row["offer_url"])
     return {
         "store": str(row["store"]),
+        "catalog_product_count": catalog.product_count(),
         "canonical_product_id": match.canonical_product_id or "",
         "brand": product.brand if product else (brand_raw or ""),
         "fragrance": product.name if product else raw_name,
@@ -452,6 +453,7 @@ def _offer_row(row: sqlite3.Row, matcher: Any, catalog: Any,
         "availability": availability,
         "captured_at": _captured_at(row["fetched_at"]),
         "source": str(row["source"]),
+        "match_status": match.status.value,
         "match_confidence": str(match.confidence) if match.confidence is not None else "",
         "is_valid_offer": "true" if valid_price and valid_url and valid_stock else "false",
     }
@@ -492,8 +494,8 @@ def _export_store_chunk(store: str, db_path: str, catalog_path: str,
                 writer.writerow(data)
                 written += 1
             if written == 0:
-                writer.writerow({"store": store, "store_status": "completed",
-                                 "is_valid_offer": "false"})
+                writer.writerow({"store": store, "catalog_product_count": catalog.product_count(),
+                                 "store_status": "completed", "is_valid_offer": "false"})
         conn.close()
         if written != expected:
             raise RuntimeError(
@@ -510,6 +512,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
     import threading
     backend = Path(__file__).resolve().parent.parent
     catalog_path = backend / "product_catalog.json"
+    from .catalog_repository import CatalogRepository
+    catalog_product_count = CatalogRepository.from_file(catalog_path).product_count()
     db_path = catalog_database_path()
     output_path = Path(job["output_path"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -615,8 +619,8 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                     else:
                         chunk_path.unlink(missing_ok=True)
                 if store_status != "completed":
-                    writer.writerow({"store": store, "store_status": store_status,
-                                     "is_valid_offer": "false"})
+                    writer.writerow({"store": store, "catalog_product_count": catalog_product_count,
+                                     "store_status": store_status, "is_valid_offer": "false"})
                 else:
                     chunk_path.unlink(missing_ok=True)
                 processed_stores += 1

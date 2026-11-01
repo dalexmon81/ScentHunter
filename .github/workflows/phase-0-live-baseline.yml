@@ -35,6 +35,48 @@ jobs:
             [.jobs[].steps[] | select(.name == "Verify production health and catalog API") | .conclusion] == ["success"]
           ' <<< "$jobs_json" >/dev/null
 
+      - name: Wait for this commit's Fly deployment before reading production
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_PATH: ${{ github.event_path }}
+          COMMIT_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend_changed=$(jq -r '
+            [(.head_commit.added // [])[], (.head_commit.modified // [])[], (.head_commit.removed // [])[]]
+            | any(startswith("backend/") or startswith("fly.toml") or startswith("Dockerfile"))
+          ' "$EVENT_PATH")
+          if [[ "$backend_changed" != "true" ]]; then
+            echo "No backend/deployment files changed; production deploy wait is not required."
+            exit 0
+          fi
+
+          echo "Backend changed in this push; waiting for the matching Fly Deploy workflow."
+          for attempt in $(seq 1 60); do
+            runs=$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$COMMIT_SHA&event=push&per_page=100")
+            deploy=$(jq -c '[.workflow_runs[] | select(.name == "Fly Deploy")] | first // empty' <<< "$runs")
+            if [[ -n "$deploy" ]]; then
+              status=$(jq -r '.status' <<< "$deploy")
+              conclusion=$(jq -r '.conclusion // ""' <<< "$deploy")
+              echo "Fly Deploy status=$status conclusion=$conclusion"
+              if [[ "$status" == "completed" ]]; then
+                [[ "$conclusion" == "success" ]] || {
+                  echo "::error::Fly deployment did not succeed; refusing to run the production baseline."
+                  exit 1
+                }
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo "::error::Timed out waiting for the Fly deployment for $COMMIT_SHA."
+          exit 1
+
       - name: Reuse latest Phase 0 job, poll and validate its CSV
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
@@ -179,6 +221,7 @@ jobs:
           python3 - <<'PY'
           import csv
           import io
+          import os
           from collections import Counter
           from pathlib import Path
 
@@ -186,10 +229,10 @@ jobs:
           text = path.read_bytes().decode("utf-8-sig")
           reader = csv.DictReader(io.StringIO(text, newline=""))
           expected_header = [
-              "store", "canonical_product_id", "brand", "fragrance",
+              "store", "catalog_product_count", "canonical_product_id", "brand", "fragrance",
               "concentration", "size_ml", "variant_type", "gtin",
               "external_product_id", "offer_url", "price", "currency",
-              "availability", "captured_at", "source", "match_confidence",
+              "availability", "captured_at", "source", "match_status", "match_confidence",
               "is_valid_offer", "store_status",
           ]
           if reader.fieldnames != expected_header:
@@ -208,19 +251,96 @@ jobs:
               raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
           offer_rows = [row for row in rows if row.get("source")]
           offer_counts = Counter(row["store"] for row in offer_rows)
-          for store in ("notino",):
-              if offer_counts[store] <= 0:
-                  raise SystemExit(f"CSV has no real offer rows for {store}")
+          if offer_counts["notino"] <= 0:
+              raise SystemExit("CSV has no real offer rows for notino")
           allowed_statuses = {"completed", "timeout", "failed", "skipped"}
+          allowed_stock = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
+          import re
+          from urllib.parse import urlparse
+
+          def valid_price(row):
+              try:
+                  amount = float(row.get("price", ""))
+              except (TypeError, ValueError):
+                  return False
+              return amount > 0 and bool(re.fullmatch(r"[A-Z]{3}", row.get("currency", "")))
+
+          def valid_url(row):
+              try:
+                  parsed = urlparse(row.get("offer_url", ""))
+                  return parsed.scheme == "https" and bool(parsed.netloc)
+              except ValueError:
+                  return False
+
+          catalog_counts = []
+          for row in rows:
+              try:
+                  count = int(row.get("catalog_product_count") or 0)
+                  if count > 0:
+                      catalog_counts.append(count)
+              except (TypeError, ValueError):
+                  pass
+          catalog_products = max(catalog_counts, default=0)
+
+          summary_rows = []
+          for store in sorted(expected_stores):
+              offers = [row for row in offer_rows if row["store"] == store]
+              n = len(offers)
+              price_count = sum(valid_price(row) for row in offers)
+              url_count = sum(valid_url(row) for row in offers)
+              stock_count = sum(row.get("availability", "").strip().lower() in allowed_stock for row in offers)
+              ambiguous = sum(row.get("match_status") == "ambiguous" for row in offers)
+              summary_rows.append({
+                  "store": store, "offer_count": n,
+                  "valid_price_count": price_count,
+                  "valid_price_pct": round(100 * price_count / n, 2) if n else 0,
+                  "valid_url_count": url_count,
+                  "valid_url_pct": round(100 * url_count / n, 2) if n else 0,
+                  "valid_stock_count": stock_count,
+                  "valid_stock_pct": round(100 * stock_count / n, 2) if n else 0,
+                  "ambiguous_match_count": ambiguous,
+              })
+
+          total_offers = len(offer_rows)
+          total_price = sum(valid_price(row) for row in offer_rows)
+          total_url = sum(valid_url(row) for row in offer_rows)
+          total_stock = sum(row.get("availability", "").strip().lower() in allowed_stock for row in offer_rows)
+          total_ambiguous = sum(row.get("match_status") == "ambiguous" for row in offer_rows)
+          summary_path = Path("phase-0-quality-summary.csv")
+          with summary_path.open("w", newline="", encoding="utf-8") as handle:
+              fields = list(summary_rows[0]) if summary_rows else []
+              writer = csv.DictWriter(handle, fieldnames=fields)
+              writer.writeheader()
+              writer.writerows(summary_rows)
+
+          report = Path("phase-0-quality-summary.md")
+          with report.open("w", encoding="utf-8") as handle:
+              handle.write("# Phase 0 — quality baseline\n\n")
+              handle.write(f"- Canonical products in catalog: **{catalog_products}**\n")
+              handle.write(f"- Persisted retailer offers: **{total_offers}**\n")
+              handle.write(f"- Valid price: **{(100 * total_price / total_offers) if total_offers else 0:.2f}%** ({total_price}/{total_offers})\n")
+              handle.write(f"- Valid HTTPS URL: **{(100 * total_url / total_offers) if total_offers else 0:.2f}%** ({total_url}/{total_offers})\n")
+              handle.write(f"- Valid stock: **{(100 * total_stock / total_offers) if total_offers else 0:.2f}%** ({total_stock}/{total_offers})\n")
+              handle.write(f"- Ambiguous matches: **{total_ambiguous}**\n\n")
+              handle.write("| Store | Offers | Price valid | URL valid | Stock valid | Ambiguous |\n|---|---:|---:|---:|---:|---:|\n")
+              for item in summary_rows:
+                  handle.write(f"| {item['store']} | {item['offer_count']} | {item['valid_price_pct']:.2f}% | {item['valid_url_pct']:.2f}% | {item['valid_stock_pct']:.2f}% | {item['ambiguous_match_count']} |\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+              handle.write(report.read_text(encoding="utf-8"))
+
           if any(row.get("store_status") not in allowed_statuses for row in rows):
               raise SystemExit("CSV contains an invalid store_status value.")
           if any(row["is_valid_offer"] not in {"true", "false"} for row in rows):
               raise SystemExit("CSV contains an invalid is_valid_offer value.")
+          if any(row.get("match_status") not in {"matched", "ambiguous", "unresolved", ""} for row in offer_rows):
+              raise SystemExit("CSV contains an invalid match_status value.")
           print("PHASE0_CSV_HEADER=PASS")
           print("PHASE0_CSV_ROWS=" + str(len(rows)))
-          for store in sorted(expected_stores):
-              print(f"PHASE0_STORE_ROWS_{store.upper()}={counts[store]}")
-              print(f"PHASE0_STORE_OFFER_ROWS_{store.upper()}={offer_counts[store]}")
+          print(f"PHASE0_CATALOG_PRODUCTS={catalog_products}")
+          print(f"PHASE0_TOTAL_OFFERS={total_offers}")
+          print(f"PHASE0_AMBIGUOUS_MATCHES={total_ambiguous}")
+          for item in summary_rows:
+              print(f"PHASE0_STORE_{item['store'].upper()}_OFFERS={item['offer_count']}")
           PY
           echo "Phase 0 baseline CSV downloaded and validated for job $job_id."
 
@@ -228,6 +348,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scenthunter-phase-0-live-baseline
-          path: phase-0-retailer-baseline.csv
+          path: |
+            phase-0-retailer-baseline.csv
+            phase-0-quality-summary.csv
+            phase-0-quality-summary.md
           if-no-files-found: error
           retention-days: 30

@@ -220,6 +220,8 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(len(offer_rows), 1)
         self.assertEqual(offer_rows[0]["store"], "bplatz")
         self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
+        self.assertEqual(offer_rows[0]["match_status"], "matched")
+        self.assertEqual(offer_rows[0]["catalog_product_count"], "1")
         self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
         self.assertEqual(len(STORES), 9)
         self.assertEqual(set(status_rows), set(STORES))
