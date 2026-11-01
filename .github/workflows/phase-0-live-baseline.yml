@@ -207,6 +207,9 @@ jobs:
           if unknown:
               raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
           offer_rows = [row for row in rows if row.get("source")]
+          offer_counts = Counter(row["store"] for row in offer_rows)
+          if offer_counts["notino"] <= 0:
+              raise SystemExit("CSV has no real offer rows for notino")
           allowed_statuses = {"completed", "timeout", "failed", "skipped"}
           allowed_stock = {"in_stock", "out_of_stock", "preorder", "backorder", "limited_availability"}
           import re
@@ -269,16 +272,16 @@ jobs:
 
           report = Path("phase-0-quality-summary.md")
           with report.open("w", encoding="utf-8") as handle:
-              handle.write("# Phase 0 — quality baseline\\n\\n")
-              handle.write(f"- Canonical products in catalog: **{catalog_products}**\\n")
-              handle.write(f"- Persisted retailer offers: **{total_offers}**\\n")
-              handle.write(f"- Valid price: **{(100 * total_price / total_offers) if total_offers else 0:.2f}%** ({total_price}/{total_offers})\\n")
-              handle.write(f"- Valid HTTPS URL: **{(100 * total_url / total_offers) if total_offers else 0:.2f}%** ({total_url}/{total_offers})\\n")
-              handle.write(f"- Valid stock: **{(100 * total_stock / total_offers) if total_offers else 0:.2f}%** ({total_stock}/{total_offers})\\n")
-              handle.write(f"- Ambiguous matches: **{total_ambiguous}**\\n\\n")
-              handle.write("| Store | Offers | Price valid | URL valid | Stock valid | Ambiguous |\\n|---|---:|---:|---:|---:|---:|\\n")
+              handle.write("# Phase 0 — quality baseline\n\n")
+              handle.write(f"- Canonical products in catalog: **{catalog_products}**\n")
+              handle.write(f"- Persisted retailer offers: **{total_offers}**\n")
+              handle.write(f"- Valid price: **{(100 * total_price / total_offers) if total_offers else 0:.2f}%** ({total_price}/{total_offers})\n")
+              handle.write(f"- Valid HTTPS URL: **{(100 * total_url / total_offers) if total_offers else 0:.2f}%** ({total_url}/{total_offers})\n")
+              handle.write(f"- Valid stock: **{(100 * total_stock / total_offers) if total_offers else 0:.2f}%** ({total_stock}/{total_offers})\n")
+              handle.write(f"- Ambiguous matches: **{total_ambiguous}**\n\n")
+              handle.write("| Store | Offers | Price valid | URL valid | Stock valid | Ambiguous |\n|---|---:|---:|---:|---:|---:|\n")
               for item in summary_rows:
-                  handle.write(f"| {item['store']} | {item['offer_count']} | {item['valid_price_pct']:.2f}% | {item['valid_url_pct']:.2f}% | {item['valid_stock_pct']:.2f}% | {item['ambiguous_match_count']} |\\n")
+                  handle.write(f"| {item['store']} | {item['offer_count']} | {item['valid_price_pct']:.2f}% | {item['valid_url_pct']:.2f}% | {item['valid_stock_pct']:.2f}% | {item['ambiguous_match_count']} |\n")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
               handle.write(report.read_text(encoding="utf-8"))
 
