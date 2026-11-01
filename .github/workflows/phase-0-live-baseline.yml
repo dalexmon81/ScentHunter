@@ -94,7 +94,7 @@ jobs:
               lines.pop(0)
           normalized = "\n".join(lines).rstrip() + "\n"
           path.write_text(normalized, encoding="utf-8")
-          expected = "store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers"
+          expected = "store,total_offers,offers_with_valid_price,valid_price_pct,offers_with_valid_url,valid_url_pct,offers_with_valid_availability,valid_stock_pct,offers_matched_to_canonical_product,ambiguous_match_count,unresolved_match_count,catalog_product_count,offers_with_recent_capture,stale_offers,invalid_offers"
           actual = lines[0] if lines else ""
           if actual != expected:
               print("::error::CSV header mismatch after UTF-8 BOM/blank-line/CRLF/whitespace normalization.")
