@@ -5,8 +5,8 @@
 - [x] Copia versionata dei dati catalogo e delle sorgenti connector in `backups/phase-0/2026-11-01/`.
 - [x] Documentati limiti e trattamento delle credenziali runtime.
 - [x] Baseline quantitativa: generatore CSV implementato; perimetro fissato a 9 store attivi (Amazon.de e Amazon.fr esclusi dal report); Notino compare anche con zero offerte verificate e conta separatamente gli URL indicizzati.
-- [x] Test di regressione del generatore: verifica 9 store, esclusione Amazon e conteggio URL Notino senza inventare offerte; GitHub Actions superata.
-- [ ] Evidenza runtime finale: CSV completo da scaricare dall'ambiente con DB SQLite aggiornato al codice del branch. L'endpoint attualmente interrogato da Actions restituisce HTTP 503 perché è ancora in esecuzione la vecchia logica runtime che blocca la baseline se Notino ha URL indicizzati ma zero offerte persistite.
+- [x] Test di regressione del report: verifica l'insieme dei 9 store, esclusione Amazon e conteggio URL Notino anche con zero offerte; GitHub Actions superata (run `41307638699`).
+- [ ] Evidenza runtime finale: CSV completo da scaricare dall'ambiente con DB SQLite aggiornato al codice del branch. L'endpoint attualmente interrogato da Actions restituisce HTTP 503 perché è ancora in esecuzione la vecchia logica runtime che blocca la baseline se Notino ha URL indicizzati ma zero offerte persistite (run `41307608504`, HTTP 503).
 - [x] Matrice statica dei connector completata per 11 store, con endpoint, campi, varianti, stock e limiti noti.
 - [ ] Verificare configurazione effettiva delle credenziali e dei servizi esterni senza esporre segreti.
 - [ ] Eseguire test live controllati per verificare URL finali, mercati, prezzi, varianti e disponibilità per ciascuno store.
