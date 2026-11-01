@@ -1,0 +1,29 @@
+name: Phase 0 baseline report tests
+
+on:
+  pull_request:
+    paths:
+      - "backend/main.py"
+      - "backend/scenthunter_next_engine/baseline_report.py"
+      - "backend/tests/test_phase0_baseline_report.py"
+      - ".github/workflows/phase-0-live-baseline.yml"
+      - ".github/workflows/phase-0-baseline-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Test complete Phase 0 report
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/tests/test_phase0_baseline_report.py
