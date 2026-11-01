@@ -163,7 +163,7 @@ jobs:
               "concentration", "size_ml", "variant_type", "gtin",
               "external_product_id", "offer_url", "price", "currency",
               "availability", "captured_at", "source", "match_confidence",
-              "is_valid_offer",
+              "is_valid_offer", "store_status",
           ]
           if reader.fieldnames != expected_header:
               raise SystemExit("CSV schema mismatch: " + repr(reader.fieldnames))
@@ -180,15 +180,21 @@ jobs:
           unknown = set(counts) - expected_stores
           if unknown:
               raise SystemExit("CSV contains unknown stores: " + repr(sorted(unknown)))
+          offer_rows = [row for row in rows if row.get("source")]
+          offer_counts = Counter(row["store"] for row in offer_rows)
           for store in ("amazon_de", "amazon_fr", "notino"):
-              if counts[store] <= 0:
+              if offer_counts[store] <= 0:
                   raise SystemExit(f"CSV has no real offer rows for {store}")
+          allowed_statuses = {"completed", "timeout", "failed", "skipped"}
+          if any(row.get("store_status") not in allowed_statuses for row in rows):
+              raise SystemExit("CSV contains an invalid store_status value.")
           if any(row["is_valid_offer"] not in {"true", "false"} for row in rows):
               raise SystemExit("CSV contains an invalid is_valid_offer value.")
           print("PHASE0_CSV_HEADER=PASS")
           print("PHASE0_CSV_ROWS=" + str(len(rows)))
           for store in sorted(expected_stores):
               print(f"PHASE0_STORE_ROWS_{store.upper()}={counts[store]}")
+              print(f"PHASE0_STORE_OFFER_ROWS_{store.upper()}={offer_counts[store]}")
           PY
           echo "Phase 0 baseline CSV downloaded and validated for job $job_id."
 
