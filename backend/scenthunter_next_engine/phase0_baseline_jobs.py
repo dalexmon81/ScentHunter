@@ -528,7 +528,6 @@ def create_smoke_job() -> dict[str, Any]:
     output_path = output_dir / f"{job_id}.csv"
     conn = connect()
     try:
-        ensure_smoke_schema(conn)
         conn.execute(
             """INSERT INTO phase0_smoke_jobs
                (id,status,created_at,output_path) VALUES(?, 'queued', ?, ?)""",
@@ -543,7 +542,6 @@ def create_smoke_job() -> dict[str, Any]:
 def get_smoke_job(job_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        ensure_smoke_schema(conn)
         row = conn.execute(
             "SELECT * FROM phase0_smoke_jobs WHERE id=?", (job_id,)
         ).fetchone()
@@ -555,7 +553,6 @@ def get_smoke_job(job_id: str) -> dict[str, Any] | None:
 def claim_next_smoke_job(worker_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        ensure_smoke_schema(conn)
         row = conn.execute(
             """SELECT id FROM phase0_smoke_jobs WHERE status='queued'
                ORDER BY created_at, id LIMIT 1"""
