@@ -12,81 +12,89 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Check worker, catalog and writable Fly volume
+      - name: Health gate, enqueue smoke, poll and validate CSV
         env:
           SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
           SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SCENTHUNTER_BASELINE_URL"
-          test -n "$SCENTHUNTER_BASELINE_TOKEN"
-          suffix="/admin/phase0/baseline-report.csv"
-          if [[ "$SCENTHUNTER_BASELINE_URL" == *"$suffix" ]]; then
-            base_url="${SCENTHUNTER_BASELINE_URL%"$suffix"}"
-          else
-            base_url="${SCENTHUNTER_BASELINE_URL%/}"
+          BASELINE_URL_SET=false
+          BASELINE_TOKEN_SET=false
+          [[ -n "${SCENTHUNTER_BASELINE_URL:-}" ]] && BASELINE_URL_SET=true
+          [[ -n "${SCENTHUNTER_BASELINE_TOKEN:-}" ]] && BASELINE_TOKEN_SET=true
+          [[ "$BASELINE_URL_SET" == true ]] || { echo "::error::SCENTHUNTER_BASELINE_URL secret is missing"; exit 1; }
+          [[ "$BASELINE_TOKEN_SET" == true ]] || { echo "::error::SCENTHUNTER_BASELINE_TOKEN secret is missing"; exit 1; }
+          if [[ ! "$SCENTHUNTER_BASELINE_URL" =~ ^https://[^/?#[:space:]]+/?$ ]]; then
+            echo "::error::SCENTHUNTER_BASELINE_URL must be only https://<production-domain>, with no path, query, fragment or spaces."
+            exit 1
           fi
-          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
-          http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-            -H "$auth_header" -H "Accept: application/json" \
-            --output phase0-health.json --write-out '%{http_code}' \
-            "$base_url/admin/phase0/health")
-          [[ "$http" == "200" ]] || { cat phase0-health.json; exit 1; }
-          jq -e '.worker_running == true and .catalog_exists == true and .catalog_size_bytes > 0 and .queue_exists == true and .volume_writable == true' phase0-health.json
-          cat phase0-health.json
 
-      - name: Enqueue smoke job, poll and download CSV
-        env:
-          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
-          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          base_url="${SCENTHUNTER_BASELINE_URL%/}"
-          auth_header="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
-          http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-            -X POST -H "$auth_header" -H "Accept: application/json" \
-            --output smoke-start.json --write-out '%{http_code}' \
-            "$base_url/admin/phase0/smoke/start")
-          [[ "$http" == "202" ]] || { cat smoke-start.json; exit 1; }
-          job_id=$(jq -er '.job_id' smoke-start.json)
-          status=$(jq -er '.status' smoke-start.json)
-          [[ "$status" == "queued" ]]
-          echo "SMOKE_JOB_ID=$job_id" >> "$GITHUB_STEP_SUMMARY"
-          deadline=$((SECONDS + 240))
-          while [[ "$status" == "queued" || "$status" == "running" ]]; do
-            (( SECONDS < deadline )) || { echo "::error::Smoke job timed out"; exit 1; }
+          BASE_URL="${SCENTHUNTER_BASELINE_URL%/}"
+          HEALTH_URL="${BASE_URL}/admin/phase0/health"
+          SMOKE_START_URL="${BASE_URL}/admin/phase0/smoke/start"
+          SMOKE_STATUS_URL="${BASE_URL}/admin/phase0/smoke/status"
+          SMOKE_DOWNLOAD_URL="${BASE_URL}/admin/phase0/smoke/download"
+          AUTH_HEADER="Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN"
+
+          printf 'HEALTH_URL=%s\n' "$HEALTH_URL"
+          printf 'BASELINE_URL_SET=%s\n' "$BASELINE_URL_SET"
+          printf 'BASELINE_TOKEN_SET=%s\n' "$BASELINE_TOKEN_SET"
+
+          set +e
+          HEALTH_HTTP=$(curl --silent --connect-timeout 10 --max-time 20 -H "$AUTH_HEADER" -H "Accept: application/json" --output phase0-health.json --write-out '%{http_code}' "$HEALTH_URL" 2>/dev/null)
+          CURL_EXIT=$?
+          set -e
+          HEALTH_HTTP="${HEALTH_HTTP:-000}"
+          printf 'HTTP status=%s\n' "$HEALTH_HTTP"
+          if [[ "$CURL_EXIT" -ne 0 || "$HEALTH_HTTP" != "200" ]]; then
+            case "$HEALTH_HTTP" in
+              401|403) echo "::error::Health failed: token does not match (HTTP $HEALTH_HTTP)." ;;
+              404) echo "::error::Health endpoint absent or base URL incorrect (HTTP 404)." ;;
+              502) echo "::error::Fly app is not responding correctly (HTTP 502)." ;;
+              000) echo "::error::Production domain unreachable or timed out (HTTP 000)." ;;
+              *) echo "::error::Health failed with HTTP $HEALTH_HTTP." ;;
+            esac
+            exit 1
+          fi
+          jq -e '.worker_running == true and .catalog_exists == true and .catalog_size_bytes > 0 and .queue_exists == true and .volume_writable == true' phase0-health.json >/dev/null || {
+            echo "::error::Health returned 200 but worker/catalog/queue/volume checks did not all pass."
+            cat phase0-health.json
+            exit 1
+          }
+
+          START_HTTP=$(curl --silent --connect-timeout 10 --max-time 20 -X POST -H "$AUTH_HEADER" -H "Accept: application/json" --output smoke-start.json --write-out '%{http_code}' "$SMOKE_START_URL" 2>/dev/null) || START_HTTP=000
+          [[ "$START_HTTP" == "202" ]] || { echo "::error::Smoke start failed with HTTP $START_HTTP."; cat smoke-start.json 2>/dev/null || true; exit 1; }
+          JOB_ID=$(jq -er '.job_id | select(type == "string" and length > 0)' smoke-start.json)
+          STATUS=$(jq -er '.status' smoke-start.json)
+          [[ "$STATUS" == "queued" ]] || { echo "::error::Smoke start did not return status=queued."; cat smoke-start.json; exit 1; }
+          echo "SMOKE_JOB_ID=$JOB_ID" >> "$GITHUB_STEP_SUMMARY"
+          echo "SMOKE_START_STATUS=$STATUS"
+
+          DEADLINE=$((SECONDS + 240))
+          while [[ "$STATUS" == "queued" || "$STATUS" == "running" ]]; do
+            (( SECONDS < DEADLINE )) || { echo "::error::Smoke job timed out after 240 seconds."; exit 1; }
             sleep 3
-            http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
-              -H "$auth_header" -H "Accept: application/json" \
-              --output smoke-status.json --write-out '%{http_code}' \
-              "$base_url/admin/phase0/smoke/status?job_id=$job_id")
-            [[ "$http" == "200" ]] || { cat smoke-status.json; exit 1; }
-            status=$(jq -er '.status' smoke-status.json)
-            echo "SMOKE_STATUS=$status heartbeat=$(jq -r '.heartbeat_at // "null"' smoke-status.json)"
-            if [[ "$status" == "failed" ]]; then cat smoke-status.json; exit 1; fi
+            STATUS_HTTP=$(curl --silent --connect-timeout 10 --max-time 20 -H "$AUTH_HEADER" -H "Accept: application/json" --output smoke-status.json --write-out '%{http_code}' "${SMOKE_STATUS_URL}?job_id=${JOB_ID}" 2>/dev/null) || STATUS_HTTP=000
+            [[ "$STATUS_HTTP" == "200" ]] || { echo "::error::Smoke status failed with HTTP $STATUS_HTTP."; cat smoke-status.json 2>/dev/null || true; exit 1; }
+            STATUS=$(jq -er '.status' smoke-status.json)
+            echo "SMOKE_STATUS=$STATUS"
+            if [[ "$STATUS" == "failed" ]]; then cat smoke-status.json; exit 1; fi
           done
-          [[ "$status" == "completed" ]] || { cat smoke-status.json; exit 1; }
-          http=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
-            -H "$auth_header" -H "Accept: text/csv" \
-            --output phase-0-smoke.csv --write-out '%{http_code}' \
-            "$base_url/admin/phase0/smoke/download?job_id=$job_id")
-          [[ "$http" == "200" ]]
+          [[ "$STATUS" == "completed" ]] || { echo "::error::Unexpected terminal smoke status: $STATUS"; cat smoke-status.json; exit 1; }
+
+          DOWNLOAD_HTTP=$(curl --silent --connect-timeout 10 --max-time 30 -H "$AUTH_HEADER" -H "Accept: text/csv" --output phase-0-smoke.csv --write-out '%{http_code}' "${SMOKE_DOWNLOAD_URL}?job_id=${JOB_ID}" 2>/dev/null) || DOWNLOAD_HTTP=000
+          [[ "$DOWNLOAD_HTTP" == "200" ]] || { echo "::error::Smoke CSV download failed with HTTP $DOWNLOAD_HTTP."; exit 1; }
+
           python3 - <<'PY'
           import csv
           from pathlib import Path
-          expected = [
-              ["store", "status"],
-              ["amazon_de", "ok"], ["amazon_fr", "ok"], ["notino", "ok"],
-              ["bplatz", "ok"], ["deloox", "ok"], ["easycosmetic", "ok"],
-              ["orioudh", "ok"], ["parfumcity", "ok"], ["parfumzentrum", "ok"],
-              ["perfumemarket", "ok"], ["sabina", "ok"],
-          ]
+          stores = ["amazon_de", "amazon_fr", "notino", "bplatz", "deloox", "easycosmetic", "orioudh", "parfumcity", "parfumzentrum", "perfumemarket", "sabina"]
+          expected = [["store", "status"]] + [[store, "ok"] for store in stores]
           with Path("phase-0-smoke.csv").open(newline="", encoding="utf-8") as f:
               actual = list(csv.reader(f))
           if actual != expected:
-              raise SystemExit(f"Smoke CSV mismatch: {actual!r}")
+              raise SystemExit(f"CSV validation failed: expected header + exactly 11 stores; got {actual!r}")
           print("PHASE0_SMOKE_CSV=PASS")
           print("PHASE0_SMOKE_DATA_ROWS=11")
           PY
