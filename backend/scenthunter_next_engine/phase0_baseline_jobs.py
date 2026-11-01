@@ -81,7 +81,6 @@ def create_job() -> dict[str, Any]:
     output_path = output_dir / f"{job_id}.csv"
     conn = connect()
     try:
-        ensure_schema(conn)
         conn.execute(
             """INSERT INTO phase0_baseline_jobs
                (id,status,created_at,total_stores,processed_stores,progress,output_path)
@@ -97,7 +96,6 @@ def create_job() -> dict[str, Any]:
 def get_job(job_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        ensure_schema(conn)
         row = conn.execute(
             "SELECT * FROM phase0_baseline_jobs WHERE id=?", (job_id,)
         ).fetchone()
@@ -135,6 +133,17 @@ def recover_stale_jobs() -> int:
     now = utc_now()
     conn = connect()
     try:
+        # Avoid acquiring a write lock when there is no stale job to recover.
+        stale = conn.execute(
+            """SELECT id FROM phase0_baseline_jobs
+                WHERE status='running'
+                  AND (heartbeat_at IS NULL OR heartbeat_at < ?)
+                LIMIT 1""",
+            (cutoff,),
+        ).fetchone()
+        if not stale:
+            return 0
+        conn.execute("BEGIN IMMEDIATE")
         cur = conn.execute(
             """UPDATE phase0_baseline_jobs
                   SET status='failed', finished_at=?,
@@ -150,6 +159,9 @@ def recover_stale_jobs() -> int:
         )
         conn.commit()
         return cur.rowcount
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -157,16 +169,17 @@ def recover_stale_jobs() -> int:
 def claim_next_job(worker_id: str) -> dict[str, Any] | None:
     conn = connect()
     try:
-        conn.execute("BEGIN IMMEDIATE")
+        # A read-only peek avoids taking SQLite's single-writer lock every
+        # five seconds while the durable queue is empty.
         row = conn.execute(
             """SELECT id FROM phase0_baseline_jobs
                 WHERE status='queued'
                 ORDER BY created_at, id LIMIT 1"""
         ).fetchone()
         if not row:
-            conn.commit()
             return None
         job_id = str(row["id"])
+        conn.execute("BEGIN IMMEDIATE")
         now = utc_now()
         cur = conn.execute(
             """UPDATE phase0_baseline_jobs
