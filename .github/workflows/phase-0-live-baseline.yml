@@ -221,6 +221,7 @@ jobs:
           python3 - <<'PY'
           import csv
           import io
+          import os
           from collections import Counter
           from pathlib import Path
 
@@ -272,7 +273,7 @@ jobs:
                   return False
 
           catalog_counts = []
-          for row in offer_rows:
+          for row in rows:
               try:
                   count = int(row.get("catalog_product_count") or 0)
                   if count > 0:
