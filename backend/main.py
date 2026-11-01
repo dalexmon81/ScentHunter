@@ -5207,20 +5207,50 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         conn.row_factory = _phase0_sqlite3.Row
         try:
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
-            if source not in tables: raise RuntimeError('No retailer offers table found')
-            columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
-            required = {'store','url','name','brand','price','availability','fetched_at'}
-            if not required.issubset(columns): raise RuntimeError(f'Unexpected {source} schema')
-            url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-            rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}").fetchall()
+            if 'store_products' not in tables and 'store_product_variants' not in tables:
+                raise RuntimeError('No retailer offers table found')
+
+            # Variants replace the URL-level product row for that retailer,
+            # not for the entire database. Other retailers may still only have
+            # rows in store_products (the previous global preference hid them).
+            rows = []
+            variant_product_keys = set()
+            if 'store_product_variants' in tables:
+                variant_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_product_variants)')}
+                required = {'store','url','name','brand','price','currency','availability','fetched_at'}
+                if not required.issubset(variant_columns):
+                    raise RuntimeError('Unexpected store_product_variants schema')
+                url_expr = "COALESCE(variant_url,url)" if 'variant_url' in variant_columns else 'url'
+                variant_rows = conn.execute(
+                    f"SELECT store,url AS canonical_product_url,{url_expr} AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_product_variants"
+                ).fetchall()
+                rows.extend(variant_rows)
+                variant_product_keys = {(str(r['store'] or 'unknown'), str(r['canonical_product_url'] or '')) for r in variant_rows}
+
+            if 'store_products' in tables:
+                product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
+                required = {'store','url','name','brand','price','currency','availability','fetched_at'}
+                if not required.issubset(product_columns):
+                    raise RuntimeError('Unexpected store_products schema')
+                product_rows = conn.execute(
+                    "SELECT store,url AS offer_url,name,brand,sku,gtin,size_ml,concentration,price,currency,availability,fetched_at FROM store_products"
+                ).fetchall()
+                rows.extend(r for r in product_rows if (str(r['store'] or 'unknown'), str(r['offer_url'] or '').split('#', 1)[0]) not in variant_product_keys)
         finally:
             conn.close()
+        from scenthunter_next_engine.catalog_repository import CatalogRepository as _Phase0CatalogRepository
+        from scenthunter_next_engine.canonical_matcher import CanonicalMatcher as _Phase0CanonicalMatcher
+        from scenthunter_next_engine.models import MatchStatus as _Phase0MatchStatus, RetailerOffer as _Phase0RetailerOffer
+        catalog = _Phase0CatalogRepository.from_file(catalog_path)
+        matcher = _Phase0CanonicalMatcher(catalog)
         now = _phase0_datetime.now(_phase0_timezone.utc).timestamp()
         totals = {}
+        supported_stores = ('amazon_de','amazon_fr','bplatz','deloox','easycosmetic','notino','orioudh','parfumcity','parfumzentrum','perfumemarket','sabina')
+        for store in supported_stores:
+            totals[store] = {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'ambiguous_match_count':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0}
         for row in rows:
             store = str(row['store'] or 'unknown')
-            item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
+            item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'ambiguous_match_count':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
             item['total_offers'] += 1
             try: price_ok = float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
             except (TypeError, ValueError): price_ok = False
@@ -5230,17 +5260,41 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             if price_ok: item['offers_with_valid_price'] += 1
             if url_ok: item['offers_with_valid_url'] += 1
             if availability_ok: item['offers_with_valid_availability'] += 1
-            if (str(row['brand'] or '').strip().casefold(), str(row['name'] or '').strip().casefold()) in canonical: item['offers_matched_to_canonical_product'] += 1
+            try:
+                size_value = float(row['size_ml']) if row['size_ml'] is not None else None
+                size_ml = int(size_value) if size_value is not None and size_value > 0 and size_value.is_integer() else None
+            except (TypeError, ValueError):
+                size_ml = None
+            offer = _Phase0RetailerOffer(
+                retailer=store, raw_name=str(row['name'] or 'unknown product'),
+                product_url=str(row['offer_url']) if row['offer_url'] else None,
+                retailer_product_id=str(row['gtin'] or row['sku']) if (row['gtin'] or row['sku']) else None,
+                brand_raw=str(row['brand']) if row['brand'] else None,
+                size_ml=size_ml, currency=str(row['currency'] or 'EUR').upper(),
+                availability=str(row['availability']) if row['availability'] else None,
+                raw_payload={'gtin':row['gtin'],'sku':row['sku'],'concentration':row['concentration']},
+            )
+            match = matcher.match(offer)
+            if match.status is _Phase0MatchStatus.AMBIGUOUS:
+                item['ambiguous_match_count'] += 1
             try: age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
             except (TypeError, ValueError): age = None
             if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
             else: item['stale_offers'] += 1
             if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
         output = _phase0_io.StringIO()
-        fields = ['store','total_offers','offers_with_valid_price','offers_with_valid_url','offers_with_valid_availability','offers_matched_to_canonical_product','offers_with_recent_capture','stale_offers','invalid_offers']
+        fields = ['store','catalog_product_count','total_offers','offers_with_valid_price','valid_price_pct','offers_with_valid_url','valid_url_pct','offers_with_valid_availability','valid_availability_pct','ambiguous_match_count','offers_with_recent_capture','stale_offers','invalid_offers']
         writer = _phase0_csv.DictWriter(output, fieldnames=fields)
         writer.writeheader()
-        for store in sorted(totals): writer.writerow({'store':store,**totals[store]})
+        for store in sorted(totals):
+            item = totals[store]
+            count = item['total_offers']
+            writer.writerow({
+                'store':store,'catalog_product_count':catalog.product_count(),**item,
+                'valid_price_pct':round(100*item['offers_with_valid_price']/count,2) if count else 0,
+                'valid_url_pct':round(100*item['offers_with_valid_url']/count,2) if count else 0,
+                'valid_availability_pct':round(100*item['offers_with_valid_availability']/count,2) if count else 0,
+            })
         return _Phase0Response(content=output.getvalue(),media_type='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename="phase-0-retailer-baseline.csv"'})
     except _Phase0HTTPException: raise
     except Exception as exc:
