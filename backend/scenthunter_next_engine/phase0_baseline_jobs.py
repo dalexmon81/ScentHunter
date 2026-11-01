@@ -602,7 +602,7 @@ def generate_smoke_csv(job: dict[str, Any]) -> dict[str, Any]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(".csv.tmp")
     with temp_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, lineterminator="\\n")
+        writer = csv.writer(handle)
         writer.writerow(("store", "status"))
         writer.writerows((store, "ok") for store in SMOKE_STORES)
         handle.flush()
