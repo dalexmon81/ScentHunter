@@ -103,14 +103,18 @@ jobs:
 
           expected = [
               "store",
-              "total_offers",
-              "offers_with_valid_price",
-              "offers_with_valid_url",
-              "offers_with_valid_availability",
-              "offers_matched_to_canonical_product",
-              "offers_with_recent_capture",
-              "stale_offers",
-              "invalid_offers"
+              "offer_count",
+              "valid_price_count",
+              "valid_price_pct",
+              "valid_url_count",
+              "valid_url_pct",
+              "valid_stock_count",
+              "valid_stock_pct",
+              "ambiguous_match_count",
+              "matched_count",
+              "unresolved_match_count",
+              "catalog_product_count",
+              "offer_source_table"
           ]
 
           if normalized_header != expected:
@@ -119,6 +123,30 @@ jobs:
               print("Received fields:", normalized_header)
               print("Received raw header:", repr(text.splitlines()[0] if text else ""))
               sys.exit(1)
+
+          rows = list(csv.DictReader(io.StringIO(text, newline="")))
+          expected_stores = {
+              "amazon_de", "amazon_fr", "bplatz", "deloox", "easycosmetic",
+              "notino", "orioudh", "parfumcity", "parfumzentrum",
+              "perfumemarket", "sabina"
+          }
+          actual_stores = {row["store"] for row in rows if row["store"] != "TOTAL"}
+          if actual_stores != expected_stores:
+              print("::error::CSV must contain exactly the 11 supported stores.")
+              print("Expected stores:", sorted(expected_stores))
+              print("Received stores:", sorted(actual_stores))
+              sys.exit(1)
+          if len(rows) != 12 or rows[-1]["store"] != "TOTAL":
+              print("::error::CSV must contain 11 store rows plus one TOTAL row.")
+              sys.exit(1)
+          for row in rows:
+              for field in ("valid_price_pct", "valid_url_pct", "valid_stock_pct"):
+                  value = float(row[field])
+                  if not 0 <= value <= 100:
+                      raise ValueError(f"Invalid percentage in {field}: {value}")
+          print("PHASE0_STORES=11")
+          print("PHASE0_CATALOG_PRODUCTS=" + rows[-1]["catalog_product_count"])
+          print("PHASE0_AMBIGUOUS_MATCHES=" + rows[-1]["ambiguous_match_count"])
           PY
 
       - name: Upload CSV report
