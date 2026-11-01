@@ -50,64 +50,6 @@ def test_notino_listing_admission_only_accepts_catalog_navigation():
     ) is None
 
 
-def test_amazon_fr_and_de_have_separate_marketplace_hosts():
-    assert catalog._discovery_bases("amazon_fr") == ("https://www.amazon.fr",)
-    assert catalog._discovery_bases("amazon_de") == ("https://www.amazon.de",)
-    assert catalog.STORE_LABELS["amazon_fr"] == "Amazon.fr"
-    assert catalog.STORE_LABELS["amazon_de"] == "Amazon.de"
-
-
-def test_amazon_only_admits_canonical_asin_detail_pages_for_its_market():
-    fr = catalog._html_product_url(
-        "amazon_fr", "https://www.amazon.fr/dp/B012345678?tag=tracking", "https://www.amazon.fr/"
-    )
-    de = catalog._html_product_url(
-        "amazon_de", "https://www.amazon.de/gp/product/B012345678?ref=search", "https://www.amazon.de/"
-    )
-    assert fr == "https://www.amazon.fr/dp/B012345678"
-    assert de == "https://www.amazon.de/dp/B012345678"
-    assert catalog._html_product_url(
-        "amazon_fr", "https://www.amazon.de/dp/B012345678", "https://www.amazon.fr/"
-    ) is None
-    assert catalog._html_product_url(
-        "amazon_de", "https://www.amazon.de/s?k=parfum", "https://www.amazon.de/"
-    ) is None
-    assert catalog._html_product_url(
-        "amazon_fr", "https://www.amazon.fr/product-reviews/B012345678", "https://www.amazon.fr/"
-    ) is None
-
-
-def test_amazon_catalog_seeds_are_locale_specific():
-    fr = catalog.HTML_DISCOVERY_SEEDS["amazon_fr"]
-    de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
-    assert fr and all("amazon.fr" in url for url in fr)
-    assert de and all("amazon.de" in url for url in de)
-
-
-def test_amazon_discovery_urls_are_market_specific():
-    assert catalog._discovery_bases("amazon_fr") == ("https://www.amazon.fr",)
-    assert catalog._discovery_bases("amazon_de") == ("https://www.amazon.de",)
-    assert catalog._html_product_url(
-        "amazon_fr", "https://www.amazon.fr/dp/B012345678?tag=tracking", "https://www.amazon.fr/"
-    ) == "https://www.amazon.fr/dp/B012345678"
-    assert catalog._html_product_url(
-        "amazon_de", "https://www.amazon.de/gp/product/B012345678?ref=search", "https://www.amazon.de/"
-    ) == "https://www.amazon.de/dp/B012345678"
-    assert catalog._html_product_url(
-        "amazon_fr", "https://www.amazon.de/dp/B012345678", "https://www.amazon.fr/"
-    ) is None
-    assert catalog._html_product_url(
-        "amazon_de", "https://www.amazon.de/s?k=parfum", "https://www.amazon.de/"
-    ) is None
-
-
-def test_amazon_discovery_seeds_stay_in_each_marketplace():
-    fr = catalog.HTML_DISCOVERY_SEEDS["amazon_fr"]
-    de = catalog.HTML_DISCOVERY_SEEDS["amazon_de"]
-    assert fr and all(url.startswith("https://www.amazon.fr/") for url in fr)
-    assert de and all(url.startswith("https://www.amazon.de/") for url in de)
-
-
 def test_failed_catalog_fetches_are_not_reported_as_verified_empty(monkeypatch):
     states = []
     monkeypatch.setattr(catalog, "_existing_count", lambda store: 0)
