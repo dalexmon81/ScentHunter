@@ -43,21 +43,21 @@ jobs:
           fi
           test -s phase-0-retailer-baseline.csv
           header=$(head -n 1 phase-0-retailer-baseline.csv | tr -d '\r')
-          test "$header" = 'store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
-          # Reject malformed/truncated CSV files and require at least one data row.
+          test "$header" = 'store,catalog_product_count,catalog_variant_count,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
           python - <<'PY'
           import csv
           from pathlib import Path
-          path = Path("phase-0-retailer-baseline.csv")
-          with path.open(newline="", encoding="utf-8-sig") as handle:
-              rows = list(csv.DictReader(handle))
+          with Path("phase-0-retailer-baseline.csv").open(newline="", encoding="utf-8-sig") as handle:
+              reader = csv.DictReader(handle)
+              rows = list(reader)
+          fields = set(reader.fieldnames or [])
           required = {
-              "store", "total_offers", "offers_with_valid_price",
-              "offers_with_valid_url", "offers_with_valid_availability",
-              "offers_matched_to_canonical_product",
+              "store", "catalog_product_count", "catalog_variant_count", "total_offers",
+              "offers_with_valid_price", "offers_with_valid_url",
+              "offers_with_valid_availability", "offers_matched_to_canonical_product",
               "offers_with_recent_capture", "stale_offers", "invalid_offers",
           }
-          if not rows or not required.issubset(rows[0]):
+          if not rows or not required.issubset(fields):
               raise SystemExit("CSV is empty or missing required fields")
           stores = [row["store"] for row in rows]
           if len(stores) != len(set(stores)):
