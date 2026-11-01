@@ -70,7 +70,47 @@ jobs:
             response_meta=$(curl --silent --show-error --connect-timeout 15 --max-time 240 \
               -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
               --output "$response_file" \
-              --write-out 
+              --write-out 'HTTP_STATUS=%{http_code}\nFINAL_URL=%{url_effective}\n' \
+              "$SCENTHUNTER_BASELINE_URL")
+            curl_exit=$?
+            set -e
+            printf '%s\n' "$response_meta"
+            http_status=$(printf '%s\n' "$response_meta" | sed -n 's/^HTTP_STATUS=//p' | tail -n 1)
+
+            if [[ "$curl_exit" -eq 0 && "$http_status" == "200" ]]; then
+              mv "$response_file" phase-0-retailer-baseline.csv
+              downloaded=1
+              break
+            fi
+
+            if [[ "$curl_exit" -eq 0 && "$http_status" == "503" ]]; then
+              echo "Baseline coverage is incomplete; attempt $attempt/$max_attempts. The endpoint refused to emit a partial CSV:"
+              cat "$response_file"
+              rm -f "$response_file"
+              if [[ "$attempt" -lt "$max_attempts" ]]; then
+                sleep 60
+                attempt=$((attempt + 1))
+                continue
+              fi
+              echo "::error::Active retailer offers did not become complete within the 12-minute discovery window."
+              exit 1
+            fi
+
+            case "$http_status" in
+              401|403) echo "::error::HTTP $http_status: token missing or GitHub Secret does not match Fly SCENTHUNTER_BASELINE_TOKEN." ;;
+              404) echo "::error::HTTP 404: endpoint is absent from the active Fly release, or the configured URL/path is wrong." ;;
+              500) echo "::error::HTTP 500: internal error while generating the baseline CSV." ;;
+              000|"") echo "::error::HTTP 000/timeout: baseline URL is wrong, the domain is unreachable, or the Fly app is unavailable. curl exit=$curl_exit." ;;
+              *) echo "::error::HTTP $http_status: baseline endpoint returned an unexpected status. curl exit=$curl_exit." ;;
+            esac
+            [[ -f "$response_file" ]] && cat "$response_file"
+            exit 1
+          done
+
+          if [[ "$downloaded" -ne 1 || ! -s phase-0-retailer-baseline.csv ]]; then
+            echo "::error::No complete offer-level CSV was downloaded."
+            exit 1
+          fi
 
           python3 - <<'PY'
           import csv
