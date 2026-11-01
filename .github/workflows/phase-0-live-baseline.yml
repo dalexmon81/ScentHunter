@@ -147,8 +147,8 @@ jobs:
                 job_status="$previous_status"
                 echo "Reusing current-scope in-flight job_id=$job_id status=$job_status stores=$previous_total"
               else
-                echo "Existing in-flight job has obsolete store scope ($previous_total); creating a fresh nine-store baseline."
-                start_new_job "Starting a fresh Phase 0 baseline for the nine active retailers."
+                echo "::error::An active Phase 0 job already exists (job_id=$previous_job_id, total_stores=$previous_total). Refusing to create a duplicate job."
+                exit 1
               fi
             else
               echo "Latest job is terminal (status=$previous_status); creating a fresh nine-store baseline."
@@ -168,10 +168,17 @@ jobs:
             jq . phase0-latest.json
             exit 1
           fi
-          deadline=$((SECONDS + 3600))
+          # One durable job is followed for at most 30 minutes. Never enqueue a
+          # second job while an existing queued/running job is present.
+          deadline=$((SECONDS + 1800))
           completed=false
-          while [[ "$job_status" == "queued" || "$job_status" == "running" ]]; do
-            (( SECONDS < deadline )) || break
+          heartbeat_missing_since=$SECONDS
+          while true; do
+            (( SECONDS < deadline )) || {
+              echo "::error::Phase 0 baseline timed out after 30 minutes."
+              exit 1
+            }
+
             status_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
               -H "$auth_header" -H "Accept: application/json" \
               --output phase0-status.json --write-out '%{http_code}' \
@@ -181,20 +188,66 @@ jobs:
               cat phase0-status.json
               exit 1
             }
+
             status_payload=$(cat phase0-status.json)
             job_status=$(jq -er '.status' <<< "$status_payload")
             progress=$(jq -r '.progress // 0' <<< "$status_payload")
             heartbeat=$(jq -r '.heartbeat_at // "null"' <<< "$status_payload")
+            job_detail_http=$(curl --silent --show-error --connect-timeout 10 --max-time 20 \
+              -H "$auth_header" -H "Accept: application/json" \
+              --output phase0-job-detail.json --write-out '%{http_code}' \
+              "$base_url/admin/phase0/baseline/jobs/$job_id")
+            [[ "$job_detail_http" == "200" ]] || {
+              echo "::error::Job detail endpoint returned HTTP $job_detail_http"
+              cat phase0-job-detail.json
+              exit 1
+            }
+            job_detail=$(cat phase0-job-detail.json)
+            current_store=$(jq -r '.current_store // .store // "unknown"' <<< "$job_detail")
             processed=$(jq -r '.processed_stores // 0' <<< "$status_payload")
             total=$(jq -r '.total_stores // 9' <<< "$status_payload")
-            echo "PHASE0_JOB_STATUS=$job_status progress=$progress stores=$processed/$total heartbeat_at=$heartbeat"
+            error_message=$(jq -r '.error_message // .error // ""' <<< "$status_payload")
+
+            echo "PHASE0_JOB_ID=$job_id"
+            echo "PHASE0_STATUS=$job_status"
+            echo "PHASE0_PROGRESS=$progress"
+            echo "PHASE0_HEARTBEAT_AT=$heartbeat"
+            echo "PHASE0_CURRENT_STORE=$current_store"
+            echo "PHASE0_PROCESSED_STORES=$processed"
+            echo "PHASE0_TOTAL_STORES=$total"
+            echo "PHASE0_ERROR=$error_message"
 
             case "$job_status" in
-              queued|running) sleep 15 ;;
-              completed) completed=true ;;
+              queued)
+                ;;
+              running)
+                now=$SECONDS
+                if [[ "$heartbeat" == "null" || -z "$heartbeat" ]]; then
+                  if (( now - heartbeat_missing_since > 600 )); then
+                    echo "::error::Worker heartbeat stalled: no heartbeat update for more than 10 minutes."
+                    exit 1
+                  fi
+                else
+                  heartbeat_epoch=$(date -u -d "$heartbeat" +%s 2>/dev/null || true)
+                  if [[ -z "$heartbeat_epoch" ]]; then
+                    echo "::error::Could not parse worker heartbeat_at: $heartbeat"
+                    exit 1
+                  fi
+                  current_epoch=$(date -u +%s)
+                  if (( current_epoch - heartbeat_epoch > 600 )); then
+                    echo "::error::Worker heartbeat stalled: no heartbeat update for more than 10 minutes."
+                    exit 1
+                  fi
+                  heartbeat_missing_since=$now
+                fi
+                ;;
+              completed)
+                completed=true
+                break
+                ;;
               failed)
                 echo "::error::Phase 0 worker failed:"
-                jq '{job_id,status,error,error_message,error_traceback}' <<< "$status_payload"
+                jq '{job_id,status,heartbeat_at,current_store,error_message,error,error_traceback,traceback}' <<< "$status_payload"
                 exit 1
                 ;;
               *)
@@ -203,11 +256,12 @@ jobs:
                 exit 1
                 ;;
             esac
+
+            sleep 20
           done
 
-          if [[ "$job_status" == "completed" ]]; then completed=true; fi
           [[ "$completed" == "true" ]] || {
-            echo "::error::Phase 0 job did not complete before the 60-minute polling deadline."
+            echo "::error::Phase 0 job exited polling without completed status."
             exit 1
           }
 
