@@ -44,6 +44,31 @@ import requests
 from bs4 import BeautifulSoup, SoupStrainer
 
 
+
+def _retry_sqlite_busy(operation, stage, attempts=9):
+    """Retry an operation only for transient SQLite writer contention."""
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            return operation()
+        except sqlite3.OperationalError as exc:
+            message = str(exc).casefold()
+            if not any(token in message for token in ("database is locked", "database is busy", "database table is locked", "database table is busy")):
+                raise
+            if attempt >= max(1, int(attempts)):
+                print(
+                    f"CATALOG SQLITE BUSY RETRIES EXHAUSTED stage={stage} "
+                    f"attempts={attempt} error={exc}",
+                    flush=True,
+                )
+                raise
+            delay = min(0.10 * (2 ** (attempt - 1)), 4.0)
+            print(
+                f"CATALOG SQLITE BUSY RETRY stage={stage} "
+                f"attempt={attempt}/{attempts} delay={delay:.2f}s",
+                flush=True,
+            )
+            time.sleep(delay)
+
 def _set_catalog_pool_worker_os_name():
     """Prevent executor threads from inheriting the discovery-active Linux name.
 
