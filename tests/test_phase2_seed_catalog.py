@@ -135,7 +135,8 @@ def test_real_source_catalog_dry_run_reports_unmatched_variant_count():
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "validated"
-    assert report["brands"] == 61
+    assert report["source_brand_records"] == 61
+    assert report["brands"] == 60
     assert report["fragrances"] == 1389
     assert report["variants"] == 511
     assert report["products_without_variants"] == 1063
