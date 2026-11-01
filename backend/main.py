@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 import csv, hmac, importlib, io, json, os, re, signal, sqlite3, subprocess, sys, tempfile, threading, time, uuid, urllib.parse
 try:
     from product_matcher import ProductMatcher
@@ -5215,3 +5215,41 @@ def phase_0_baseline_csv(x_report_token: str = Header(default='', alias='X-Repor
         headers={'Content-Disposition': 'attachment; filename="phase-0-retailer-baseline.csv"',
                  'Cache-Control': 'no-store'},
     )
+
+
+@app.get('/phase-0-report', response_class=HTMLResponse, include_in_schema=False)
+def phase_0_report_page():
+    """Simple mobile-friendly download page; the token is sent only in a header."""
+    return HTMLResponse("""<!doctype html>
+<html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScentHunter — Report Fase 0</title>
+<style>
+body{font:16px system-ui,sans-serif;max-width:520px;margin:12vh auto;padding:24px;color:#202124}
+h1{font-size:1.5rem}p{line-height:1.5;color:#555}
+input,button{box-sizing:border-box;width:100%;padding:14px;margin:8px 0;border:1px solid #bbb;border-radius:9px;font:inherit}
+button{background:#202124;color:white;border:0;font-weight:600}
+#status{min-height:1.5em;font-size:.9rem}
+</style>
+<h1>Report catalogo — Fase 0</h1>
+<p>Inserisci la chiave di accesso configurata per il report. Il file viene generato leggendo il database reale; non vengono avviati scraper né modificati dati.</p>
+<form id="report-form">
+<label for="token">Chiave di accesso</label>
+<input id="token" type="password" autocomplete="current-password" required>
+<button type="submit">Genera e scarica CSV</button>
+</form><p id="status" role="status"></p>
+<script>
+document.getElementById('report-form').addEventListener('submit',async function(event){
+ event.preventDefault();
+ const status=document.getElementById('status');
+ const button=this.querySelector('button');
+ button.disabled=true; status.textContent='Generazione del report…';
+ try{
+  const response=await fetch('/diagnostic/phase-0-baseline.csv',{headers:{'X-Report-Token':document.getElementById('token').value},cache:'no-store'});
+  if(!response.ok){let message='Errore '+response.status;try{const body=await response.json();message=body.detail||message}catch(_){}throw new Error(message)}
+  const blob=await response.blob();const url=URL.createObjectURL(blob);const link=document.createElement('a');
+  link.href=url;link.download='phase-0-retailer-baseline.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+  status.textContent='Report generato e scaricato.';
+ }catch(error){status.textContent='Impossibile generare il report: '+error.message}
+ finally{button.disabled=false}
+});
+</script></html>""")
