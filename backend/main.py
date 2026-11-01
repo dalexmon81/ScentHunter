@@ -5180,36 +5180,34 @@ import csv as _phase0_csv
 import hmac as _phase0_hmac
 import io as _phase0_io
 import sqlite3 as _phase0_sqlite3
+from urllib.parse import urlparse as _phase0_urlparse
 from datetime import datetime as _phase0_datetime, timezone as _phase0_timezone
 from fastapi import Header as _Phase0Header, HTTPException as _Phase0HTTPException
 from fastapi.responses import Response as _Phase0Response
 
-_PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability', 'available', 'unavailable'}
-CSV_HEADER = (
-    "store,total_offers,offers_with_valid_price,"
-    "offers_with_valid_url,offers_with_valid_availability,"
-    "offers_matched_to_canonical_product,"
-    "offers_with_recent_capture,stale_offers,invalid_offers"
+_PHASE0_VALID_AVAILABILITY = {'in_stock', 'out_of_stock', 'preorder', 'backorder', 'limited_availability'}
+_PHASE0_CSV_HEADER = (
+    "store,total_offers,offers_with_valid_price,valid_price_pct,"
+    "offers_with_valid_url,valid_url_pct,offers_with_valid_availability,valid_stock_pct,"
+    "offers_matched_to_canonical_product,ambiguous_match_count,unresolved_match_count,"
+    "catalog_product_count,offers_with_recent_capture,stale_offers,invalid_offers"
 )
 
 @app.get('/admin/phase0/baseline-report.csv')
 def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
-    """Export aggregate store quality metrics without writes or scraping."""
+    """Export aggregate store quality and canonical matching metrics, read-only."""
     expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
     supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
     if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
         raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
     try:
+        from scenthunter_next_engine.catalog_repository import CatalogRepository
+        from scenthunter_next_engine.canonical_matcher import CanonicalMatcher
+        from scenthunter_next_engine.models import MatchStatus, RetailerOffer
+
         catalog_path = Path(__file__).resolve().parent / 'product_catalog.json'
-        with catalog_path.open('r', encoding='utf-8') as handle:
-            payload = json.load(handle)
-        canonical = set()
-        for product in (payload.get('products', []) if isinstance(payload, dict) else []):
-            if not isinstance(product, dict): continue
-            brand = str(product.get('brand_name') or '').strip().casefold()
-            for value in [product.get('canonical_name'), *(product.get('aliases') or [])]:
-                name = str(value or '').strip().casefold()
-                if name: canonical.add((brand, name))
+        catalog = CatalogRepository.from_file(catalog_path)
+        matcher = CanonicalMatcher(catalog)
         db_path = Path(os.environ.get('SCENTHUNTER_CATALOG_DB', str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'))).expanduser().resolve()
         conn = _phase0_sqlite3.connect(f'file:{db_path}?mode=ro', uri=True, timeout=10)
         conn.row_factory = _phase0_sqlite3.Row
@@ -5219,75 +5217,160 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
             tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if 'store_products' not in tables and 'store_product_variants' not in tables:
                 raise RuntimeError('No retailer offers table found')
-            # Stream rows from SQLite instead of materializing the entire
-            # retailer catalog in memory before calculating the report.
-            if 'store_product_variants' in tables and 'store_products' in tables:
-                rows = conn.execute("""
-                    SELECT store, COALESCE(variant_url, url) AS offer_url,
-                           name, brand, price, currency, availability, fetched_at
-                      FROM store_product_variants
-                    UNION ALL
-                    SELECT p.store, p.url AS offer_url, p.name, p.brand,
-                           p.price, p.currency, p.availability, p.fetched_at
-                      FROM store_products AS p
-                     WHERE NOT EXISTS (
-                           SELECT 1 FROM store_product_variants AS v
-                            WHERE v.store = p.store AND v.url = p.url
-                     )
-                """)
+
+            def select_expr(columns, name, fallback='NULL'):
+                return name if name in columns else fallback
+
+            if 'store_product_variants' in tables:
+                variant_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_product_variants)')}
             else:
-                source = 'store_product_variants' if 'store_product_variants' in tables else 'store_products'
-                columns = {r['name'] for r in conn.execute(f'PRAGMA table_info({source})')}
-                required = {'store','url','name','brand','price','availability','fetched_at'}
-                if not required.issubset(columns):
-                    raise RuntimeError(f'Unexpected {source} schema')
-                url_expr = "COALESCE(variant_url,url)" if source == 'store_product_variants' and 'variant_url' in columns else 'url'
-                rows = conn.execute(f"SELECT store,{url_expr} AS offer_url,name,brand,price,currency,availability,fetched_at FROM {source}")
+                variant_columns = set()
+            if 'store_products' in tables:
+                product_columns = {r['name'] for r in conn.execute('PRAGMA table_info(store_products)')}
+            else:
+                product_columns = set()
+
+            def offer_select(alias, columns, store_expr):
+                url_expr = "COALESCE(variant_url,url)" if alias == 'v' and {'variant_url','url'}.issubset(columns) else select_expr(columns, 'url')
+                return (
+                    f"{store_expr} AS store,{url_expr} AS offer_url,"
+                    f"{select_expr(columns,'name')} AS name,{select_expr(columns,'brand')} AS brand,"
+                    f"{select_expr(columns,'sku')} AS sku,{select_expr(columns,'gtin')} AS gtin,"
+                    f"{select_expr(columns,'size_ml')} AS size_ml,{select_expr(columns,'concentration')} AS concentration,"
+                    f"{select_expr(columns,'price')} AS price,{select_expr(columns,'currency',"'EUR'")} AS currency,"
+                    f"{select_expr(columns,'availability')} AS availability,{select_expr(columns,'fetched_at')} AS fetched_at"
+                )
+
+            if variant_columns and product_columns:
+                variant_select = offer_select('v', variant_columns, 'v.store')
+                product_select = offer_select('p', product_columns, 'p.store')
+                rows = conn.execute(
+                    f"SELECT {variant_select} FROM store_product_variants AS v "
+                    f"UNION ALL SELECT {product_select} FROM store_products AS p "
+                    "WHERE NOT EXISTS (SELECT 1 FROM store_product_variants AS v "
+                    "WHERE v.store=p.store AND v.url=p.url)"
+                )
+                source = 'store_product_variants+store_products'
+            elif variant_columns:
+                rows = conn.execute(f"SELECT {offer_select('v', variant_columns, 'v.store')} FROM store_product_variants AS v")
+                source = 'store_product_variants'
+            else:
+                rows = conn.execute(f"SELECT {offer_select('p', product_columns, 'p.store')} FROM store_products AS p")
+                source = 'store_products'
+
+            def valid_price(row):
+                try:
+                    return float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
+                except (TypeError, ValueError):
+                    return False
+
+            def valid_url(value):
+                try:
+                    parsed = _phase0_urlparse(str(value or '').strip())
+                    return parsed.scheme in {'http', 'https'} and bool(parsed.netloc)
+                except ValueError:
+                    return False
+
             for row in rows:
                 store = str(row['store'] or 'unknown')
-                item = totals.setdefault(store, {'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0})
+                item = totals.setdefault(store, {
+                    'total_offers':0,'offers_with_valid_price':0,'offers_with_valid_url':0,
+                    'offers_with_valid_availability':0,'offers_matched_to_canonical_product':0,
+                    'ambiguous_match_count':0,'unresolved_match_count':0,
+                    'offers_with_recent_capture':0,'stale_offers':0,'invalid_offers':0,
+                })
                 item['total_offers'] += 1
-                try: price_ok = float(row['price']) > 0 and str(row['currency'] or 'EUR').upper() == 'EUR'
-                except (TypeError, ValueError): price_ok = False
-                url = str(row['offer_url'] or '').strip()
-                url_ok = url.startswith(('https://','http://')) and bool(url.split('/',3)[2] if '://' in url else '')
-                availability_ok = str(row['availability'] or '').strip().lower() in _PHASE0_VALID_AVAILABILITY
+                price_ok = valid_price(row)
+                url_ok = valid_url(row['offer_url'])
+                stock_ok = str(row['availability'] or '').strip().lower() in _PHASE0_VALID_AVAILABILITY
                 if price_ok: item['offers_with_valid_price'] += 1
                 if url_ok: item['offers_with_valid_url'] += 1
-                if availability_ok: item['offers_with_valid_availability'] += 1
-                if (str(row['brand'] or '').strip().casefold(), str(row['name'] or '').strip().casefold()) in canonical: item['offers_matched_to_canonical_product'] += 1
-                try: age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
-                except (TypeError, ValueError): age = None
-                if age is not None and 0 <= age <= 7*24*60*60: item['offers_with_recent_capture'] += 1
-                else: item['stale_offers'] += 1
-                if not (price_ok and url_ok and availability_ok): item['invalid_offers'] += 1
+                if stock_ok: item['offers_with_valid_availability'] += 1
+
+                size_ml = None
+                try:
+                    raw_size = float(row['size_ml'])
+                    if raw_size > 0 and raw_size.is_integer():
+                        size_ml = int(raw_size)
+                except (TypeError, ValueError):
+                    pass
+                offer = RetailerOffer(
+                    retailer=store,
+                    raw_name=str(row['name'] or 'unknown product'),
+                    product_url=str(row['offer_url']) if row['offer_url'] else None,
+                    retailer_product_id=str(row['gtin'] or row['sku']) if (row['gtin'] or row['sku']) else None,
+                    brand_raw=str(row['brand']) if row['brand'] else None,
+                    size_ml=size_ml,
+                    currency=str(row['currency'] or 'EUR').upper(),
+                    availability=str(row['availability']) if row['availability'] else None,
+                    raw_payload={'gtin':row['gtin'],'sku':row['sku'],'concentration':row['concentration']},
+                )
+                match = matcher.match(offer)
+                if match.status is MatchStatus.MATCHED:
+                    item['offers_matched_to_canonical_product'] += 1
+                elif match.status is MatchStatus.AMBIGUOUS:
+                    item['ambiguous_match_count'] += 1
+                else:
+                    item['unresolved_match_count'] += 1
+
+                try:
+                    age = now - float(row['fetched_at']) if row['fetched_at'] is not None else None
+                except (TypeError, ValueError):
+                    age = None
+                if age is not None and 0 <= age <= 7*24*60*60:
+                    item['offers_with_recent_capture'] += 1
+                else:
+                    item['stale_offers'] += 1
+                if not (price_ok and url_ok and stock_ok):
+                    item['invalid_offers'] += 1
         finally:
             conn.close()
+
         output = _phase0_io.StringIO(newline="")
         writer = _phase0_csv.writer(output, lineterminator="\n")
-        writer.writerow(CSV_HEADER.split(","))
+        writer.writerow(_PHASE0_CSV_HEADER.split(","))
+        aggregate_keys = (
+            'total_offers','offers_with_valid_price','offers_with_valid_url',
+            'offers_with_valid_availability','offers_matched_to_canonical_product',
+            'ambiguous_match_count','unresolved_match_count','offers_with_recent_capture',
+            'stale_offers','invalid_offers',
+        )
+        aggregate = {key:0 for key in aggregate_keys}
         for store in sorted(totals):
             item = totals[store]
+            for key in aggregate_keys: aggregate[key] += item[key]
+            count = item['total_offers']
             writer.writerow([
-                store,
-                item['total_offers'],
-                item['offers_with_valid_price'],
+                store,count,item['offers_with_valid_price'],
+                round(100*item['offers_with_valid_price']/count,2) if count else 0,
                 item['offers_with_valid_url'],
+                round(100*item['offers_with_valid_url']/count,2) if count else 0,
                 item['offers_with_valid_availability'],
-                item['offers_matched_to_canonical_product'],
-                item['offers_with_recent_capture'],
-                item['stale_offers'],
-                item['invalid_offers'],
+                round(100*item['offers_with_valid_availability']/count,2) if count else 0,
+                item['offers_matched_to_canonical_product'],item['ambiguous_match_count'],
+                item['unresolved_match_count'],catalog.product_count(),
+                item['offers_with_recent_capture'],item['stale_offers'],item['invalid_offers'],
             ])
+        count = aggregate['total_offers']
+        writer.writerow([
+            'TOTAL',count,aggregate['offers_with_valid_price'],
+            round(100*aggregate['offers_with_valid_price']/count,2) if count else 0,
+            aggregate['offers_with_valid_url'],
+            round(100*aggregate['offers_with_valid_url']/count,2) if count else 0,
+            aggregate['offers_with_valid_availability'],
+            round(100*aggregate['offers_with_valid_availability']/count,2) if count else 0,
+            aggregate['offers_matched_to_canonical_product'],aggregate['ambiguous_match_count'],
+            aggregate['unresolved_match_count'],catalog.product_count(),
+            aggregate['offers_with_recent_capture'],aggregate['stale_offers'],aggregate['invalid_offers'],
+        ])
         csv_bytes = output.getvalue().encode("utf-8")
         return _Phase0Response(
             content=csv_bytes,
             media_type="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition": 'attachment; filename="phase-0-retailer-baseline.csv"'
-            },
+            headers={"Content-Disposition": 'attachment; filename="phase-0-retailer-baseline.csv"'},
         )
-    except _Phase0HTTPException: raise
+    except _Phase0HTTPException:
+        raise
     except Exception as exc:
         print(f'PHASE0_BASELINE_REPORT_ERROR: {type(exc).__name__}: {exc}',flush=True)
         raise _Phase0HTTPException(status_code=500,detail='Baseline report generation failed')
