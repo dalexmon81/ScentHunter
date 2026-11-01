@@ -5204,3 +5204,47 @@ def phase0_baseline_report(authorization: str = _Phase0Header(default='')):
         ) from exc
 
 # Phase 0 baseline endpoint is deployed with the production backend.
+
+
+@app.get('/admin/phase0/summary-report.csv')
+def phase0_summary_report(authorization: str = _Phase0Header(default='')):
+    """Export aggregate Phase 0 catalog and offer-quality metrics, read-only."""
+    expected = str(os.environ.get('SCENTHUNTER_BASELINE_TOKEN') or '')
+    supplied = authorization[7:].strip() if authorization.lower().startswith('bearer ') else ''
+    if not expected or not supplied or not _phase0_hmac.compare_digest(supplied, expected):
+        raise _Phase0HTTPException(status_code=401, detail='Unauthorized')
+    try:
+        from scenthunter_next_engine.baseline_report import (
+            BaselineIncompleteError as _Phase0BaselineIncompleteError,
+        )
+        from scenthunter_next_engine.baseline_summary import generate_summary
+
+        root = Path(__file__).resolve().parent
+        catalog_path = root / 'product_catalog.json'
+        db_path = Path(os.environ.get(
+            'SCENTHUNTER_CATALOG_DB', str(root / 'store_catalog.sqlite3')
+        )).expanduser().resolve()
+        with _phase0_tempfile.TemporaryDirectory(prefix='scenthunter-phase0-summary-') as temp_dir:
+            output_path = Path(temp_dir) / 'phase-0-summary.csv'
+            summary = generate_summary(catalog_path, db_path, output_path)
+            csv_bytes = output_path.read_bytes()
+        if summary.get('stores') != 9:
+            raise RuntimeError(
+                f"Expected 9 active retailers, got {summary.get('stores')}"
+            )
+        return _Phase0Response(
+            content=csv_bytes,
+            media_type='text/csv; charset=utf-8',
+            headers={
+                'Content-Disposition': 'attachment; filename="phase-0-summary.csv"'
+            },
+        )
+    except _Phase0HTTPException:
+        raise
+    except _Phase0BaselineIncompleteError as exc:
+        raise _Phase0HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        print(f'PHASE0_SUMMARY_REPORT_ERROR: {type(exc).__name__}: {exc}', flush=True)
+        raise _Phase0HTTPException(
+            status_code=500, detail='Summary report generation failed'
+        ) from exc
