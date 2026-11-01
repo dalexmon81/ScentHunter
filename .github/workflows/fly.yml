@@ -87,6 +87,16 @@ jobs:
             sleep "$delay"
           done
 
+      - name: Initialize and verify isolated Phase 2 SQLite catalog
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_command="cd /app/backend && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/python scripts/seed_catalog.py && /app/.venv/bin/python scripts/verify_catalog_sqlite.py"
+          flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
       - name: Verify production health and catalog API
         shell: bash
         run: |
