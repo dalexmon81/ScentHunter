@@ -6144,6 +6144,7 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
     # After a process restart, repair Deloox's persisted discovery state on the
     # first eligible background turn instead of making it wait behind two
     # unrelated retailers. Foreground searches still take precedence.
+    prioritize_notino_on_start = 'notino' in stores
     prioritize_deloox_on_start = 'deloox' in stores
     try:
         _recover_stale_discovery_states()
@@ -6176,7 +6177,10 @@ def catalog_discovery_loop(stop_event, interval_seconds=300.0):
         # other retailers instead of once per full seven-store round-robin.
         # Other retailers retain their own round-robin progress, and foreground
         # searches still take precedence over every background crawl.
-        if prioritize_deloox_on_start:
+        if prioritize_notino_on_start:
+            store = 'notino'
+            prioritize_notino_on_start = False
+        elif prioritize_deloox_on_start:
             store = 'deloox'
             prioritize_deloox_on_start = False
             non_deloox_since_deloox = 0

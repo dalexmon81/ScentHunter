@@ -2546,24 +2546,6 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
     # while Notino/Amazon finish their bounded attempts.
     # Prefer authorized Notino feed offers, then use the restored September
     # external-discovery/browser scraper when no fresh offer matches the query.
-    # Amazon prefers the approved Creators API; otherwise ordinary public HTML
-    # is tried once. Challenge pages are rejected, never bypassed.
-    def amazon_bridge_configured(store):
-        market = 'fr' if store == 'amazon_fr' else 'de'
-        approved = str(os.environ.get('AMAZON_CREATORS_API_COMPARISON_APPROVED', '')).strip().lower()
-        api_configured = (
-            approved in {'1', 'true', 'yes', 'on'}
-            and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_ID', '')).strip())
-            and bool(str(os.environ.get('AMAZON_CREATORS_API_CLIENT_SECRET', '')).strip())
-            and bool(str(os.environ.get(f'AMAZON_ASSOCIATE_TAG_{market.upper()}', '')).strip())
-        )
-        # Keep the public storefront adapter available by default for the
-        # asynchronous user search. Operators can still explicitly disable it.
-        public_fallback = str(
-            os.environ.get('AMAZON_PUBLIC_HTML_FALLBACK_ENABLED', '1')
-        ).strip().lower() in {'1', 'true', 'yes', 'on'}
-        return api_configured or public_fallback
-
     # Restore the September Notino external-search + rendered-card path.
     # Direct HTTP 403 only disables that transport; it must not disable the
     # independent public search/browser adapter. Can be opted out explicitly.
@@ -2571,14 +2553,11 @@ def _collect_catalog_reports_isolated(query, stores, on_report=None, on_result=N
         os.environ.get('NOTINO_PUBLIC_FALLBACK_ENABLED', '1')
     ).strip().lower() in {'1', 'true', 'yes', 'on'}
     live_bridge_stores = [
-        store for store in ('notino', 'amazon_fr', 'amazon_de')
+        store for store in ('notino',)
         if allow_live_fallback
         and store in reports_by_store
         and not int(reports_by_store[store].get('count') or 0)
-        and (
-            (store == 'notino' and notino_live_fallback_enabled)
-            or (store in ('amazon_fr', 'amazon_de') and amazon_bridge_configured(store))
-        )
+        and notino_live_fallback_enabled
         and not (cancel_event is not None and cancel_event.is_set())
     ]
     # These adapters perform multiple bounded requests and may use rendered
