@@ -52,7 +52,7 @@ class Store(Base):
     __tablename__ = "stores"
     __table_args__ = (
         CheckConstraint("reliability_score IS NULL OR (reliability_score >= 0 AND reliability_score <= 1)", name="reliability_score_range"),
-        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_iso_code"),
+        CheckConstraint("length(currency) = 3 AND currency = upper(currency)", name="currency_iso_code"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
