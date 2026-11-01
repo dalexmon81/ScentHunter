@@ -6,6 +6,7 @@ on:
       - refactor/catalog-first-architecture
     paths:
       - backend/main.py
+      - backend/scenthunter_next_engine/baseline_report.py
       - .github/workflows/phase-0-live-baseline.yml
   workflow_dispatch:
 
