@@ -187,7 +187,7 @@ class OfferEngineRuntimeTests(unittest.TestCase):
     def test_runner_connection_is_closed_after_execution(self):
         connection = FakeConnection()
         class FakeRunner:
-            def __init__(self, matcher, repository_factory):
+            def __init__(self, matcher, repository_factory, **kwargs):
                 self.repository_factory = repository_factory
             def run(self, connectors, query):
                 repository = self.repository_factory(next(iter(connectors)))
