@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+BACKEND_DIR = ROOT / "backend"
+sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
 from app.models import Brand, Fragrance, ProductVariant
 
