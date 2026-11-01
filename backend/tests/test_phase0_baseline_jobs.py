@@ -74,7 +74,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(created["status"], "queued")
         queued = get_job(created["job_id"])
         self.assertEqual(queued["status"], "queued")
-        self.assertEqual(queued["total_stores"], 11)
+        self.assertEqual(queued["total_stores"], 9)
 
         claimed = claim_next_job("worker-a")
         self.assertEqual(claimed["id"], created["job_id"])
@@ -186,7 +186,7 @@ class Phase0PersistentJobTests(unittest.TestCase):
         self.assertEqual(offer_rows[0]["store"], "bplatz")
         self.assertEqual(offer_rows[0]["canonical_product_id"], "product-1")
         self.assertEqual(offer_rows[0]["is_valid_offer"], "true")
-        self.assertEqual(len(STORES), 11)
+        self.assertEqual(len(STORES), 9)
         self.assertEqual(set(status_rows), set(STORES))
         self.assertTrue(all(status == "completed" for status in status_rows.values()))
 
