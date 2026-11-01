@@ -545,7 +545,7 @@ def generate_csv(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         target=heartbeat_loop, name=f"phase0-heartbeat-{job['id']}", daemon=True
     )
     heartbeat_thread.start()
-    ctx = multiprocessing.get_context("spawn")
+    ctx = multiprocessing.get_context("fork")
     rows_written = 0
     offers_read = 0
     processed_stores = 0
