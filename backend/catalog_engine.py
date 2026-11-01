@@ -78,8 +78,6 @@ STORES = {
     'easycosmetic': 'https://www.easycosmetic.de',
     'deloox': 'https://www.deloox.be',
     'notino': 'https://www.notino.fr',
-    'amazon_fr': 'https://www.amazon.fr',
-    'amazon_de': 'https://www.amazon.de',
 }
 
 STORE_LABELS = {
@@ -96,14 +94,7 @@ STORE_LABELS.update({
     'notino': 'Notino',
     'sabina': 'Sabina',
     'orioudh': 'Orioudh',
-    'amazon_fr': 'Amazon.fr',
-    'amazon_de': 'Amazon.de',
 })
-
-# Amazon marketplaces remain configured for future reactivation, but are
-# inactive until the approved Creators API credentials and marketplace tags exist.
-DISABLED_STORES = frozenset({'amazon_de', 'amazon_fr'})
-ACTIVE_STORES = tuple(store for store in STORES if store not in DISABLED_STORES)
 
 # Store-level discovery configuration only: official storefront hosts.
 # Deloox has several official localized hosts; trying all of them is still
@@ -125,14 +116,6 @@ DISCOVERY_BASES = {
     'notino': (
         # France only: never index or return Notino Germany for this store.
         'https://www.notino.fr',
-    ),
-    'amazon_fr': (
-        # France marketplace only; do not mix Amazon.de catalog URLs.
-        'https://www.amazon.fr',
-    ),
-    'amazon_de': (
-        # Germany marketplace only; do not mix Amazon.fr catalog URLs.
-        'https://www.amazon.de',
     ),
 }
 
@@ -218,17 +201,6 @@ HTML_DISCOVERY_SEEDS = {
         # Keep discovery strictly on the French storefront.
         'https://www.notino.fr/',
         'https://www.notino.fr/parfums/',
-    ),
-    'amazon_fr': (
-        # Generic French fragrance search surfaces; product pages are validated
-        # separately and only canonical ASIN URLs are admitted below.
-        'https://www.amazon.fr/s?k=parfum',
-        'https://www.amazon.fr/s?k=eau+de+parfum',
-    ),
-    'amazon_de': (
-        # Generic German fragrance search surfaces; keep URLs on Amazon.de.
-        'https://www.amazon.de/s?k=parfum',
-        'https://www.amazon.de/s?k=eau+de+parfum',
     ),
 }
 
@@ -3329,13 +3301,6 @@ def _set_sync_state(store, status, started_at=None, finished_at=None, discovered
 def discover_store(store):
     """Refresh active retailer discovery; disabled marketplaces are never crawled."""
     started_at = time.time()
-    if store in DISABLED_STORES:
-        _set_sync_state(
-            store, 'DISABLED_NO_CREDENTIALS', started_at=started_at,
-            finished_at=time.time(), discovered_count=0, fetched_count=0,
-            error='temporarily_disabled;approved_amazon_creators_api_credentials_missing',
-        )
-        return {'status': 'DISABLED_NO_CREDENTIALS', 'count': 0}
     notino_feed_error = None
     if store == 'notino':
         try:
@@ -3508,37 +3473,6 @@ def discover_store(store):
         )
         product_urls.update(fallback['product_urls'])
 
-    # Amazon catalog discovery uses the approved Creators API when configured.
-    # Only canonical ASIN URLs are persisted; current offer data is fetched
-    # separately by the background hydrator through GetItems.
-    amazon_api_discovery = None
-    if store in ('amazon_fr', 'amazon_de'):
-        try:
-            amazon_api = importlib.import_module('scrapers.amazon_creators_api')
-            market = 'fr' if store == 'amazon_fr' else 'de'
-            if amazon_api.is_configured(market):
-                amazon_api_discovery = amazon_api.discover_product_urls(market)
-                for product_url in amazon_api_discovery.get('urls', []):
-                    canonical = _html_product_url(store, product_url, STORES[store])
-                    if canonical:
-                        product_urls[canonical] = ''
-            else:
-                # Make missing production credentials explicit in catalog status.
-                # Previously this stayed None, hiding why the approved API path
-                # had not run and leaving operators to infer the cause from 503s.
-                amazon_api_discovery = {
-                    'status': 'unavailable',
-                    'urls': [],
-                    'queries': 0,
-                    'error': 'amazon_creators_api_not_configured',
-                }
-        except Exception as exc:
-            amazon_api_discovery = {
-                'status': 'unavailable',
-                'urls': [],
-                'error': f'{type(exc).__name__}:{exc}',
-            }
-
     diagnostics={
         'visited':len(visited),
         'successes':sitemap_successes,
@@ -3596,15 +3530,6 @@ def discover_store(store):
             f'seeds:{len(list(dict.fromkeys(list(HTML_DISCOVERY_SEEDS.get(store, ())) + sorted(html_sitemap_seeds))))}'
         )
         if fallback['errors']: details.append('html_errors='+' | '.join(fallback['errors'][:4]))
-    if amazon_api_discovery is not None:
-        details.append(
-            'amazon_creators_api='
-            f"status:{amazon_api_discovery.get('status')};"
-            f"urls:{len(amazon_api_discovery.get('urls') or [])};"
-            f"queries:{amazon_api_discovery.get('queries', 0)}"
-        )
-        if amazon_api_discovery.get('error'):
-            details.append('amazon_creators_api_error=' + str(amazon_api_discovery['error'])[:500])
     final_error=' | '.join(details) if details else error
     conn=db()
     conn.execute('UPDATE sync_state SET error=? WHERE store=?',(final_error,store))
