@@ -1,0 +1,47 @@
+name: Phase 0 - worker machine history (read-only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  machine-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Capture read-only Fly machine status
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [[ -z "${FLY_API_TOKEN:-}" ]]; then
+            echo "::error::FLY_API_TOKEN secret is missing."
+            exit 1
+          fi
+
+          {
+            echo "=== App status ==="
+            flyctl status --app scenthunter
+            echo
+            echo "=== Machine list (JSON) ==="
+            flyctl machine list --app scenthunter --json
+            echo
+            echo "=== Historical worker machine status: 8654e0da7d7268 ==="
+            flyctl machine status 8654e0da7d7268 --app scenthunter
+          } > phase0-worker-machine-history.txt 2>&1 || true
+
+          cat phase0-worker-machine-history.txt
+
+      - name: Upload machine history
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-worker-machine-history
+          path: phase0-worker-machine-history.txt
+          if-no-files-found: error
+          retention-days: 14
