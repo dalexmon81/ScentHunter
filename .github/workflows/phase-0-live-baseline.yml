@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: scent-hunter-phase-0-live-baseline-http
@@ -43,6 +44,35 @@ jobs:
           test -s phase-0-retailer-baseline.csv
           header=$(head -n 1 phase-0-retailer-baseline.csv | tr -d '\r')
           test "$header" = 'store,total_offers,offers_with_valid_price,offers_with_valid_url,offers_with_valid_availability,offers_matched_to_canonical_product,offers_with_recent_capture,stale_offers,invalid_offers'
+          # Reject malformed/truncated CSV files and require at least one data row.
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          path = Path("phase-0-retailer-baseline.csv")
+          with path.open(newline="", encoding="utf-8-sig") as handle:
+              rows = list(csv.DictReader(handle))
+          required = {
+              "store", "total_offers", "offers_with_valid_price",
+              "offers_with_valid_url", "offers_with_valid_availability",
+              "offers_matched_to_canonical_product",
+              "offers_with_recent_capture", "stale_offers", "invalid_offers",
+          }
+          if not rows or not required.issubset(rows[0]):
+              raise SystemExit("CSV is empty or missing required fields")
+          stores = [row["store"] for row in rows]
+          if len(stores) != len(set(stores)):
+              raise SystemExit("Duplicate store rows detected")
+          for row in rows:
+              for key in required - {"store"}:
+                  try:
+                      value = int(row[key])
+                  except (TypeError, ValueError):
+                      raise SystemExit(f"Invalid integer in {key} for {row['store']}")
+                  if value < 0:
+                      raise SystemExit(f"Negative metric in {key} for {row['store']}")
+          print(f"Validated CSV rows: {len(rows)}")
+          print(f"Stores: {', '.join(stores)}")
+          PY
       - name: Upload CSV report
         uses: actions/upload-artifact@v4
         with:
