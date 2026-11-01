@@ -5399,3 +5399,157 @@ def phase0_smoke_download(job_id: str = '', authorization: str = _Phase0Header(d
 
 # Phase 0 baseline endpoints are deployed with the production backend.
 
+
+
+# Restricted Phase 0 operational endpoints. These handlers use the same
+# constant-time Bearer-token authorization as the baseline administration API.
+@app.post('/admin/phase0/admin/resume-deloox-queue')
+def phase0_admin_resume_deloox_queue(authorization: str = _Phase0Header(default='')):
+    """Reactivate a small bounded batch of failed Deloox queue entries.
+
+    This does not start a scraper or discovery job. Existing background workers
+    consume the reactivated entries at their normal concurrency limits.
+    """
+    _phase0_authorize(authorization)
+    if not CATALOG_ENGINE_AVAILABLE or not callable(catalog_db):
+        raise _Phase0HTTPException(status_code=503, detail='Catalog database unavailable')
+
+    conn = catalog_db()
+    try:
+        now = time.time()
+        with conn:
+            discovery_rows = conn.execute(
+                """SELECT url FROM catalog_discovery_queue
+                   WHERE store='deloox' AND state='DEAD'
+                   ORDER BY last_finished_at ASC LIMIT 25"""
+            ).fetchall()
+            for row in discovery_rows:
+                conn.execute(
+                    """UPDATE catalog_discovery_queue
+                       SET state='ERROR', attempts=7, available_at=?,
+                           leased_until=NULL, lease_token=NULL
+                       WHERE store='deloox' AND url=? AND state='DEAD'""",
+                    (now, row['url']),
+                )
+
+            hydration_rows = conn.execute(
+                """SELECT url FROM hydration_queue
+                   WHERE store='deloox' AND state='DEAD'
+                   ORDER BY last_finished_at ASC LIMIT 25"""
+            ).fetchall()
+            for row in hydration_rows:
+                conn.execute(
+                    """UPDATE hydration_queue
+                       SET state='PENDING', attempts=0, available_at=?,
+                           leased_until=NULL, lease_token=NULL, last_error=NULL
+                       WHERE store='deloox' AND url=? AND state='DEAD'""",
+                    (now, row['url']),
+                )
+
+            # Expired discovery leases are safe to return to the queue.
+            expired = conn.execute(
+                """UPDATE catalog_discovery_queue
+                   SET state='PENDING', available_at=?, leased_until=NULL,
+                       lease_token=NULL
+                   WHERE store='deloox' AND state='PROCESSING'
+                     AND leased_until IS NOT NULL AND leased_until < ?""",
+                (now, now),
+            ).rowcount
+
+            discovery_state = conn.execute(
+                """SELECT state, COUNT(*) AS count FROM catalog_discovery_queue
+                   WHERE store='deloox' GROUP BY state"""
+            ).fetchall()
+            hydration_state = conn.execute(
+                """SELECT state, COUNT(*) AS count FROM hydration_queue
+                   WHERE store='deloox' GROUP BY state"""
+            ).fetchall()
+
+        return {
+            'ok': True,
+            'store': 'deloox',
+            'scraping_started': False,
+            'reactivated': {
+                'discovery_dead': len(discovery_rows),
+                'hydration_dead': len(hydration_rows),
+                'expired_discovery_leases': max(0, int(expired or 0)),
+            },
+            'batch_limit_per_queue': 25,
+            'discovery_queue': {row['state']: int(row['count']) for row in discovery_state},
+            'hydration_queue': {row['state']: int(row['count']) for row in hydration_state},
+        }
+    except Exception as exc:
+        raise _Phase0HTTPException(
+            status_code=503,
+            detail=f'Deloox queue operation unavailable: {type(exc).__name__}',
+        ) from exc
+    finally:
+        conn.close()
+
+
+@app.get('/admin/phase0/admin/check-store')
+def phase0_admin_check_store(
+    store: str = 'easycosmetic',
+    authorization: str = _Phase0Header(default=''),
+):
+    """Read-only, bounded diagnostic for one retailer; never starts a worker."""
+    _phase0_authorize(authorization)
+    store_key = str(store or '').strip().lower()
+    if store_key != 'easycosmetic':
+        raise _Phase0HTTPException(status_code=400, detail='Only easycosmetic is enabled for this check')
+    if not CATALOG_ENGINE_AVAILABLE:
+        raise _Phase0HTTPException(status_code=503, detail='Catalog engine unavailable')
+
+    import sqlite3 as _phase0_sqlite3
+    db_path = Path(os.environ.get(
+        'SCENTHUNTER_CATALOG_DB',
+        str(Path(__file__).resolve().parent / 'store_catalog.sqlite3'),
+    )).expanduser().resolve()
+    conn = None
+    try:
+        conn = _phase0_sqlite3.connect(
+            'file:' + str(db_path) + '?mode=ro', uri=True, timeout=2.0
+        )
+        conn.row_factory = _phase0_sqlite3.Row
+        conn.execute('PRAGMA busy_timeout=2000')
+        sync = conn.execute(
+            """SELECT status,started_at,finished_at,error FROM sync_state
+               WHERE store=?""", (store_key,)
+        ).fetchone()
+        queue = conn.execute(
+            """SELECT state,COUNT(*) AS count,MAX(last_error) AS latest_error,
+                      MAX(last_finished_at) AS last_finished_at
+               FROM hydration_queue WHERE store=? GROUP BY state""", (store_key,)
+        ).fetchall()
+        offers = conn.execute(
+            """SELECT COUNT(*) AS total,
+                      SUM(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 ELSE 0 END) AS priced
+               FROM store_products WHERE store=? AND fetch_status='OK'""", (store_key,)
+        ).fetchone()
+        errors = [row['latest_error'] for row in queue if row['latest_error']]
+        sync_error = sync['error'] if sync else None
+        error_text = ' '.join([str(sync_error or '')] + [str(item) for item in errors]).lower()
+        timeout_detected = 'timeout' in error_text or 'timed out' in error_text
+        return {
+            'ok': True,
+            'store': store_key,
+            'read_only': True,
+            'worker_started': False,
+            'status': sync['status'] if sync else 'NOT_SYNCED',
+            'last_error': sync_error or (errors[-1] if errors else None),
+            'timeout_detected': timeout_detected,
+            'offers': {
+                'total_fetched': int(offers['total'] or 0),
+                'with_price': int(offers['priced'] or 0),
+            },
+            'hydration_queue': {row['state']: int(row['count']) for row in queue},
+            'last_finished_at': sync['finished_at'] if sync else None,
+        }
+    except _phase0_sqlite3.OperationalError as exc:
+        raise _Phase0HTTPException(
+            status_code=503,
+            detail=f'Easycosmetic diagnostic database timeout/unavailable: {type(exc).__name__}',
+        ) from exc
+    finally:
+        if conn is not None:
+            conn.close()

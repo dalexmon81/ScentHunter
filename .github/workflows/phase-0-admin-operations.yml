@@ -1,0 +1,96 @@
+name: Phase 0 - admin operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Azione da eseguire"
+        required: true
+        type: choice
+        options:
+          - resume_deloox_queue
+          - check_easycosmetic
+          - start_baseline
+          - baseline_status
+      store:
+        description: "Store opzionale"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run admin operation
+        env:
+          SCENTHUNTER_BASELINE_URL: ${{ secrets.SCENTHUNTER_BASELINE_URL }}
+          SCENTHUNTER_BASELINE_TOKEN: ${{ secrets.SCENTHUNTER_BASELINE_TOKEN }}
+          ACTION: ${{ github.event.inputs.action }}
+          STORE: ${{ github.event.inputs.store }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          if [[ -z "$SCENTHUNTER_BASELINE_URL" || -z "$SCENTHUNTER_BASELINE_TOKEN" ]]; then
+            echo "::error::Required Phase 0 secrets are missing."
+            exit 1
+          fi
+
+          BASE_URL="${SCENTHUNTER_BASELINE_URL%/}"
+          case "$ACTION" in
+            resume_deloox_queue)
+              URL="$BASE_URL/admin/phase0/admin/resume-deloox-queue"
+              METHOD="POST"
+              ;;
+            check_easycosmetic)
+              URL="$BASE_URL/admin/phase0/admin/check-store?store=easycosmetic"
+              METHOD="GET"
+              ;;
+            start_baseline)
+              URL="$BASE_URL/admin/phase0/baseline/start"
+              METHOD="POST"
+              ;;
+            baseline_status)
+              URL="$BASE_URL/admin/phase0/baseline/latest"
+              METHOD="GET"
+              ;;
+            *)
+              echo "::error::Unknown action."
+              exit 1
+              ;;
+          esac
+
+          echo "Executing action: $ACTION"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          if [[ "$METHOD" == "POST" ]]; then
+            body="$(jq -cn --arg store "$STORE" '{store:$store}')"
+            http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+              -X POST \
+              -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              --data "$body" \
+              --output "$response_file" --write-out '%{http_code}' \
+              "$URL")"
+          else
+            http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $SCENTHUNTER_BASELINE_TOKEN" \
+              -H "Accept: application/json" \
+              --output "$response_file" --write-out '%{http_code}' \
+              "$URL")"
+          fi
+
+          echo "HTTP status: $http_code"
+          cat "$response_file"
+          echo
+          [[ "$http_code" =~ ^2[0-9][0-9]$ ]] || {
+            echo "::error::Admin operation failed with HTTP $http_code."
+            exit 1
+          }
