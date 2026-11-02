@@ -4077,7 +4077,16 @@ def _maybe_persist_bplatz_phase2(item, url):
             f"ingestion_raw_id={result.ingestion_raw_id} "
             f"offer_id={result.offer_id} reason={result.reason!r}", flush=True,
         )
-        return result.status == "promoted" and result.offer_id is not None
+        persisted = result.status == "promoted" and result.offer_id is not None
+        # The correlation is emitted later by _hydrate_one_task, after this
+        # call returns to the durable queue worker. Direct refresh_url() calls
+        # do not have this thread-local worker context and cannot claim proof.
+        worker_context = getattr(_thread_local, "hydration_worker_context", None)
+        if persisted and isinstance(worker_context, dict):
+            worker_context["phase2_persisted"] = True
+            worker_context["ingestion_raw_id"] = str(result.ingestion_raw_id)
+            worker_context["offer_id"] = str(result.offer_id)
+        return persisted
     except Exception as exc:
         # Phase 2 is an optional mirror. Its failure must not convert a successful
         # legacy hydration into a failed queue item or affect other retailers.
@@ -5919,8 +5928,38 @@ def _hydrate_one_task(task):
         _queue_release_claim(task)
         return None
 
+    previous_context = getattr(_thread_local, "hydration_worker_context", None)
+    worker_context = {
+        "worker": threading.current_thread().name,
+        "store": task.get("store"),
+        "url": task.get("url"),
+        "attempt": task.get("attempts"),
+        "phase2_persisted": False,
+    }
+    _thread_local.hydration_worker_context = worker_context
     try:
         item = refresh_url(task['store'], task['url'])
+        if task.get("store") == "bplatz" and worker_context.get("phase2_persisted") is True:
+            sku = str(
+                (item or {}).get("sku")
+                or (item or {}).get("gtin")
+                or (item or {}).get("mpn")
+                or "unknown"
+            ).strip()
+            sku = re.sub(r"\\s+", "_", sku)
+            timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            print(
+                "hydration_worker bplatz "
+                f"product={sku} phase2_persisted=true "
+                f"timestamp={timestamp} "
+                f"worker={worker_context['worker']} "
+                f"attempt={worker_context['attempt']} "
+                f"offer_id={worker_context.get('offer_id')} "
+                f"ingestion_raw_id={worker_context.get('ingestion_raw_id')} "
+                f"url={task.get('url')}",
+                flush=True,
+            )
+
         if item and item.get('name'):
             has_valid_offer = False
             try:
@@ -5967,7 +6006,7 @@ def _hydrate_one_task(task):
             finally:
                 conn.close()
 
-        match = re.search(r'(?:HTTP\s+|http_status=)(\d+)', detail)
+        match = re.search(r'(?:HTTP\\s+|http_status=)(\\d+)', detail)
         http_status = int(match.group(1)) if match else None
         _queue_mark_error(task, detail, http_status=http_status)
         return False
@@ -5987,6 +6026,14 @@ def _hydrate_one_task(task):
     except Exception as exc:
         _queue_mark_error(task, f'{type(exc).__name__}: {exc}')
         return False
+    finally:
+        if previous_context is None:
+            try:
+                delattr(_thread_local, "hydration_worker_context")
+            except AttributeError:
+                pass
+        else:
+            _thread_local.hydration_worker_context = previous_context
 
 
 def hydrate_catalog_batch(max_urls=2, workers=HYDRATION_WORKERS, deadline=None, stores=None):
