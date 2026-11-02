@@ -31,12 +31,12 @@ def upgrade():
     op.create_table(
         "legacy_product_id_map",
         sa.Column("legacy_product_id", sa.String(80), primary_key=True),
-        sa.Column("fragrance_id", sa.Uuid(), sa.ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False, unique=True),
+        sa.Column("fragrance_id", sa.Uuid(), sa.ForeignKey("fragrances.id", ondelete="RESTRICT"), nullable=False),
     )
     op.create_table(
         "legacy_variant_id_map",
         sa.Column("legacy_variant_id", sa.String(100), primary_key=True),
-        sa.Column("product_variant_id", sa.Uuid(), sa.ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False, unique=True),
+        sa.Column("product_variant_id", sa.Uuid(), sa.ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False),
     )
     with op.batch_alter_table("offers") as batch:
         batch.add_column(sa.Column("ingestion_raw_id", sa.Uuid(), nullable=True))
