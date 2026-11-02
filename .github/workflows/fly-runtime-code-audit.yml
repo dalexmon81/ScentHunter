@@ -2,22 +2,12 @@ name: Fly read-only runtime code identity audit
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm_read_only:
-        description: "Confirm read-only inspection of the production process and code"
-        required: true
-        type: choice
-        options:
-          - no
-          - yes
-        default: no
 
 permissions:
   contents: read
 
 jobs:
   runtime-audit:
-    if: ${{ inputs.confirm_read_only == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
