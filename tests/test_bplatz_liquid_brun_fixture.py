@@ -199,3 +199,5 @@ def test_negative_without_certain_association_stays_raw_and_not_offers():
             print(f"NEGATIVE_STATUS={status}")
         finally:
             connection.close()
+
+# Re-run offline verification after adding pytest to the dedicated workflow.
