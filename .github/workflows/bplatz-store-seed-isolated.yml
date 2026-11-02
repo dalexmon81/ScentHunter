@@ -8,6 +8,7 @@ on:
       - backend/app/models/**
       - backend/alembic/**
       - backend/scripts/seed_catalog.py
+      - backend/catalog_engine.py
       - tests/test_phase2_seed_catalog.py
       - tests/test_bplatz_persistence_service.py
       - tests/fixtures/bplatz/**
