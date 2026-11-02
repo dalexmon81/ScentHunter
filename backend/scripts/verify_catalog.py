@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -75,6 +76,22 @@ def collect_report(connection):
                 HAVING COUNT(*) > 1
             )
         """), {"store_id": store_id}).scalar_one(),
+        "duplicate_product_variant_pairs": connection.execute(text("""
+            SELECT COUNT(*) FROM (
+                SELECT product_variant_id
+                FROM offers
+                WHERE store_id = :store_id AND product_variant_id IS NOT NULL
+                GROUP BY product_variant_id
+                HAVING COUNT(*) > 1
+            )
+        """), {"store_id": store_id}).scalar_one(),
+        "external_product_ids": [
+            row[0] for row in connection.execute(text("""
+                SELECT DISTINCT external_product_id
+                FROM offers
+                WHERE store_id = :store_id AND external_product_id IS NOT NULL
+            """), {"store_id": store_id}).fetchall()
+        ],
         "current_offer_linked_to_promoted_raw": connection.execute(text("""
             SELECT COUNT(*) FROM offers o
             JOIN ingestion_raw ir ON ir.id = o.ingestion_raw_id
@@ -127,7 +144,10 @@ def main() -> int:
             "INVALID_ACTIVE_OFFERS": report["invalid_active_offers"] == 0,
             "BPLATZ_ACTIVE_OFFER": report["bplatz"]["active_offers"] > 0,
             "BPLATZ_CURRENT_PROMOTION": report["bplatz"]["current_offer_linked_to_promoted_raw"] > 0,
-            "DUPLICATES": report["bplatz"]["duplicate_external_product_ids"] == 0,
+            "DUPLICATES": (
+                report["bplatz"]["duplicate_external_product_ids"] == 0
+                and report["bplatz"]["duplicate_product_variant_pairs"] == 0
+            ),
         }
 
         if args.snapshot:
@@ -151,6 +171,7 @@ def main() -> int:
             checks["PRICE_HISTORY"] = after["price_history"] > before["price_history"]
             checks["MATCH_AUDIT"] = after["match_audit"] > before["match_audit"]
             checks["RAW_INGESTION"] = after["raw_rows"] > before["raw_rows"]
+            checks["WORKER_TARGET"] = args.worker_sku in before["external_product_ids"] if args.worker_sku else True
 
             print(
                 "OFFER_UPSERT="
@@ -198,17 +219,22 @@ def main() -> int:
                 worker_row
                 and worker_row["status"] == "promoted"
                 and isinstance(payload, dict)
-                and str(payload.get("sku") or "") == args.worker_sku
+                and re.sub(r"[^A-Za-z0-9._:-]", "_", str(payload.get("sku") or "").strip()) == args.worker_sku
             )
             checks["WORKER_LOG"] = worker_proof
             print("WORKER_LOG=" + ("PASS" if worker_proof else "FAIL")
                   + f" sku={args.worker_sku} raw_id={args.worker_ingestion_raw_id}")
+            print("WORKER_TARGET=" + ("PASS" if checks["WORKER_TARGET"] else "FAIL")
+                  + f" sku={args.worker_sku} existing_offer_count={len(report['bplatz']['external_product_ids'])}")
 
         for name, passed in checks.items():
             if name in {"OFFER_UPSERT", "PRICE_HISTORY", "MATCH_AUDIT"} and not args.baseline:
                 continue
             value = report["integrity_check"] if name == "INTEGRITY_CHECK" else (
-                report["bplatz"]["duplicate_external_product_ids"]
+                {
+                    "external_product_id_groups": report["bplatz"]["duplicate_external_product_ids"],
+                    "product_variant_groups": report["bplatz"]["duplicate_product_variant_pairs"],
+                }
                 if name == "DUPLICATES" else ("PASS" if passed else "FAIL")
             )
             if name == "INTEGRITY_CHECK":
