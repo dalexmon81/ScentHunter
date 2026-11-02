@@ -26,14 +26,19 @@ def upgrade():
         sa.CheckConstraint("match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 1)", name="ck_ingestion_raw_confidence_range"),
     )
     op.create_index("ix_ingestion_raw_store_status", "ingestion_raw", ["store_id", "status"])
-    op.add_column("offers", sa.Column("ingestion_raw_id", sa.Uuid(), nullable=True))
-    op.create_unique_constraint("uq_offers_ingestion_raw_id", "offers", ["ingestion_raw_id"])
-    op.create_foreign_key("fk_offers_ingestion_raw_id_ingestion_raw", "offers", "ingestion_raw", ["ingestion_raw_id"], ["id"], ondelete="RESTRICT")
+    with op.batch_alter_table("offers") as batch:
+        batch.add_column(sa.Column("ingestion_raw_id", sa.Uuid(), nullable=True))
+        batch.create_unique_constraint("uq_offers_ingestion_raw_id", ["ingestion_raw_id"])
+        batch.create_foreign_key(
+            "fk_offers_ingestion_raw_id_ingestion_raw", "ingestion_raw",
+            ["ingestion_raw_id"], ["id"], ondelete="RESTRICT"
+        )
 
 
 def downgrade():
-    op.drop_constraint("fk_offers_ingestion_raw_id_ingestion_raw", "offers", type_="foreignkey")
-    op.drop_constraint("uq_offers_ingestion_raw_id", "offers", type_="unique")
-    op.drop_column("offers", "ingestion_raw_id")
+    with op.batch_alter_table("offers") as batch:
+        batch.drop_constraint("fk_offers_ingestion_raw_id_ingestion_raw", type_="foreignkey")
+        batch.drop_constraint("uq_offers_ingestion_raw_id", type_="unique")
+        batch.drop_column("ingestion_raw_id")
     op.drop_index("ix_ingestion_raw_store_status", table_name="ingestion_raw")
     op.drop_table("ingestion_raw")
