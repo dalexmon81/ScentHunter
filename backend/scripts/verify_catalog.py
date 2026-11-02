@@ -159,7 +159,7 @@ def main() -> int:
             failed = [name for name, passed in checks.items() if not passed]
             if args.snapshot_file:
                 args.snapshot_file.write_text(
-                    json.dumps(report, indent=2, sort_keys=True, default=str) + "\\n",
+                    json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
                     encoding="utf-8",
                 )
             if failed:

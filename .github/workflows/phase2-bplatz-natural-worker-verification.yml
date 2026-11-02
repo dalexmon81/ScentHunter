@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/verify_catalog.py --snapshot --snapshot-file /tmp/phase2-bplatz-baseline.json && cat /tmp/phase2-bplatz-baseline.json'"
+          remote_command="/bin/sh -lc 'cd /app/backend && /app/.venv/bin/python scripts/verify_catalog.py --snapshot --snapshot-file /tmp/phase2-bplatz-baseline.json && cat /tmp/phase2-bplatz-baseline.json && echo BASELINE=PASS'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee phase2-bplatz-baseline.log
           grep -q 'BASELINE=PASS' phase2-bplatz-baseline.log
 
