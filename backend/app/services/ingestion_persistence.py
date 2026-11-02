@@ -193,7 +193,6 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                                  currency=currency, availability=availability))
         offer_id = offer.id
     else:
-        previous = (existing.price, existing.currency, existing.availability)
         existing.ingestion_raw_id = row.id
         existing.external_product_id = row.external_product_id or existing.external_product_id
         existing.product_variant_id = row.product_variant_id
