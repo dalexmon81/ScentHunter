@@ -296,6 +296,11 @@ def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
             assert offer.currency == "EUR"
             assert offer.url == normalized.product_url
             assert offer.availability == "in_stock"
+            store = session.get(Store, offer.store_id)
+            assert store is not None
+            assert (store.name, store.domain, store.country, store.currency, store.status) == (
+                "Bplatz", "bplatz.de", "DE", "EUR", "active",
+            )
             assert raw is not None and raw.status == "promoted"
             assert raw.legacy_product_id == group.canonical_product_id
             assert raw.legacy_variant_id == group.canonical_variant_id
