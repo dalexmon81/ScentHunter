@@ -1,4 +1,4 @@
-name: Read-only legacy SQLite lock diagnosis
+name: Read-only legacy SQLite lock diagnosis (two samples)
 
 on:
   push:
@@ -10,22 +10,21 @@ permissions:
 
 jobs:
   inspect-fly-processes:
-    name: Inspect Fly processes and SQLite lock files (read-only)
+    name: Compare PID 614 SQLite locks before and after 45 seconds
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Install Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Collect read-only process and file-lock evidence
+      - name: Collect two read-only process and lock snapshots
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         shell: bash
         run: |
           set -u
           : > legacy-lock-diagnosis.txt
-          remote_command="/bin/sh -lc 'echo === ps -eo pid,ppid,lstart,etime,stat,cmd ===; ps -eo pid,ppid,lstart,etime,stat,cmd || true; echo === lsof legacy ===; lsof /data/store_catalog.sqlite3 || true; echo === lsof phase2 ===; lsof /data/catalog/catalog.sqlite3 || true; echo === database inode size and timestamps ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1 || true; echo === pid 614 process metadata ===; cat /proc/614/comm /proc/614/cmdline /proc/614/status /proc/614/stat 2>&1 || true; echo === pid 614 open descriptors ===; ls -l /proc/614/fd 2>&1 || true; echo === all process descriptors matching catalog databases ===; for fd in /proc/[0-9]*/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in *store_catalog.sqlite3*|*catalog.sqlite3*) echo \"\$fd -> \$target\";; esac; done; echo === proc locks ===; cat /proc/locks'"
-
+          remote_command="/bin/sh -lc 'echo === SAMPLE_1_BEFORE ===; date -u; echo === /proc/locks ===; cat /proc/locks; echo === PID_614_FD ===; ls -l /proc/614/fd; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === DATABASE_INODES_AND_TIMESTAMPS ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === DATABASE_FD_TARGETS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done; echo === WAITING_45_SECONDS ===; sleep 45; echo === SAMPLE_2_AFTER ===; date -u; echo === /proc/locks ===; cat /proc/locks; echo === PID_614_FD ===; ls -l /proc/614/fd; echo === PID_614_CMDLINE ===; cat /proc/614/cmdline; echo; echo === PID_614_STATUS ===; cat /proc/614/status; echo === PID_614_WCHAN ===; cat /proc/614/wchan; echo; echo === DATABASE_INODES_AND_TIMESTAMPS ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1; echo === DATABASE_FD_TARGETS ===; for fd in /proc/614/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in /data/store_catalog.sqlite3|/data/catalog/catalog.sqlite3|/data/store_catalog.sqlite3-*|/data/catalog/catalog.sqlite3-*) echo \"\$fd -> \$target\";; esac; done'"
           flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-lock-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
           echo "FLY_SSH_EXIT_STATUS=$ssh_status" | tee -a legacy-lock-diagnosis.txt
@@ -35,7 +34,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: legacy-lock-diagnosis
+          name: legacy-lock-diagnosis-two-samples
           path: legacy-lock-diagnosis.txt
           if-no-files-found: warn
           retention-days: 30
