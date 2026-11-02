@@ -24,7 +24,7 @@ jobs:
         run: |
           set -u
           : > legacy-lock-diagnosis.txt
-          remote_command="/bin/sh -lc 'echo === ps -eo pid,ppid,lstart,etime,stat,cmd ===; ps -eo pid,ppid,lstart,etime,stat,cmd; echo === lsof legacy ===; lsof /data/store_catalog.sqlite3 || true; echo === lsof phase2 ===; lsof /data/catalog/catalog.sqlite3 || true; echo === database WAL and SHM files ===; ls -l --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1 || true; echo === proc locks ===; cat /proc/locks'"
+          remote_command="/bin/sh -lc 'echo === ps -eo pid,ppid,lstart,etime,stat,cmd ===; ps -eo pid,ppid,lstart,etime,stat,cmd || true; echo === lsof legacy ===; lsof /data/store_catalog.sqlite3 || true; echo === lsof phase2 ===; lsof /data/catalog/catalog.sqlite3 || true; echo === database inode size and timestamps ===; ls -li --time-style=long-iso /data/store_catalog.sqlite3* /data/catalog/catalog.sqlite3* 2>&1 || true; echo === pid 614 process metadata ===; cat /proc/614/comm /proc/614/cmdline /proc/614/status /proc/614/stat 2>&1 || true; echo === pid 614 open descriptors ===; ls -l /proc/614/fd 2>&1 || true; echo === all process descriptors matching catalog databases ===; for fd in /proc/[0-9]*/fd/*; do target=\$(readlink \"\$fd\" 2>/dev/null) || continue; case \"\$target\" in *store_catalog.sqlite3*|*catalog.sqlite3*) echo \"\$fd -> \$target\";; esac; done; echo === proc locks ===; cat /proc/locks'"
 
           flyctl ssh console --app scenthunter --select=false -C "$remote_command" 2>&1 | tee legacy-lock-diagnosis.txt
           ssh_status=${PIPESTATUS[0]}
