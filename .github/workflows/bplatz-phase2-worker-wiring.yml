@@ -18,6 +18,23 @@ on:
       - tests/test_bplatz_persistence_service.py
       - tests/fixtures/bplatz/**
       - .github/workflows/bplatz-phase2-worker-wiring.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - backend/catalog_engine.py
+      - backend/app/services/bplatz_phase2_adapter.py
+      - backend/app/services/ingestion_persistence.py
+      - backend/app/models/**
+      - backend/app/db.py
+      - backend/scenthunter_next_engine/**
+      - backend/alembic/**
+      - backend/scripts/seed_catalog.py
+      - backend/product_catalog.json
+      - backend/scrapers/bplatz/**
+      - tests/test_bplatz_persistence_service.py
+      - tests/fixtures/bplatz/**
+      - .github/workflows/bplatz-phase2-worker-wiring.yml
 
 permissions:
   contents: read
