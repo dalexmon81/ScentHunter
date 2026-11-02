@@ -68,7 +68,7 @@ jobs:
           echo WAITING_45_SECONDS_NO_DATABASE_OR_PROCESS_MODIFICATION
           sleep 45
           sample SAMPLE_2
-          REM
+          REMOTE
           )
           encoded_script=$(printf '%s' "$remote_script" | base64 -w0)
           remote_command="/bin/sh -lc 'echo $encoded_script | base64 -d | /bin/sh'"
