@@ -5,7 +5,9 @@ import os
 import sqlite3
 import subprocess
 import sys
-from pathlib import Path\n\nfrom sqlalchemy import create_engine, inspect, select
+from pathlib import Path
+
+from sqlalchemy import create_engine, inspect, select
 
 
 ROOT = Path(__file__).resolve().parents[1]
