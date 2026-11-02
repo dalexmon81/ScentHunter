@@ -808,10 +808,132 @@ def _ensure_schema(conn):
         _SCHEMA_READY = True
 
 
+
+class _TelemetrySQLiteConnection(sqlite3.Connection):
+    """Opt-in, stdout-only transaction telemetry for legacy SQLite diagnosis.
+
+    Disabled unless SCENTHUNTER_SQLITE_TXN_TELEMETRY=1. Emits lifecycle events
+    without issuing SQL or writing to the database.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._sh_txn_telemetry = os.environ.get(
+            "SCENTHUNTER_SQLITE_TXN_TELEMETRY", ""
+        ).strip() == "1"
+        self._sh_connection_id = hex(id(self))
+        self._sh_transaction_started = None
+        self._sh_db_path = str(DB_PATH)
+
+    def _sh_emit(self, event, **fields):
+        if not self._sh_txn_telemetry:
+            return
+        now = time.time()
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
+        payload = {
+            "event": event,
+            "timestamp_utc": f"{stamp}.{int((now % 1) * 1000):03d}Z",
+            "pid": os.getpid(),
+            "thread_ident": threading.get_ident(),
+            "thread_native_id": threading.get_native_id(),
+            "connection_id": self._sh_connection_id,
+            "db_path": self._sh_db_path,
+        }
+        payload.update(fields)
+        print("SQLITE_TXN_TELEMETRY " + json.dumps(payload, sort_keys=True, default=str), flush=True)
+
+    def _sh_begin_transition(self, was_in_transaction, operation):
+        if not was_in_transaction and self.in_transaction:
+            self._sh_transaction_started = time.monotonic()
+            self._sh_emit("begin", operation=operation)
+
+    def execute(self, sql, parameters=(), /):
+        before = self.in_transaction
+        try:
+            result = super().execute(sql, parameters)
+            self._sh_begin_transition(before, "execute")
+            return result
+        except Exception as exc:
+            self._sh_emit("exception", operation="execute",
+                          error_type=type(exc).__name__, error=str(exc)[:500],
+                          sql=str(sql)[:240])
+            raise
+
+    def executemany(self, sql, seq_of_parameters, /):
+        before = self.in_transaction
+        try:
+            result = super().executemany(sql, seq_of_parameters)
+            self._sh_begin_transition(before, "executemany")
+            return result
+        except Exception as exc:
+            self._sh_emit("exception", operation="executemany",
+                          error_type=type(exc).__name__, error=str(exc)[:500],
+                          sql=str(sql)[:240])
+            raise
+
+    def executescript(self, sql, /):
+        before = self.in_transaction
+        try:
+            result = super().executescript(sql)
+            self._sh_begin_transition(before, "executescript")
+            return result
+        except Exception as exc:
+            self._sh_emit("exception", operation="executescript",
+                          error_type=type(exc).__name__, error=str(exc)[:500])
+            raise
+
+    def _sh_finish(self, event):
+        started = self._sh_transaction_started
+        duration_ms = round((time.monotonic() - started) * 1000, 3) if started else None
+        self._sh_emit(event, duration_ms=duration_ms)
+        self._sh_transaction_started = None
+
+    def commit(self):
+        try:
+            result = super().commit()
+            self._sh_finish("commit")
+            return result
+        except Exception as exc:
+            self._sh_emit("exception", operation="commit",
+                          error_type=type(exc).__name__, error=str(exc)[:500])
+            raise
+
+    def rollback(self):
+        try:
+            result = super().rollback()
+            self._sh_finish("rollback")
+            return result
+        except Exception as exc:
+            self._sh_emit("exception", operation="rollback",
+                          error_type=type(exc).__name__, error=str(exc)[:500])
+            raise
+
+    def __enter__(self):
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            result = super().__exit__(exc_type, exc, tb)
+            self._sh_finish("rollback" if exc_type else "commit")
+            return result
+        except Exception as error:
+            self._sh_emit("exception", operation="context_exit",
+                          error_type=type(error).__name__, error=str(error)[:500])
+            raise
+
+    def close(self):
+        try:
+            return super().close()
+        finally:
+            self._sh_emit("close", in_transaction=self.in_transaction)
+
+
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=45)
+    conn = sqlite3.connect(
+        DB_PATH, timeout=45, factory=_TelemetrySQLiteConnection
+    )
     conn.row_factory = sqlite3.Row
+    conn._sh_emit("open", timeout_seconds=45)
     conn.execute('PRAGMA busy_timeout=45000')
     _ensure_schema(conn)
     conn.execute('PRAGMA synchronous=NORMAL')
