@@ -4081,6 +4081,19 @@ def _maybe_persist_bplatz_phase2(item, url):
         if engine is not None:
             engine.dispose()
 
+
+def _should_persist_bplatz_phase2(store, item):
+    """Gate the optional mirror to completed Bplatz offers only."""
+    if store != "bplatz" or not isinstance(item, dict):
+        return False
+    try:
+        price = float(item.get("price_num"))
+    except (TypeError, ValueError):
+        price = 0.0
+    availability = str(item.get("availability") or "").strip().lower()
+    return price > 0 or availability == "out_of_stock"
+
+
 def refresh_url(store, url):
     try:
         if store == 'easycosmetic':
@@ -4444,9 +4457,7 @@ def refresh_url(store, url):
             _LAST_REFRESH_ERRORS.pop((store, url), None)
         # The optional Phase 2 mirror runs only after the legacy catalog commit
         # and only for a confirmed Bplatz price or explicit out-of-stock result.
-        if store == 'bplatz' and (
-            has_explicit_price or str(item.get('availability') or '').lower() == 'out_of_stock'
-        ):
+        if _should_persist_bplatz_phase2(store, item):
             _maybe_persist_bplatz_phase2(item, url)
         return item
     except Exception as exc:
