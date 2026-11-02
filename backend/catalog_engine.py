@@ -3962,6 +3962,144 @@ def _refresh_timeout_for_store(store):
     return REFRESH_TIMEOUT
 
 
+
+_BPLATZ_PHASE2_MATCHER = None
+_BPLATZ_PHASE2_MATCHER_LOCK = threading.Lock()
+
+
+def _maybe_persist_bplatz_phase2(item, url):
+    """Opt-in Phase 2 persistence after a successful legacy Bplatz hydration."""
+    flag = str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return
+    engine = None
+    try:
+        from sqlalchemy import create_engine, event, select
+        from sqlalchemy.engine import make_url
+        from sqlalchemy.orm import Session
+        from app.models import Store
+        from app.services.bplatz_phase2_adapter import persist_bplatz_record
+        from scenthunter_next_engine.next_engine_service import NextEngineService
+
+        database_url = (
+            os.environ.get("SCENTHUNTER_CATALOG_DATABASE_URL")
+            or os.environ.get("SCENTHUNTER_DATABASE_URL")
+            or "sqlite:////data/catalog/catalog.sqlite3"
+        ).strip()
+        parsed_url = make_url(database_url)
+        if parsed_url.get_backend_name() != "sqlite" or not parsed_url.database or parsed_url.database == ":memory:":
+            print("BPLATZ_PHASE2_SKIPPED reason=unsupported_or_missing_database_url", flush=True)
+            return
+
+        phase2_path = Path(parsed_url.database).expanduser().resolve()
+        if not phase2_path.is_file():
+            print(f"BPLATZ_PHASE2_SKIPPED reason=database_file_missing path={phase2_path}", flush=True)
+            return
+
+        # Read-only preflight: no create_all, no Alembic, no implicit schema changes.
+        readonly_uri = "file:" + urllib.parse.quote(str(phase2_path), safe="/") + "?mode=ro"
+        try:
+            check = sqlite3.connect(readonly_uri, uri=True, timeout=2)
+            try:
+                check.execute("PRAGMA query_only=ON")
+                revision_row = check.execute(
+                    "SELECT version_num FROM alembic_version"
+                ).fetchone()
+                tables = {
+                    row[0] for row in check.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+            finally:
+                check.close()
+        except sqlite3.Error as exc:
+            print(
+                f"BPLATZ_PHASE2_SKIPPED reason=schema_preflight_error "
+                f"error={type(exc).__name__}:{exc}", flush=True,
+            )
+            return
+
+        required_tables = {
+            "stores", "brands", "fragrances", "product_variants", "offers",
+            "price_history", "match_audit", "ingestion_raw",
+            "legacy_product_id_map", "legacy_variant_id_map",
+        }
+        missing = sorted(required_tables - tables)
+        revision = revision_row[0] if revision_row else None
+        if revision != "0002_ingestion_raw" or missing:
+            print(
+                f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
+                f"revision={revision!r} missing_tables={missing}", flush=True,
+            )
+            return
+
+        engine = create_engine(database_url, connect_args={"timeout": 5})
+        @event.listens_for(engine, "connect")
+        def _phase2_sqlite_pragmas(dbapi_connection, _connection_record):
+            dbapi_connection.execute("PRAGMA foreign_keys=ON")
+            dbapi_connection.execute("PRAGMA busy_timeout=5000")
+
+        global _BPLATZ_PHASE2_MATCHER
+        if _BPLATZ_PHASE2_MATCHER is None:
+            with _BPLATZ_PHASE2_MATCHER_LOCK:
+                if _BPLATZ_PHASE2_MATCHER is None:
+                    _BPLATZ_PHASE2_MATCHER = NextEngineService.from_catalog_file(
+                        BASE_DIR / "product_catalog.json"
+                    )
+
+        raw_record = {
+            "raw_name": item.get("name"),
+            "brand_raw": item.get("brand"),
+            "size_ml": item.get("size_ml"),
+            "price": item.get("price_num"),
+            "currency": item.get("currency") or "EUR",
+            "product_url": item.get("url") or url,
+            "availability": item.get("availability"),
+            "sku": item.get("sku"),
+            "gtin": item.get("gtin"),
+            "mpn": item.get("mpn"),
+            "concentration": item.get("concentration"),
+        }
+        with Session(engine) as session, session.begin():
+            store = session.scalar(select(Store).where(Store.slug == "bplatz"))
+            if store is None or store.status != "active":
+                print(
+                    "BPLATZ_PHASE2_SKIPPED reason=bplatz_store_not_provisioned_or_inactive",
+                    flush=True,
+                )
+                return
+            result = persist_bplatz_record(
+                session, store_id=store.id, raw_record=raw_record,
+                matcher=_BPLATZ_PHASE2_MATCHER,
+            )
+        print(
+            f"BPLATZ_PHASE2_PERSISTENCE status={result.status} "
+            f"ingestion_raw_id={result.ingestion_raw_id} "
+            f"offer_id={result.offer_id} reason={result.reason!r}", flush=True,
+        )
+    except Exception as exc:
+        # Phase 2 is an optional mirror. Its failure must not convert a successful
+        # legacy hydration into a failed queue item or affect other retailers.
+        print(
+            f"BPLATZ_PHASE2_ERROR error={type(exc).__name__}:{exc}", flush=True,
+        )
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+
+def _should_persist_bplatz_phase2(store, item):
+    """Gate the optional mirror to completed Bplatz offers only."""
+    if store != "bplatz" or not isinstance(item, dict):
+        return False
+    try:
+        price = float(item.get("price_num"))
+    except (TypeError, ValueError):
+        price = 0.0
+    availability = str(item.get("availability") or "").strip().lower()
+    return price > 0 or availability == "out_of_stock"
+
+
 def refresh_url(store, url):
     try:
         if store == 'easycosmetic':
@@ -4323,6 +4461,10 @@ def refresh_url(store, url):
         )
         with _LAST_REFRESH_ERRORS_LOCK:
             _LAST_REFRESH_ERRORS.pop((store, url), None)
+        # The optional Phase 2 mirror runs only after the legacy catalog commit
+        # and only for a confirmed Bplatz price or explicit out-of-stock result.
+        if _should_persist_bplatz_phase2(store, item):
+            _maybe_persist_bplatz_phase2(item, url)
         return item
     except Exception as exc:
         error_detail = 'ERROR:' + type(exc).__name__ + (f': {exc}' if str(exc) else '')

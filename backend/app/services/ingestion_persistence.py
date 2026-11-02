@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -66,7 +67,8 @@ def stage_raw_offer(session: Session, *, store_id: UUID, raw_payload: dict,
 
 def record_match(session: Session, *, ingestion_raw_id: UUID,
                  product_variant_id: UUID | None, method: str,
-                 confidence: Decimal | None = None, reason: str | None = None) -> str:
+                 confidence: Decimal | None = None, reason: str | None = None,
+                 unresolved_status: str = "unmatched") -> str:
     """Persist UUID match; unresolved rows never receive a variant UUID."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
@@ -78,7 +80,9 @@ def record_match(session: Session, *, ingestion_raw_id: UUID,
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise ValueError("confidence must be between 0 and 1")
     if product_variant_id is None:
-        row.status = "unmatched"
+        if unresolved_status not in {"pending", "unmatched"}:
+            raise ValueError("unresolved_status must be pending or unmatched")
+        row.status = unresolved_status
         row.product_variant_id = None
         row.match_method = method
         row.match_confidence = confidence
@@ -100,6 +104,7 @@ def record_legacy_match(
     session: Session, *, ingestion_raw_id: UUID,
     legacy_product_id: str, legacy_variant_id: str,
     method: str, confidence: Decimal | None = None,
+    unresolved_status: str = "unmatched",
 ) -> ResolvedLegacyIds | None:
     """Persist historical matcher IDs, resolve via DB maps, then assign UUID."""
     row = session.get(IngestionRaw, ingestion_raw_id)
@@ -118,6 +123,7 @@ def record_legacy_match(
             session, ingestion_raw_id=ingestion_raw_id,
             product_variant_id=None, method=method, confidence=confidence,
             reason="legacy_catalog_id_mapping_not_found_or_inconsistent",
+            unresolved_status=unresolved_status,
         )
         return None
     record_match(
@@ -131,7 +137,7 @@ def record_legacy_match(
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
                   confidence: Decimal | None = None) -> UUID:
-    """Create offer, price history and match audit in caller's transaction."""
+    """Idempotently create/update one store offer and append price history."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
         raise ValueError("unknown ingestion_raw_id")
@@ -155,29 +161,64 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
         raise PromotionRejected("source is required")
     if confidence is not None and (not confidence.is_finite() or not 0 <= confidence <= 1):
         raise PromotionRejected("confidence must be between 0 and 1")
-    if row.external_product_id:
-        duplicate = session.scalar(select(Offer.id).where(
-            Offer.store_id == row.store_id,
-            Offer.external_product_id == row.external_product_id))
-        if duplicate is not None:
-            raise PromotionRejected("store/external product already has a published offer")
 
-    offer = Offer(
-        ingestion_raw_id=row.id, store_id=row.store_id,
-        product_variant_id=row.product_variant_id,
-        external_product_id=row.external_product_id, url=url, price=price,
-        currency=currency, availability=availability, source=source,
-        confidence=confidence if confidence is not None else row.match_confidence,
-        status="active",
-    )
-    session.add(offer)
-    session.flush()
-    session.add(PriceHistory(offer_id=offer.id, price=price,
-                             currency=currency, availability=availability))
+    existing = None
+    if row.external_product_id:
+        existing = session.scalar(select(Offer).where(
+            Offer.store_id == row.store_id,
+            Offer.external_product_id == row.external_product_id,
+        ).order_by(Offer.captured_at.desc()).limit(1))
+    if existing is None:
+        existing = session.scalar(select(Offer).where(
+            Offer.store_id == row.store_id,
+            Offer.product_variant_id == row.product_variant_id,
+        ).order_by(Offer.captured_at.desc()).limit(1))
+    if existing is not None and existing.product_variant_id != row.product_variant_id:
+        raise PromotionRejected(
+            "external product identity is already linked to a different canonical variant"
+        )
+
+    if existing is None:
+        offer = Offer(
+            ingestion_raw_id=row.id, store_id=row.store_id,
+            product_variant_id=row.product_variant_id,
+            external_product_id=row.external_product_id, url=url, price=price,
+            currency=currency, availability=availability, source=source,
+            confidence=confidence if confidence is not None else row.match_confidence,
+            status="active",
+        )
+        session.add(offer)
+        session.flush()
+        session.add(PriceHistory(offer_id=offer.id, price=price,
+                                 currency=currency, availability=availability))
+        offer_id = offer.id
+    else:
+        previous = (existing.price, existing.currency, existing.availability)
+        existing.ingestion_raw_id = row.id
+        existing.external_product_id = row.external_product_id or existing.external_product_id
+        existing.product_variant_id = row.product_variant_id
+        existing.url = url
+        existing.captured_at = datetime.now(timezone.utc)
+        existing.price = price
+        existing.currency = currency
+        existing.availability = availability
+        existing.source = source
+        existing.confidence = confidence if confidence is not None else row.match_confidence
+        existing.status = "active"
+        if previous != (price, currency, availability):
+            session.add(PriceHistory(
+                offer_id=existing.id, price=price,
+                currency=currency, availability=availability,
+            ))
+        offer_id = existing.id
+        session.flush()
+
     session.add(MatchAudit(
-        offer_id=offer.id, product_variant_id=row.product_variant_id,
-        method=row.match_method or "unspecified", confidence=offer.confidence,
-        reason="promoted_from_resolved_legacy_catalog_ids"))
+        offer_id=offer_id, product_variant_id=row.product_variant_id,
+        method=row.match_method or "unspecified",
+        confidence=confidence if confidence is not None else row.match_confidence,
+        reason="promoted_from_resolved_legacy_catalog_ids",
+    ))
     row.status = "promoted"
     session.flush()
-    return offer.id
+    return offer_id
