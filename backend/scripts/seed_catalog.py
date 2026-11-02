@@ -21,9 +21,20 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 from app.db import make_engine
-from app.models import Brand, Fragrance, ProductVariant, LegacyProductIdMap, LegacyVariantIdMap
+from app.models import Brand, Fragrance, ProductVariant, Store, LegacyProductIdMap, LegacyVariantIdMap
 
 NAMESPACE = uuid.UUID("f12f2c2b-4c1f-4f4e-9b14-67d59d4b7f21")
+
+# Deliberately seed only Bplatz while its Phase 2 adapter is being validated.
+# Other retailer stores remain operator-managed and are never touched here.
+BPLATZ_STORE = {
+    "name": "Bplatz",
+    "slug": "bplatz",
+    "domain": "bplatz.de",
+    "country": "DE",
+    "currency": "EUR",
+    "status": "active",
+}
 
 
 def norm(value: str) -> str:
@@ -144,6 +155,7 @@ def main() -> int:
         "products_without_variants": len(products_without_variants),
         "products_without_variants_examples": products_without_variants[:25],
         "offers_imported": 0,
+        "stores_to_seed": [BPLATZ_STORE.copy()],
         "database_written": False,
         "source_modified": False,
     }
@@ -239,6 +251,16 @@ def main() -> int:
                     elif variant_map.product_variant_id != variant_row.id:
                         raise RuntimeError(f"Legacy variant ID {source_id} is already mapped to a different variant UUID.")
 
+        # Idempotent, narrowly-scoped upsert: this seed owns only slug=bplatz.
+        # No other retailer rows are queried for mutation or created here.
+        with Session(engine) as session, session.begin():
+            store = session.scalar(select(Store).where(Store.slug == BPLATZ_STORE["slug"]))
+            if store is None:
+                session.add(Store(**BPLATZ_STORE))
+            else:
+                for field, value in BPLATZ_STORE.items():
+                    setattr(store, field, value)
+
         inspector = inspect(engine)
         expected_tables = {
             "brands", "fragrances", "product_variants", "stores",
@@ -269,6 +291,7 @@ def main() -> int:
             "database_counts": counts,
             "invalid_active_offers": invalid_active_offers,
             "database_written": True,
+            "seeded_store": BPLATZ_STORE.copy(),
         })
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
