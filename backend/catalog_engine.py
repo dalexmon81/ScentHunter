@@ -3971,7 +3971,7 @@ def _maybe_persist_bplatz_phase2(item, url):
     """Opt-in Phase 2 persistence after a successful legacy Bplatz hydration."""
     flag = str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
     if flag not in {"1", "true", "yes", "on"}:
-        return
+        return False
     engine = None
     try:
         from sqlalchemy import create_engine, event, select
@@ -3989,12 +3989,12 @@ def _maybe_persist_bplatz_phase2(item, url):
         parsed_url = make_url(database_url)
         if parsed_url.get_backend_name() != "sqlite" or not parsed_url.database or parsed_url.database == ":memory:":
             print("BPLATZ_PHASE2_SKIPPED reason=unsupported_or_missing_database_url", flush=True)
-            return
+            return False
 
         phase2_path = Path(parsed_url.database).expanduser().resolve()
         if not phase2_path.is_file():
             print(f"BPLATZ_PHASE2_SKIPPED reason=database_file_missing path={phase2_path}", flush=True)
-            return
+            return False
 
         # Read-only preflight: no create_all, no Alembic, no implicit schema changes.
         readonly_uri = "file:" + urllib.parse.quote(str(phase2_path), safe="/") + "?mode=ro"
@@ -4017,7 +4017,7 @@ def _maybe_persist_bplatz_phase2(item, url):
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_preflight_error "
                 f"error={type(exc).__name__}:{exc}", flush=True,
             )
-            return
+            return False
 
         required_tables = {
             "stores", "brands", "fragrances", "product_variants", "offers",
@@ -4031,7 +4031,7 @@ def _maybe_persist_bplatz_phase2(item, url):
                 f"BPLATZ_PHASE2_SKIPPED reason=schema_not_ready "
                 f"revision={revision!r} missing_tables={missing}", flush=True,
             )
-            return
+            return False
 
         engine = create_engine(database_url, connect_args={"timeout": 5})
         @event.listens_for(engine, "connect")
@@ -4067,7 +4067,7 @@ def _maybe_persist_bplatz_phase2(item, url):
                     "BPLATZ_PHASE2_SKIPPED reason=bplatz_store_not_provisioned_or_inactive",
                     flush=True,
                 )
-                return
+                return False
             result = persist_bplatz_record(
                 session, store_id=store.id, raw_record=raw_record,
                 matcher=_BPLATZ_PHASE2_MATCHER,
@@ -4077,12 +4077,14 @@ def _maybe_persist_bplatz_phase2(item, url):
             f"ingestion_raw_id={result.ingestion_raw_id} "
             f"offer_id={result.offer_id} reason={result.reason!r}", flush=True,
         )
+        return result.status == "promoted" and result.offer_id is not None
     except Exception as exc:
         # Phase 2 is an optional mirror. Its failure must not convert a successful
         # legacy hydration into a failed queue item or affect other retailers.
         print(
             f"BPLATZ_PHASE2_ERROR error={type(exc).__name__}:{exc}", flush=True,
         )
+        return False
     finally:
         if engine is not None:
             engine.dispose()
@@ -4258,6 +4260,30 @@ def refresh_url(store, url):
                 raise RuntimeError(
                     f'invalid_placeholder_price;store={store};price={raw_price!r}'
                 )
+
+        # With the Phase 2 flag enabled, Bplatz writes directly to the
+        # canonical catalog and must not initialize or lock the legacy SQLite DB.
+        # Other retailers and Bplatz with the flag OFF retain the legacy path.
+        phase2_flag = str(os.environ.get("BPLATZ_PHASE2_PERSISTENCE", "")).strip().lower()
+        if store == "bplatz" and phase2_flag in {"1", "true", "yes", "on"}:
+            if not _should_persist_bplatz_phase2(store, item):
+                error_detail = "ERROR:phase2_offer_not_eligible"
+                with _LAST_REFRESH_ERRORS_LOCK:
+                    _LAST_REFRESH_ERRORS[(store, url)] = error_detail
+                print(f"BPLATZ_PHASE2_SKIPPED reason=offer_not_eligible url={url!r}", flush=True)
+                return None
+            if not _maybe_persist_bplatz_phase2(item, url):
+                error_detail = "ERROR:phase2_persistence_failed"
+                with _LAST_REFRESH_ERRORS_LOCK:
+                    _LAST_REFRESH_ERRORS[(store, url)] = error_detail
+                return None
+            _update_local_search_index_product(
+                store, url, slug=url_slug(url),
+                name=item.get("name"), brand=item.get("brand"),
+            )
+            with _LAST_REFRESH_ERRORS_LOCK:
+                _LAST_REFRESH_ERRORS.pop((store, url), None)
+            return item
 
         if not item or not item.get('name'):
             h1_text = ''
