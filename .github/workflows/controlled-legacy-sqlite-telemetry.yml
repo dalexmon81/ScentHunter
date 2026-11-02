@@ -27,7 +27,7 @@ jobs:
       - name: Checkout the explicitly approved source
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.action == 'deploy_diagnostic' && '8d90a8a389a5ba4b2c4558a12f770187ba62a8b3' || 'main' }}
+          ref: ${{ inputs.action == 'deploy_diagnostic' && 'a9c6dd18d2001c3181f88f6a4c8d1647f7e31206' || 'main' }}
 
       - name: Verify selected source
         shell: bash
@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
           if [ "$REQUESTED_ACTION" = "deploy_diagnostic" ]; then
-            expected="8d90a8a389a5ba4b2c4558a12f770187ba62a8b3"
+            expected="a9c6dd18d2001c3181f88f6a4c8d1647f7e31206"
             test "$actual" = "$expected"
             echo "Verified diagnostic commit: $actual"
           elif [ "$REQUESTED_ACTION" = "restore_main" ]; then
