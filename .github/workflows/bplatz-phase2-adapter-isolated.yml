@@ -1,0 +1,35 @@
+name: Bplatz Phase 2 adapter isolated tests
+
+on:
+  push:
+    branches:
+      - feat/bplatz-phase2-adapter-isolated
+    paths:
+      - backend/app/services/bplatz_phase2_adapter.py
+      - backend/app/services/ingestion_persistence.py
+      - backend/app/models/**
+      - backend/scenthunter_next_engine/**
+      - backend/scrapers/bplatz/**
+      - backend/alembic/**
+      - backend/scripts/seed_catalog.py
+      - backend/product_catalog.json
+      - tests/test_bplatz_persistence_service.py
+      - tests/fixtures/bplatz/**
+      - .github/workflows/bplatz-phase2-adapter-isolated.yml
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest
+      - name: Run real Phase 2 Bplatz adapter tests
+        run: python -m pytest -q -s tests/test_bplatz_persistence_service.py

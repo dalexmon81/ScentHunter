@@ -255,3 +255,51 @@ def test_invalid_offer_fields_block_promotion_after_real_legacy_resolution(tmp_p
             assert session.scalar(select(IngestionRaw.status).where(IngestionRaw.status == "matched")) == "matched"
     finally:
         engine.dispose()
+
+
+
+def test_bplatz_phase2_adapter_runs_real_persistence_contract(tmp_path):
+    from app.services.bplatz_phase2_adapter import persist_bplatz_record
+    from scenthunter_next_engine.next_engine_service import NextEngineService
+
+    _parsed, record, normalized, group = _real_bplatz_components()
+    engine, db_url, _ = _migrated_database(tmp_path)
+    try:
+        seed_report = _seed_real_catalog(db_url)
+        assert seed_report["database_counts"]["legacy_product_id_map"] >= 1
+        assert seed_report["database_counts"]["legacy_variant_id_map"] >= 1
+        matcher = NextEngineService.from_catalog_file(BACKEND / "product_catalog.json")
+
+        with Session(engine) as session, session.begin():
+            store_id = _create_bplatz_store(session)
+            result = persist_bplatz_record(
+                session, store_id=store_id, raw_record=record, matcher=matcher,
+            )
+            assert result.status == "promoted"
+            assert result.offer_id is not None
+            assert result.fragrance_id is not None
+            assert result.product_variant_id is not None
+            assert result.reason is None
+
+        with Session(engine) as session:
+            offer = session.get(Offer, result.offer_id)
+            raw = session.get(IngestionRaw, result.ingestion_raw_id)
+            assert offer is not None
+            assert offer.store_id == store_id
+            assert offer.product_variant_id == result.product_variant_id
+            assert offer.price == normalized.price
+            assert offer.currency == "EUR"
+            assert offer.url == normalized.product_url
+            assert offer.availability == "in_stock"
+            assert raw is not None and raw.status == "promoted"
+            assert raw.legacy_product_id == group.canonical_product_id
+            assert raw.legacy_variant_id == group.canonical_variant_id
+            assert session.scalar(select(PriceHistory).where(
+                PriceHistory.offer_id == result.offer_id
+            )) is not None
+            assert session.scalar(select(MatchAudit).where(
+                MatchAudit.offer_id == result.offer_id
+            )) is not None
+            assert session.scalar(select(Offer.id)) == result.offer_id
+    finally:
+        engine.dispose()
