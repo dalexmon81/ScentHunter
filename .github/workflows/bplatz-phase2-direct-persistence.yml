@@ -1,0 +1,202 @@
+name: Bplatz Phase 2 direct persistence (no legacy DB)
+
+on:
+  push:
+    branches:
+      - ops/bplatz-phase2-direct-persistence-20261102
+    paths:
+      - .github/workflows/bplatz-phase2-direct-persistence.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenthunter-bplatz-phase2-direct-persistence
+  cancel-in-progress: false
+
+jobs:
+  persist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Backup, fetch Bplatz product, persist through Phase 2 adapter, verify
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/bplatz_phase2_direct.py <<'PY'
+          import json, os, shutil, sqlite3, subprocess, sys
+          from pathlib import Path
+
+          BACKEND = Path("/app/backend")
+          DB = Path("/data/catalog/catalog.sqlite3")
+          TARGET = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+          PYTHON = "/app/.venv/bin/python"
+
+          def stop(message):
+              raise SystemExit("STOP: " + message)
+
+          if not DB.is_file() or DB.stat().st_size == 0:
+              stop("Phase 2 database missing or empty")
+
+          def snapshot(path):
+              con = sqlite3.connect("file:" + str(path) + "?mode=ro", uri=True, timeout=30)
+              try:
+                  revision = con.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+                  integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
+                  fk = con.execute("PRAGMA foreign_key_check").fetchall()
+                  stores = con.execute("SELECT name,slug,domain,country,currency,status FROM stores ORDER BY slug").fetchall()
+                  counts = {t: con.execute("SELECT COUNT(*) FROM " + t).fetchone()[0] for t in
+                            ("brands","fragrances","product_variants","stores","offers","price_history","match_audit","ingestion_raw")}
+                  return {"revision":revision,"integrity":integrity,"fk_errors":len(fk),"stores":stores,"counts":counts}
+              finally:
+                  con.close()
+
+          before = snapshot(DB)
+          if before["revision"] != "0003_store_domain" or before["integrity"] != "ok" or before["fk_errors"]:
+              stop("database preflight failed: " + json.dumps(before))
+          bplatz = [r for r in before["stores"] if r[1] == "bplatz"]
+          if bplatz != [("Bplatz","bplatz","bplatz.de","DE","EUR","active")]:
+              stop("Bplatz store is not seeded exactly: " + repr(bplatz))
+
+          backup_dir = Path("/data/backups")
+          backup_dir.mkdir(parents=True, exist_ok=True)
+          backup = backup_dir / ("phase2-pre-direct-hydration-" + os.environ.get("GITHUB_RUN_ID","manual") + ".sqlite3")
+          if backup.exists():
+              stop("refusing to overwrite backup " + str(backup))
+          if shutil.disk_usage(backup_dir).free < max(DB.stat().st_size * 2, 20*1024*1024):
+              stop("insufficient disk space for backup")
+          src, dst = sqlite3.connect(str(DB), timeout=30), sqlite3.connect(str(backup), timeout=30)
+          try:
+              src.backup(dst)
+              dst.commit()
+          finally:
+              dst.close()
+              src.close()
+          if snapshot(backup) != before:
+              stop("backup snapshot differs from live database")
+          print("VERIFIED_BACKUP=" + json.dumps({"path":str(backup),"bytes":backup.stat().st_size,"snapshot":before}), flush=True)
+
+          script = r'''
+          import json, os, sys, requests
+          from decimal import Decimal
+          from sqlalchemy import select, text
+          from sqlalchemy.orm import Session
+          sys.path.insert(0, "/app/backend")
+          from scrapers.bplatz.scraper import parse_product_html, HEADERS, TIMEOUT
+          from scenthunter_next_engine.next_engine_service import NextEngineService
+          from app.db import make_engine
+          from app.models import Store, Offer, IngestionRaw, PriceHistory, MatchAudit, ProductVariant, Fragrance, Brand
+          from app.services.bplatz_phase2_adapter import persist_bplatz_record
+
+          target = "https://bplatz.de/products/fragrance-world-liquid-brun-eau-de-parfum-100ml?variant=54015243419916"
+          response = requests.get(target, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+          response.raise_for_status()
+          parsed = parse_product_html(response.text, response.url, "French Avenue Liquid Brun")
+          response.close()
+          if not parsed:
+              raise SystemExit("Bplatz parser did not identify Liquid Brun")
+          if "liquid brun" not in parsed["name"].lower() or "french avenue" not in (parsed.get("brand") or "").lower():
+              raise SystemExit("Parser returned unexpected product identity: " + repr(parsed))
+          if parsed.get("size_ml") is None or abs(float(parsed["size_ml"])-100.0)>0.01:
+              raise SystemExit("Parser returned unexpected size: " + repr(parsed.get("size_ml")))
+          if not isinstance(parsed.get("price_num"), (int,float)) or float(parsed["price_num"]) <= 0:
+              raise SystemExit("Parser returned invalid price")
+          if parsed.get("availability") not in {"in_stock","out_of_stock"}:
+              raise SystemExit("Parser returned non-explicit availability")
+
+          raw_record = {
+              "raw_name": parsed["name"], "brand_raw": parsed.get("brand"),
+              "size_ml": parsed.get("size_ml"), "price": parsed["price_num"],
+              "currency": parsed["offer"]["currency"], "product_url": parsed["url"],
+              "availability": parsed["availability"], "sku": parsed.get("sku"),
+              "gtin": parsed.get("gtin"),
+          }
+          matcher = NextEngineService.from_catalog_file("/app/backend/product_catalog.json")
+          engine = make_engine()
+          try:
+              with Session(engine) as session, session.begin():
+                  store = session.scalar(select(Store).where(Store.slug=="bplatz"))
+                  if store is None or store.status != "active":
+                      raise SystemExit("Bplatz store missing or inactive")
+                  result = persist_bplatz_record(session, store_id=store.id, raw_record=raw_record, matcher=matcher)
+                  if result.status != "promoted" or result.offer_id is None:
+                      raise SystemExit("Phase 2 adapter did not promote offer: " + repr(result))
+                  offer = session.get(Offer, result.offer_id)
+                  raw = session.get(IngestionRaw, result.ingestion_raw_id)
+                  variant = session.get(ProductVariant, result.product_variant_id)
+                  fragrance = session.get(Fragrance, result.fragrance_id)
+                  brand = session.get(Brand, fragrance.brand_id) if fragrance else None
+                  if not offer or not raw or raw.status!="promoted" or not variant:
+                      raise SystemExit("Promoted offer/raw/variant relation missing")
+                  history = session.scalar(select(PriceHistory).where(PriceHistory.offer_id==offer.id))
+                  audit = session.scalar(select(MatchAudit).where(MatchAudit.offer_id==offer.id))
+                  if not history or not audit:
+                      raise SystemExit("Price history or match audit missing")
+                  if offer.status!="active" or offer.store_id!=store.id or offer.product_variant_id!=variant.id:
+                      raise SystemExit("Offer failed active/store/variant contract")
+                  if abs(float(offer.price)-float(parsed["price_num"]))>0.01:
+                      raise SystemExit("Persisted price differs from live parser")
+                  if not brand or "french avenue" not in brand.name.lower() or not fragrance or "liquid brun" not in fragrance.name.lower():
+                      raise SystemExit("Canonical match is not French Avenue Liquid Brun")
+                  if variant.size_ml is None or abs(float(variant.size_ml)-100.0)>0.01:
+                      raise SystemExit("Canonical variant size is not 100 ml")
+                  payload = {
+                      "status":"success","offer_id":str(offer.id),"raw_id":str(raw.id),
+                      "brand":brand.name,"fragrance":fragrance.name,"size_ml":variant.size_ml,
+                      "price":str(offer.price),"currency":offer.currency,
+                      "availability":offer.availability,"offer_status":offer.status,
+                      "url":offer.url,"price_history_present":True,"match_audit_present":True,
+                      "legacy_database_touched":False,
+                  }
+                  print("BPLATZ_PHASE2_DIRECT_RESULT="+json.dumps(payload,ensure_ascii=False),flush=True)
+          finally:
+              engine.dispose()
+          '''
+          env = os.environ.copy()
+          env["SCENTHUNTER_CATALOG_DATABASE_URL"] = "sqlite:////data/catalog/catalog.sqlite3"
+          env["PYTHONPATH"] = str(BACKEND) + os.pathsep + env.get("PYTHONPATH","")
+          result = subprocess.run([PYTHON,"-c",script],cwd=BACKEND,env=env,text=True,capture_output=True)
+          if result.stdout: print(result.stdout,end="",flush=True)
+          if result.stderr: print(result.stderr,file=sys.stderr,end="",flush=True)
+          if result.returncode: stop("direct Phase 2 adapter failed with exit " + str(result.returncode))
+          marker="BPLATZ_PHASE2_DIRECT_RESULT="
+          line=next((x for x in result.stdout.splitlines() if marker in x),None)
+          if not line: stop("no structured Phase 2 result")
+          payload=json.loads(line.split(marker,1)[1])
+          if payload.get("status")!="success": stop("Phase 2 result not successful")
+          after=snapshot(DB)
+          if after["integrity"]!="ok" or after["fk_errors"] or after["revision"]!="0003_store_domain":
+              stop("post-write integrity check failed: "+json.dumps(after))
+          if after["counts"]["offers"] < before["counts"]["offers"]+1:
+              stop("offer count did not increase")
+          print("PHASE2_BPLATZ_FINAL="+json.dumps({
+              "status":"success","backup":str(backup),"backup_verified":True,
+              "before":before["counts"],"after":after["counts"],
+              "offer":payload,"integrity_check":after["integrity"],
+              "foreign_key_errors":after["fk_errors"],
+              "legacy_database_touched":False,
+          },ensure_ascii=False),flush=True)
+          PY
+
+          python -m py_compile /tmp/bplatz_phase2_direct.py
+          SCRIPT_B64="$(base64 -w0 /tmp/bplatz_phase2_direct.py)"
+          remote_command="/bin/sh -lc 'echo ${SCRIPT_B64} | base64 -d > /tmp/bplatz_phase2_direct.py && GITHUB_RUN_ID=${GITHUB_RUN_ID} /app/.venv/bin/python /tmp/bplatz_phase2_direct.py'"
+          timeout 600s flyctl ssh console --app scenthunter --select=false -C "$remote_command"
+
+      - name: Verify production health
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          request=urllib.request.Request("https://scenthunter.fly.dev/health",headers={"Accept":"application/json"})
+          with urllib.request.urlopen(request,timeout=20) as response:
+              payload=json.loads(response.read().decode())
+          if payload.get("status")!="healthy":
+              raise SystemExit("Production health failed: "+json.dumps(payload))
+          print("FLY_PRODUCTION_HEALTH=PASS")
+          print("ARCHITECTURE="+str(payload.get("architecture")))
+          PY
