@@ -1,7 +1,8 @@
-"""Isolated SQLAlchemy persistence gate for normalized retailer offers."""
+"""SQLAlchemy persistence gate with explicit legacy-ID to UUID resolution."""
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from decimal import Decimal
 from urllib.parse import urlparse
 from uuid import UUID
@@ -9,7 +10,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IngestionRaw, MatchAudit, Offer, PriceHistory, ProductVariant, Store
+from app.models import (
+    Fragrance, IngestionRaw, LegacyProductIdMap, LegacyVariantIdMap,
+    MatchAudit, Offer, PriceHistory, ProductVariant, Store,
+)
 
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
 _ALLOWED_AVAILABILITY = {"in_stock", "out_of_stock"}
@@ -19,9 +23,36 @@ class PromotionRejected(ValueError):
     """A staged retailer row failed the publication contract."""
 
 
+@dataclass(frozen=True)
+class ResolvedLegacyIds:
+    fragrance_id: UUID
+    product_variant_id: UUID
+
+
+def resolve_legacy_ids(
+    session: Session, *, legacy_product_id: str | None,
+    legacy_variant_id: str | None,
+) -> ResolvedLegacyIds | None:
+    """Resolve only explicit persisted mappings; never synthesize UUIDs."""
+    if not legacy_product_id or not legacy_variant_id:
+        return None
+    product_map = session.get(LegacyProductIdMap, legacy_product_id)
+    variant_map = session.get(LegacyVariantIdMap, legacy_variant_id)
+    if product_map is None or variant_map is None:
+        return None
+    fragrance = session.get(Fragrance, product_map.fragrance_id)
+    variant = session.get(ProductVariant, variant_map.product_variant_id)
+    if fragrance is None or variant is None or variant.fragrance_id != fragrance.id:
+        return None
+    return ResolvedLegacyIds(
+        fragrance_id=fragrance.id,
+        product_variant_id=variant.id,
+    )
+
+
 def stage_raw_offer(session: Session, *, store_id: UUID, raw_payload: dict,
                     external_product_id: str | None = None) -> UUID:
-    """Persist the original payload as pending. The caller owns the transaction."""
+    """Persist original retailer payload as pending. Caller owns transaction."""
     if not isinstance(raw_payload, dict):
         raise TypeError("raw_payload must be a dict")
     if session.get(Store, store_id) is None:
@@ -36,7 +67,7 @@ def stage_raw_offer(session: Session, *, store_id: UUID, raw_payload: dict,
 def record_match(session: Session, *, ingestion_raw_id: UUID,
                  product_variant_id: UUID | None, method: str,
                  confidence: Decimal | None = None, reason: str | None = None) -> str:
-    """Persist matched/unmatched decision; never assign IDs to unresolved rows."""
+    """Persist UUID match; unresolved rows never receive a variant UUID."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
         raise ValueError("unknown ingestion_raw_id")
@@ -53,10 +84,11 @@ def record_match(session: Session, *, ingestion_raw_id: UUID,
         row.match_confidence = confidence
         row.rejection_reason = reason or "no_canonical_variant_match"
     else:
-        if session.get(ProductVariant, product_variant_id) is None:
-            raise ValueError("canonical product variant does not exist in database")
+        variant = session.get(ProductVariant, product_variant_id)
+        if variant is None:
+            raise ValueError("canonical product variant UUID does not exist")
         row.status = "matched"
-        row.product_variant_id = product_variant_id
+        row.product_variant_id = variant.id
         row.match_method = method
         row.match_confidence = confidence
         row.rejection_reason = None
@@ -64,20 +96,52 @@ def record_match(session: Session, *, ingestion_raw_id: UUID,
     return row.status
 
 
+def record_legacy_match(
+    session: Session, *, ingestion_raw_id: UUID,
+    legacy_product_id: str, legacy_variant_id: str,
+    method: str, confidence: Decimal | None = None,
+) -> ResolvedLegacyIds | None:
+    """Persist historical matcher IDs, resolve via DB maps, then assign UUID."""
+    row = session.get(IngestionRaw, ingestion_raw_id)
+    if row is None:
+        raise ValueError("unknown ingestion_raw_id")
+    if row.status not in {"pending", "unmatched"}:
+        raise ValueError(f"cannot resolve row in status {row.status}")
+    row.legacy_product_id = legacy_product_id
+    row.legacy_variant_id = legacy_variant_id
+    resolved = resolve_legacy_ids(
+        session, legacy_product_id=legacy_product_id,
+        legacy_variant_id=legacy_variant_id,
+    )
+    if resolved is None:
+        record_match(
+            session, ingestion_raw_id=ingestion_raw_id,
+            product_variant_id=None, method=method, confidence=confidence,
+            reason="legacy_catalog_id_mapping_not_found_or_inconsistent",
+        )
+        return None
+    record_match(
+        session, ingestion_raw_id=ingestion_raw_id,
+        product_variant_id=resolved.product_variant_id,
+        method=method, confidence=confidence,
+    )
+    return resolved
+
+
 def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
                   currency: str, url: str, availability: str, source: str,
                   confidence: Decimal | None = None) -> UUID:
-    """Create offer, price history and match audit in the caller's transaction."""
+    """Create offer, price history and match audit in caller's transaction."""
     row = session.get(IngestionRaw, ingestion_raw_id)
     if row is None:
         raise ValueError("unknown ingestion_raw_id")
     if row.status != "matched" or row.product_variant_id is None:
-        raise PromotionRejected("only matched rows with a canonical variant can be promoted")
+        raise PromotionRejected("only rows with a resolved UUID match can be promoted")
     store = session.get(Store, row.store_id)
     if store is None or store.status != "active":
         raise PromotionRejected("store is not active")
     if session.get(ProductVariant, row.product_variant_id) is None:
-        raise PromotionRejected("canonical product variant does not exist")
+        raise PromotionRejected("canonical product variant UUID does not exist")
     if not isinstance(price, Decimal) or not price.is_finite() or price <= 0:
         raise PromotionRejected("price must be a positive finite Decimal")
     if not isinstance(currency, str) or not _CURRENCY.fullmatch(currency):
@@ -113,7 +177,7 @@ def promote_offer(session: Session, *, ingestion_raw_id: UUID, price: Decimal,
     session.add(MatchAudit(
         offer_id=offer.id, product_variant_id=row.product_variant_id,
         method=row.match_method or "unspecified", confidence=offer.confidence,
-        reason="promoted_from_validated_ingestion_raw"))
+        reason="promoted_from_resolved_legacy_catalog_ids"))
     row.status = "promoted"
     session.flush()
     return offer.id
