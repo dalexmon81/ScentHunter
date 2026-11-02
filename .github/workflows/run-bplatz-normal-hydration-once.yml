@@ -1,4 +1,5 @@
 name: Run one normal Bplatz hydration and verify Phase 2
+# Re-run after the production legacy-lock bypass deployment.
 
 on:
   push:
