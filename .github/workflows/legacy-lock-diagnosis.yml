@@ -58,7 +58,7 @@ jobs:
             [ -e "$shm" ] || return 1
             inode=$(stat -c '%i' "$shm" 2>/dev/null) || return 1
             awk -v inode="$inode" '
-              $1=="POSIX" && $4=="WRITE" {
+              $2=="POSIX" && $4=="WRITE" {
                 n=split($6, devino, ":")
                 if (n >= 3 && devino[3] == inode) print $5
               }
