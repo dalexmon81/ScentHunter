@@ -241,3 +241,5 @@ def test_negative_without_certain_association_stays_raw_and_not_offers():
             connection.close()
 
 # Re-run offline verification after adding pytest to the dedicated workflow.
+
+# Trigger rerun with requests installed for production parser import.
